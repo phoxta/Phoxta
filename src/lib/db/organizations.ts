@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { friendlyError } from "@/lib/friendlyError";
 import type { Blueprint } from "@/lib/db/marketplace";
 
 /** Mirrors the live `organizations` table (subset). */
@@ -7,9 +8,32 @@ export type Organization = {
   name: string;
   slug: string | null;
   stage: string;
+  vertical: string | null;
   primary_region: string | null;
   created_at: string;
 };
+
+export type Member = { user_id: string; role: "owner" | "admin" | "staff" | "viewer"; created_at: string };
+
+/** A single business the user can access (RLS scopes to members). */
+export async function getBusiness(id: string): Promise<{ data: Organization | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("id, name, slug, stage, vertical, primary_region, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  return { data: (data as Organization | null) ?? null, error: friendlyError(error?.message) };
+}
+
+/** Members of a business (RLS lets members read co-members). */
+export async function listMembers(orgId: string): Promise<{ data: Member[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("organization_memberships")
+    .select("user_id, role, created_at")
+    .eq("organization_id", orgId)
+    .order("created_at", { ascending: true });
+  return { data: (data as Member[] | null) ?? [], error: friendlyError(error?.message) };
+}
 
 function makeSlug(name: string): string {
   const base = name
@@ -39,7 +63,7 @@ export async function createBusiness(
     })
     .select("id")
     .single();
-  return { id: (data as { id: string } | null)?.id ?? null, error: error?.message ?? null };
+  return { id: (data as { id: string } | null)?.id ?? null, error: friendlyError(error?.message) };
 }
 
 /** "Make it yours": create a business from a marketplace blueprint and record the purchase. */
@@ -63,7 +87,7 @@ export async function buyBlueprint(
     status: "paid",
   });
   // The business exists even if the purchase log fails; surface the error but keep the id.
-  return { id: created.id, error: purchaseError?.message ?? null };
+  return { id: created.id, error: friendlyError(purchaseError?.message) };
 }
 
 export type OrganizationMembership = {
@@ -82,10 +106,10 @@ export async function listMyOrganizations(): Promise<{
 }> {
   const { data, error } = await supabase
     .from("organization_memberships")
-    .select("role, organizations(id, name, slug, stage, primary_region, created_at)")
+    .select("role, organizations(id, name, slug, stage, vertical, primary_region, created_at)")
     .order("created_at", { ascending: true });
 
-  if (error) return { data: [], error: error.message };
+  if (error) return { data: [], error: friendlyError(error.message) };
 
   const rows = (data as unknown as OrganizationMembership[]) ?? [];
   const mapped = rows

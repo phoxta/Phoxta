@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
-import { listMySubscriptions, type Subscription } from "@/lib/db/billing";
+import { listMySubscriptions, listMyPurchases, type Subscription, type Purchase } from "@/lib/db/billing";
 import { formatPrice } from "@/lib/db/marketplace";
 
 const STATUS_STYLE: Record<Subscription["status"], string> = {
@@ -17,17 +17,26 @@ const PLANS = [
   { plan: "Scale", price: "$179/mo", note: "Growth-stage businesses" },
 ];
 
+const PURCHASE_STYLE: Record<Purchase["status"], string> = {
+  paid: "bg-success-subtle text-success",
+  pending: "bg-neutral-100 neutral-700",
+  refunded: "bg-neutral-100 neutral-500",
+  failed: "bg-warning-subtle text-warning",
+};
+
 export default function BillingPage() {
   const [subs, setSubs] = useState<Subscription[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    listMySubscriptions().then(({ data, error }) => {
+    Promise.all([listMySubscriptions(), listMyPurchases()]).then(([s, p]) => {
       if (!active) return;
-      if (error) setError(error);
-      setSubs(data);
+      if (s.error) setError(s.error);
+      setSubs(s.data);
+      setPurchases(p.data);
       setLoading(false);
     });
     return () => {
@@ -91,6 +100,36 @@ export default function BillingPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {!loading && purchases.length > 0 && (
+        <>
+          <h5 className="fw-600 mb-3">Purchases</h5>
+          <div className="bg-neutral-0 rounded-4 border-100 overflow-hidden mb-5">
+            <table className="table mb-0 align-middle">
+              <thead>
+                <tr className="fz-font-sm neutral-500">
+                  <th className="fw-500 py-3 ps-4">Date</th>
+                  <th className="fw-500 py-3">Business</th>
+                  <th className="fw-500 py-3">Status</th>
+                  <th className="fw-500 py-3 pe-4 text-end">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {purchases.map((p) => (
+                  <tr key={p.id}>
+                    <td className="py-3 ps-4 fz-font-md neutral-500">{new Date(p.created_at).toLocaleDateString()}</td>
+                    <td className="py-3 fw-600">{p.blueprints?.name ?? p.organizations?.name ?? "Business"}</td>
+                    <td className="py-3">
+                      <span className={`badge fw-500 text-capitalize ${PURCHASE_STYLE[p.status]}`}>{p.status}</span>
+                    </td>
+                    <td className="py-3 pe-4 text-end fw-600">{formatPrice(p.amount_cents, p.currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <h5 className="fw-600 mb-3">Plans</h5>

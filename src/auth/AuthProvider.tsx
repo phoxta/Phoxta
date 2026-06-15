@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { friendlyError } from "@/lib/friendlyError";
 
 type AuthContextValue = {
   session: Session | null;
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       configured: isSupabaseConfigured,
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        return { error: error?.message ?? null };
+        return { error: friendlyError(error?.message) };
       },
       async signUp(email, password) {
         const { data, error } = await supabase.auth.signUp({
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           options: { emailRedirectTo: `${window.location.origin}/auth` },
         });
         const needsConfirmation = !error && !data.session;
-        return { error: error?.message ?? null, needsConfirmation };
+        return { error: friendlyError(error?.message), needsConfirmation };
       },
       async signOut() {
         await supabase.auth.signOut();
@@ -66,11 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth?mode=reset`,
         });
-        return { error: error?.message ?? null };
+        return { error: friendlyError(error?.message) };
       },
       async updatePassword(password) {
         const { error } = await supabase.auth.updateUser({ password });
-        return { error: error?.message ?? null };
+        return { error: friendlyError(error?.message) };
       },
     }),
     [session, loading],

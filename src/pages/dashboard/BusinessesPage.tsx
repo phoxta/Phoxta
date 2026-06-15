@@ -116,15 +116,19 @@ export default function BusinessesPage() {
             <div key={organization.id} className="col-lg-4 col-md-6">
               <div className="bg-neutral-0 rounded-4 p-4 h-100 border-100">
                 <div className="d-flex align-items-center justify-content-between mb-2">
-                  <h6 className="fw-600 neutral-900 mb-0">{organization.name}</h6>
+                  <h6 className="fw-600 neutral-900 mb-0">
+                    <Link to={`/dashboard/businesses/${organization.id}`} className="neutral-900 text-decoration-none">
+                      {organization.name}
+                    </Link>
+                  </h6>
                   <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{role}</span>
                 </div>
                 <p className="fz-font-sm neutral-500 mb-3 text-capitalize">
                   {organization.stage}
                   {organization.primary_region ? ` · ${organization.primary_region}` : ""}
                 </p>
-                <Link to="/dashboard/billing" className="fz-font-md fw-600 text-decoration-none">
-                  Manage plan →
+                <Link to={`/dashboard/businesses/${organization.id}`} className="fz-font-md fw-600 text-decoration-none">
+                  Open →
                 </Link>
               </div>
             </div>

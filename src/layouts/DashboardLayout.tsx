@@ -32,13 +32,18 @@ export default function DashboardLayout() {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
 
-  // Onboarding gate: first-run users finish setup before entering the dashboard.
+  // Onboarding gate: brand-new users finish setup first. On a fetch error we
+  // let them into the dashboard (pages handle their own errors) rather than
+  // bouncing them to onboarding.
   useEffect(() => {
     let active = true;
-    getMyProfile().then(({ data }) => {
+    getMyProfile().then(({ data, error }) => {
       if (!active) return;
-      if (!data || !data.onboarding_completed) navigate("/onboarding", { replace: true });
-      else setReady(true);
+      if (!error && (!data || !data.onboarding_completed)) {
+        navigate("/onboarding", { replace: true });
+      } else {
+        setReady(true);
+      }
     });
     return () => {
       active = false;

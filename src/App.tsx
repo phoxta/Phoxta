@@ -67,6 +67,7 @@ import DashboardHomePage from "@/pages/dashboard/DashboardHomePage";
 import MarketplacePage from "@/pages/dashboard/MarketplacePage";
 import MarketplaceDetailPage from "@/pages/dashboard/MarketplaceDetailPage";
 import BusinessesPage from "@/pages/dashboard/BusinessesPage";
+import BusinessDetailPage from "@/pages/dashboard/BusinessDetailPage";
 import BillingPage from "@/pages/dashboard/BillingPage";
 import NetworkPage from "@/pages/dashboard/NetworkPage";
 import SettingsPage from "@/pages/dashboard/SettingsPage";
@@ -85,6 +86,7 @@ export default function App() {
           <Route path="/dashboard/marketplace" element={<MarketplacePage />} />
           <Route path="/dashboard/marketplace/:slug" element={<MarketplaceDetailPage />} />
           <Route path="/dashboard/businesses" element={<BusinessesPage />} />
+          <Route path="/dashboard/businesses/:id" element={<BusinessDetailPage />} />
           <Route path="/dashboard/billing" element={<BillingPage />} />
           <Route path="/dashboard/network" element={<NetworkPage />} />
           <Route path="/dashboard/settings" element={<SettingsPage />} />

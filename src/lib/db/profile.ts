@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { friendlyError } from "@/lib/friendlyError";
 
 /** Mirrors the live `user_profiles` table (subset used by the dashboard). RLS: own row only. */
 export type UserProfile = {
@@ -34,7 +35,7 @@ const SELECT =
 /** Read the signed-in user's profile (null if not created yet). */
 export async function getMyProfile(): Promise<{ data: UserProfile | null; error: string | null }> {
   const { data, error } = await supabase.from("user_profiles").select(SELECT).maybeSingle();
-  return { data: (data as UserProfile | null) ?? null, error: error?.message ?? null };
+  return { data: (data as UserProfile | null) ?? null, error: friendlyError(error?.message) };
 }
 
 /** Create or update the signed-in user's profile row. */
@@ -45,7 +46,7 @@ export async function saveMyProfile(
   const { error } = await supabase
     .from("user_profiles")
     .upsert({ user_id: userId, ...form }, { onConflict: "user_id" });
-  return { error: error?.message ?? null };
+  return { error: friendlyError(error?.message) };
 }
 
 /** Save onboarding answers and mark onboarding complete. */
@@ -62,5 +63,5 @@ export async function completeOnboarding(
     },
     { onConflict: "user_id" },
   );
-  return { error: error?.message ?? null };
+  return { error: friendlyError(error?.message) };
 }

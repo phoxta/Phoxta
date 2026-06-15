@@ -78,8 +78,14 @@ function HeroNav() {
                             </button>
                             <Link className="at-btn at-btn-border-white text-white rounded-0 d-none d-md-block" to="/auth">
                                 <span>
-                                    <span className="text-1">Sign in</span>
-                                    <span className="text-2">Sign in</span>
+                                    <span className="text-1">Login</span>
+                                    <span className="text-2">Login</span>
+                                </span>
+                            </Link>
+                            <Link className="at-btn bg-white text-dark rounded-0 d-none d-md-block" to="/auth?mode=signup">
+                                <span>
+                                    <span className="text-1">Get started</span>
+                                    <span className="text-2">Get started</span>
                                 </span>
                             </Link>
                         </div>

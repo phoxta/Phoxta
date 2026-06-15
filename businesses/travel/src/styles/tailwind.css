@@ -1,0 +1,411 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@plugin '@tailwindcss/aspect-ratio';
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Fonts */
+@theme {
+  --font-sans--font-feature-settings: 'cv11';
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    @apply border-neutral-200 dark:border-neutral-700;
+  }
+
+  button.gm-control-active.gm-fullscreen-control {
+    border-radius: var(--radius-xl) !important;
+  }
+  [type='button'] {
+    -webkit-appearance: none !important;
+  }
+
+  hr {
+    @apply border-t border-neutral-200 dark:border-neutral-700;
+  }
+
+  input[type='time']::-webkit-calendar-picker-indicator {
+    @apply rounded-md dark:bg-neutral-500;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  .maplibregl-popup-content {
+    @apply rounded-none! bg-transparent! p-0! shadow-none!;
+  }
+  .maplibregl-popup-tip {
+    @apply hidden!;
+  }
+}
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1rem;
+  @media screen and (min-width: 1536px) {
+    padding-inline: 4rem;
+  }
+}
+@utility pl-container {
+  @apply pl-4 sm:pl-[calc((100vw-40rem+2rem)/2)] md:pl-[calc((100vw-48rem+2rem)/2)] lg:pl-[calc((100vw-64rem+2rem)/2)] xl:pl-[calc((100vw-80rem+2rem)/2)] 2xl:pl-[calc((100vw-96rem+16rem)/2)];
+}
+@utility section-space-xl {
+  @apply py-14 sm:py-20 lg:py-28 2xl:py-32;
+}
+@utility section-space {
+  @apply py-12 sm:py-16 lg:py-20 2xl:py-24;
+}
+@utility section-space-top {
+  @apply pt-12 sm:pt-16 lg:pt-20 2xl:pt-24;
+}
+@utility section-space-bottom {
+  @apply pb-12 sm:pb-16 lg:pb-20 2xl:pb-24;
+}
+@utility section-space-smaller {
+  @apply py-12 sm:py-16;
+}
+
+/* embla carousel */
+@utility embla {
+  overflow: hidden;
+}
+@utility embla-overflow-unset {
+  overflow: unset;
+}
+@utility embla__container {
+  display: flex;
+  touch-action: pan-y pinch-zoom;
+}
+@utility embla__slide {
+  flex-shrink: 0;
+  flex-grow: 0;
+  transform: translate3d(0, 0, 0);
+}
+
+/* // some quick customizations */
+@utility mySnapItem {
+  @apply shrink-0 snap-start;
+}
+
+@utility nc-header-bg {
+  @apply bg-white/70 backdrop-blur-2xl backdrop-filter dark:bg-neutral-900/60;
+}
+
+@utility menu-item {
+  @apply flex;
+
+  &:hover {
+    > .sub-menu {
+      @apply block;
+    }
+  }
+}
+
+@utility sub-menu {
+  @apply hidden;
+}
+
+.react-datepicker {
+  @apply relative grid grid-cols-1 gap-10 md:grid-cols-2;
+}
+.react-datepicker__aria-live {
+  @apply hidden;
+}
+.react-datepicker__month-container {
+  @apply text-center;
+}
+.react-datepicker__current-month {
+  @apply text-sm font-semibold text-gray-900 dark:text-gray-100;
+}
+.react-datepicker__day-names {
+  @apply mt-6 grid grid-cols-7 text-center text-xs leading-6 text-gray-500 dark:text-gray-400;
+}
+
+.react-datepicker__sr-only {
+  @apply sr-only;
+}
+.react-datepicker__day-name span[aria-hidden] {
+  display: initial;
+}
+
+.react-datepicker__month {
+  @apply mt-5;
+}
+.react-datepicker__week {
+  @apply my-0.5 grid grid-cols-7;
+}
+
+.react-datepicker__day {
+  @apply flex w-full cursor-pointer items-center justify-center text-sm empty:cursor-auto empty:opacity-0 empty:hover:bg-transparent;
+  &:empty {
+    background-color: transparent !important;
+  }
+  span {
+    @apply rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/60;
+  }
+}
+
+.react-datepicker__day--in-range,
+.react-datepicker__day--in-selecting-range {
+  @apply rounded-none bg-gray-100 dark:bg-gray-700/50;
+}
+
+.react-datepicker__day--range-start {
+  @apply relative z-[1] bg-transparent after:absolute after:inset-y-0 after:end-0 after:-z-10 after:w-1/2 after:bg-gray-100 dark:after:bg-gray-700/50;
+}
+.react-datepicker__day--range-end {
+  @apply relative z-[1] bg-transparent after:absolute after:inset-y-0 after:start-0 after:-z-10 after:w-1/2 after:bg-gray-100 dark:after:bg-gray-700/50;
+}
+
+.react-datepicker__day--range-start,
+.react-datepicker__day--selecting-range-start {
+  @apply rounded-l-full;
+}
+.react-datepicker__day--range-end,
+.react-datepicker__day--selecting-range-end {
+  @apply rounded-r-full;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--range-start,
+.react-datepicker__day--range-end,
+.react-datepicker__day--selecting-range-start,
+.react-datepicker__day--selecting-range-end {
+  span {
+    @apply rounded-full bg-primary text-primary-foreground hover:bg-primary dark:bg-primary dark:hover:bg-primary;
+  }
+}
+.react-datepicker__day--disabled {
+  @apply text-neutral-400 dark:text-neutral-500;
+}
+.react-datepicker__day_span {
+  @apply flex size-10 items-center justify-center rounded-full;
+}
+.addListingDatePickerExclude {
+  .react-datepicker__day--disabled {
+    @apply relative rounded-none bg-muted empty:opacity-0;
+    &::after {
+      content: '';
+      @apply absolute block h-full rotate-45 border-l border-neutral-300 dark:border-neutral-700;
+    }
+  }
+}
+
+/* // ================== CUSTOM ============================== */
+@utility root {
+  overflow: hidden;
+}
+#headlessui-portal-root {
+  @apply text-base text-foreground;
+}
+@utility hidden-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+@utility z-max {
+  z-index: 999;
+}
+
+@utility nc-box-has-hover {
+  @apply rounded-3xl border border-neutral-200/79 bg-white dark:border-neutral-700 dark:bg-neutral-800/30;
+}
+
+@utility listingSection__wrap {
+  @apply flex w-full flex-col gap-y-6 leading-relaxed sm:gap-y-8;
+}
+@utility shadow-lg-for-card {
+  @apply shadow-[0px_0px_0px_1px_rgba(0,0,0,0.02),0px_8px_24px_0px_rgba(0,0,0,0.10)] dark:border dark:border-border;
+}
+@utility shadow-md-for-card {
+  @apply shadow-[0px_0px_0px_1px_rgba(0,0,0,0.025),0px_6px_20px_0px_rgba(0,0,0,0.08)] dark:border dark:border-border;
+}
+
+@keyframes myblur {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@utility custom-shadow-1 {
+  box-shadow:
+    rgba(17, 17, 26, 0.05) 0px 4px 16px,
+    rgba(17, 17, 26, 0.05) 0px 8px 32px;
+}
+
+/* FOR SEARCH FORM DEFAULT */
+@utility hero-search-form__field-after {
+  @apply after:absolute after:-end-1 after:top-1/2 after:-z-10 after:hidden after:h-9 after:w-2 after:-translate-y-1/2 after:bg-(--form-bg) data-open:after:block;
+}
+@utility hero-search-form__field-before {
+  @apply before:absolute before:-start-1 before:top-1/2 before:-z-10 before:hidden before:h-9 before:w-2 before:-translate-y-1/2 before:bg-(--form-bg) data-open:before:block;
+}
+
+@keyframes pulseScale {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* add marquee animation */
+@layer utilities {
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes marquee-reverse {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-marquee {
+    animation: marquee 60s linear infinite;
+  }
+
+  .animate-marquee-reverse {
+    animation: marquee-reverse 60s linear infinite;
+  }
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(55.1% 0.027 264.364);
+  --muted-foreground-lighter: oklch(87.2% 0.01 258.338);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.58 0.22 27);
+  --border: oklch(92.8% 0.006 264.531);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.87 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --muted-foreground-lighter: oklch(55.6% 0 0);
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@theme inline {
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted-foreground-lighter: var(--muted-foreground-lighter);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}

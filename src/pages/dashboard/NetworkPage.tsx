@@ -124,6 +124,7 @@ export default function NetworkPage() {
   }
 
   const incoming = matches.filter((m) => m.target_user_id === user?.id && m.status === "pending");
+  const connections = matches.filter((m) => m.status === "accepted");
 
   return (
     <div>
@@ -229,6 +230,19 @@ export default function NetworkPage() {
                       </button>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {connections.length > 0 && (
+            <div className="mb-4">
+              <h5 className="fw-600 mb-3">Your connections</h5>
+              <div className="d-flex flex-wrap gap-2">
+                {connections.map((m) => (
+                  <span key={m.id} className="badge bg-success-subtle text-success fw-500 text-capitalize px-3 py-2">
+                    {m.kind} · connected
+                  </span>
                 ))}
               </div>
             </div>

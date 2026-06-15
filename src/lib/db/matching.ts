@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { friendlyError } from "@/lib/friendlyError";
 
 export type MatchRole = "founder" | "cofounder" | "operator" | "investor";
 
@@ -34,12 +35,12 @@ const SELECT = "id, user_id, role, headline, bio, skills, verticals, capital_ban
 
 export async function getMyMatchProfile(userId: string): Promise<{ data: MatchProfile | null; error: string | null }> {
   const { data, error } = await supabase.from("match_profiles").select(SELECT).eq("user_id", userId).maybeSingle();
-  return { data: (data as MatchProfile | null) ?? null, error: error?.message ?? null };
+  return { data: (data as MatchProfile | null) ?? null, error: friendlyError(error?.message) };
 }
 
 export async function saveMatchProfile(userId: string, form: MatchProfileForm): Promise<{ error: string | null }> {
   const { error } = await supabase.from("match_profiles").upsert({ user_id: userId, ...form }, { onConflict: "user_id" });
-  return { error: error?.message ?? null };
+  return { error: friendlyError(error?.message) };
 }
 
 /** Open profiles other than mine. RLS already limits to open profiles + my own. */
@@ -51,7 +52,7 @@ export async function listOpenProfiles(userId: string): Promise<{ data: MatchPro
     .neq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(50);
-  return { data: (data as MatchProfile[] | null) ?? [], error: error?.message ?? null };
+  return { data: (data as MatchProfile[] | null) ?? [], error: friendlyError(error?.message) };
 }
 
 export async function sendMatchRequest(
@@ -66,7 +67,7 @@ export async function sendMatchRequest(
     kind,
     message,
   });
-  return { error: error?.message ?? null };
+  return { error: friendlyError(error?.message) };
 }
 
 export async function listMyMatches(): Promise<{ data: Match[]; error: string | null }> {
@@ -74,7 +75,7 @@ export async function listMyMatches(): Promise<{ data: Match[]; error: string | 
     .from("matches")
     .select("id, requester_user_id, target_user_id, kind, status, message, created_at")
     .order("created_at", { ascending: false });
-  return { data: (data as Match[] | null) ?? [], error: error?.message ?? null };
+  return { data: (data as Match[] | null) ?? [], error: friendlyError(error?.message) };
 }
 
 export async function updateMatchStatus(
@@ -82,5 +83,5 @@ export async function updateMatchStatus(
   status: Match["status"],
 ): Promise<{ error: string | null }> {
   const { error } = await supabase.from("matches").update({ status }).eq("id", id);
-  return { error: error?.message ?? null };
+  return { error: friendlyError(error?.message) };
 }

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { friendlyError } from "@/lib/friendlyError";
 
 /** Mirrors the live `blueprints` table (marketplace catalog). */
 export type Blueprint = {
@@ -26,12 +27,12 @@ export async function listBlueprints(): Promise<{ data: Blueprint[]; error: stri
     .from("blueprints")
     .select(SELECT)
     .order("price_cents", { ascending: true });
-  return { data: (data as Blueprint[] | null) ?? [], error: error?.message ?? null };
+  return { data: (data as Blueprint[] | null) ?? [], error: friendlyError(error?.message) };
 }
 
 export async function getBlueprint(slug: string): Promise<{ data: Blueprint | null; error: string | null }> {
   const { data, error } = await supabase.from("blueprints").select(SELECT).eq("slug", slug).maybeSingle();
-  return { data: (data as Blueprint | null) ?? null, error: error?.message ?? null };
+  return { data: (data as Blueprint | null) ?? null, error: friendlyError(error?.message) };
 }
 
 export function formatPrice(cents: number, currency = "USD"): string {

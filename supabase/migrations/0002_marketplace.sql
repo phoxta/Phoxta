@@ -104,5 +104,7 @@ values
   ('local-marketplace','Local Marketplace','A multi-vendor marketplace with split payouts, ratings and verified numbers.','Marketplace','premium',310000,true,true,'live','{}'),
   ('online-course-studio','Online Course Studio','A course platform with payments, community and an AI teaching assistant.','Education','premium',220000,false,true,'live','{}'),
   ('restaurant-orders','Restaurant + Orders','Online ordering, reservations and an AI assistant for a restaurant.','Restaurant','standard',150000,false,true,'live','{}'),
-  ('niche-saas-starter','Niche SaaS Starter','A SaaS starter with subscriptions, accounts and an AI support layer.','SaaS','premium',240000,false,true,'live','{}')
+  ('niche-saas-starter','Niche SaaS Starter','A SaaS starter with subscriptions, accounts and an AI support layer.','SaaS','premium',240000,false,true,'live','{}'),
+  ('carento','Carento Car Marketplace','A full car buying and selling marketplace with listings, financing tools and an AI assistant.','Automotive','premium',390000,true,true,'live','{"built":true,"app":"businesses/carento"}'),
+  ('travel','Wanderly Travel & Tours','A travel booking site for trips, tours and stays, with an AI trip planner.','Travel','premium',360000,true,true,'live','{"built":true,"app":"businesses/travel"}')
 on conflict (slug) do nothing;

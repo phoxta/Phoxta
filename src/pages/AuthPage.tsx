@@ -97,7 +97,7 @@ export default function AuthPage() {
       <div className="row g-0" style={{ minHeight: "100vh" }}>
         {/* Brand panel */}
         <div
-          className="col-lg-6 d-none d-lg-flex flex-column justify-content-between p-5 text-white bg-primary-1"
+          className="col-lg-6 d-none d-lg-flex flex-column justify-content-between p-5 text-white"
           style={{ background: "#0f0f12" }}
         >
           <Link to="/" className="d-inline-flex align-items-center gap-2 text-decoration-none">
@@ -195,15 +195,14 @@ export default function AuthPage() {
                 </div>
               )}
 
-              <button type="submit" className="at-btn w-100 justify-content-center mt-3" disabled={loading}>
-                <span>
-                  <span className="text-1">{loading ? "Please wait…" : submitLabel}</span>
-                  <span className="text-2">{loading ? "Please wait…" : submitLabel}</span>
-                </span>
-                <i>
-                  {ARROW}
-                  {ARROW}
-                </i>
+              <button
+                type="submit"
+                className="btn w-100 py-3 rounded-3 fw-600 text-white border-0 mt-3 d-inline-flex align-items-center justify-content-center gap-2"
+                style={{ background: "#0f0f12" }}
+                disabled={loading}
+              >
+                {loading ? "Please wait…" : submitLabel}
+                {!loading && ARROW}
               </button>
             </form>
 

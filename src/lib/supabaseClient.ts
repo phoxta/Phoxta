@@ -18,6 +18,16 @@ if (!isSupabaseConfigured) {
   );
 }
 
+// Tie the stored session to THIS project's ref, so switching Supabase projects
+// never reuses a stale session whose user doesn't exist in the new database.
+const projectRef = (() => {
+  try {
+    return new URL(supabaseUrl ?? "http://localhost").hostname.split(".")[0] || "local";
+  } catch {
+    return "local";
+  }
+})();
+
 export const supabase: SupabaseClient = createClient(
   supabaseUrl ?? "http://localhost",
   supabaseAnonKey ?? "public-anon-key",
@@ -27,7 +37,7 @@ export const supabase: SupabaseClient = createClient(
       autoRefreshToken: true,
       detectSessionInUrl: true, // handles email confirm / recovery links
       storage: typeof window !== "undefined" ? window.localStorage : undefined,
-      storageKey: "phoxta-auth",
+      storageKey: `phoxta-auth-${projectRef}`,
     },
   },
 );
