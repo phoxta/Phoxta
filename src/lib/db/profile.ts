@@ -47,3 +47,20 @@ export async function saveMyProfile(
     .upsert({ user_id: userId, ...form }, { onConflict: "user_id" });
   return { error: error?.message ?? null };
 }
+
+/** Save onboarding answers and mark onboarding complete. */
+export async function completeOnboarding(
+  userId: string,
+  form: Partial<ProfileForm> & { primary_role?: string },
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("user_profiles").upsert(
+    {
+      user_id: userId,
+      ...form,
+      onboarding_completed: true,
+      onboarding_completed_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  return { error: error?.message ?? null };
+}

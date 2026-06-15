@@ -60,11 +60,16 @@ import TeamDetailsPage from "@/pages/TeamDetailsPage";
 import TeamPage from "@/pages/TeamPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import AuthPage from "@/pages/AuthPage";
+import OnboardingPage from "@/pages/OnboardingPage";
 import ProtectedRoute from "@/auth/ProtectedRoute";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import DashboardHomePage from "@/pages/dashboard/DashboardHomePage";
+import MarketplacePage from "@/pages/dashboard/MarketplacePage";
+import MarketplaceDetailPage from "@/pages/dashboard/MarketplaceDetailPage";
+import BusinessesPage from "@/pages/dashboard/BusinessesPage";
+import BillingPage from "@/pages/dashboard/BillingPage";
+import NetworkPage from "@/pages/dashboard/NetworkPage";
 import SettingsPage from "@/pages/dashboard/SettingsPage";
-import PlaceholderPage from "@/pages/dashboard/PlaceholderPage";
 
 export default function App() {
   return (
@@ -74,28 +79,14 @@ export default function App() {
 
       {/* Dashboard (protected app shell, Supabase-backed) */}
       <Route element={<ProtectedRoute />}>
+        <Route path="/onboarding" element={<OnboardingPage />} />
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardHomePage />} />
-          <Route
-            path="/dashboard/marketplace"
-            element={<PlaceholderPage title="Marketplace" description="Browse validated, AI-powered businesses and make one your own." />}
-          />
-          <Route
-            path="/dashboard/stores"
-            element={<PlaceholderPage title="Stores" description="Your storefronts — brand, products, content and payments." />}
-          />
-          <Route
-            path="/dashboard/orders"
-            element={<PlaceholderPage title="Orders" description="Track and fulfil orders across your businesses." />}
-          />
-          <Route
-            path="/dashboard/customers"
-            element={<PlaceholderPage title="Customers" description="Your contacts, deals and customer activity." />}
-          />
-          <Route
-            path="/dashboard/finance"
-            element={<PlaceholderPage title="Finance" description="Revenue, invoices, payouts and unit economics." />}
-          />
+          <Route path="/dashboard/marketplace" element={<MarketplacePage />} />
+          <Route path="/dashboard/marketplace/:slug" element={<MarketplaceDetailPage />} />
+          <Route path="/dashboard/businesses" element={<BusinessesPage />} />
+          <Route path="/dashboard/billing" element={<BillingPage />} />
+          <Route path="/dashboard/network" element={<NetworkPage />} />
           <Route path="/dashboard/settings" element={<SettingsPage />} />
         </Route>
       </Route>

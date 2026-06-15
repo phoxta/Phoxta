@@ -21,8 +21,11 @@ const EMPTY: ProfileForm = {
 };
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, updatePassword } = useAuth();
   const [form, setForm] = useState<ProfileForm>(EMPTY);
+  const [newPassword, setNewPassword] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +170,54 @@ export default function SettingsPage() {
             </div>
           </form>
         )}
+      </div>
+
+      {/* Security */}
+      <div className="bg-neutral-0 rounded-4 p-4 p-md-5 border-100 mt-4">
+        <h5 className="fw-600 mb-1">Security</h5>
+        <p className="neutral-500 mb-4">Update the password for {user?.email}.</p>
+        {pwMsg && (
+          <div className={`alert ${pwMsg.ok ? "alert-success" : "alert-danger"} py-2 px-3 fz-font-md`} role="alert">
+            {pwMsg.text}
+          </div>
+        )}
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setPwSaving(true);
+            setPwMsg(null);
+            const { error } = await updatePassword(newPassword);
+            setPwSaving(false);
+            if (error) setPwMsg({ ok: false, text: error });
+            else {
+              setPwMsg({ ok: true, text: "Password updated." });
+              setNewPassword("");
+            }
+          }}
+        >
+          <div className="row g-3 align-items-end">
+            <div className="col-md-7">
+              <label className="form-label fz-font-md fw-500">New password</label>
+              <input
+                type="password"
+                className="form-control rounded-3"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={8}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <div className="col-md-5">
+              <button type="submit" className="at-btn" disabled={pwSaving || newPassword.length < 8}>
+                <span>
+                  <span className="text-1">{pwSaving ? "Updating…" : "Update password"}</span>
+                  <span className="text-2">{pwSaving ? "Updating…" : "Update password"}</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   );

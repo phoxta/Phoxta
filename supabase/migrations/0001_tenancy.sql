@@ -16,22 +16,8 @@ begin
 end;
 $$;
 
--- SECURITY DEFINER so membership checks bypass RLS and never recurse.
-create or replace function public.app_is_org_member(p_org uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from organization_memberships m
-    where m.organization_id = p_org
-      and m.user_id = auth.uid()
-  );
-$$;
-grant execute on function public.app_is_org_member(uuid) to anon, authenticated;
+-- Note: app_is_org_member() is defined after organization_memberships exists
+-- (a SQL function body is validated at creation, so the table must exist first).
 
 -- ---------------------------------------------------------------------------
 -- user_profiles (one row per auth user) — column-compatible with src/lib/db/profile.ts
@@ -103,6 +89,24 @@ create table if not exists organization_memberships (
   primary key (organization_id, user_id)
 );
 create index if not exists idx_org_memberships_user on organization_memberships(user_id);
+
+-- SECURITY DEFINER so membership checks bypass RLS and never recurse.
+-- Defined here (after the table) so the SQL body validates.
+create or replace function public.app_is_org_member(p_org uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from organization_memberships m
+    where m.organization_id = p_org
+      and m.user_id = auth.uid()
+  );
+$$;
+grant execute on function public.app_is_org_member(uuid) to anon, authenticated;
 
 -- Auto-add the creator as owner member when an organization is created.
 create or replace function public.app_add_owner_membership()

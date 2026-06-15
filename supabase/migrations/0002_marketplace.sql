@@ -76,6 +76,20 @@ alter table subscriptions enable row level security;
 create policy subscriptions_select on subscriptions
   for select using (public.app_is_org_member(organization_id));
 
+-- Auto-provision a trial subscription when a business (organization) is created.
+create or replace function public.app_add_trial_subscription()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into subscriptions (organization_id, plan, status, amount_cents, current_period_end)
+  values (new.id, 'starter', 'trialing', 0, now() + interval '14 days')
+  on conflict (organization_id) do nothing;
+  return new;
+end;
+$$;
+create trigger trg_org_trial_subscription
+  after insert on organizations
+  for each row execute function public.app_add_trial_subscription();
+
 -- ---------------------------------------------------------------------------
 -- Seed: launch marketplace catalog (from the product plan). Idempotent.
 -- ---------------------------------------------------------------------------

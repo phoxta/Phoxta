@@ -1,0 +1,272 @@
+import { useEffect, useState } from "react";
+import PageMeta from "@/seo/PageMeta";
+import { useAuth } from "@/auth/AuthProvider";
+import {
+  getMyMatchProfile,
+  saveMatchProfile,
+  listOpenProfiles,
+  sendMatchRequest,
+  listMyMatches,
+  updateMatchStatus,
+  type MatchProfile,
+  type MatchProfileForm,
+  type MatchRole,
+  type Match,
+} from "@/lib/db/matching";
+
+const ROLES: { value: MatchRole; label: string }[] = [
+  { value: "founder", label: "Founder" },
+  { value: "cofounder", label: "Looking for a co-founder" },
+  { value: "operator", label: "Operator for hire" },
+  { value: "investor", label: "Investor" },
+];
+
+const EMPTY: MatchProfileForm = {
+  role: "founder",
+  headline: "",
+  bio: "",
+  skills: [],
+  verticals: [],
+  capital_band: "",
+  location: "",
+  is_open: true,
+};
+
+const toList = (s: string) =>
+  s
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+export default function NetworkPage() {
+  const { user } = useAuth();
+  const [form, setForm] = useState<MatchProfileForm>(EMPTY);
+  const [skillsText, setSkillsText] = useState("");
+  const [verticalsText, setVerticalsText] = useState("");
+  const [people, setPeople] = useState<MatchProfile[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [requested, setRequested] = useState<Record<string, boolean>>({});
+
+  async function loadPeople(uid: string) {
+    const { data } = await listOpenProfiles(uid);
+    setPeople(data);
+  }
+
+  async function reloadMatches() {
+    const { data } = await listMyMatches();
+    setMatches(data);
+  }
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    Promise.all([getMyMatchProfile(user.id), listOpenProfiles(user.id), listMyMatches()]).then(([mine, open, mm]) => {
+      if (!active) return;
+      if (mine.error) setError(mine.error);
+      setMatches(mm.data);
+      if (mine.data) {
+        setForm({
+          role: mine.data.role,
+          headline: mine.data.headline,
+          bio: mine.data.bio,
+          skills: mine.data.skills,
+          verticals: mine.data.verticals,
+          capital_band: mine.data.capital_band,
+          location: mine.data.location,
+          is_open: mine.data.is_open,
+        });
+        setSkillsText(mine.data.skills.join(", "));
+        setVerticalsText(mine.data.verticals.join(", "));
+      }
+      setPeople(open.data);
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  async function onSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    const payload: MatchProfileForm = { ...form, skills: toList(skillsText), verticals: toList(verticalsText) };
+    const { error } = await saveMatchProfile(user.id, payload);
+    setSaving(false);
+    if (error) setError(error);
+    else {
+      setSaved(true);
+      loadPeople(user.id);
+    }
+  }
+
+  async function onConnect(p: MatchProfile) {
+    if (!user) return;
+    const kind = p.role === "investor" ? "investor" : p.role === "operator" ? "operator" : "cofounder";
+    const { error } = await sendMatchRequest(user.id, p.user_id, kind);
+    if (error) setError(error);
+    else {
+      setRequested((r) => ({ ...r, [p.user_id]: true }));
+      reloadMatches();
+    }
+  }
+
+  async function respond(id: string, status: Match["status"]) {
+    const { error } = await updateMatchStatus(id, status);
+    if (error) setError(error);
+    else reloadMatches();
+  }
+
+  const incoming = matches.filter((m) => m.target_user_id === user?.id && m.status === "pending");
+
+  return (
+    <div>
+      <PageMeta title="Phoxta - Network" />
+      <div className="mb-4">
+        <h2 className="fw-600 mb-1">Network</h2>
+        <p className="neutral-500 mb-0">Find co-founders, operators and investors — and let them find you.</p>
+      </div>
+
+      {error && (
+        <div className="alert alert-warning py-2 px-3 fz-font-md" role="alert">
+          {error}
+        </div>
+      )}
+
+      <div className="row g-4">
+        {/* Your profile */}
+        <div className="col-lg-5">
+          <form onSubmit={onSave} className="bg-neutral-0 rounded-4 p-4 border-100">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <h5 className="fw-600 mb-0">Your matching profile</h5>
+              <div className="form-check form-switch m-0">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="is-open"
+                  checked={form.is_open}
+                  onChange={(e) => setForm((f) => ({ ...f, is_open: e.target.checked }))}
+                />
+                <label className="form-check-label fz-font-sm neutral-500" htmlFor="is-open">
+                  Open
+                </label>
+              </div>
+            </div>
+
+            {saved && <div className="alert alert-success py-2 px-3 fz-font-md">Profile saved.</div>}
+
+            <div className="mb-3">
+              <label className="form-label fz-font-md fw-500">I am a…</label>
+              <select className="form-select rounded-3" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as MatchRole }))}>
+                {ROLES.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mb-3">
+              <label className="form-label fz-font-md fw-500">Headline</label>
+              <input className="form-control rounded-3" value={form.headline} onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))} placeholder="e.g. Operator who scales DTC brands" />
+            </div>
+            <div className="mb-3">
+              <label className="form-label fz-font-md fw-500">About you</label>
+              <textarea className="form-control rounded-3" rows={3} value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} />
+            </div>
+            <div className="row g-3">
+              <div className="col-6">
+                <label className="form-label fz-font-md fw-500">Location</label>
+                <input className="form-control rounded-3" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
+              </div>
+              <div className="col-6">
+                <label className="form-label fz-font-md fw-500">Capital band</label>
+                <input className="form-control rounded-3" value={form.capital_band} onChange={(e) => setForm((f) => ({ ...f, capital_band: e.target.value }))} placeholder="e.g. $10k–50k" />
+              </div>
+              <div className="col-12">
+                <label className="form-label fz-font-md fw-500">Skills (comma separated)</label>
+                <input className="form-control rounded-3" value={skillsText} onChange={(e) => setSkillsText(e.target.value)} />
+              </div>
+              <div className="col-12">
+                <label className="form-label fz-font-md fw-500">Verticals (comma separated)</label>
+                <input className="form-control rounded-3" value={verticalsText} onChange={(e) => setVerticalsText(e.target.value)} />
+              </div>
+            </div>
+            <div className="pt-3">
+              <button type="submit" className="at-btn" disabled={saving}>
+                <span>
+                  <span className="text-1">{saving ? "Saving…" : "Save profile"}</span>
+                  <span className="text-2">{saving ? "Saving…" : "Save profile"}</span>
+                </span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* People + requests */}
+        <div className="col-lg-7">
+          {incoming.length > 0 && (
+            <div className="mb-4">
+              <h5 className="fw-600 mb-3">Requests for you</h5>
+              <div className="d-flex flex-column gap-2">
+                {incoming.map((m) => (
+                  <div key={m.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-3">
+                    <div>
+                      <span className="badge bg-neutral-100 neutral-700 fw-500 text-capitalize me-2">{m.kind}</span>
+                      <span className="fz-font-md neutral-700">{m.message || "wants to connect with you."}</span>
+                    </div>
+                    <div className="d-flex gap-2 flex-shrink-0">
+                      <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={() => respond(m.id, "accepted")}>
+                        Accept
+                      </button>
+                      <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => respond(m.id, "declined")}>
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <h5 className="fw-600 mb-3">Open to connect</h5>
+          {loading ? (
+            <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>
+          ) : people.length === 0 ? (
+            <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">
+              No one to show yet. Save your profile to join the network.
+            </div>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              {people.map((p) => (
+                <div key={p.id} className="bg-neutral-0 rounded-4 p-4 border-100 d-flex justify-content-between gap-3">
+                  <div>
+                    <span className="badge bg-neutral-100 neutral-700 fw-500 text-capitalize mb-2">{p.role}</span>
+                    <h6 className="fw-600 mb-1">{p.headline || "Phoxta member"}</h6>
+                    <p className="fz-font-md neutral-500 mb-1">{p.bio}</p>
+                    <div className="fz-font-sm neutral-500">
+                      {[p.location, p.verticals.join(", "), p.capital_band].filter(Boolean).join(" · ")}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 align-self-center">
+                    <button type="button" className="at-btn" disabled={requested[p.user_id]} onClick={() => onConnect(p)}>
+                      <span>
+                        <span className="text-1">{requested[p.user_id] ? "Requested" : "Connect"}</span>
+                        <span className="text-2">{requested[p.user_id] ? "Requested" : "Connect"}</span>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

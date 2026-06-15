@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
+import { getMyProfile } from "@/lib/db/profile";
 
 type NavItem = { to: string; label: string; icon: React.ReactNode; end?: boolean };
 
@@ -13,10 +14,9 @@ const Icon = ({ d }: { d: string }) => (
 const NAV: NavItem[] = [
   { to: "/dashboard", end: true, label: "Home", icon: <Icon d="M3 11l9-8 9 8M5 10v10h14V10" /> },
   { to: "/dashboard/marketplace", label: "Marketplace", icon: <Icon d="M3 9l1.5-5h15L21 9M4 9h16v11H4zM9 13h6" /> },
-  { to: "/dashboard/stores", label: "Stores", icon: <Icon d="M3 7h18v4a3 3 0 01-6 0 3 3 0 01-6 0 3 3 0 01-6 0zM5 13v7h14v-7" /> },
-  { to: "/dashboard/orders", label: "Orders", icon: <Icon d="M6 2l1.5 3M18 2l-1.5 3M3 6h18l-2 12H5zM9 21h.01M17 21h.01" /> },
-  { to: "/dashboard/customers", label: "Customers", icon: <Icon d="M16 21v-2a4 4 0 00-8 0v2M12 11a4 4 0 100-8 4 4 0 000 8" /> },
-  { to: "/dashboard/finance", label: "Finance", icon: <Icon d="M3 17l6-6 4 4 7-7M21 8v5h-5" /> },
+  { to: "/dashboard/businesses", label: "Businesses", icon: <Icon d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01" /> },
+  { to: "/dashboard/billing", label: "Billing", icon: <Icon d="M2 7h20v10H2zM2 11h20M6 15h4" /> },
+  { to: "/dashboard/network", label: "Network", icon: <Icon d="M16 21v-2a4 4 0 00-8 0v2M12 11a4 4 0 100-8 4 4 0 000 8M3 21v-1a4 4 0 014-4M21 21v-1a4 4 0 00-4-4" /> },
   { to: "/dashboard/settings", label: "Settings", icon: <Icon d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 13a7.9 7.9 0 000-2l2-1.5-2-3.5-2.4 1a8 8 0 00-1.7-1l-.4-2.5H10.1l-.4 2.5a8 8 0 00-1.7 1l-2.4-1-2 3.5L3.6 11a7.9 7.9 0 000 2l-2 1.5 2 3.5 2.4-1a8 8 0 001.7 1l.4 2.5h3.8l.4-2.5a8 8 0 001.7-1l2.4 1 2-3.5z" /> },
 ];
 
@@ -30,6 +30,20 @@ export default function DashboardLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  // Onboarding gate: first-run users finish setup before entering the dashboard.
+  useEffect(() => {
+    let active = true;
+    getMyProfile().then(({ data }) => {
+      if (!active) return;
+      if (!data || !data.onboarding_completed) navigate("/onboarding", { replace: true });
+      else setReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
 
   async function handleSignOut() {
     await signOut();
@@ -37,6 +51,16 @@ export default function DashboardLayout() {
   }
 
   const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
+
+  if (!ready) {
+    return (
+      <div className="d-flex align-items-center justify-content-center bg-neutral-50" style={{ minHeight: "100vh" }}>
+        <div className="spinner-border text-dark" role="status" aria-label="Loading">
+          <span className="visually-hidden">Loading…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="d-flex bg-neutral-50" style={{ minHeight: "100vh" }}>
