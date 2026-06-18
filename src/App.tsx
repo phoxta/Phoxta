@@ -56,6 +56,7 @@ const PortfolioStackPage = lazy(() => import("@/pages/PortfolioStackPage"));
 const PortfolioVistaPage = lazy(() => import("@/pages/PortfolioVistaPage"));
 const PortfolioZstackPage = lazy(() => import("@/pages/PortfolioZstackPage"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
+const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
 const ProductArchivePage = lazy(() => import("@/pages/ProductArchivePage"));
 const ProductCartPage = lazy(() => import("@/pages/ProductCartPage"));
 const ProductCheckoutPage = lazy(() => import("@/pages/ProductCheckoutPage"));
@@ -66,6 +67,7 @@ const Services3Page = lazy(() => import("@/pages/Services3Page"));
 const ServicesDetailsPage = lazy(() => import("@/pages/ServicesDetailsPage"));
 const TeamDetailsPage = lazy(() => import("@/pages/TeamDetailsPage"));
 const TeamPage = lazy(() => import("@/pages/TeamPage"));
+const TermsPage = lazy(() => import("@/pages/TermsPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 const AuthPage = lazy(() => import("@/pages/AuthPage"));
 const OnboardingPage = lazy(() => import("@/pages/OnboardingPage"));
@@ -97,6 +99,7 @@ const AgentProactivePage = lazy(() => import("@/pages/dashboard/ops/agent/Proact
 const AgentConfigurePage = lazy(() => import("@/pages/dashboard/ops/agent/ConfigurePage"));
 const AgentKnowledgePage = lazy(() => import("@/pages/dashboard/ops/agent/KnowledgePage"));
 const AgentInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
+const AgentGmailPage = lazy(() => import("@/pages/dashboard/ops/agent/GmailPage"));
 const AgentSnippetsPage = lazy(() => import("@/pages/dashboard/ops/agent/SnippetsPage"));
 const AgentOutboundPage = lazy(() => import("@/pages/dashboard/ops/agent/OutboundPage"));
 const AgentCallCenterPage = lazy(() => import("@/pages/dashboard/ops/agent/CallCenterPage"));
@@ -151,6 +154,7 @@ export default function App() {
               <Route path="configure" element={<AgentConfigurePage />} />
               <Route path="knowledge" element={<AgentKnowledgePage />} />
               <Route path="inbox" element={<AgentInboxPage />} />
+              <Route path="gmail" element={<AgentGmailPage />} />
               <Route path="snippets" element={<AgentSnippetsPage />} />
               <Route path="outbound" element={<AgentOutboundPage />} />
               <Route path="call-center" element={<AgentCallCenterPage />} />
@@ -209,6 +213,8 @@ export default function App() {
         <Route path="/portfolio-details-4" element={<PortfolioDetails4Page />} />
         <Route path="/portfolio-details-6" element={<PortfolioDetails6Page />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/product-archive" element={<ProductArchivePage />} />
         <Route path="/product-cart" element={<ProductCartPage />} />
         <Route path="/product-checkout" element={<ProductCheckoutPage />} />

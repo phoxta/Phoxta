@@ -1,6 +1,28 @@
-// Phoxta — shared Google OAuth helpers (consent scopes, redirect URI, and an
-// HMAC-signed `state` so the public callback can trust which org is connecting).
+// Phoxta — shared Google OAuth helpers (consent scopes, redirect URI, an
+// HMAC-signed `state` for the callback, and a refresh-aware access-token getter).
+import type { SupabaseClient } from "./supabaseAdmin.ts";
 const env = (k: string) => Deno.env.get(k) ?? "";
+
+/** Return a valid Google access token for the org, refreshing it if expired. */
+export async function getAccessToken(admin: SupabaseClient, orgId: string): Promise<string | null> {
+  const { data } = await admin.from("google_connections").select("access_token, refresh_token, token_expiry").eq("organization_id", orgId).maybeSingle();
+  // deno-lint-ignore no-explicit-any
+  const c = data as any;
+  if (!c) return null;
+  const exp = c.token_expiry ? new Date(c.token_expiry).getTime() : 0;
+  if (c.access_token && exp > Date.now() + 60_000) return c.access_token; // still valid (>1 min)
+  if (!c.refresh_token) return c.access_token || null;
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: env("GOOGLE_CLIENT_ID"), client_secret: env("GOOGLE_CLIENT_SECRET"), refresh_token: c.refresh_token, grant_type: "refresh_token" }),
+  });
+  // deno-lint-ignore no-explicit-any
+  const tok: any = await res.json().catch(() => ({}));
+  if (!tok?.access_token) return null;
+  await admin.from("google_connections").update({ access_token: tok.access_token, token_expiry: new Date(Date.now() + (tok.expires_in ?? 3600) * 1000).toISOString() }).eq("organization_id", orgId);
+  return tok.access_token;
+}
 
 export const GOOGLE_SCOPES = [
   "openid", "email", "profile",
