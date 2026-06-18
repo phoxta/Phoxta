@@ -97,18 +97,14 @@ async function dispatchWhatsApp(to: string, message: string): Promise<DispatchRe
 // (the same channel inbound calls use). VOICE_WS_HOST overrides the host.
 export type CallResult = { ok: boolean; status: DispatchResult["status"]; sid?: string; error?: string };
 
-export async function placeAiCall(agentKey: string, to: string): Promise<CallResult> {
+const xmlEsc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+async function twilioCall(to: string, twiml: string): Promise<CallResult> {
   const accountSid = env("TWILIO_ACCOUNT_SID");
   const authUser = env("TWILIO_API_KEY_SID") || accountSid;
   const authPass = env("TWILIO_API_KEY_SECRET") || env("TWILIO_AUTH_TOKEN");
   const from = env("TWILIO_FROM");
-  const host = env("VOICE_WS_HOST") || "phoxta-voice-production.up.railway.app";
-  if (!accountSid || !from || !authUser || !authPass || !agentKey || !to) return { ok: false, status: "simulated" };
-  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const twiml =
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Connect>` +
-    `<Stream url="wss://${host}/ws"><Parameter name="key" value="${esc(agentKey)}"/>` +
-    `<Parameter name="from" value="outbound"/></Stream></Connect></Response>`;
+  if (!accountSid || !from || !authUser || !authPass || !to) return { ok: false, status: "simulated" };
   try {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
       method: "POST",
@@ -122,6 +118,29 @@ export async function placeAiCall(agentKey: string, to: string): Promise<CallRes
   } catch (e) {
     return { ok: false, status: "failed", error: String(e) };
   }
+}
+
+export async function placeAiCall(agentKey: string, to: string, opening = ""): Promise<CallResult> {
+  if (!agentKey || !to) return { ok: false, status: "simulated" };
+  const host = env("VOICE_WS_HOST") || "phoxta-voice-production.up.railway.app";
+  const openParam = opening ? `<Parameter name="opening" value="${xmlEsc(opening)}"/>` : "";
+  const twiml =
+    `<?xml version="1.0" encoding="UTF-8"?><Response><Connect>` +
+    `<Stream url="wss://${host}/ws"><Parameter name="key" value="${xmlEsc(agentKey)}"/>` +
+    `<Parameter name="from" value="outbound"/>${openParam}</Stream></Connect></Response>`;
+  return twilioCall(to, twiml);
+}
+
+// Human-bridge ("call me, then connect me to the customer"): Twilio dials the
+// operator first, then bridges the customer in with the business caller ID.
+export async function placeBridgeCall(customerTo: string, agentPhone: string): Promise<CallResult> {
+  const from = env("TWILIO_FROM");
+  if (!agentPhone || !customerTo || !from) return { ok: false, status: "simulated" };
+  const twiml =
+    `<?xml version="1.0" encoding="UTF-8"?><Response>` +
+    `<Say>Connecting you to your customer now.</Say>` +
+    `<Dial callerId="${xmlEsc(from)}"><Number>${xmlEsc(customerTo)}</Number></Dial></Response>`;
+  return twilioCall(agentPhone, twiml);
 }
 
 async function dispatchVoice(to: string, message: string): Promise<DispatchResult> {

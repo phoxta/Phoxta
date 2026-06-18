@@ -173,9 +173,15 @@ export async function sendConversationTemplate(
   return { ok: !!data?.ok, delivery_status: data?.delivery_status ?? null, error: error ?? (data && !data.ok ? (data.error ?? "Could not send.") : null) };
 }
 /** AI copilot: a one-line summary + a suggested reply for the human to use. */
-/** Click-to-call: dial the customer and bridge them to the AI agent (Pipecat). */
-export async function placeCall(orgId: string, to: string, conversationId?: string): Promise<{ ok: boolean; status: string | null; error: string | null }> {
-  const { data, error } = await invokeFn<{ ok: boolean; status?: string; error?: string }>("place-call", { organizationId: orgId, to, conversationId });
+/** Click-to-call. mode "ai" → the AI agent calls (optionally opening with a
+ *  purpose line); mode "bridge" → call the operator, then connect the customer. */
+export async function placeCall(
+  orgId: string, to: string,
+  opts: { conversationId?: string; mode?: "ai" | "bridge"; opening?: string; agentPhone?: string } = {},
+): Promise<{ ok: boolean; status: string | null; error: string | null }> {
+  const { data, error } = await invokeFn<{ ok: boolean; status?: string; error?: string }>("place-call", {
+    organizationId: orgId, to, conversationId: opts.conversationId, mode: opts.mode ?? "ai", opening: opts.opening, agentPhone: opts.agentPhone,
+  });
   return { ok: !!data?.ok, status: data?.status ?? null, error: error ?? (data && !data.ok ? (data.error ?? "Call failed.") : null) };
 }
 export async function suggestReply(orgId: string, convId: string): Promise<{ summary: string; suggestion: string; error: string | null }> {

@@ -77,6 +77,10 @@ export default function InboxPage() {
   const [tpl, setTpl] = useState<CannedResponse | null>(null);
   const [tplVars, setTplVars] = useState<Record<string, string>>({});
   const [calling, setCalling] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
+  const [callMode, setCallMode] = useState<"ai" | "bridge">("ai");
+  const [callOpening, setCallOpening] = useState("");
+  const [callPhone, setCallPhone] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const memberName = (id: string | null) => (id ? members.find((m) => m.user_id === id)?.full_name || "Teammate" : "");
@@ -187,9 +191,18 @@ export default function InboxPage() {
     if (!selected?.customer_phone || calling) return;
     setCalling(true);
     setSendNote(null);
-    const r = await placeCall(orgId, selected.customer_phone, selected.id);
+    const r = await placeCall(orgId, selected.customer_phone, {
+      conversationId: selected.id,
+      mode: callMode,
+      opening: callMode === "ai" ? callOpening.trim() || undefined : undefined,
+      agentPhone: callMode === "bridge" ? callPhone.trim() || undefined : undefined,
+    });
     setCalling(false);
-    setSendNote(r.ok ? `📞 Calling ${selected.customer_phone} — your AI agent will speak with them.` : (r.error ?? "Call could not be placed."));
+    if (!r.ok) { setSendNote(r.error ?? "Call could not be placed."); return; }
+    setSendNote(callMode === "bridge"
+      ? `📞 Calling you${callPhone.trim() ? ` on ${callPhone.trim()}` : ""} — pick up and we'll connect ${selected.customer_phone}.`
+      : `📞 Calling ${selected.customer_phone} — your AI agent will speak with them.`);
+    setCallOpen(false);
   }
 
   async function setStatus(s: ConvStatus) {
@@ -300,7 +313,7 @@ export default function InboxPage() {
                 <div className="fz-font-sm neutral-500">{[selected.customer_phone, selected.customer_email].filter(Boolean).join(" · ") || "—"}</div>
               </div>
               <div className="d-flex gap-2">
-                {selected.customer_phone && <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={call} disabled={calling}>{calling ? "Calling…" : "📞 Call"}</button>}
+                {selected.customer_phone && <button type="button" className={`btn btn-sm rounded-pill px-3 ${callOpen ? "btn-dark" : "btn-outline-dark"}`} onClick={() => setCallOpen((o) => !o)} disabled={calling}>📞 Call</button>}
                 {selected.status !== "escalated" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => setStatus("escalated")}>Take over</button>}
                 <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={snooze}>{selected.status === "snoozed" ? "Unsnooze" : "Snooze"}</button>
                 {selected.status !== "closed" ? (
@@ -310,6 +323,26 @@ export default function InboxPage() {
                 )}
               </div>
             </div>
+
+            {callOpen && selected.customer_phone && (
+              <div className="border-100 rounded-3 p-3 mb-2 bg-neutral-50">
+                <div className="btn-group btn-group-sm mb-2" role="group">
+                  <button type="button" className={`btn rounded-pill px-3 ${callMode === "ai" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("ai")}>AI agent calls</button>
+                  <button type="button" className={`btn rounded-pill px-3 ms-1 ${callMode === "bridge" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("bridge")}>Connect me</button>
+                </div>
+                {callMode === "ai" ? (
+                  <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Opening line (optional) — what should the agent say first?" value={callOpening} onChange={(e) => setCallOpening(e.target.value)} />
+                ) : (
+                  <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Your number (blank = your profile phone)" value={callPhone} onChange={(e) => setCallPhone(e.target.value)} />
+                )}
+                <div className="fz-font-sm neutral-500 mb-2">
+                  {callMode === "ai"
+                    ? `The AI agent will call ${selected.customer_phone} and talk to them.`
+                    : `We'll call you first, then connect you to ${selected.customer_phone}.`}
+                </div>
+                <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={call} disabled={calling}>{calling ? "Calling…" : "Place call"}</button>
+              </div>
+            )}
 
             {viewers.length > 0 && <div className="alert alert-warning py-1 px-3 fz-font-sm mb-2">👀 {viewers.map(memberName).join(", ") || "A teammate"} is also viewing this conversation.</div>}
 

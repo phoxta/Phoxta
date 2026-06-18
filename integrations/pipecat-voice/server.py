@@ -204,8 +204,9 @@ async def media_stream(websocket: WebSocket):
     params = start.get("customParameters", {}) or {}
     public_key = params.get("key") or DEFAULT_KEY
     caller = params.get("from", "")
+    opening = params.get("opening", "")  # set for outbound calls (operator's purpose line)
 
-    await run_bot(websocket, stream_sid, call_sid, caller, public_key)
+    await run_bot(websocket, stream_sid, call_sid, caller, public_key, opening)
 
 
 if __name__ == "__main__":
