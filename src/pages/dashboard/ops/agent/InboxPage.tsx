@@ -25,6 +25,7 @@ import {
   type OrgMember,
 } from "@/lib/db/ops/agent";
 import type { OpsContext } from "@/layouts/OperatingLayout";
+import { supabase } from "@/lib/supabaseClient";
 
 const STATUS_STYLE: Record<ConvStatus, string> = {
   open: "bg-warning-subtle text-warning",
@@ -94,6 +95,38 @@ export default function InboxPage() {
   }, [orgId, search, fChannel, fStatus]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Refs so the realtime callbacks always see the latest selected conversation + loader.
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
+  // Live mode: stream new messages + conversation changes straight into the console.
+  useEffect(() => {
+    const ch = supabase
+      .channel(`inbox-${orgId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conversation_messages", filter: `organization_id=eq.${orgId}` },
+        (payload) => {
+          const m = payload.new as ConversationMessage & { conversation_id: string };
+          const sel = selectedRef.current;
+          if (sel && m.conversation_id === sel.id) {
+            setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+            setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 60);
+          }
+          loadRef.current();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations", filter: `organization_id=eq.${orgId}` },
+        () => loadRef.current(),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [orgId]);
   useEffect(() => {
     (async () => {
       setMe(await currentUserId());

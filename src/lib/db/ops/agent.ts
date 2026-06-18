@@ -55,7 +55,7 @@ export type CannedResponse = { id: string; title: string; shortcut: string; body
 export type OrgMember = { user_id: string; full_name: string; role: string };
 export type OutboundCampaign = { id: string; name: string; type: string; channel_pref: string; goal: string; status: string; created_at: string };
 export type OutboundTask = { id: string; type: string; channel: string; customer_name: string; status: string; outcome: string | null; created_at: string };
-export type CallLog = { id: string; direction: string; outcome: string; after_hours: boolean; created_at: string; locations: { name: string } | null };
+export type CallLog = { id: string; direction: string; outcome: string; after_hours: boolean; created_at: string; recording_url: string | null; conversation_id: string | null; locations: { name: string } | null };
 
 export const CAPABILITY_LABELS: { key: string; label: string }[] = [
   { key: "call_center", label: "AI Call Center (multi-location)" },
@@ -129,7 +129,7 @@ export async function listConversations(
   if (opts.assignedTo) q = q.eq("assigned_to", opts.assignedTo);
   const s = opts.search?.trim();
   if (s) q = q.or(`customer_name.ilike.%${s}%,customer_phone.ilike.%${s}%,customer_email.ilike.%${s}%,summary.ilike.%${s}%`);
-  const { data, error } = await q.order("last_message_at", { ascending: false }).limit(opts.limit ?? 60);
+  const { data, error } = await q.order("last_message_at", { ascending: false }).limit(opts.limit ?? 300);
   return { data: (data as Conversation[] | null) ?? [], error: friendlyError(error?.message) };
 }
 export async function listConversationMessages(convId: string): Promise<{ data: ConversationMessage[]; error: string | null }> {
@@ -293,7 +293,7 @@ export async function listTasks(orgId: string, limit = 40): Promise<{ data: Outb
 
 // ---------- Call logs + reporting ----------
 export async function listCallLogs(orgId: string, limit = 40): Promise<{ data: CallLog[]; error: string | null }> {
-  const { data, error } = await supabase.from("call_logs").select("id, direction, outcome, after_hours, created_at, locations(name)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("call_logs").select("id, direction, outcome, after_hours, created_at, recording_url, conversation_id, locations(name)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(limit);
   return { data: (data as unknown as CallLog[] | null) ?? [], error: friendlyError(error?.message) };
 }
 export type AgentSummary = Record<string, number | Record<string, number>>;
