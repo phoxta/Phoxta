@@ -8,6 +8,7 @@ import {
   addInternalNote,
   suggestReply,
   placeCall,
+  voiceToken,
   setConversationStatus,
   setConversationTags,
   assignConversation,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/db/ops/agent";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import { supabase } from "@/lib/supabaseClient";
+import type { Call, Device } from "@twilio/voice-sdk";
 
 const STATUS_STYLE: Record<ConvStatus, string> = {
   open: "bg-warning-subtle text-warning",
@@ -79,9 +81,15 @@ export default function InboxPage() {
   const [tplVars, setTplVars] = useState<Record<string, string>>({});
   const [calling, setCalling] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const [callMode, setCallMode] = useState<"ai" | "bridge">("ai");
+  const [callMode, setCallMode] = useState<"ai" | "bridge" | "browser">("ai");
   const [callOpening, setCallOpening] = useState("");
   const [callPhone, setCallPhone] = useState("");
+  // In-browser softphone (Twilio Voice SDK)
+  const [connecting, setConnecting] = useState(false);
+  const [inCall, setInCall] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const deviceRef = useRef<Device | null>(null);
+  const callRef = useRef<Call | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const memberName = (id: string | null) => (id ? members.find((m) => m.user_id === id)?.full_name || "Teammate" : "");
@@ -238,6 +246,46 @@ export default function InboxPage() {
     setCallOpen(false);
   }
 
+  function endBrowserCall() {
+    try { callRef.current?.disconnect(); } catch { /* noop */ }
+    try { deviceRef.current?.destroy(); } catch { /* noop */ }
+    callRef.current = null;
+    deviceRef.current = null;
+    setInCall(false);
+    setConnecting(false);
+    setMuted(false);
+  }
+  async function startBrowserCall() {
+    if (!selected?.customer_phone || connecting || inCall) return;
+    setConnecting(true);
+    setSendNote(null);
+    try {
+      const { token, error } = await voiceToken(orgId);
+      if (error || !token) { setConnecting(false); setSendNote(error ?? "Browser calling isn't configured."); return; }
+      const { Device } = await import("@twilio/voice-sdk");
+      const device = new Device(token, { logLevel: "error" });
+      deviceRef.current = device;
+      const c = await device.connect({ params: { To: selected.customer_phone } });
+      callRef.current = c;
+      c.on("accept", () => { setInCall(true); setConnecting(false); });
+      c.on("disconnect", endBrowserCall);
+      c.on("cancel", endBrowserCall);
+      c.on("error", (e: { message?: string }) => { setSendNote(`Call error: ${e?.message ?? "unknown"}`); endBrowserCall(); });
+    } catch (e) {
+      setConnecting(false);
+      setSendNote(`Could not start browser call: ${(e as Error)?.message ?? String(e)}`);
+    }
+  }
+  function toggleMute() {
+    const c = callRef.current;
+    if (!c) return;
+    const m = !muted;
+    c.mute(m);
+    setMuted(m);
+  }
+  // End any browser call when leaving the Inbox.
+  useEffect(() => () => { try { callRef.current?.disconnect(); deviceRef.current?.destroy(); } catch { /* noop */ } }, []);
+
   async function setStatus(s: ConvStatus) {
     if (!selected) return;
     await setConversationStatus(selected.id, s);
@@ -359,21 +407,33 @@ export default function InboxPage() {
 
             {callOpen && selected.customer_phone && (
               <div className="border-100 rounded-3 p-3 mb-2 bg-neutral-50">
-                <div className="btn-group btn-group-sm mb-2" role="group">
-                  <button type="button" className={`btn rounded-pill px-3 ${callMode === "ai" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("ai")}>AI agent calls</button>
-                  <button type="button" className={`btn rounded-pill px-3 ms-1 ${callMode === "bridge" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("bridge")}>Connect me</button>
-                </div>
-                {callMode === "ai" ? (
-                  <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Opening line (optional) — what should the agent say first?" value={callOpening} onChange={(e) => setCallOpening(e.target.value)} />
+                {connecting || inCall ? (
+                  <div className="d-flex align-items-center justify-content-between gap-2">
+                    <span className="fz-font-md fw-600">{connecting ? "Connecting…" : "🔊 On call"} · {selected.customer_phone}</span>
+                    <div className="d-flex gap-2">
+                      {inCall && <button type="button" className={`btn btn-sm rounded-pill px-3 ${muted ? "btn-warning" : "btn-outline-secondary"}`} onClick={toggleMute}>{muted ? "Unmute" : "Mute"}</button>}
+                      <button type="button" className="btn btn-danger btn-sm rounded-pill px-3" onClick={endBrowserCall}>Hang up</button>
+                    </div>
+                  </div>
                 ) : (
-                  <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Your number (blank = your profile phone)" value={callPhone} onChange={(e) => setCallPhone(e.target.value)} />
+                  <>
+                    <div className="btn-group btn-group-sm mb-2" role="group">
+                      <button type="button" className={`btn rounded-pill px-3 ${callMode === "ai" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("ai")}>AI agent calls</button>
+                      <button type="button" className={`btn rounded-pill px-3 ms-1 ${callMode === "bridge" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("bridge")}>Connect me</button>
+                      <button type="button" className={`btn rounded-pill px-3 ms-1 ${callMode === "browser" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("browser")}>Talk here</button>
+                    </div>
+                    {callMode === "ai" && <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Opening line (optional) — what should the agent say first?" value={callOpening} onChange={(e) => setCallOpening(e.target.value)} />}
+                    {callMode === "bridge" && <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Your number (blank = your profile phone)" value={callPhone} onChange={(e) => setCallPhone(e.target.value)} />}
+                    <div className="fz-font-sm neutral-500 mb-2">
+                      {callMode === "ai" && `The AI agent will call ${selected.customer_phone} and talk to them.`}
+                      {callMode === "bridge" && `We'll call you first, then connect you to ${selected.customer_phone}.`}
+                      {callMode === "browser" && `Talk to ${selected.customer_phone} from this browser — allow microphone access when prompted.`}
+                    </div>
+                    <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={callMode === "browser" ? startBrowserCall : call} disabled={calling || connecting}>
+                      {calling || connecting ? "…" : callMode === "browser" ? "Start call" : "Place call"}
+                    </button>
+                  </>
                 )}
-                <div className="fz-font-sm neutral-500 mb-2">
-                  {callMode === "ai"
-                    ? `The AI agent will call ${selected.customer_phone} and talk to them.`
-                    : `We'll call you first, then connect you to ${selected.customer_phone}.`}
-                </div>
-                <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={call} disabled={calling}>{calling ? "Calling…" : "Place call"}</button>
               </div>
             )}
 

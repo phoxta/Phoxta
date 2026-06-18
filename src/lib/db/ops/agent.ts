@@ -184,6 +184,12 @@ export async function placeCall(
   });
   return { ok: !!data?.ok, status: data?.status ?? null, error: error ?? (data && !data.ok ? (data.error ?? "Call failed.") : null) };
 }
+/** Mint a Twilio Voice access token so the operator can talk to the customer
+ *  in the browser (Twilio Voice JS SDK). */
+export async function voiceToken(orgId: string): Promise<{ token: string | null; identity: string | null; error: string | null }> {
+  const { data, error } = await invokeFn<{ token: string; identity: string }>("voice-token", { organizationId: orgId });
+  return { token: data?.token ?? null, identity: data?.identity ?? null, error };
+}
 export async function suggestReply(orgId: string, convId: string): Promise<{ summary: string; suggestion: string; error: string | null }> {
   const { data, error } = await invokeFn<{ summary: string; suggestion: string }>("conversation-suggest", { organizationId: orgId, conversationId: convId });
   return { summary: data?.summary ?? "", suggestion: data?.suggestion ?? "", error };
