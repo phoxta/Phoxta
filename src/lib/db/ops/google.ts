@@ -57,6 +57,16 @@ export async function gmailImport(orgId: string, id: string): Promise<{ ok: bool
   const { data, error } = await gmail<{ ok: boolean; conversationId: string }>(orgId, { action: "import", id });
   return { ok: !!data?.ok, conversationId: data?.conversationId ?? null, error };
 }
+/** Pull recent inbox mail into the unified Inbox (deduped). */
+export async function gmailSync(orgId: string): Promise<{ imported: number; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("gmail-sync", { body: { organizationId: orgId } });
+  if (error) {
+    let msg = error.message;
+    try { const ctx = await (error as { context?: Response }).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* keep */ }
+    return { imported: 0, error: friendlyError(msg) };
+  }
+  return { imported: (data as { imported?: number })?.imported ?? 0, error: null };
+}
 
 // --- Workspace: email provisioning (Groups) + Drive + Calendar -------------
 export type WsGroup = { email: string; name: string; members: number };

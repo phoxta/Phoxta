@@ -3,7 +3,7 @@
 // the owner), or 'auto' (run now). Every attempt is written to agent_audit_log.
 import type { SupabaseClient } from "./supabaseAdmin.ts";
 import type { Tool } from "./anthropic.ts";
-import { getAccessToken, gmailSendRaw, createDoc, createEvent } from "./google.ts";
+import { getAccessToken, gmailSendRaw, createDoc, createEvent, appendSheet } from "./google.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -18,6 +18,7 @@ export const WRITE_TOOLS: Tool[] = [
   { name: "google_send_email", description: "Send an email from the business's connected Google Workspace mailbox (Gmail). Give recipient, subject and body.", input_schema: { type: "object", properties: { to: { type: "string" }, subject: { type: "string" }, body: { type: "string" } }, required: ["to", "subject", "body"] } },
   { name: "google_create_doc", description: "Create a Google Doc in the connected Workspace (e.g. a proposal, quote or summary). Give a title and optional body text.", input_schema: { type: "object", properties: { title: { type: "string" }, body: { type: "string" } }, required: ["title"] } },
   { name: "google_create_event", description: "Create a Google Calendar event. Give a title, ISO start and end datetimes, and optional attendee emails.", input_schema: { type: "object", properties: { summary: { type: "string" }, start: { type: "string" }, end: { type: "string" }, attendees: { type: "array", items: { type: "string" } } }, required: ["summary", "start"] } },
+  { name: "google_append_sheet", description: "Append a row to a Google Sheet (e.g. log a lead, order or note). Give the spreadsheet ID and the row's cell values.", input_schema: { type: "object", properties: { spreadsheet_id: { type: "string" }, row: { type: "array", items: { type: "string" } } }, required: ["spreadsheet_id", "row"] } },
 ];
 
 const WRITE_NAMES = new Set(WRITE_TOOLS.map((t) => t.name));
@@ -87,6 +88,13 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     await createEvent(token, { summary: String(a.summary), start: String(a.start), end: a.end ? String(a.end) : undefined, attendees: Array.isArray(a.attendees) ? a.attendees : undefined });
     return `Created calendar event "${a.summary}".`;
   }
+  if (tool === "google_append_sheet") {
+    const token = await getAccessToken(admin, orgId);
+    if (!token) throw new Error("Google Workspace isn't connected for this business.");
+    const row = (Array.isArray(a.row) ? a.row : [a.row]).map((v: unknown) => String(v ?? ""));
+    await appendSheet(token, String(a.spreadsheet_id), [row]);
+    return `Logged a row to the sheet.`;
+  }
   throw new Error(`Unknown action ${tool}.`);
 }
 
@@ -101,6 +109,7 @@ export function actionTitle(tool: string, a: Json): string {
     case "google_send_email": return `Email ${a.to}: "${a.subject}"`;
     case "google_create_doc": return `Create Google Doc "${a.title}"`;
     case "google_create_event": return `Create calendar event "${a.summary}"`;
+    case "google_append_sheet": return `Log a row to a Google Sheet`;
     default: return tool;
   }
 }

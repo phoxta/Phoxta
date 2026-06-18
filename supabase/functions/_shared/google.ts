@@ -81,6 +81,11 @@ export async function createDoc(token: string, o: { title: string; text?: string
   return `https://docs.google.com/document/d/${doc.documentId}/edit`;
 }
 
+export async function appendSheet(token: string, spreadsheetId: string, rows: string[][], range = "A1"): Promise<void> {
+  const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED`, { method: "POST", headers: gHeaders(token), body: JSON.stringify({ values: rows }) });
+  if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as Json)?.error?.message || "Sheet append failed");
+}
+
 export async function createEvent(token: string, o: { summary: string; start: string; end?: string; attendees?: string[] }): Promise<string> {
   const ev: Json = { summary: o.summary, start: { dateTime: o.start }, end: { dateTime: o.end || o.start } };
   if (o.attendees?.length) ev.attendees = o.attendees.map((e) => ({ email: e }));

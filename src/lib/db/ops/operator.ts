@@ -26,6 +26,21 @@ export async function runOperator(orgId: string, message: string, history: Opera
   return { reply: data?.reply ?? "", toolCalls: data?.toolCalls ?? [], error };
 }
 
+// Operator chat history — persisted so a session survives refresh/navigation.
+export async function listOperatorMessages(orgId: string): Promise<{ data: OperatorMsg[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("operator_messages")
+    .select("role, content")
+    .eq("organization_id", orgId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+  return { data: (data as OperatorMsg[] | null) ?? [], error: friendlyError(error?.message) };
+}
+export async function saveOperatorMessages(orgId: string, msgs: OperatorMsg[]): Promise<void> {
+  if (msgs.length === 0) return;
+  await supabase.from("operator_messages").insert(msgs.map((m) => ({ organization_id: orgId, role: m.role, content: m.content })));
+}
+
 export async function listActions(orgId: string): Promise<{ data: AgentAction[]; error: string | null }> {
   const { data, error } = await supabase
     .from("agent_actions")
@@ -61,6 +76,7 @@ export const WRITE_TOOL_LABELS: Record<string, string> = {
   google_send_email: "Send email (Google Workspace)",
   google_create_doc: "Create a Google Doc",
   google_create_event: "Create a calendar event",
+  google_append_sheet: "Log a row to a Google Sheet",
 };
 
 export async function listToolPolicies(orgId: string): Promise<{ data: ToolPolicy[]; error: string | null }> {

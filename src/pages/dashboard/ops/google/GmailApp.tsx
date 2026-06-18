@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { gmailList, gmailGet, gmailSend, gmailImport, type GmailMsg, type GmailFull } from "@/lib/db/ops/google";
+import { gmailList, gmailGet, gmailSend, gmailImport, gmailSync, type GmailMsg, type GmailFull } from "@/lib/db/ops/google";
 
 const emailOf = (raw: string) => (raw.match(/<([^>]+)>/)?.[1] ?? raw).trim();
 const nameOf = (raw: string) => raw.replace(/<[^>]+>/, "").replace(/"/g, "").trim() || raw;
@@ -21,6 +21,8 @@ export default function GmailApp({ orgId }: { orgId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [compose, setCompose] = useState({ to: "", subject: "", body: "" });
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   async function load(q: string) {
     setLoading(true);
@@ -67,7 +69,11 @@ export default function GmailApp({ orgId }: { orgId: string }) {
       {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
 
       <div className="col-lg-5">
-        <button type="button" className="btn btn-dark rounded-3 w-100 mb-3" onClick={() => { setComposing(true); setSelected(null); }}>✎ Compose</button>
+        <div className="d-flex gap-2 mb-2">
+          <button type="button" className="btn btn-dark rounded-3 flex-grow-1" onClick={() => { setComposing(true); setSelected(null); }}>✎ Compose</button>
+          <button type="button" className="btn btn-outline-dark rounded-3 px-3 text-nowrap" disabled={syncing} onClick={async () => { setSyncing(true); setSyncMsg(null); const { imported, error } = await gmailSync(orgId); setSyncing(false); setSyncMsg(error ?? `Synced ${imported} new message(s) to the unified Inbox.`); }}>{syncing ? "…" : "↻ Sync to Inbox"}</button>
+        </div>
+        {syncMsg && <div className="alert alert-info py-1 px-2 fz-font-sm mb-2">{syncMsg}</div>}
         <div className="d-flex gap-1 mb-2">
           {FOLDERS.map((f) => (
             <button key={f.key} type="button" onClick={() => setFolder(f.key)} className={`btn btn-sm rounded-pill px-3 ${folder === f.key ? "btn-dark" : "btn-outline-secondary"}`}>{f.label}</button>
