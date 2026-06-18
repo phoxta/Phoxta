@@ -1,92 +1,160 @@
+import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
+// Layouts + the auth guard stay eager (small, shared route wrappers).
 import MainLayout from "@/layouts/MainLayout";
-import About1Page from "@/pages/About1Page";
-import About2Page from "@/pages/About2Page";
-import About3Page from "@/pages/About3Page";
-import Archive1Page from "@/pages/Archive1Page";
-import Archive2Page from "@/pages/Archive2Page";
-import Archive3Page from "@/pages/Archive3Page";
-import Archive4Page from "@/pages/Archive4Page";
-import BlogDetailsPage from "@/pages/BlogDetailsPage";
-import CareersPage from "@/pages/CareersPage";
-import ComingSoonPage from "@/pages/ComingSoonPage";
-import Contact1Page from "@/pages/Contact1Page";
-import Contact2Page from "@/pages/Contact2Page";
-import FaqsPage from "@/pages/FaqsPage";
-import Home10Page from "@/pages/Home10Page";
-import Home11Page from "@/pages/Home11Page";
-import Home12Page from "@/pages/Home12Page";
-import Home13Page from "@/pages/Home13Page";
-import Home14Page from "@/pages/Home14Page";
-import Home15Page from "@/pages/Home15Page";
-import Home1Page from "@/pages/Home1Page";
-import Home2Page from "@/pages/Home2Page";
-import Home3Page from "@/pages/Home3Page";
-import Home4Page from "@/pages/Home4Page";
-import Home5Page from "@/pages/Home5Page";
-import Home6Page from "@/pages/Home6Page";
-import Home7Page from "@/pages/Home7Page";
-import Home8Page from "@/pages/Home8Page";
-import Home9Page from "@/pages/Home9Page";
-import Portfolio1Page from "@/pages/Portfolio1Page";
-import Portfolio2Page from "@/pages/Portfolio2Page";
-import Portfolio3Page from "@/pages/Portfolio3Page";
-import Portfolio4Page from "@/pages/Portfolio4Page";
-import Portfolio5Page from "@/pages/Portfolio5Page";
-import Portfolio6Page from "@/pages/Portfolio6Page";
-import PortfolioCinemaPage from "@/pages/PortfolioCinemaPage";
-import PortfolioCurtainPage from "@/pages/PortfolioCurtainPage";
-import PortfolioDetails1Page from "@/pages/PortfolioDetails1Page";
-import PortfolioDetails2Page from "@/pages/PortfolioDetails2Page";
-import PortfolioDetails3Page from "@/pages/PortfolioDetails3Page";
-import PortfolioDetails4Page from "@/pages/PortfolioDetails4Page";
-import PortfolioDetails5Page from "@/pages/PortfolioDetails5Page";
-import PortfolioDetails6Page from "@/pages/PortfolioDetails6Page";
-import PortfolioHorizontalPage from "@/pages/PortfolioHorizontalPage";
-import PortfolioSplitPage from "@/pages/PortfolioSplitPage";
-import PortfolioStackPage from "@/pages/PortfolioStackPage";
-import PortfolioVistaPage from "@/pages/PortfolioVistaPage";
-import PortfolioZstackPage from "@/pages/PortfolioZstackPage";
-import PricingPage from "@/pages/PricingPage";
-import ProductArchivePage from "@/pages/ProductArchivePage";
-import ProductCartPage from "@/pages/ProductCartPage";
-import ProductCheckoutPage from "@/pages/ProductCheckoutPage";
-import ProductDetailsPage from "@/pages/ProductDetailsPage";
-import Services1Page from "@/pages/Services1Page";
-import Services2Page from "@/pages/Services2Page";
-import Services3Page from "@/pages/Services3Page";
-import ServicesDetailsPage from "@/pages/ServicesDetailsPage";
-import TeamDetailsPage from "@/pages/TeamDetailsPage";
-import TeamPage from "@/pages/TeamPage";
-import NotFoundPage from "@/pages/NotFoundPage";
-import AuthPage from "@/pages/AuthPage";
-import OnboardingPage from "@/pages/OnboardingPage";
 import ProtectedRoute from "@/auth/ProtectedRoute";
 import DashboardLayout from "@/layouts/DashboardLayout";
-import DashboardHomePage from "@/pages/dashboard/DashboardHomePage";
-import MarketplacePage from "@/pages/dashboard/MarketplacePage";
-import MarketplaceDetailPage from "@/pages/dashboard/MarketplaceDetailPage";
-import BusinessesPage from "@/pages/dashboard/BusinessesPage";
-import BusinessDetailPage from "@/pages/dashboard/BusinessDetailPage";
-import BillingPage from "@/pages/dashboard/BillingPage";
-import NetworkPage from "@/pages/dashboard/NetworkPage";
-import SettingsPage from "@/pages/dashboard/SettingsPage";
+import OperatingLayout from "@/layouts/OperatingLayout";
+import AgentLayout from "@/layouts/AgentLayout";
+
+// Pages are lazy-loaded so each route ships its own chunk (smaller first load).
+const About1Page = lazy(() => import("@/pages/About1Page"));
+const About2Page = lazy(() => import("@/pages/About2Page"));
+const About3Page = lazy(() => import("@/pages/About3Page"));
+const Archive1Page = lazy(() => import("@/pages/Archive1Page"));
+const Archive2Page = lazy(() => import("@/pages/Archive2Page"));
+const Archive3Page = lazy(() => import("@/pages/Archive3Page"));
+const Archive4Page = lazy(() => import("@/pages/Archive4Page"));
+const BlogDetailsPage = lazy(() => import("@/pages/BlogDetailsPage"));
+const CareersPage = lazy(() => import("@/pages/CareersPage"));
+const ComingSoonPage = lazy(() => import("@/pages/ComingSoonPage"));
+const Contact1Page = lazy(() => import("@/pages/Contact1Page"));
+const Contact2Page = lazy(() => import("@/pages/Contact2Page"));
+const FaqsPage = lazy(() => import("@/pages/FaqsPage"));
+const Home10Page = lazy(() => import("@/pages/Home10Page"));
+const Home11Page = lazy(() => import("@/pages/Home11Page"));
+const Home12Page = lazy(() => import("@/pages/Home12Page"));
+const Home13Page = lazy(() => import("@/pages/Home13Page"));
+const Home14Page = lazy(() => import("@/pages/Home14Page"));
+const Home15Page = lazy(() => import("@/pages/Home15Page"));
+const Home1Page = lazy(() => import("@/pages/Home1Page"));
+const Home2Page = lazy(() => import("@/pages/Home2Page"));
+const Home3Page = lazy(() => import("@/pages/Home3Page"));
+const Home4Page = lazy(() => import("@/pages/Home4Page"));
+const Home5Page = lazy(() => import("@/pages/Home5Page"));
+const Home6Page = lazy(() => import("@/pages/Home6Page"));
+const Home7Page = lazy(() => import("@/pages/Home7Page"));
+const Home8Page = lazy(() => import("@/pages/Home8Page"));
+const Home9Page = lazy(() => import("@/pages/Home9Page"));
+const Portfolio1Page = lazy(() => import("@/pages/Portfolio1Page"));
+const Portfolio2Page = lazy(() => import("@/pages/Portfolio2Page"));
+const Portfolio3Page = lazy(() => import("@/pages/Portfolio3Page"));
+const Portfolio4Page = lazy(() => import("@/pages/Portfolio4Page"));
+const Portfolio5Page = lazy(() => import("@/pages/Portfolio5Page"));
+const Portfolio6Page = lazy(() => import("@/pages/Portfolio6Page"));
+const PortfolioCinemaPage = lazy(() => import("@/pages/PortfolioCinemaPage"));
+const PortfolioCurtainPage = lazy(() => import("@/pages/PortfolioCurtainPage"));
+const PortfolioDetails1Page = lazy(() => import("@/pages/PortfolioDetails1Page"));
+const PortfolioDetails2Page = lazy(() => import("@/pages/PortfolioDetails2Page"));
+const PortfolioDetails3Page = lazy(() => import("@/pages/PortfolioDetails3Page"));
+const PortfolioDetails4Page = lazy(() => import("@/pages/PortfolioDetails4Page"));
+const PortfolioDetails5Page = lazy(() => import("@/pages/PortfolioDetails5Page"));
+const PortfolioDetails6Page = lazy(() => import("@/pages/PortfolioDetails6Page"));
+const PortfolioHorizontalPage = lazy(() => import("@/pages/PortfolioHorizontalPage"));
+const PortfolioSplitPage = lazy(() => import("@/pages/PortfolioSplitPage"));
+const PortfolioStackPage = lazy(() => import("@/pages/PortfolioStackPage"));
+const PortfolioVistaPage = lazy(() => import("@/pages/PortfolioVistaPage"));
+const PortfolioZstackPage = lazy(() => import("@/pages/PortfolioZstackPage"));
+const PricingPage = lazy(() => import("@/pages/PricingPage"));
+const ProductArchivePage = lazy(() => import("@/pages/ProductArchivePage"));
+const ProductCartPage = lazy(() => import("@/pages/ProductCartPage"));
+const ProductCheckoutPage = lazy(() => import("@/pages/ProductCheckoutPage"));
+const ProductDetailsPage = lazy(() => import("@/pages/ProductDetailsPage"));
+const Services1Page = lazy(() => import("@/pages/Services1Page"));
+const Services2Page = lazy(() => import("@/pages/Services2Page"));
+const Services3Page = lazy(() => import("@/pages/Services3Page"));
+const ServicesDetailsPage = lazy(() => import("@/pages/ServicesDetailsPage"));
+const TeamDetailsPage = lazy(() => import("@/pages/TeamDetailsPage"));
+const TeamPage = lazy(() => import("@/pages/TeamPage"));
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+const AuthPage = lazy(() => import("@/pages/AuthPage"));
+const OnboardingPage = lazy(() => import("@/pages/OnboardingPage"));
+const DashboardHomePage = lazy(() => import("@/pages/dashboard/DashboardHomePage"));
+const MarketplacePage = lazy(() => import("@/pages/dashboard/MarketplacePage"));
+const MarketplaceDetailPage = lazy(() => import("@/pages/dashboard/MarketplaceDetailPage"));
+const BusinessesPage = lazy(() => import("@/pages/dashboard/BusinessesPage"));
+const BusinessDetailPage = lazy(() => import("@/pages/dashboard/BusinessDetailPage"));
+const BillingPage = lazy(() => import("@/pages/dashboard/BillingPage"));
+const NetworkPage = lazy(() => import("@/pages/dashboard/NetworkPage"));
+const SettingsPage = lazy(() => import("@/pages/dashboard/SettingsPage"));
+const AssistantPage = lazy(() => import("@/pages/dashboard/AssistantPage"));
+const StudioPage = lazy(() => import("@/pages/dashboard/StudioPage"));
+const StudioEditorPage = lazy(() => import("@/pages/dashboard/StudioEditorPage"));
+const StudioPreviewPage = lazy(() => import("@/pages/dashboard/StudioPreviewPage"));
+const PublishedPage = lazy(() => import("@/pages/PublishedPage"));
+const OverviewPage = lazy(() => import("@/pages/dashboard/ops/OverviewPage"));
+const CrmPage = lazy(() => import("@/pages/dashboard/ops/CrmPage"));
+const CommercePage = lazy(() => import("@/pages/dashboard/ops/CommercePage"));
+const InvoicingPage = lazy(() => import("@/pages/dashboard/ops/InvoicingPage"));
+const ContentPage = lazy(() => import("@/pages/dashboard/ops/ContentPage"));
+const BookingsPage = lazy(() => import("@/pages/dashboard/ops/BookingsPage"));
+const ReservationsPage = lazy(() => import("@/pages/dashboard/ops/ReservationsPage"));
+const HelpdeskPage = lazy(() => import("@/pages/dashboard/ops/HelpdeskPage"));
+const MarketingPage = lazy(() => import("@/pages/dashboard/ops/MarketingPage"));
+const AgentOverviewPage = lazy(() => import("@/pages/dashboard/ops/agent/AgentOverviewPage"));
+const AgentOperatorPage = lazy(() => import("@/pages/dashboard/ops/agent/OperatorPage"));
+const AgentProactivePage = lazy(() => import("@/pages/dashboard/ops/agent/ProactivePage"));
+const AgentConfigurePage = lazy(() => import("@/pages/dashboard/ops/agent/ConfigurePage"));
+const AgentInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
+const AgentSnippetsPage = lazy(() => import("@/pages/dashboard/ops/agent/SnippetsPage"));
+const AgentOutboundPage = lazy(() => import("@/pages/dashboard/ops/agent/OutboundPage"));
+const AgentCallCenterPage = lazy(() => import("@/pages/dashboard/ops/agent/CallCenterPage"));
+const AgentTestPage = lazy(() => import("@/pages/dashboard/ops/agent/TestPage"));
+
+const RouteFallback = () => (
+  <div className="d-flex align-items-center justify-content-center" style={{ minHeight: "60vh" }}>
+    <div className="spinner-border text-dark" role="status" aria-label="Loading">
+      <span className="visually-hidden">Loading…</span>
+    </div>
+  </div>
+);
 
 export default function App() {
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       {/* Auth (standalone, no marketing chrome) */}
       <Route path="/auth" element={<AuthPage />} />
 
+      {/* Public storefront for a published Studio page (anon, renders own chrome) */}
+      <Route path="/site/:orgId/:slug" element={<PublishedPage />} />
+
       {/* Dashboard (protected app shell, Supabase-backed) */}
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<OnboardingPage />} />
+        {/* Studio editor + preview run full-screen (no dashboard chrome / zoom). */}
+        <Route path="/studio/:orgId/:pageId" element={<StudioEditorPage />} />
+        <Route path="/studio/:orgId/:pageId/preview" element={<StudioPreviewPage />} />
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardHomePage />} />
+          <Route path="/dashboard/studio" element={<StudioPage />} />
+          <Route path="/dashboard/assistant" element={<AssistantPage />} />
           <Route path="/dashboard/marketplace" element={<MarketplacePage />} />
           <Route path="/dashboard/marketplace/:slug" element={<MarketplaceDetailPage />} />
           <Route path="/dashboard/businesses" element={<BusinessesPage />} />
           <Route path="/dashboard/businesses/:id" element={<BusinessDetailPage />} />
+          <Route path="/dashboard/businesses/:id/ops" element={<OperatingLayout />}>
+            <Route index element={<OverviewPage />} />
+            <Route path="crm" element={<CrmPage />} />
+            <Route path="commerce" element={<CommercePage />} />
+            <Route path="invoicing" element={<InvoicingPage />} />
+            <Route path="content" element={<ContentPage />} />
+            <Route path="bookings" element={<BookingsPage />} />
+            <Route path="reservations" element={<ReservationsPage />} />
+            <Route path="helpdesk" element={<HelpdeskPage />} />
+            <Route path="marketing" element={<MarketingPage />} />
+            <Route path="agent" element={<AgentLayout />}>
+              <Route index element={<AgentOverviewPage />} />
+              <Route path="operator" element={<AgentOperatorPage />} />
+              <Route path="proactive" element={<AgentProactivePage />} />
+              <Route path="configure" element={<AgentConfigurePage />} />
+              <Route path="inbox" element={<AgentInboxPage />} />
+              <Route path="snippets" element={<AgentSnippetsPage />} />
+              <Route path="outbound" element={<AgentOutboundPage />} />
+              <Route path="call-center" element={<AgentCallCenterPage />} />
+              <Route path="test" element={<AgentTestPage />} />
+            </Route>
+          </Route>
           <Route path="/dashboard/billing" element={<BillingPage />} />
           <Route path="/dashboard/network" element={<NetworkPage />} />
           <Route path="/dashboard/settings" element={<SettingsPage />} />
@@ -190,9 +258,9 @@ export default function App() {
         <Route path="/index-12" element={<Home12Page />} />
         <Route path="/index-12-dark" element={<Home12Page />} />
       </Route>
-      <Route element={<MainLayout headerStyle={13} footerStyle={13} />}>
-        <Route path="/index-13" element={<Home13Page />} />
-        <Route path="/index-13-dark" element={<Home13Page />} />
+      <Route element={<MainLayout headerStyle={13} footerStyle={13} noFooter />}>
+        <Route path="/invest" element={<Home13Page />} />
+        <Route path="/invest-dark" element={<Home13Page />} />
       </Route>
       <Route element={<MainLayout headerStyle={14} footerStyle={14} />}>
         <Route path="/index-14" element={<Home14Page />} />
@@ -206,5 +274,6 @@ export default function App() {
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
+    </Suspense>
   );
 }
