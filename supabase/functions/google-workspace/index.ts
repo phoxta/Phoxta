@@ -59,7 +59,10 @@ Deno.serve(async (req) => {
     }
 
     if (action === "drive_list") {
-      const q = body?.q ? `name contains '${String(body.q).replace(/'/g, "")}'` : "trashed = false";
+      const parts = ["trashed = false"];
+      if (body?.q) parts.push(`name contains '${String(body.q).replace(/'/g, "")}'`);
+      if (body?.mime) parts.push(`mimeType = '${String(body.mime).replace(/'/g, "")}'`);
+      const q = parts.join(" and ");
       const r = await fetch(`https://www.googleapis.com/drive/v3/files?pageSize=25&orderBy=modifiedTime desc&fields=files(id,name,mimeType,modifiedTime,webViewLink,iconLink)&q=${encodeURIComponent(q)}`, { headers: H });
       const d = (await r.json()) as Json;
       if (d?.error) return json({ error: d.error?.message ?? "Drive error." }, 200);

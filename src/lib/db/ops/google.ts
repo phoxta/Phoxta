@@ -82,8 +82,8 @@ export async function listWorkspaceEmails(orgId: string): Promise<{ data: WsGrou
 export async function provisionEmails(orgId: string, addresses?: string[]): Promise<{ data: { forwardTo: string; results: ProvisionResult[] } | null; error: string | null }> {
   return ws<{ forwardTo: string; results: ProvisionResult[] }>(orgId, { action: "provision_emails", addresses });
 }
-export async function driveList(orgId: string, q?: string): Promise<{ data: DriveFile[]; error: string | null }> {
-  const { data, error } = await ws<{ files: DriveFile[] }>(orgId, { action: "drive_list", q });
+export async function driveList(orgId: string, opts?: { q?: string; mime?: string }): Promise<{ data: DriveFile[]; error: string | null }> {
+  const { data, error } = await ws<{ files: DriveFile[] }>(orgId, { action: "drive_list", q: opts?.q, mime: opts?.mime });
   return { data: data?.files ?? [], error };
 }
 export async function calendarList(orgId: string): Promise<{ data: CalEvent[]; error: string | null }> {
