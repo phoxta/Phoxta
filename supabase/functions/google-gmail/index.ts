@@ -81,6 +81,36 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: d?.error?.message || "Send failed." }, 200);
     }
 
+    if (action === "import") {
+      // Pull a Gmail message into the unified Inbox as an email conversation.
+      const r = await gf(`/messages/${body.id}?format=full`);
+      const md = (await r.json()) as Json;
+      const h = headerMap(md.payload);
+      const from = h.from ?? "";
+      const subject = h.subject ?? "(no subject)";
+      const text = extractBody(md.payload) || md.snippet || "";
+      const fromEmail = (from.match(/<([^>]+)>/)?.[1] ?? from).trim().toLowerCase();
+      const admin = a.ok.admin;
+      const orgId = a.ok.org.id;
+      let convId: string;
+      const { data: existing } = await admin.from("conversations").select("id")
+        .eq("organization_id", orgId).eq("channel_type", "email").eq("customer_email", fromEmail).neq("status", "closed")
+        .order("last_message_at", { ascending: false }).limit(1).maybeSingle();
+      if (existing) convId = (existing as Json).id;
+      else {
+        const { data: conv } = await admin.from("conversations")
+          .insert({ organization_id: orgId, channel_type: "email", customer_email: fromEmail, customer_name: from.replace(/<[^>]+>/, "").replace(/"/g, "").trim(), status: "open", summary: subject })
+          .select("id").single();
+        convId = (conv as Json).id;
+      }
+      const { data: dup } = await admin.from("conversation_messages").select("id").eq("conversation_id", convId).eq("provider_sid", md.id).maybeSingle();
+      if (!dup) {
+        await admin.from("conversation_messages").insert({ organization_id: orgId, conversation_id: convId, role: "customer", channel_type: "email", body: text, provider_sid: md.id, meta: { subject, source: "gmail" } });
+        await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", convId);
+      }
+      return json({ ok: true, conversationId: convId });
+    }
+
     return json({ error: "Unknown action." }, 400);
   } catch (err) {
     return json({ error: String((err as Error)?.message || err) }, 500);

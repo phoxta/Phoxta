@@ -53,6 +53,10 @@ export async function gmailSend(orgId: string, opts: { to: string; subject: stri
   const { data, error } = await gmail<{ ok: boolean }>(orgId, { action: "send", ...opts });
   return { ok: !!data?.ok, error };
 }
+export async function gmailImport(orgId: string, id: string): Promise<{ ok: boolean; conversationId: string | null; error: string | null }> {
+  const { data, error } = await gmail<{ ok: boolean; conversationId: string }>(orgId, { action: "import", id });
+  return { ok: !!data?.ok, conversationId: data?.conversationId ?? null, error };
+}
 
 // --- Workspace: email provisioning (Groups) + Drive + Calendar -------------
 export type WsGroup = { email: string; name: string; members: number };
@@ -85,4 +89,20 @@ export async function driveList(orgId: string, q?: string): Promise<{ data: Driv
 export async function calendarList(orgId: string): Promise<{ data: CalEvent[]; error: string | null }> {
   const { data, error } = await ws<{ events: CalEvent[] }>(orgId, { action: "calendar_list" });
   return { data: data?.events ?? [], error };
+}
+export async function calendarCreate(orgId: string, ev: { summary: string; start: string; end?: string; location?: string; description?: string; attendees?: string[] }): Promise<{ ok: boolean; link: string | null; error: string | null }> {
+  const { data, error } = await ws<{ ok: boolean; link: string }>(orgId, { action: "calendar_create", ...ev });
+  return { ok: !!data?.ok, link: data?.link ?? null, error };
+}
+export async function docsCreate(orgId: string, opts: { title: string; text?: string }): Promise<{ ok: boolean; link: string | null; error: string | null }> {
+  const { data, error } = await ws<{ ok: boolean; link: string }>(orgId, { action: "docs_create", ...opts });
+  return { ok: !!data?.ok, link: data?.link ?? null, error };
+}
+export async function sheetsRead(orgId: string, spreadsheetId: string, range?: string): Promise<{ data: string[][]; error: string | null }> {
+  const { data, error } = await ws<{ values: string[][] }>(orgId, { action: "sheets_read", spreadsheetId, range });
+  return { data: data?.values ?? [], error };
+}
+export async function sheetsAppend(orgId: string, spreadsheetId: string, rows: string[][], range?: string): Promise<{ ok: boolean; error: string | null }> {
+  const { data, error } = await ws<{ ok: boolean }>(orgId, { action: "sheets_append", spreadsheetId, rows, range });
+  return { ok: !!data?.ok, error };
 }

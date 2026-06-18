@@ -75,6 +75,39 @@ Deno.serve(async (req) => {
       return json({ events });
     }
 
+    if (action === "calendar_create") {
+      const ev: Json = { summary: body.summary || "(no title)", description: body.description || "", location: body.location || "", start: { dateTime: body.start }, end: { dateTime: body.end || body.start } };
+      if (Array.isArray(body.attendees) && body.attendees.length) ev.attendees = body.attendees.map((e: string) => ({ email: e }));
+      const r = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", { method: "POST", headers: H, body: JSON.stringify(ev) });
+      const d = (await r.json()) as Json;
+      if (d?.id) return json({ ok: true, id: d.id, link: d.htmlLink });
+      return json({ ok: false, error: d?.error?.message ?? "Couldn't create the event." }, 200);
+    }
+
+    if (action === "docs_create") {
+      const cr = await fetch("https://docs.googleapis.com/v1/documents", { method: "POST", headers: H, body: JSON.stringify({ title: body.title || "Untitled" }) });
+      const doc = (await cr.json()) as Json;
+      if (!doc?.documentId) return json({ ok: false, error: doc?.error?.message ?? "Couldn't create the doc." }, 200);
+      if (body.text) {
+        await fetch(`https://docs.googleapis.com/v1/documents/${doc.documentId}:batchUpdate`, { method: "POST", headers: H, body: JSON.stringify({ requests: [{ insertText: { location: { index: 1 }, text: String(body.text) } }] }) }).catch(() => {});
+      }
+      return json({ ok: true, id: doc.documentId, link: `https://docs.google.com/document/d/${doc.documentId}/edit` });
+    }
+
+    if (action === "sheets_read") {
+      const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${body.spreadsheetId}/values/${encodeURIComponent(body.range || "A1:Z100")}`, { headers: H });
+      const d = (await r.json()) as Json;
+      if (d?.error) return json({ error: d.error.message }, 200);
+      return json({ values: d.values ?? [] });
+    }
+
+    if (action === "sheets_append") {
+      const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${body.spreadsheetId}/values/${encodeURIComponent(body.range || "A1")}:append?valueInputOption=USER_ENTERED`, { method: "POST", headers: H, body: JSON.stringify({ values: body.rows ?? [] }) });
+      const d = (await r.json()) as Json;
+      if (d?.error) return json({ ok: false, error: d.error.message }, 200);
+      return json({ ok: true, updated: d.updates?.updatedRows ?? 0 });
+    }
+
     return json({ error: "Unknown action." }, 400);
   } catch (err) {
     return json({ error: String((err as Error)?.message || err) }, 500);

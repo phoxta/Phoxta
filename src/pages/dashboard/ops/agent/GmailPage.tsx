@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { getGoogleConnection, gmailList, gmailGet, gmailSend, type GmailMsg, type GmailFull } from "@/lib/db/ops/google";
+import { getGoogleConnection, gmailList, gmailGet, gmailSend, gmailImport, type GmailMsg, type GmailFull } from "@/lib/db/ops/google";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 const emailOf = (raw: string) => (raw.match(/<([^>]+)>/)?.[1] ?? raw).trim();
@@ -40,6 +40,12 @@ export default function GmailPage() {
     const { data, error } = await gmailGet(orgId, m.id);
     if (error) setError(error);
     setSelected(data);
+  }
+
+  async function addToInbox() {
+    if (!selected) return;
+    const { ok, error } = await gmailImport(orgId, selected.id);
+    setNotice(ok ? "Added to the unified Inbox ↪" : (error ?? "Couldn't add to Inbox."));
   }
 
   async function send() {
@@ -101,7 +107,10 @@ export default function GmailPage() {
           <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" style={{ minHeight: 200 }}>Select a message.</div>
         ) : (
           <div className="bg-neutral-0 rounded-4 border-100 p-4">
-            <h6 className="fw-600 mb-1">{selected.subject}</h6>
+            <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
+              <h6 className="fw-600 mb-0">{selected.subject}</h6>
+              <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap" onClick={addToInbox}>↪ Add to Inbox</button>
+            </div>
             <div className="fz-font-sm neutral-500 mb-3">{selected.from}{selected.date ? ` · ${new Date(selected.date).toLocaleString()}` : ""}</div>
             <div className="fz-font-md neutral-800 mb-3" style={{ whiteSpace: "pre-wrap", maxHeight: 360, overflow: "auto" }}>{selected.body}</div>
             {notice && <div className={`fz-font-sm mb-2 ${notice.includes("✓") ? "text-success" : "text-warning"}`}>{notice}</div>}
