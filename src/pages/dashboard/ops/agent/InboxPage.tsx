@@ -7,6 +7,7 @@ import {
   sendConversationTemplate,
   addInternalNote,
   suggestReply,
+  placeCall,
   setConversationStatus,
   setConversationTags,
   assignConversation,
@@ -75,6 +76,7 @@ export default function InboxPage() {
   const [tagDraft, setTagDraft] = useState("");
   const [tpl, setTpl] = useState<CannedResponse | null>(null);
   const [tplVars, setTplVars] = useState<Record<string, string>>({});
+  const [calling, setCalling] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const memberName = (id: string | null) => (id ? members.find((m) => m.user_id === id)?.full_name || "Teammate" : "");
@@ -179,6 +181,15 @@ export default function InboxPage() {
     setTpl(null);
     setTplVars({});
     refreshThread();
+  }
+
+  async function call() {
+    if (!selected?.customer_phone || calling) return;
+    setCalling(true);
+    setSendNote(null);
+    const r = await placeCall(orgId, selected.customer_phone, selected.id);
+    setCalling(false);
+    setSendNote(r.ok ? `📞 Calling ${selected.customer_phone} — your AI agent will speak with them.` : (r.error ?? "Call could not be placed."));
   }
 
   async function setStatus(s: ConvStatus) {
@@ -289,6 +300,7 @@ export default function InboxPage() {
                 <div className="fz-font-sm neutral-500">{[selected.customer_phone, selected.customer_email].filter(Boolean).join(" · ") || "—"}</div>
               </div>
               <div className="d-flex gap-2">
+                {selected.customer_phone && <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={call} disabled={calling}>{calling ? "Calling…" : "📞 Call"}</button>}
                 {selected.status !== "escalated" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => setStatus("escalated")}>Take over</button>}
                 <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={snooze}>{selected.status === "snoozed" ? "Unsnooze" : "Snooze"}</button>
                 {selected.status !== "closed" ? (

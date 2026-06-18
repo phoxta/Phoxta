@@ -173,6 +173,11 @@ export async function sendConversationTemplate(
   return { ok: !!data?.ok, delivery_status: data?.delivery_status ?? null, error: error ?? (data && !data.ok ? (data.error ?? "Could not send.") : null) };
 }
 /** AI copilot: a one-line summary + a suggested reply for the human to use. */
+/** Click-to-call: dial the customer and bridge them to the AI agent (Pipecat). */
+export async function placeCall(orgId: string, to: string, conversationId?: string): Promise<{ ok: boolean; status: string | null; error: string | null }> {
+  const { data, error } = await invokeFn<{ ok: boolean; status?: string; error?: string }>("place-call", { organizationId: orgId, to, conversationId });
+  return { ok: !!data?.ok, status: data?.status ?? null, error: error ?? (data && !data.ok ? (data.error ?? "Call failed.") : null) };
+}
 export async function suggestReply(orgId: string, convId: string): Promise<{ summary: string; suggestion: string; error: string | null }> {
   const { data, error } = await invokeFn<{ summary: string; suggestion: string }>("conversation-suggest", { organizationId: orgId, conversationId: convId });
   return { summary: data?.summary ?? "", suggestion: data?.suggestion ?? "", error };

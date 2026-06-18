@@ -90,6 +90,40 @@ async function dispatchWhatsApp(to: string, message: string): Promise<DispatchRe
   return { status: r.status, provider: r.status === "simulated" ? "none" : "twilio_whatsapp" };
 }
 
+// Place an OUTBOUND call that bridges the customer straight to the business's
+// own Pipecat AI agent — no third-party voice vendor. Twilio dials from
+// TWILIO_FROM and we hand it inline TwiML that opens a media stream to the
+// voice server's /ws, passing the agent's public key as a Stream parameter
+// (the same channel inbound calls use). VOICE_WS_HOST overrides the host.
+export type CallResult = { ok: boolean; status: DispatchResult["status"]; sid?: string; error?: string };
+
+export async function placeAiCall(agentKey: string, to: string): Promise<CallResult> {
+  const accountSid = env("TWILIO_ACCOUNT_SID");
+  const authUser = env("TWILIO_API_KEY_SID") || accountSid;
+  const authPass = env("TWILIO_API_KEY_SECRET") || env("TWILIO_AUTH_TOKEN");
+  const from = env("TWILIO_FROM");
+  const host = env("VOICE_WS_HOST") || "phoxta-voice-production.up.railway.app";
+  if (!accountSid || !from || !authUser || !authPass || !agentKey || !to) return { ok: false, status: "simulated" };
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const twiml =
+    `<?xml version="1.0" encoding="UTF-8"?><Response><Connect>` +
+    `<Stream url="wss://${host}/ws"><Parameter name="key" value="${esc(agentKey)}"/>` +
+    `<Parameter name="from" value="outbound"/></Stream></Connect></Response>`;
+  try {
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${btoa(`${authUser}:${authPass}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ From: from, To: to, Twiml: twiml }),
+    });
+    // deno-lint-ignore no-explicit-any
+    const data: any = await res.json().catch(() => ({}));
+    if (res.ok) return { ok: true, status: "dialing", sid: data?.sid };
+    return { ok: false, status: "failed", error: data?.message };
+  } catch (e) {
+    return { ok: false, status: "failed", error: String(e) };
+  }
+}
+
 async function dispatchVoice(to: string, message: string): Promise<DispatchResult> {
   if (env("VAPI_API_KEY") && env("VAPI_PHONE_NUMBER_ID")) {
     try {
