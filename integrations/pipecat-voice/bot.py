@@ -54,6 +54,44 @@ def _anon_key() -> str:
     return os.environ.get("SUPABASE_ANON_KEY", "")
 
 
+async def _fetch_voice(public_key: str) -> dict:
+    """Fetch the business's saved voice settings (agent_config.voice) so the call
+    uses a per-business TTS voice. Best-effort — empty dict on any failure."""
+    url = _agent_url()
+    if not url:
+        return {}
+    anon = _anon_key()
+    hdr = {"Content-Type": "application/json"}
+    if anon:
+        hdr["Authorization"] = f"Bearer {anon}"
+        hdr["apikey"] = anon
+    try:
+        async with httpx.AsyncClient(timeout=10) as http:
+            r = await http.post(url, json={"public_key": public_key, "voice_config": True}, headers=hdr)
+            return (r.json() or {}).get("voice") or {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _build_tts(voice_cfg: dict):
+    """Pick the TTS service from the business's voice settings. Falls back to the
+    default Deepgram voice on anything unexpected (keeps the proven path stable)."""
+    provider = (voice_cfg.get("provider") or "deepgram").lower()
+    voice_id = (voice_cfg.get("voice_id") or "").strip()
+    if provider == "cartesia" and os.environ.get("CARTESIA_API_KEY") and voice_id:
+        try:
+            from pipecat.services.cartesia.tts import CartesiaTTSService
+
+            logger.info(f"[phoxta] TTS: Cartesia voice {voice_id[:8]}…")
+            return CartesiaTTSService(api_key=os.environ["CARTESIA_API_KEY"], voice_id=voice_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"[phoxta] Cartesia TTS unavailable ({exc}); using Deepgram")
+    return DeepgramTTSService(
+        api_key=os.environ["DEEPGRAM_API_KEY"],
+        voice=voice_id if (provider == "deepgram" and voice_id) else os.environ.get("DEEPGRAM_VOICE", "aura-asteria-en"),
+    )
+
+
 async def _finalize_recording(public_key, conversation_id, call_sid, chunks, meta):
     """Assemble the buffered call audio into a WAV, save it locally, and (best
     effort) push it to Supabase Storage via a signed upload URL minted by
@@ -237,10 +275,7 @@ async def run_webrtc_bot(connection, public_key: str, caller: str = "web visitor
     )
 
     stt = DeepgramSTTService(api_key=os.environ["DEEPGRAM_API_KEY"])
-    tts = DeepgramTTSService(
-        api_key=os.environ["DEEPGRAM_API_KEY"],
-        voice=os.environ.get("DEEPGRAM_VOICE", "aura-asteria-en"),
-    )
+    tts = _build_tts(await _fetch_voice(public_key))
     bridge = PhoxtaAgentBridge(public_key=public_key, caller=caller)
 
     pipeline = Pipeline([transport.input(), stt, bridge, tts, transport.output()])
@@ -320,10 +355,7 @@ async def run_bot(websocket, stream_sid: str, call_sid: str, caller: str, public
     transport = FastAPIWebsocketTransport(websocket=websocket, params=params)
 
     stt = DeepgramSTTService(api_key=os.environ["DEEPGRAM_API_KEY"])
-    tts = DeepgramTTSService(
-        api_key=os.environ["DEEPGRAM_API_KEY"],
-        voice=os.environ.get("DEEPGRAM_VOICE", "aura-asteria-en"),
-    )
+    tts = _build_tts(await _fetch_voice(public_key))
     bridge = PhoxtaAgentBridge(public_key=public_key, caller=caller, opening=opening)
 
     # Optional call recording (RECORD_CALLS=1): an AudioBufferProcessor at the
