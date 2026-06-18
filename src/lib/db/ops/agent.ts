@@ -162,6 +162,16 @@ export async function addInternalNote(orgId: string, convId: string, body: strin
   const { error } = await invokeFn("conversation-send", { organizationId: orgId, conversationId: convId, body, internal: true });
   return { error };
 }
+/** Send a pre-approved WhatsApp template (ContentSid + variables) — works even
+ *  outside the 24h window. `body` is the rendered text recorded for display. */
+export async function sendConversationTemplate(
+  orgId: string, convId: string, contentSid: string, variables: Record<string, string>, body: string,
+): Promise<{ ok: boolean; delivery_status: string | null; error: string | null }> {
+  const { data, error } = await invokeFn<{ ok: boolean; delivery_status?: string; error?: string }>(
+    "conversation-send", { organizationId: orgId, conversationId: convId, channel: "whatsapp", body, contentSid, variables },
+  );
+  return { ok: !!data?.ok, delivery_status: data?.delivery_status ?? null, error: error ?? (data && !data.ok ? (data.error ?? "Could not send.") : null) };
+}
 /** AI copilot: a one-line summary + a suggested reply for the human to use. */
 export async function suggestReply(orgId: string, convId: string): Promise<{ summary: string; suggestion: string; error: string | null }> {
   const { data, error } = await invokeFn<{ summary: string; suggestion: string }>("conversation-suggest", { organizationId: orgId, conversationId: convId });

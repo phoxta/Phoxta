@@ -44,7 +44,12 @@ async function dispatchEmail(to: string, subject: string, message: string): Prom
 // on both From and To. From: TWILIO_FROM (SMS) / TWILIO_WHATSAPP_FROM||TWILIO_FROM (WA).
 export type TwilioSendResult = { ok: boolean; status: DispatchResult["status"]; sid?: string; errorCode?: number; errorMessage?: string };
 
-export async function twilioSend(channel: "sms" | "whatsapp", to: string, message: string): Promise<TwilioSendResult> {
+export async function twilioSend(
+  channel: "sms" | "whatsapp",
+  to: string,
+  message: string,
+  opts?: { contentSid?: string; contentVariables?: Record<string, string> },
+): Promise<TwilioSendResult> {
   const accountSid = env("TWILIO_ACCOUNT_SID");
   // Authenticate with an API Key (SK SID + secret) when present, else the
   // Account SID + Auth Token. The REST URL always uses the Account SID.
@@ -55,11 +60,16 @@ export async function twilioSend(channel: "sms" | "whatsapp", to: string, messag
   const wa = (n: string) => (n.startsWith("whatsapp:") ? n : `whatsapp:${n}`);
   const From = channel === "whatsapp" ? wa(fromRaw) : fromRaw;
   const To = channel === "whatsapp" ? wa(to) : to;
+  // A pre-approved template is sent via ContentSid (+ variables) — required to
+  // message outside WhatsApp's 24h window; otherwise send a free-form Body.
+  const params = opts?.contentSid
+    ? { From, To, ContentSid: opts.contentSid, ContentVariables: JSON.stringify(opts.contentVariables ?? {}) }
+    : { From, To, Body: message };
   try {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
       method: "POST",
       headers: { Authorization: `Basic ${btoa(`${authUser}:${authPass}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ From, To, Body: message }),
+      body: new URLSearchParams(params),
     });
     // deno-lint-ignore no-explicit-any
     const data: any = await res.json().catch(() => ({}));

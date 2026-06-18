@@ -22,6 +22,10 @@ Deno.serve(async (req) => {
     const conversationId = body?.conversationId;
     const text = (body?.body ?? "").toString().trim();
     const internal = !!body?.internal;
+    // Pre-approved WhatsApp template send (ContentSid + variables) — allowed
+    // outside the 24h window; `text` is the rendered body, recorded for display.
+    const contentSid = body?.contentSid ? String(body.contentSid) : undefined;
+    const variables = (body?.variables ?? {}) as Record<string, string>;
     if (!conversationId || !text) return json({ error: "Nothing to send." }, 400);
 
     const a = await authorize(req, orgId);
@@ -56,8 +60,9 @@ Deno.serve(async (req) => {
       if (!c.customer_phone) return json({ error: "No phone number on file for this contact." }, 400);
 
       // WhatsApp 24-hour window guardrail: outside it, a free-form message is
-      // rejected (63016) — require an approved template instead.
-      if (channel === "whatsapp") {
+      // rejected (63016) — require an approved template instead. A template
+      // (ContentSid) is allowed any time, so it bypasses the check.
+      if (channel === "whatsapp" && !contentSid) {
         const { data: lastIn } = await admin
           .from("conversation_messages")
           .select("created_at")
@@ -69,7 +74,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      const r = await twilioSend(channel as "sms" | "whatsapp", c.customer_phone, text);
+      const r = await twilioSend(channel as "sms" | "whatsapp", c.customer_phone, text, contentSid ? { contentSid, contentVariables: variables } : undefined);
       delivery_status = r.status;
       provider_sid = r.sid ?? "";
       if (r.errorCode === 63016) windowClosed = true;

@@ -4,6 +4,7 @@ import {
   listConversations,
   listConversationMessages,
   sendConversationReply,
+  sendConversationTemplate,
   addInternalNote,
   suggestReply,
   setConversationStatus,
@@ -44,6 +45,9 @@ const STATUS_FILTERS: { v: string; label: string }[] = [
   { v: "handled", label: "Handled" }, { v: "snoozed", label: "Snoozed" }, { v: "closed", label: "Closed" },
 ];
 const CHANNEL_FILTERS = ["", "sms", "whatsapp", "web", "voice", "email"];
+// Template helpers: pull {{1}},{{2}}… placeholders and render with filled values.
+const tplKeys = (body: string) => Array.from(new Set([...body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => m[1]))).sort((a, b) => +a - +b);
+const renderTpl = (body: string, vars: Record<string, string>) => body.replace(/\{\{(\d+)\}\}/g, (_, n) => vars[n] || `{{${n}}}`);
 
 export default function InboxPage() {
   const { orgId } = useOutletContext<OpsContext>();
@@ -69,6 +73,8 @@ export default function InboxPage() {
   const [suggestion, setSuggestion] = useState<{ summary: string; suggestion: string } | null>(null);
   const [suggesting, setSuggesting] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
+  const [tpl, setTpl] = useState<CannedResponse | null>(null);
+  const [tplVars, setTplVars] = useState<Record<string, string>>({});
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const memberName = (id: string | null) => (id ? members.find((m) => m.user_id === id)?.full_name || "Teammate" : "");
@@ -110,6 +116,8 @@ export default function InboxPage() {
     setSendNote(null);
     setMode("reply");
     setDraft("");
+    setTpl(null);
+    setTplVars({});
     const { data } = await listConversationMessages(c.id);
     setMessages(data);
     setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight }), 50);
@@ -158,6 +166,19 @@ export default function InboxPage() {
     setSuggesting(false);
     if (r.error) { setSendNote(r.error); return; }
     setSuggestion({ summary: r.summary, suggestion: r.suggestion });
+  }
+
+  async function sendTemplate() {
+    if (!selected || !tpl || !tpl.whatsapp_template_sid || busy) return;
+    setBusy(true);
+    setSendNote(null);
+    const rendered = renderTpl(tpl.body, tplVars);
+    const r = await sendConversationTemplate(orgId, selected.id, tpl.whatsapp_template_sid, tplVars, rendered);
+    setBusy(false);
+    if (!r.ok || r.error) { setSendNote(r.error ?? "Could not send template."); return; }
+    setTpl(null);
+    setTplVars({});
+    refreshThread();
   }
 
   async function setStatus(s: ConvStatus) {
@@ -308,12 +329,27 @@ export default function InboxPage() {
 
             {waWindowClosed && (
               <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2">
-                WhatsApp's 24-hour window is closed. Free-form replies will be rejected — use an approved template:
+                WhatsApp's 24-hour window is closed. Free-form replies will be rejected — send an approved template:
                 {templates.length === 0 ? <span className="d-block mt-1 neutral-500">No templates yet — add one under “Snippets”.</span> : (
                   <div className="d-flex flex-wrap gap-1 mt-2">
-                    {templates.map((t) => <button key={t.id} type="button" className="btn btn-sm btn-outline-dark rounded-pill px-2 py-0" onClick={() => { setMode("reply"); setDraft(t.body); }}>{t.title || t.shortcut}</button>)}
+                    {templates.map((t) => <button key={t.id} type="button" className={`btn btn-sm rounded-pill px-2 py-0 ${tpl?.id === t.id ? "btn-dark" : "btn-outline-dark"}`} onClick={() => { setTpl(t); setTplVars({}); }}>{t.title || t.shortcut}</button>)}
                   </div>
                 )}
+              </div>
+            )}
+
+            {tpl && (
+              <div className="border-100 rounded-3 p-3 mb-2 bg-neutral-50">
+                <div className="fz-font-sm fw-600 neutral-700 mb-1">Template · {tpl.title || tpl.shortcut}</div>
+                <div className="fz-font-md neutral-800 mb-2" style={{ whiteSpace: "pre-wrap" }}>{renderTpl(tpl.body, tplVars)}</div>
+                {!tpl.whatsapp_template_sid && <div className="alert alert-warning py-1 px-2 fz-font-sm mb-2">No template SID on this snippet — add it under “Snippets” so it can be sent.</div>}
+                {tplKeys(tpl.body).map((k) => (
+                  <input key={k} className="form-control form-control-sm rounded-3 mb-2" placeholder={`Value for {{${k}}}`} value={tplVars[k] ?? ""} onChange={(e) => setTplVars((v) => ({ ...v, [k]: e.target.value }))} />
+                ))}
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" disabled={busy || !tpl.whatsapp_template_sid || tplKeys(tpl.body).some((k) => !tplVars[k]?.trim())} onClick={sendTemplate}>Send template</button>
+                  <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setTpl(null)}>Cancel</button>
+                </div>
               </div>
             )}
 
