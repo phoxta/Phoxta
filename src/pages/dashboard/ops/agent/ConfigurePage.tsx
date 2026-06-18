@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { getAgentConfig, saveAgentConfig, CAPABILITY_LABELS, type AgentConfig } from "@/lib/db/ops/agent";
+import { getGoogleConnection, startGoogleConnect, disconnectGoogle, type GoogleConnection } from "@/lib/db/ops/google";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -35,6 +36,30 @@ export default function ConfigurePage() {
   const [config, setConfig] = useState<AgentConfig | null>(null);
   const suggestedPreset = VERTICAL_TO_PRESET[(org?.vertical || "").toLowerCase().trim()] ?? "generic";
   const [presetKey, setPresetKey] = useState(suggestedPreset);
+  const [google, setGoogle] = useState<GoogleConnection | null>(null);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleMsg, setGoogleMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    getGoogleConnection(orgId).then(({ data }) => setGoogle(data));
+    const q = new URLSearchParams(window.location.search).get("google");
+    if (q === "connected") setGoogleMsg("Google Workspace connected.");
+    else if (q === "error") setGoogleMsg("Google connection failed — please try again.");
+    if (q) window.history.replaceState({}, "", window.location.pathname);
+  }, [orgId]);
+
+  async function connectGoogle() {
+    setGoogleBusy(true);
+    const { error } = await startGoogleConnect(orgId);
+    if (error) { setGoogleBusy(false); setGoogleMsg(error); }
+  }
+  async function unlinkGoogle() {
+    setGoogleBusy(true);
+    await disconnectGoogle(orgId);
+    setGoogle(null);
+    setGoogleBusy(false);
+    setGoogleMsg("Disconnected.");
+  }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -178,6 +203,22 @@ export default function ConfigurePage() {
             <input className="form-control rounded-3" placeholder="Cartesia voice ID (preset or cloned)" value={config.voice?.voice_id || ""} onChange={(e) => patch({ voice: { provider: "cartesia", voice_id: e.target.value } })} />
           )}
           <div className="fz-font-sm neutral-400 mt-1">To clone a voice: create it in Cartesia, then paste its voice ID here.</div>
+        </div>
+
+        <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
+          <h6 className="fw-600 mb-2">Google Workspace</h6>
+          {googleMsg && <div className="alert alert-info py-1 px-2 fz-font-sm mb-2">{googleMsg}</div>}
+          {google ? (
+            <>
+              <p className="fz-font-sm neutral-700 mb-2">Connected as <strong>{google.email || "your Google account"}</strong> — Gmail, Drive, Docs, Sheets &amp; Calendar are available to the agent.</p>
+              <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={unlinkGoogle} disabled={googleBusy}>Disconnect</button>
+            </>
+          ) : (
+            <>
+              <p className="fz-font-sm neutral-500 mb-2">Connect Google Workspace to bring Gmail, Drive, Docs, Sheets and Calendar into Phoxta.</p>
+              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={connectGoogle} disabled={googleBusy}>{googleBusy ? "…" : "Connect Google Workspace"}</button>
+            </>
+          )}
         </div>
 
         <div className="bg-neutral-0 rounded-4 p-4 border-100">
