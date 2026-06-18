@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
     // outside the 24h window; `text` is the rendered body, recorded for display.
     const contentSid = body?.contentSid ? String(body.contentSid) : undefined;
     const variables = (body?.variables ?? {}) as Record<string, string>;
+    const subject = body?.subject ? String(body.subject) : "";
     if (!conversationId || !text) return json({ error: "Nothing to send." }, 400);
 
     const a = await authorize(req, orgId);
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
       }
     } else if (channel === "email") {
       if (!c.customer_email) return json({ error: "No email on file for this contact." }, 400);
-      const r = await dispatch("email", c.customer_email, `Reply from ${org.name}`, text);
+      const r = await dispatch("email", c.customer_email, subject || `Reply from ${org.name}`, text);
       delivery_status = r.status;
       if (r.status === "failed") return json({ ok: false, error: "Email could not be sent." }, 200);
     } else {

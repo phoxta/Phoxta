@@ -146,10 +146,10 @@ export async function listConversationMessages(convId: string): Promise<{ data: 
  *  (SMS / WhatsApp / email). Returns windowClosed when WhatsApp's 24h window
  *  is shut (an approved template is required instead). */
 export async function sendConversationReply(
-  orgId: string, convId: string, body: string, channel?: string,
+  orgId: string, convId: string, body: string, channel?: string, subject?: string,
 ): Promise<{ ok: boolean; windowClosed: boolean; delivery_status: string | null; error: string | null }> {
   const { data, error } = await invokeFn<{ ok: boolean; windowClosed?: boolean; delivery_status?: string; error?: string }>(
-    "conversation-send", { organizationId: orgId, conversationId: convId, body, channel },
+    "conversation-send", { organizationId: orgId, conversationId: convId, body, channel, subject },
   );
   return {
     ok: !!data?.ok,

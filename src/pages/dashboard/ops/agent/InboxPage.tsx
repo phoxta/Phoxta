@@ -59,6 +59,7 @@ export default function InboxPage() {
   const [selected, setSelected] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -163,6 +164,7 @@ export default function InboxPage() {
     setSendNote(null);
     setMode("reply");
     setDraft("");
+    setEmailSubject("");
     setTpl(null);
     setTplVars({});
     const { data } = await listConversationMessages(c.id);
@@ -197,7 +199,7 @@ export default function InboxPage() {
       refreshThread();
       return;
     }
-    const r = await sendConversationReply(orgId, selected.id, text, selected.channel_type);
+    const r = await sendConversationReply(orgId, selected.id, text, selected.channel_type, selected.channel_type === "email" ? (emailSubject.trim() || undefined) : undefined);
     setBusy(false);
     if (r.windowClosed) { setSendNote("WhatsApp's 24-hour window is closed — send an approved template (below) instead."); return; }
     if (!r.ok || r.error) { setSendNote(r.error ?? "Could not send."); return; }
@@ -521,6 +523,9 @@ export default function InboxPage() {
               </div>
             </div>
 
+            {mode === "reply" && selected.channel_type === "email" && (
+              <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Subject (optional)" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
+            )}
             <form className="d-flex gap-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
               <textarea className="form-control rounded-3" rows={2} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={mode === "note" ? "Private note for your team (not sent)…" : `Reply over ${selected.channel_type}…`} />
               <button type="submit" className="btn btn-dark rounded-3 px-4 align-self-end" disabled={busy || !draft.trim()}>{busy ? "…" : mode === "note" ? "Save" : "Send"}</button>
