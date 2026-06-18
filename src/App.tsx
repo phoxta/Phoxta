@@ -95,6 +95,7 @@ const AgentOverviewPage = lazy(() => import("@/pages/dashboard/ops/agent/AgentOv
 const AgentOperatorPage = lazy(() => import("@/pages/dashboard/ops/agent/OperatorPage"));
 const AgentProactivePage = lazy(() => import("@/pages/dashboard/ops/agent/ProactivePage"));
 const AgentConfigurePage = lazy(() => import("@/pages/dashboard/ops/agent/ConfigurePage"));
+const AgentKnowledgePage = lazy(() => import("@/pages/dashboard/ops/agent/KnowledgePage"));
 const AgentInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
 const AgentSnippetsPage = lazy(() => import("@/pages/dashboard/ops/agent/SnippetsPage"));
 const AgentOutboundPage = lazy(() => import("@/pages/dashboard/ops/agent/OutboundPage"));
@@ -148,6 +149,7 @@ export default function App() {
               <Route path="operator" element={<AgentOperatorPage />} />
               <Route path="proactive" element={<AgentProactivePage />} />
               <Route path="configure" element={<AgentConfigurePage />} />
+              <Route path="knowledge" element={<AgentKnowledgePage />} />
               <Route path="inbox" element={<AgentInboxPage />} />
               <Route path="snippets" element={<AgentSnippetsPage />} />
               <Route path="outbound" element={<AgentOutboundPage />} />

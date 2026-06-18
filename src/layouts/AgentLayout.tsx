@@ -6,6 +6,7 @@ const SUBTABS = [
   { seg: "operator", label: "Operator" },
   { seg: "proactive", label: "Proactive" },
   { seg: "configure", label: "Configure" },
+  { seg: "knowledge", label: "Knowledge" },
   { seg: "inbox", label: "Inbox" },
   { seg: "snippets", label: "Snippets" },
   { seg: "outbound", label: "Outbound" },

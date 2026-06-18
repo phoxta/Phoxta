@@ -14,6 +14,7 @@ export type AgentConfig = {
   business_hours: { tz?: string; open?: string; close?: string; days?: number[] };
   escalation: { to_email?: string; on_intents?: string[] };
   capabilities: Capabilities;
+  voice: { provider?: string; voice_id?: string };
   public_key: string;
 };
 
