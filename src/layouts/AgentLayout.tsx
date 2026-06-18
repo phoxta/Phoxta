@@ -9,6 +9,7 @@ const SUBTABS = [
   { seg: "knowledge", label: "Knowledge" },
   { seg: "inbox", label: "Inbox" },
   { seg: "gmail", label: "Gmail" },
+  { seg: "workspace", label: "Workspace" },
   { seg: "snippets", label: "Snippets" },
   { seg: "outbound", label: "Outbound" },
   { seg: "call-center", label: "Call Center" },

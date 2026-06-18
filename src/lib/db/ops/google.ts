@@ -53,3 +53,36 @@ export async function gmailSend(orgId: string, opts: { to: string; subject: stri
   const { data, error } = await gmail<{ ok: boolean }>(orgId, { action: "send", ...opts });
   return { ok: !!data?.ok, error };
 }
+
+// --- Workspace: email provisioning (Groups) + Drive + Calendar -------------
+export type WsGroup = { email: string; name: string; members: number };
+export type ProvisionResult = { email: string; created: boolean; forwarded: boolean; note: string };
+export type DriveFile = { id: string; name: string; mimeType: string; modifiedTime: string; webViewLink: string; iconLink?: string };
+export type CalEvent = { id: string; summary: string; start: string; end: string; link: string; location: string };
+
+async function ws<T>(orgId: string, payload: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("google-workspace", { body: { organizationId: orgId, ...payload } });
+  if (error) {
+    let msg = error.message;
+    try { const ctx = await (error as { context?: Response }).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* keep */ }
+    return { data: null, error: friendlyError(msg) };
+  }
+  if ((data as { error?: string })?.error) return { data: null, error: String((data as { error: string }).error) };
+  return { data: data as T, error: null };
+}
+
+export async function listWorkspaceEmails(orgId: string): Promise<{ data: WsGroup[]; error: string | null }> {
+  const { data, error } = await ws<{ groups: WsGroup[] }>(orgId, { action: "list_emails" });
+  return { data: data?.groups ?? [], error };
+}
+export async function provisionEmails(orgId: string, addresses?: string[]): Promise<{ data: { forwardTo: string; results: ProvisionResult[] } | null; error: string | null }> {
+  return ws<{ forwardTo: string; results: ProvisionResult[] }>(orgId, { action: "provision_emails", addresses });
+}
+export async function driveList(orgId: string, q?: string): Promise<{ data: DriveFile[]; error: string | null }> {
+  const { data, error } = await ws<{ files: DriveFile[] }>(orgId, { action: "drive_list", q });
+  return { data: data?.files ?? [], error };
+}
+export async function calendarList(orgId: string): Promise<{ data: CalEvent[]; error: string | null }> {
+  const { data, error } = await ws<{ events: CalEvent[] }>(orgId, { action: "calendar_list" });
+  return { data: data?.events ?? [], error };
+}

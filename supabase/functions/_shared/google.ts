@@ -31,6 +31,12 @@ export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/documents",
   "https://www.googleapis.com/auth/spreadsheets",
   "https://www.googleapis.com/auth/calendar",
+  // Admin (key-free provisioning of business email addresses as Groups) — the
+  // connecting user must be a Workspace admin for these to take effect.
+  "https://www.googleapis.com/auth/admin.directory.group",
+  "https://www.googleapis.com/auth/admin.directory.group.member",
+  "https://www.googleapis.com/auth/admin.directory.user.alias",
+  "https://www.googleapis.com/auth/apps.groups.settings",
 ].join(" ");
 
 export const redirectUri = () => `${env("SUPABASE_URL")}/functions/v1/google-oauth`;
