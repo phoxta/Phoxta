@@ -1,6 +1,8 @@
 // Phoxta — shared Google OAuth helpers (consent scopes, redirect URI, an
 // HMAC-signed `state` for the callback, and a refresh-aware access-token getter).
 import type { SupabaseClient } from "./supabaseAdmin.ts";
+// deno-lint-ignore no-explicit-any
+type Json = any;
 const env = (k: string) => Deno.env.get(k) ?? "";
 
 /** Return a valid Google access token for the org, refreshing it if expired. */
@@ -52,6 +54,40 @@ async function hmac(data: string): Promise<string> {
 export async function signState(payload: any): Promise<string> {
   const data = btoa(JSON.stringify(payload));
   return `${data}.${await hmac(data)}`;
+}
+
+// --- Action helpers (token-based) used by the operator agent's write tools ---
+function b64urlText(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+const gHeaders = (token: string) => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" });
+
+export async function gmailSendRaw(token: string, o: { to: string; subject: string; text: string }): Promise<void> {
+  const raw = b64urlText(`To: ${o.to}\r\nSubject: ${o.subject}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n${o.text}`);
+  const r = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", { method: "POST", headers: gHeaders(token), body: JSON.stringify({ raw }) });
+  if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as Json)?.error?.message || "Gmail send failed");
+}
+
+export async function createDoc(token: string, o: { title: string; text?: string }): Promise<string> {
+  const cr = await fetch("https://docs.googleapis.com/v1/documents", { method: "POST", headers: gHeaders(token), body: JSON.stringify({ title: o.title || "Untitled" }) });
+  const doc = (await cr.json()) as Json;
+  if (!doc?.documentId) throw new Error(doc?.error?.message || "Doc create failed");
+  if (o.text) {
+    await fetch(`https://docs.googleapis.com/v1/documents/${doc.documentId}:batchUpdate`, { method: "POST", headers: gHeaders(token), body: JSON.stringify({ requests: [{ insertText: { location: { index: 1 }, text: o.text } }] }) }).catch(() => {});
+  }
+  return `https://docs.google.com/document/d/${doc.documentId}/edit`;
+}
+
+export async function createEvent(token: string, o: { summary: string; start: string; end?: string; attendees?: string[] }): Promise<string> {
+  const ev: Json = { summary: o.summary, start: { dateTime: o.start }, end: { dateTime: o.end || o.start } };
+  if (o.attendees?.length) ev.attendees = o.attendees.map((e) => ({ email: e }));
+  const r = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", { method: "POST", headers: gHeaders(token), body: JSON.stringify(ev) });
+  const d = (await r.json()) as Json;
+  if (!d?.id) throw new Error(d?.error?.message || "Event create failed");
+  return d.htmlLink || "created";
 }
 
 // deno-lint-ignore no-explicit-any
