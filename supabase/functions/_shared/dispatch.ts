@@ -80,6 +80,40 @@ export async function twilioSend(
   }
 }
 
+// Rich email send (Resend) — full HTML body, CC/BCC, reply-to, attachments.
+// Used by the Inbox email composer; the simple dispatchEmail() path stays for
+// the agent's one-line transactional sends (with Postmark fallback).
+export type EmailAttachment = { filename: string; content: string }; // content = base64
+export type EmailSendResult = { ok: boolean; id?: string; status: DispatchResult["status"]; error?: string };
+
+export async function sendEmail(opts: {
+  to: string[]; cc?: string[]; bcc?: string[]; subject: string; html: string; text?: string; replyTo?: string; attachments?: EmailAttachment[];
+}): Promise<EmailSendResult> {
+  const key = env("RESEND_API_KEY");
+  const from = env("RESEND_FROM");
+  if (!key || !from) return { ok: false, status: "simulated" };
+  // deno-lint-ignore no-explicit-any
+  const body: Record<string, any> = { from, to: opts.to, subject: opts.subject, html: opts.html };
+  if (opts.text) body.text = opts.text;
+  if (opts.cc?.length) body.cc = opts.cc;
+  if (opts.bcc?.length) body.bcc = opts.bcc;
+  if (opts.replyTo) body.reply_to = opts.replyTo;
+  if (opts.attachments?.length) body.attachments = opts.attachments;
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    // deno-lint-ignore no-explicit-any
+    const data: any = await res.json().catch(() => ({}));
+    if (res.ok) return { ok: true, id: data?.id, status: "sent" };
+    return { ok: false, status: "failed", error: data?.message || data?.name || "send failed" };
+  } catch (e) {
+    return { ok: false, status: "failed", error: String(e) };
+  }
+}
+
 async function dispatchSms(to: string, message: string): Promise<DispatchResult> {
   const r = await twilioSend("sms", to, message);
   return { status: r.status, provider: r.status === "simulated" ? "none" : "twilio" };

@@ -27,6 +27,7 @@ import {
 } from "@/lib/db/ops/agent";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import { supabase } from "@/lib/supabaseClient";
+import EmailComposer from "./EmailComposer";
 import type { Call, Device } from "@twilio/voice-sdk";
 
 const STATUS_STYLE: Record<ConvStatus, string> = {
@@ -80,6 +81,7 @@ export default function InboxPage() {
   const [tagDraft, setTagDraft] = useState("");
   const [tpl, setTpl] = useState<CannedResponse | null>(null);
   const [tplVars, setTplVars] = useState<Record<string, string>>({});
+  const [composer, setComposer] = useState<{ to: string; subject: string; conversationId?: string } | null>(null);
   const [calling, setCalling] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [callMode, setCallMode] = useState<"ai" | "bridge" | "browser">("ai");
@@ -341,9 +343,20 @@ export default function InboxPage() {
   return (
     <div className="row g-4">
       {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {composer && (
+        <EmailComposer
+          orgId={orgId}
+          initialTo={composer.to}
+          initialSubject={composer.subject}
+          conversationId={composer.conversationId}
+          onClose={() => setComposer(null)}
+          onSent={() => load()}
+        />
+      )}
 
       {/* ---- Conversation list ---- */}
       <div className="col-lg-4">
+        <button type="button" className="btn btn-dark rounded-3 w-100 mb-2" onClick={() => setComposer({ to: "", subject: "" })}>✉ New email</button>
         <div className="d-flex gap-2 mb-2">
           <input className="form-control form-control-sm rounded-3" placeholder="Search name, phone, email…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
@@ -397,6 +410,7 @@ export default function InboxPage() {
               </div>
               <div className="d-flex gap-2">
                 {selected.customer_phone && <button type="button" className={`btn btn-sm rounded-pill px-3 ${callOpen ? "btn-dark" : "btn-outline-dark"}`} onClick={() => setCallOpen((o) => !o)} disabled={calling}>📞 Call</button>}
+                {selected.customer_email && <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={() => setComposer({ to: selected.customer_email, subject: "", conversationId: selected.id })}>✉ Email</button>}
                 {selected.status !== "escalated" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => setStatus("escalated")}>Take over</button>}
                 <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={snooze}>{selected.status === "snoozed" ? "Unsnooze" : "Snooze"}</button>
                 {selected.status !== "closed" ? (

@@ -158,6 +158,17 @@ export async function sendConversationReply(
     error: error ?? (data && !data.ok ? (data.error ?? "Could not send.") : null),
   };
 }
+/** Compose a new email or reply by email (CC/BCC, HTML body, attachments). */
+export async function composeEmail(
+  orgId: string,
+  opts: { to: string; cc?: string; bcc?: string; subject: string; html: string; attachments?: { filename: string; content: string }[]; conversationId?: string },
+): Promise<{ ok: boolean; conversationId: string | null; error: string | null }> {
+  const { data, error } = await invokeFn<{ ok: boolean; conversationId?: string; error?: string }>("email-send", {
+    organizationId: orgId, to: opts.to, cc: opts.cc, bcc: opts.bcc, subject: opts.subject, html: opts.html, attachments: opts.attachments, conversationId: opts.conversationId,
+  });
+  return { ok: !!data?.ok, conversationId: data?.conversationId ?? null, error: error ?? (data && !data.ok ? (data.error ?? "Could not send the email.") : null) };
+}
+
 /** Private internal note — never delivered to the customer. */
 export async function addInternalNote(orgId: string, convId: string, body: string): Promise<{ error: string | null }> {
   const { error } = await invokeFn("conversation-send", { organizationId: orgId, conversationId: convId, body, internal: true });
