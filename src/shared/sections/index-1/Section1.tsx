@@ -91,7 +91,7 @@ export default function Section1() {
                         <div className="row align-items-start">
                             <div className="col-xxl-6 col-lg-6 mb-5 mb-lg-0 pe-xxl-5">
                                 <h4 className="sec-1-home-4__headline fw-600 text-white mb-3 mb-md-4 lh-1">
-                                    Own a business that <br className="d-none d-md-block" /> already works.
+                                    Buy fully AI-automated businesses <br className="d-none d-md-block" /> and launch instantly.
                                 </h4>
                                 <p className="text-white fz-font-lg mb-4 mb-md-5" style={{ opacity: 0.85, maxWidth: 540 }}>
                                     Pick a validated business, make it your own, and launch in minutes &mdash; complete with an AI agent that answers calls, chats and bookings across every channel from your console.
