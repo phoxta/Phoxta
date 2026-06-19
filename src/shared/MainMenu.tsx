@@ -1,6 +1,18 @@
 import { NavLink } from "react-router-dom";
 import { MainMenuRootList } from "@/shared/mobile-menu/MobileMenuCloneContext";
 
+type Item = { to: string; label: string };
+
+// "Solutions" = the kinds of businesses you can own on Phoxta. They all open the
+// marketplace (the public marketplace lists every blueprint).
+const SOLUTIONS_LINKS: Item[] = [
+  { to: "/marketplace", label: "Retail & eCommerce" },
+  { to: "/marketplace", label: "Restaurants & Food" },
+  { to: "/marketplace", label: "Bookings & Rentals" },
+  { to: "/marketplace", label: "Travel & Experiences" },
+  { to: "/marketplace", label: "Browse all businesses" },
+];
+
 function MenuLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <NavLink to={to} className={({ isActive }) => (isActive ? "active" : undefined)}>
@@ -25,6 +37,19 @@ export default function MainMenu() {
         <MenuLink to="/">
           <LinkSwap label="Home" />
         </MenuLink>
+      </li>
+
+      <li className="has-dropdown">
+        <a href="#" onClick={(e) => e.preventDefault()}>
+          <LinkSwap label="Solutions" />
+        </a>
+        <ul className="at-submenu submenu">
+          {SOLUTIONS_LINKS.map((l) => (
+            <li key={l.label}>
+              <MenuLink to={l.to}>{l.label}</MenuLink>
+            </li>
+          ))}
+        </ul>
       </li>
 
       <li>
@@ -56,7 +81,6 @@ export default function MainMenu() {
           <LinkSwap label="Invest" />
         </MenuLink>
       </li>
-
     </MainMenuRootList>
   );
 }
