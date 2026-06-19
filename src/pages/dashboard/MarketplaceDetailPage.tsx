@@ -4,6 +4,7 @@ import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 import { getBlueprint, formatPrice, type Blueprint } from "@/lib/db/marketplace";
 import { buyBlueprint } from "@/lib/db/organizations";
+import { PLATFORM_PLANS, PLAN_STARTING_PRICE } from "@/lib/plans";
 
 const INCLUDED = [
   "A live storefront and mobile-ready experience",
@@ -110,10 +111,51 @@ export default function MarketplaceDetailPage() {
               </a>
             )}
             <p className="fz-font-sm neutral-500 mb-0 mt-3">
-              Includes a 14-day free trial of the platform plan. Cancel anytime.
+              One-time business price. Then run it from ${PLAN_STARTING_PRICE}/mo on a Phoxta plan —
+              14-day free trial, cancel anytime.
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Monthly plan after purchase — the ongoing platform subscription. */}
+      <div className="mt-5 pt-4 border-top border-100">
+        <h5 className="fw-600 mb-1">Then run it from ${PLAN_STARTING_PRICE}/mo</h5>
+        <p className="neutral-500 fz-font-md mb-4" style={{ maxWidth: 620 }}>
+          The price above is a one-time fee to make this business yours. After setup you run it on a
+          Phoxta plan — start with a 14-day free trial, then choose the plan that fits. Manage it
+          anytime in <Link to="/dashboard/billing" className="text-decoration-underline">Billing</Link>.
+        </p>
+        <div className="row g-3">
+          {PLATFORM_PLANS.map((plan) => (
+            <div className="col-md-4" key={plan.key}>
+              <div className={`h-100 rounded-4 p-4 ${plan.popular ? "bg-neutral-900 text-white" : "bg-neutral-0 border-100"}`}>
+                <div className="d-flex align-items-center justify-content-between mb-1">
+                  <span className={`fw-700 ${plan.popular ? "text-white" : ""}`}>{plan.name}</span>
+                  {plan.popular && <span className="badge bg-white text-dark fw-600" style={{ fontSize: 10 }}>Most popular</span>}
+                </div>
+                <div className="d-flex align-items-baseline gap-1 mb-2">
+                  <span className="fw-700" style={{ fontSize: 28, lineHeight: 1 }}>${plan.priceMonthly}</span>
+                  <span className={plan.popular ? "text-white opacity-75 fz-font-sm" : "neutral-500 fz-font-sm"}>/mo</span>
+                </div>
+                <p className={`fz-font-sm mb-3 ${plan.popular ? "text-white opacity-75" : "neutral-500"}`}>{plan.blurb}</p>
+                <ul className="list-unstyled m-0 d-flex flex-column gap-2">
+                  {plan.features.map((f) => (
+                    <li key={f} className="d-flex align-items-start gap-2 fz-font-sm">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0" style={{ marginTop: 3 }}>
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                      <span className={plan.popular ? "text-white" : ""}>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="fz-font-sm neutral-500 mb-0 mt-3">
+          Need more? <Link to="/pricing" className="text-decoration-underline">See the full plan comparison</Link> — including Enterprise.
+        </p>
       </div>
     </div>
   );
