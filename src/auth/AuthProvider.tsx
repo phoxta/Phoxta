@@ -2,12 +2,19 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { friendlyError } from "@/lib/friendlyError";
+import { getMyProfile } from "@/lib/db/profile";
 
 type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
   configured: boolean;
+  /** True once a password-recovery link has been processed (forces reset mode). */
+  recovery: boolean;
+  /** null = not yet known; true/false = onboarding completed or not. */
+  onboarded: boolean | null;
+  /** Mark onboarding done locally (after completeOnboarding) so the gate releases. */
+  markOnboarded: () => void;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
@@ -20,6 +27,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recovery, setRecovery] = useState(false);
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -30,7 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      // A recovery link logs the user in with a special event; surface it so the
+      // auth screen shows the "set a new password" form regardless of the URL.
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
       setSession(nextSession);
       setLoading(false);
     });
@@ -41,12 +53,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Track onboarding completion for the signed-in user — this drives the gate in
+  // ProtectedRoute so EVERY protected route (dashboard + studio) is covered.
+  // Keyed on the user id so a token refresh doesn't trigger a refetch.
+  const userId = session?.user?.id ?? null;
+  useEffect(() => {
+    if (!userId) {
+      setOnboarded(null);
+      return;
+    }
+    let active = true;
+    getMyProfile().then(({ data, error }) => {
+      if (!active) return;
+      // On a fetch error, don't trap the user in onboarding — let them through;
+      // individual pages surface their own errors.
+      setOnboarded(error ? true : Boolean(data?.onboarding_completed));
+    });
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       user: session?.user ?? null,
       loading,
       configured: isSupabaseConfigured,
+      recovery,
+      onboarded,
+      markOnboarded: () => setOnboarded(true),
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         return { error: friendlyError(error?.message) };
@@ -74,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: friendlyError(error?.message) };
       },
     }),
-    [session, loading],
+    [session, loading, recovery, onboarded],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

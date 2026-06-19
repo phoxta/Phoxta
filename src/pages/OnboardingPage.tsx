@@ -12,7 +12,7 @@ const ROLES = [
 ];
 
 export default function OnboardingPage() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, markOnboarded } = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [company, setCompany] = useState("");
@@ -34,7 +34,10 @@ export default function OnboardingPage() {
     });
     setSaving(false);
     if (error) setError(error);
-    else navigate(role === "buyer" || role === "founder" ? "/dashboard/marketplace" : "/dashboard", { replace: true });
+    else {
+      markOnboarded(); // release the ProtectedRoute gate before navigating
+      navigate(role === "buyer" || role === "founder" ? "/dashboard/marketplace" : "/dashboard", { replace: true });
+    }
   }
 
   return (

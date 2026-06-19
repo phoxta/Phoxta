@@ -6,8 +6,18 @@ export function friendlyError(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const m = raw.toLowerCase();
 
-  // Stale / invalid session (e.g. user id not present in this project's auth.users)
-  if (m.includes("foreign key") || m.includes("fkey") || m.includes("jwt") || m.includes("invalid token") || m.includes("session")) {
+  // Stale / invalid session (e.g. user id not present in this project's auth.users).
+  // Match session phrases precisely so unrelated errors aren't mislabeled.
+  if (
+    m.includes("foreign key") ||
+    m.includes("fkey") ||
+    m.includes("jwt") ||
+    m.includes("invalid token") ||
+    m.includes("auth session") ||
+    m.includes("session missing") ||
+    m.includes("session expired") ||
+    m.includes("session not found")
+  ) {
     return "Your session has expired. Please sign in again.";
   }
   // Auth specifics worth keeping helpful

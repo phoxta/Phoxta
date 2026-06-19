@@ -4,6 +4,9 @@ import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 
 type Mode = "login" | "signup" | "forgot" | "reset";
+const MODES: Mode[] = ["login", "signup", "forgot", "reset"];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD = 8;
 
 const ARROW = (
   <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -22,34 +25,80 @@ const HEADINGS: Record<Mode, { title: string; sub: string }> = {
 };
 
 export default function AuthPage() {
-  const { session, configured, signIn, signUp, sendPasswordReset, updatePassword } = useAuth();
+  const { session, loading: authLoading, recovery, configured, signIn, signUp, sendPasswordReset, updatePassword } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
+  // Only allow internal, same-origin redirects — reject absolute, protocol-
+  // relative (//host) and backslash (/\host) targets that resolve cross-origin.
   const redirectTo = useMemo(() => {
     const r = params.get("redirect");
-    return r && r.startsWith("/") ? r : "/dashboard";
+    const safe = r && r.startsWith("/") && !r.startsWith("//") && !r.startsWith("/\\");
+    return safe ? (r as string) : "/dashboard";
   }, [params]);
 
-  const [mode, setMode] = useState<Mode>((params.get("mode") as Mode) || "login");
+  const initialMode = useMemo<Mode>(() => {
+    const m = params.get("mode");
+    return m && (MODES as string[]).includes(m) ? (m as Mode) : "login";
+  }, [params]);
+
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // Once a session exists (sign-in, or recovery link), leave the auth screen.
+  // A recovery link processed by Supabase forces the "set a new password" form,
+  // even if the URL's ?mode= was dropped.
+  useEffect(() => {
+    if (recovery) setMode("reset");
+  }, [recovery]);
+
+  // Surface errors that arrive in the URL hash from an expired/invalid email
+  // link (e.g. #error=...&error_description=...), then clean the hash.
+  useEffect(() => {
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    if (hash.includes("error")) {
+      const p = new URLSearchParams(hash.replace(/^#/, ""));
+      const desc = p.get("error_description");
+      setError(desc ? decodeURIComponent(desc.replace(/\+/g, " ")) : "This link is invalid or has expired. Please request a new one.");
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, []);
+
+  // Once a session exists (sign-in, or recovery link), leave the auth screen —
+  // except in reset mode, where the user still needs to set a new password.
   useEffect(() => {
     if (session && mode !== "reset") navigate(redirectTo, { replace: true });
   }, [session, mode, redirectTo, navigate]);
 
   const heading = HEADINGS[mode];
+  const showEmail = mode !== "reset";
+  const showPasswordField = mode !== "forgot";
+  const showConfirmField = mode === "signup" || mode === "reset";
+  const submitLabel =
+    mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : mode === "forgot" ? "Send reset link" : "Update password";
 
   function switchMode(next: Mode) {
     setMode(next);
     setError(null);
     setNotice(null);
+    setPassword("");
+    setConfirm("");
+  }
+
+  // Explicit client-side validation (the form is noValidate so we control the
+  // messaging). Mirrors the server rules — the server stays the source of truth.
+  function validate(): string | null {
+    if (showEmail && !EMAIL_RE.test(email.trim())) return "Please enter a valid email address.";
+    if (showPasswordField) {
+      if (password.length < MIN_PASSWORD) return `Password must be at least ${MIN_PASSWORD} characters.`;
+      if (showConfirmField && password !== confirm) return "Passwords don't match.";
+    }
+    return null;
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -58,19 +107,24 @@ export default function AuthPage() {
       setError("Authentication isn't configured yet. Add your Supabase keys to .env.local.");
       return;
     }
+    const invalid = validate();
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
     setError(null);
     setNotice(null);
     setLoading(true);
     try {
       if (mode === "login") {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(email.trim(), password);
         if (error) setError(error);
       } else if (mode === "signup") {
-        const { error, needsConfirmation } = await signUp(email, password);
+        const { error, needsConfirmation } = await signUp(email.trim(), password);
         if (error) setError(error);
         else if (needsConfirmation) setNotice("Check your inbox to confirm your email, then sign in.");
       } else if (mode === "forgot") {
-        const { error } = await sendPasswordReset(email);
+        const { error } = await sendPasswordReset(email.trim());
         if (error) setError(error);
         else setNotice("If that email exists, a reset link is on its way.");
       } else if (mode === "reset") {
@@ -86,10 +140,17 @@ export default function AuthPage() {
     }
   }
 
-  const showEmail = mode !== "reset";
-  const showPasswordField = mode !== "forgot";
-  const submitLabel =
-    mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : mode === "forgot" ? "Send reset link" : "Update password";
+  // Avoid flashing the form while we resolve the session, or while a redirect
+  // for an already-signed-in user is in flight.
+  if (authLoading || (session && mode !== "reset")) {
+    return (
+      <div className="d-flex align-items-center justify-content-center bg-neutral-0" style={{ minHeight: "100vh" }}>
+        <div className="spinner-border text-dark" role="status" aria-label="Loading">
+          <span className="visually-hidden">Loading…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -181,17 +242,41 @@ export default function AuthPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete={mode === "login" ? "current-password" : "new-password"}
-                      minLength={8}
+                      minLength={MIN_PASSWORD}
                       required
                     />
                     <button
                       type="button"
                       className="btn btn-link position-absolute top-50 end-0 translate-middle-y pe-3 neutral-500 text-decoration-none fz-font-sm"
                       onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showPassword}
                     >
                       {showPassword ? "Hide" : "Show"}
                     </button>
                   </div>
+                  {showConfirmField && (
+                    <p className="fz-font-sm neutral-500 mt-1 mb-0">Use at least {MIN_PASSWORD} characters.</p>
+                  )}
+                </div>
+              )}
+
+              {showConfirmField && (
+                <div className="mb-2 mt-3">
+                  <label className="form-label fz-font-md fw-500" htmlFor="auth-confirm">
+                    Confirm password
+                  </label>
+                  <input
+                    id="auth-confirm"
+                    type={showPassword ? "text" : "password"}
+                    className="form-control form-control-lg rounded-3"
+                    placeholder="••••••••"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    autoComplete="new-password"
+                    minLength={MIN_PASSWORD}
+                    required
+                  />
                 </div>
               )}
 

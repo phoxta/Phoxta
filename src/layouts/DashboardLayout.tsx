@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import NoIndex from "@/seo/NoIndex";
 import { useAuth } from "@/auth/AuthProvider";
-import { getMyProfile } from "@/lib/db/profile";
 import { preloadAllDashboard, preloadRoute } from "@/pages/dashboard/preload";
 import {
   listNotifications,
@@ -52,7 +51,9 @@ export default function DashboardLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [ready, setReady] = useState(false);
+  // ProtectedRoute guarantees the session + completed onboarding before this
+  // layout mounts, so we render immediately (no second onboarding fetch here).
+  const [ready] = useState(true);
   const [notes, setNotes] = useState<Notification[]>([]);
   const [bellOpen, setBellOpen] = useState(false);
   const unread = notes.filter((n) => !n.read).length;
@@ -81,24 +82,6 @@ export default function DashboardLayout() {
     setNotes((list) => list.map((x) => ({ ...x, read: true })));
     markAllNotificationsRead();
   }
-
-  // Onboarding gate: brand-new users finish setup first. On a fetch error we
-  // let them into the dashboard (pages handle their own errors) rather than
-  // bouncing them to onboarding.
-  useEffect(() => {
-    let active = true;
-    getMyProfile().then(({ data, error }) => {
-      if (!active) return;
-      if (!error && (!data || !data.onboarding_completed)) {
-        navigate("/onboarding", { replace: true });
-      } else {
-        setReady(true);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, [navigate]);
 
   // Warm every dashboard tab's lazy chunk shortly after the dashboard loads, so
   // switching tabs is instant (no route-level Suspense spinner on first click).
