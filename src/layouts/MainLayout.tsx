@@ -14,6 +14,7 @@ import Header12 from "@/shared/header/Header12";
 import Header13 from "@/shared/header/Header13";
 import Header14 from "@/shared/header/Header14";
 import Header15 from "@/shared/header/Header15";
+import HeaderNav from "@/shared/header/HeaderNav";
 import Footer1 from "@/shared/footer/Footer1";
 import Footer2 from "@/shared/footer/Footer2";
 import Footer3 from "@/shared/footer/Footer3";
@@ -49,6 +50,7 @@ type HeaderHandlers = {
   onToggleSidebar?: () => void;
   onOpenHamburgerMenu?: () => void;
   style?: string;
+  light?: boolean;
 };
 
 const HEADER_COMPONENTS: Record<number, React.ComponentType<HeaderHandlers>> = {
@@ -67,6 +69,7 @@ const HEADER_COMPONENTS: Record<number, React.ComponentType<HeaderHandlers>> = {
   13: Header13,
   14: Header14,
   15: Header15,
+  16: HeaderNav, // unified site nav (the homepage menu section) — marketing pages
 };
 
 const FOOTER_COMPONENTS: Record<number, React.ComponentType> = {
@@ -93,7 +96,7 @@ export type MainLayoutProps = {
   noFooter?: boolean;
   noHeader?: boolean;
   mainClass?: string;
-  headerProps?: { style?: string };
+  headerProps?: { style?: string; light?: boolean };
   /** When provided, rendered in place of <Outlet/> — lets non-route callers
    *  (Studio preview, published storefront pages) reuse the full chrome. */
   children?: React.ReactNode;

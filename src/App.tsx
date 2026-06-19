@@ -144,23 +144,23 @@ export default function App() {
       <Route element={<MainLayout headerStyle={4} footerStyle={1} noHeader />}>
         <Route path="/" element={<Home1Page />} />
       </Route>
-      <Route element={<MainLayout headerStyle={13} footerStyle={13} noFooter />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={13} noFooter headerProps={{ light: true }} />}>
         <Route path="/invest" element={<Home13Page />} />
       </Route>
       {/* Solutions pages (nav → Solutions dropdown) */}
-      <Route element={<MainLayout headerStyle={3} footerStyle={3} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={3} />}>
         <Route path="/marketing" element={<MarketingSolutionPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={4} footerStyle={4} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={4} />}>
         <Route path="/ai-tech" element={<AiTechPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={7} footerStyle={7} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={7} />}>
         <Route path="/startup-accelerator" element={<StartupAcceleratorPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={9} footerStyle={9} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={9} headerProps={{ light: true }} />}>
         <Route path="/brand-design" element={<BrandDesignPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={2} footerStyle={2} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={2} />}>
         <Route path="/about" element={<About2Page />} />
         <Route path="/marketplace" element={<ProductArchivePage />} />
         <Route path="/pricing" element={<PricingPage />} />
