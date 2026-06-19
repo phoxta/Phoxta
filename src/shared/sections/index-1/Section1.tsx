@@ -94,7 +94,7 @@ export default function Section1() {
                                     Buy fully AI-automated businesses <br className="d-none d-md-block" /> and launch instantly.
                                 </h4>
                                 <p className="text-white fz-font-lg mb-4 mb-md-5" style={{ opacity: 0.85, maxWidth: 540 }}>
-                                    Pick a validated business, make it your own, and launch in minutes &mdash; complete with an AI agent that answers calls, chats and bookings across every channel from your console.
+                                    Why build from scratch when you can acquire a business that runs itself? Get pre-validated, niche businesses powered entirely by automated AI pipelines.
                                 </p>
 
                                 {/* "How we work" block carried over from the original homepage hero */}
