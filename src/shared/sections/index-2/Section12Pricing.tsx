@@ -18,8 +18,8 @@ const FEATURE_ICON_SVG = (
     </svg>
 );
 
-const MONTHLY_PRICES = { starter: "$32", growth: "$79", scale: "$179" };
-const ANNUAL_PRICES = { starter: "$26", growth: "$63", scale: "$143" };
+const MONTHLY_PRICES = { starter: "$75", growth: "$250", scale: "$1,500" };
+const ANNUAL_PRICES = { starter: "$60", growth: "$200", scale: "$1,200" };
 
 const PLANS = [
     {

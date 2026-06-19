@@ -15,14 +15,14 @@ export const PLATFORM_PLANS: PlatformPlan[] = [
   {
     key: "starter",
     name: "Starter",
-    priceMonthly: 32,
+    priceMonthly: 75,
     blurb: "Launch your first AI-powered business.",
     features: ["1 business", "AI agent on every channel", "Full operating console", "200K AI tokens / month"],
   },
   {
     key: "growth",
     name: "Growth",
-    priceMonthly: 79,
+    priceMonthly: 250,
     blurb: "Grow on your own brand and domain.",
     features: ["Up to 3 businesses", "Your own custom domain", "1M AI tokens / month", "Proactive automations"],
     popular: true,
@@ -30,7 +30,7 @@ export const PLATFORM_PLANS: PlatformPlan[] = [
   {
     key: "scale",
     name: "Scale",
-    priceMonthly: 179,
+    priceMonthly: 1500,
     blurb: "Run multiple businesses with a team.",
     features: ["Up to 10 businesses", "5M AI tokens / month", "Outbound & call-center agent", "Team seats"],
   },

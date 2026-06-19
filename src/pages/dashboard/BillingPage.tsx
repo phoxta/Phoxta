@@ -13,9 +13,9 @@ const STATUS_STYLE: Record<Subscription["status"], string> = {
 };
 
 const PLANS = [
-  { plan: "Starter", price: "$32/mo", note: "New businesses, small operators" },
-  { plan: "Growth", price: "$79/mo", note: "Established small businesses" },
-  { plan: "Scale", price: "$179/mo", note: "Growth-stage businesses" },
+  { plan: "Starter", price: "$75/mo", note: "New businesses, small operators" },
+  { plan: "Growth", price: "$250/mo", note: "Established small businesses" },
+  { plan: "Scale", price: "$1,500/mo", note: "Growth-stage businesses" },
 ];
 
 // Assistant cost is small per call — show cents precision (not rounded to $0).
