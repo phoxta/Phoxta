@@ -14,8 +14,8 @@ const ARROW_SVG = (
 const BLOG_ITEMS = [
     {
         classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog-details",
-        linkAuthor: "/team-details",
+        linkPost: "/blog",
+        linkAuthor: "/about",
         img: "/assets/imgs/pages/img-23.webp",
         title: "How to Start a Coffee Subscription Business in 2026",
         author: "Phoxta",
@@ -23,8 +23,8 @@ const BLOG_ITEMS = [
     },
     {
         classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog-details",
-        linkAuthor: "/team-details",
+        linkPost: "/blog",
+        linkAuthor: "/about",
         img: "/assets/imgs/pages/img-24.webp",
         title: "Tear-down: What an AI-Powered Salon Really Earns",
         author: "Phoxta",
@@ -32,8 +32,8 @@ const BLOG_ITEMS = [
     },
     {
         classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog-details",
-        linkAuthor: "/team-details",
+        linkPost: "/blog",
+        linkAuthor: "/about",
         img: "/assets/imgs/pages/img-25.webp",
         title: "From an Instagram Audience to a DTC Brand in Six Weeks",
         author: "Phoxta",
@@ -41,8 +41,8 @@ const BLOG_ITEMS = [
     },
     {
         classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog-details",
-        linkAuthor: "/team-details",
+        linkPost: "/blog",
+        linkAuthor: "/about",
         img: "/assets/imgs/pages/img-26.webp",
         title: "Buy, Don't Build: A Smarter Way to Start a Business",
         author: "Phoxta",
@@ -74,7 +74,7 @@ export default function Section13() {
                     </div>
                     <div className="col-xxl-2 col-lg-3 ms-auto text-xxl-end text-lg-end">
                         <div className="at-service-btn pt-30">
-                            <Link className="at-btn" to="/archive-1">
+                            <Link className="at-btn" to="/blog">
                                 <span>
                                     <span className="text-1">ALL ARTICLES</span>
                                     <span className="text-2">ALL ARTICLES</span>

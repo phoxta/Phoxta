@@ -19,7 +19,7 @@ const SOCIAL_ARROW = (
   </svg>
 );
 
-const FOOTER_SERVICES = ["Web Development", "Motion Graphics", "Brand Strategy", "Product Design"];
+const FOOTER_SERVICES = ["AI Agent", "Operating Console", "Branded Storefront", "Custom Domains"];
 
 function FooterServiceTag({ label }: { label: string }) {
   return (
@@ -51,16 +51,20 @@ const Footer2 = forwardRef<HTMLElement, Record<string, never>>(function Footer2(
                   </Link>
                 </div>
                 <div className="d-flex flex-column gap-3">
-                  <h6 className="text-white mb-2 fw-medium">+212-555-7398</h6>
                   <h6 className="text-white mb-2">
                     <a href="mailto:hello@phoxta.com" className="text-white text-decoration-none">
                       hello@phoxta.com
                     </a>
                   </h6>
-                  <h6 className="text-white mb-0">
-                    245 Fifth Avenue, Suite 1800
+                  <h6 className="text-white mb-2">
+                    <a href="mailto:sales@phoxta.com" className="text-white text-decoration-none">
+                      sales@phoxta.com
+                    </a>
+                  </h6>
+                  <h6 className="text-white mb-0 fw-400" style={{ opacity: 0.6, lineHeight: 1.5 }}>
+                    Own an AI-powered business —
                     <br />
-                    New York, NY 10016, USA
+                    online-first, worldwide.
                   </h6>
                 </div>
               </div>
@@ -107,23 +111,17 @@ const Footer2 = forwardRef<HTMLElement, Record<string, never>>(function Footer2(
               <p className="footer-2-follow-label text-white opacity-50 text-uppercase small mb-3">Follow Us</p>
               <div className="at-footer-widget at-footer-link">
                 <div className="at-hero-social">
-                  <a href="#" onClick={(e) => e.preventDefault()}>
-                    Twitter {SOCIAL_ARROW}
+                  <a href="https://x.com/phoxta" target="_blank" rel="noreferrer">
+                    X (Twitter) {SOCIAL_ARROW}
                   </a>
-                  <a href="#" onClick={(e) => e.preventDefault()}>
-                    Facebook {SOCIAL_ARROW}
+                  <a href="https://www.linkedin.com/company/phoxta" target="_blank" rel="noreferrer">
+                    LinkedIn {SOCIAL_ARROW}
                   </a>
-                  <a href="#" onClick={(e) => e.preventDefault()}>
+                  <a href="https://www.instagram.com/phoxta" target="_blank" rel="noreferrer">
                     Instagram {SOCIAL_ARROW}
                   </a>
-                  <a href="#" onClick={(e) => e.preventDefault()}>
-                    Linkedin {SOCIAL_ARROW}
-                  </a>
-                  <a href="#" onClick={(e) => e.preventDefault()}>
-                    Behance {SOCIAL_ARROW}
-                  </a>
-                  <a href="#" onClick={(e) => e.preventDefault()}>
-                    Dribbble {SOCIAL_ARROW}
+                  <a href="https://www.youtube.com/@phoxta" target="_blank" rel="noreferrer">
+                    YouTube {SOCIAL_ARROW}
                   </a>
                 </div>
               </div>

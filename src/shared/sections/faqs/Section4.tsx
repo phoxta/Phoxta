@@ -49,20 +49,16 @@ export default function Section4() {
                                 </svg>
                             </div>
                         </div>
-                        <h4>Still have a questions?</h4>
+                        <h4>Still have questions?</h4>
                         <p className="fz-font-lg neutral-900">
-                            If you cannot find answer to your question in our
-                            FAQ, you can always contact us. <br />
-                            We wil answer to you shortly! Meet our Support team
+                            If you can&apos;t find your answer here, get in touch. <br />
+                            We&apos;ll reply within one business day.
                         </p>
                         <h5 className="mt-40">
                             <a href="mailto:hello@phoxta.com">
                                 hello@phoxta.com
                             </a>
                         </h5>
-                        <h6>
-                            <a href="tel:+2125557398">(212) 555-7398</a>
-                        </h6>
                     </div>
                 </div>
             </div>

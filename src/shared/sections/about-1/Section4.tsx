@@ -113,23 +113,19 @@ const SOCIAL_ITEMS = [
 const OFFICES = [
     {
         icon: OFFICE_ICON_1,
-        title: "Office",
-        address: "205 North Michigan Avenue, Suite 810",
-        city: "Chicago, 60601, USA",
-        phone: "+1234567890",
-        phoneHref: "tel:+1234567890",
+        title: "General enquiries",
+        address: "Questions about Phoxta, your account, or going live?",
+        city: "We reply within one business day.",
         email: "hello@phoxta.com",
         emailHref: "mailto:hello@phoxta.com",
     },
     {
         icon: OFFICE_ICON_2,
-        title: "Office",
-        address: "245 Fifth Avenue, Suite 1800",
-        city: "New York, NY 10016, USA",
-        phone: "+2125557398",
-        phoneHref: "tel:+2125557398",
-        email: "sale@phoxta.com",
-        emailHref: "mailto:sale@phoxta.com",
+        title: "Sales & partnerships",
+        address: "Exploring Phoxta for your team, or want to list a business?",
+        city: "Online-first — serving owners worldwide.",
+        email: "sales@phoxta.com",
+        emailHref: "mailto:sales@phoxta.com",
     },
 ];
 
@@ -176,11 +172,6 @@ export default function Section4({ classList = "" }: { classList?: string }) {
                                                     {office.address}
                                                     <br className="d-block" />
                                                     {office.city}
-                                                    <br className="d-block" />
-                                                    Phone:{" "}
-                                                    <span className="neutral-900">
-                                                        <Link to={office.phoneHref}>{office.phone}</Link>
-                                                    </span>
                                                     <br className="d-block" />
                                                     Email:{" "}
                                                     <span className="neutral-900">

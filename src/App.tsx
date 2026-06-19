@@ -18,7 +18,6 @@ const BlogDetailsPage = lazy(() => import("@/pages/BlogDetailsPage")); // /blog
 const FaqsPage = lazy(() => import("@/pages/FaqsPage"));
 const CareersPage = lazy(() => import("@/pages/CareersPage"));
 const Contact1Page = lazy(() => import("@/pages/Contact1Page")); // /contact
-const TeamPage = lazy(() => import("@/pages/TeamPage"));
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
 const TermsPage = lazy(() => import("@/pages/TermsPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
@@ -68,7 +67,7 @@ const LEGACY_REDIRECTS: [string, string][] = [
   ["/contact-1", "/contact"], ["/contact-2", "/contact"],
   ["/product-archive", "/marketplace"],
   ["/blog-details", "/blog"], ["/archive-1", "/blog"],
-  ["/team-details", "/team"],
+  ["/team", "/about"], ["/team-details", "/about"],
   ["/services-1", "/about"], ["/services-2", "/about"], ["/services-3", "/about"], ["/services-details", "/about"],
   ["/index-3", "/"], ["/index-4", "/"], ["/index-7", "/"], ["/index-9", "/"],
 ];
@@ -151,7 +150,6 @@ export default function App() {
         <Route path="/faqs" element={<FaqsPage />} />
         <Route path="/careers" element={<CareersPage />} />
         <Route path="/contact" element={<Contact1Page />} />
-        <Route path="/team" element={<TeamPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="*" element={<NotFoundPage />} />

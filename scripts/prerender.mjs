@@ -61,7 +61,6 @@ const ROUTES = [
     "/faqs",
     "/careers",
     "/contact",
-    "/team",
     "/invest",
     "/privacy",
     "/terms",

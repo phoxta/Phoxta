@@ -141,8 +141,8 @@ export default function Section1() {
                             </span>
                             <h2 className="at-section-title reveal-text mb-lg-0 mb-4">
                                 <RevealText>
-                                    Reach out to discuss
-                                    your project requirements
+                                    Talk to us about
+                                    owning your business
                                 </RevealText>
                             </h2>
                             <div className="at-about-content d-flex flex-md-row flex-column justify-content-between gap-4 pt-40">
@@ -151,16 +151,11 @@ export default function Section1() {
                                         {OFFICE_ICON_1}
                                     </div>
                                     <div>
-                                        <h6 className="fw-600">Ofice</h6>
+                                        <h6 className="fw-600">General enquiries</h6>
                                         <span className="fz-font-md neutral-500">
-                                            205 North Michigan Avenue, Suite 810
+                                            Questions about Phoxta, your account, or going live?
                                             <br className="d-block" />
-                                            Chicago, 60601, USA
-                                            <br className="d-block" />
-                                            Phone:{" "}
-                                            <span className="neutral-900">
-                                                <a href="tel:+1234567890">+1234567890</a>
-                                            </span>
+                                            We reply within one business day.
                                             <br className="d-block" />
                                             Email:{" "}
                                             <span className="neutral-900">
@@ -174,20 +169,15 @@ export default function Section1() {
                                         {OFFICE_ICON_2}
                                     </div>
                                     <div>
-                                        <h6 className="fw-600">Studio</h6>
+                                        <h6 className="fw-600">Sales &amp; partnerships</h6>
                                         <span className="fz-font-md neutral-500">
-                                            245 Fifth Avenue, Suite 1800
+                                            Exploring Phoxta for your team, or want to list a business?
                                             <br className="d-block" />
-                                            New York, NY 10016, USA
-                                            <br className="d-block" />
-                                            Phone:{" "}
-                                            <span className="neutral-900">
-                                                <a href="tel:+2125557398">+2125557398</a>
-                                            </span>
+                                            Online-first — serving owners worldwide.
                                             <br className="d-block" />
                                             Email:{" "}
                                             <span className="neutral-900">
-                                                <a href="mailto:sale@phoxta.com">sale@phoxta.com</a>
+                                                <a href="mailto:sales@phoxta.com">sales@phoxta.com</a>
                                             </span>
                                         </span>
                                     </div>

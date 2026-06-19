@@ -115,9 +115,9 @@ const TAG_ARROW_SVG = (
 );
 
 const CARDS_IMGS = [
-    "/assets/imgs/pages/img-43-lg.webp",
-    "/assets/imgs/pages/img-74.webp",
-    "/assets/imgs/pages/img-75.webp",
+    "/assets/imgs/template/wb1.webp",
+    "/assets/imgs/template/wb2.webp",
+    "/assets/imgs/template/wb3.webp",
 ];
 
 const TAGS = ["E-commerce", "Local services", "Content & creator", "SaaS", "Marketplaces"];
@@ -152,16 +152,16 @@ export default function Section1() {
                                             playsInline
                                             poster="/assets/imgs/pages/img-2.webp"
                                         >
-                                            <source src="/assets/imgs/video/video-1.mp4" type="video/mp4" />
+                                            <source src="/assets/imgs/video/video-2.mp4" type="video/mp4" />
                                         </video>
                                     </div>
                                     <Link
                                         className="at-btn text-white rounded-0 bg-transparent px-0 pt-2 pb-3 border-0"
-                                        to="/about-2"
+                                        to="/about"
                                     >
                                         <span>
-                                            <span className="text-1">See it in action</span>
-                                            <span className="text-2">See it in action</span>
+                                            <span className="text-1">Phoxta</span>
+                                            <span className="text-2">Phoxta</span>
                                         </span>
                                         <i>
                                             {ARROW_SVG}

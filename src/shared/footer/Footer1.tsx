@@ -19,30 +19,28 @@ const SOCIAL_ARROW = (
   </svg>
 );
 
-const FOOTER_SERVICES = ["Web Development", "Motion Graphics", "Brand Strategy", "Product Design"];
+const FOOTER_SERVICES = ["AI Agent", "Operating Console", "Branded Storefront", "Custom Domains"];
 
 const SOCIAL_LINKS = [
-  { label: "Twitter", href: "#" },
-  { label: "Facebook", href: "#" },
-  { label: "Instagram", href: "#" },
-  { label: "Linkedin", href: "#" },
-  { label: "Behance", href: "#" },
-  { label: "Dribbble", href: "#" },
+  { label: "X (Twitter)", href: "https://x.com/phoxta" },
+  { label: "LinkedIn", href: "https://www.linkedin.com/company/phoxta" },
+  { label: "Instagram", href: "https://www.instagram.com/phoxta" },
+  { label: "YouTube", href: "https://www.youtube.com/@phoxta" },
 ] as const;
 
 const NAV_LINKS = [
   { label: "Home", href: "/" },
-  { label: "About", href: "/about-1" },
-  { label: "Works", href: "/portfolio-1" },
-  { label: "Blog", href: "/archive-1" },
-  { label: "Contact", href: "/contact-1" },
+  { label: "Marketplace", href: "/marketplace" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
 ] as const;
 
 const SHOP_LINKS = [
-  { label: "Shop", href: "/product-archive" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Cart", href: "/product-cart" },
-  { label: "Checkout", href: "/product-checkout" },
+  { label: "Blog", href: "/blog" },
+  { label: "FAQs", href: "/faqs" },
+  { label: "Careers", href: "/careers" },
+  { label: "Invest", href: "/invest" },
 ] as const;
 
 function FooterServiceTag({ label }: { label: string }) {
@@ -79,20 +77,22 @@ export default function Footer1() {
                 <div>
                   <h4 className="text-white reveal-text">
                     <RevealText>
-                      Let&apos;s Shape <br />
-                      Your Next Idea
+                      Own a business <br />
+                      that already works
                     </RevealText>
                   </h4>
                   <p className="mb-0">
-                    205 North Michigan Avenue, Suite 810 <br />
-                    Chicago, 60601, USA
+                    Online-first — serving <br />
+                    business owners worldwide.
                   </p>
                 </div>
               </div>
             </div>
             <div className="col-xxl-3 col-lg-5 col-md-8 ms-lg-auto text-lg-end">
               <div className="at-footer-title-wrap">
-                <h6 className="text-white">(212) 555-7398</h6>
+                <h6 className="text-white">
+                  <a href="mailto:sales@phoxta.com" className="text-white text-decoration-none">sales@phoxta.com</a>
+                </h6>
                 <h4 className="text-white text-decoration-underline text-wrap">
                   <a href="mailto:hello@phoxta.com" className="text-white text-decoration-underline">
                     hello@phoxta.com
@@ -101,7 +101,7 @@ export default function Footer1() {
                 <div className="at-footer-widget at-footer-link pt-50">
                   <div className="at-hero-social justify-content-lg-end">
                     {SOCIAL_LINKS.map(({ label, href }) => (
-                      <a key={label} href={href} onClick={(e) => href === "#" && e.preventDefault()}>
+                      <a key={label} href={href} target="_blank" rel="noreferrer">
                         {label}
                         {SOCIAL_ARROW}
                       </a>

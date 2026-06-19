@@ -30,40 +30,41 @@ type FaqSection = {
 const FAQ_SECTIONS: FaqSection[] = [
     {
         number: "01",
-        title: "General Information",
+        title: "Getting started",
         description:
-            "Essential questions to understand who we are, what we do, and who we work with.",
+            "What Phoxta is, what you get, and how quickly you can go live.",
         accordionId: "accordionFaq1",
         items: [
             {
                 id: "collapseFaq1-1",
                 num: "1",
-                question: "What does your agency do?",
+                question: "What is Phoxta?",
                 answer:
-                    "We help brands grow through strategy, design, and digital experiences that connect with people.",
+                    "Phoxta is a marketplace of validated, AI-powered businesses you can own and run from day one. Pick a business blueprint, make it your own, and launch with a ready storefront, an operating console, and an AI agent that runs the day-to-day.",
                 open: true,
             },
             {
                 id: "collapseFaq1-2",
                 num: "2",
-                question: "Who do you typically work with?",
+                question: "Do I need technical or business experience?",
                 answer:
-                    "We work with startups, growing businesses, and established brands across industries.",
+                    "No. Every business comes ready to operate — the AI agent and console handle customer messages, bookings, orders and follow-ups, and setup is fully guided.",
                 open: false,
             },
             {
                 id: "collapseFaq1-3",
                 num: "3",
-                question: "Are you a full-service creative agency?",
-                answer: "Yes, we provide end-to-end services from strategy to execution.",
+                question: "What exactly do I get when I buy a business?",
+                answer:
+                    "A live storefront on your own domain, an operating console to run it, and a dedicated AI agent that answers calls, chats and bookings across every channel — all pre-wired and ready to brand.",
                 open: false,
             },
             {
                 id: "collapseFaq1-4",
                 num: "4",
-                question: "Do you work with international clients?",
+                question: "How fast can I go live?",
                 answer:
-                    "Yes, we collaborate with clients worldwide across different time zones.",
+                    "Most owners launch within minutes: pick a blueprint, brand it, and publish on a free Phoxta subdomain. Connect a custom domain whenever you're ready.",
                 open: false,
             },
         ],
@@ -72,80 +73,85 @@ const FAQ_SECTIONS: FaqSection[] = [
         number: "02",
         title: (
             <>
-                Services <br />
-                and Solutions
+                Your AI agent <br />
+                &amp; operations
             </>
         ),
         description:
-            "Details about our AI solutions, consulting offerings, and system capabilities.",
+            "How the agent works across channels — and how it acts on your business.",
         accordionId: "accordionFaq2",
         items: [
             {
                 id: "collapseFaq2-1",
                 num: "1",
-                question: "What services do you offer?",
+                question: "What can the AI agent do?",
                 answer:
-                    "We help brands grow through strategy, design, and digital experiences that connect with people.",
+                    "It answers customers over SMS, WhatsApp, email and voice — booking and rescheduling appointments, capturing leads, taking orders, recommending products, and escalating to you when needed. One agent, every channel.",
                 open: true,
             },
             {
                 id: "collapseFaq2-2",
                 num: "2",
-                question: "Do you offer custom solutions?",
-                answer: "Yes, every solution is tailored to each client's goals and needs.",
+                question: "Can the agent take actions, not just chat?",
+                answer:
+                    "Yes. With your permission it can update prices, fulfil orders, manage bookings and more — governed by a per-tool policy (off, ask-me, or auto), an approval queue, and a full audit log you control.",
                 open: false,
             },
             {
                 id: "collapseFaq2-3",
                 num: "3",
-                question: "Can you handle both design and development?",
-                answer: "Yes, our team covers both design and full-stack development.",
+                question: "Does it work after hours?",
+                answer:
+                    "Yes — it helps customers 24/7, captures every lead, books when it can, and never sends anyone to voicemail.",
                 open: false,
             },
             {
                 id: "collapseFaq2-4",
                 num: "4",
-                question: "Do you work on one-time projects or ongoing partnerships?",
-                answer: "We offer both one-time projects and long-term collaborations.",
+                question: "Can I control how it sounds and behaves?",
+                answer:
+                    "Yes. From the console you set its persona, tone, business hours, escalation rules and knowledge, and you can test it live before customers ever reach it.",
                 open: false,
             },
         ],
     },
     {
         number: "03",
-        title: "Process & Collaboration",
+        title: "Branding & customisation",
         description:
-            "How we approach problems, execute projects, and collaborate with clients.",
+            "Make the business yours — branding, domains, and editable content.",
         accordionId: "accordionFaq3",
         items: [
             {
                 id: "collapseFaq3-1",
                 num: "1",
-                question: "How do projects usually start?",
+                question: "Can I make the business my own?",
                 answer:
-                    "Projects begin with a discovery phase to understand objectives, data readiness, and system constraints.",
+                    "Completely. Rebrand instantly with your name, logo, colours and fonts — manually or with AI — and edit pages, sections, text and images in the visual Studio editor.",
                 open: true,
             },
             {
                 id: "collapseFaq3-2",
                 num: "2",
-                question: "How do you communicate during a project?",
+                question: "Can I use my own domain?",
                 answer:
-                    "We communicate regularly through meetings, emails, and project tools.",
+                    "Yes. Launch on a free Phoxta subdomain, then connect a custom domain you already own — or buy one — from the dashboard in a few clicks.",
                 open: false,
             },
             {
                 id: "collapseFaq3-3",
                 num: "3",
-                question: "How long does a typical project take?",
-                answer: "Timelines vary based on scope, but most projects take 4–12 weeks.",
+                question: "Can I edit the storefront and products?",
+                answer:
+                    "Yes — every page, section, product, price and image is editable from the Studio editor and the operating console, and changes go live immediately.",
                 open: false,
             },
             {
                 id: "collapseFaq3-4",
                 num: "4",
-                question: "Can the scope change during development?",
-                answer: "Yes, scope changes are managed through a clear change process.",
+                question: "Can I run more than one business?",
+                answer:
+                    "Yes. You can buy and run multiple businesses from a single account; higher plans include more businesses and capacity.",
                 open: false,
             },
         ],
@@ -154,41 +160,44 @@ const FAQ_SECTIONS: FaqSection[] = [
         number: "04",
         title: (
             <>
-                Engagement <br />
-                and Support
+                Pricing, billing <br />
+                &amp; support
             </>
         ),
         description:
-            "Post-launch support, maintenance, updates, and system optimization.",
+            "How pricing works, trials, cancellation, and getting help.",
         accordionId: "accordionFaq4",
         items: [
             {
                 id: "collapseFaq4-1",
                 num: "1",
-                question: "How do you price your services?",
+                question: "How does pricing work?",
                 answer:
-                    "Pricing is based on project scope, complexity, and engagement type.",
+                    "A simple monthly subscription per account — Starter, Growth or Scale — plus a one-time price for each business blueprint you buy. See the Pricing page for full details.",
                 open: true,
             },
             {
                 id: "collapseFaq4-2",
                 num: "2",
-                question: "Do you offer fixed or hourly pricing?",
-                answer: "We offer both fixed-price and hourly engagement models.",
+                question: "Is there a free trial?",
+                answer:
+                    "Yes — start on a trial, explore your console and storefront, and only go live when you're ready. You can cancel anytime.",
                 open: false,
             },
             {
                 id: "collapseFaq4-3",
                 num: "3",
-                question: "Is there a minimum project size?",
-                answer: "Yes, minimum project scope depends on service requirements.",
+                question: "What happens to my business if I cancel?",
+                answer:
+                    "You keep your data and your storefront simply pauses. You can re-activate anytime, and export your customers and content whenever you like.",
                 open: false,
             },
             {
                 id: "collapseFaq4-4",
                 num: "4",
-                question: "Do you provide support after launch?",
-                answer: "Yes, we offer ongoing support and maintenance options.",
+                question: "How do I get help?",
+                answer:
+                    "Your in-console AI assistant answers most questions instantly, and you can email our team anytime. Growth and Scale plans include priority support.",
                 open: false,
             },
         ],

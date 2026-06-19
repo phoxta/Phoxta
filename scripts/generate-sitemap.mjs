@@ -39,7 +39,6 @@ const ROUTES = [
     { path: "/blog", priority: 0.6, changefreq: "weekly" },
     { path: "/faqs", priority: 0.6, changefreq: "monthly" },
     { path: "/careers", priority: 0.6, changefreq: "monthly" },
-    { path: "/team", priority: 0.5, changefreq: "monthly" },
     { path: "/contact", priority: 0.7, changefreq: "yearly" },
     { path: "/privacy", priority: 0.3, changefreq: "yearly" },
     { path: "/terms", priority: 0.3, changefreq: "yearly" },

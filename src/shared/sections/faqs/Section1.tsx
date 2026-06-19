@@ -32,8 +32,8 @@ export type FaqHeroProps = {
 
 export const FAQ_HERO_DEFAULTS = {
     eyebrow: "Frequently Asked Questions",
-    heading: "Join the community with more than 12k+ topics already created",
-    subtitle: "Professional support team will solve your problem.",
+    heading: "Answers to your questions about owning a Phoxta business",
+    subtitle: "Everything about buying, branding, launching and running your business.",
     searchPlaceholder: "Your question...",
     buttonLabel: "Find the answer",
 } satisfies Required<FaqHeroProps>;
