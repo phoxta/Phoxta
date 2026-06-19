@@ -5,6 +5,8 @@ import { runAgent, callMessages } from "./anthropic.ts";
 import { modelFor, type Tier } from "./models.ts";
 import { AGENT_TOOLS, agentToolRunner, type AgentCtx } from "./agentTools.ts";
 import { meter, tokensUsedThisMonth, MONTHLY_TOKEN_CAP } from "./meter.ts";
+import { guardInput, guardOutput, INJECTION_GUARD_NOTE } from "./guardrails.ts";
+import { loadCustomerMemory, extractCustomerMemory } from "./memory.ts";
 import type { SupabaseClient } from "./supabaseAdmin.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -105,6 +107,11 @@ export async function respondCore(
 ): Promise<{ conversationId: string; reply: string; actions: string[]; escalated: boolean }> {
   const { id: conversationId, contactId } = await resolveConversation(admin, org.id, params.channel, params.conversationId, params.customer);
 
+  // Input guardrail: bound length + flag prompt-injection attempts. Use the
+  // sanitized text everywhere downstream (run, history, persistence).
+  const inGuard = guardInput(params.message);
+  const userText = inGuard.cleaned;
+
   // This conversation's history.
   const { data: msgs } = await admin
     .from("conversation_messages")
@@ -125,7 +132,7 @@ export async function respondCore(
   if ((await tokensUsedThisMonth(admin, org.id)) >= cap) {
     const capped = "Thanks for reaching out! I can't continue the conversation right now, but I've noted your message and a member of the team will follow up with you shortly.";
     await admin.from("conversation_messages").insert([
-      { organization_id: org.id, conversation_id: conversationId, role: "customer", channel_type: params.channel, body: params.message },
+      { organization_id: org.id, conversation_id: conversationId, role: "customer", channel_type: params.channel, body: userText },
       { organization_id: org.id, conversation_id: conversationId, role: "agent", channel_type: params.channel, body: capped, meta: { capped: true } },
     ]);
     await admin.from("conversations").update({ last_message_at: new Date().toISOString(), status: "escalated" }).eq("id", conversationId);
@@ -150,13 +157,19 @@ export async function respondCore(
       .join("\n");
   }
 
+  // Durable, structured long-term memory for this customer (preferences/facts
+  // that persist across conversations and channels — the "memory bank").
+  const longMem = await loadCustomerMemory(admin, org.id, contactId);
+
   const isAfterHours = config.capabilities?.after_hours !== false && afterHours(config.business_hours);
   const caps = Object.entries(config.capabilities ?? {}).filter(([, v]) => v).map(([k]) => k).join(", ");
 
   const system = [
     `You are ${config.display_name}, the AI agent for "${org.name}" (${org.vertical || "small business"}). Persona: ${config.persona} Tone: ${config.tone}.`,
     `You are reached on the ${params.channel} channel. You are ONE agent across every channel — greet returning customers by what you already know.`,
-    memory ? `\nWhat you know about this customer:\n${memory}\n` : "",
+    longMem ? `\nDurable profile for this customer (remember and use this):\n${longMem}\n` : "",
+    memory ? `\nRecent context from other conversations:\n${memory}\n` : "",
+    inGuard.injection ? INJECTION_GUARD_NOTE : "",
     `Enabled capabilities: ${caps}.`,
     "Use your tools to ACT, not just talk: check availability and book/reschedule appointments, capture and qualify leads, open tickets, recommend products for upsell, route callers to the right location by ZIP, schedule callbacks, and escalate to a human when needed.",
     isAfterHours
@@ -172,7 +185,7 @@ export async function respondCore(
   const run = await runAgent({
     model,
     system,
-    userMessage: params.message,
+    userMessage: userText,
     history,
     tools: AGENT_TOOLS,
     toolRunner: agentToolRunner(admin, org.id, ctx),
@@ -181,12 +194,15 @@ export async function respondCore(
   });
   const latency = Date.now() - t0;
 
-  const reply = run.text || "Thanks — let me get a teammate to follow up with you.";
+  // Output guardrail: redact any leaked secrets/cards + flag system-prompt leaks
+  // before the reply ever leaves the building.
+  const out = guardOutput(run.text || "Thanks — let me get a teammate to follow up with you.");
+  const reply = out.cleaned;
   const escalated = ctx.actions.some((a) => a.toLowerCase().includes("escalat"));
 
   await admin.from("conversation_messages").insert([
-    { organization_id: org.id, conversation_id: conversationId, role: "customer", channel_type: params.channel, body: params.message },
-    { organization_id: org.id, conversation_id: conversationId, role: "agent", channel_type: params.channel, body: reply, meta: { actions: ctx.actions, tools: run.toolCalls } },
+    { organization_id: org.id, conversation_id: conversationId, role: "customer", channel_type: params.channel, body: userText },
+    { organization_id: org.id, conversation_id: conversationId, role: "agent", channel_type: params.channel, body: reply, meta: { actions: ctx.actions, tools: run.toolCalls, guardrails: { input_injection: inGuard.injection, output_flags: out.flags } } },
   ]);
   await admin
     .from("conversations")
@@ -231,4 +247,9 @@ export async function summarizeConversation(admin: SupabaseClient, org: Org, con
   });
   await admin.from("conversations").update({ summary: r.text }).eq("id", conversationId);
   await meter(admin, { organizationId: org.id, model: r.model, feature: "agent_summary", tier: "cheap", inTok: r.inTok, outTok: r.outTok, latencyMs: Date.now() - t0 });
+
+  // Capture durable per-customer memory from the same transcript (background).
+  const { data: conv } = await admin.from("conversations").select("contact_id").eq("id", conversationId).maybeSingle();
+  const contactId = (conv as { contact_id: string | null } | null)?.contact_id ?? null;
+  if (contactId) await extractCustomerMemory(admin, org.id, org.name, contactId, transcript);
 }
