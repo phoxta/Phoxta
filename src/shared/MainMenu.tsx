@@ -1,15 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { MainMenuRootList } from "@/shared/mobile-menu/MobileMenuCloneContext";
 
-type Item = { to: string; label: string };
-
-const SOLUTIONS_LINKS: Item[] = [
-  { to: "/index-4", label: "Phoxta AI & Tech" },
-  { to: "/index-7", label: "Startup Accelerator" },
-  { to: "/index-3", label: "Marketing" },
-  { to: "/index-9", label: "Brand Design" },
-];
-
 function MenuLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <NavLink to={to} className={({ isActive }) => (isActive ? "active" : undefined)}>
@@ -36,21 +27,8 @@ export default function MainMenu() {
         </MenuLink>
       </li>
 
-      <li className="has-dropdown">
-        <a href="#" onClick={(e) => e.preventDefault()}>
-          <LinkSwap label="Solutions" />
-        </a>
-        <ul className="at-submenu submenu">
-          {SOLUTIONS_LINKS.map((l) => (
-            <li key={l.label}>
-              <MenuLink to={l.to}>{l.label}</MenuLink>
-            </li>
-          ))}
-        </ul>
-      </li>
-
       <li>
-        <MenuLink to="/product-archive">
+        <MenuLink to="/marketplace">
           <LinkSwap label="Marketplace" />
         </MenuLink>
       </li>
@@ -62,8 +40,14 @@ export default function MainMenu() {
       </li>
 
       <li>
-        <MenuLink to="/archive-1">
-          <LinkSwap label="Articles" />
+        <MenuLink to="/about">
+          <LinkSwap label="About" />
+        </MenuLink>
+      </li>
+
+      <li>
+        <MenuLink to="/blog">
+          <LinkSwap label="Blog" />
         </MenuLink>
       </li>
 
