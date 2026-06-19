@@ -26,29 +26,29 @@ const SCROLL_SVG = (
 const STEPS = [
     {
         num: "01",
-        title: "Explore",
-        description: "Understand context constraints, goals and assumptions",
+        title: "Pick a business",
+        description: "Choose a validated, ready-to-run blueprint from the marketplace.",
         img: "/assets/imgs/pages/img-161.webp",
         cardClass: "at-service-card hover-up card-1 no-before rounded-2 overflow-hidden p-relative bg-neutral-0 z-index-3",
     },
     {
         num: "02",
-        title: "Synthesize",
-        description: "Turn data into meaningful insights",
+        title: "Make it yours",
+        description: "Rebrand with AI or by hand — logo, colours, copy and pages.",
         img: "/assets/imgs/pages/img-162.webp",
         cardClass: "at-service-card hover-up card-2 rounded-2 overflow-hidden p-relative bg-neutral-0",
     },
     {
         num: "03",
-        title: "Frame",
-        description: "Define problems & opportunities and priorities",
+        title: "Go live",
+        description: "Publish on a free subdomain or connect your own custom domain.",
         img: "/assets/imgs/pages/img-163.webp",
         cardClass: "at-service-card hover-up card-3 rounded-2 overflow-hidden p-relative bg-neutral-0",
     },
     {
         num: "04",
-        title: "Guide",
-        description: "Translate insight into action",
+        title: "Run it with AI",
+        description: "Your agent and console handle customers, bookings and orders.",
         img: "/assets/imgs/pages/img-164.webp",
         cardClass: "at-service-card hover-up card-2 rounded-2 overflow-hidden p-relative bg-neutral-0",
     },
@@ -62,8 +62,8 @@ export default function Section4() {
                     <div className="col-lg-6">
                         <span className="at-btn common-black bg-transparent mb-10 rounded-0 p-0">
                             <span className="text-uppercase">
-                                <span className="text-1">OUR APPROACH</span>
-                                <span className="text-2">OUR APPROACH</span>
+                                <span className="text-1">HOW IT WORKS</span>
+                                <span className="text-2">HOW IT WORKS</span>
                             </span>
                             <i>
                                 {ARROW_SVG}
@@ -71,10 +71,10 @@ export default function Section4() {
                             </i>
                         </span>
                         <h3 className="reveal-text mb-20">
-                            <RevealText>How we approach strategy </RevealText>
+                            <RevealText>From blueprint to live in minutes</RevealText>
                         </h3>
                         <h6 className="fw-500 mb-0">
-                            We combine research, analysis, and strategic thinking into a clear, decision-making framework.
+                            Every plan includes everything you need to launch and run an AI-powered business.
                         </h6>
                     </div>
                     <div className="col-lg-4 col-md-8 ms-auto text-end">
@@ -87,13 +87,13 @@ export default function Section4() {
                     {STEPS.map((step, i) => (
                         <div key={i} className="col-xxl-3 col-md-6">
                             <div className={step.cardClass}>
-                                <Link to="#" className="p-absolute top-0 left-0 w-100 h-100" />
+                                <Link to="/marketplace" className="p-absolute top-0 left-0 w-100 h-100" />
                                 <div className="at-service-card-content m-lg-5 m-4">
                                     <div className="at-service-card-number">
                                         <h6 className="fw-600 neutral-300">[{step.num}]</h6>
                                     </div>
                                     <h4 className="mt-3 fw-600">
-                                        <Link to="#">{step.title}</Link>
+                                        <Link to="/marketplace">{step.title}</Link>
                                     </h4>
                                     <div className="at-service-card-description">
                                         <p className="mb-0 neutral-900">{step.description}</p>

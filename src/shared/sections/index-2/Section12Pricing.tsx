@@ -18,22 +18,22 @@ const FEATURE_ICON_SVG = (
     </svg>
 );
 
-const PERSONAL_PRICES = { starter: "$1,200", growth: "$2,800", scale: "$3,600" };
-const BUSINESS_PRICES = { starter: "$2,400", growth: "$5,600", scale: "$7,200" };
+const MONTHLY_PRICES = { starter: "$32", growth: "$79", scale: "$179" };
+const ANNUAL_PRICES = { starter: "$26", growth: "$63", scale: "$143" };
 
 const PLANS = [
     {
         key: "starter" as const,
         title: "Starter",
         priceClass: "text-price-starter",
-        desc: "A solid digital foundation focused on clarity, usability, and performance essentials.",
-        btnText: "Get Started",
+        desc: "Launch your first AI-powered business and start serving customers.",
+        btnText: "Start free",
         features: [
-            "Digital strategy setup",
-            "Digital audit & Insights",
-            "Positioning & Messaging",
-            "SEO & Technical setup",
-            "Analytics tracking",
+            "1 business",
+            "AI agent on every channel",
+            "Full operating console",
+            "Storefront on a free Phoxta subdomain",
+            "200K AI tokens / month",
         ],
         popular: false,
     },
@@ -41,14 +41,14 @@ const PLANS = [
         key: "growth" as const,
         title: "Growth",
         priceClass: "text-price-growth",
-        desc: "A performance-driven plan to accelerate acquisition and conversion.",
-        btnText: "Choose Growth",
+        desc: "Grow an established business on your own brand and domain.",
+        btnText: "Start free",
         features: [
-            "Growth strategy",
-            "Conversion optimization",
-            "SEO & Content performance",
-            "Campaign setup & Reporting",
-            "Advance analytics tracking",
+            "Up to 3 businesses",
+            "Connect your own custom domain",
+            "1M AI tokens / month",
+            "Proactive automations & briefings",
+            "Priority support",
         ],
         popular: true,
     },
@@ -56,14 +56,14 @@ const PLANS = [
         key: "scale" as const,
         title: "Scale",
         priceClass: "text-price-scale",
-        desc: "A long-term digital partnership for sustainable growth at scale.",
-        btnText: "Scale Your Business",
+        desc: "Run multiple businesses with a team and advanced AI.",
+        btnText: "Start free",
         features: [
-            "Full strategy & execution",
-            "Dedicated success manager",
-            "Advanced SEO & content",
-            "Multi-channel campaigns",
-            "Custom reporting & insights",
+            "Up to 10 businesses",
+            "5M AI tokens / month",
+            "Outbound & call-center agent",
+            "Team seats",
+            "Priority support",
         ],
         popular: false,
     },
@@ -75,8 +75,8 @@ type Section12PricingProps = {
 };
 
 export default function Section12Pricing({ titleSlot, footerSlot }: Section12PricingProps) {
-    const [isBusiness, setIsBusiness] = useState(false);
-    const prices = isBusiness ? BUSINESS_PRICES : PERSONAL_PRICES;
+    const [isAnnual, setIsAnnual] = useState(false);
+    const prices = isAnnual ? ANNUAL_PRICES : MONTHLY_PRICES;
 
     return (
         <>
@@ -87,21 +87,21 @@ export default function Section12Pricing({ titleSlot, footerSlot }: Section12Pri
                         <span
                             className="price-plan-toggle-label"
                             data-plan="personal"
-                            onClick={() => setIsBusiness(false)}
-                            onKeyDown={(e) => e.key === "Enter" && setIsBusiness(false)}
+                            onClick={() => setIsAnnual(false)}
+                            onKeyDown={(e) => e.key === "Enter" && setIsAnnual(false)}
                             role="button"
                             tabIndex={0}
                         >
-                            Personal
+                            Monthly
                         </span>
                         <label className="price-plan-toggle">
                             <input
                                 type="checkbox"
                                 className="price-plan-toggle__input"
                                 id="price-plan-toggle"
-                                aria-label="Select Business plan"
-                                checked={isBusiness}
-                                onChange={(e) => setIsBusiness(e.target.checked)}
+                                aria-label="Switch to annual billing"
+                                checked={isAnnual}
+                                onChange={(e) => setIsAnnual(e.target.checked)}
                             />
                             <span className="price-plan-toggle__track" />
                             <span className="price-plan-toggle__thumb" />
@@ -109,12 +109,12 @@ export default function Section12Pricing({ titleSlot, footerSlot }: Section12Pri
                         <span
                             className="price-plan-toggle-label"
                             data-plan="business"
-                            onClick={() => setIsBusiness(true)}
-                            onKeyDown={(e) => e.key === "Enter" && setIsBusiness(true)}
+                            onClick={() => setIsAnnual(true)}
+                            onKeyDown={(e) => e.key === "Enter" && setIsAnnual(true)}
                             role="button"
                             tabIndex={0}
                         >
-                            Business
+                            Annual <span className="neutral-500">(save 20%)</span>
                         </span>
                     </div>
                 </div>
@@ -138,11 +138,11 @@ export default function Section12Pricing({ titleSlot, footerSlot }: Section12Pri
                                         {prices[plan.key]}
                                     </span>
                                     <span className="home-2-pricing-card__price-period">
-                                        /monthly
+                                        {isAnnual ? "/mo, billed yearly" : "/monthly"}
                                     </span>
                                 </div>
                                 <p className="home-2-pricing-card__desc">{plan.desc}</p>
-                                <Link className="at-btn px-5" to="#">
+                                <Link className="at-btn px-5" to="/auth">
                                     <span>
                                         <span className="text-1 text-capitalize">{plan.btnText}</span>
                                         <span className="text-2 text-capitalize">{plan.btnText}</span>
