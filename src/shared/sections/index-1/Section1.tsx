@@ -91,10 +91,10 @@ export default function Section1() {
                         <div className="row align-items-start">
                             <div className="col-xxl-6 col-lg-6 mb-5 mb-lg-0 pe-xxl-5">
                                 <h4 className="sec-1-home-4__headline fw-600 text-white mb-3 mb-md-4 lh-1">
-                                    Deploy fully AI-automated <br /> businesses instantly.
+                                    Buy niche businesses powered entirely by automated AI pipelines.
                                 </h4>
                                 <p className="text-white fz-font-lg mb-4 mb-md-5" style={{ opacity: 0.85, maxWidth: 540 }}>
-                                    Why build from scratch when you can buy pre-validated, niche businesses powered entirely by automated AI pipelines.
+                                    Fully operational from day one. Zero coding, and 100% automated growth from a single, centralized command center.
                                 </p>
 
                                 {/* "How we work" block carried over from the original homepage hero */}

@@ -9535,21 +9535,22 @@ input.footer-15__form-input:focus {
   }
 }
 .sec-1-home-4-wrap .sec-1-home-4__headline {
-  font-size: 44px;
+  font-size: 38px;
+  text-wrap: balance;
 }
 @media only screen and (min-width: 1200px) and (max-width: 1399px) {
-  .sec-1-home-4-wrap .sec-1-home-4__headline {
-    font-size: 40px;
-  }
-}
-@media only screen and (min-width: 992px) and (max-width: 1199px) {
   .sec-1-home-4-wrap .sec-1-home-4__headline {
     font-size: 34px;
   }
 }
+@media only screen and (min-width: 992px) and (max-width: 1199px) {
+  .sec-1-home-4-wrap .sec-1-home-4__headline {
+    font-size: 30px;
+  }
+}
 @media only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
   .sec-1-home-4-wrap .sec-1-home-4__headline {
-    font-size: 36px;
+    font-size: 32px;
   }
 }
 .sec-1-home-4-wrap .sec-1-home-4__tagline {
