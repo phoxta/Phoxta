@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useOutletContext } from "react-router-dom";
 import type { OpsContext } from "@/layouts/OperatingLayout";
+import { preloadAgentTab } from "@/pages/dashboard/preload";
 
 const SUBTABS = [
   { seg: "", label: "Overview", end: true },
@@ -32,6 +33,7 @@ export default function AgentLayout() {
               <NavLink
                 to={t.seg ? `${base}/${t.seg}` : base}
                 end={t.end}
+                onMouseEnter={() => preloadAgentTab(t.seg)}
                 className={({ isActive }) =>
                   `d-inline-block px-3 py-2 fz-font-md rounded-3 text-decoration-none ${isActive ? "bg-neutral-900 text-white fw-600" : "bg-neutral-0 neutral-500 border-100"}`
                 }

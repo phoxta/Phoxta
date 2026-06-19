@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { getBusiness, type Organization } from "@/lib/db/organizations";
 import { resolveConsole, consoleTabs, type VerticalConsole } from "@/lib/ops/consoleConfig";
+import { preloadOpsConsole, preloadOpsTab } from "@/pages/dashboard/preload";
 
 export type OpsContext = { orgId: string; org: Organization; console: VerticalConsole };
 
@@ -10,6 +11,12 @@ export default function OperatingLayout() {
   const { id } = useParams();
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Warm every console tab's chunk on idle so switching tabs is instant, even
+  // when a user deep-links straight into the console.
+  useEffect(() => {
+    preloadOpsConsole();
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -61,6 +68,7 @@ export default function OperatingLayout() {
               <NavLink
                 to={t.seg ? `${base}/${t.seg}` : base}
                 end={t.end}
+                onMouseEnter={() => preloadOpsTab(t.seg)}
                 className={({ isActive }) =>
                   `d-inline-block px-3 py-2 fz-font-md text-decoration-none border-bottom border-2 ${
                     isActive ? "neutral-900 fw-600 border-dark" : "neutral-500 border-transparent"
