@@ -11,9 +11,13 @@ export default function PricingPage() {
         description="Simple, transparent pricing for owning an AI-powered business on Phoxta. One monthly subscription per account plus a one-time price per business. Start free, cancel anytime."
         path="/pricing"
       />
-      <Section1 className="pt-100" showNoise={false} />
-      <Section2 />
-      <Section3 />
+      {/* Top padding clears the transparent, absolutely-positioned header so the
+          nav menu sits over a clean band (mirrors the pt-150 hero on other pages). */}
+      <div className="pt-150">
+        <Section1 showNoise={false} />
+        <Section2 />
+        <Section3 />
+      </div>
     </>
   );
 }
