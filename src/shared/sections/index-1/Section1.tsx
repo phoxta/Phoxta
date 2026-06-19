@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import MainMenu from "@/shared/MainMenu";
 import ThemeSwitcher from "@/shared/ThemeSwitcher";
@@ -123,8 +125,54 @@ const CARDS_IMGS = [
 const TAGS = ["E-commerce", "Local services", "Content & creator", "SaaS", "Marketplaces"];
 
 export default function Section1() {
+    const [videoOpen, setVideoOpen] = useState(false);
+
+    // Close the video popup on Escape.
+    useEffect(() => {
+        if (!videoOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setVideoOpen(false);
+        };
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [videoOpen]);
+
     return (
         <div className="bg-neutral-50">
+            {/* Portal to <body> so the overlay isn't trapped inside the GSAP
+                ScrollSmoother transform (which would break position: fixed). */}
+            {videoOpen &&
+                createPortal(
+                    <div
+                        className="sec-1-home-4__video-modal position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
+                        style={{ background: "rgba(0,0,0,.82)", zIndex: 1080 }}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Phoxta video"
+                        onClick={() => setVideoOpen(false)}
+                    >
+                        <div className="p-relative" style={{ maxWidth: 960, width: "100%" }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                className="btn-close btn-close-white position-absolute top-0 end-0 m-2"
+                                style={{ zIndex: 1 }}
+                                aria-label="Close video"
+                                onClick={() => setVideoOpen(false)}
+                            />
+                            <video
+                                className="w-100 d-block rounded-3"
+                                style={{ maxHeight: "80vh", background: "#000" }}
+                                controls
+                                autoPlay
+                                playsInline
+                                preload="metadata"
+                            >
+                                <source src="/assets/imgs/video/video-2.mp4" type="video/mp4" />
+                            </video>
+                        </div>
+                    </div>,
+                    document.body,
+                )}
             <div className="container-2200 sec-1-home-4-wrap p-relative z-0" style={{ paddingTop: 20 }}>
                 <div
                     className="sec-1-home-4 bg-linear-opacity p-relative bg-cover mt-20 rounded-5 mx-lg-3 mx-2"
@@ -155,9 +203,10 @@ export default function Section1() {
                                             <source src="/assets/imgs/video/video-2.mp4" type="video/mp4" />
                                         </video>
                                     </div>
-                                    <Link
+                                    <button
+                                        type="button"
                                         className="at-btn text-white rounded-0 bg-transparent px-0 pt-2 pb-3 border-0"
-                                        to="/about"
+                                        onClick={() => setVideoOpen(true)}
                                     >
                                         <span>
                                             <span className="text-1">Phoxta</span>
@@ -167,7 +216,7 @@ export default function Section1() {
                                             {ARROW_SVG}
                                             {ARROW_SVG}
                                         </i>
-                                    </Link>
+                                    </button>
                                 </div>
                             </div>
                             <div className="col-xxl-4 col-lg-6 col-md-10 ms-lg-auto mt-lg-0 mt-4">

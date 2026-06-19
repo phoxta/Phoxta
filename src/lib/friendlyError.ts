@@ -28,6 +28,11 @@ export function friendlyError(raw: string | null | undefined): string | null {
   }
   if (m.includes("password should be") || m.includes("at least")) return "Please choose a stronger password (at least 8 characters).";
   if (m.includes("rate limit") || m.includes("too many")) return "Too many attempts. Please wait a moment and try again.";
+  // Auth email delivery (confirmation / recovery) failing — usually a project-level
+  // SMTP/email-provider issue, not something the user did.
+  if (m.includes("error sending") || m.includes("confirmation email") || m.includes("recovery email") || m.includes("smtp")) {
+    return "We couldn't send your email just now. Please try again in a few minutes — if it keeps happening, contact support.";
+  }
   // Permissions
   if (m.includes("row-level security") || m.includes("permission denied") || m.includes("not authorized")) {
     return "You don't have permission to do that.";

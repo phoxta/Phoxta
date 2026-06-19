@@ -4,10 +4,10 @@ import { MainMenuRootList } from "@/shared/mobile-menu/MobileMenuCloneContext";
 type Item = { to: string; label: string };
 
 const SOLUTIONS_LINKS: Item[] = [
-  { to: "/index-4", label: "Phoxta AI & Tech" },
-  { to: "/index-7", label: "Startup Accelerator" },
-  { to: "/index-3", label: "Marketing" },
-  { to: "/index-9", label: "Brand Design" },
+  { to: "/ai-tech", label: "Phoxta AI & Tech" },
+  { to: "/startup-accelerator", label: "Startup Accelerator" },
+  { to: "/marketing", label: "Marketing" },
+  { to: "/brand-design", label: "Brand Design" },
 ];
 
 function MenuLink({ to, children }: { to: string; children: React.ReactNode }) {
