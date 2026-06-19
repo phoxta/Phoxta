@@ -11,6 +11,11 @@ import AgentLayout from "@/layouts/AgentLayout";
 // Marketing site — the curated, public Phoxta pages.
 const Home1Page = lazy(() => import("@/pages/Home1Page"));
 const Home13Page = lazy(() => import("@/pages/Home13Page")); // /invest
+// Solutions pages (linked from the nav's Solutions dropdown)
+const Home3Page = lazy(() => import("@/pages/Home3Page")); // /index-3 — Marketing
+const Home4Page = lazy(() => import("@/pages/Home4Page")); // /index-4 — Phoxta AI & Tech
+const Home7Page = lazy(() => import("@/pages/Home7Page")); // /index-7 — Startup Accelerator
+const Home9Page = lazy(() => import("@/pages/Home9Page")); // /index-9 — Brand Design
 const About2Page = lazy(() => import("@/pages/About2Page"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
 const ProductArchivePage = lazy(() => import("@/pages/ProductArchivePage")); // /marketplace
@@ -69,7 +74,6 @@ const LEGACY_REDIRECTS: [string, string][] = [
   ["/blog-details", "/blog"], ["/archive-1", "/blog"],
   ["/team", "/about"], ["/team-details", "/about"],
   ["/services-1", "/about"], ["/services-2", "/about"], ["/services-3", "/about"], ["/services-details", "/about"],
-  ["/index-3", "/"], ["/index-4", "/"], ["/index-7", "/"], ["/index-9", "/"],
 ];
 
 const RouteFallback = () => (
@@ -141,6 +145,19 @@ export default function App() {
       </Route>
       <Route element={<MainLayout headerStyle={13} footerStyle={13} noFooter />}>
         <Route path="/invest" element={<Home13Page />} />
+      </Route>
+      {/* Solutions pages (nav → Solutions dropdown) */}
+      <Route element={<MainLayout headerStyle={3} footerStyle={3} />}>
+        <Route path="/index-3" element={<Home3Page />} />
+      </Route>
+      <Route element={<MainLayout headerStyle={4} footerStyle={4} />}>
+        <Route path="/index-4" element={<Home4Page />} />
+      </Route>
+      <Route element={<MainLayout headerStyle={7} footerStyle={7} />}>
+        <Route path="/index-7" element={<Home7Page />} />
+      </Route>
+      <Route element={<MainLayout headerStyle={9} footerStyle={9} />}>
+        <Route path="/index-9" element={<Home9Page />} />
       </Route>
       <Route element={<MainLayout headerStyle={2} footerStyle={2} />}>
         <Route path="/about" element={<About2Page />} />

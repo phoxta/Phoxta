@@ -3,14 +3,11 @@ import { MainMenuRootList } from "@/shared/mobile-menu/MobileMenuCloneContext";
 
 type Item = { to: string; label: string };
 
-// "Solutions" = the kinds of businesses you can own on Phoxta. They all open the
-// marketplace (the public marketplace lists every blueprint).
 const SOLUTIONS_LINKS: Item[] = [
-  { to: "/marketplace", label: "Retail & eCommerce" },
-  { to: "/marketplace", label: "Restaurants & Food" },
-  { to: "/marketplace", label: "Bookings & Rentals" },
-  { to: "/marketplace", label: "Travel & Experiences" },
-  { to: "/marketplace", label: "Browse all businesses" },
+  { to: "/index-4", label: "Phoxta AI & Tech" },
+  { to: "/index-7", label: "Startup Accelerator" },
+  { to: "/index-3", label: "Marketing" },
+  { to: "/index-9", label: "Brand Design" },
 ];
 
 function MenuLink({ to, children }: { to: string; children: React.ReactNode }) {
