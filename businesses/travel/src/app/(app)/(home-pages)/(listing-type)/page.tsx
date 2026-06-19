@@ -27,12 +27,12 @@ export const metadata: Metadata = {
   description: 'Soar by Phoxta — find and book stays around the world.',
 }
 
-async function Page() {
-  const categories = await getStayCategories()
-  const stayListings = await getStayListings()
-  const authors = await getAuthors()
-  const groupCategories = await getGroupStayCategories()
-  const posts = await getBlogPosts()
+function Page() {
+  const categories = getStayCategories()
+  const stayListings = getStayListings()
+  const authors = getAuthors()
+  const groupCategories = getGroupStayCategories()
+  const posts = getBlogPosts()
 
   return (
     <main className="relative section-space-bottom">

@@ -45,12 +45,12 @@ const ICON_WARRANTY = (
     </svg>
 );
 
-function ExploreBtn({ className = "" }: { className?: string }) {
+function ExploreBtn({ className = "", to = "/product-archive", label = "Browse all" }: { className?: string; to?: string; label?: string }) {
     return (
-        <Link className={`at-btn bg-white text-dark ${className}`} to="/about-2">
+        <Link className={`at-btn bg-white text-dark ${className}`} to={to}>
             <span>
-                <span className="text-1">Explore All</span>
-                <span className="text-2">Explore All</span>
+                <span className="text-1">{label}</span>
+                <span className="text-2">{label}</span>
             </span>
             <i>
                 {ARROW_SVG}
@@ -65,7 +65,7 @@ export default function Section4() {
         <section className="sec-4-shop-archive-1 overflow-hidden">
             <div className="container">
                 <div className="row g-3">
-                    {/* Card 1: New Spring Collections */}
+                    {/* Card 1: New businesses */}
                     <div className="col-md-6">
                         <div className="p-relative rounded-4 fix">
                             <img
@@ -76,18 +76,18 @@ export default function Section4() {
                                 height={600} loading="lazy" />
                             <div className="p-absolute bottom-0 start-0 m-lg-5 m-4">
                                 <h4 className="fw-600 text-white">
-                                    <Link to="#" className="text-white text-decoration-none">
-                                        New Spring <br />
-                                        Collections
+                                    <Link to="/product-archive" className="text-white text-decoration-none">
+                                        New businesses <br />
+                                        every week
                                     </Link>
                                 </h4>
-                                <h6 className="fw-600 text-white mb-4">On all orders over $100</h6>
+                                <h6 className="fw-600 text-white mb-4">AI-powered and ready to launch</h6>
                                 <ExploreBtn />
                             </div>
                         </div>
                     </div>
 
-                    {/* Card 2: The Brand Behind the Clothes */}
+                    {/* Card 2: The platform behind every business */}
                     <div className="col-md-6">
                         <div className="p-relative rounded-4 fix">
                             <img
@@ -98,11 +98,11 @@ export default function Section4() {
                                 height={600} loading="lazy" />
                             <div className="p-absolute bottom-0 start-0 m-lg-5 m-4">
                                 <h4 className="fw-600 text-white">
-                                    <Link to="#" className="text-white text-decoration-none">
-                                        The Brand <br /> Behind the <br /> Clothes
+                                    <Link to="/about-2" className="text-white text-decoration-none">
+                                        The platform <br /> behind every <br /> business
                                     </Link>
                                 </h4>
-                                <ExploreBtn />
+                                <ExploreBtn to="/about-2" label="How it works" />
                             </div>
                         </div>
                     </div>
@@ -114,36 +114,36 @@ export default function Section4() {
                                 <div className="d-flex gap-4">
                                     {ICON_SUPPORT}
                                     <div>
-                                        <h6 className="fw-600 fz-18 mb-0">Customer Support</h6>
-                                        <p className="mb-0">Mon - Sat, 10am - 9pm</p>
+                                        <h6 className="fw-600 fz-18 mb-0">Verified Economics</h6>
+                                        <p className="mb-0">Real numbers you can check</p>
                                     </div>
                                 </div>
                                 <div className="d-flex gap-4">
                                     {ICON_RETURNS}
                                     <div>
-                                        <h6 className="fw-600 fz-18 mb-0">Easy Returns</h6>
-                                        <p className="mb-0">Returns extended to 60 days</p>
+                                        <h6 className="fw-600 fz-18 mb-0">Preview Live</h6>
+                                        <p className="mb-0">Try before you buy</p>
                                     </div>
                                 </div>
                                 <div className="d-flex gap-4">
                                     {ICON_GIFT}
                                     <div>
-                                        <h6 className="fw-600 fz-18 mb-0">Gift Package</h6>
-                                        <p className="mb-0">Free packaging over $100</p>
+                                        <h6 className="fw-600 fz-18 mb-0">Live in Minutes</h6>
+                                        <p className="mb-0">Storefront + app instantly</p>
                                     </div>
                                 </div>
                                 <div className="d-flex gap-4">
                                     {ICON_WARRANTY}
                                     <div>
-                                        <h6 className="fw-600 fz-18 mb-0">One-year Warranty</h6>
-                                        <p className="mb-0">No questions asked</p>
+                                        <h6 className="fw-600 fz-18 mb-0">Yours to Own</h6>
+                                        <p className="mb-0">Full export, no lock-in</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Full-width card: Best selling products */}
+                    {/* Full-width card: Top-performing businesses */}
                     <div className="col-12">
                         <div className="p-relative rounded-4 fix vh-100">
                             <img
@@ -154,7 +154,7 @@ export default function Section4() {
                                 height={1080} loading="lazy" />
                             <div className="p-absolute bottom-0 start-0 m-lg-5 m-4">
                                 <Link
-                                    to="#"
+                                    to="/product-archive"
                                     className="at-btn text-white bg-transparent mb-10 rounded-0 p-0 text-decoration-none"
                                 >
                                     <span className="text-uppercase">
@@ -167,8 +167,8 @@ export default function Section4() {
                                     </i>
                                 </Link>
                                 <h4 className="fw-600 text-white mb-4">
-                                    <Link to="#" className="text-white text-decoration-none">
-                                        Best selling products <br /> Up to 70% off
+                                    <Link to="/product-archive" className="text-white text-decoration-none">
+                                        Top-performing businesses <br /> with proven track records
                                     </Link>
                                 </h4>
                                 <ExploreBtn />

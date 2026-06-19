@@ -22,22 +22,46 @@ const ARROW_CIRCLE = (
     </svg>
 );
 
-const TEAM = [
-    { classList: "col-lg-3 col-md-6 pt-md-5", linkPost: "/team-details", img: "/assets/imgs/pages/img-17.webp", name: "Darrell Steward", position: "UI/UX Designer" },
-    { classList: "col-lg-3 col-md-6", linkPost: "/team-details", img: "/assets/imgs/pages/img-18.webp", name: "Amelia Courtney", position: "Project Manager" },
-    { classList: "col-lg-3 col-md-6 pt-md-5", linkPost: "/team-details", img: "/assets/imgs/pages/img-19.webp", name: "Esther Howard", position: "Software Developer" },
-    { classList: "col-lg-3 col-md-6", linkPost: "/team-details", img: "/assets/imgs/pages/img-20.webp", name: "Jacob Jones", position: "Marketing CEO" },
-];
+// Editable content + defaults (preserve original copy). Consumed by the Studio registry.
+export type TeamMember = { img: string; name: string; position: string };
+export type TeamIntroProps = {
+    eyebrow?: string;
+    heading?: string;
+    intro?: string;
+    ctaLabel?: string;
+    ctaHref?: string;
+    team?: TeamMember[];
+    tags?: string[];
+};
 
-const TAGS = [
-    "[ Conversion-focused ]",
-    "[ Data-driven ]",
-    "[ Built for scale ]",
-    "[ User-centric ]",
-    "[Future-proof]",
-];
+export const TEAM_INTRO_DEFAULTS = {
+    eyebrow: "MEET OUR TEAM",
+    heading: "Behind the Visionaries",
+    intro:
+        "Creative experts designing meaningful digital experiences that help ambitious brands grow faster and lead their markets.",
+    ctaLabel: "Join our Team",
+    ctaHref: "/portfolio-1",
+    team: [
+        { img: "/assets/imgs/pages/img-17.webp", name: "Darrell Steward", position: "UI/UX Designer" },
+        { img: "/assets/imgs/pages/img-18.webp", name: "Amelia Courtney", position: "Project Manager" },
+        { img: "/assets/imgs/pages/img-19.webp", name: "Esther Howard", position: "Software Developer" },
+        { img: "/assets/imgs/pages/img-20.webp", name: "Jacob Jones", position: "Marketing CEO" },
+    ] as TeamMember[],
+    tags: ["[ Conversion-focused ]", "[ Data-driven ]", "[ Built for scale ]", "[ User-centric ]", "[Future-proof]"],
+} satisfies Required<Omit<TeamIntroProps, never>>;
 
-export default function Section9() {
+// Layout classes applied to team cards by position (kept out of editable data).
+const TEAM_CARD_CLASSES = ["col-lg-3 col-md-6 pt-md-5", "col-lg-3 col-md-6", "col-lg-3 col-md-6 pt-md-5", "col-lg-3 col-md-6"];
+
+export default function Section9({
+    eyebrow = TEAM_INTRO_DEFAULTS.eyebrow,
+    heading = TEAM_INTRO_DEFAULTS.heading,
+    intro = TEAM_INTRO_DEFAULTS.intro,
+    ctaLabel = TEAM_INTRO_DEFAULTS.ctaLabel,
+    ctaHref = TEAM_INTRO_DEFAULTS.ctaHref,
+    team = TEAM_INTRO_DEFAULTS.team,
+    tags = TEAM_INTRO_DEFAULTS.tags,
+}: TeamIntroProps = {}) {
     return (
         <section className="home-3-section-9 p-relative">
             {/* Background grid */}
@@ -65,8 +89,8 @@ export default function Section9() {
                         <div className="col-12">
                             <span className="at-btn common-black bg-transparent mb-10 rounded-0 p-0">
                                 <span className="text-uppercase">
-                                    <span className="text-1">MEET OUR TEAM</span>
-                                    <span className="text-2">MEET OUR TEAM</span>
+                                    <span className="text-1">{eyebrow}</span>
+                                    <span className="text-2">{eyebrow}</span>
                                 </span>
                                 <i>
                                     {ARROW_SVG}
@@ -76,27 +100,24 @@ export default function Section9() {
                         </div>
                         <div className="col-lg-5 h-100">
                             <h1 className="section-title fw-500 fz-ds-1 lh-1 reveal-text">
-                                <RevealText>Behind the Visionaries</RevealText>
+                                <RevealText>{heading}</RevealText>
                             </h1>
                         </div>
                         <div className="col-lg-5 ms-auto">
-                            <p className="fz-font-3xl mb-4">
-                                Creative experts designing meaningful digital experiences that help ambitious brands grow
-                                faster and lead their markets.
-                            </p>
+                            <p className="fz-font-3xl mb-4">{intro}</p>
                             <div
                                 className="at-btn-group at_fade_anim"
                                 data-delay=".4"
                                 data-fade-from="bottom"
                                 data-ease="bounce"
                             >
-                                <Link className="at-btn-circle" to="/portfolio-1">
+                                <Link className="at-btn-circle" to={ctaHref}>
                                     {ARROW_CIRCLE}
                                 </Link>
-                                <Link className="at-btn z-index-1" to="/portfolio-1">
-                                    Join our Team
+                                <Link className="at-btn z-index-1" to={ctaHref}>
+                                    {ctaLabel}
                                 </Link>
-                                <Link className="at-btn-circle" to="/portfolio-1">
+                                <Link className="at-btn-circle" to={ctaHref}>
                                     {ARROW_CIRCLE}
                                 </Link>
                             </div>
@@ -104,18 +125,14 @@ export default function Section9() {
                     </div>
 
                     <div className="row pt-80 g-4">
-                        {TEAM.map((member, index) => {
-                            const isSlow = index === 0 || index === 2;
+                        {team.map((member, index) => {
+                            const classList = TEAM_CARD_CLASSES[index % TEAM_CARD_CLASSES.length];
+                            const isSlow = index % 4 === 0 || index % 4 === 2;
                             if (isSlow) {
                                 return (
-                                    <div
-                                        key={index}
-                                        className={member.classList}
-                                        data-parallax
-                                        data-parallax-speed="0.9"
-                                    >
+                                    <div key={index} className={classList} data-parallax data-parallax-speed="0.9">
                                         <TeamCard1
-                                            linkPost={member.linkPost}
+                                            linkPost="/team-details"
                                             img={member.img}
                                             name={member.name}
                                             position={member.position}
@@ -126,8 +143,8 @@ export default function Section9() {
                             return (
                                 <TeamCard1
                                     key={index}
-                                    classList={member.classList}
-                                    linkPost={member.linkPost}
+                                    classList={classList}
+                                    linkPost="/team-details"
                                     img={member.img}
                                     name={member.name}
                                     position={member.position}
@@ -143,7 +160,7 @@ export default function Section9() {
                                 data-fade-from="bottom"
                                 data-duration="2"
                             >
-                                {TAGS.map((tag, i) => (
+                                {tags.map((tag, i) => (
                                     <p key={i} className="neutral-900 mb-0">
                                         {tag}
                                     </p>

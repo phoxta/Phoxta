@@ -92,8 +92,8 @@ export default function Footer12() {
                     <div className="footer-12__bottom">
                         <p className="footer-12__copy mb-0">&copy; 2026 Phoxta Studio. All rights reserved.</p>
                         <ul className="footer-12__legal" aria-label="Legal">
-                            <li><a href="#">Terms</a></li>
-                            <li><a href="#">Privacy</a></li>
+                            <li><Link to="/terms">Terms</Link></li>
+                            <li><Link to="/privacy">Privacy</Link></li>
                             <li><a href="#">Cookies</a></li>
                         </ul>
                     </div>

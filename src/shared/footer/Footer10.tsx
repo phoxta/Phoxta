@@ -11,8 +11,8 @@ const NAV_LINKS_1 = [
 
 const NAV_LINKS_2 = [
     { label: "Jobs", href: "#" },
-    { label: "Terms", href: "#" },
-    { label: "Privacy", href: "#" },
+    { label: "Terms", href: "/terms" },
+    { label: "Privacy", href: "/privacy" },
     { label: "Help", href: "#" },
     { label: "Social", href: "#" },
 ];

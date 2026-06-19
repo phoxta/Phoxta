@@ -6,13 +6,13 @@ import { getCarListingFilterOptions } from '@/data/data'
 import { getCarListings } from '@/data/listings'
 import { Metadata } from 'next'
 
-export async function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
+export function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
   return { title: 'Search cars', description: 'Find your perfect car rental' }
 }
 
-const Page = async ({ params }: { params: Promise<{ handle?: string[] }> }) => {
-  const listings = await getCarListings()
-  const filterOptions = await getCarListingFilterOptions()
+const Page = ({ params }: { params: Promise<{ handle?: string[] }> }) => {
+  const listings = getCarListings()
+  const filterOptions = getCarListingFilterOptions()
 
   return (
     <div className="relative pb-28">

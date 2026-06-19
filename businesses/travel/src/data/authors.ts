@@ -7,7 +7,7 @@ import avatars6 from '@/images/avatars/Image-6.png'
 import avatars7 from '@/images/avatars/Image-7.png'
 import avatars8 from '@/images/avatars/Image-8.png'
 
-export async function getAuthors() {
+export function getAuthors() {
   return [
     {
       id: 1,
@@ -211,8 +211,8 @@ export async function getAuthors() {
   ]
 }
 
-export async function getAuthorByHandle(handle: string): Promise<THost> {
-  const authors = await getAuthors()
+export function getAuthorByHandle(handle: string): Promise<THost> {
+  const authors = getAuthors()
   let author = authors.find((author) => author.handle === handle)
   if (!author?.id) {
     // return null

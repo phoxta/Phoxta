@@ -8,10 +8,24 @@ install and run each on its own.
 | Folder | Marketplace slug | Vertical | Stack | Run |
 |---|---|---|---|---|
 | `carento/` | `carento` | Automotive | Vite + React + TypeScript | `npm install` → `npm run dev` |
-| `travel/`  | `travel`  | Travel | Next.js | `npm install` → `npm run dev` |
+| `gearo/`   | `gearo`   | Furniture / eCommerce | Vite + React + TypeScript (Bootstrap) | `npm install` → `npm run dev` |
+| `travel/`  | `travel`  | Travel / Stays | Vite + React + TypeScript (Tailwind v4) | `npm install` → `npm run dev` |
+| `restaurant-orders/` | `restaurant-orders` | Restaurant + Orders | Vite + React + TypeScript (custom CSS) | `npm install` → `npm run dev` |
+| `niche-apparel/` | `niche-apparel` | Fashion / eCommerce | Vite + React + TypeScript (Phoxta `main.css`) | `npm install` → `npm run dev` |
+
+> **Uniform stack:** all businesses are **Vite + React + TypeScript** (Carento's
+> stack). Gearo was rebuilt from a static HTML template; Travel was rebuilt from a
+> Next.js app — both into the uniform stack. Build each with `npm run build`.
 
 > `node_modules`, `.next` and `dist` were not copied (they're regenerable). Run `npm install`
 > in each folder before `npm run dev` / `npm run build`.
+
+## Backend contract
+**`CONTRACT.md`** (+ the copy-paste **`phoxta-client.ts`**) defines how a storefront
+app connects to the shared backend: identify its tenant (baked `ORG_ID` or by host
+via `app_resolve_domain`), connect with the anon key, and read org-scoped content
+under RLS. The platform provisions the tenant (`app_provision_business`) and manages
+its domains; the app just consumes them.
 
 ## How they connect to the platform
 - They appear in the platform **Marketplace** as the listings with slugs `carento` and `travel`

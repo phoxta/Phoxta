@@ -150,6 +150,10 @@ export default function Footer1() {
               <div className="col-lg-2">
                 <div className="at-footer-copyright-wrap text">
                   <span className="at-footer-copyright">Phoxta © 2026 </span>
+                  <div className="d-flex flex-wrap gap-3 mt-2">
+                    <Link to="/privacy" className="neutral-0 opacity-50 fz-font-md text-decoration-none">Privacy</Link>
+                    <Link to="/terms" className="neutral-0 opacity-50 fz-font-md text-decoration-none">Terms</Link>
+                  </div>
                 </div>
               </div>
               <div className="col-lg-8">

@@ -6,13 +6,13 @@ import { getFlightFilterOptions } from '@/data/data'
 import { getFlightListings } from '@/data/listings'
 import { Metadata } from 'next'
 
-export async function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
+export function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
   return { title: 'Search flights', description: 'Find your perfect flight' }
 }
 
-const Page = async ({ params }: { params: Promise<{ handle?: string[] }> }) => {
-  const listings = await getFlightListings()
-  const filterOptions = await getFlightFilterOptions()
+const Page = ({ params }: { params: Promise<{ handle?: string[] }> }) => {
+  const listings = getFlightListings()
+  const filterOptions = getFlightFilterOptions()
 
   return (
     <div className="relative pb-28">

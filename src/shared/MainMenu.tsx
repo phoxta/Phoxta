@@ -68,7 +68,7 @@ export default function MainMenu() {
       </li>
 
       <li>
-        <MenuLink to="/index-13">
+        <MenuLink to="/invest">
           <LinkSwap label="Invest" />
         </MenuLink>
       </li>

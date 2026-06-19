@@ -26,7 +26,7 @@ const BLOG_POSTS = [
     {
         img: "/assets/imgs/pages/img-114.webp",
         title:
-            "Beyond the Accuracy Score: Why Scalability is the True Metric of Production AI",
+            "One AI agent, every channel: how each business answers calls, chats and bookings",
         author: "Olivia",
         authorHref: "/team-details",
         date: "July 3, 2026",
@@ -34,7 +34,7 @@ const BLOG_POSTS = [
     {
         img: "/assets/imgs/pages/img-115.webp",
         title:
-            "Optimizing Real-Time Detection: Strategies for Reducing Latency in Edge Computing",
+            "From purchase to first sale: launching your business in minutes, not months",
         author: "Lucas",
         authorHref: "/team-details",
         date: "July 17, 2026",
@@ -50,8 +50,8 @@ export default function Section8() {
                         <div className="col-xxl-1 align-self-start m-0">
                             <span className="at-btn common-black bg-transparent mb-10 rounded-0 p-0 mt-10">
                                 <span className="text-uppercase">
-                                    <span className="text-1">my blog</span>
-                                    <span className="text-2">my blog</span>
+                                    <span className="text-1">the journal</span>
+                                    <span className="text-2">the journal</span>
                                 </span>
                                 <i>
                                     {ARROW_SVG}
@@ -62,7 +62,7 @@ export default function Section8() {
                         <div className="col-lg-6 mt-0">
                             <h3 className="alt-section-title lh-1 neutral-900 fw-700 mb-30 reveal-text mb-0">
                                 <RevealText>
-                                    Latest news <br /> from my blog.
+                                    Guides for new <br /> business owners.
                                 </RevealText>
                             </h3>
                         </div>
@@ -102,14 +102,14 @@ export default function Section8() {
                                     <span className="alt-portfolio-btn start-0 end-0 mx-4">
                                         <span className="content">
                                             <span className="bg-transparent text-uppercase border px-3 py-1 rounded-pill text-white fz-font-label">
-                                                ui design
+                                                getting started
                                             </span>
                                             <h4 className="fw-600 text-white mb-0 mt-20">
-                                                Lessons Learned from Large-Scale LLM
+                                                How to choose the right business to own
                                             </h4>
                                             <p className="text-white fz-font-lg mb-0 mt-10 text-truncate-3 des">
-                                                Moving a Large Language Model from a local notebook to a global production
-                                                environment reveals challenges that benchmarks don&apos;t show.
+                                                Preview every business live, check the real economics behind it, and pick the
+                                                one you can brand, launch and run as your own.
                                             </p>
                                         </span>
                                     </span>

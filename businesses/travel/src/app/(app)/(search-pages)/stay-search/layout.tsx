@@ -10,8 +10,8 @@ import { getStayCategories } from '@/data/categories'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
 import { ReactNode } from 'react'
 
-const Layout = async ({ children }: { children: ReactNode }) => {
-  const categories = await getStayCategories()
+const Layout = ({ children }: { children: ReactNode }) => {
+  const categories = getStayCategories()
 
   return (
     <ApplicationLayout header={<Header2 initSearchFormTab="Stays" hasBorderBottom={false} />}>

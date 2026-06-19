@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Private app & utility routes — never index
+Disallow: /dashboard
+Disallow: /onboarding
+Disallow: /auth
+
+Sitemap: https://www.phoxta.com/sitemap.xml

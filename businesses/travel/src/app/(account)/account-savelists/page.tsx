@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: 'Manage your saved listings',
 }
 
-const Page = async () => {
-  const stayListings = await getStayListings()
+const Page = () => {
+  const stayListings = getStayListings()
 
   const renderSection1 = () => {
     return (

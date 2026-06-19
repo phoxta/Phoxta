@@ -10,8 +10,8 @@ import { getCarCategories } from '@/data/categories'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
 import { ReactNode } from 'react'
 
-const Layout = async ({ children }: { children: ReactNode }) => {
-  const categories = await getCarCategories()
+const Layout = ({ children }: { children: ReactNode }) => {
+  const categories = getCarCategories()
 
   return (
     <ApplicationLayout header={<Header2 initSearchFormTab="Cars" hasBorderBottom={false} />}>

@@ -6,9 +6,9 @@ import heroImg from '@/images/hero-img-exp.webp'
 import { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 
-export async function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
-  const { handle } = await params
-  const category = await getExperienceCategoryByHandle(handle?.[0])
+export function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
+  const { handle } = params
+  const category = getExperienceCategoryByHandle(handle?.[0])
   if (!category) {
     return {
       title: 'Collection not found',
@@ -19,11 +19,11 @@ export async function generateMetadata({ params }: { params: Promise<{ handle?: 
   return { title: name, description }
 }
 
-const Page = async ({ params }: { params: Promise<{ handle?: string[] }> }) => {
-  const { handle } = await params
+const Page = ({ params }: { params: Promise<{ handle?: string[] }> }) => {
+  const { handle } = params
 
-  const category = await getExperienceCategoryByHandle(handle?.[0])
-  const listings = await getExperienceListings()
+  const category = getExperienceCategoryByHandle(handle?.[0])
+  const listings = getExperienceListings()
 
   if (!category?.id) {
     return redirect('/experience')

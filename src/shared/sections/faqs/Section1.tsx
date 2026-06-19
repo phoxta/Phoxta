@@ -21,7 +21,30 @@ const ARROW_RIGHT_SVG = (
     </svg>
 );
 
-export default function Section1() {
+// Editable content + defaults. Consumed by the Studio registry.
+export type FaqHeroProps = {
+    eyebrow?: string;
+    heading?: string;
+    subtitle?: string;
+    searchPlaceholder?: string;
+    buttonLabel?: string;
+};
+
+export const FAQ_HERO_DEFAULTS = {
+    eyebrow: "Frequently Asked Questions",
+    heading: "Join the community with more than 12k+ topics already created",
+    subtitle: "Professional support team will solve your problem.",
+    searchPlaceholder: "Your question...",
+    buttonLabel: "Find the answer",
+} satisfies Required<FaqHeroProps>;
+
+export default function Section1({
+    eyebrow = FAQ_HERO_DEFAULTS.eyebrow,
+    heading = FAQ_HERO_DEFAULTS.heading,
+    subtitle = FAQ_HERO_DEFAULTS.subtitle,
+    searchPlaceholder = FAQ_HERO_DEFAULTS.searchPlaceholder,
+    buttonLabel = FAQ_HERO_DEFAULTS.buttonLabel,
+}: FaqHeroProps = {}) {
     return (
         <section className="sec-1-faqs overflow-hidden pt-150 pb-120 bg-neutral-50">
             <div className="container">
@@ -29,8 +52,8 @@ export default function Section1() {
                     <div className="col-xxl-5 col-lg-6 pt-lg-0 pt-100">
                         <span className="at-btn common-black text-uppercase bg-transparent mb-10 rounded-0 p-0">
                             <span className="text-uppercase">
-                                <span className="text-1">Frequently Asked Questions</span>
-                                <span className="text-2">Frequently Asked Questions</span>
+                                <span className="text-1">{eyebrow}</span>
+                                <span className="text-2">{eyebrow}</span>
                             </span>
                             <i>
                                 {ARROW_SVG}
@@ -38,23 +61,23 @@ export default function Section1() {
                             </i>
                         </span>
                         <h4 className="section-title d-flex fw-600">
-                            Join the community with more than 12k+ topics already created
+                            {heading}
                         </h4>
                         <p className="neutral-600 fz-font-xl">
-                            Professional support team will solve your problem.
+                            {subtitle}
                         </p>
                     </div>
                     <div className="col-xxl-5 col-lg-6 ms-auto">
                         <div className="input-subscribe p-relative changeless">
-                            <input placeholder="Your question..." type="text" className="bg-neutral-0" />
+                            <input placeholder={searchPlaceholder} type="text" className="bg-neutral-0" />
                             <button type="button" className="at-btn p-absolute end-0 top-50 bg-neutral-900 rounded-3 translate-middle-y me-4">
                                 <i className="icon-arrow-right">
                                     {ARROW_RIGHT_SVG}
                                     {ARROW_RIGHT_SVG}
                                 </i>
                                 <span>
-                                    <span className="text-1">Find the answer</span>
-                                    <span className="text-2">Find the answer</span>
+                                    <span className="text-1">{buttonLabel}</span>
+                                    <span className="text-2">{buttonLabel}</span>
                                 </span>
                             </button>
                         </div>

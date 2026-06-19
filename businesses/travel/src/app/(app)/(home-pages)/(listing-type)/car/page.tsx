@@ -22,10 +22,10 @@ export const metadata: Metadata = {
   description: 'Home page of the Car rental application',
 }
 
-async function Page() {
-  const categories = await getCarCategories()
-  const carListings = await getCarListings()
-  const posts = await getBlogPosts()
+function Page() {
+  const categories = getCarCategories()
+  const carListings = getCarListings()
+  const posts = getBlogPosts()
 
   return (
     <main className="relative section-space-bottom">

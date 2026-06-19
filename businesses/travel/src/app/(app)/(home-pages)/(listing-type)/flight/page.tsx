@@ -22,9 +22,9 @@ export const metadata: Metadata = {
   description: 'Home page of the flight application',
 }
 
-async function Page() {
-  const categories = await getFlightCategories()
-  const posts = await getBlogPosts()
+function Page() {
+  const categories = getFlightCategories()
+  const posts = getBlogPosts()
 
   return (
     <main className="relative section-space-bottom">

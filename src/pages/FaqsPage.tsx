@@ -7,7 +7,11 @@ import Section4 from "@/shared/sections/faqs/Section4";
 export default function FaqsPage() {
   return (
     <>
-      <PageMeta title="Phoxta - Faqs" />
+      <PageMeta
+        title="FAQs — Phoxta"
+        description="Answers to common questions about Phoxta: how owning a business works, what's included, pricing, AI features, ownership and support."
+        path="/faqs"
+      />
                 <Section1 />
                 <Section2 />
                 <Section3 />

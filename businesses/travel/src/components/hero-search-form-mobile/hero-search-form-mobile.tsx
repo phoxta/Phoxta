@@ -6,29 +6,17 @@ import ButtonThird from '@/components/button-third'
 import { ListingType } from '@/type'
 import { CloseButton, Dialog, DialogPanel, Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/solid'
-import {
-  Airplane02Icon,
-  Car05Icon,
-  FilterVerticalIcon,
-  HotAirBalloonFreeIcons,
-  House04Icon,
-  Search01Icon,
-} from '@hugeicons/core-free-icons'
+import { FilterVerticalIcon, HotAirBalloonFreeIcons, Search01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, IconSvgElement } from '@hugeicons/react'
 import clsx from 'clsx'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { useTimeoutFn } from 'react-use'
-import CarSearchFormMobile from './car-search-form/car-search-form-mobile'
 import ExperienceSearchFormMobile from './experience-search-form/experience-search-form-mobile'
-import FlightSearchFormMobile from './flight-search-form/flight-search-form-mobile'
-import StaySearchFormMobile from './stay-search-form/stay-search-form-mobile'
 
+// Single service — Experiences — so the mobile search has one tab.
 const formTabs: { name: ListingType; icon: IconSvgElement; formComponent: React.ComponentType<{}> }[] = [
-  { name: 'Stays', icon: House04Icon, formComponent: StaySearchFormMobile },
   { name: 'Experiences', icon: HotAirBalloonFreeIcons, formComponent: ExperienceSearchFormMobile },
-  { name: 'Cars', icon: Car05Icon, formComponent: CarSearchFormMobile },
-  { name: 'Flights', icon: Airplane02Icon, formComponent: FlightSearchFormMobile },
 ]
 
 const HeroSearchFormMobile = ({ className }: { className?: string }) => {
@@ -45,43 +33,15 @@ const HeroSearchFormMobile = ({ className }: { className?: string }) => {
   let locationText = 'Where to?'
   let weekText = 'Any week'
   let guestsText = 'Add guests'
-  let activeTabName: ListingType = 'Stays'
+  const activeTabName: ListingType = 'Experiences'
 
-  // TODO: Check that the pathname matches each listing type.
-  if (pathname.startsWith('/experience')) {
-    activeTabName = 'Experiences'
-    if (pathname.startsWith('/experience-search')) {
-      locationText = 'Experiences in Bali'
-      weekText = 'Mar 22 - 27'
-      guestsText = '2 guests'
-    }
-  } else if (pathname.startsWith('/car')) {
-    activeTabName = 'Cars'
-    if (pathname.startsWith('/car-search')) {
-      locationText = 'Car rentals in Tokyo'
-      weekText = 'Mar 25 - 28'
-      guestsText = ''
-    }
-  } else if (pathname.startsWith('/flight')) {
-    activeTabName = 'Flights'
-    if (pathname.startsWith('/flight-search')) {
-      locationText = 'Flights to Rome'
-      weekText = 'Mar 10 - 15'
-      guestsText = '1 guest'
-    }
-  } else if (pathname.startsWith('/stay')) {
-    activeTabName = 'Stays'
-    if (pathname.startsWith('/stay-search')) {
-      locationText = 'Homes in London'
-      weekText = 'Mar 20 - 25'
-      guestsText = '1 guest'
-    }
+  if (pathname.startsWith('/experience-search')) {
+    locationText = 'Experiences in Bali'
+    weekText = 'Mar 22 - 27'
+    guestsText = '2 guests'
   }
 
-  const defaultIndex = Math.max(
-    0,
-    formTabs.findIndex((t) => t.name === activeTabName)
-  )
+  const defaultIndex = 0
 
   function closeModal() {
     setShowModal(false)

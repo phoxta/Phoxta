@@ -8,7 +8,11 @@ import Section5 from "@/shared/sections/index-5/Section8";
 export default function ProductArchivePage() {
   return (
     <>
-      <PageMeta title="Phoxta - ProductArchive" />
+      <PageMeta
+        title="Marketplace — Browse AI-powered businesses for sale | Phoxta"
+        description="Browse Phoxta's marketplace of validated, AI-powered businesses for sale across e-commerce, local services, content, SaaS and more. Find one and make it yours."
+        path="/product-archive"
+      />
                 <Section1 />
                 <Section2 />
                 <Section3 classList="bg-neutral-50" />

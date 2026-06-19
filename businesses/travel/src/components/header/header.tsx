@@ -12,7 +12,7 @@ interface Props {
   className?: string
 }
 
-const Header: FC<Props> = async ({ hasBorderBottom = true, className }) => {
+const Header: FC<Props> = ({ hasBorderBottom = true, className }) => {
   return (
     <div className={clsx('relative', className)}>
       <div

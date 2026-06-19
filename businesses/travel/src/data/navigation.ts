@@ -1,33 +1,15 @@
-import { Airplane02Icon, Car03Icon, HotAirBalloonIcon, House04Icon } from '@hugeicons/core-free-icons'
+import { HotAirBalloonIcon } from '@hugeicons/core-free-icons'
 
+// This business offers a single service — Experiences — so the nav is focused on it.
 export function getTravelersMenu() {
-  const travelers = [
+  return [
     {
-      title: 'Stays',
-      description: 'Find a place to stay',
-      href: '/',
-      icon: House04Icon,
-    },
-    {
-      title: 'Car rentals',
-      description: 'Find a car to rent',
-      href: '/car',
-      icon: Car03Icon,
-    },
-    {
-      title: 'Experiences',
-      description: 'Find a unique experience',
-      href: '/experience',
+      title: 'All experiences',
+      description: 'Browse unique things to do',
+      href: '/experience-search',
       icon: HotAirBalloonIcon,
     },
-    {
-      title: 'Flights',
-      description: 'Book a flight to anywhere',
-      href: '/flight',
-      icon: Airplane02Icon,
-    },
   ]
-  return travelers
 }
 export function getMegaMenuItems() {
   const megaMenuItems: {
@@ -35,57 +17,29 @@ export function getMegaMenuItems() {
     children?: { title: string; href: string; children?: { title: string; href: string }[] }[]
   }[] = [
     {
-      title: 'Listing types',
+      title: 'Experiences',
       children: [
-        { title: 'Stays', href: '/' },
-        { title: 'Experiences', href: '/experience' },
-        { title: 'Car rentals', href: '/car' },
-        { title: 'Flights', href: '/flight' },
+        { title: 'Browse all', href: '/' },
+        { title: 'Search experiences', href: '/experience-search' },
+        { title: 'Categories', href: '/experience-categories' },
       ],
     },
     {
-      title: 'Category pages',
+      title: 'Account',
       children: [
-        { title: 'Stay categories', href: '/stay-categories/location-name' },
-        { title: 'Experience categories', href: '/experience-categories/location-name' },
-        { title: 'Car rental categories', href: '/car-categories/location-name' },
-        { title: 'Flight categories', href: '/flight-categories/location-name' },
-      ],
-    },
-    {
-      title: 'Listing details',
-      children: [
-        { title: 'Stay details', href: '/stay-listings/listing-name' },
-        { title: 'Experience details', href: '/experience-listings/listing-name' },
-        { title: 'Car rental details', href: '/car-listings/listing-name' },
-      ],
-    },
-    {
-      title: 'Search pages',
-      children: [
-        { title: 'Stay search', href: '/stay-search' },
-        { title: 'Search with map', href: '/stay-search-with-map' },
-        { title: 'Experience search', href: '/experience-search' },
-        { title: 'Car rental search', href: '/car-search' },
-        { title: 'Flight search', href: '/flight-search' },
-      ],
-    },
-    {
-      title: 'Auth pages',
-      children: [
-        { title: 'Sign in', href: '/signin' },
+        { title: 'Sign in', href: '/login' },
         { title: 'Sign up', href: '/signup' },
         { title: 'Host profile', href: '/authors/host-name' },
         { title: 'Account settings', href: '/account' },
       ],
     },
     {
-      title: 'Other pages',
+      title: 'Company',
       children: [
         { title: 'About us', href: '/about' },
-        { title: 'Checkout', href: '/checkout' },
-        { title: 'Blog page', href: '/blog' },
-        { title: 'Add listing', href: '/add-listing/1' },
+        { title: 'Blog', href: '/blog' },
+        { title: 'Contact', href: '/contact' },
+        { title: 'Manage booking', href: '/manage-booking' },
       ],
     },
   ]
@@ -196,7 +150,7 @@ export const getCurrencies = () => {
   ]
 }
 
-export const getHeaderDropdownCategories = async () => {
+export const getHeaderDropdownCategories = () => {
   return [
     {
       name: 'Women',

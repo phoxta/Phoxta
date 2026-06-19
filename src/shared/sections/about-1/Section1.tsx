@@ -12,31 +12,57 @@ const ARROW_SVG = (
     </svg>
 );
 
-const AVATARS = [
-    { src: "/assets/imgs/template/avatar/avatar-10.webp", alt: "phoxta", hiddenOnMobile: false },
-    { src: "/assets/imgs/template/avatar/avatar-11.webp", alt: "phoxta", hiddenOnMobile: false },
-    { src: "/assets/imgs/template/avatar/avatar-12.webp", alt: "phoxta", hiddenOnMobile: false },
-    { src: "/assets/imgs/template/avatar/avatar-13.webp", alt: "phoxta", hiddenOnMobile: false },
-    { src: "/assets/imgs/template/avatar/avatar-14.webp", alt: "phoxta", hiddenOnMobile: true },
-];
+// Editable content type + defaults. These defaults preserve the original
+// hard-coded copy so existing usages (`<Section1 />`) render identically, while
+// the page builder can override any field. See src/builder/registry.
+export type AboutHeroAvatar = { src: string; alt: string; hiddenOnMobile?: boolean };
+export type AboutHeroSlide = { src: string; alt: string };
+export type AboutHeroProps = {
+    classList?: string;
+    eyebrow?: string;
+    heading?: string;
+    subheading?: string;
+    avatars?: AboutHeroAvatar[];
+    slides?: AboutHeroSlide[];
+};
 
-const SLIDES = [
-    { src: "/assets/imgs/pages/img-117.webp", alt: "phoxta" },
-    { src: "/assets/imgs/pages/img-118.webp", alt: "phoxta" },
-    { src: "/assets/imgs/pages/img-119.webp", alt: "phoxta" },
-    { src: "/assets/imgs/pages/img-120.webp", alt: "phoxta" },
-];
+export const ABOUT_HERO_DEFAULTS = {
+    eyebrow: "About Us",
+    heading: "We are a creative digital agency shaping meaningful experiences",
+    subheading:
+        "We blend strategy, creativity, and technology to help brands grow, connect, and stand out in an ever-evolving digital world.",
+    avatars: [
+        { src: "/assets/imgs/template/avatar/avatar-10.webp", alt: "phoxta", hiddenOnMobile: false },
+        { src: "/assets/imgs/template/avatar/avatar-11.webp", alt: "phoxta", hiddenOnMobile: false },
+        { src: "/assets/imgs/template/avatar/avatar-12.webp", alt: "phoxta", hiddenOnMobile: false },
+        { src: "/assets/imgs/template/avatar/avatar-13.webp", alt: "phoxta", hiddenOnMobile: false },
+        { src: "/assets/imgs/template/avatar/avatar-14.webp", alt: "phoxta", hiddenOnMobile: true },
+    ] as AboutHeroAvatar[],
+    slides: [
+        { src: "/assets/imgs/pages/img-117.webp", alt: "phoxta" },
+        { src: "/assets/imgs/pages/img-118.webp", alt: "phoxta" },
+        { src: "/assets/imgs/pages/img-119.webp", alt: "phoxta" },
+        { src: "/assets/imgs/pages/img-120.webp", alt: "phoxta" },
+    ] as AboutHeroSlide[],
+} satisfies Required<Omit<AboutHeroProps, "classList">>;
 
-export default function Section1() {
+export default function Section1({
+    classList = "",
+    eyebrow = ABOUT_HERO_DEFAULTS.eyebrow,
+    heading = ABOUT_HERO_DEFAULTS.heading,
+    subheading = ABOUT_HERO_DEFAULTS.subheading,
+    avatars = ABOUT_HERO_DEFAULTS.avatars,
+    slides = ABOUT_HERO_DEFAULTS.slides,
+}: AboutHeroProps = {}) {
     return (
-        <section className="sec-1-about pt-150 overflow-hidden">
+        <section className={`sec-1-about pt-150 overflow-hidden ${classList}`}>
             <div className="container pb-100">
                 <div className="row align-items-center g-4">
                     <div className="col-12">
                         <span className="at-btn common-black bg-transparent mb-10 rounded-0 p-0">
                             <span className="text-uppercase">
-                                <span className="text-1">About Us</span>
-                                <span className="text-2">About Us</span>
+                                <span className="text-1">{eyebrow}</span>
+                                <span className="text-2">{eyebrow}</span>
                             </span>
                             <i>
                                 {ARROW_SVG}
@@ -47,17 +73,16 @@ export default function Section1() {
                     <div className="col-lg-7 h-100">
                         <h2 className="section-title fw-600 lh-1 reveal-text">
                             <RevealText>
-                                We are a creative digital agency shaping meaningful experiences
+                                {heading}
                             </RevealText>
                         </h2>
                     </div>
                     <div className="col-lg-5 ms-auto">
                         <h6 className="mb-4 fw-600">
-                            We blend strategy, creativity, and technology to help brands grow, connect, and stand out
-                            in an ever-evolving digital world.
+                            {subheading}
                         </h6>
                         <div className="sec-2-home-5__avatars-row d-flex gap-2">
-                            {AVATARS.map((avatar, i) => (
+                            {avatars.map((avatar, i) => (
                                 <div
                                     key={i}
                                     className={`sec-2-home-5__avatar-sm at-offcanvas-gallery-img ${avatar.hiddenOnMobile ? "d-none d-md-block" : ""}`}
@@ -86,7 +111,7 @@ export default function Section1() {
                         992: { slidesPerView: 2, spaceBetween: 30 },
                     }}
                 >
-                    {SLIDES.map((slide, index) => (
+                    {slides.map((slide, index) => (
                         <div key={index} className="about-me-slider-thumb at-item-anime marque">
                             <img
                                 src={slide.src}

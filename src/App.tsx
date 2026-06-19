@@ -83,6 +83,7 @@ const AssistantPage = lazy(() => import("@/pages/dashboard/AssistantPage"));
 const StudioPage = lazy(() => import("@/pages/dashboard/StudioPage"));
 const StudioEditorPage = lazy(() => import("@/pages/dashboard/StudioEditorPage"));
 const StudioPreviewPage = lazy(() => import("@/pages/dashboard/StudioPreviewPage"));
+const StudioSiteEditorPage = lazy(() => import("@/pages/dashboard/StudioSiteEditorPage"));
 const PublishedPage = lazy(() => import("@/pages/PublishedPage"));
 const OverviewPage = lazy(() => import("@/pages/dashboard/ops/OverviewPage"));
 const CrmPage = lazy(() => import("@/pages/dashboard/ops/CrmPage"));
@@ -127,6 +128,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<OnboardingPage />} />
         {/* Studio editor + preview run full-screen (no dashboard chrome / zoom). */}
+        <Route path="/studio/:orgId/site" element={<StudioSiteEditorPage />} />
         <Route path="/studio/:orgId/:pageId" element={<StudioEditorPage />} />
         <Route path="/studio/:orgId/:pageId/preview" element={<StudioPreviewPage />} />
         <Route element={<DashboardLayout />}>

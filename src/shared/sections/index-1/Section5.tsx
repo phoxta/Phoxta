@@ -17,54 +17,67 @@ const ARROW_CIRCLE_SVG = (
     </svg>
 );
 
+const COVER = (id: string) => `https://images.unsplash.com/${id}?w=800&h=600&fit=crop&q=80`;
+
 const PORTFOLIO_ITEMS = [
     {
         classList: "mb-55",
-        link: "/product-details",
-        img: "/assets/imgs/pages/img-11.webp",
-        title: "Coffee Subscription",
-        description: "A recurring coffee brand with an AI support assistant and automatic cart recovery",
+        link: "/dashboard/marketplace/carento",
+        img: COVER("photo-1503376780353-7e6692767b70"),
+        title: "Car Marketplace",
+        description: "A full car buying & selling marketplace with listings, financing tools and an AI assistant",
         tags: [
-            { label: "E-commerce", href: "/product-archive" },
-            { label: "From $1,200", href: "/product-archive" },
+            { label: "Automotive", href: "/product-archive" },
+            { label: "From $3,900", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
     {
         classList: "mb-55",
-        link: "/product-details",
-        img: "/assets/imgs/pages/img-12.webp",
-        title: "Niche Apparel",
-        description: "An audience-ready apparel storefront with AI product copy and built-in SEO",
+        link: "/dashboard/marketplace/niche-apparel",
+        img: COVER("photo-1441986300917-64674bd600d8"),
+        title: "Fashion Store",
+        description: "A modern fashion store with product archive, online ordering, cart/checkout and an AI stylist",
         tags: [
-            { label: "DTC", href: "/product-archive" },
+            { label: "eCommerce", href: "/product-archive" },
             { label: "From $1,500", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
     {
         classList: "mb-55",
-        link: "/product-details",
-        img: "/assets/imgs/pages/img-13.webp",
-        title: "Salon & Booking",
-        description: "A local services business with an AI receptionist and automated SMS rebooking",
+        link: "/dashboard/marketplace/restaurant-orders",
+        img: COVER("photo-1414235077428-338989a2e8c0"),
+        title: "Restaurant + Orders",
+        description: "A fine-dining restaurant with online ordering, reservations, order tracking and an AI concierge",
         tags: [
-            { label: "Local services", href: "/product-archive" },
-            { label: "From $900", href: "/product-archive" },
+            { label: "Hospitality", href: "/product-archive" },
+            { label: "From $1,500", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
     {
         classList: "mb-55",
-        link: "/product-details",
-        img: "/assets/imgs/pages/img-14.webp",
-        title: "Local Marketplace",
-        description: "A multi-vendor marketplace with split payouts, ratings and real numbers you can check",
+        link: "/dashboard/marketplace/travel",
+        img: COVER("photo-1566073771259-6a8506099945"),
+        title: "Travel & Stays",
+        description: "A travel booking site for stays, flights and experiences, with an AI trip planner",
         tags: [
-            { label: "Marketplace", href: "/product-archive" },
-            { label: "From $3,100", href: "/product-archive" },
-            { label: "Multi-vendor", href: "/product-archive" },
-            { label: "Verified numbers", href: "/product-archive" },
+            { label: "Travel", href: "/product-archive" },
+            { label: "From $3,600", href: "/product-archive" },
+            { label: "AI inside", href: "/product-archive" },
+        ],
+    },
+    {
+        classList: "mb-55",
+        link: "/dashboard/marketplace/gearo",
+        img: COVER("photo-1555041469-a586c61ea9bc"),
+        title: "Furniture Store",
+        description: "A modern furniture & workspace eCommerce store with cart, checkout and an AI shopping assistant",
+        tags: [
+            { label: "eCommerce", href: "/product-archive" },
+            { label: "From $1,400", href: "/product-archive" },
+            { label: "AI inside", href: "/product-archive" },
         ],
     },
 ];
@@ -84,7 +97,7 @@ export default function Section5({ classList = "" }: { classList?: string }) {
                             </h2>
                             <div className="at_fade_anim" data-delay=".3">
                                 <p className="mg-portfolio-dec mb-50">
-                                    A handpicked selection of live, AI-powered businesses with a proven track record &mdash; each one ready to brand, launch and run as your own in days.
+                                    A handpicked selection of live, AI-powered businesses with a proven track record &mdash; each one ready to brand, launch and run as your own in minutes.
                                 </p>
                             </div>
                             <div className="at-btn-group at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">

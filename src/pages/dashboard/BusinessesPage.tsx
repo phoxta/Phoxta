@@ -1,14 +1,26 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
-import { listMyOrganizations, createBusiness, type Organization } from "@/lib/db/organizations";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { listMyOrganizations, createBusiness } from "@/lib/db/organizations";
+import { listMyInvitations, acceptInvitation } from "@/lib/db/collaboration";
 
 export default function BusinessesPage() {
   const { user } = useAuth();
-  const [orgs, setOrgs] = useState<Array<{ role: string; organization: Organization }>>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error: loadError, reload } = useCachedData("businesses", async () => {
+    const [{ data: orgsData, error: orgsErr }, inv] = await Promise.all([
+      listMyOrganizations(),
+      listMyInvitations(),
+    ]);
+    if (orgsErr) throw new Error(orgsErr);
+    return { orgs: orgsData, invites: inv.data };
+  });
+  const orgs = data?.orgs ?? [];
+  const invites = data?.invites ?? [];
+
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = loadError || actionError;
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -16,34 +28,31 @@ export default function BusinessesPage() {
   const [region, setRegion] = useState("");
   const [creating, setCreating] = useState(false);
 
-  async function load() {
-    const { data, error } = await listMyOrganizations();
-    if (error) setError(error);
-    setOrgs(data);
-    setLoading(false);
+  async function onAccept(inviteId: string) {
+    const { error: accErr } = await acceptInvitation(inviteId);
+    if (accErr) {
+      setActionError(accErr);
+      return;
+    }
+    reload();
   }
-
-  useEffect(() => {
-    load();
-  }, []);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !name.trim()) return;
     setCreating(true);
-    setError(null);
+    setActionError(null);
     const { error } = await createBusiness(user.id, { name, vertical: vertical || null, region: region || null });
     setCreating(false);
     if (error) {
-      setError(error);
+      setActionError(error);
       return;
     }
     setName("");
     setVertical("");
     setRegion("");
     setShowForm(false);
-    setLoading(true);
-    load();
+    reload();
   }
 
   return (
@@ -65,6 +74,25 @@ export default function BusinessesPage() {
       {error && (
         <div className="alert alert-warning py-2 px-3 fz-font-md" role="alert">
           {error}
+        </div>
+      )}
+
+      {invites.length > 0 && (
+        <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
+          <h6 className="fw-600 mb-3">Invitations</h6>
+          <ul className="list-unstyled m-0 d-flex flex-column gap-2">
+            {invites.map((i) => (
+              <li key={i.id} className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <span className="fz-font-md neutral-700">
+                  You've been invited to <span className="fw-600">{i.organizations?.name ?? "a business"}</span> as{" "}
+                  <span className="text-capitalize">{i.role}</span>.
+                </span>
+                <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={() => onAccept(i.id)}>
+                  Accept
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

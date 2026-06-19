@@ -5,7 +5,7 @@ interface Props {
   className?: string
 }
 
-const AsideSidebarNavigation = async ({ className }: Props) => {
+const AsideSidebarNavigation = ({ className }: Props) => {
   return (
     <Aside openFrom="right" type="sidebar-navigation" logoOnHeading contentMaxWidthClassName="max-w-lg">
       <div className="flex h-full flex-col">

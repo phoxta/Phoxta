@@ -160,8 +160,8 @@ export default function Footer3() {
                   <div className="alt-footer-link-item">
                     <ul className="d-flex flex-wrap align-items-center justify-content-between text-center gap-1">
                       <li><span className="fz-font-md neutral-0 opacity-50">Phoxta © 2026</span></li>
-                      <li><a href="#" className="fz-font-md neutral-0 opacity-50">Privacy Policy</a></li>
-                      <li><a href="#" className="fz-font-md neutral-0 opacity-50">Terms of Use</a></li>
+                      <li><Link to="/privacy" className="fz-font-md neutral-0 opacity-50">Privacy Policy</Link></li>
+                      <li><Link to="/terms" className="fz-font-md neutral-0 opacity-50">Terms of Use</Link></li>
                       <li><a href="#" className="fz-font-md neutral-0 opacity-50">Refund Policy</a></li>
                     </ul>
                   </div>

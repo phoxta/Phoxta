@@ -67,17 +67,63 @@ export async function listAudit(orgId: string): Promise<{ data: AuditEntry[]; er
 }
 
 export const WRITE_TOOL_LABELS: Record<string, string> = {
+  // Commerce
+  create_product: "Create a product",
   update_product_price: "Change a price",
   set_product_stock: "Set stock",
+  set_product_status: "Publish / archive a product",
   fulfill_order: "Fulfil an order",
+  set_order_status: "Change an order's status",
+  // CRM
+  create_contact: "Add a contact",
+  update_contact_stage: "Move a contact's stage",
+  add_contact_note: "Add a note to a contact",
+  tag_contact: "Tag a contact",
+  // Invoicing
+  create_invoice: "Create an invoice",
+  set_invoice_status: "Change an invoice's status",
+  // Bookings
+  create_service: "Create a bookable service",
+  create_booking: "Create a booking",
+  set_booking_status: "Change a booking's status",
+  // Reservations
   set_reservation_status: "Update a reservation",
+  block_availability: "Block availability (blackout)",
+  // Content
   create_blog_post: "Publish a blog post",
   publish_page: "Publish a content page",
+  // Helpdesk
+  create_ticket: "Open a support ticket",
+  reply_ticket: "Reply to a ticket",
+  set_ticket_status: "Change a ticket's status",
+  // Marketing
+  create_campaign: "Create a campaign",
+  send_campaign: "Send a campaign",
+  // Call center
+  add_location: "Add a location",
+  // Outreach
+  send_message: "Message a customer (SMS / WhatsApp / email)",
+  place_call: "Place a phone call",
+  // Google Workspace
   google_send_email: "Send email (Google Workspace)",
   google_create_doc: "Create a Google Doc",
   google_create_event: "Create a calendar event",
   google_append_sheet: "Log a row to a Google Sheet",
 };
+
+// Grouping for the policy panel so the (now ~30) tools read as tidy sections.
+export const WRITE_TOOL_GROUPS: { label: string; tools: string[] }[] = [
+  { label: "Commerce", tools: ["create_product", "update_product_price", "set_product_stock", "set_product_status", "fulfill_order", "set_order_status"] },
+  { label: "CRM", tools: ["create_contact", "update_contact_stage", "add_contact_note", "tag_contact"] },
+  { label: "Invoicing", tools: ["create_invoice", "set_invoice_status"] },
+  { label: "Bookings & reservations", tools: ["create_service", "create_booking", "set_booking_status", "set_reservation_status", "block_availability"] },
+  { label: "Content", tools: ["create_blog_post", "publish_page"] },
+  { label: "Helpdesk", tools: ["create_ticket", "reply_ticket", "set_ticket_status"] },
+  { label: "Marketing", tools: ["create_campaign", "send_campaign"] },
+  { label: "Call center", tools: ["add_location"] },
+  { label: "Reaching customers", tools: ["send_message", "place_call"] },
+  { label: "Google Workspace", tools: ["google_send_email", "google_create_doc", "google_create_event", "google_append_sheet"] },
+];
 
 export async function listToolPolicies(orgId: string): Promise<{ data: ToolPolicy[]; error: string | null }> {
   const { data, error } = await supabase.from("agent_tool_policy").select("tool, mode").eq("organization_id", orgId);

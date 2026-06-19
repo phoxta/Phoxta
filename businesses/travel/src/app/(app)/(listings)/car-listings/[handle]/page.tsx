@@ -1,4 +1,5 @@
 import ButtonPrimary from '@/components/button-primary'
+import ReserveBox from '@/components/reserve-box'
 import { DescriptionDetails, DescriptionList, DescriptionTerm } from '@/components/description-list'
 import { Divider } from '@/components/divider'
 import NcInputNumber from '@/components/nc-input-number'
@@ -26,9 +27,9 @@ import SectionHost from '../../components/section-host'
 import SectionListingReviews from '../../components/section-listing-reviews'
 import SectionMap from '../../components/section-map'
 
-export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
-  const { handle } = await params
-  const listing = await getCarListingByHandle(handle)
+export function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
+  const { handle } = params
+  const listing = getCarListingByHandle(handle)
 
   if (!listing) {
     return {
@@ -43,11 +44,11 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   }
 }
 
-const Page = async ({ params }: { params: Promise<{ handle: string }> }) => {
-  const { handle } = await params
+const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
+  const { handle } = params
 
-  const listing = await getCarListingByHandle(handle)
-  const reviews = await getListingReviews(handle)
+  const listing = getCarListingByHandle(handle)
+  const reviews = getListingReviews(handle)
 
   if (!listing?.id) {
     return redirect('/car')
@@ -65,7 +66,7 @@ const Page = async ({ params }: { params: Promise<{ handle: string }> }) => {
   } = listing
 
   // Server action to handle form submission
-  const handleSubmitForm = async (formData: FormData) => {
+  const handleSubmitForm = (formData: FormData) => {
     'use server'
 
     // Handle form submission logic here
@@ -303,7 +304,7 @@ const Page = async ({ params }: { params: Promise<{ handle: string }> }) => {
 
         {/* SIDEBAR */}
         <div className="grow">
-          <div className="sticky top-10">{renderSidebarPriceAndForm()}</div>
+          <div className="sticky top-10"><ReserveBox listing={listing} vertical="car" /></div>
         </div>
       </main>
 

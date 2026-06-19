@@ -17,7 +17,11 @@ import Section13 from "@/shared/sections/index-1/Section13";
 export default function Home1Page() {
   return (
     <>
-      <PageMeta title="Phoxta - Home1" />
+      <PageMeta
+        title="Phoxta — Own a validated, AI-powered business"
+        description="Phoxta is a marketplace of validated, AI-powered businesses you can own and run from day one. Pick a business, make it yours, and go from launch to revenue in days — not months."
+        path="/"
+      />
                 <Section1 />
                 <Section2 />
                 <Section3 />

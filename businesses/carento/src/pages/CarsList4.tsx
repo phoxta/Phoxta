@@ -10,16 +10,14 @@ import ByPagination from "@/components/Filter/ByPagination";
 import ByPrice from "@/components/Filter/ByPrice";
 import ByRating from "@/components/Filter/ByRating";
 import Layout from "@/components/layout/Layout";
-import rawCarsData from "@/util/cars.json";
+import { useFleet } from "@/util/fleet";
 import useCarFilter from "@/util/useCarFilter";
 import Link from "@/components/common/Link";
 import Marquee from "react-fast-marquee";
-const carsData = rawCarsData.map((car) => ({
-    ...car,
-    rating: parseFloat(car.rating as string),
-}));
+
 export default function CarsList4() {
-    const { filter, setFilter, sortCriteria, setSortCriteria, itemsPerPage, setItemsPerPage, currentPage, setCurrentPage, uniqueNames, uniqueFuelTypes, uniqueAmenities, uniqueLocations, uniqueRatings, uniqueCarTypes, filteredCars, sortedCars, totalPages, startIndex, endIndex, paginatedCars, handleCheckboxChange, handleSortChange, handlePriceRangeChange, handleItemsPerPageChange, handlePageChange, handlePreviousPage, handleNextPage, handleClearFilters, startItemIndex, endItemIndex } = useCarFilter(carsData);
+    const { cars } = useFleet();
+    const { filter, setFilter, sortCriteria, setSortCriteria, itemsPerPage, setItemsPerPage, currentPage, setCurrentPage, uniqueNames, uniqueFuelTypes, uniqueAmenities, uniqueLocations, uniqueRatings, uniqueCarTypes, filteredCars, sortedCars, totalPages, startIndex, endIndex, paginatedCars, handleCheckboxChange, handleSortChange, handlePriceRangeChange, handleItemsPerPageChange, handlePageChange, handlePreviousPage, handleNextPage, handleClearFilters, startItemIndex, endItemIndex } = useCarFilter(cars);
 
     return (
         <>

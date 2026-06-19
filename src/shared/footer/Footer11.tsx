@@ -13,8 +13,8 @@ const NAV_LINKS_2 = [
     { label: "Contact", href: "/contact-1" },
     { label: "Jobs", href: "#" },
     { label: "Press Kit", href: "#" },
-    { label: "Terms", href: "#" },
-    { label: "Privacy", href: "#" },
+    { label: "Terms", href: "/terms" },
+    { label: "Privacy", href: "/privacy" },
 ];
 
 const LOCATIONS = [

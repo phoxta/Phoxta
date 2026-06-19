@@ -216,10 +216,10 @@ export default function Footer8() {
                         <span className="footer-8__copy">Phoxta &copy; 2026</span>
                         <ul className="footer-8__policies list-unstyled d-flex flex-wrap gap-3 mb-0">
                             <li>
-                                <Link to="#">Privacy Policy</Link>
+                                <Link to="/privacy">Privacy Policy</Link>
                             </li>
                             <li>
-                                <Link to="#">Terms of Use</Link>
+                                <Link to="/terms">Terms of Use</Link>
                             </li>
                             <li>
                                 <Link to="#">Refund Policy</Link>

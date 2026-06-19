@@ -2,11 +2,11 @@ import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 
 const ITEMS = [
-    { num: "[ 01 ]", name: "Heritage-Driven Innovation", img: "sec-8-building-1.webp", lede: "We merge visionary concepts with seamless implementation, guaranteeing that every initiative, aesthetic, or framework transcends visual appeal.", active: true },
-    { num: "[ 02 ]", name: "Motion graphics production", img: "sec-8-building-2.webp", lede: "From storyboard to final composite, we craft motion sequences that breathe life into static spaces and translate architecture into kinetic narrative." },
-    { num: "[ 03 ]", name: "Technical Fidelity", img: "sec-8-building-3.webp", lede: "Drawings, models, and details rigorously coordinated. Every joint, tolerance, and material specification documented to construction-grade precision." },
-    { num: "[ 04 ]", name: "Minimalist Structural Logic", img: "sec-8-building-4.webp", lede: "A disciplined less-is-more approach where every column, slab, and span earns its purpose — structure becomes the architecture itself." },
-    { num: "[ 05 ]", name: "Sustainable Integrity", img: "sec-8-building-5.webp", lede: "Low-carbon materials, passive strategies, and lifecycle thinking woven into every decision — buildings designed to outlast their generation." },
+    { num: "[ 01 ]", name: "Data-driven underwriting", img: "sec-8-building-1.webp", lede: "We see each business's live revenue, orders and cash flow on the platform — so every advance is sized to real ability to repay, not a blind credit score.", active: true },
+    { num: "[ 02 ]", name: "We invest alongside you", img: "sec-8-building-2.webp", lede: "Phoxta keeps a first-loss stake in every loan we originate. We lose money before you do — so our incentives and yours point the same way." },
+    { num: "[ 03 ]", name: "Diversified, with a reserve", img: "sec-8-building-3.webp", lede: "Every deposit is auto-spread across dozens of businesses, and a funded reserve absorbs expected defaults before they ever reach your principal." },
+    { num: "[ 04 ]", name: "Back-up servicing", img: "sec-8-building-4.webp", lede: "An independent servicer can step in to keep collecting on your loans even if Phoxta isn't in the picture. Your returns don't depend on us being here." },
+    { num: "[ 05 ]", name: "Segregated & regulated", img: "sec-8-building-5.webp", lede: "Investor money sits in segregated, ring-fenced accounts — separate from Phoxta's own — and offerings are made under the applicable securities exemptions with audited disclosures." },
 ];
 
 const ArrowSvg = (
@@ -17,26 +17,26 @@ const ArrowSvg = (
 
 export default function Section8() {
     return (
-        <section className="sec-8-home-13" aria-label="The Phoxta Distinction">
+        <section className="sec-8-home-13" aria-label="Why returns are sustainable">
             <div className="sec-8-home-13__inner">
                 <header className="sec-8-home-13__top">
                     <div className="sec-8-home-13__head">
-                        <Link className="sec-8-home-13__tag at_fade_anim" data-fade-from="left" data-delay=".05" to="/about-1">
-                            <span>THE PHOXTA DISTINCTION</span>
+                        <Link className="sec-8-home-13__tag at_fade_anim" data-fade-from="left" data-delay=".05" to="/about-2">
+                            <span>WHY RETURNS ARE SUSTAINABLE</span>
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                                 <path d="M3.5 10.5L10.5 3.5M10.5 3.5H4.66667M10.5 3.5V9.33333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </Link>
                         <h2 className="sec-8-home-13__title mb-0 reveal-text">
-                            <RevealText>Defining the benchmarks of modern architectural excellence.</RevealText>
+                            <RevealText>How we target high yields while managing the downside.</RevealText>
                         </h2>
                     </div>
 
                     <div className="at-service-btn pt-30">
-                        <Link className="at-btn" to="/contact-1">
+                        <Link className="at-btn" to="/auth">
                             <span>
-                                <span className="text-1">Get a free quote</span>
-                                <span className="text-2">Get a free quote</span>
+                                <span className="text-1">Open an account</span>
+                                <span className="text-2">Open an account</span>
                             </span>
                             <i>
                                 <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -61,7 +61,7 @@ export default function Section8() {
                     <ul className="sec-8-home-13__list list-unstyled mb-0">
                         {ITEMS.map((it) => (
                             <li key={it.num} className={`sec-8-home-13__item${it.active ? " sec-8-home-13__item--active" : ""}`} data-img={`/assets/imgs/pages/home-13/${it.img}`} data-lede={it.lede}>
-                                <Link className="sec-8-home-13__row" to="/services-1">
+                                <Link className="sec-8-home-13__row" to="/auth">
                                     <span className="sec-8-home-13__row-num">{it.num}</span>
                                     <span className="sec-8-home-13__row-name">{it.name}</span>
                                     <span className="sec-8-home-13__row-arrow" aria-hidden="true">{ArrowSvg}</span>

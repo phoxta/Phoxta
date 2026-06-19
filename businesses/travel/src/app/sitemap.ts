@@ -28,8 +28,8 @@ const staticRoutes = [
   '/signup',
 ]
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [stays, cars, experiences, posts] = await Promise.all([
+export default function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const [stays, cars, experiences, posts] = Promise.all([
     getStayListings(),
     getCarListings(),
     getExperienceListings(),

@@ -6,7 +6,11 @@ import Section3 from "@/shared/sections/about-3/Section7";
 export default function PricingPage() {
   return (
     <>
-      <PageMeta title="Phoxta - Pricing" />
+      <PageMeta
+        title="Pricing — Phoxta"
+        description="Simple, transparent pricing for owning an AI-powered business on Phoxta. Compare plans and find the right fit to launch and grow."
+        path="/pricing"
+      />
                 <Section1 className="pt-100" showNoise={false} />
                 <Section2 />
                 <Section3 />

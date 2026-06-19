@@ -1263,7 +1263,7 @@ function MapClusterLayer<P extends GeoJSON.GeoJsonProperties = GeoJSON.GeoJsonPr
     if (!isLoaded || !map) return
 
     // Cluster click handler - zoom into cluster
-    const handleClusterClick = async (
+    const handleClusterClick = (
       e: MapLibreGL.MapMouseEvent & {
         features?: MapLibreGL.MapGeoJSONFeature[]
       }
@@ -1283,7 +1283,7 @@ function MapClusterLayer<P extends GeoJSON.GeoJsonProperties = GeoJSON.GeoJsonPr
       } else {
         // Default behavior: zoom to cluster expansion zoom
         const source = map.getSource(sourceId) as MapLibreGL.GeoJSONSource
-        const zoom = await source.getClusterExpansionZoom(clusterId)
+        const zoom = source.getClusterExpansionZoom(clusterId)
         map.easeTo({
           center: coordinates,
           zoom,

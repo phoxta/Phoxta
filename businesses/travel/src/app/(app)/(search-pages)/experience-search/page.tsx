@@ -6,13 +6,13 @@ import { getExperienceListingFilterOptions } from '@/data/data'
 import { getExperienceListings } from '@/data/listings'
 import { Metadata } from 'next'
 
-export async function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
+export function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
   return { title: 'Search experiences', description: 'Discover amazing experiences around you' }
 }
 
-const Page = async ({ params }: { params: Promise<{ handle?: string[] }> }) => {
-  const listings = await getExperienceListings()
-  const filterOptions = await getExperienceListingFilterOptions()
+const Page = ({ params }: { params: Promise<{ handle?: string[] }> }) => {
+  const listings = getExperienceListings()
+  const filterOptions = getExperienceListingFilterOptions()
 
   return (
     <div className="relative pb-28">

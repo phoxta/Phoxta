@@ -7,8 +7,8 @@ import { getStayListings } from '@/data/listings'
 import { Edit02Icon, ViewIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
-const Page = async () => {
-  const listing = (await getStayListings())[0]
+const Page = () => {
+  const listing = (getStayListings())[0]
 
   return (
     <>

@@ -1,5 +1,5 @@
 // stay categories --------
-export async function getStayCategories() {
+export function getStayCategories() {
   return [
     {
       id: 'stay-cat://1',
@@ -160,19 +160,19 @@ export async function getStayCategories() {
     },
   ]
 }
-export async function getStayCategoryByHandle(handle?: string) {
+export function getStayCategoryByHandle(handle?: string) {
   // lower case handle
   handle = handle?.toLowerCase()
 
   // get all categories
-  const categories = await getStayCategories()
+  const categories = getStayCategories()
 
   // return first category if handle is not found (only for demo)
   return categories.find((category) => category.handle === handle) || categories[0]
 }
 
 // experience categories --------
-export async function getExperienceCategories() {
+export function getExperienceCategories() {
   return [
     {
       id: 'experience://5',
@@ -273,17 +273,17 @@ export async function getExperienceCategories() {
     },
   ]
 }
-export async function getExperienceCategoryByHandle(handle?: string) {
+export function getExperienceCategoryByHandle(handle?: string) {
   // lower case handle
   handle = handle?.toLowerCase()
-  const categories = await getExperienceCategories()
+  const categories = getExperienceCategories()
 
   // return first category if handle is not found (only for demo)
   return categories.find((category) => category.handle === handle) || categories[0]
 }
 
 // car categories --------
-export async function getCarCategories() {
+export function getCarCategories() {
   return [
     {
       id: 'car://1',
@@ -395,18 +395,18 @@ export async function getCarCategories() {
     },
   ]
 }
-export async function getCarCategoryByHandle(handle?: string) {
+export function getCarCategoryByHandle(handle?: string) {
   // lower case handle
   handle = handle?.toLowerCase()
 
-  const categories = await getCarCategories()
+  const categories = getCarCategories()
 
   // return first category if handle is not found (only for demo)
   return categories.find((category) => category.handle === handle) || categories[0]
 }
 
 // Flight categories --------
-export async function getFlightCategories() {
+export function getFlightCategories() {
   return [
     {
       id: 'flight-cat://1',
@@ -567,19 +567,19 @@ export async function getFlightCategories() {
     },
   ]
 }
-export async function getFlightCategoryByHandle(handle?: string) {
+export function getFlightCategoryByHandle(handle?: string) {
   // lower case handle
   handle = handle?.toLowerCase()
 
-  const categories = await getFlightCategories()
+  const categories = getFlightCategories()
 
   // return first category if handle is not found (only for demo)
   return categories.find((category) => category.handle === handle) || categories[0]
 }
 
 // example data
-export async function getGroupStayCategories() {
-  const categories = await getStayCategories()
+export function getGroupStayCategories() {
+  const categories = getStayCategories()
   return [
     {
       title: 'Popular',

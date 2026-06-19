@@ -122,26 +122,6 @@ const CARDS_IMGS = [
 
 const TAGS = ["E-commerce", "Local services", "Content & creator", "SaaS", "Marketplaces"];
 
-function AtBtn({
-    href,
-    children,
-    className = "",
-}: {
-    href: string;
-    children: React.ReactNode;
-    className?: string;
-}) {
-    return (
-        <Link to={href} className={`at-btn text-white rounded-0 ${className}`.trim()}>
-            <span>{children}</span>
-            <i>
-                {ARROW_SVG}
-                {ARROW_SVG}
-            </i>
-        </Link>
-    );
-}
-
 export default function Section1() {
     return (
         <div className="bg-neutral-50">
@@ -153,28 +133,13 @@ export default function Section1() {
                     <HeroNav />
                     <div className="container p-relative z-index-1">
                         <div className="row align-items-start">
-                            <div className="col-12">
-                                <span className="sec-1-home-4__tagline d-inline-block mb-30">
-                                    [ READY-TO-RUN BUSINESSES, AI INSIDE ]
-                                </span>
-                            </div>
-                            <div className="col-xxl-5 col-lg-5 mb-5 mb-lg-0 pe-xxl-5">
+                            <div className="col-xxl-6 col-lg-6 mb-5 mb-lg-0 pe-xxl-5">
                                 <h4 className="sec-1-home-4__headline fw-600 text-white mb-3 mb-md-4 lh-1">
-                                    Own a business that already works.
+                                    Own a business that <br className="d-none d-md-block" /> already works.
                                 </h4>
                                 <p className="text-white fz-font-lg mb-4 mb-md-5" style={{ opacity: 0.85, maxWidth: 540 }}>
-                                    Pick a validated, AI-powered business, make it your own, and go from launch to revenue in days &mdash; not months.
+                                    Pick a validated business, make it your own, and launch in minutes &mdash; complete with an AI agent that answers calls, chats and bookings across every channel from your console.
                                 </p>
-                                <div className="sec-1-home-4__btns d-flex flex-wrap gap-3">
-                                    <AtBtn href="/product-archive">
-                                        <span className="text-1">BROWSE BUSINESSES FOR SALE</span>
-                                        <span className="text-2">BROWSE BUSINESSES FOR SALE</span>
-                                    </AtBtn>
-                                    <AtBtn href="/about-2">
-                                        <span className="text-1">SEE HOW IT WORKS</span>
-                                        <span className="text-2">SEE HOW IT WORKS</span>
-                                    </AtBtn>
-                                </div>
 
                                 {/* "How we work" block carried over from the original homepage hero */}
                                 <div className="at-hero-video mt-40" style={{ maxWidth: 220 }}>

@@ -4,6 +4,7 @@ import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 import { getMyProfile, type UserProfile } from "@/lib/db/profile";
 import { listMyOrganizations, type Organization } from "@/lib/db/organizations";
+import { listAiUsageThisMonth } from "@/lib/db/ai";
 
 const PROFILE_FIELDS: (keyof UserProfile)[] = [
   "full_name",
@@ -25,16 +26,18 @@ export default function DashboardHomePage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [orgs, setOrgs] = useState<Array<{ role: string; organization: Organization }>>([]);
+  const [aiTokens, setAiTokens] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    Promise.all([getMyProfile(), listMyOrganizations()]).then(([p, o]) => {
+    Promise.all([getMyProfile(), listMyOrganizations(), listAiUsageThisMonth()]).then(([p, o, a]) => {
       if (!active) return;
       if (p.error) setError(p.error);
       else setProfile(p.data);
       if (!o.error) setOrgs(o.data);
+      setAiTokens(a.data.reduce((sum, u) => sum + u.tokens, 0));
       setLoading(false);
     });
     return () => {
@@ -84,13 +87,15 @@ export default function DashboardHomePage() {
             <div className="fz-font-sm neutral-500">Connect a store to track</div>
           </div>
         </div>
-        <div className="col-xl-3 col-md-6">
+        <Link to="/dashboard/assistant" className="col-xl-3 col-md-6 text-decoration-none">
           <div className="bg-neutral-0 rounded-4 p-4 h-100 border-100">
-            <div className="fz-font-md neutral-500 mb-2">AI tasks handled</div>
-            <div className="fz-60 fw-700 lh-1 mb-2">0</div>
-            <div className="fz-font-sm neutral-500">Assistants on standby</div>
+            <div className="fz-font-md neutral-500 mb-2">Assistant tokens (mo.)</div>
+            <div className="fz-60 fw-700 lh-1 mb-2 neutral-900">
+              {loading ? "—" : aiTokens >= 1000 ? `${(aiTokens / 1000).toFixed(1)}k` : aiTokens}
+            </div>
+            <div className="fz-font-sm neutral-500">{aiTokens === 0 ? "Ask your assistant →" : "Open the assistant →"}</div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Real: your businesses */}

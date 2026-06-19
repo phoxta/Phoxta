@@ -10,8 +10,8 @@ import { getExperienceCategories } from '@/data/categories'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
 import { ReactNode } from 'react'
 
-const Layout = async ({ children }: { children: ReactNode }) => {
-  const categories = await getExperienceCategories()
+const Layout = ({ children }: { children: ReactNode }) => {
+  const categories = getExperienceCategories()
 
   return (
     <ApplicationLayout header={<Header2 initSearchFormTab="Experiences" hasBorderBottom={false} />}>

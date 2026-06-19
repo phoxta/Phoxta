@@ -1,6 +1,7 @@
 'use client'
 
 import { ButtonCircle } from '@/components/button'
+import FlightBook from '@/components/flight-book'
 import { TFlightListing } from '@/data/listings'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
@@ -184,6 +185,9 @@ const FlightCard: FC<FlightCardProps> = ({ className = '', data }) => {
           <div className="border-t border-border" />
         </div>
         {renderFlightItem()}
+        <div className="mt-7">
+          <FlightBook flight={data} />
+        </div>
       </DisclosurePanel>
     </Disclosure>
   )

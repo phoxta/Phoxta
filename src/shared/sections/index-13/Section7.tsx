@@ -4,9 +4,9 @@ import { Autoplay, Controller } from "swiper/modules";
 import RevealText from "@/shared/effects/RevealText";
 
 const TESTIMONIALS = [
-    { img: "sec-7-client-1.webp", text: "The team didn't just design a house; they sculpted a sanctuary of light. Their mastery of Minimalist Volumes and natural integration transformed our vision into a structural masterpiece that feels both modern and timeless.", name: "Julian Thorne", project: "The Obsidian Villa" },
-    { img: "sec-7-client-2.webp", text: "From the first sketch to the final stone, the studio handled our atrium with extraordinary care. Their balance of cedar warmth, water reflections, and seasonal light turned a wellness retreat into a quiet poem you can walk through.", name: "Mariko Hayashi", project: "Atrium of Quiet Light" },
-    { img: "sec-7-client-3.webp", text: "We needed a civic landmark, not just a building. The pavilion they delivered redefined the skyline and gave the city a new public room. Every detail, down to the travertine joints, speaks of patience and conviction.", name: "Elena Conti", project: "Stratum Cultural Pavilion" },
+    { img: "sec-7-client-1.webp", text: "I started with a Starter Note to test it, then moved into the Balanced Credit Invest portfolio. Payouts have landed on time every month, and I can actually see which businesses my money is backing.", name: "Daniel Osei", project: "Core Note + Credit Invest" },
+    { img: "sec-7-client-2.webp", text: "What sold me was the underwriting — they lend against real revenue they can see on the platform, not a credit score and a prayer. My Growth Note has compounded exactly as projected.", name: "Priya Nair", project: "Growth Note holder" },
+    { img: "sec-7-client-3.webp", text: "The diversification and reserve fund give me peace of mind. A couple of advances ran late, the buffer absorbed it, and my net return barely moved. This is how small-business lending should work.", name: "Marcus Hale", project: "Growth portfolio" },
 ];
 
 const StarSvg = (
@@ -41,7 +41,7 @@ export default function Section7() {
     }, []);
 
     return (
-        <section className="sec-7-home-13" aria-label="Testimonial">
+        <section className="sec-7-home-13" aria-label="Investor testimonials">
             <div className="sec-7-home-13__inner">
                 <figure className="sec-7-home-13__media mb-0">
                     <div ref={mediaRef} className="swiper sec-7-home-13__media-slider">
@@ -59,13 +59,13 @@ export default function Section7() {
                     <div className="sec-7-home-13__head">
                         <div className="sec-7-home-13__label at_fade_anim" data-fade-from="left" data-delay=".05">
                             <span className="sec-7-home-13__label-dot" aria-hidden="true"></span>
-                            <span className="sec-7-home-13__label-text">TESTIMONIAL</span>
+                            <span className="sec-7-home-13__label-text">INVESTORS</span>
                         </div>
                         <h2 className="sec-7-home-13__title mb-0 reveal-text">
-                            <RevealText>Proven results from the partners we&rsquo;ve empowered</RevealText>
+                            <RevealText>What our investors say after their first year</RevealText>
                         </h2>
                         <p className="sec-7-home-13__lede mb-0 at_fade_anim">
-                            Discover how we scale brands using strategic insight, daring design, and high-impact campaigns that captivate audiences and deliver enduring success.
+                            Real members, real payouts. Here&rsquo;s how investors are putting their capital to work across Growth Notes and Credit Invest.
                         </p>
                     </div>
 

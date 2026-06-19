@@ -10,17 +10,17 @@ const TICKER_SVG = (
 );
 
 const TICKER_ITEMS = [
-    "Smart wear",
-    "Casual cool",
-    "Luxe touch",
-    "Bold fashion",
-    "Modern fit",
-    "Feel trendy",
-    "New vibes",
-    "Urban style",
-    "Fresh looks",
-    "Daily wear",
-    "Street ready",
+    "AI-native",
+    "Launch in minutes",
+    "Proven economics",
+    "One brain, every channel",
+    "Yours to own",
+    "Storefront + app",
+    "Free to brand",
+    "Built-in automations",
+    "Verified numbers",
+    "No lock-in",
+    "Ready to run",
 ];
 
 export default function Section3({ classList }: { classList?: string }) {

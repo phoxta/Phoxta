@@ -2,6 +2,7 @@ import avatarImage1 from '@/images/avatars/Image-1.png'
 import avatarImage2 from '@/images/avatars/Image-2.png'
 import avatarImage3 from '@/images/avatars/Image-3.png'
 import avatarImage4 from '@/images/avatars/Image-4.png'
+import { getLiveContent } from '@/data/live'
 import {
   AccelerationIcon,
   AiGameIcon,
@@ -54,7 +55,8 @@ import {
 } from '@hugeicons/core-free-icons'
 import { IconSvgElement } from '@hugeicons/react'
 
-export async function getListingReviews(handle: string) {
+export function getListingReviews(handle: string) {
+  const _live = getLiveContent('reviews'); if (_live) return _live as any
   return [
     {
       id: '1',
@@ -122,7 +124,8 @@ export async function getListingReviews(handle: string) {
     },
   ]
 }
-export async function getBlogPosts() {
+export function getBlogPosts() {
+  const _live = getLiveContent('blog'); if (_live) return _live as any
   return [
     {
       id: '1',
@@ -350,16 +353,16 @@ export async function getBlogPosts() {
     },
   ]
 }
-export async function getBlogPostsByHandle(handle: string) {
+export function getBlogPostsByHandle(handle: string) {
   // lower case the handle
   handle = handle.toLowerCase()
 
-  const posts = await getBlogPosts()
-  const post = posts.find((post) => post.handle === handle)
+  const posts = getBlogPosts()
+  const post = posts.find((post) => post.handle === handle) ?? posts[0]
   return {
     ...post,
-    content: 'Lorem ipsum dolor ...',
-    tags: ['fashion', 'style', 'trends'],
+    content: (post as any)?.content || (post as any)?.body || (post as any)?.excerpt || 'Lorem ipsum dolor ...',
+    tags: ['travel', 'guide', 'tips'],
   }
 }
 
@@ -368,7 +371,7 @@ export type TListingReivew = Awaited<ReturnType<typeof getListingReviews>>[numbe
 export type TBlogPost = Awaited<ReturnType<typeof getBlogPosts>>[number]
 
 // Get Listings search Filter Options
-export async function getStayListingFilterOptions() {
+export function getStayListingFilterOptions() {
   return [
     {
       label: 'Property type',
@@ -561,7 +564,7 @@ export async function getStayListingFilterOptions() {
     },
   ]
 }
-export async function getExperienceListingFilterOptions() {
+export function getExperienceListingFilterOptions() {
   return [
     {
       label: 'Exprience type',
@@ -726,7 +729,7 @@ export async function getExperienceListingFilterOptions() {
     },
   ]
 }
-export async function getRealEstateListingFilterOptions() {
+export function getRealEstateListingFilterOptions() {
   return [
     {
       label: 'Property type',
@@ -919,7 +922,7 @@ export async function getRealEstateListingFilterOptions() {
     },
   ]
 }
-export async function getCarListingFilterOptions() {
+export function getCarListingFilterOptions() {
   return [
     {
       label: 'Car type',
@@ -1035,7 +1038,7 @@ export async function getCarListingFilterOptions() {
     },
   ]
 }
-export async function getFlightFilterOptions() {
+export function getFlightFilterOptions() {
   return [
     {
       label: 'Airlines',

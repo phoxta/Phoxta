@@ -1,23 +1,22 @@
 import { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
 import Swiper from "swiper";
 import { Autoplay, EffectFade, Thumbs } from "swiper/modules";
 import type { Swiper as SwiperInstance } from "swiper";
 
 const SLIDES = [
-    { img: "sec-1-hero-1.webp", tag: "[ ARCHITECTING / TIMELESS / SPACES ]", headline: "Architecting Distinctive Environments Through Cutting-Edge Design Solutions" },
-    { img: "sec-1-hero-2.webp", tag: "[ INTERIOR / ATMOSPHERE / DETAIL ]", headline: "Crafting Interior Atmospheres That Balance Form, Function and Feeling" },
-    { img: "sec-1-hero-3.webp", tag: "[ URBAN / MASTERPLAN / FUTURE ]", headline: "Shaping Urban Fabrics Through Strategic Planning and Civic Vision" },
-    { img: "sec-1-hero-4.webp", tag: "[ 3D / VISUAL / IMMERSION ]", headline: "Bringing Concepts to Life with Photoreal 3D Visualization and Storytelling" },
-    { img: "sec-1-hero-5.webp", tag: "[ SUSTAINABLE / GREEN / FUTURE ]", headline: "Designing Responsibly with Sustainable Strategy and Long-Term Consulting" },
+    { img: "sec-1-hero-1.webp", tag: "[ INVEST / IN / PHOXTA ]", headline: "Earn 7% to 15%, Backed by Real Businesses and Real Revenue" },
+    { img: "sec-1-hero-2.webp", tag: "[ GROWTH / NOTES / FIXED ]", headline: "Fixed Growth Notes From 7%, Paid Monthly From Diversified Revenue" },
+    { img: "sec-1-hero-3.webp", tag: "[ CREDIT / INVEST / YIELD ]", headline: "Credit Invest: Fund Vetted Businesses and Target Net Yields Up to 15%" },
+    { img: "sec-1-hero-4.webp", tag: "[ DATA / UNDERWRITING / EDGE ]", headline: "Underwritten on Live Revenue Data — and We Co-Invest in Every Loan" },
+    { img: "sec-1-hero-5.webp", tag: "[ SAFETY / FIRST / ALWAYS ]", headline: "Monthly Payouts, Segregated Funds and Clear Fees — No Lock-You-In Surprises" },
 ];
 
 const SERVICES = [
-    { icon: "sec-1-icon-1.webp", num: "[ 01 ]", name: "Architectural Design" },
-    { icon: "sec-1-icon-2.webp", num: "[ 02 ]", name: "Interior Architecture" },
-    { icon: "sec-1-icon-3.webp", num: "[ 03 ]", name: "Urban Planning" },
-    { icon: "sec-1-icon-4.webp", num: "[ 04 ]", name: "3D Visualization" },
-    { icon: "sec-1-icon-5.webp", num: "[ 05 ]", name: "Sustainable Consulting" },
+    { icon: "sec-1-icon-1.webp", num: "[ 01 ]", name: "Growth Notes" },
+    { icon: "sec-1-icon-2.webp", num: "[ 02 ]", name: "Credit Invest" },
+    { icon: "sec-1-icon-3.webp", num: "[ 03 ]", name: "How It Works" },
+    { icon: "sec-1-icon-4.webp", num: "[ 04 ]", name: "Returns Calculator" },
+    { icon: "sec-1-icon-5.webp", num: "[ 05 ]", name: "Risk & Protection" },
 ];
 
 export default function Section1() {
@@ -71,13 +70,8 @@ export default function Section1() {
     }, []);
 
     return (
-        <section className="sec-1-home-13 pt-160" aria-label="Phoxta Architecture Hero">
+        <section className="sec-1-home-13 pt-160" aria-label="Phoxta Invest Hero">
             <div className="sec-1-home-13__inner">
-                <div className="sec-1-home-13__top">
-                    <h1 className="sec-1-home-13__brand mb-0 text-scale-anim">Phoxta<sup>&reg;</sup> Architecture</h1>
-                    <Link className="sec-1-home-13__since text-scramble" to="/about-1">&copy; Since 2012</Link>
-                </div>
-
                 <div className="sec-1-home-13__card">
                     <div ref={mainRef} className="swiper sec-1-home-13__main">
                         <div className="swiper-wrapper">

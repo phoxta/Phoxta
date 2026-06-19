@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
+import { useCachedData } from "@/lib/hooks/useCachedData";
 import { listMySubscriptions, listMyPurchases, type Subscription, type Purchase } from "@/lib/db/billing";
+import { listAiUsageThisMonth } from "@/lib/db/ai";
 import { formatPrice } from "@/lib/db/marketplace";
 
 const STATUS_STYLE: Record<Subscription["status"], string> = {
@@ -17,6 +18,13 @@ const PLANS = [
   { plan: "Scale", price: "$179/mo", note: "Growth-stage businesses" },
 ];
 
+// Assistant cost is small per call — show cents precision (not rounded to $0).
+function formatPriceCents(cents: number): string {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(
+    cents / 100,
+  );
+}
+
 const PURCHASE_STYLE: Record<Purchase["status"], string> = {
   paid: "bg-success-subtle text-success",
   pending: "bg-neutral-100 neutral-700",
@@ -25,24 +33,14 @@ const PURCHASE_STYLE: Record<Purchase["status"], string> = {
 };
 
 export default function BillingPage() {
-  const [subs, setSubs] = useState<Subscription[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    Promise.all([listMySubscriptions(), listMyPurchases()]).then(([s, p]) => {
-      if (!active) return;
-      if (s.error) setError(s.error);
-      setSubs(s.data);
-      setPurchases(p.data);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { data, loading, error } = useCachedData("billing", async () => {
+    const [s, p, a] = await Promise.all([listMySubscriptions(), listMyPurchases(), listAiUsageThisMonth()]);
+    if (s.error) throw new Error(s.error);
+    return { subs: s.data, purchases: p.data, aiUsage: a.data };
+  });
+  const subs = data?.subs ?? [];
+  const purchases = data?.purchases ?? [];
+  const aiUsage = data?.aiUsage ?? [];
 
   return (
     <div>
@@ -124,6 +122,32 @@ export default function BillingPage() {
                       <span className={`badge fw-500 text-capitalize ${PURCHASE_STYLE[p.status]}`}>{p.status}</span>
                     </td>
                     <td className="py-3 pe-4 text-end fw-600">{formatPrice(p.amount_cents, p.currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {!loading && aiUsage.length > 0 && (
+        <>
+          <h5 className="fw-600 mb-3">Assistant usage this month</h5>
+          <div className="bg-neutral-0 rounded-4 border-100 overflow-hidden mb-5">
+            <table className="table mb-0 align-middle">
+              <thead>
+                <tr className="fz-font-sm neutral-500">
+                  <th className="fw-500 py-3 ps-4">Business</th>
+                  <th className="fw-500 py-3 text-end">Tokens</th>
+                  <th className="fw-500 py-3 pe-4 text-end">Est. cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aiUsage.map((u) => (
+                  <tr key={u.orgId}>
+                    <td className="py-3 ps-4 fw-600">{u.orgName}</td>
+                    <td className="py-3 text-end fz-font-md neutral-700">{u.tokens.toLocaleString()}</td>
+                    <td className="py-3 pe-4 text-end fw-600">{formatPriceCents(u.costCents)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 }
 
 const Page = () => {
-  const handleSubmitForm = async (formData: FormData) => {
+  const handleSubmitForm = (formData: FormData) => {
     'use server'
     // Handle form submission logic here
     console.log('Form submitted:', Object.fromEntries(formData.entries()))

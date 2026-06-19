@@ -1,7 +1,7 @@
 import { ChangeEvent, useState } from "react"
 
 interface Car {
-	id: number
+	id: string | number
 	price: number
 	carType: string
 	amenities: string

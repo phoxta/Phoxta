@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import PopupSearch from "@/shared/PopupSearch";
 import Header1 from "@/shared/header/Header1";
@@ -34,7 +34,15 @@ import { MobileMenuCloneProvider } from "@/shared/mobile-menu/MobileMenuCloneCon
 import GlobalEffects from "@/shared/effects/GlobalEffects";
 import ThemeRouteSync from "@/shared/effects/ThemeRouteSync";
 import BackToTop from "@/shared/elements/BackToTop";
+import FloatingVoiceWidget from "@/shared/elements/FloatingVoiceWidget";
 import SmoothScrollEffect from "@/shared/effects/SmoothScrollEffect";
+import SiteJsonLd from "@/seo/SiteJsonLd";
+import NoIndex from "@/seo/NoIndex";
+
+/** Template demo + dark-mode alias routes are duplicates of canonical pages —
+ *  keep them out of the index. Matches /index-2…/index-15 and any *-dark path. */
+const isDemoRoute = (pathname: string) =>
+  /-dark$/.test(pathname) || /^\/index-([2-9]|1[0-5])$/.test(pathname);
 
 type HeaderHandlers = {
   onOpenSearch?: () => void;
@@ -86,6 +94,9 @@ export type MainLayoutProps = {
   noHeader?: boolean;
   mainClass?: string;
   headerProps?: { style?: string };
+  /** When provided, rendered in place of <Outlet/> — lets non-route callers
+   *  (Studio preview, published storefront pages) reuse the full chrome. */
+  children?: React.ReactNode;
 };
 
 export default function MainLayout({
@@ -95,11 +106,13 @@ export default function MainLayout({
   noHeader = false,
   mainClass = "bg-neutral-0",
   headerProps,
+  children,
 }: MainLayoutProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hamburgerMenuOpen, setHamburgerMenuOpen] = useState(false);
   const footerRef = useRef<HTMLElement | null>(null);
+  const { pathname } = useLocation();
 
   const handlers = useMemo(
     () => ({
@@ -179,6 +192,8 @@ export default function MainLayout({
 
   return (
     <MobileMenuCloneProvider>
+      <SiteJsonLd />
+      {isDemoRoute(pathname) ? <NoIndex /> : null}
       <div className="px-blur-bottom" />
       <SmoothScrollEffect />
       <GlobalEffects />
@@ -197,7 +212,7 @@ export default function MainLayout({
       <div id="smooth-wrapper">
         <div id="smooth-content" className="z-index-3">
           <main className={mainClass}>
-            <Outlet />
+            {children ?? <Outlet />}
           </main>
           {!noFooter && isFooterFloating ? <div className="footer-placeholder" aria-hidden="true" /> : null}
           {!noFooter && !isFooterFloating ? <FooterComponent /> : null}
@@ -206,6 +221,7 @@ export default function MainLayout({
       </div>
 
       <BackToTop />
+      <FloatingVoiceWidget />
     </MobileMenuCloneProvider>
   );
 }

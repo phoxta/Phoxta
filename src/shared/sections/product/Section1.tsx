@@ -30,29 +30,29 @@ export default function Section1() {
             <div className="container pb-40">
                 <div className="row g-4 align-items-end">
                     <div className="col-xxl-3">
-                        <h1 className="fz-200 lh-1 fw-600 mb-lg-0 mb-4">Store</h1>
+                        <h1 className="fz-200 lh-1 fw-600 mb-lg-0 mb-4">Marketplace</h1>
                     </div>
                     <div className="col-xxl-8 ms-auto">
                         <div className="d-flex flex-wrap gap-4 justify-content-between pb-20">
                             <div className="d-flex gap-4 justify-content-center">
                                 {ICON_SUPPORT}
                                 <div>
-                                    <h6 className="fw-600 fz-18 mb-0">Customer Support</h6>
-                                    <p className="mb-0">Mon - Sat, 10am - 9pm</p>
+                                    <h6 className="fw-600 fz-18 mb-0">Verified Economics</h6>
+                                    <p className="mb-0">Real numbers you can check</p>
                                 </div>
                             </div>
                             <div className="d-flex gap-4 justify-content-center">
                                 {ICON_RETURNS}
                                 <div>
-                                    <h6 className="fw-600 fz-18 mb-0">Easy Returns</h6>
-                                    <p className="mb-0">Returns extended to 60 days</p>
+                                    <h6 className="fw-600 fz-18 mb-0">Preview Live</h6>
+                                    <p className="mb-0">Try any business before you buy</p>
                                 </div>
                             </div>
                             <div className="d-flex gap-4 justify-content-center">
                                 {ICON_WARRANTY}
                                 <div>
-                                    <h6 className="fw-600 fz-18 mb-0">One-year Warranty</h6>
-                                    <p className="mb-0">No questions asked</p>
+                                    <h6 className="fw-600 fz-18 mb-0">Yours to Own</h6>
+                                    <p className="mb-0">Full export, no lock-in</p>
                                 </div>
                             </div>
                         </div>

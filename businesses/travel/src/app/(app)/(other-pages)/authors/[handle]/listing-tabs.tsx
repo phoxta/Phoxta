@@ -27,15 +27,15 @@ const ListingTabs = ({ onChangeTab }: Props) => {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>(tabs[0])
 
   useEffect(() => {
-    const fetchListings = async () => {
+    const fetchListings = () => {
       if (activeTab === 'Homes' && !stayListings.length) {
-        const stays = await getStayListings()
+        const stays = getStayListings()
         setStayListings(stays)
       } else if (activeTab === 'Cars' && !carListings.length) {
-        const cars = await getCarListings()
+        const cars = getCarListings()
         setCarListings(cars)
       } else if (activeTab === 'Experiences' && !experienceListings.length) {
-        const experiences = await getExperienceListings()
+        const experiences = getExperienceListings()
         setExperienceListings(experiences)
       }
     }
@@ -43,7 +43,7 @@ const ListingTabs = ({ onChangeTab }: Props) => {
     fetchListings()
   }, [activeTab, stayListings.length, carListings.length, experienceListings.length])
 
-  const handleTabChange = async (index: number) => {
+  const handleTabChange = (index: number) => {
     onChangeTab && onChangeTab(tabs[index])
     setActiveTab(tabs[index])
   }

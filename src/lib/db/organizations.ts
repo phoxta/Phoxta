@@ -11,18 +11,35 @@ export type Organization = {
   vertical: string | null;
   primary_region: string | null;
   created_at: string;
+  /** The KB "four moves" lifecycle of the business as a tenant. */
+  lifecycle_stage?: "draft" | "building" | "operating" | "archived";
+  app_path?: string | null;       // which storefront app, e.g. "businesses/carento"
+  site_url?: string | null;       // deployed storefront URL
+  provisioned_at?: string | null;
 };
 
 export type Member = { user_id: string; role: "owner" | "admin" | "staff" | "viewer"; created_at: string };
+
+const ORG_SELECT =
+  "id, name, slug, stage, vertical, primary_region, created_at, lifecycle_stage, app_path, site_url, provisioned_at";
 
 /** A single business the user can access (RLS scopes to members). */
 export async function getBusiness(id: string): Promise<{ data: Organization | null; error: string | null }> {
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, slug, stage, vertical, primary_region, created_at")
+    .select(ORG_SELECT)
     .eq("id", id)
     .maybeSingle();
   return { data: (data as Organization | null) ?? null, error: friendlyError(error?.message) };
+}
+
+/** Update the business's deploy + lifecycle fields (owner/members, RLS-guarded). */
+export async function updateBusiness(
+  id: string,
+  patch: Partial<Pick<Organization, "site_url" | "lifecycle_stage" | "name">>,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("organizations").update(patch).eq("id", id);
+  return { error: friendlyError(error?.message) };
 }
 
 /** Members of a business (RLS lets members read co-members). */
@@ -66,28 +83,22 @@ export async function createBusiness(
   return { id: (data as { id: string } | null)?.id ?? null, error: friendlyError(error?.message) };
 }
 
-/** "Make it yours": create a business from a marketplace blueprint and record the purchase. */
+/**
+ * "Make it yours": buy a Phoxta blueprint → the site factory provisions a fresh
+ * tenant. The `app_provision_business` RPC does it atomically server-side: copies
+ * the blueprint's preset (modules + AI/automation config) into the new org, sets
+ * its lifecycle to `building` and `app_path`, and lets the DB triggers create the
+ * owner membership, trial subscription and Phoxta subdomain, plus log the purchase.
+ */
 export async function buyBlueprint(
-  userId: string,
+  _userId: string,
   blueprint: Blueprint,
 ): Promise<{ id: string | null; error: string | null }> {
-  const created = await createBusiness(userId, {
-    name: blueprint.name,
-    vertical: blueprint.vertical,
-    blueprintId: blueprint.id,
+  const { data, error } = await supabase.rpc("app_provision_business", {
+    p_blueprint: blueprint.id,
+    p_name: blueprint.name,
   });
-  if (created.error || !created.id) return created;
-
-  const { error: purchaseError } = await supabase.from("purchases").insert({
-    buyer_user_id: userId,
-    blueprint_id: blueprint.id,
-    organization_id: created.id,
-    amount_cents: blueprint.price_cents,
-    currency: blueprint.currency,
-    status: "paid",
-  });
-  // The business exists even if the purchase log fails; surface the error but keep the id.
-  return { id: created.id, error: friendlyError(purchaseError?.message) };
+  return { id: (data as string | null) ?? null, error: friendlyError(error?.message) };
 }
 
 export type OrganizationMembership = {

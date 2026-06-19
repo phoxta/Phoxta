@@ -1,0 +1,11 @@
+# Phoxta Pipecat voice bridge.
+# Pin pipecat-ai to a known-good release; the service constructors / import paths
+# below target the 1.x line. Verify against the version you install.
+# `webrtc` adds aiortc for the in-browser voice widget (SmallWebRTC /offer path).
+pipecat-ai[deepgram,cartesia,silero,twilio,webrtc]>=1.0,<2.0
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+httpx>=0.27
+python-dotenv>=1.0
+loguru>=0.7

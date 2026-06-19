@@ -1,0 +1,53 @@
+/*
+ * Phoxta Studio — editor-only styling.
+ *
+ * Scoped to `.phoxta-studio` so NONE of this leaks into a published page, where
+ * the real GSAP effects run. Inside the editor we do NOT mount GlobalEffects, so
+ * any element that an effect would normally reveal (it sets the start state in
+ * JS / via these hook classes) must be forced visible here — otherwise sections
+ * that animate-in would look blank in the canvas.
+ */
+
+.phoxta-studio {
+  height: calc(100vh - 0px);
+}
+
+/* Force animation-hooked elements into their resting (revealed) state. */
+.phoxta-studio .reveal-text,
+.phoxta-studio .split-line,
+.phoxta-studio .split-word,
+.phoxta-studio .split-char,
+.phoxta-studio .char-anim,
+.phoxta-studio .at_fade_anim,
+.phoxta-studio .fade_anim,
+.phoxta-studio .at-fade,
+.phoxta-studio .anim-zoomin,
+.phoxta-studio .text-scramble,
+.phoxta-studio [data-fade-from],
+.phoxta-studio [data-speed],
+.phoxta-studio [at_fade_anim] {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  clip-path: none !important;
+}
+
+/* Keep image zoom-in wrappers from clipping their content in the canvas. */
+.phoxta-studio .anim-zoomin-wrap {
+  overflow: visible !important;
+}
+
+/* Give the Puck canvas a calm, page-like backdrop and full height. */
+.phoxta-studio .Puck {
+  height: 100%;
+}
+
+.phoxta-studio-canvas {
+  background: #fff;
+}
+
+/* The dashboard scales pages to 82% via zoom; the editor manages its own
+ * layout, so opt back out within the Studio surface. */
+.phoxta-studio-fullbleed {
+  zoom: 1;
+}

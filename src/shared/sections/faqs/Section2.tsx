@@ -1,52 +1,34 @@
 import { Link } from "react-router-dom";
 // FAQs section 2 - Browse by topic (service-style cards)
 
-const TOPICS = [
-    {
-        number: "01",
-        title: "Overview",
-        href: "#",
-        description:
-            "Essential questions to understand who we are, what we do, and who we work with.",
-        image: "/assets/imgs/pages/img-161.webp",
-    },
-    {
-        number: "02",
-        title: "Services",
-        href: "#",
-        description:
-            "Details about our solutions, consulting offerings, and system capabilities.",
-        image: "/assets/imgs/pages/img-162.webp",
-    },
-    {
-        number: "03",
-        title: "Process",
-        href: "#",
-        description:
-            "How we approach problems, execute projects, and collaborate with clients.",
-        image: "/assets/imgs/pages/img-163.webp",
-    },
-    {
-        number: "04",
-        title: "Support",
-        href: "#",
-        description:
-            "Post-launch support, maintenance, updates, and system optimization.",
-        image: "/assets/imgs/pages/img-164.webp",
-    },
-];
+// Editable content + defaults. Consumed by the Studio registry.
+export type FaqTopic = { number: string; title: string; href: string; description: string; image: string };
+export type FaqTopicsProps = { heading?: string; topics?: FaqTopic[] };
 
-export default function Section2() {
+export const FAQ_TOPICS_DEFAULTS = {
+    heading: "Browse by topic",
+    topics: [
+        { number: "01", title: "Overview", href: "#", description: "Essential questions to understand who we are, what we do, and who we work with.", image: "/assets/imgs/pages/img-161.webp" },
+        { number: "02", title: "Services", href: "#", description: "Details about our solutions, consulting offerings, and system capabilities.", image: "/assets/imgs/pages/img-162.webp" },
+        { number: "03", title: "Process", href: "#", description: "How we approach problems, execute projects, and collaborate with clients.", image: "/assets/imgs/pages/img-163.webp" },
+        { number: "04", title: "Support", href: "#", description: "Post-launch support, maintenance, updates, and system optimization.", image: "/assets/imgs/pages/img-164.webp" },
+    ] as FaqTopic[],
+} satisfies Required<FaqTopicsProps>;
+
+export default function Section2({
+    heading = FAQ_TOPICS_DEFAULTS.heading,
+    topics = FAQ_TOPICS_DEFAULTS.topics,
+}: FaqTopicsProps = {}) {
     return (
         <section className="sec-2-faqs at-item-anime-area pt-100 pb-120">
             <div className="container">
                 <div className="row">
                     <div className="col-12">
-                        <h3>Browse by topic</h3>
+                        <h3>{heading}</h3>
                     </div>
                 </div>
                 <div className="row g-3 pt-100">
-                    {TOPICS.map((topic, index) => (
+                    {topics.map((topic, index) => (
                         <div
                             key={topic.number}
                             className="col-xxl-3 col-md-6"

@@ -9,7 +9,11 @@ import Section6 from "@/shared/sections/about-1/Section4";
 export default function About2Page() {
   return (
     <>
-      <PageMeta title="Phoxta - About2" />
+      <PageMeta
+        title="About Phoxta — How owning a ready-to-run business works"
+        description="Learn how Phoxta lets you buy a validated, AI-powered business and operate it from day one — the model, the technology, and the team behind it."
+        path="/about-2"
+      />
                 <Section1 />
                 <Section2 />
                 <Section3 />

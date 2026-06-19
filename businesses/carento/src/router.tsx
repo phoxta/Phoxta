@@ -15,6 +15,7 @@ import CarsList2 from "@/pages/CarsList2";
 import CarsList3 from "@/pages/CarsList3";
 import CarsList4 from "@/pages/CarsList4";
 import Contact from "@/pages/Contact";
+import ManageBooking from "@/pages/ManageBooking";
 import DealerDetails from "@/pages/DealerDetails";
 import DealerListing from "@/pages/DealerListing";
 import Faqs from "@/pages/Faqs";
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
     { path: "/cars-list-3", element: <CarsList3 /> },
     { path: "/cars-list-4", element: <CarsList4 /> },
     { path: "/contact", element: <Contact /> },
+    { path: "/manage-booking", element: <ManageBooking /> },
     { path: "/dealer-details", element: <DealerDetails /> },
     { path: "/dealer-listing", element: <DealerListing /> },
     { path: "/faqs", element: <Faqs /> },

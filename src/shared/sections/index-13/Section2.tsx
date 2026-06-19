@@ -3,10 +3,10 @@ import RevealText from "@/shared/effects/RevealText";
 import OdometerCounter from "@/shared/elements/OdometerCounter";
 
 const STATS = [
-    { shape: "sec-2-shape-1.webp", tag: "▲ +18%", prefix: "$", count: 1, suffix: ".2B", cap: "Total value of managed assets.", delay: ".1" },
-    { shape: "sec-2-shape-2.webp", tag: "▲ +5%", prefix: "", count: 98, suffix: "%", cap: "Client satisfaction & project retention.", delay: ".25" },
-    { shape: "sec-2-shape-3.webp", tag: "▲ +42", prefix: "+", count: 450, suffix: "", cap: "Sustainable structures delivered.", delay: ".4" },
-    { shape: "sec-2-shape-4.webp", tag: "▲ +12%", prefix: "", count: 92, suffix: "%", cap: "Space efficiency & occupancy rate.", delay: ".55" },
+    { shape: "sec-2-shape-1.webp", tag: "Fixed", prefix: "", count: 7, suffix: "%+", cap: "Annual target return on fixed Growth Notes.", delay: ".1" },
+    { shape: "sec-2-shape-2.webp", tag: "Up to", prefix: "", count: 15, suffix: "%", cap: "Target net yield on Credit Invest portfolios.", delay: ".25" },
+    { shape: "sec-2-shape-3.webp", tag: "Backed by", prefix: "", count: 5, suffix: "", cap: "Diversified revenue streams securing every payout.", delay: ".4" },
+    { shape: "sec-2-shape-4.webp", tag: "From", prefix: "$", count: 500, suffix: "", cap: "Minimum to open an account — paid out monthly.", delay: ".55" },
 ];
 
 export default function Section2() {
@@ -17,12 +17,12 @@ export default function Section2() {
                     <div className="sec-2-home-13__left">
                         <div className="sec-2-home-13__label at_fade_anim" data-fade-from="left" data-delay=".05">
                             <span className="sec-2-home-13__label-dot" aria-hidden="true"></span>
-                            <span className="sec-2-home-13__label-text">ABOUT US</span>
+                            <span className="sec-2-home-13__label-text">THE OPPORTUNITY</span>
                         </div>
 
                         <div className="sec-2-home-13__intro">
                             <p className="sec-2-home-13__intro-text mb-0 at_fade_anim">
-                                We build <strong>bold</strong>, resilient brands designed to leave a lasting mark on the world.
+                                You back the <strong>infrastructure</strong> behind thousands of AI-run businesses — and share in revenue that compounds as the network grows.
                             </p>
 
                             <ul className="sec-2-home-13__team list-unstyled mb-0">
@@ -33,8 +33,8 @@ export default function Section2() {
                                 ))}
                             </ul>
 
-                            <Link className="sec-2-home-13__cta at_fade_anim" to="/team">
-                                <span>Meet Our Team</span>
+                            <Link className="sec-2-home-13__cta at_fade_anim" to="/product-archive">
+                                <span>Browse the businesses</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                                     <path d="M3.5 10.5L10.5 3.5M10.5 3.5H4.66667M10.5 3.5V9.33333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
@@ -46,10 +46,10 @@ export default function Section2() {
                         <div className="sec-2-home-13__head">
                             <span className="sec-2-home-13__pill at_fade_anim" data-fade-from="bottom" data-delay=".05">
                                 <span className="sec-2-home-13__pill-dot" aria-hidden="true"></span>
-                                <span>Available for new projects</span>
+                                <span>Open to new investors</span>
                             </span>
                             <h2 className="sec-2-home-13__title mb-0 reveal-text">
-                                <RevealText>Imagine. Create. Construct. We transform ambitious visions into tangible realities.</RevealText>
+                                <RevealText>Real businesses. Real revenue. Returns engineered to be durable &mdash; not hype.</RevealText>
                             </h2>
                         </div>
 
@@ -59,9 +59,9 @@ export default function Section2() {
                                     <img className="anim-zoomin" src="/assets/imgs/pages/home-13/sec-2-img-1.webp" alt="Phoxta" loading="lazy" />
                                 </figure>
                                 <div className="sec-2-home-13__caption">
-                                    <h3 className="sec-2-home-13__caption-title mb-0 at-char-animation">Creative Expertise</h3>
+                                    <h3 className="sec-2-home-13__caption-title mb-0 at-char-animation">Where returns come from</h3>
                                     <p className="sec-2-home-13__caption-text mb-0 at_fade_anim">
-                                        With over a decade of design expertise, we create tailored solutions that engage audiences, build meaningful connections, and elevate brands with creativity and intent.
+                                        Every payout is funded by real economics: one-time launch fees, recurring subscriptions, metered usage and marketplace take &mdash; plus interest on working-capital advances to vetted, revenue-generating businesses.
                                     </p>
                                 </div>
                             </div>

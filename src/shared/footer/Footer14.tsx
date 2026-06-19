@@ -70,8 +70,8 @@ export default function Footer14() {
                     <li><a href="https://youtube.com" target="_blank" rel="noopener">YouTube</a></li>
                 </ul>
                 <ul className="footer-14__policy list-unstyled mb-0">
-                    <li><a href="#">Privacy</a></li>
-                    <li><a href="#">Terms</a></li>
+                    <li><a href="/privacy">Privacy</a></li>
+                    <li><a href="/terms">Terms</a></li>
                     <li><a href="#">Imprint</a></li>
                     <li><a href="#">Cookies</a></li>
                 </ul>

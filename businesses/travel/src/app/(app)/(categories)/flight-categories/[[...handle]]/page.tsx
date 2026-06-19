@@ -12,9 +12,9 @@ import { Airplane02Icon } from '@hugeicons/core-free-icons'
 import { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 
-export async function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
-  const { handle } = await params
-  const category = await getFlightCategoryByHandle(handle?.[0])
+export function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
+  const { handle } = params
+  const category = getFlightCategoryByHandle(handle?.[0])
   if (!category) {
     return {
       title: 'Collection not found',
@@ -25,12 +25,12 @@ export async function generateMetadata({ params }: { params: Promise<{ handle?: 
   return { title: name, description }
 }
 
-const Page = async ({ params }: { params: Promise<{ handle?: string[] }> }) => {
-  const { handle } = await params
+const Page = ({ params }: { params: Promise<{ handle?: string[] }> }) => {
+  const { handle } = params
 
-  const category = await getFlightCategoryByHandle(handle?.[0])
-  const listings = await getFlightListings()
-  const filterOptions = await getFlightFilterOptions()
+  const category = getFlightCategoryByHandle(handle?.[0])
+  const listings = getFlightListings()
+  const filterOptions = getFlightFilterOptions()
 
   if (!category?.id) {
     return redirect('/flight')

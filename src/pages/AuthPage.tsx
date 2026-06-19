@@ -93,7 +93,7 @@ export default function AuthPage() {
 
   return (
     <>
-      <PageMeta title="Phoxta - Sign in" />
+      <PageMeta title="Sign in — Phoxta" noindex />
       <div className="row g-0" style={{ minHeight: "100vh" }}>
         {/* Brand panel */}
         <div

@@ -13,9 +13,9 @@ import { Metadata } from 'next'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 
-export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
-  const { handle } = await params
-  const post = await getBlogPostsByHandle(handle)
+export function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
+  const { handle } = params
+  const post = getBlogPostsByHandle(handle)
   if (!post) {
     return {
       title: 'Blog',
@@ -27,17 +27,17 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   return { title, description: excerpt }
 }
 
-export default async function Page({ params }: { params: Promise<{ handle: string }> }) {
-  const { handle } = await params
+export default function Page({ params }: { params: Promise<{ handle: string }> }) {
+  const { handle } = params
   const { featuredImage, id, author, content, date, title, timeToRead, category, excerpt, tags } =
-    await getBlogPostsByHandle(handle)
+    getBlogPostsByHandle(handle)
 
   if (!id) {
     return notFound()
   }
 
   // only get the first 4 posts demo
-  const relatedPosts = (await getBlogPosts()).slice(0, 4)
+  const relatedPosts = (getBlogPosts()).slice(0, 4)
 
   const renderHeader = () => {
     return (

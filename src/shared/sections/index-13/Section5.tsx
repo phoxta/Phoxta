@@ -1,22 +1,22 @@
 import RevealText from "@/shared/effects/RevealText";
 
 const EXPERTISE = [
-    { img: "sec-5-img-1.webp", title: "01. Architectural Design", tag: "[ CORE_STRUCTURE ]", text: "Crafting high-end residential and commercial structures with a focus on minimalist volumes and natural light integration." },
-    { img: "sec-5-img-2.webp", title: "02. Interior Architecture", tag: "[ SPATIAL_FLOW ]", text: "Defining the soul of internal spaces through custom material selection, precision lighting, and ergonomic flow." },
-    { img: "sec-5-img-3.webp", title: "03. Urban Planning", tag: "[ MACRO_SYSTEMS ]", text: "Designing sustainable master plans that harmonize high-density urban requirements with green, livable environments." },
-    { img: "sec-5-img-4.webp", title: "04. 3D Visualization & VR", tag: "[ IMMERSIVE_MODELING ]", text: "Utilizing high-fidelity real-time rendering to allow clients to walk through their future spaces before the first stone is laid." },
-    { img: "sec-5-img-5.webp", title: "05. Sustainable Consulting", tag: "[ ECO_INTEGRITY ]", text: "Integrating eco-conscious materials and energy-efficient systems into modern architectural frameworks." },
+    { img: "sec-5-img-1.webp", title: "01. How it works", tag: "[ MARKETPLACE_LENDING ]", text: "Your capital funds short-term working-capital advances to vetted Phoxta businesses. They repay with interest from real revenue — and that interest is your return." },
+    { img: "sec-5-img-2.webp", title: "02. Conserve portfolio", tag: "[ GRADE A–B · ~8% ]", text: "Lower-risk, shorter-duration advances to the most established businesses with the strongest cash flow. Target net yield around 8%." },
+    { img: "sec-5-img-3.webp", title: "03. Balanced portfolio", tag: "[ GRADE A–C · ~11% ]", text: "A blend across grades that balances yield and risk — our most popular Credit Invest mix. Target net yield around 11%." },
+    { img: "sec-5-img-4.webp", title: "04. Growth portfolio", tag: "[ GRADE A–D · up to 15% ]", text: "Adds newer, faster-growing businesses for the highest target return. Higher expected returns also carry higher expected losses." },
+    { img: "sec-5-img-5.webp", title: "05. Built-in protection", tag: "[ ALIGNED + RESERVED ]", text: "Your deposit is auto-spread across dozens of businesses, Phoxta co-invests a first-loss stake in every loan, and a funded reserve absorbs defaults before they reach your principal." },
 ];
 
 export default function Section5() {
     return (
-        <section className="sec-5-home-13" aria-label="Our Expertise">
+        <section className="sec-5-home-13" aria-label="Phoxta Credit Invest">
             <div className="sec-5-home-13__inner">
                 <header className="sec-5-home-13__header">
-                    <h2 className="sec-5-home-13__title mb-0 reveal-text"><RevealText>Our Expertise</RevealText></h2>
+                    <h2 className="sec-5-home-13__title mb-0 reveal-text"><RevealText>Phoxta Credit Invest</RevealText></h2>
                     <div className="sec-5-home-13__hint at_fade_anim" data-fade-from="right" data-delay=".05">
                         <span className="sec-5-home-13__hint-dot" aria-hidden="true"></span>
-                        <span>Mastering the equilibrium between structural integrity and spatial emotion.</span>
+                        <span>Your money funds loans to vetted, revenue-generating businesses — underwritten on live platform data. Up to 15% target.</span>
                     </div>
                 </header>
 

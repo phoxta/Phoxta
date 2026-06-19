@@ -73,7 +73,7 @@ export function HeaderNavigation() {
         </NavigationMenuItem>
         <NavigationMenuItem>
           <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-            <Link href="/stay-search-with-map">Search</Link>
+            <Link href="/experience-search">Search</Link>
           </NavigationMenuLink>
         </NavigationMenuItem>
       </NavigationMenuList>

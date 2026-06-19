@@ -27,7 +27,7 @@ interface Section2ArchiveProps {
 }
 
 export default function Section2Archive({ items }: Section2ArchiveProps) {
-    const [filter, setFilter] = useState<"all" | "woman" | "man">("all");
+    const [filter, setFilter] = useState<string>("all");
     const [sortValue, setSortValue] = useState("1");
 
     const filteredAndSorted = useMemo(() => {
@@ -59,36 +59,23 @@ export default function Section2Archive({ items }: Section2ArchiveProps) {
         <>
             <div className="row align-items-end">
                 <div className="col-lg-4 mb-lg-0 mb-3">
-                    <h2>New Arrivals</h2>
-                    <p className="fz-font-lg neutral-900 mb-0">Discover the latest ready-to-wear dresses.</p>
+                    <h2>Businesses ready to own</h2>
+                    <p className="fz-font-lg neutral-900 mb-0">Browse live, AI-powered businesses — preview any one before you make it yours.</p>
                 </div>
                 <div className="col-lg-8 ms-auto">
                     <div className="d-flex flex-wrap justify-content-end gap-4">
                         <div className="filter-portfolio d-flex flex-wrap align-items-center justify-content-lg-end gap-2">
-                            <button
-                                type="button"
-                                className={`at-btn filter-btn btn-sm ${filter === "all" ? "active" : ""}`}
-                                data-filter="all"
-                                onClick={() => setFilter("all")}
-                            >
-                                All
-                            </button>
-                            <button
-                                type="button"
-                                className={`at-btn filter-btn btn-sm ${filter === "woman" ? "active" : ""}`}
-                                data-filter="woman"
-                                onClick={() => setFilter("woman")}
-                            >
-                                Woman
-                            </button>
-                            <button
-                                type="button"
-                                className={`at-btn filter-btn btn-sm ${filter === "man" ? "active" : ""}`}
-                                data-filter="man"
-                                onClick={() => setFilter("man")}
-                            >
-                                Man
-                            </button>
+                            {["all", ...Array.from(new Set(items.map((i) => i.category)))].map((cat) => (
+                                <button
+                                    key={cat}
+                                    type="button"
+                                    className={`at-btn filter-btn btn-sm ${filter === cat ? "active" : ""}`}
+                                    data-filter={cat}
+                                    onClick={() => setFilter(cat)}
+                                >
+                                    {cat === "all" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                                </button>
+                            ))}
                         </div>
                         <select
                             className="nice-select border-0"

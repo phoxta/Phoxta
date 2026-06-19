@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   description: 'Explore our blog for the latest news, articles, and insights on various topics.',
 }
 
-const BlogPage: React.FC = async () => {
-  const blogPosts = await getBlogPosts()
+const BlogPage: React.FC = () => {
+  const blogPosts = getBlogPosts()
 
   return (
     <div className="container flex flex-col gap-24 pt-12 pb-24 sm:pt-14 xl:gap-28 xl:pb-28">

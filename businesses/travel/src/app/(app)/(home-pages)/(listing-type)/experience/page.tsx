@@ -26,11 +26,11 @@ export const metadata: Metadata = {
   description: 'Experience page of the Stay application',
 }
 
-async function Page() {
-  const categories = await getExperienceCategories()
-  const experienceListings = await getExperienceListings()
-  const authors = await getAuthors()
-  const posts = await getBlogPosts()
+function Page() {
+  const categories = getExperienceCategories()
+  const experienceListings = getExperienceListings()
+  const authors = getAuthors()
+  const posts = getBlogPosts()
 
   return (
     <main className="relative section-space-bottom">

@@ -3,7 +3,7 @@ import Header2 from '@/components/header/header2'
 import { ReactNode } from 'react'
 import { BreadcrumbExample } from '../components/beadcrumb'
 
-const Layout = async ({ children }: { children: ReactNode }) => {
+const Layout = ({ children }: { children: ReactNode }) => {
   return (
     <ApplicationLayout header={<Header2 initSearchFormTab="Experiences" hasBorderBottom={true} />}>
       <div className="container mt-5 max-w-7xl lg:mt-8">

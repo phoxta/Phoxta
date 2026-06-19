@@ -14,6 +14,7 @@ import {
     addMemory,
     removeMemory,
     WRITE_TOOL_LABELS,
+    WRITE_TOOL_GROUPS,
     type OperatorMsg,
     type AgentAction,
     type AuditEntry,
@@ -129,16 +130,24 @@ export default function OperatorPage() {
                 </div>
 
                 <div className="bg-neutral-0 rounded-4 p-4 border-100">
-                    <h6 className="fw-600 mb-3">What the operator may do</h6>
-                    <div className="d-flex flex-column gap-2">
-                        {Object.entries(WRITE_TOOL_LABELS).map(([tool, label]) => (
-                            <div key={tool} className="d-flex align-items-center justify-content-between gap-2">
-                                <span className="fz-font-md">{label}</span>
-                                <select className="form-select form-select-sm rounded-3" style={{ width: "auto" }} value={modeOf(tool)} onChange={(e) => changeMode(tool, e.target.value as ToolPolicy["mode"])}>
-                                    <option value="off">Off</option>
-                                    <option value="approve">Ask me</option>
-                                    <option value="auto">Auto</option>
-                                </select>
+                    <h6 className="fw-600 mb-1">What the operator may do</h6>
+                    <p className="fz-font-sm neutral-500 mb-3">Off = blocked · Ask me = queued for your approval · Auto = runs immediately.</p>
+                    <div className="d-flex flex-column gap-3">
+                        {WRITE_TOOL_GROUPS.map((group) => (
+                            <div key={group.label}>
+                                <span className="d-block fz-font-sm fw-600 text-uppercase neutral-400 mb-2">{group.label}</span>
+                                <div className="d-flex flex-column gap-2">
+                                    {group.tools.map((tool) => (
+                                        <div key={tool} className="d-flex align-items-center justify-content-between gap-2">
+                                            <span className="fz-font-md">{WRITE_TOOL_LABELS[tool] ?? tool}</span>
+                                            <select className="form-select form-select-sm rounded-3" style={{ width: "auto" }} value={modeOf(tool)} onChange={(e) => changeMode(tool, e.target.value as ToolPolicy["mode"])}>
+                                                <option value="off">Off</option>
+                                                <option value="approve">Ask me</option>
+                                                <option value="auto">Auto</option>
+                                            </select>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ))}
                     </div>

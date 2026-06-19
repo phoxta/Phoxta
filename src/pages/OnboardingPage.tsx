@@ -39,7 +39,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="bg-neutral-50 d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
-      <PageMeta title="Phoxta - Welcome" />
+      <PageMeta title="Welcome — Phoxta" noindex />
       <div className="w-100 px-4 py-5" style={{ maxWidth: 560 }}>
         <div className="text-center mb-4">
           <img width={32} height={32} src="/assets/imgs/template/logo/favicon.svg" alt="Phoxta" loading="lazy" />

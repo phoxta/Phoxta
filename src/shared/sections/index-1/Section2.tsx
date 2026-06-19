@@ -123,9 +123,9 @@ export default function Section2() {
                                     <div className="col-lg-6 col-md-6">
                                         <div className="at-about-item mb-40 d-flex flex-column gap-4">
                                             <div className="at-about-content order-2 order-md-1">
-                                                <h3 className="at-about-title mb-10 at-char-animation">The AI is already inside</h3>
+                                                <h3 className="at-about-title mb-10 at-char-animation">One AI agent, every channel</h3>
                                                 <p className="at-about-dec at_fade_anim">
-                                                    Every business ships with assistants, agents and automations built into its foundation &mdash; not bolted on later. The AI handles support, content and busywork so you can focus on growth.
+                                                    Every business ships with a single AI agent in its console &mdash; one brain across phone, web chat, SMS and social. It books appointments, captures and qualifies leads, answers from your knowledge, covers after-hours and even makes outbound calls. Working 24/7, so you don&apos;t have to.
                                                 </p>
                                             </div>
                                             <div className="anim-zoomin-wrap order-1 order-md-2">

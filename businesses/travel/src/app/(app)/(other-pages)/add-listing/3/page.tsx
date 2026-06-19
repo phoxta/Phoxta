@@ -17,7 +17,7 @@ const Page = () => {
     router.prefetch('/add-listing/4')
   }, [router])
 
-  const handleSubmitForm = async (formData: FormData) => {
+  const handleSubmitForm = (formData: FormData) => {
     const formObject = Object.fromEntries(formData.entries())
     // Handle form submission logic here
     console.log('Form submitted:', formObject)

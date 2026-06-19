@@ -6,7 +6,11 @@ import Section3 from "@/shared/sections/index-5/Section7";
 export default function TeamPage() {
   return (
     <>
-      <PageMeta title="Phoxta - Team" />
+      <PageMeta
+        title="Our Team — Phoxta"
+        description="Meet the team building Phoxta — the marketplace for owning validated, AI-powered businesses."
+        path="/team"
+      />
                 <Section1 />
                 <Section2 />
                 <Section3 />

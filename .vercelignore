@@ -1,0 +1,6 @@
+# The platform SPA build only needs the root app (src, public, index.html, config).
+# Exclude the separately-deployed sibling apps + backend so the upload/build stays
+# lean and fast.
+businesses/
+integrations/
+supabase/

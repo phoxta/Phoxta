@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 
 const PROJECTS = [
-    { loc: "OSLO, NO  —  2024", title: "The Obsidian Coastal Villa", img: "sec-3-img-1.webp", link: "/portfolio-details-1", desc: "A minimalist coastal residence sculpted from black volcanic stone, balancing brutal mass with floor-to-ceiling glass that opens to the fjord.", category: "Residential", size: "12,400 Sq Ft.", service: "Architecture & Interior" },
-    { loc: "KYOTO, JP  —  2024", title: "Atrium of Quiet Light", img: "sec-3-img-2.webp", link: "/portfolio-details-1", desc: "A wellness retreat woven through cedar groves, with timber pavilions, water reflection pools, and shoji screens that diffuse seasonal light.", category: "Hospitality", size: "44,200 Sq Ft.", service: "Master Planning" },
-    { loc: "MILAN, IT  —  2023", title: "Stratum Cultural Pavilion", img: "sec-3-img-3.webp", link: "/portfolio-details-1", desc: "A civic landmark of stacked travertine slabs, anchored by a sunken plaza and capped by a cantilevered roof that redefines the urban skyline.", category: "Cultural", size: "118,300 Sq Ft.", service: "Architecture & Engineering" },
-    { loc: "NEW YORK, NY  —  2023", title: "Lattice House", img: "sec-3-img-4.webp", link: "/portfolio-details-1", desc: "An eight-story residential infill clad in a hand-cast concrete lattice that filters sunlight, frames neighbors, and turns the facade into a living screen.", category: "Residential", size: "8,600 Sq Ft.", service: "Architecture" },
+    { loc: "TIER 01 — STARTER", title: "Starter Note", img: "sec-3-img-1.webp", link: "/auth", desc: "Begin with as little as $500. A 12-month note paying a fixed annual rate, with interest you can withdraw monthly or compound back in.", category: "$500", size: "12 months", service: "7.0% fixed APR" },
+    { loc: "TIER 02 — CORE", title: "Core Note", img: "sec-3-img-2.webp", link: "/auth", desc: "Our most-held note. A 24-month term at a higher fixed rate, funded by Phoxta's recurring subscription and usage revenue.", category: "$5,000", size: "24 months", service: "9.0% fixed APR" },
+    { loc: "TIER 03 — GROWTH", title: "Growth Note", img: "sec-3-img-3.webp", link: "/auth", desc: "For investors building a position. A 36-month note with a rate step-up each year you reinvest your interest.", category: "$25,000", size: "36 months", service: "11.0% fixed APR" },
+    { loc: "TIER 04 — ANCHOR", title: "Anchor Note", img: "sec-3-img-4.webp", link: "/auth", desc: "For larger allocations. A 48-month note at our top fixed rate, with quarterly reporting and priority access to new offerings.", category: "$100,000", size: "48 months", service: "12.5% fixed APR" },
 ];
 
 const ARROW_ICON = (
@@ -16,24 +16,24 @@ const ARROW_ICON = (
 
 export default function Section3() {
     return (
-        <section className="sec-3-home-13" aria-label="Selected Projects">
+        <section className="sec-3-home-13" aria-label="Growth Notes">
             <div className="sec-3-home-13__inner">
                 <header className="sec-3-home-13__header">
                     <div className="sec-3-home-13__head-text">
                         <div className="sec-3-home-13__label at_fade_anim" data-fade-from="left" data-delay=".05">
                             <span className="sec-3-home-13__label-dot" aria-hidden="true"></span>
-                            <span className="sec-3-home-13__label-text">SELECTED PROJECTS</span>
+                            <span className="sec-3-home-13__label-text">GROWTH NOTES · FROM 7%</span>
                         </div>
                         <h2 className="sec-3-home-13__title mb-0 reveal-text">
-                            <RevealText>Recent works that define </RevealText>
-                            <span className="sec-3-home-13__title-italic"><RevealText>our architectural vision.</RevealText></span>
+                            <RevealText>Fixed-term notes that pay you </RevealText>
+                            <span className="sec-3-home-13__title-italic"><RevealText>from real platform revenue.</RevealText></span>
                         </h2>
                     </div>
 
                     <div className="at-btn-group at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
-                        <Link className="at-btn-circle" to="/portfolio-1">{ARROW_ICON}</Link>
-                        <Link className="at-btn z-index-1" to="/portfolio-1">View latest projects</Link>
-                        <Link className="at-btn-circle" to="/portfolio-1">{ARROW_ICON}</Link>
+                        <Link className="at-btn-circle" to="/auth">{ARROW_ICON}</Link>
+                        <Link className="at-btn z-index-1" to="/auth">Open an account</Link>
+                        <Link className="at-btn-circle" to="/auth">{ARROW_ICON}</Link>
                     </div>
                 </header>
 
@@ -44,7 +44,7 @@ export default function Section3() {
                                 <p className="sec-3-home-13__card-loc mb-0">{p.loc}</p>
                                 <h3 className="sec-3-home-13__card-title mb-0 reveal-text"><RevealText>{p.title}</RevealText></h3>
                                 <Link className="sec-3-home-13__card-link" to={p.link}>
-                                    <span>VIEW DETAILS</span>
+                                    <span>INVEST</span>
                                     <span className="sec-3-home-13__card-link-dots" aria-hidden="true">• • •</span>
                                 </Link>
                             </div>
@@ -54,9 +54,9 @@ export default function Section3() {
                             <div className="sec-3-home-13__card-info">
                                 <p className="sec-3-home-13__card-desc mb-0">{p.desc}</p>
                                 <dl className="sec-3-home-13__card-specs mb-0">
-                                    <div className="sec-3-home-13__card-row"><dt>CATEGORY</dt><dd>{p.category}</dd></div>
-                                    <div className="sec-3-home-13__card-row"><dt>SIZE</dt><dd>{p.size}</dd></div>
-                                    <div className="sec-3-home-13__card-row"><dt>SERVICE</dt><dd>{p.service}</dd></div>
+                                    <div className="sec-3-home-13__card-row"><dt>MINIMUM</dt><dd>{p.category}</dd></div>
+                                    <div className="sec-3-home-13__card-row"><dt>TERM</dt><dd>{p.size}</dd></div>
+                                    <div className="sec-3-home-13__card-row"><dt>TARGET RETURN</dt><dd>{p.service}</dd></div>
                                 </dl>
                             </div>
                         </article>

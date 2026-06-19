@@ -136,7 +136,11 @@ const Footer2 = forwardRef<HTMLElement, Record<string, never>>(function Footer2(
           <div className="footer-2-border pt-40 pb-40">
             <div className="row align-items-end g-4">
               <div className="col-lg-10 col-md-8">
-                <span className="at-footer-copyright">Phoxta © 2026</span>
+                <div className="d-flex flex-wrap align-items-center gap-3">
+                  <span className="at-footer-copyright">Phoxta © 2026</span>
+                  <Link to="/privacy" className="neutral-0 opacity-50 fz-font-md text-decoration-none">Privacy</Link>
+                  <Link to="/terms" className="neutral-0 opacity-50 fz-font-md text-decoration-none">Terms</Link>
+                </div>
                 <div className="at-title-anim overflow-hidden">
                   <h2 className="footer-2-connect-title text-white mb-0 at-title-text text-scale-anim">Let&apos;s Connect</h2>
                 </div>

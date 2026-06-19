@@ -3,9 +3,11 @@ import airlineLogo1 from '@/images/flights/logo1.png'
 import airlineLogo2 from '@/images/flights/logo2.png'
 import airlineLogo3 from '@/images/flights/logo3.png'
 import airlineLogo4 from '@/images/flights/logo4.png'
+import { getLiveListings } from './live'
 
 //  STAY LISTING  //
-export async function getStayListings() {
+export function getStayListings() {
+  const _live = getLiveListings('stay'); if (_live) return _live as any
   return [
     {
       id: 'stay-listing://1',
@@ -345,8 +347,8 @@ export async function getStayListings() {
     },
   ]
 }
-export const getStayListingByHandle = async (handle: string) => {
-  const listings = await getStayListings()
+export const getStayListingByHandle = (handle: string) => {
+  const listings = getStayListings()
   let listing = listings.find((listing) => listing.handle === handle)
   if (!listing?.id) {
     // return null
@@ -430,7 +432,8 @@ export const getStayListingByHandle = async (handle: string) => {
 export type TStayListing = Awaited<ReturnType<typeof getStayListings>>[number]
 
 //  CAR LISTING  //
-export async function getCarListings() {
+export function getCarListings() {
+  const _live = getLiveListings('car'); if (_live) return _live as any
   return [
     {
       id: 'car-listing://1',
@@ -594,8 +597,8 @@ export async function getCarListings() {
     },
   ]
 }
-export const getCarListingByHandle = async (handle: string) => {
-  const listings = await getCarListings()
+export const getCarListingByHandle = (handle: string) => {
+  const listings = getCarListings()
   let listing = listings.find((listing) => listing.handle === handle)
   if (!listing?.id) {
     // return null
@@ -648,7 +651,8 @@ export const getCarListingByHandle = async (handle: string) => {
 export type TCarListing = Awaited<ReturnType<typeof getCarListings>>[number]
 
 //  EXPERIENCE LISTING  //
-export async function getExperienceListings() {
+export function getExperienceListings() {
+  const _live = getLiveListings('experience'); if (_live) return _live as any
   return [
     {
       id: 'experience-listing://1',
@@ -787,8 +791,8 @@ export async function getExperienceListings() {
     },
   ]
 }
-export const getExperienceListingByHandle = async (handle: string) => {
-  const listings = await getExperienceListings()
+export const getExperienceListingByHandle = (handle: string) => {
+  const listings = getExperienceListings()
   let listing = listings.find((listing) => listing.handle === handle)
   if (!listing?.id) {
     // return null
@@ -841,7 +845,8 @@ export const getExperienceListingByHandle = async (handle: string) => {
 export type TExperienceListing = Awaited<ReturnType<typeof getExperienceListings>>[number]
 
 // FLIGHT LISTING //
-export async function getFlightListings() {
+export function getFlightListings() {
+  const _live = getLiveListings('flight'); if (_live) return _live as any
   return [
     {
       id: 'flight-listing://1',

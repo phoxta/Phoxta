@@ -22,7 +22,7 @@ const Page = () => {
     })
   }, [])
 
-  const handleSubmitForm = async (formData: FormData) => {
+  const handleSubmitForm = (formData: FormData) => {
     const formObject = Object.fromEntries(formData.entries())
     console.log('Form submitted:', formObject)
     // Here you can handle the form submission, e.g., send it to an API

@@ -3,16 +3,14 @@ import HeroSearch from "@/components/elements/HeroSearch";
 import SortCarsFilter from "@/components/elements/SortCarsFilter";
 import ByPagination from "@/components/Filter/ByPagination";
 import Layout from "@/components/layout/Layout";
-import rawCarsData from "@/util/cars.json";
+import { useFleet } from "@/util/fleet";
 import useCarFilter from "@/util/useCarFilter";
 import Link from "@/components/common/Link";
 import Marquee from "react-fast-marquee";
-const carsData = rawCarsData.map((car) => ({
-    ...car,
-    rating: parseFloat(car.rating as string),
-}));
+
 export default function CarsList2() {
-    const { sortCriteria, itemsPerPage, currentPage, sortedCars, totalPages, paginatedCars, handleSortChange, handleItemsPerPageChange, handlePageChange, handlePreviousPage, handleNextPage, handleClearFilters, startItemIndex, endItemIndex } = useCarFilter(carsData);
+    const { cars } = useFleet();
+    const { sortCriteria, itemsPerPage, currentPage, sortedCars, totalPages, paginatedCars, handleSortChange, handleItemsPerPageChange, handlePageChange, handlePreviousPage, handleNextPage, handleClearFilters, startItemIndex, endItemIndex } = useCarFilter(cars);
 
     return (
         <>

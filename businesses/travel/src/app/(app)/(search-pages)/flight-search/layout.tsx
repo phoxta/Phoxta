@@ -10,8 +10,8 @@ import { getFlightCategories } from '@/data/categories'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
 import { ReactNode } from 'react'
 
-const Layout = async ({ children }: { children: ReactNode }) => {
-  const categories = await getFlightCategories()
+const Layout = ({ children }: { children: ReactNode }) => {
+  const categories = getFlightCategories()
 
   return (
     <ApplicationLayout header={<Header2 initSearchFormTab="Flights" hasBorderBottom={false} />}>

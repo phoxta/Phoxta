@@ -42,8 +42,8 @@ export default function Footer15() {
                         </ul>
                         <ul className="footer-15__nav list-unstyled mb-0">
                             <li><a href="#">Jobs</a></li>
-                            <li><a href="#">Terms</a></li>
-                            <li><a href="#">Privacy</a></li>
+                            <li><Link to="/terms">Terms</Link></li>
+                            <li><Link to="/privacy">Privacy</Link></li>
                             <li><a href="#">Help</a></li>
                         </ul>
                     </nav>
@@ -114,8 +114,8 @@ export default function Footer15() {
                     <div className="footer-15__legal">
                         <p className="footer-15__copy mb-0">Phoxta &copy; 2026</p>
                         <ul className="footer-15__legal-links list-unstyled mb-0">
-                            <li><a href="#">Privacy Policy</a></li>
-                            <li><a href="#">Terms of Use</a></li>
+                            <li><Link to="/privacy">Privacy Policy</Link></li>
+                            <li><Link to="/terms">Terms of Use</Link></li>
                             <li><a href="#">Refund Policy</a></li>
                         </ul>
                     </div>

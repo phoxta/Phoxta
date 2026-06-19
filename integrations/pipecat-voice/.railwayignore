@@ -1,0 +1,10 @@
+# Keep the Railway build context tiny — the Dockerfile only needs
+# requirements.txt + bot.py + server.py. Exclude local-only/heavy paths.
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.example
+node_modules/
+smoketest_ws.py
+smoketest_webrtc.py

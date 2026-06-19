@@ -21,9 +21,9 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ListingTabs from './listing-tabs'
 
-export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
-  const { handle } = await params
-  const author = await getAuthorByHandle(handle)
+export function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
+  const { handle } = params
+  const author = getAuthorByHandle(handle)
 
   if (!author?.id) {
     return {
@@ -38,11 +38,11 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   }
 }
 
-const Page = async ({ params }: { params: Promise<{ handle: string }> }) => {
-  const { handle } = await params
+const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
+  const { handle } = params
 
-  const reviews = await getListingReviews(handle)
-  const author = await getAuthorByHandle(handle)
+  const reviews = getListingReviews(handle)
+  const author = getAuthorByHandle(handle)
 
   if (!author?.id) {
     return notFound()

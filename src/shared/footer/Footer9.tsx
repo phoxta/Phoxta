@@ -11,8 +11,8 @@ const QUICK_LINKS_1 = [
 
 const QUICK_LINKS_2 = [
     { label: "Jobs", href: "#", delay: ".6" },
-    { label: "Terms", href: "#", delay: ".7" },
-    { label: "Privacy", href: "#", delay: ".8" },
+    { label: "Terms", href: "/terms", delay: ".7" },
+    { label: "Privacy", href: "/privacy", delay: ".8" },
     { label: "Help", href: "#", delay: ".9" },
     { label: "Help", href: "#", delay: "1.0" },
 ];
@@ -187,10 +187,10 @@ export default function Footer9() {
                         <span className="footer-9__copy">Phoxta &copy; 2026</span>
                         <ul className="footer-9__policies list-unstyled d-flex flex-wrap gap-3 gap-xxl-4 mb-0">
                             <li>
-                                <Link to="#">Privacy Policy</Link>
+                                <Link to="/privacy">Privacy Policy</Link>
                             </li>
                             <li>
-                                <Link to="#">Terms of Use</Link>
+                                <Link to="/terms">Terms of Use</Link>
                             </li>
                             <li>
                                 <Link to="#">Refund Policy</Link>

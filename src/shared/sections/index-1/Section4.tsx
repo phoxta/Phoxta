@@ -19,8 +19,8 @@ const SERVICE_IMAGES = [
 const SERVICES = [
     { num: "01", title: "A business that already works", text: "Choose one with a proven track record from the marketplace and preview it live before you commit.", thumb: "/assets/imgs/pages/img-5-sm.webp" },
     { num: "02", title: "Truly your own", text: "Your brand, your payments, your domain — a fully independent business that belongs to you.", thumb: "/assets/imgs/pages/img-6-sm.webp" },
-    { num: "03", title: "Live in days, not months", text: "Launch with a fast storefront and mobile app, and a 30-day onboarding to your first sale.", thumb: "/assets/imgs/pages/img-7-sm.webp" },
-    { num: "04", title: "Less work, more growth", text: "Built-in AI handles support, content and the busywork, so you can focus on your customers.", thumb: "/assets/imgs/pages/img-8-sm.webp" },
+    { num: "03", title: "Live in minutes, not days", text: "Provision your business instantly with a fast storefront and mobile app, then onboard to your first sale.", thumb: "/assets/imgs/pages/img-7-sm.webp" },
+    { num: "04", title: "An AI agent in your console", text: "One agent answers calls, chats and messages on every channel — booking, qualifying leads and handling support 24/7.", thumb: "/assets/imgs/pages/img-8-sm.webp" },
     { num: "05", title: "The right people, on hand", text: "Get matched with co-founders, operators or investors exactly when you need them.", thumb: "/assets/imgs/pages/img-9-sm.webp" },
     { num: "06", title: "Room to grow", text: "Ready for more? Run several businesses from a single login, with everything in one place.", thumb: "/assets/imgs/pages/img-10-sm.webp" },
 ];

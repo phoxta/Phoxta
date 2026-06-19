@@ -289,7 +289,7 @@ const ListingFilterTabs = ({
 }) => {
   const [showAllFilter, setShowAllFilter] = useState(false)
 
-  const handleFormSubmit = async (formData: FormData) => {
+  const handleFormSubmit = (formData: FormData) => {
     const formDataObject = Object.fromEntries(formData.entries())
     console.log('Form submitted with data:', formDataObject)
   }

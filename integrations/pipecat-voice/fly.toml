@@ -1,0 +1,33 @@
+# Fly.io deploy for the Phoxta voice bridge — gives a permanent https/wss URL
+# (no cloudflared tunnel). Point Twilio's voice webhook at https://<app>.fly.dev/.
+#
+#   fly launch --no-deploy --copy-config   # or: fly apps create phoxta-voice
+#   fly secrets set DEEPGRAM_API_KEY=... CARTESIA_API_KEY=... CARTESIA_VOICE_ID=... \
+#                   PHOXTA_AGENT_URL=https://<ref>.supabase.co/functions/v1/agent-inbound \
+#                   SUPABASE_ANON_KEY=... PHOXTA_AGENT_KEY=... \
+#                   TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_PHONE_NUMBER=+44...
+#   fly deploy
+# Then set Twilio Voice webhook -> https://phoxta-voice.fly.dev/ (HTTP POST). Done.
+# On Fly the container runs `python server.py` (no tunnel); PUBLIC_HOST below must
+# match your app's domain.
+
+app = "phoxta-voice"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8765"
+  PUBLIC_HOST = "phoxta-voice.fly.dev"
+
+[http_service]
+  internal_port = 8765
+  force_https = true
+  auto_stop_machines = false   # keep warm so inbound calls always connect
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1024mb"            # Silero VAD + torch need headroom

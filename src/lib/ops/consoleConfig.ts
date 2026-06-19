@@ -60,6 +60,12 @@ const SERVICES: VerticalConsole = {
   booking: "appointments",
   modules: ["overview", "bookings", "crm", "content", "marketing", "helpdesk", "invoicing", "agent"],
 };
+const RESTAURANT: VerticalConsole = {
+  commerceLabel: "Menu",
+  itemNoun: "Menu item",
+  booking: "reservations", // table reservations
+  modules: ["overview", "commerce", "reservations", "crm", "content", "marketing", "helpdesk", "invoicing", "agent"],
+};
 // Default: show everything (unknown / generic vertical).
 const DEFAULT: VerticalConsole = {
   commerceLabel: "Commerce",
@@ -71,15 +77,22 @@ const DEFAULT: VerticalConsole = {
 // Map vertical synonyms → a console config.
 const BY_VERTICAL: Record<string, VerticalConsole> = {
   retail: RETAIL, fashion: RETAIL, apparel: RETAIL, ecommerce: RETAIL, shop: RETAIL,
+  furniture: RETAIL, store: RETAIL, goods: RETAIL, homeware: RETAIL,
   automotive: RENTAL, car: RENTAL, cars: RENTAL, "car-rental": RENTAL, rental: RENTAL, rentals: RENTAL,
   experience: EXPERIENCES, experiences: EXPERIENCES, tours: EXPERIENCES, activities: EXPERIENCES,
   travel: STAYS, stays: STAYS, stay: STAYS, hotel: STAYS, hospitality: STAYS, lodging: STAYS,
   services: SERVICES, service: SERVICES, salon: SERVICES, cleaning: SERVICES, appointments: SERVICES,
+  restaurant: RESTAURANT, food: RESTAURANT, cafe: RESTAURANT, dining: RESTAURANT, kitchen: RESTAURANT,
 };
 
 export function resolveConsole(vertical: string | null | undefined): VerticalConsole {
-  const key = (vertical || "").toLowerCase().trim();
-  return BY_VERTICAL[key] ?? DEFAULT;
+  const raw = (vertical || "").toLowerCase().trim();
+  if (BY_VERTICAL[raw]) return BY_VERTICAL[raw];
+  // Compound verticals like "Furniture / eCommerce" → match on any known token.
+  for (const tok of raw.split(/[^a-z0-9]+/).filter(Boolean)) {
+    if (BY_VERTICAL[tok]) return BY_VERTICAL[tok];
+  }
+  return DEFAULT;
 }
 
 export function consoleTabs(cfg: VerticalConsole): OpsModuleDef[] {

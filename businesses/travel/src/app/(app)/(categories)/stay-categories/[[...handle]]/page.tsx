@@ -5,9 +5,9 @@ import { getStayListings } from '@/data/listings'
 import { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 
-export async function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
-  const { handle } = await params
-  const category = await getStayCategoryByHandle(handle?.[0])
+export function generateMetadata({ params }: { params: Promise<{ handle?: string[] }> }): Promise<Metadata> {
+  const { handle } = params
+  const category = getStayCategoryByHandle(handle?.[0])
   if (!category) {
     return {
       title: 'Collection not found',
@@ -18,11 +18,11 @@ export async function generateMetadata({ params }: { params: Promise<{ handle?: 
   return { title: name, description }
 }
 
-const Page = async ({ params }: { params: Promise<{ handle?: string[] }> }) => {
-  const { handle } = await params
+const Page = ({ params }: { params: Promise<{ handle?: string[] }> }) => {
+  const { handle } = params
 
-  const category = await getStayCategoryByHandle(handle?.[0])
-  const listings = await getStayListings()
+  const category = getStayCategoryByHandle(handle?.[0])
+  const listings = getStayListings()
 
   if (!category?.id) {
     return redirect('/stay-categories/all')
