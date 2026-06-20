@@ -11,12 +11,12 @@ const ARROW_SVG = (
 );
 
 const TOPICS = [
-    { num: "01", title: "Find a real problem", desc: "Spot opportunities and validate that people actually want what you're building." },
-    { num: "02", title: "Talk to customers", desc: "Run interviews, test demand, and zero in on product-market fit." },
-    { num: "03", title: "Build your MVP", desc: "Ship a first version fast — no-code or code — and get it in front of real users." },
-    { num: "04", title: "Launch your business", desc: "Go to market, set up payments, and make your first real sales." },
-    { num: "05", title: "Grow & get traction", desc: "The channels, content and early-growth tactics that actually move the needle." },
-    { num: "06", title: "Pitch & fund", desc: "Tell your story, learn the basics of raising, and plan your next steps." },
+    { num: "01", title: "Strategy & business models", desc: "How businesses create and capture value — markets, moats, pricing and the models that win." },
+    { num: "02", title: "Marketing & growth", desc: "Find and keep customers: positioning, brand, channels and AI-driven, search-ready marketing." },
+    { num: "03", title: "Finance & metrics", desc: "Read the numbers that matter — unit economics, cash flow, fundraising and sharper decisions." },
+    { num: "04", title: "Operations & leadership", desc: "Run and scale: process, hiring, management and leading a team of people and AI." },
+    { num: "05", title: "AI & frontier tools", desc: "Put AI agents, automation and emerging tech to work — to research, build, sell and operate." },
+    { num: "06", title: "Entrepreneurship in practice", desc: "Validate, launch and run a real business, applying every lesson as you go." },
 ];
 
 export default function Section12() {
@@ -36,7 +36,7 @@ export default function Section12() {
                             </i>
                         </span>
                         <h2 className="reveal-text mb-0">
-                            <RevealText>A practical syllabus, from idea to launch</RevealText>
+                            <RevealText>A practical curriculum, built for the AI era</RevealText>
                         </h2>
                     </div>
                     <div className="col-lg-5">

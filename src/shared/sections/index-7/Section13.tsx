@@ -17,10 +17,10 @@ const STAR_SVG = (
 );
 
 const AUDIENCE = [
-    { title: "First-time founders", desc: "You have an idea — or just the ambition — and want a clear, practical path to start." },
-    { title: "Side-project builders", desc: "Turn that weekend project into a real, revenue-generating business." },
-    { title: "Students & new grads", desc: "Learn how startups actually work before you graduate or take the leap." },
-    { title: "Career changers", desc: "Swap the 9-to-5 for building something of your own, with guidance at every step." },
+    { title: "Aspiring founders", desc: "You want to start a company and need the business skills — and the practice — to do it well." },
+    { title: "Operators & professionals", desc: "Level up your business acumen — strategy, finance, growth and AI — without pausing your career." },
+    { title: "Students & career changers", desc: "Get a practical business education and real experience, faster and cheaper than an MBA." },
+    { title: "Small-business owners", desc: "Modernize how you run and grow, with the fundamentals and the latest AI tools." },
 ];
 
 export default function Section13() {
@@ -40,12 +40,12 @@ export default function Section13() {
                             </i>
                         </span>
                         <h2 className="reveal-text mb-0">
-                            <RevealText>Built for anyone ready to start something</RevealText>
+                            <RevealText>Built for ambitious people who want to build</RevealText>
                         </h2>
                     </div>
                     <div className="col-lg-5">
                         <p className="fz-font-lg neutral-700 mb-0">
-                            No experience or technical background required — just the drive to build. We meet you wherever
+                            No business background required — just the drive to build. We meet you wherever
                             you are.
                         </p>
                     </div>

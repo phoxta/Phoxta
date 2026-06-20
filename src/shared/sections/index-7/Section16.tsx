@@ -35,25 +35,25 @@ const ICON_SPARK = (
 const PILLARS = [
     {
         icon: ICON_TARGET,
-        title: "Accountability that works",
-        desc: "A cohort, weekly goals and a community keep you moving — that's why ~90% of cohort students finish, versus ~5% going it alone.",
+        title: "Real business fundamentals",
+        desc: "Strategy, finance, marketing, operations and leadership — the skills an MBA teaches, made practical and current.",
+    },
+    {
+        icon: ICON_SPARK,
+        title: "Built for the AI era",
+        desc: "AI agents, automation and frontier tools are core to the curriculum — learn to operate the way the best modern businesses do.",
     },
     {
         icon: ICON_BUILD,
         title: "Learn by doing",
-        desc: "You don't just watch lessons — you build and run a real business, applying every concept the moment you learn it.",
-    },
-    {
-        icon: ICON_SPARK,
-        title: "Expert + AI guidance",
-        desc: "Live classes and mentors who've built real companies, plus an AI guide that paces each lesson around your schedule.",
+        desc: "Apply every lesson to a real business you build and run, with a cohort and mentors keeping you accountable.",
     },
 ];
 
 const STATS = [
-    { value: "6 wk", label: "Cohort, from idea to launch" },
+    { value: "12 wk", label: "Cohort program, end to end" },
     { value: "~90%", label: "Finish the cohort" },
-    { value: "50k+", label: "Founders in the community" },
+    { value: "50k+", label: "Learners in the community" },
     { value: "$0", label: "To get started" },
 ];
 

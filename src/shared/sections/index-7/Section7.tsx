@@ -4,10 +4,10 @@ import RevealText from "@/shared/effects/RevealText";
 {/* Home 7 Section 7 (CTA — Ready to Build the Future?) */}
 
 const FEATURES = [
-    { text: "Run a real business", delay: "0.1" },
-    { text: "Industry-expert classes", delay: "0.2" },
-    { text: "1:1 mentorship", delay: "0.3" },
-    { text: "Global founder community", delay: "0.4" },
+    { text: "Real business fundamentals", delay: "0.1" },
+    { text: "AI & frontier tools", delay: "0.2" },
+    { text: "Expert-led classes & mentors", delay: "0.3" },
+    { text: "Run a real business", delay: "0.4" },
 ];
 
 export default function Section7() {
@@ -45,7 +45,7 @@ export default function Section7() {
 
                             <p className="sec-7-home-7__headline mb-4 mb-lg-40 reveal-text">
                                 <RevealText>
-                                    Stop wondering, start learning. Whether you have an idea or just the ambition, Startup School helps you take the first step.
+                                    Stop putting it off. Build the business skills — and the business — to thrive in the AI era.
                                 </RevealText>
                             </p>
 

@@ -18,19 +18,19 @@ const QUOTE_SVG = (
 
 const TESTIMONIALS = [
     {
-        quote: "I came in with just an idea. Twelve weeks later I had a live business with paying customers — and I actually understood why it worked.",
+        quote: "I learned more running a real business for twelve weeks than in two years of theory — and I use the AI tools they taught me every day.",
         avatar: "/assets/imgs/template/avatar/avatar-15.webp",
         name: "Maya Robins",
         role: "Founder",
     },
     {
-        quote: "The classes are taught by people who've actually built companies. Having a mentor check my thinking each week changed everything.",
+        quote: "It's the practical business education I wish existed instead of an MBA — strategy and finance I actually apply, taught by people who've done it.",
         avatar: "/assets/imgs/template/avatar/avatar-16.webp",
         name: "Daniel Kael",
-        role: "Founder",
+        role: "Operator",
     },
     {
-        quote: "What sold me was that it's hands-on. I wasn't watching lectures — I was running a real business while I learned.",
+        quote: "I came in wanting to start a company and left with the fundamentals, the AI skills, and a business that's actually running.",
         avatar: "/assets/imgs/template/avatar/avatar-17.webp",
         name: "Priya Sharma",
         role: "Founder",
@@ -54,12 +54,12 @@ export default function Section14() {
                             </i>
                         </span>
                         <h2 className="reveal-text mb-0">
-                            <RevealText>Founders who started right here</RevealText>
+                            <RevealText>Students who put it to work</RevealText>
                         </h2>
                     </div>
                     <div className="col-lg-5">
                         <p className="fz-font-lg neutral-700 mb-0">
-                            Thousands of builders have used Startup School to go from idea to a real, running business.
+                            Thousands have used Startup School to gain real business skills — and a real business.
                         </p>
                     </div>
                 </div>

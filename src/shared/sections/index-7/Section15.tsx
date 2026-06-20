@@ -14,8 +14,8 @@ const FAQ_ITEMS = [
     {
         id: "ssFaqOne",
         num: "1",
-        question: "Do I need an idea to start?",
-        answer: "No. Many students arrive with just curiosity or ambition. The first part of the program helps you find and validate an idea worth building.",
+        question: "Do I need business experience to start?",
+        answer: "No. The program builds your business fundamentals from the ground up — and you apply them to a real business as you go.",
         open: true,
     },
     {
@@ -29,7 +29,7 @@ const FAQ_ITEMS = [
         id: "ssFaqThree",
         num: "3",
         question: "How much time does it take?",
-        answer: "Plan for a few hours a week over a six-week cohort. The AI guide adapts to your pace, so you stay on track without it taking over your life.",
+        answer: "Plan for a few hours a week over a 12-week cohort. An AI guide adapts to your pace, so you stay on track without it taking over your life.",
         open: false,
     },
     {
@@ -42,15 +42,15 @@ const FAQ_ITEMS = [
     {
         id: "ssFaqFive",
         num: "5",
-        question: "Do I need to know how to code?",
-        answer: "Not at all. You'll learn to build and launch with no-code tools, and bring in technical help only when you actually need it.",
+        question: "Is this an alternative to an MBA?",
+        answer: "It's a practical alternative — the business skills that matter, applied to a real business and built for the AI era, without the cost or the years.",
         open: false,
     },
     {
         id: "ssFaqSix",
         num: "6",
         question: "What do I get at the end?",
-        answer: "A real, running business that you own, the skills to grow it, a certificate of completion, and a global network of fellow founders.",
+        answer: "Real business skills, a running business you own, a certificate of completion, and a global network of founders and operators.",
         open: false,
     },
 ];

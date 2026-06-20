@@ -33,7 +33,7 @@ const COL1_MEMBERS = [
     {
         name: "Amelia",
         surname: "Courtney",
-        role: "Lead Instructor",
+        role: "Faculty — Strategy & Finance",
         img: "/assets/imgs/pages/home-7/team-2-amelia.webp",
         alt: "Amelia Courtney",
         badgeClass: "sec-8-home-7__badge--dark",
@@ -44,7 +44,7 @@ const COL2_MEMBERS = [
     {
         name: "Esther",
         surname: "Howard",
-        role: "Founder Mentor",
+        role: "Faculty — Marketing & AI",
         img: "/assets/imgs/pages/home-7/team-3-esther.webp",
         alt: "Esther Howard",
         badgeClass: "",
@@ -52,7 +52,7 @@ const COL2_MEMBERS = [
     {
         name: "Jacob",
         surname: "Jones",
-        role: "Community Lead",
+        role: "Founder in Residence",
         img: "/assets/imgs/pages/home-7/team-4-jacob.webp",
         alt: "Jacob Jones",
         badgeClass: "",

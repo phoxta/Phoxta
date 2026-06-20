@@ -13,7 +13,7 @@ const CHIPS = [
     { text: "Enroll free", className: "sec-6-home-7__chip--1", delay: "0.1" },
     { text: "Learn the fundamentals", className: "sec-6-home-7__chip--2", delay: "0.2" },
     { text: "Run a real business", className: "sec-6-home-7__chip--3", delay: "0.3" },
-    { text: "Launch & share", className: "sec-6-home-7__chip--4", delay: "0.4" },
+    { text: "Launch & grow", className: "sec-6-home-7__chip--4", delay: "0.4" },
 ];
 
 const CARDS = [
@@ -28,7 +28,7 @@ const CARDS = [
     {
         num: "[02]",
         title: "Learn the fundamentals",
-        desc: "Work through expert-led lessons on ideas, customers, product and fundraising.",
+        desc: "Work through expert-led modules on strategy, finance, marketing, operations and AI.",
         img: "/assets/imgs/pages/home-7/step-2.webp",
         alt: "Learn the fundamentals",
         delay: "0.3",
@@ -43,10 +43,10 @@ const CARDS = [
     },
     {
         num: "[04]",
-        title: "Launch & share",
-        desc: "Ship your MVP, present at demo day, and join a global network of founders.",
+        title: "Launch & grow",
+        desc: "Go to market, get traction, and graduate with a running business and a network.",
         img: "/assets/imgs/pages/home-7/step-4.webp",
-        alt: "Launch & share",
+        alt: "Launch & grow",
         delay: "0.7",
     },
 ];
