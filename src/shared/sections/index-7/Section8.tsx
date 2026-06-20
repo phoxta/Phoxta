@@ -72,7 +72,7 @@ export default function Section8() {
                         </Link>
 
                         <h2 className="sec-8-home-7__heading mb-40 reveal-text">
-                            <RevealText>Dedicated Team</RevealText>
+                            <RevealText>Your instructors &amp; mentors</RevealText>
                         </h2>
 
                         <p className="sec-8-home-7__desc mb-40 reveal-text">
@@ -82,13 +82,13 @@ export default function Section8() {
                         </p>
 
                         <div className="sec-4-home-7__cta d-inline-flex align-items-stretch mb-60 at_fade_anim">
-                            <Link to="/careers" className="at-btn sec-4-home-7__cta-btn text-capitalize">
+                            <Link to="/contact" className="at-btn sec-4-home-7__cta-btn text-capitalize">
                                 <span>
-                                    <span className="text-1">View open roles</span>
-                                    <span className="text-2">View open roles</span>
+                                    <span className="text-1">Join the school</span>
+                                    <span className="text-2">Join the school</span>
                                 </span>
                             </Link>
-                            <Link to="/careers" className="sec-4-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="View open roles">
+                            <Link to="/contact" className="sec-4-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Join the school">
                                 {CTA_CIRCLE_SVG}
                             </Link>
                         </div>
