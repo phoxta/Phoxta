@@ -63,11 +63,11 @@ export default function Section2() {
                 <div className="sec-2-home-7__intro row g-0 pt-100 pb-60">
                     <div className="col-lg-7 col-12 pe-lg-4">
                         <Link to="/about" className="sec-2-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-30 text-uppercase">
-                            <span className="text-scramble" data-scramble-text="Startup School">Startup School</span>
+                            <span className="text-scramble" data-scramble-text="Why it works">Why it works</span>
                             {EYEBROW_ARROW_SVG}
                         </Link>
                         <h2 className="sec-2-home-7__headline mb-0">
-                            <span className="sec-2-home-7__headline-strong reveal-text"><RevealText>Learn to build a startup — by building one</RevealText></span>
+                            <span className="sec-2-home-7__headline-strong reveal-text"><RevealText>The fastest way to actually start up</RevealText></span>
                         </h2>
                     </div>
                     <div className="col-lg-5 col-12 mt-4 mt-lg-0 ps-lg-4 d-flex align-items-end">

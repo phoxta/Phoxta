@@ -155,7 +155,7 @@ export default function App() {
       <Route element={<MainLayout headerStyle={16} footerStyle={4} />}>
         <Route path="/ai-tech" element={<AiTechPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={16} footerStyle={7} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={7} headerProps={{ light: true }} />}>
         <Route path="/startup-school" element={<StartupSchoolPage />} />
       </Route>
       <Route element={<MainLayout headerStyle={16} footerStyle={9} headerProps={{ light: true }} />}>

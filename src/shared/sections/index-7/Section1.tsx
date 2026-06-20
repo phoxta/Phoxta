@@ -2,18 +2,18 @@ import { Link } from "react-router-dom";
 {/* Home 7 Section 1 (Hero - Advancing Startup Innovation) */}
 
 const TAG_ITEMS = [
-    { href: "/services-details", label: "MVP Launch", delay: "0.1" },
-    { href: "/services-details", label: "Product Design", delay: "0.2" },
-    { href: "/services-details", label: "Scalable Tech", delay: "0.4" },
-    { href: "/services-details", label: "Growth Strategy", delay: "0.1" },
-    { href: "/services-details", label: "UI/UX Excellence", delay: "0.3" },
+    { href: "/contact", label: "Idea to launch", delay: "0.1" },
+    { href: "/contact", label: "Cohort-based", delay: "0.2" },
+    { href: "/contact", label: "Run a real business", delay: "0.4" },
+    { href: "/contact", label: "Expert mentors", delay: "0.1" },
+    { href: "/contact", label: "AI-guided", delay: "0.3" },
 ];
 
 const BRACKET_ITEMS = [
-    { text: "[ BUILD ]", delay: "0.1" },
-    { text: "[ GROW ]", delay: "0.2" },
-    { text: "[ SCALE ]", delay: "0.3" },
-    { text: "[ BOOST ]", delay: "0.4" },
+    { text: "[ LEARN ]", delay: "0.1" },
+    { text: "[ BUILD ]", delay: "0.2" },
+    { text: "[ LAUNCH ]", delay: "0.3" },
+    { text: "[ GROW ]", delay: "0.4" },
 ];
 
 const AVATARS = [
@@ -88,7 +88,7 @@ export default function Section1() {
                         {/* Coordinates pinned below the header */}
                         <div className="sec-1-home-7__coords d-flex align-items-center gap-2">
                             {COORDS_SVG}
-                            <span className="fw-500 text-uppercase text-scramble" data-scramble-text="27.1127&deg; S, 109.3497&deg; W">27.1127&deg; S, 109.3497&deg; W</span>
+                            <span className="fw-500 text-uppercase text-scramble" data-scramble-text="Fully online &middot; Global cohorts">Fully online &middot; Global cohorts</span>
                         </div>
 
                         {/* Tag chips pinned above the image bottom */}
@@ -128,7 +128,7 @@ export default function Section1() {
                             {/* Headline with diagonal arrow */}
                             <div className="sec-1-home-7__headline-wrap p-relative">
                                 <h1 className="sec-1-home-7__headline text-white text-uppercase fw-700 mb-30 at_fade_anim" data-start="100%" data-delay="0.3">
-                                    Advancing Startup Innovation
+                                    Learn to build a startup
                                 </h1>
                                 <span className="sec-1-home-7__headline-arrow-cover d-none d-md-inline-block">
                                     <span className="sec-1-home-7__headline-arrow at_fade_anim" data-start="100%" data-delay="0.6">
@@ -139,15 +139,15 @@ export default function Section1() {
 
                             {/* Description */}
                             <p className="sec-1-home-7__desc text-white mb-40 at_fade_anim" data-start="100%" data-delay="0.5">
-                                From MVP launch to global scaling, we provide the strategic design and high-performance technology startups need to dominate their market. Our team delivers products that matter.
+                                A cohort-based, fully practical program. Learn from expert-led classes and mentors while you build and run a real business — with an AI guide keeping you on track.
                             </p>
 
                             {/* Primary CTA + icon bubble */}
                             <div className="sec-1-home-7__cta d-flex align-items-center flex-wrap gap-2 mb-60">
-                                <Link to="/contact-1" className="sec-1-home-7__cta-btn at_fade_anim" data-start="100%" data-delay="0.3">
-                                    <span>Start Your Journey</span>
+                                <Link to="/contact" className="sec-1-home-7__cta-btn at_fade_anim" data-start="100%" data-delay="0.3">
+                                    <span>Join the school</span>
                                 </Link>
-                                <Link to="/contact-1" className="sec-1-home-7__cta-arrow" aria-label="Start Your Journey">
+                                <Link to="/contact" className="sec-1-home-7__cta-arrow" aria-label="Join the school">
                                     {CTA_ARROW_SVG}
                                 </Link>
                             </div>
@@ -171,7 +171,7 @@ export default function Section1() {
                                     ))}
                                 </div>
                                 <p className="sec-1-home-7__proof-text text-white fw-700 mb-0 at_fade_anim" data-start="100%" data-delay="0.6">
-                                    500+ Ventures scaled with <br className="d-none d-xl-inline" />Phoxta global expertise
+                                    50,000+ founders learning to build <br className="d-none d-xl-inline" />with Phoxta Startup School
                                 </p>
                             </div>
                         </div>
