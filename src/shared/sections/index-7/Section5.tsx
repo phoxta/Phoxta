@@ -20,10 +20,10 @@ const ACCORDION_ITEMS = [
         id: "Sec5H71",
         headingId: "headingSec5H71",
         num: "01",
-        title: "Structured curriculum",
+        title: "Cohort-based curriculum",
         expanded: true,
-        text: "A clear, week-by-week curriculum covering ideas, customers, product, fundraising and growth — at your own pace.",
-        tags: ["Self-paced", "Video lessons", "Templates"],
+        text: "A structured, week-by-week curriculum with live classes — plus an AI guide that paces each lesson around your schedule.",
+        tags: ["Cohort", "Live classes", "AI-guided"],
     },
     {
         id: "Sec5H72",

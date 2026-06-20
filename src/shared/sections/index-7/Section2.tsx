@@ -32,15 +32,15 @@ const FEATURE_DATA = [
                 <path fillRule="evenodd" clipRule="evenodd" d="M39.5 0.5L26.5 13.5L13.5 0.5L0.5 13.5V39.5L13.5 26.5L26.5 39.5L39.5 26.5V0.5ZM13.5 26.5V13.5H26.5V26.5H13.5Z" fill="currentColor" />
             </svg>
         ),
-        title: "Mentors & community",
-        desc: "Get paired with mentors, find a co-founder, and grow alongside a global community of builders.",
+        title: "Cohort & mentors",
+        desc: "Join a cohort, get a mentor, find a co-founder, and grow alongside a global community of builders.",
     },
 ];
 
 const STAT_DATA = [
-    { value: 6, suffix: " wk", label: "From first idea to launch, at your own pace" },
-    { value: 100, suffix: "%", label: "Free to start — online and self-paced" },
-    { value: 50, suffix: "k+", label: "Founders learning in our global community" },
+    { value: 6, suffix: " wk", label: "Cohort program from first idea to launch" },
+    { value: 90, suffix: "%", label: "Finish the cohort — vs ~5% going it alone" },
+    { value: 50, suffix: "k+", label: "Founders in the global community" },
 ];
 
 const IMG_DATA = [
@@ -73,7 +73,7 @@ export default function Section2() {
                     <div className="col-lg-5 col-12 mt-4 mt-lg-0 ps-lg-4 d-flex align-items-end">
                         <p className="sec-2-home-7__desc mb-0 reveal-text">
                             <RevealText>
-                                <strong>Phoxta Startup School</strong> is fully practical. You don&rsquo;t just study theory — you work on your own idea and <strong>run a real business</strong>, guided by <strong>industry-expert classes and mentors</strong>.
+                                <strong>Phoxta Startup School</strong> is cohort-based and fully practical. You don&rsquo;t just study theory — you work on your own idea and <strong>run a real business</strong>, guided by <strong>expert-led classes, mentors and an AI</strong> that keeps you on track.
                             </RevealText>
                         </p>
                     </div>

@@ -61,7 +61,7 @@ export default function Section4() {
                                     <div className="flex-grow-1 min-w-0">
                                         <h3 className="sec-4-home-7__loc-title h6 mb-3 at-char-animation">Find us online</h3>
                                         <div className="sec-4-home-7__loc-body at_fade_anim">
-                                            <p className="mb-2">Phoxta Startup School is fully online.<br />Learn from anywhere, at your own pace.</p>
+                                            <p className="mb-2">Phoxta Startup School is fully online.<br />Learn from anywhere, alongside your cohort.</p>
                                             <p className="mb-2">
                                                 Support:{" "}
                                                 <Link to="/contact" className="sec-4-home-7__loc-strong">Contact us</Link>

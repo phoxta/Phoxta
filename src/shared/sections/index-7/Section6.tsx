@@ -20,7 +20,7 @@ const CARDS = [
     {
         num: "[01]",
         title: "Enroll free",
-        desc: "Sign up in minutes and get instant access to the full curriculum and the community.",
+        desc: "Sign up in minutes, join the next cohort, and get instant access to the curriculum and community.",
         img: "/assets/imgs/pages/home-7/step-1.webp",
         alt: "Enroll free",
         delay: "0.1",
