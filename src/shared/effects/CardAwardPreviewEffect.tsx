@@ -81,6 +81,7 @@ export default function CardAwardPreviewEffect() {
       }
 
       function showPreview(card: Element, e: MouseEvent) {
+        if (!img) return;
         if (hideTimeout) {
           clearTimeout(hideTimeout);
           hideTimeout = null;

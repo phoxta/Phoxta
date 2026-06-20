@@ -46,9 +46,9 @@ const isDemoRoute = (pathname: string) =>
   /-dark$/.test(pathname) || /^\/index-([2-9]|1[0-5])$/.test(pathname);
 
 type HeaderHandlers = {
-  onOpenSearch?: () => void;
-  onToggleSidebar?: () => void;
-  onOpenHamburgerMenu?: () => void;
+  onOpenSearch: () => void;
+  onToggleSidebar: () => void;
+  onOpenHamburgerMenu: () => void;
   style?: string;
   light?: boolean;
 };

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
-import ArticleCard1 from "@/shared/cards/ArticleCard1";
 
 // Home 5 Section 8 - My blog / Latest news
 

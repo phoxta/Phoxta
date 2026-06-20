@@ -1,6 +1,8 @@
 export type TestimonialCard1Props = {
   img: string;
   logo: string;
+  logoWidth?: number;
+  logoHeight?: number;
   name: string;
   position: string;
   company: string;
@@ -12,6 +14,8 @@ export type TestimonialCard1Props = {
 export default function TestimonialCard1({
   img,
   logo,
+  logoWidth = 100,
+  logoHeight = 25,
   name,
   position,
   company,
@@ -28,7 +32,7 @@ export default function TestimonialCard1({
             <img src={img} alt="phoxta" width={85} height={85} />
           </div>
           <div className="testimonial-top-right-logo">
-            <img src={logo} alt="phoxta" width={100} height={25} />
+            <img src={logo} alt={`${company} logo`} width={logoWidth} height={logoHeight} />
           </div>
         </div>
         <div className="testimonial-bottom-wrap">

@@ -36,7 +36,7 @@ function FooterServiceTag({ label }: { label: string }) {
   );
 }
 
-const Footer2 = forwardRef<HTMLElement, Record<string, never>>(function Footer2(_, ref) {
+const Footer2 = forwardRef<HTMLElement>(function Footer2(_, ref) {
   return (
     <footer ref={ref} className="footer-fixed-bottom bg-neutral-950 changeless">
       <div className="at-footer-area mp-footer-style mp-footer-style-2 pt-120 pb-0">

@@ -60,8 +60,7 @@ export default function Footer8() {
                 <img
                     src="/assets/imgs/pages/home-8/footer-8-bg.webp"
                     alt="phoxta"
-                    style={{ objectFit: "cover" }}
-                    priority={false} loading="lazy" />
+                    style={{ objectFit: "cover" }} loading="lazy" />
             </div>
 
             <div className="container-fluid footer-8__container">

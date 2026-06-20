@@ -31,7 +31,9 @@ function CloseIconSvg() {
   );
 }
 
-const socialLinks = [
+type SocialLink = { label: string; href: string; ariaLabel: string; path: string; viewBox?: string; h?: number };
+
+const socialLinks: SocialLink[] = [
   {
     label: "Twitter",
     href: "#",
@@ -64,7 +66,7 @@ const socialLinks = [
     viewBox: "0 0 18 13",
     h: 13,
   },
-] as const;
+];
 
 function SocialGrid() {
   return (

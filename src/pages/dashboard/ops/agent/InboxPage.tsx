@@ -238,7 +238,7 @@ export default function InboxPage() {
     setSendNote(null);
     const r = await placeCall(orgId, selected.customer_phone, {
       conversationId: selected.id,
-      mode: callMode,
+      mode: callMode as "ai" | "bridge",
       opening: callMode === "ai" ? callOpening.trim() || undefined : undefined,
       agentPhone: callMode === "bridge" ? callPhone.trim() || undefined : undefined,
     });

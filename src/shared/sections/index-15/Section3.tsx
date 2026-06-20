@@ -1,5 +1,3 @@
-const BRAND_NUMS = ["02", "03", "04", "05", "06", "07", "08", "09", "10", "01"];
-
 interface Slide { logos: string[] }
 
 const SLIDES: Slide[] = [

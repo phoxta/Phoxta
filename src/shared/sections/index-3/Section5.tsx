@@ -17,7 +17,6 @@ export default function Section5() {
                     {duplicatedStats.map((item, index) => (
                         <div key={index} className="text-center">
                             <h1 className="fz-ds-1 fw-500 mb-0 text-white text-nowrap">
-                                {item.prefix}
                                 {item.value}
                                 {item.suffix}
                             </h1>

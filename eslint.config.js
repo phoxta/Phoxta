@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default [
-  { ignores: ["dist/**", "public/**", "disk/**", "1.Orisa_development/**", "3.Orisa-Nextjs/**", "scripts/**"] },
+  { ignores: ["dist/**", ".vercel/**", "public/**", "disk/**", "1.Orisa_development/**", "3.Orisa-Nextjs/**", "scripts/**", "businesses/**", "integrations/**", "supabase/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

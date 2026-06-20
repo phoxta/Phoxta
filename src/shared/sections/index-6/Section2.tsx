@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 
 // Home 6 Section 2 - Core Philosophy
