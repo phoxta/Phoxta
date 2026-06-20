@@ -84,7 +84,7 @@ export default function Section1() {
                             {/* Headline with diagonal arrow */}
                             <div className="sec-1-home-7__headline-wrap p-relative">
                                 <h1 className="sec-1-home-7__headline text-white text-uppercase fw-700 mb-30 at_fade_anim" data-start="100%" data-delay="0.3">
-                                    Master modern business
+                                    Learn to build and run a business
                                 </h1>
                                 <span className="sec-1-home-7__headline-arrow-cover d-none d-md-inline-block">
                                     <span className="sec-1-home-7__headline-arrow at_fade_anim" data-start="100%" data-delay="0.6">

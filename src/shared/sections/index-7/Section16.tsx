@@ -74,13 +74,13 @@ export default function Section16() {
                             </i>
                         </span>
                         <h2 className="reveal-text mb-0">
-                            <RevealText>Built to get you to the finish line</RevealText>
+                            <RevealText>Built around real practice</RevealText>
                         </h2>
                     </div>
                     <div className="col-lg-5">
                         <p className="fz-font-lg neutral-700 mb-0">
-                            Most people who try to learn this alone quit. Our model is designed so you actually finish
-                            — and launch a real business.
+                            You don&rsquo;t just study business — you practice it. Every lesson is applied to a real
+                            business you build and run, with a cohort and mentors alongside you.
                         </p>
                     </div>
                 </div>
