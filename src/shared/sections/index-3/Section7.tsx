@@ -21,10 +21,10 @@ const BULLET_ICON = (
 );
 
 const BULLETS = [
-    "Strategy-first digital thinking",
-    "Scalable & future-ready solutions",
-    "Human-centered design approach",
-    "Long-term brand partnerships",
+    "Omnichannel by default",
+    "AI search (GEO) ready",
+    "Always-on automation",
+    "Built into your business",
 ];
 
 export default function Section7() {
@@ -72,7 +72,7 @@ export default function Section7() {
                         </span>
                         <h4 className="reveal-text mb-0 fw-600 pe-lg-5">
                             <RevealText>
-                                Together, we build experiences, relationships, and digital solutions that move brands
+                                Phoxta builds the channels, content and automations that move your business
                                 ahead.
                             </RevealText>
                         </h4>
@@ -109,15 +109,15 @@ export default function Section7() {
                             </div>
                             <div className="testimonial-content">
                                 <p className="fz-xl neutral-900 fw-400">
-                                    &ldquo;Phoxta completely transformed how we present our brand online. Their strategic
-                                    mindset and attention to detail resulted in a digital experience that feels both
-                                    refined and high-performing.&rdquo;
+                                    &ldquo;Phoxta took over our marketing end to end. Outreach, content and
+                                    follow-ups now run on their own, and our pipeline has never been more
+                                    consistent.&rdquo;
                                 </p>
                                 <h6 className="testimonial-content-author-name fw-600 mb-0 fz-font-md">
                                     Hannah Lee
                                 </h6>
                                 <p className="testimonial-content-author-position m-0 fz-font-label">
-                                    Creative Director
+                                    Owner, Phoxta business
                                 </p>
                             </div>
                         </div>

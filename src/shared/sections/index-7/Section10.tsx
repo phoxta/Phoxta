@@ -18,25 +18,25 @@ const ALL_INSIGHTS_ARROW_SVG = (
 const INSIGHTS = [
     {
         img: "/assets/imgs/pages/home-7/insight-1-retro.webp",
-        title: "The MVP Roadmap: How to Ship Faster Without Losing Quality",
+        title: "Buy vs. Build: Why More Founders Are Acquiring Businesses",
         author: "Olivia",
         date: "July 3, 2026",
     },
     {
         img: "/assets/imgs/pages/home-7/insight-2-office.webp",
-        title: "Scalable Architecture: Building Systems That Grow with Your Users",
+        title: "Entrepreneurship Through Acquisition, Explained",
         author: "Daniel",
         date: "July 8, 2026",
     },
     {
         img: "/assets/imgs/pages/home-7/insight-3-fabric.webp",
-        title: "Fundraising Design: Crafting Pitch Decks That Close Seed Rounds",
+        title: "How One Founder Can Run a Whole Business with AI",
         author: "Emma",
         date: "July 12, 2026",
     },
     {
         img: "/assets/imgs/pages/home-7/insight-4-conference.webp",
-        title: "Product-Market Fit: Why User Validation is Your Strongest Asset",
+        title: "Building a Portfolio of AI-Run Businesses",
         author: "Lucas",
         date: "July 17, 2026",
     },
@@ -48,7 +48,7 @@ export default function Section10() {
             <div className="container-2200 px-lg-5 px-3">
                 <div className="row align-items-end mb-50">
                     <div className="col-xl-4 col-lg-4 col-12">
-                        <Link to="/archive-1" className="sec-10-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-4 text-uppercase">
+                        <Link to="/blog" className="sec-10-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-4 text-uppercase">
                             <span className="text-scramble" data-scramble-text="Inside Startup">Inside Startup</span>
                             {EYEBROW_ARROW_SVG}
                         </Link>
@@ -59,12 +59,12 @@ export default function Section10() {
                     <div className="col-xl-5 col-lg-6 col-12 mt-4 mt-xl-0">
                         <p className="sec-10-home-7__lead mb-0 reveal-text">
                             <RevealText>
-                                Explore expert perspectives on product scaling, venture capital, and the engineering behind the world&rsquo;s most successful digital products.
+                                Practical guidance on acquiring a business, launching it with AI, and scaling as a solo or portfolio founder.
                             </RevealText>
                         </p>
                     </div>
                     <div className="col-xl-3 col-lg-12 mt-4 mt-lg-4 mt-xl-0 ms-xl-auto text-xl-end">
-                        <Link to="/archive-1" className="sec-10-home-7__btn-all d-inline-flex align-items-center gap-2 at_fade_anim">
+                        <Link to="/blog" className="sec-10-home-7__btn-all d-inline-flex align-items-center gap-2 at_fade_anim">
                             <span>All insights</span>
                             {ALL_INSIGHTS_ARROW_SVG}
                         </Link>
@@ -76,7 +76,7 @@ export default function Section10() {
                         <div key={i} className="col-lg-3 col-md-6 col-12">
                             <div className="blog-card mb-30" data-category="">
                                 <div className="blog-card__thumb hover-effect-1">
-                                    <Link to="/blog-details" className="blog-card__img-link">
+                                    <Link to="/blog" className="blog-card__img-link">
                                         <img
                                             src={insight.img}
                                             className="blog-card__img22"
@@ -87,11 +87,11 @@ export default function Section10() {
                                 </div>
                                 <div className="blog-card__content">
                                     <h2 className="h6 blog-card__title">
-                                        <Link to="/blog-details" className="blog-card__title-link">{insight.title}</Link>
+                                        <Link to="/blog" className="blog-card__title-link">{insight.title}</Link>
                                     </h2>
                                     <p className="blog-card__meta">
                                         <span className="blog-card__meta-text">By </span>
-                                        <Link to="/team-details" className="blog-card__author">{insight.author}</Link>
+                                        <Link to="/about" className="blog-card__author">{insight.author}</Link>
                                         <span className="blog-card__meta-text"> – {insight.date}</span>
                                     </p>
                                 </div>

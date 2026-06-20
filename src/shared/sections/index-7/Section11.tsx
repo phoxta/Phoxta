@@ -57,8 +57,8 @@ export default function Section11() {
                                 </button>
                             </div>
                             <p className="sec-4-about-form__disclaimer at_fade_anim" data-delay="0.1">
-                                By submitting, you agree to our <a href="#" className="sec-4-about-form__link">Terms</a> and{" "}
-                                <a href="#" className="sec-4-about-form__link">Privacy Policy</a>.
+                                By submitting, you agree to our <a href="/terms" className="sec-4-about-form__link">Terms</a> and{" "}
+                                <a href="/privacy" className="sec-4-about-form__link">Privacy Policy</a>.
                             </p>
                         </form>
                     </div>

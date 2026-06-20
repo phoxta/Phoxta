@@ -119,13 +119,13 @@ export default function Section4() {
                                 data-fade-from="bottom"
                                 data-ease="bounce"
                             >
-                                <Link className="at-btn-circle" to="/portfolio-4">
+                                <Link className="at-btn-circle" to="/marketplace">
                                     {ARROW_CIRCLE}
                                 </Link>
-                                <Link className="at-btn z-index-1" to="/portfolio-4">
-                                    View All Projects
+                                <Link className="at-btn z-index-1" to="/marketplace">
+                                    Explore the marketplace
                                 </Link>
-                                <Link className="at-btn-circle" to="/portfolio-4">
+                                <Link className="at-btn-circle" to="/marketplace">
                                     {ARROW_CIRCLE}
                                 </Link>
                             </div>
@@ -142,30 +142,30 @@ export default function Section4() {
                                         <span className="card_case__studies-featured-tag">Featured case</span>
                                         <h4 className="card_case__studies-title">
                                             <Link to="#">
-                                                AI-Driven Demand <br /> Forecasting System
+                                                An AI agent that <br /> runs the front office
                                             </Link>
                                         </h4>
                                         <p className="card_case__studies-desc">
-                                            We built an intelligent forecasting platform that helps enterprises
-                                            predict demand, optimize inventory, and reduce operational risk using
-                                            real-time data and machine learning models.
+                                            Across every Phoxta business, the agent handles inbound chat, email and
+                                            SMS, books and follows up, and escalates only when it should — so the
+                                            front office runs itself, around the clock.
                                         </p>
                                         <div className="card_case__studies-metrics">
                                             <div className="card_case__studies-metric">
                                                 <h4 className="card_case__studies-metric-value mb-0">
-                                                    <OdometerCounter count={72} prefix="+" suffix="%" />
+                                                    <OdometerCounter count={90} prefix="+" suffix="%" />
                                                 </h4>
                                                 <span className="card_case__studies-metric-label">
-                                                    Planning Efficiency
+                                                    Replies handled
                                                 </span>
                                             </div>
                                             <div className="card_case__studies-metric-divider" />
                                             <div className="card_case__studies-metric">
                                                 <h4 className="card_case__studies-metric-value mb-0">
-                                                    <OdometerCounter count={18} prefix="-" suffix="%" />
+                                                    <OdometerCounter count={40} prefix="-" suffix="%" />
                                                 </h4>
                                                 <span className="card_case__studies-metric-label">
-                                                    Inventory Cost
+                                                    Manual work
                                                 </span>
                                             </div>
                                         </div>
@@ -232,9 +232,9 @@ export default function Section4() {
                                 <div className="content">
                                     <h5 className="revert-text mb-0 reveal-text">
                                         <RevealText>
-                                            Phoxta is a digital agency creating impactful digital experiences. We
-                                            think like strategists and execute with clarity, creativity, and
-                                            performance.
+                                            Phoxta gives every business its own AI operator — one that reads,
+                                            decides and acts across the whole front office, always under your
+                                            control.
                                         </RevealText>
                                     </h5>
                                 </div>

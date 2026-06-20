@@ -25,7 +25,7 @@ const COL1_MEMBERS = [
     {
         name: "Darrell",
         surname: "Steward",
-        role: "UI/UX Designer",
+        role: "Founder Success Lead",
         img: "/assets/imgs/pages/home-7/team-1-darrell.webp",
         alt: "Darrell Steward",
         badgeClass: "",
@@ -33,7 +33,7 @@ const COL1_MEMBERS = [
     {
         name: "Amelia",
         surname: "Courtney",
-        role: "Project Manager",
+        role: "Launch Manager",
         img: "/assets/imgs/pages/home-7/team-2-amelia.webp",
         alt: "Amelia Courtney",
         badgeClass: "sec-8-home-7__badge--dark",
@@ -44,7 +44,7 @@ const COL2_MEMBERS = [
     {
         name: "Esther",
         surname: "Howard",
-        role: "Software Developer",
+        role: "AI Engineer",
         img: "/assets/imgs/pages/home-7/team-3-esther.webp",
         alt: "Esther Howard",
         badgeClass: "",
@@ -52,7 +52,7 @@ const COL2_MEMBERS = [
     {
         name: "Jacob",
         surname: "Jones",
-        role: "Marketing CEO",
+        role: "Founder & CEO",
         img: "/assets/imgs/pages/home-7/team-4-jacob.webp",
         alt: "Jacob Jones",
         badgeClass: "",
@@ -66,7 +66,7 @@ export default function Section8() {
                 <div className="row g-0 align-items-start">
                     {/* LEFT: Eyebrow + huge heading + description + CTA */}
                     <div className="col-xl-5 col-lg-5 col-12 sec-8-home-7__lead">
-                        <Link to="/team" className="sec-8-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-4 text-uppercase">
+                        <Link to="/about" className="sec-8-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-4 text-uppercase">
                             <span className="text-scramble" data-scramble-text="Meet Our Team">Meet Our Team</span>
                             {EYEBROW_ARROW_SVG}
                         </Link>
@@ -77,18 +77,18 @@ export default function Section8() {
 
                         <p className="sec-8-home-7__desc mb-40 reveal-text">
                             <RevealText>
-                                Creative experts designing meaningful digital experiences that help ambitious brands grow faster and lead their markets.
+                                The team building the accelerator — operators, engineers and founders who&rsquo;ve launched and scaled real businesses.
                             </RevealText>
                         </p>
 
                         <div className="sec-4-home-7__cta d-inline-flex align-items-stretch mb-60 at_fade_anim">
-                            <Link to="/team" className="at-btn sec-4-home-7__cta-btn text-capitalize">
+                            <Link to="/careers" className="at-btn sec-4-home-7__cta-btn text-capitalize">
                                 <span>
-                                    <span className="text-1">Join our Team</span>
-                                    <span className="text-2">Join our Team</span>
+                                    <span className="text-1">View open roles</span>
+                                    <span className="text-2">View open roles</span>
                                 </span>
                             </Link>
-                            <Link to="/team" className="sec-4-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Join our Team">
+                            <Link to="/careers" className="sec-4-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="View open roles">
                                 {CTA_CIRCLE_SVG}
                             </Link>
                         </div>
@@ -102,7 +102,7 @@ export default function Section8() {
                                 {COL1_MEMBERS.map((member, i) => (
                                     <Link
                                         key={i}
-                                        to="/team-details"
+                                        to="/about"
                                         className="sec-8-home-7__card"
                                         aria-label={`${member.name} ${member.surname} — ${member.role}`}
                                     >
@@ -129,7 +129,7 @@ export default function Section8() {
                                 {COL2_MEMBERS.map((member, i) => (
                                     <Link
                                         key={i}
-                                        to="/team-details"
+                                        to="/about"
                                         className="sec-8-home-7__card"
                                         aria-label={`${member.name} ${member.surname} — ${member.role}`}
                                     >

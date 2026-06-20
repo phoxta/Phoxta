@@ -1,17 +1,17 @@
 {/* Home 7 Section 9 (Marquee — carouselTicker + GSAP scroll-move) */}
 
 const MARQUEE_ITEMS = [
-    "Marketing strategy",
-    "Customer insights",
-    "Positioning",
-    "Value proposition",
-    "Brand identity",
-    "Performance",
-    "Rebranding",
-    "Omnichannel",
-    "Social ads",
-    "Technical SEO",
-    "KPI tracking",
+    "Acquire a business",
+    "Pre-validated",
+    "Launch in days",
+    "AI operator",
+    "Custom domain",
+    "Founder network",
+    "Growth playbooks",
+    "No code",
+    "Own your revenue",
+    "Operating console",
+    "Built-in marketing",
 ];
 
 function generateMarqueeItems(prefix: string) {

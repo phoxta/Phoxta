@@ -17,23 +17,23 @@ const testimonials = [
     {
         img: "/assets/imgs/pages/home-9/testimonial-1.webp",
         logo: "/assets/imgs/pages/home-9/logo-3.svg",
-        quote: "Phoxta didn't just build us a website; they engineered a digital experience that mirrors our ambition. The integration of GSAP motion and high-performance code has set a new benchmark in our industry. Truly the modern standard.",
+        quote: "Phoxta generated our whole brand — logo, colors, type and voice — in minutes, then let us fine-tune it visually. It looks like we hired an agency.",
         name: "Amelia Wright",
-        position: "Head of Marketing",
+        position: "Owner, a fashion store on Phoxta",
     },
     {
         img: "/assets/imgs/pages/home-9/testimonial-2.webp",
         logo: "/assets/imgs/pages/home-9/logo-4.svg",
-        quote: "Working with Hieu and his team was a revelation. They have an uncanny ability to translate complex brand values into a minimalist, high-impact visual language. Our conversion rates increased by 45% within the first month of launch.",
+        quote: "I described the vibe and Phoxta gave us a complete identity. We refined it in the Studio editor and launched on our own domain the same day.",
         name: "Sophia Sterling",
-        position: "Founder of AURA Luxury",
+        position: "Founder, a travel business on Phoxta",
     },
     {
         img: "/assets/imgs/pages/home-9/testimonial-3.webp",
         logo: "/assets/imgs/pages/home-9/logo-2.svg",
-        quote: "Scalability was our biggest concern, but Phoxta delivered a design system that is both flexible and robust. They are more than an agency; they are strategic partners who understand the pulse of the modern digital landscape.",
+        quote: "The best part is consistency — our brand shows up the same across the storefront, emails and even the AI agent's tone. No design skills needed.",
         name: "Marcus Thorne",
-        position: "Marketing Director at GlobalStream",
+        position: "Owner, a services business on Phoxta",
     },
 ];
 
@@ -54,7 +54,7 @@ export default function Section8() {
                             </i>
                         </span>
                         <div className="title-right">
-                            <p className="neutral-900 m-0 fw-500 text-decoration-underline at_fade_anim" data-delay=".3">15k+ trusted clients</p>
+                            <p className="neutral-900 m-0 fw-500 text-decoration-underline at_fade_anim" data-delay=".3">Loved by founders on Phoxta</p>
                         </div>
                     </div>
 

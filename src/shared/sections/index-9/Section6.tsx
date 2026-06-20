@@ -4,8 +4,8 @@ const teamMembers = [
         quote: "Data tells the story; we provide the voice.",
         avatar: "/assets/imgs/pages/home-9/sec-6-avatar-1.webp",
         name: "Elena Sterling",
-        role: "Head of Strategy",
-        skills: "Market Analysis, Consumer Psychology, Product Growth.",
+        role: "Head of Brand",
+        skills: "Brand Strategy, Positioning, Naming.",
         imgAward: "/assets/imgs/pages/home-9/sec-6-fly-1.webp",
         accent: false,
     },
@@ -13,8 +13,8 @@ const teamMembers = [
         quote: "Motion is the language of the future.",
         avatar: "/assets/imgs/pages/home-9/sec-6-avatar-2.webp",
         name: "Marcus Chen",
-        role: "Lead Interaction Architect",
-        skills: "GSAP Animations, WebGL, Immersive Interfaces.",
+        role: "Lead Design Engineer",
+        skills: "Design Systems, Theming, Storefronts.",
         imgAward: "/assets/imgs/pages/home-9/sec-6-fly-2.webp",
         accent: true,
     },
@@ -22,8 +22,8 @@ const teamMembers = [
         quote: "Empathy is the most powerful tool in our kit.",
         avatar: "/assets/imgs/pages/home-9/sec-6-avatar-3.webp",
         name: "Sarah Jenkins",
-        role: "Senior UX Researcher",
-        skills: "User Journey Mapping, Usability Testing, Ethnography.",
+        role: "Senior Brand Designer",
+        skills: "Identity, Logos, Visual Systems.",
         imgAward: "/assets/imgs/pages/home-9/sec-6-fly-3.webp",
         accent: false,
     },
@@ -31,8 +31,8 @@ const teamMembers = [
         quote: "Code should be as elegant as the UI it powers.",
         avatar: "/assets/imgs/pages/home-9/sec-6-avatar-4.webp",
         name: "Julian Voss",
-        role: "Full-stack Engineering Lead",
-        skills: "Next.js, Scalable Architecture, Performance Optimization.",
+        role: "Platform Engineering Lead",
+        skills: "Studio Editor, Custom Domains, Performance.",
         imgAward: "/assets/imgs/pages/home-9/sec-6-fly-4.webp",
         accent: false,
     },
@@ -49,8 +49,8 @@ const teamMembers = [
         quote: "AI doesn&rsquo;t replace creativity; it amplifies it.",
         avatar: "/assets/imgs/pages/home-9/sec-6-avatar-6.webp",
         name: "Leo Vance",
-        role: "AI Strategy & Automation Lead",
-        skills: "Generative AI Workflows, Programmatic SEO",
+        role: "AI Brand & Automation Lead",
+        skills: "Generative Branding, Brand Voice.",
         imgAward: "/assets/imgs/pages/home-9/sec-6-fly-6.webp",
         accent: false,
     },
@@ -100,7 +100,7 @@ export default function Section6() {
                                         </div>
                                         <div className="sec-6-home-9__meta">
                                             <h3 className="sec-6-home-9__name">
-                                                <Link to="/team-details">{member.name}</Link>
+                                                <Link to="/about">{member.name}</Link>
                                             </h3>
                                             <p className="sec-6-home-9__role">{member.role}</p>
                                         </div>
@@ -123,19 +123,19 @@ export default function Section6() {
                                 />
                             </div>
                             <div className="sec-6-home-9__footer-block">
-                                <h3 className="sec-6-home-9__footer-heading at_fade_anim" data-delay=".1">We are here</h3>
+                                <h3 className="sec-6-home-9__footer-heading at_fade_anim" data-delay=".1">Find us online</h3>
                                 <div className="sec-6-home-9__footer-lines at_fade_anim" data-delay=".2">
-                                    <p>205 North Michigan Avenue, Suite 810<br />Chicago, 60601, USA</p>
-                                    <p>Phone: <a className="sec-6-home-9__footer-link" href="tel:+11234567890">(123) 456-7890</a></p>
+                                    <p>Phoxta is a fully online platform.<br />Brand and launch from anywhere.</p>
+                                    <p>Support: <Link className="sec-6-home-9__footer-link" to="/contact">Contact us</Link></p>
                                     <p>Email: <a className="sec-6-home-9__footer-link" href="mailto:hello@phoxta.com">hello@phoxta.com</a></p>
                                 </div>
                             </div>
                         </div>
                         <div className="sec-6-home-9__footer-secondary">
                             <div className="sec-6-home-9__footer-lines at_fade_anim" data-delay=".3">
-                                <p>245 Fifth Avenue, Suite 1800<br />New York, NY 10016, USA</p>
-                                <p>Phone: <a className="sec-6-home-9__footer-link" href="tel:+12125557398">(212) 555-7398</a></p>
-                                <p>Email: <a className="sec-6-home-9__footer-link" href="mailto:sale@phoxta.com">sale@phoxta.com</a></p>
+                                <p>Prefer to talk it through first?<br />Tell us your goals and we&rsquo;ll help.</p>
+                                <p>Sales: <Link className="sec-6-home-9__footer-link" to="/contact">Talk to us</Link></p>
+                                <p>Email: <a className="sec-6-home-9__footer-link" href="mailto:hello@phoxta.com">hello@phoxta.com</a></p>
                             </div>
                         </div>
                     </footer>

@@ -13,27 +13,27 @@ const ARROW_SVG = (
 const TEAM_MEMBERS = [
     {
         classList: "col-xxl-4 col-lg-6 col-12",
-        link: "/team-details",
+        link: "/about",
         img: "/assets/imgs/pages/img-94.webp",
-        name: "Alex Morgan",
+        name: "Aria Bennett",
         delay: ".2",
-        position: "Creative Director",
+        position: "Lead AI Engineer",
     },
     {
         classList: "col-xxl-4 col-lg-6 col-12",
-        link: "/team-details",
+        link: "/about",
         img: "/assets/imgs/pages/img-95.webp",
-        name: "Alex Morgan",
+        name: "Marcus Lee",
         delay: ".5",
-        position: "Data & Analytics Lead",
+        position: "Automation Architect",
     },
     {
         classList: "col-xxl-4 col-lg-6 col-12",
-        link: "/team-details",
+        link: "/about",
         img: "/assets/imgs/pages/img-96.webp",
-        name: "Alex Morgan",
+        name: "Priya Nair",
         delay: ".8",
-        position: "Technology Architect",
+        position: "Data & Integrations Lead",
     },
 ];
 
@@ -56,7 +56,7 @@ export default function Section6() {
                     </div>
                     <div className="col-lg-7 col-md-7">
                         <h3 className="reveal-text">
-                            Meet our dedicated <br /> and skilled team
+                            The operators and engineers <br /> behind your AI
                         </h3>
                     </div>
                     <div className="col-lg-3 col-md-5 ms-auto text-center">
@@ -64,7 +64,7 @@ export default function Section6() {
                             <OdometerCounter count={190} suffix="+" />
                         </h1>
                         <h6 className="fw-500 mb-0">
-                            Projects have been <br /> completed.
+                            Automations live across <br /> Phoxta businesses.
                         </h6>
                     </div>
                 </div>

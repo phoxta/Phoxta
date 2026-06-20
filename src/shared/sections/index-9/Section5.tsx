@@ -40,19 +40,19 @@ export default function Section5() {
                     <div className="row g-4 g-xl-5 justify-content-between sec-5-home-9__meta">
                         <div className="col-md-4 col-xl-3 at_fade_anim" data-delay="0.1">
                             <div className="sec-5-home-9__block">
-                                <p className="sec-5-home-9__label text-white">Base on</p>
+                                <p className="sec-5-home-9__label text-white">Online</p>
                                 <p className="sec-5-home-9__value text-white">
-                                    245 Fifth Avenue, Suite 1800<br />
-                                    New York, NY 10016, USA
+                                    Phoxta is a fully online platform.<br />
+                                    Brand and launch from anywhere.
                                 </p>
                             </div>
                         </div>
                         <div className="col-md-4 col-xl-3 at_fade_anim" data-delay="0.2">
                             <div className="sec-5-home-9__block">
-                                <p className="sec-5-home-9__label text-white">Tel</p>
+                                <p className="sec-5-home-9__label text-white">Support</p>
                                 <div className="sec-5-home-9__value sec-5-home-9__value--stack">
-                                    <p className="mb-0 text-white">+212 - 555-7398</p>
-                                    <p className="mb-0 text-white">+212 - 666-7399</p>
+                                    <p className="mb-0 text-white">Live chat &amp; email</p>
+                                    <p className="mb-0 text-white">7 days a week</p>
                                 </div>
                             </div>
                         </div>
@@ -70,11 +70,11 @@ export default function Section5() {
                         <div className="at-marquee sec-5-home-9__marquee at_fade_anim" data-delay=".1">
                             <div className="at-marquee__track sec-5-home-9__marquee-track">
                                 <div className="at-marquee__group sec-5-home-9__marquee-group">
-                                    <span className="sec-5-home-9__marquee-text">The future is digital. Let&rsquo;s make it yours</span>
+                                    <span className="sec-5-home-9__marquee-text">Make any business unmistakably yours</span>
                                     <span className="sec-5-home-9__marquee-sep" aria-hidden="true">&nbsp;&mdash;&nbsp;</span>
                                 </div>
                                 <div className="at-marquee__group sec-5-home-9__marquee-group" aria-hidden="true">
-                                    <span className="sec-5-home-9__marquee-text">The future is digital. Let&rsquo;s make it yours</span>
+                                    <span className="sec-5-home-9__marquee-text">Make any business unmistakably yours</span>
                                     <span className="sec-5-home-9__marquee-sep" aria-hidden="true">&nbsp;&mdash;&nbsp;</span>
                                 </div>
                             </div>
@@ -83,11 +83,11 @@ export default function Section5() {
 
                     <div className="sec-5-home-9__cta-wrap">
                         <div className="at-btn-group at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
-                            <Link className="at-btn-circle" to="/portfolio-1">
+                            <Link className="at-btn-circle" to="/marketplace">
                                 <LongArrowRight />
                             </Link>
-                            <Link className="at-btn z-index-1" to="/portfolio-1">View latest projects</Link>
-                            <Link className="at-btn-circle" to="/portfolio-1">
+                            <Link className="at-btn z-index-1" to="/marketplace">Explore the marketplace</Link>
+                            <Link className="at-btn-circle" to="/marketplace">
                                 <LongArrowRight />
                             </Link>
                         </div>

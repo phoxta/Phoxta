@@ -51,13 +51,13 @@ export default function Section12() {
                             </span>
                             <h2>Stay ahead</h2>
                             <p className="fz-font-xl mb-0">
-                                Get practical insights, trends, and strategies we use <br />to help brands grow—delivered
-                                monthly, no spam.
+                                Get practical AI-marketing tactics and growth playbooks <br />—delivered monthly,
+                                no spam.
                             </p>
                         </div>
                         <div className="col-lg-4 ms-auto align-self-end">
                             <div className="input-subscribe p-relative changeless">
-                                <input placeholder="Enter you mail .." type="email" className="w-100 bg-neutral-0" />
+                                <input placeholder="Enter your email .." type="email" className="w-100 bg-neutral-0" />
                                 <button
                                     type="button"
                                     className="p-absolute end-0 top-50 bg-neutral-900 rounded-3 size-56 translate-middle-y me-3"
@@ -68,8 +68,8 @@ export default function Section12() {
                             </div>
                             <p className="mb-0 pt-20">
                                 By clicking the button, you are <br /> agreeing with our{" "}
-                                <Link to="#" className="neutral-900">
-                                    Term & Conditions
+                                <Link to="/terms" className="neutral-900">
+                                    Terms & Conditions
                                 </Link>
                             </p>
                         </div>

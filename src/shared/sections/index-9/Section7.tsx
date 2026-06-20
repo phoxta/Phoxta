@@ -2,11 +2,11 @@ import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 
 const tags = [
-    { label: "MVP Launch", delay: ".1" },
-    { label: "Product Design", delay: ".2" },
-    { label: "Scalable Tech", delay: ".3" },
-    { label: "Growth Strategy", delay: ".4" },
-    { label: "UI/UX Excellence", delay: ".5" },
+    { label: "AI Brand Generation", delay: ".1" },
+    { label: "Logo & Identity", delay: ".2" },
+    { label: "Color & Type", delay: ".3" },
+    { label: "Brand Voice", delay: ".4" },
+    { label: "Visual Studio", delay: ".5" },
 ];
 
 export default function Section7() {
@@ -16,7 +16,7 @@ export default function Section7() {
             <section className="sec-7-home-9 changeless">
                 <div className="sec-7-home-9__container">
                     <h2 className="sec-7-home-9__lead reveal-text at_fade_anim" data-delay=".1" data-fade-from="top" data-fade-offset="50">
-                        <RevealText>We are a high-performance collective architecturalizing the next digital era. By merging advanced aesthetics with engineering precision, we empower visionary brands to dominate the modern landscape.</RevealText>
+                        <RevealText>Phoxta merges generative AI with real design craft, so any business can launch a credible, distinctive brand — and refine every detail without a designer.</RevealText>
                     </h2>
 
                     <div className="row g-4 g-xxl-5 align-items-start sec-7-home-9__main">
@@ -45,7 +45,7 @@ export default function Section7() {
                                     />
                                 </div>
                                 <blockquote className="sec-7-home-9__quote at_fade_anim">
-                                    &ldquo;We bridge the gap between aesthetic sophistication and technical rigor. Every product is an ecosystem of pixel-perfect precision and high-performance engineering, leveraging fluid motion and next-gen architectures to define the new digital standard.&rdquo;
+                                    &ldquo;We pair AI speed with human taste. Generate a complete identity in seconds, then fine-tune logo, palette, type and voice in a visual editor — and publish it everywhere your business shows up.&rdquo;
                                 </blockquote>
                                 <div className="sec-7-home-9__tags">
                                     {tags.map((tag, i) => (

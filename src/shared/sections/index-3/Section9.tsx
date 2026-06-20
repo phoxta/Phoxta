@@ -36,18 +36,18 @@ export type TeamIntroProps = {
 
 export const TEAM_INTRO_DEFAULTS = {
     eyebrow: "MEET OUR TEAM",
-    heading: "Behind the Visionaries",
+    heading: "The people behind Phoxta",
     intro:
-        "Creative experts designing meaningful digital experiences that help ambitious brands grow faster and lead their markets.",
-    ctaLabel: "Join our Team",
-    ctaHref: "/portfolio-1",
+        "Marketers, engineers and operators building the AI that grows your business faster and runs your marketing for you.",
+    ctaLabel: "View open roles",
+    ctaHref: "/careers",
     team: [
-        { img: "/assets/imgs/pages/img-17.webp", name: "Darrell Steward", position: "UI/UX Designer" },
-        { img: "/assets/imgs/pages/img-18.webp", name: "Amelia Courtney", position: "Project Manager" },
-        { img: "/assets/imgs/pages/img-19.webp", name: "Esther Howard", position: "Software Developer" },
-        { img: "/assets/imgs/pages/img-20.webp", name: "Jacob Jones", position: "Marketing CEO" },
+        { img: "/assets/imgs/pages/img-17.webp", name: "Darrell Steward", position: "Growth Lead" },
+        { img: "/assets/imgs/pages/img-18.webp", name: "Amelia Courtney", position: "Marketing Automation Lead" },
+        { img: "/assets/imgs/pages/img-19.webp", name: "Esther Howard", position: "AI Engineer" },
+        { img: "/assets/imgs/pages/img-20.webp", name: "Jacob Jones", position: "Founder & CEO" },
     ] as TeamMember[],
-    tags: ["[ Conversion-focused ]", "[ Data-driven ]", "[ Built for scale ]", "[ User-centric ]", "[Future-proof]"],
+    tags: ["[ Omnichannel ]", "[ AI-optimized ]", "[ Always-on ]", "[ Conversion-focused ]", "[ GEO-ready ]"],
 } satisfies Required<Omit<TeamIntroProps, never>>;
 
 // Layout classes applied to team cards by position (kept out of editable data).

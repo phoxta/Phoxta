@@ -24,37 +24,37 @@ function CaseArrow() {
 
 const filters = [
     { label: "All Works", filter: "all", delay: ".1", active: true },
-    { label: "UI / UX Design", filter: "design", delay: ".2" },
-    { label: "Photography", filter: "photography", delay: ".3" },
-    { label: "Digital Marketing", filter: "marketing", delay: ".4" },
+    { label: "Logos & Identity", filter: "design", delay: ".2" },
+    { label: "Color & Type", filter: "photography", delay: ".3" },
+    { label: "Full Rebrands", filter: "marketing", delay: ".4" },
 ];
 
 const col1Cards = [
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-1.webp",
         category: "marketing",
-        tag: "Performance",
-        metric: "+72% ROAS in 90 days",
-        excerpt: "We restructured paid campaigns, refined audience targeting, and optimized creatives to drive higher returns while reducing wasted ad spend.",
-        project: "Ecommerce Brand",
-        badge: "Featured case",
+        tag: "Rebrand",
+        metric: "Full identity in minutes",
+        excerpt: "AI generated the logo, palette, type and voice; refined in Studio and shipped on a custom domain.",
+        project: "Aurelia — fashion",
+        badge: "Featured",
     },
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-2.webp",
         category: "photography",
-        tag: "Conversion",
-        metric: "-38% Cost per acquisition",
+        tag: "Logo",
+        metric: "Logo + favicon, on brand",
         excerpt: "",
-        project: "Fintech Platform",
+        project: "Carento — car rental",
         badge: "",
     },
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-3.webp",
         category: "photography",
-        tag: "Performance",
-        metric: "+54% revenue growth YoY",
+        tag: "Palette",
+        metric: "Cohesive color & type",
         excerpt: "",
-        project: "DTC Brand",
+        project: "Voyage — travel",
         badge: "",
     },
 ];
@@ -63,28 +63,28 @@ const col2Cards = [
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-4.webp",
         category: "design",
-        tag: "Growth",
-        metric: "3x qualified leads in 4 months",
+        tag: "Voice",
+        metric: "Brand voice across channels",
         excerpt: "",
-        project: "SaaS Startup",
+        project: "Atlas — services",
         badge: "",
     },
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-5.webp",
         category: "design",
-        tag: "Brand",
-        metric: "+41% conversion rate",
+        tag: "Domain",
+        metric: "Live on your own domain",
         excerpt: "",
-        project: "B2B Service Company",
+        project: "Nimbus — SaaS",
         badge: "",
     },
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-6.webp",
         category: "marketing",
-        tag: "Performance",
-        metric: "$1.4M revenue in 6 months",
+        tag: "Rebrand",
+        metric: "Restyled in an afternoon",
         excerpt: "",
-        project: "Global Brand",
+        project: "Bloom — wellness",
         badge: "",
     },
 ];
@@ -116,7 +116,7 @@ export default function Section4() {
                             {col1Cards.map((card, i) => (
                                 <article key={i} className="sec-4-home-9__card mg-portfolio-item" data-category={card.category}>
                                     <div className="sec-4-home-9__visual">
-                                        <Link to="/portfolio-details-1" className="sec-4-home-9__visual-link cursor-hide">
+                                        <Link to="/marketplace" className="sec-4-home-9__visual-link cursor-hide">
                                             <div className="fix anim-zoomin">
                                                 <img src={card.img} alt="phoxta" width={600} height={450} loading="lazy" />
                                             </div>
@@ -133,10 +133,10 @@ export default function Section4() {
                                         )}
                                     </div>
                                     <div className="sec-4-home-9__bar">
-                                        <Link to="/portfolio-details-1">
+                                        <Link to="/marketplace">
                                             <h3 className="sec-4-home-9__project">{card.project}</h3>
                                         </Link>
-                                        <Link to="/portfolio-details-1" className="sec-4-home-9__case">
+                                        <Link to="/marketplace" className="sec-4-home-9__case">
                                             <span>View case</span>
                                             <CaseArrow />
                                         </Link>
@@ -149,7 +149,7 @@ export default function Section4() {
                             {col2Cards.map((card, i) => (
                                 <article key={i} className="sec-4-home-9__card mg-portfolio-item" data-category={card.category}>
                                     <div className="sec-4-home-9__visual">
-                                        <Link to="/portfolio-details-1" className="sec-4-home-9__visual-link cursor-hide">
+                                        <Link to="/marketplace" className="sec-4-home-9__visual-link cursor-hide">
                                             <div className="fix anim-zoomin">
                                                 <img src={card.img} alt="phoxta" width={600} height={450} loading="lazy" />
                                             </div>
@@ -160,10 +160,10 @@ export default function Section4() {
                                         </Link>
                                     </div>
                                     <div className="sec-4-home-9__bar">
-                                        <Link to="/portfolio-details-1">
+                                        <Link to="/marketplace">
                                             <h3 className="sec-4-home-9__project">{card.project}</h3>
                                         </Link>
-                                        <Link to="/portfolio-details-1" className="sec-4-home-9__case">
+                                        <Link to="/marketplace" className="sec-4-home-9__case">
                                             <span>View case</span>
                                             <CaseArrow />
                                         </Link>
@@ -175,12 +175,12 @@ export default function Section4() {
 
                     <div className="sec-4-home-9__cta">
                         <p className="sec-4-home-9__cta-text reveal-text">
-                            <RevealText>Phoxta is a digital agency creating impactful digital experiences. We think like strategists and execute with clarity, creativity, and performance.</RevealText>
+                            <RevealText>Phoxta turns any business into a brand — generate a complete identity with AI, refine it visually, and launch it on your own domain.</RevealText>
                         </p>
-                        <Link className="at-btn at_fade_anim" to="/contact-1" data-delay=".5">
+                        <Link className="at-btn at_fade_anim" to="/auth" data-delay=".5">
                             <span>
-                                <span className="text-1">GET IN TOUCH</span>
-                                <span className="text-2">GET IN TOUCH</span>
+                                <span className="text-1">GET STARTED</span>
+                                <span className="text-2">GET STARTED</span>
                             </span>
                             <i>
                                 <ArrowIcon />

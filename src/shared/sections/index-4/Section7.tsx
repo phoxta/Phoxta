@@ -70,7 +70,7 @@ export default function Section7() {
                                         ))}
                                     </div>
                                     <p className="text-white fz-font-sm mb-0 mt-2">
-                                        Average 4.9 rating point <br /> reviews from 968 clients
+                                        Average 4.9 rating from <br /> businesses running on Phoxta
                                     </p>
                                 </div>
                             </div>
@@ -99,14 +99,14 @@ export default function Section7() {
                                 </div>
                                 <div className="content">
                                     <p className="text-white fz-font-3xl fw-400 mb-50 lh-base">
-                                        What impressed us most was their ability to translate a high-level AI strategy
-                                        into a system that actually worked in production. Within a short time, we saw
-                                        clear improvements in efficiency, decision-making speed, and overall
-                                        operational performance.
+                                        Phoxta gave my business its own AI operator. Within days it was answering
+                                        inbound messages, following up with leads and booking customers — work that
+                                        used to eat my whole day now runs on its own, and I can see every action it
+                                        takes.
                                     </p>
-                                    <h5 className="text-white fw-500">Michael Turner</h5>
+                                    <h5 className="text-white fw-500">Marcus Bell</h5>
                                     <p className="text-white fz-font-md fw-500 opacity-75 mb-0">
-                                        CTO, Nexora Systems
+                                        Owner, a Phoxta business
                                     </p>
                                 </div>
                             </div>

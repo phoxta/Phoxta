@@ -10,43 +10,43 @@ const EYEBROW_ARROW_SVG = (
 );
 
 const CHIPS = [
-    { text: "Discovery & MVP Strategy", className: "sec-6-home-7__chip--1", delay: "0.1" },
-    { text: "Rapid Prototyping", className: "sec-6-home-7__chip--2", delay: "0.2" },
-    { text: "Agile Development", className: "sec-6-home-7__chip--3", delay: "0.3" },
-    { text: "Launch & Scale", className: "sec-6-home-7__chip--4", delay: "0.4" },
+    { text: "Choose your business", className: "sec-6-home-7__chip--1", delay: "0.1" },
+    { text: "Make it yours", className: "sec-6-home-7__chip--2", delay: "0.2" },
+    { text: "Launch with AI", className: "sec-6-home-7__chip--3", delay: "0.3" },
+    { text: "Grow & scale", className: "sec-6-home-7__chip--4", delay: "0.4" },
 ];
 
 const CARDS = [
     {
         num: "[01]",
-        title: "Discovery & MVP Strategy",
-        desc: "Defining product-market fit by identifying core features that deliver maximum user value with minimum time-to-market.",
+        title: "Choose your business",
+        desc: "Browse pre-validated blueprints and pick the niche business that fits your goals and your budget.",
         img: "/assets/imgs/pages/home-7/step-1.webp",
-        alt: "Discovery & MVP Strategy",
+        alt: "Choose your business",
         delay: "0.1",
     },
     {
         num: "[02]",
-        title: "Rapid Prototyping",
-        desc: "Transforming strategy into interactive prototypes to validate your vision before moving into full-scale engineering.",
+        title: "Make it yours",
+        desc: "Rebrand with AI, edit your storefront visually, and connect your own domain in minutes.",
         img: "/assets/imgs/pages/home-7/step-2.webp",
-        alt: "Rapid Prototyping",
+        alt: "Make it yours",
         delay: "0.3",
     },
     {
         num: "[03]",
-        title: "Agile Development",
-        desc: "Building a scalable, high-performance core using modern tech stacks that founders and investors can lean on.",
+        title: "Launch with AI",
+        desc: "Go live with an AI agent and operating console already running your front office for you.",
         img: "/assets/imgs/pages/home-7/step-3.webp",
-        alt: "Agile Development",
+        alt: "Launch with AI",
         delay: "0.5",
     },
     {
         num: "[04]",
-        title: "Launch & Scale",
-        desc: "Deploying, refining, and architecting the technical support needed to grow from your first user to your first million.",
+        title: "Grow & scale",
+        desc: "Use playbooks, built-in AI marketing and the founder network to grow revenue after launch.",
         img: "/assets/imgs/pages/home-7/step-4.webp",
-        alt: "Launch & Scale",
+        alt: "Grow & scale",
         delay: "0.7",
     },
 ];
@@ -58,15 +58,15 @@ export default function Section6() {
                 {/* Header row: eyebrow + big title + description */}
                 <div className="sec-6-home-7__header row g-0 pt-100 pb-50">
                     <div className="col-lg-7 col-12">
-                        <Link to="/services-1" className="sec-6-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-3 text-uppercase">
-                            <span className="text-scramble" data-scramble-text="The Growth Engine">The Growth Engine</span>
+                        <Link to="/marketplace" className="sec-6-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-3 text-uppercase">
+                            <span className="text-scramble" data-scramble-text="How it works">How it works</span>
                             {EYEBROW_ARROW_SVG}
                         </Link>
                         <h2 className="sec-6-home-7__title mb-0 reveal-text"><RevealText>The Process</RevealText></h2>
                     </div>
                     <div className="col-lg-5 col-12 mt-4 mt-lg-0 d-flex align-items-end justify-content-lg-end">
                         <p className="sec-6-home-7__desc text-lg-end mb-0 at_fade_anim">
-                            Honest strategies for ambitious founders. How we take your vision from a bold concept to a market-ready digital product.
+                            A clear path for ambitious founders — from choosing a business to running and scaling it with AI.
                         </p>
                     </div>
                 </div>

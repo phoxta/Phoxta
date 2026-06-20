@@ -13,12 +13,12 @@ const ARROW_SVG = (
 );
 
 const POSTS = [
-    { category: "Optimize", title: "Designing Digital Experiences That Connect Brands and People", author: "Daniel", date: "July 8, 2026", img: "/assets/imgs/pages/img-71.webp" },
-    { category: "Trending", title: "From Concept to Launch: Building Products That Truly Matter", author: "Olivia", date: "July 3, 2026", img: "/assets/imgs/pages/img-72.webp" },
-    { category: "marketing", title: "Why Strong Visual Identity Is the Foundation of Modern Brands", author: "Lucas", date: "July 17, 2026", img: "/assets/imgs/pages/img-73.webp" },
-    { category: "Optimize", title: "Designing Digital Experiences That Connect Brands and People", author: "Olivia", date: "July 28, 2026", img: "/assets/imgs/pages/img-51.webp" },
-    { category: "Trending", title: "From Concept to Launch: Building Products That Truly Matter", author: "Daniel", date: "July 08, 2026", img: "/assets/imgs/pages/img-52.webp" },
-    { category: "marketing", title: "Why Strong Visual Identity Is the Foundation of Modern Brands", author: "Emma", date: "July 17, 2026", img: "/assets/imgs/pages/img-53.webp" },
+    { category: "GEO", title: "How to become the answer AI search recommends", author: "Daniel", date: "July 8, 2026", img: "/assets/imgs/pages/img-71.webp" },
+    { category: "Outreach", title: "Omnichannel messages customers actually reply to", author: "Olivia", date: "July 3, 2026", img: "/assets/imgs/pages/img-72.webp" },
+    { category: "Automation", title: "Marketing automations that run while you sleep", author: "Lucas", date: "July 17, 2026", img: "/assets/imgs/pages/img-73.webp" },
+    { category: "Conversion", title: "Turning conversations into conversions with AI", author: "Olivia", date: "July 28, 2026", img: "/assets/imgs/pages/img-51.webp" },
+    { category: "Inbox", title: "One inbox for email, SMS and WhatsApp", author: "Daniel", date: "July 08, 2026", img: "/assets/imgs/pages/img-52.webp" },
+    { category: "Content", title: "Content autopilot: a blog that writes and ranks itself", author: "Emma", date: "July 17, 2026", img: "/assets/imgs/pages/img-53.webp" },
 ];
 
 export default function Section11() {
@@ -40,7 +40,7 @@ export default function Section11() {
                             <h3 className="reveal-text fz-ds-1 mb-30 fw-500 lh-1">
                                 <RevealText>Explore our Latest journal</RevealText>
                             </h3>
-                            <Link className="at-btn" to="/archive-2">
+                            <Link className="at-btn" to="/blog">
                                 <span>
                                     <span className="text-1">ALL ARTICLES</span>
                                     <span className="text-2">ALL ARTICLES</span>
@@ -62,13 +62,13 @@ export default function Section11() {
                                                 <div className="blog-card-2__left flex-grow-1">
                                                     <span className="blog-card-2__category">{post.category}</span>
                                                     <h6 className="blog-card-2__title">
-                                                        <Link to="/blog-details" className="blog-card-2__title-link">
+                                                        <Link to="/blog" className="blog-card-2__title-link">
                                                             {post.title}
                                                         </Link>
                                                     </h6>
                                                     <p className="blog-card-2__meta">
                                                         <span className="blog-card-2__meta-text">By </span>
-                                                        <Link to="/team-details" className="blog-card-2__author">
+                                                        <Link to="/about" className="blog-card-2__author">
                                                             {post.author}
                                                         </Link>
                                                         <span className="blog-card-2__meta-text"> – {post.date}</span>

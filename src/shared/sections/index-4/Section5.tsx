@@ -21,49 +21,49 @@ const EXTERNAL_LINK_ICON = (
 
 const AWARDS = [
     {
-        href: "https://globaldigitalawards.com",
+        href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-89-sm.webp",
         imgAward: "/assets/imgs/pages/img-89.webp",
-        title: "Best AI & Technology Agency",
-        org: "Global Digital Awards",
-        date: "March 12, 2025",
-        url: "globaldigitalawards.com",
+        title: "Governed agent actions",
+        org: "Off · Approve · Auto for every tool",
+        date: "Policy controls",
+        url: "phoxta.com",
     },
     {
-        href: "https://techexcellenceforum.org",
+        href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-90-sm.webp",
         imgAward: "/assets/imgs/pages/img-90.webp",
-        title: "Innovation in Intelligent Systems",
-        org: "Tech Excellence Forum",
-        date: "October 8, 2024",
-        url: "techexcellenceforum.org",
+        title: "Full audit trail",
+        org: "Every action logged and reviewable",
+        date: "Observability",
+        url: "phoxta.com",
     },
     {
-        href: "https://internationaluxawards.com",
+        href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-91-sm.webp",
         imgAward: "/assets/imgs/pages/img-91.webp",
-        title: "Outstanding Digital Experience Design",
-        org: "International UX Awards",
-        date: "June 21, 2024",
-        url: "internationaluxawards.com",
+        title: "Per-business isolation",
+        org: "Your data and agent stay yours",
+        date: "Security",
+        url: "phoxta.com",
     },
     {
-        href: "https://enterprisetechnetwork.org",
+        href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-92-sm.webp",
         imgAward: "/assets/imgs/pages/img-92.webp",
-        title: "Trusted Partner of the Year",
-        org: "Enterprise Technology Network",
-        date: "December 3, 2023",
-        url: "enterprisetechnetwork.org",
+        title: "Always-on operations",
+        org: "Never misses a message or follow-up",
+        date: "24 / 7",
+        url: "phoxta.com",
     },
     {
-        href: "https://globaldigitalawards.com",
+        href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-93-sm.webp",
         imgAward: "/assets/imgs/pages/img-93.webp",
-        title: "Best AI & Technology Agency",
-        org: "Global Digital Awards",
-        date: "March 12, 2025",
-        url: "globaldigitalawards.com",
+        title: "One operating console",
+        org: "Run every channel from a single place",
+        date: "Control",
+        url: "phoxta.com",
         isLast: true,
     },
 ];
@@ -79,9 +79,9 @@ export default function Section5() {
                     <div className="container">
                         <div className="row g-4 align-items-end">
                             <div className="col-lg-8 col-md-8">
-                                <h2 className="text-white mb-2 lh-1">Awards & Recognitions</h2>
+                                <h2 className="text-white mb-2 lh-1">Built to standards you can trust</h2>
                                 <h6 className="text-white mb-0">
-                                    Recognized for innovation, quality, and impact
+                                    Governed, auditable AI — engineered for real businesses
                                 </h6>
                             </div>
                             <div className="col-lg-3 col-md-4 ms-auto d-flex justify-content-lg-end">
@@ -91,13 +91,13 @@ export default function Section5() {
                                     data-fade-from="bottom"
                                     data-ease="bounce"
                                 >
-                                    <Link className="at-btn-circle" to="/portfolio-4">
+                                    <Link className="at-btn-circle" to="/auth">
                                         {ARROW_RIGHT}
                                     </Link>
-                                    <Link className="at-btn z-index-1" to="/portfolio-4">
-                                        View All Awards
+                                    <Link className="at-btn z-index-1" to="/auth">
+                                        Get started
                                     </Link>
-                                    <Link className="at-btn-circle" to="/portfolio-4">
+                                    <Link className="at-btn-circle" to="/auth">
                                         {ARROW_RIGHT}
                                     </Link>
                                 </div>

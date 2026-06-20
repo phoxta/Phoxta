@@ -24,11 +24,11 @@ const brandLogos = [
 ];
 
 const services = [
-    { label: "Brand Strategy", delay: ".1" },
-    { label: "Visual Identity", delay: ".2" },
-    { label: "Logo Design", delay: ".3" },
-    { label: "Packaging", delay: ".4" },
-    { label: "Brand Guidelines", delay: ".5" },
+    { label: "AI Brand Generation", delay: ".1" },
+    { label: "Logo & Favicon", delay: ".2" },
+    { label: "Color & Type", delay: ".3" },
+    { label: "Brand Voice", delay: ".4" },
+    { label: "Visual Studio Editor", delay: ".5" },
 ];
 
 const thumbnails = [
@@ -44,7 +44,7 @@ export default function Section1() {
             <section className="sec-1-home-9 changeless">
                 <div className="sec-1-home-9__container">
                     <div className="sec-1-home-9__row sec-1-home-9__row--top">
-                        <h1 className="sec-1-home-9__title sec-1-home-9__title--modern text-scale-anim">Modern</h1>
+                        <h1 className="sec-1-home-9__title sec-1-home-9__title--modern text-scale-anim">Instant</h1>
                         <div className="sec-1-home-9__intro at_fade_anim" data-delay=".2" data-fade-from="bottom">
                             <span className="sec-1-home-9__intro-icon" aria-hidden="true">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="17" viewBox="0 0 27 20" fill="none">
@@ -55,7 +55,7 @@ export default function Section1() {
                             </span>
                             <p className="sec-1-home-9__intro-text reveal-text text-white">
                                 <RevealText>
-                                    Based in Canada, <span className="text-theme text-scramble">Phoxta</span> is a creative design agency dedicated to providing innovative brand solutions for a global clientele.
+                                    <span className="text-theme text-scramble">Phoxta</span> is generative brand design built into your business — a complete identity created with AI, then refined visually.
                                 </RevealText>
                             </p>
                         </div>
@@ -64,20 +64,20 @@ export default function Section1() {
                     <div className="sec-1-home-9__row sec-1-home-9__row--middle">
                         <div className="sec-1-home-9__left at_fade_anim" data-delay=".3" data-fade-from="bottom">
                             <p className="sec-1-home-9__kicker">
-                                <span className="text-theme text-scramble">Creative</span> solutions <br />
-                                for <span className="text-theme text-scramble">modern</span> brands
+                                <span className="text-theme text-scramble">Instant</span> branding <br />
+                                for <span className="text-theme text-scramble">modern</span> businesses
                             </p>
-                            <Link className="at-btn sec-1-home-9__btn" to="/portfolio-1">
+                            <Link className="at-btn sec-1-home-9__btn" to="/marketplace">
                                 <span>
-                                    <span className="text-1">Explore All Work</span>
-                                    <span className="text-2">Explore All Work</span>
+                                    <span className="text-1">Explore the marketplace</span>
+                                    <span className="text-2">Explore the marketplace</span>
                                 </span>
                                 <i>
                                     <ArrowIcon />
                                 </i>
                             </Link>
                         </div>
-                        <h2 className="sec-1-home-9__title sec-1-home-9__title--agency text-scale-anim">Agency</h2>
+                        <h2 className="sec-1-home-9__title sec-1-home-9__title--agency text-scale-anim">Branding</h2>
                         <div className="sec-1-home-9__thumbs mt-md-0 mt-4">
                             {thumbnails.map((thumb, i) => (
                                 <div

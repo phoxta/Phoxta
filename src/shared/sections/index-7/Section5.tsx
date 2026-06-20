@@ -20,37 +20,37 @@ const ACCORDION_ITEMS = [
         id: "Sec5H71",
         headingId: "headingSec5H71",
         num: "01",
-        title: "MVP Development",
+        title: "Acquire a working business",
         expanded: true,
-        text: "Go from idea to a high-fidelity, functional product in record time. We focus on the core features that prove your concept and win over early adopters.",
-        tags: ["Prototyping", "Fast-track Dev", "User Validation"],
+        text: "Skip the build entirely. Pick a pre-validated business from the marketplace and own it from day one — no idea to test, no code to write.",
+        tags: ["Pre-validated", "Live in days", "No code"],
     },
     {
         id: "Sec5H72",
         headingId: "headingSec5H72",
         num: "02",
-        title: "Product Design",
+        title: "Make it yours",
         expanded: false,
-        text: "We craft intuitive interfaces and immersive user experiences that make your startup feel premium and established from day one.",
-        tags: ["UI/UX Design", "Design Systems", "Visual Storytelling"],
+        text: "Rebrand with AI, customize your storefront in the visual Studio, and connect your own domain — so it feels established from day one.",
+        tags: ["AI branding", "Visual Studio", "Custom domain"],
     },
     {
         id: "Sec5H73",
         headingId: "headingSec5H73",
         num: "03",
-        title: "Scalable Engineering",
+        title: "AI runs the operations",
         expanded: false,
-        text: "Modern tech stacks built for growth. We architect clean, secure, and high-performance systems that handle traffic spikes without a blink.",
-        tags: ["Next.js", "Cloud Architecture", "API Integration"],
+        text: "Your business comes with an AI agent and an operating console that handle the front office — messages, follow-ups and admin — for you.",
+        tags: ["AI agent", "Operating console", "Automations"],
     },
     {
         id: "Sec5H74",
         headingId: "headingSec5H74",
         num: "04",
-        title: "Growth & Strategy",
+        title: "Grow with support",
         expanded: false,
-        text: "Launching is just the start. We provide the data-driven insights and technical optimizations needed to scale your user base and retain them.",
-        tags: ["Performance Opt", "A/B Testing", "Scalability Audit"],
+        text: "Launching is just the start. Playbooks, built-in AI marketing and a founder network help you scale revenue after you go live.",
+        tags: ["Growth playbooks", "AI marketing", "Founder network"],
     },
 ];
 
@@ -81,15 +81,15 @@ export default function Section5() {
                             <span className="text-scramble" data-scramble-text="Specialized services">Specialized services</span>
                             {EYEBROW_ARROW_SVG}
                         </div>
-                        <h2 className="sec-5-home-7__title mb-4 mb-xl-5 reveal-text"><RevealText>We Build Products That Founders Dream Of.</RevealText></h2>
+                        <h2 className="sec-5-home-7__title mb-4 mb-xl-5 reveal-text"><RevealText>Everything a founder needs to launch and grow.</RevealText></h2>
                         <div className="sec-5-home-7__cta d-inline-flex align-items-stretch at_fade_anim">
-                            <Link to="/contact-1" className="at-btn sec-5-home-7__cta-btn text-capitalize">
+                            <Link to="/auth" className="at-btn sec-5-home-7__cta-btn text-capitalize">
                                 <span>
-                                    <span className="text-1">Get a free quote</span>
-                                    <span className="text-2">Get a free quote</span>
+                                    <span className="text-1">Get started</span>
+                                    <span className="text-2">Get started</span>
                                 </span>
                             </Link>
-                            <Link to="/contact-1" className="sec-5-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Get a free quote">
+                            <Link to="/auth" className="sec-5-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Get started">
                                 {CTA_CIRCLE_SVG}
                             </Link>
                         </div>
@@ -151,7 +151,7 @@ export default function Section5() {
             </div>
             <div className="container-fluid px-0 text-center">
                 <div className="scroll-move-up">
-                    <h6 className="mb-4 mb-xl-5 reveal-text"><RevealText>Collaborating with the world&rsquo;s most ambitious companies to redefine what&rsquo;s possible.</RevealText></h6>
+                    <h6 className="mb-4 mb-xl-5 reveal-text"><RevealText>Backing the next wave of founders building AI-run businesses.</RevealText></h6>
                 </div>
             </div>
 

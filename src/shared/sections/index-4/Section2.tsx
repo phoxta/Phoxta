@@ -77,8 +77,8 @@ const SERVICES = [
         type: "card-1",
         background: "/assets/imgs/pages/img-76.webp",
         icon: ICON_STRATEGY,
-        title: "Strategy & Research",
-        description: "Through research, analysis, and positioning, we build a clear foundation for meaningful digital growth.",
+        title: "Per-business AI agent",
+        description: "Every business gets its own agent that reads your data and takes real, governed actions — not just chat.",
         textWhite: true,
     },
     {
@@ -86,8 +86,8 @@ const SERVICES = [
         img: "/assets/imgs/pages/img-77.webp",
         imgPosition: "bottom",
         icon: ICON_DESIGN,
-        title: "Design & Experience",
-        description: "Every interaction is crafted to balance beauty, usability, and brand personality.",
+        title: "Automated pipelines",
+        description: "Retrieval, embeddings and multi-step workflows wire your tools together so work runs end to end.",
         textWhite: false,
     },
     {
@@ -95,9 +95,9 @@ const SERVICES = [
         imgTop: "/assets/imgs/pages/img-78.webp",
         imgBottom: "/assets/imgs/pages/img-79.webp",
         icon: ICON_NETWORK,
-        title: "Network Integration",
+        title: "Integrations & data",
         description:
-            "From on-premise to cloud environments, we ensure seamless communication, scalability, and operational stability.",
+            "From storefront to inbox to payments, we connect your stack so the agent has live context and full reach.",
         textWhite: true,
     },
     {
@@ -106,9 +106,9 @@ const SERVICES = [
         imgPosition: "bottom",
         contentPosition: "top-50",
         icon: ICON_BUILD,
-        title: "Build & Launch",
+        title: "Governed & observable",
         description:
-            "Bring ideas to life with clean, scalable, and performance-driven builds. From development to launch, we focus on reliability and long-term growth.",
+            "Every action is policy-gated, logged and auditable — off, approve or auto — so automation stays under your control.",
         textWhite: false,
     },
 ];
@@ -143,7 +143,7 @@ export default function Section2() {
                         <div className="col-lg-6 col-md-9">
                             <h3 className="reveal-text lh-1">
                                 <RevealText>
-                                    Turning ideas into digital experiences that perform in the real world.
+                                    Production-grade AI agents and automation, built into every business you run.
                                 </RevealText>
                             </h3>
                         </div>

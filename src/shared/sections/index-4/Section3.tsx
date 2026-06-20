@@ -26,31 +26,31 @@ const PROCESS_CARDS = [
         cardClass: "card-1",
         pillClass: "card__process-pill--1",
         num: "01",
-        title: "Discover & Diagnose",
+        title: "Connect",
         description:
-            "We analyze your market, audience, data, and existing performance to uncover real growth opportunities.",
+            "We plug the agent into your business data, tools and channels so it works from real, live context.",
     },
     {
         cardClass: "card-2",
         pillClass: "card__process-pill--2",
         num: "02",
-        title: "Strategy & Plan",
+        title: "Configure",
         description:
-            "We craft data-driven strategies tailored to your goals, ensuring every decision is backed by insights.",
+            "Set the agent's role, knowledge and policies — what it can do on its own and what needs your approval.",
     },
     {
         cardClass: "card-3",
         pillClass: "card__process-pill--3",
         num: "03",
-        title: "Execute & Optimize",
-        description: "We implement with precision and continuously optimize to maximize impact and ROI.",
+        title: "Automate",
+        description: "The agent replies, follows up and runs multi-step workflows across every channel, around the clock.",
     },
     {
         cardClass: "card-4",
         pillClass: "card__process-pill--4",
         num: "04",
-        title: "Scale & Sustain",
-        description: "We help you scale what works and build sustainable systems for long-term growth.",
+        title: "Observe & improve",
+        description: "Every action is logged and measured in one console, so the system keeps getting sharper over time.",
     },
 ];
 
@@ -103,7 +103,7 @@ export default function Section3() {
                             </span>
                             <h3 className="reveal-text mb-0">
                                 <RevealText>
-                                    A structured process built for real-world impact
+                                    From your data to autonomous action, in four steps
                                 </RevealText>
                             </h3>
                         </div>
@@ -114,13 +114,13 @@ export default function Section3() {
                                 data-fade-from="bottom"
                                 data-ease="bounce"
                             >
-                                <Link className="at-btn-circle" to="/contact-1">
+                                <Link className="at-btn-circle" to="/auth">
                                     {ARROW_CIRCLE}
                                 </Link>
-                                <Link className="at-btn z-index-1" to="/contact-1">
-                                    Get a free quote
+                                <Link className="at-btn z-index-1" to="/auth">
+                                    Get started
                                 </Link>
-                                <Link className="at-btn-circle" to="/contact-1">
+                                <Link className="at-btn-circle" to="/auth">
                                     {ARROW_CIRCLE}
                                 </Link>
                             </div>

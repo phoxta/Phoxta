@@ -39,16 +39,16 @@ export default function Section4() {
                     </div>
                     <div className="col-xl-9 col-lg-8 col-12">
                         <h2 className="sec-4-home-7__title mb-4 mb-lg-5">
-                            <span className="reveal-text sec-4-home-7__title-part sec-4-home-7__title-part--950"><RevealText>More than an agency, we act as your startup partner, delivering intelligent, user focused solutions that drive growth and impact.</RevealText></span>
+                            <span className="reveal-text sec-4-home-7__title-part sec-4-home-7__title-part--950"><RevealText>More than a marketplace, we act as your accelerator — giving founders a working, AI-run business and the support to grow it from day one.</RevealText></span>
                         </h2>
                         <div className="sec-4-home-7__cta d-inline-flex align-items-stretch mb-60 at_fade_anim">
-                            <Link to="/team" className="at-btn sec-4-home-7__cta-btn text-capitalize">
+                            <Link to="/auth" className="at-btn sec-4-home-7__cta-btn text-capitalize">
                                 <span>
-                                    <span className="text-1">Join our Team</span>
-                                    <span className="text-2">Join our Team</span>
+                                    <span className="text-1">Get started</span>
+                                    <span className="text-2">Get started</span>
                                 </span>
                             </Link>
-                            <Link to="/team" className="sec-4-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Join our Team">
+                            <Link to="/auth" className="sec-4-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Get started">
                                 {CTA_CIRCLE_SVG}
                             </Link>
                         </div>
@@ -59,12 +59,12 @@ export default function Section4() {
                                         <img src="/assets/imgs/pages/home-7/sec-4-pin-icon.svg" width={40} height={40} alt="" loading="lazy" />
                                     </div>
                                     <div className="flex-grow-1 min-w-0">
-                                        <h3 className="sec-4-home-7__loc-title h6 mb-3 at-char-animation">We are here</h3>
+                                        <h3 className="sec-4-home-7__loc-title h6 mb-3 at-char-animation">Find us online</h3>
                                         <div className="sec-4-home-7__loc-body at_fade_anim">
-                                            <p className="mb-2">205 North Michigan Avenue, Suite 810<br />Chicago, 60601, USA</p>
+                                            <p className="mb-2">Phoxta is a fully online platform.<br />Acquire and run your business from anywhere.</p>
                                             <p className="mb-2">
-                                                Phone:{" "}
-                                                <a href="tel:+11234567890" className="sec-4-home-7__loc-strong">(123) 456-7890</a>
+                                                Support:{" "}
+                                                <Link to="/contact" className="sec-4-home-7__loc-strong">Contact us</Link>
                                             </p>
                                             <p className="mb-0">
                                                 Email:{" "}
@@ -76,14 +76,14 @@ export default function Section4() {
                             </div>
                             <div className="col-lg-6 col-12">
                                 <div className="sec-4-home-7__loc-body sec-4-home-7__loc-body--solo ps-lg-4 at_fade_anim">
-                                    <p className="mb-2">245 Fifth Avenue, Suite 1800<br />New York, NY 10016, USA</p>
+                                    <p className="mb-2">Prefer to talk it through first?<br />Tell us your goals and we&rsquo;ll match you to a business.</p>
                                     <p className="mb-2">
-                                        Phone:{" "}
-                                        <a href="tel:+12125557398" className="sec-4-home-7__loc-strong">(212) 555-7398</a>
+                                        Sales:{" "}
+                                        <Link to="/contact" className="sec-4-home-7__loc-strong">Talk to us</Link>
                                     </p>
                                     <p className="mb-0">
                                         Email:{" "}
-                                        <a href="mailto:sale@phoxta.com" className="sec-4-home-7__loc-strong">sale@phoxta.com</a>
+                                        <a href="mailto:hello@phoxta.com" className="sec-4-home-7__loc-strong">hello@phoxta.com</a>
                                     </p>
                                 </div>
                             </div>

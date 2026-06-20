@@ -39,7 +39,7 @@ export default function Section3() {
                                 <div className="d-flex flex-column gap-3">
                                     <div className="d-flex gap-3">
                                         {QUOTE_ICON}
-                                        <h4 className="reveal-text">Trusted by fast-growing brands worldwide</h4>
+                                        <h4 className="reveal-text">Trusted by fast-growing businesses worldwide</h4>
                                     </div>
                                     <div className="img-right">
                                         <img src="/assets/imgs/pages/img-57.webp" alt="phoxta" width={470} height={350} loading="lazy" />
@@ -77,10 +77,10 @@ export default function Section3() {
                                     ))}
                                     <div className="flex-grow-1 text-center d-flex flex-column justify-content-center align-items-center ms-lg-5">
                                         <h2 className="mb-0">
-                                            $<OdometerCounter count={850} suffix="M+" />
+                                            <OdometerCounter count={30} prefix="+" suffix="%" />
                                         </h2>
                                         <p className="fz-font-lg text-start mb-0">
-                                            in total revenue generated <br /> for clients
+                                            more conversions from <br /> the same traffic
                                         </p>
                                     </div>
                                     {BRAND_ITEMS.slice(8).map((item, idx) => (

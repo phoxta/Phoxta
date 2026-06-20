@@ -13,37 +13,37 @@ const ARROW_SVG = (
 const ARTICLES = [
     {
         classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog-details",
-        linkAuthor: "/team-details",
+        linkPost: "/blog",
+        linkAuthor: "/about",
         img: "/assets/imgs/pages/img-97.webp",
-        title: "Designing Digital Experiences That Connect Brands and People",
+        title: "How an AI agent runs a business's entire front office",
         author: "Olivia",
         date: "July 3, 2026",
     },
     {
         classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog-details",
-        linkAuthor: "/team-details",
+        linkPost: "/blog",
+        linkAuthor: "/about",
         img: "/assets/imgs/pages/img-98.webp",
-        title: "From Concept to Launch: Building Products That Truly Matter",
+        title: "Governed automation: giving AI the keys without losing control",
         author: "Daniel",
         date: "July 8, 2026",
     },
     {
         classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog-details",
-        linkAuthor: "/team-details",
+        linkPost: "/blog",
+        linkAuthor: "/about",
         img: "/assets/imgs/pages/img-99.webp",
-        title: "Why Strong Visual Identity Is the Foundation of Modern Brands",
+        title: "From inbox to action: what agentic AI actually does",
         author: "Emma",
         date: "July 12, 2026",
     },
     {
         classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog-details",
-        linkAuthor: "/team-details",
+        linkPost: "/blog",
+        linkAuthor: "/about",
         img: "/assets/imgs/pages/img-100.webp",
-        title: "Creating Impactful Interfaces Through Thoughtful Design Systems",
+        title: "One console to run every channel your business touches",
         author: "Lucas",
         date: "July 17, 2026",
     },
@@ -77,7 +77,7 @@ export default function Section8() {
                     </div>
                     <div className="col-lg-3 col-md-4 ms-auto text-md-end">
                         <div className="at-service-btn pt-30">
-                            <Link to="/archive-1" className="at-btn">
+                            <Link to="/blog" className="at-btn">
                                 <span>
                                     <span className="text-1">ALL ARTICLES</span>
                                     <span className="text-2">ALL ARTICLES</span>

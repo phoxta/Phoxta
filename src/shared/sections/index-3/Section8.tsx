@@ -29,8 +29,8 @@ export default function Section8() {
                             <RevealText>Ready to turn marketing into a growth engine?</RevealText>
                         </h2>
                         <p className="text-white fz-xl py-4">
-                            Let&apos;s audit your current marketing and <br /> uncover your biggest growth
-                            opportunities.
+                            Turn on AI marketing for your business and watch <br /> outreach, content and follow-ups
+                            run themselves.
                         </p>
                         <div
                             className="at-btn-group at-btn-group-transparent at_fade_anim"
@@ -38,13 +38,13 @@ export default function Section8() {
                             data-fade-from="bottom"
                             data-ease="bounce"
                         >
-                            <Link className="at-btn-circle" to="/portfolio-1">
+                            <Link className="at-btn-circle" to="/auth">
                                 {ARROW_SVG}
                             </Link>
-                            <Link className="at-btn z-index-1" to="/portfolio-1">
-                                View latest projects
+                            <Link className="at-btn z-index-1" to="/auth">
+                                Get started
                             </Link>
-                            <Link className="at-btn-circle" to="/portfolio-1">
+                            <Link className="at-btn-circle" to="/auth">
                                 {ARROW_SVG}
                             </Link>
                         </div>

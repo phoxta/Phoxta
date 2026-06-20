@@ -20,9 +20,9 @@ const NAV_ARROW = (
 );
 
 const NAV_ITEMS = [
-    { num: "01", title: "Performance Marketing" },
-    { num: "02", title: "SEO & Content Growth" },
-    { num: "03", title: "Rate Optimization" },
+    { num: "01", title: "Omnichannel Outreach" },
+    { num: "02", title: "AI Search & SEO (GEO)" },
+    { num: "03", title: "Conversion Optimization" },
     { num: "04", title: "Marketing Automation" },
     { num: "05", title: "Analytics & Attribution" },
 ];
@@ -60,32 +60,32 @@ const ICON_5 = (
 const SCROLL_ITEMS = [
     {
         icon: ICON_1,
-        title: "Paid ads across Google, Meta, TikTok, LinkedIn",
-        bullets: ["Campaign strategy & planning", "Ad creative & copy testing", "Audience targeting & retargeting", "Budget optimization & scaling", "ROAS & CPA optimization"],
+        title: "Omnichannel outreach across email, SMS, WhatsApp & web",
+        bullets: ["Reach customers on every channel", "AI-written campaigns & sequences", "Audience segments from your data", "Automated sending & throttling", "Replies handled in one inbox"],
         img: "/assets/imgs/pages/img-58.webp",
     },
     {
         icon: ICON_2,
-        title: "Search visibility that compounds over time",
-        bullets: ["Keyword research & search intent mapping", "On-page SEO optimization", "Content strategy & editorial planning", "Technical SEO audits", "Link building & authority growth"],
+        title: "AI search visibility (GEO) that compounds over time",
+        bullets: ["Be the cited answer in ChatGPT, Gemini & Perplexity", "Structured, fact-dense content", "Entity & topical authority", "On-page & technical SEO", "Schema & citation engineering"],
         img: "/assets/imgs/pages/img-59.webp",
     },
     {
         icon: ICON_3,
-        title: "Optimization – Turning high-intent traffic into loyal",
-        bullets: ["Funnel analysis & user behavior tracking", "Landing page optimization", "A/B testing & experimentation", "UX & messaging refinement", "Conversion tracking setup"],
+        title: "Conversion — turning high-intent visitors into customers",
+        bullets: ["Landing pages tuned by AI", "A/B testing & experimentation", "Funnel & drop-off analysis", "Messaging & offer refinement", "Conversion tracking built in"],
         img: "/assets/imgs/pages/img-60.webp",
     },
     {
         icon: ICON_4,
-        title: "Scale campaigns with smart workflows",
-        bullets: ["Email & lifecycle automation", "CRM integration & setup", "Lead scoring & segmentation", "Automated nurturing flows", "Campaign performance triggers"],
+        title: "Proactive automations that run themselves",
+        bullets: ["Lifecycle & nurture flows", "Lead scoring & segmentation", "Trigger-based follow-ups", "Abandoned-cart & re-engagement", "No setup, no code"],
         img: "/assets/imgs/pages/img-61.webp",
     },
     {
         icon: ICON_5,
-        title: "Track what truly drives long-term revenue performance",
-        bullets: ["GA4 & event tracking setup", "Multi-touch attribution modeling", "Dashboard & reporting systems", "Funnel & cohort analysis", "Data-driven optimization insights"],
+        title: "Analytics that show what truly drives revenue",
+        bullets: ["One dashboard across channels", "Attribution across touchpoints", "Funnel & cohort analysis", "Live performance insights", "AI recommendations to improve"],
         img: "/assets/imgs/pages/img-62.webp",
     },
 ];
@@ -108,19 +108,19 @@ export default function Section4() {
                         </span>
                         <h3 className="reveal-text mb-0">
                             <RevealText>
-                                We turn ideas into high-impact digital solutions that attract customers, boost conversions, and accelerate sustainable growth.
+                                Phoxta runs the marketing work that attracts customers, boosts conversions, and compounds growth — automatically.
                             </RevealText>
                         </h3>
                     </div>
                     <div className="col-xxl-4 col-12 d-flex justify-content-lg-end">
                         <div className="at-btn-group at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
-                            <Link to="/portfolio-1" className="at-btn-circle">
+                            <Link to="/marketplace" className="at-btn-circle">
                                 {ARROW_CIRCLE}
                             </Link>
-                            <Link to="/portfolio-1" className="at-btn z-index-1">
-                                View latest projects
+                            <Link to="/marketplace" className="at-btn z-index-1">
+                                Explore the marketplace
                             </Link>
-                            <Link to="/portfolio-1" className="at-btn-circle">
+                            <Link to="/marketplace" className="at-btn-circle">
                                 {ARROW_CIRCLE}
                             </Link>
                         </div>

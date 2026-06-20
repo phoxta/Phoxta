@@ -11,8 +11,8 @@ const FEATURE_DATA = [
                 <path fillRule="evenodd" clipRule="evenodd" d="M40 20V0H20H0V20V40H20L40 20ZM40 20H20V40L0 20L20 0L40 20Z" fill="currentColor" />
             </svg>
         ),
-        title: "Velocity First",
-        desc: "In the startup world, speed is life. We&rsquo;ve optimized our workflow to deliver high-fidelity MVPs in weeks, not months, without sacrificing quality.",
+        title: "Start at scale",
+        desc: "Skip the 0-to-1 grind. Acquire a business that already works and launch in days, not years — with no code to write.",
     },
     {
         icon: (
@@ -23,8 +23,8 @@ const FEATURE_DATA = [
                 <path d="M8 20L0 12V0H12L20 8H8V20Z" fill="currentColor" />
             </svg>
         ),
-        title: "Product Thinking",
-        desc: "We don&rsquo;t just build features; we build solutions. Our process focuses on user needs, business goals, and product-market fit from day one.",
+        title: "Pre-validated",
+        desc: "Every business in our marketplace is built on a proven blueprint with real demand — not an untested idea you have to gamble on.",
     },
     {
         icon: (
@@ -32,15 +32,15 @@ const FEATURE_DATA = [
                 <path fillRule="evenodd" clipRule="evenodd" d="M39.5 0.5L26.5 13.5L13.5 0.5L0.5 13.5V39.5L13.5 26.5L26.5 39.5L39.5 26.5V0.5ZM13.5 26.5V13.5H26.5V26.5H13.5Z" fill="currentColor" />
             </svg>
         ),
-        title: "Scalable Core",
-        desc: "We architect systems that grow with you. Our tech stack is designed to handle your first 1,000 users and your first 1,000,000 just as smoothly.",
+        title: "AI does the operating",
+        desc: "Your business runs on Phoxta's AI agent and operating console, so a single founder can run what used to take a whole team.",
     },
 ];
 
 const STAT_DATA = [
-    { value: 168, suffix: "+", label: "Countries where our partners have expanded globally" },
-    { value: 50, suffix: "k+", label: "Projects Carefully Crafted" },
-    { value: 98, suffix: "%", label: "Client retention and post-launch growth support." },
+    { value: 5, suffix: "+", label: "Pre-validated business blueprints ready to acquire" },
+    { value: 24, suffix: "/7", label: "AI operator running your business for you" },
+    { value: 100, suffix: "%", label: "Ownership — it's your business and your revenue" },
 ];
 
 const IMG_DATA = [
@@ -62,18 +62,18 @@ export default function Section2() {
                 {/* Intro row: eyebrow + split heading + rich description */}
                 <div className="sec-2-home-7__intro row g-0 pt-100 pb-60">
                     <div className="col-lg-7 col-12 pe-lg-4">
-                        <Link to="/about-1" className="sec-2-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-30 text-uppercase">
-                            <span className="text-scramble" data-scramble-text="About Us">About Us</span>
+                        <Link to="/about" className="sec-2-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-30 text-uppercase">
+                            <span className="text-scramble" data-scramble-text="The Accelerator">The Accelerator</span>
                             {EYEBROW_ARROW_SVG}
                         </Link>
                         <h2 className="sec-2-home-7__headline mb-0">
-                            <span className="sec-2-home-7__headline-strong reveal-text"><RevealText>We Power the World&rsquo;s Fastest Growing Startups</RevealText></span>
+                            <span className="sec-2-home-7__headline-strong reveal-text"><RevealText>The accelerator for founders who&rsquo;d rather acquire than build</RevealText></span>
                         </h2>
                     </div>
                     <div className="col-lg-5 col-12 mt-4 mt-lg-0 ps-lg-4 d-flex align-items-end">
                         <p className="sec-2-home-7__desc mb-0 reveal-text">
                             <RevealText>
-                                <strong>Phoxta</strong> is more than a design agency; we are a strategic partner for founders who dare to disrupt. We <strong>combine rapid</strong> prototyping with world-class engineering to <strong>turn bold</strong> visions into market-leading digital products.
+                                <strong>Phoxta</strong> is more than a marketplace; we are an accelerator for founders who&rsquo;d rather acquire than build. We <strong>hand you a working</strong> business and the playbooks, support and network to <strong>grow it from</strong> day one.
                             </RevealText>
                         </p>
                     </div>

@@ -1,11 +1,11 @@
 import OdometerCounter from "@/shared/elements/OdometerCounter";
 
 const stats = [
-    { value: "152", suffix: "+", label: "Digital products launched across 20+ countries.", delay: ".1" },
-    { value: "25", suffix: "M", label: "Active users interacting with our interfaces daily.", delay: ".22" },
-    { value: "48", suffix: "", label: "International design awards and industry honors.", delay: ".34" },
-    { value: "94", suffix: "%", label: "Client retention rate over the last 5 years.", delay: ".46" },
-    { value: "99.8", suffix: "", label: "Average Google Lighthouse performance score.", delay: ".58" },
+    { value: "60", suffix: "s", label: "Generate a complete brand identity in about a minute.", delay: ".1" },
+    { value: "4", suffix: "", label: "Logo, palette, typography and voice — one cohesive system.", delay: ".22" },
+    { value: "100", suffix: "%", label: "Applied across your storefront, emails and AI agent.", delay: ".34" },
+    { value: "1", suffix: "", label: "One brand, live on your own custom domain.", delay: ".46" },
+    { value: "No code", suffix: "", label: "Edit every page and asset visually — no designer required.", delay: ".58" },
 ];
 
 export default function Section2() {
