@@ -84,7 +84,7 @@ export default function Section1() {
                             {/* Headline with diagonal arrow */}
                             <div className="sec-1-home-7__headline-wrap p-relative">
                                 <h1 className="sec-1-home-7__headline text-white text-uppercase fw-700 mb-30 at_fade_anim" data-start="100%" data-delay="0.3">
-                                    Learn to build a real startup
+                                    Become a founder
                                 </h1>
                                 <span className="sec-1-home-7__headline-arrow-cover d-none d-md-inline-block">
                                     <span className="sec-1-home-7__headline-arrow at_fade_anim" data-start="100%" data-delay="0.6">
@@ -95,7 +95,7 @@ export default function Section1() {
 
                             {/* Description */}
                             <p className="sec-1-home-7__desc text-white mb-40 at_fade_anim" data-start="100%" data-delay="0.5">
-                                A practical, cohort-based program where you build and run a real business as you learn — guided by expert-led classes, mentors and AI.
+                                A practical, cohort-based program that takes you from idea to launched company — taught by founders who&rsquo;ve done it, backed by mentors and a global community.
                             </p>
 
                             {/* Primary CTA + icon bubble */}
@@ -127,7 +127,7 @@ export default function Section1() {
                                     ))}
                                 </div>
                                 <p className="sec-1-home-7__proof-text text-white fw-700 mb-0 at_fade_anim" data-start="100%" data-delay="0.6">
-                                    Learn alongside a global <br className="d-none d-xl-inline" />community of founders
+                                    Founders from around the <br className="d-none d-xl-inline" />world start here
                                 </p>
                             </div>
                         </div>
