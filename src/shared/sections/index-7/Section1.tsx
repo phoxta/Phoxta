@@ -84,7 +84,7 @@ export default function Section1() {
                             {/* Headline with diagonal arrow */}
                             <div className="sec-1-home-7__headline-wrap p-relative">
                                 <h1 className="sec-1-home-7__headline text-white text-uppercase fw-700 mb-30 at_fade_anim" data-start="100%" data-delay="0.3">
-                                    Build a business that lasts
+                                    Practical business education for the AI era
                                 </h1>
                                 <span className="sec-1-home-7__headline-arrow-cover d-none d-md-inline-block">
                                     <span className="sec-1-home-7__headline-arrow at_fade_anim" data-start="100%" data-delay="0.6">
@@ -95,7 +95,7 @@ export default function Section1() {
 
                             {/* Description */}
                             <p className="sec-1-home-7__desc text-white mb-40 at_fade_anim" data-start="100%" data-delay="0.5">
-                                A practical business education for the AI era. Learn strategy, finance, marketing and the AI tools reshaping business — then apply it all by building and running a real company, with expert mentors beside you.
+                                Learn strategy, finance, marketing and the AI tools reshaping business — then apply it all by building and running a real company, with expert mentors beside you.
                             </p>
 
                             {/* Primary CTA + icon bubble */}
