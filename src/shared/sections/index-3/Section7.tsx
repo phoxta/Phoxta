@@ -21,10 +21,10 @@ const BULLET_ICON = (
 );
 
 const BULLETS = [
-    "Omnichannel by default",
+    "Strategy-led",
     "AI search (GEO) ready",
-    "Always-on automation",
-    "Built into your business",
+    "Omnichannel by default",
+    "Performance-obsessed",
 ];
 
 export default function Section7() {
@@ -72,7 +72,7 @@ export default function Section7() {
                         </span>
                         <h4 className="reveal-text mb-0 fw-600 pe-lg-5">
                             <RevealText>
-                                Phoxta builds the channels, content and automations that move your business
+                                Phoxta builds the campaigns, content and search presence that move your brand
                                 ahead.
                             </RevealText>
                         </h4>
@@ -109,15 +109,15 @@ export default function Section7() {
                             </div>
                             <div className="testimonial-content">
                                 <p className="fz-xl neutral-900 fw-400">
-                                    &ldquo;Phoxta took over our marketing end to end. Outreach, content and
-                                    follow-ups now run on their own, and our pipeline has never been more
+                                    &ldquo;Phoxta transformed how we show up online — in search, in AI answers,
+                                    and across every channel. Our pipeline has never been more
                                     consistent.&rdquo;
                                 </p>
                                 <h6 className="testimonial-content-author-name fw-600 mb-0 fz-font-md">
                                     Hannah Lee
                                 </h6>
                                 <p className="testimonial-content-author-position m-0 fz-font-label">
-                                    Owner, Phoxta business
+                                    VP Marketing
                                 </p>
                             </div>
                         </div>

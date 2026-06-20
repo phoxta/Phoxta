@@ -77,8 +77,8 @@ const SERVICES = [
         type: "card-1",
         background: "/assets/imgs/pages/img-76.webp",
         icon: ICON_STRATEGY,
-        title: "Per-business AI agent",
-        description: "Every business gets its own agent that reads your data and takes real, governed actions — not just chat.",
+        title: "Agentic AI development",
+        description: "Custom AI agents that reason over multiple steps, call your tools, and complete real work — not just chat.",
         textWhite: true,
     },
     {
@@ -86,8 +86,8 @@ const SERVICES = [
         img: "/assets/imgs/pages/img-77.webp",
         imgPosition: "bottom",
         icon: ICON_DESIGN,
-        title: "Automated pipelines",
-        description: "Retrieval, embeddings and multi-step workflows wire your tools together so work runs end to end.",
+        title: "LLM & RAG systems",
+        description: "Knowledge assistants and retrieval pipelines grounded in your own data, documents and APIs.",
         textWhite: false,
     },
     {
@@ -95,9 +95,9 @@ const SERVICES = [
         imgTop: "/assets/imgs/pages/img-78.webp",
         imgBottom: "/assets/imgs/pages/img-79.webp",
         icon: ICON_NETWORK,
-        title: "Integrations & data",
+        title: "AI automation engineering",
         description:
-            "From storefront to inbox to payments, we connect your stack so the agent has live context and full reach.",
+            "We connect your stack and automate end-to-end workflows across the tools your team already uses.",
         textWhite: true,
     },
     {
@@ -106,9 +106,9 @@ const SERVICES = [
         imgPosition: "bottom",
         contentPosition: "top-50",
         icon: ICON_BUILD,
-        title: "Governed & observable",
+        title: "MLOps & AgentOps",
         description:
-            "Every action is policy-gated, logged and auditable — off, approve or auto — so automation stays under your control.",
+            "Deployment, monitoring, evaluation and guardrails so your AI stays reliable, observable and under control.",
         textWhite: false,
     },
 ];
@@ -143,7 +143,7 @@ export default function Section2() {
                         <div className="col-lg-6 col-md-9">
                             <h3 className="reveal-text lh-1">
                                 <RevealText>
-                                    Production-grade AI agents and automation, built into every business you run.
+                                    We design, build and ship production-grade AI systems for your business.
                                 </RevealText>
                             </h3>
                         </div>

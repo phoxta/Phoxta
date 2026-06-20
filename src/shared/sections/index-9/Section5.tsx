@@ -42,8 +42,8 @@ export default function Section5() {
                             <div className="sec-5-home-9__block">
                                 <p className="sec-5-home-9__label text-white">Online</p>
                                 <p className="sec-5-home-9__value text-white">
-                                    Phoxta is a fully online platform.<br />
-                                    Brand and launch from anywhere.
+                                    Phoxta is a remote brand studio.<br />
+                                    We work with clients worldwide.
                                 </p>
                             </div>
                         </div>
@@ -70,11 +70,11 @@ export default function Section5() {
                         <div className="at-marquee sec-5-home-9__marquee at_fade_anim" data-delay=".1">
                             <div className="at-marquee__track sec-5-home-9__marquee-track">
                                 <div className="at-marquee__group sec-5-home-9__marquee-group">
-                                    <span className="sec-5-home-9__marquee-text">Make any business unmistakably yours</span>
+                                    <span className="sec-5-home-9__marquee-text">Distinctive brands, crafted with care</span>
                                     <span className="sec-5-home-9__marquee-sep" aria-hidden="true">&nbsp;&mdash;&nbsp;</span>
                                 </div>
                                 <div className="at-marquee__group sec-5-home-9__marquee-group" aria-hidden="true">
-                                    <span className="sec-5-home-9__marquee-text">Make any business unmistakably yours</span>
+                                    <span className="sec-5-home-9__marquee-text">Distinctive brands, crafted with care</span>
                                     <span className="sec-5-home-9__marquee-sep" aria-hidden="true">&nbsp;&mdash;&nbsp;</span>
                                 </div>
                             </div>
@@ -83,11 +83,11 @@ export default function Section5() {
 
                     <div className="sec-5-home-9__cta-wrap">
                         <div className="at-btn-group at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
-                            <Link className="at-btn-circle" to="/marketplace">
+                            <Link className="at-btn-circle" to="/contact">
                                 <LongArrowRight />
                             </Link>
-                            <Link className="at-btn z-index-1" to="/marketplace">Explore the marketplace</Link>
-                            <Link className="at-btn-circle" to="/marketplace">
+                            <Link className="at-btn z-index-1" to="/contact">Start a project</Link>
+                            <Link className="at-btn-circle" to="/contact">
                                 <LongArrowRight />
                             </Link>
                         </div>

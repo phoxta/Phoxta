@@ -2,11 +2,11 @@ import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 
 const tags = [
-    { label: "AI Brand Generation", delay: ".1" },
-    { label: "Logo & Identity", delay: ".2" },
-    { label: "Color & Type", delay: ".3" },
+    { label: "Brand Strategy", delay: ".1" },
+    { label: "Visual Identity", delay: ".2" },
+    { label: "Logo Design", delay: ".3" },
     { label: "Brand Voice", delay: ".4" },
-    { label: "Visual Studio", delay: ".5" },
+    { label: "Design Systems", delay: ".5" },
 ];
 
 export default function Section7() {
@@ -16,7 +16,7 @@ export default function Section7() {
             <section className="sec-7-home-9 changeless">
                 <div className="sec-7-home-9__container">
                     <h2 className="sec-7-home-9__lead reveal-text at_fade_anim" data-delay=".1" data-fade-from="top" data-fade-offset="50">
-                        <RevealText>Phoxta merges generative AI with real design craft, so any business can launch a credible, distinctive brand — and refine every detail without a designer.</RevealText>
+                        <RevealText>Phoxta merges senior design craft with generative tools, so ambitious brands get distinctive identities — refined down to every detail.</RevealText>
                     </h2>
 
                     <div className="row g-4 g-xxl-5 align-items-start sec-7-home-9__main">
@@ -45,7 +45,7 @@ export default function Section7() {
                                     />
                                 </div>
                                 <blockquote className="sec-7-home-9__quote at_fade_anim">
-                                    &ldquo;We pair AI speed with human taste. Generate a complete identity in seconds, then fine-tune logo, palette, type and voice in a visual editor — and publish it everywhere your business shows up.&rdquo;
+                                    &ldquo;We pair human taste with AI speed. From strategy to logo, palette, type and voice, we craft identities that are coherent, distinctive, and built to last.&rdquo;
                                 </blockquote>
                                 <div className="sec-7-home-9__tags">
                                     {tags.map((tag, i) => (

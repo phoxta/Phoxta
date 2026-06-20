@@ -20,11 +20,11 @@ const AVATARS = [
 ];
 
 const STEPS = [
-    { number: "01", title: "Connect your business", description: "Phoxta reads your products, audience and channels to learn what actually drives growth." },
-    { number: "02", title: "Plan the playbook", description: "AI sets channels, segments and messaging aligned to your goals — you stay in control and approve." },
-    { number: "03", title: "Launch across channels", description: "Outreach, content and ads go live across email, SMS, WhatsApp and the web." },
-    { number: "04", title: "Optimize automatically", description: "Phoxta tests, learns and scales what works to lift conversions and cut wasted spend." },
-    { number: "05", title: "Measure & evolve", description: "Every result lands in one dashboard, and the system keeps improving on its own." },
+    { number: "01", title: "Discover & Diagnose", description: "We analyze your market, audience, data and current performance to find real growth opportunities." },
+    { number: "02", title: "Strategy & Planning", description: "We define goals, channels, budgets and the messaging that wins — for customers and AI engines alike." },
+    { number: "03", title: "Launch & Execute", description: "Campaigns go live across paid, search, content and lifecycle — built and tested for performance." },
+    { number: "04", title: "Optimize & Scale", description: "We test, refine and scale what works to lift conversions and cut wasted spend." },
+    { number: "05", title: "Measure & Evolve", description: "We track impact, report clearly, and evolve the strategy on real data and outcomes." },
 ];
 
 export default function Section10() {
@@ -45,7 +45,7 @@ export default function Section10() {
                                 </i>
                             </span>
                             <h3 className="reveal-text mb-0">
-                                <RevealText>Your marketing runs on a proven, automated loop.</RevealText>
+                                <RevealText>We run a proven, data-driven growth process.</RevealText>
                             </h3>
                             <ul className="list-unstyled navigation-section-10 navigation-active-item pt-50">
                                 {AVATARS.map((src, i) => (

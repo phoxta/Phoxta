@@ -20,10 +20,10 @@ const NAV_ARROW = (
 );
 
 const NAV_ITEMS = [
-    { num: "01", title: "Omnichannel Outreach" },
-    { num: "02", title: "AI Search & SEO (GEO)" },
-    { num: "03", title: "Conversion Optimization" },
-    { num: "04", title: "Marketing Automation" },
+    { num: "01", title: "Performance Marketing" },
+    { num: "02", title: "Generative Engine Optimization" },
+    { num: "03", title: "Content & Creative" },
+    { num: "04", title: "Conversion Optimization" },
     { num: "05", title: "Analytics & Attribution" },
 ];
 
@@ -60,32 +60,32 @@ const ICON_5 = (
 const SCROLL_ITEMS = [
     {
         icon: ICON_1,
-        title: "Omnichannel outreach across email, SMS, WhatsApp & web",
-        bullets: ["Reach customers on every channel", "AI-written campaigns & sequences", "Audience segments from your data", "Automated sending & throttling", "Replies handled in one inbox"],
+        title: "Paid media across Google, Meta, TikTok & LinkedIn",
+        bullets: ["Campaign strategy & planning", "Ad creative & copy testing", "Audience targeting & retargeting", "Budget optimization & scaling", "ROAS & CPA optimization"],
         img: "/assets/imgs/pages/img-58.webp",
     },
     {
         icon: ICON_2,
-        title: "AI search visibility (GEO) that compounds over time",
+        title: "Generative Engine Optimization that gets you cited by AI",
         bullets: ["Be the cited answer in ChatGPT, Gemini & Perplexity", "Structured, fact-dense content", "Entity & topical authority", "On-page & technical SEO", "Schema & citation engineering"],
         img: "/assets/imgs/pages/img-59.webp",
     },
     {
         icon: ICON_3,
         title: "Conversion — turning high-intent visitors into customers",
-        bullets: ["Landing pages tuned by AI", "A/B testing & experimentation", "Funnel & drop-off analysis", "Messaging & offer refinement", "Conversion tracking built in"],
+        bullets: ["Funnel & user-behavior analysis", "Landing page optimization", "A/B testing & experimentation", "Messaging & offer refinement", "Conversion tracking setup"],
         img: "/assets/imgs/pages/img-60.webp",
     },
     {
         icon: ICON_4,
-        title: "Proactive automations that run themselves",
-        bullets: ["Lifecycle & nurture flows", "Lead scoring & segmentation", "Trigger-based follow-ups", "Abandoned-cart & re-engagement", "No setup, no code"],
+        title: "Content & creative that earns attention",
+        bullets: ["Content strategy & editorial", "SEO & GEO-ready writing", "Social & ad creative", "Email & lifecycle copy", "Brand-consistent storytelling"],
         img: "/assets/imgs/pages/img-61.webp",
     },
     {
         icon: ICON_5,
         title: "Analytics that show what truly drives revenue",
-        bullets: ["One dashboard across channels", "Attribution across touchpoints", "Funnel & cohort analysis", "Live performance insights", "AI recommendations to improve"],
+        bullets: ["GA4 & event tracking setup", "Multi-touch attribution", "Dashboards & reporting", "Funnel & cohort analysis", "Data-driven optimization"],
         img: "/assets/imgs/pages/img-62.webp",
     },
 ];
@@ -108,19 +108,19 @@ export default function Section4() {
                         </span>
                         <h3 className="reveal-text mb-0">
                             <RevealText>
-                                Phoxta runs the marketing work that attracts customers, boosts conversions, and compounds growth — automatically.
+                                We run the marketing that attracts customers, earns trust, and compounds growth across search, content and paid media.
                             </RevealText>
                         </h3>
                     </div>
                     <div className="col-xxl-4 col-12 d-flex justify-content-lg-end">
                         <div className="at-btn-group at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
-                            <Link to="/marketplace" className="at-btn-circle">
+                            <Link to="/contact" className="at-btn-circle">
                                 {ARROW_CIRCLE}
                             </Link>
-                            <Link to="/marketplace" className="at-btn z-index-1">
-                                Explore the marketplace
+                            <Link to="/contact" className="at-btn z-index-1">
+                                Get a proposal
                             </Link>
-                            <Link to="/marketplace" className="at-btn-circle">
+                            <Link to="/contact" className="at-btn-circle">
                                 {ARROW_CIRCLE}
                             </Link>
                         </div>

@@ -24,26 +24,26 @@ const AWARDS = [
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-89-sm.webp",
         imgAward: "/assets/imgs/pages/img-89.webp",
-        title: "Governed agent actions",
-        org: "Off · Approve · Auto for every tool",
-        date: "Policy controls",
+        title: "Production-grade engineering",
+        org: "Reliable systems built for scale and uptime",
+        date: "Engineering",
         url: "phoxta.com",
     },
     {
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-90-sm.webp",
         imgAward: "/assets/imgs/pages/img-90.webp",
-        title: "Full audit trail",
-        org: "Every action logged and reviewable",
-        date: "Observability",
+        title: "Full observability",
+        org: "Monitoring, evals and audit on every model",
+        date: "AgentOps",
         url: "phoxta.com",
     },
     {
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-91-sm.webp",
         imgAward: "/assets/imgs/pages/img-91.webp",
-        title: "Per-business isolation",
-        org: "Your data and agent stay yours",
+        title: "Security & data privacy",
+        org: "Your data stays yours, isolated and protected",
         date: "Security",
         url: "phoxta.com",
     },
@@ -51,18 +51,18 @@ const AWARDS = [
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-92-sm.webp",
         imgAward: "/assets/imgs/pages/img-92.webp",
-        title: "Always-on operations",
-        org: "Never misses a message or follow-up",
-        date: "24 / 7",
+        title: "Always-on reliability",
+        org: "24/7 systems that don't drop the ball",
+        date: "Uptime",
         url: "phoxta.com",
     },
     {
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-93-sm.webp",
         imgAward: "/assets/imgs/pages/img-93.webp",
-        title: "One operating console",
-        org: "Run every channel from a single place",
-        date: "Control",
+        title: "Human + AI governance",
+        org: "Guardrails and approvals keep AI in your control",
+        date: "Governance",
         url: "phoxta.com",
         isLast: true,
     },
@@ -81,7 +81,7 @@ export default function Section5() {
                             <div className="col-lg-8 col-md-8">
                                 <h2 className="text-white mb-2 lh-1">Built to standards you can trust</h2>
                                 <h6 className="text-white mb-0">
-                                    Governed, auditable AI — engineered for real businesses
+                                    Enterprise-grade AI engineering you can rely on
                                 </h6>
                             </div>
                             <div className="col-lg-3 col-md-4 ms-auto d-flex justify-content-lg-end">
@@ -91,13 +91,13 @@ export default function Section5() {
                                     data-fade-from="bottom"
                                     data-ease="bounce"
                                 >
-                                    <Link className="at-btn-circle" to="/auth">
+                                    <Link className="at-btn-circle" to="/contact">
                                         {ARROW_RIGHT}
                                     </Link>
-                                    <Link className="at-btn z-index-1" to="/auth">
-                                        Get started
+                                    <Link className="at-btn z-index-1" to="/contact">
+                                        Get a free quote
                                     </Link>
-                                    <Link className="at-btn-circle" to="/auth">
+                                    <Link className="at-btn-circle" to="/contact">
                                         {ARROW_RIGHT}
                                     </Link>
                                 </div>

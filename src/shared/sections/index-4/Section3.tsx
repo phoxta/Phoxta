@@ -26,31 +26,31 @@ const PROCESS_CARDS = [
         cardClass: "card-1",
         pillClass: "card__process-pill--1",
         num: "01",
-        title: "Connect",
+        title: "Discover",
         description:
-            "We plug the agent into your business data, tools and channels so it works from real, live context.",
+            "We map your goals, data and workflows to find where AI delivers the highest return.",
     },
     {
         cardClass: "card-2",
         pillClass: "card__process-pill--2",
         num: "02",
-        title: "Configure",
+        title: "Design",
         description:
-            "Set the agent's role, knowledge and policies — what it can do on its own and what needs your approval.",
+            "We architect the models, agents and integrations — and define guardrails and success metrics.",
     },
     {
         cardClass: "card-3",
         pillClass: "card__process-pill--3",
         num: "03",
-        title: "Automate",
-        description: "The agent replies, follows up and runs multi-step workflows across every channel, around the clock.",
+        title: "Build",
+        description: "We develop, fine-tune and integrate your solution, then test it against real-world cases.",
     },
     {
         cardClass: "card-4",
         pillClass: "card__process-pill--4",
         num: "04",
-        title: "Observe & improve",
-        description: "Every action is logged and measured in one console, so the system keeps getting sharper over time.",
+        title: "Deploy & optimize",
+        description: "We ship to production with monitoring and observability, then keep improving on live data.",
     },
 ];
 
@@ -103,7 +103,7 @@ export default function Section3() {
                             </span>
                             <h3 className="reveal-text mb-0">
                                 <RevealText>
-                                    From your data to autonomous action, in four steps
+                                    How we deliver your AI solution
                                 </RevealText>
                             </h3>
                         </div>
@@ -114,13 +114,13 @@ export default function Section3() {
                                 data-fade-from="bottom"
                                 data-ease="bounce"
                             >
-                                <Link className="at-btn-circle" to="/auth">
+                                <Link className="at-btn-circle" to="/contact">
                                     {ARROW_CIRCLE}
                                 </Link>
-                                <Link className="at-btn z-index-1" to="/auth">
-                                    Get started
+                                <Link className="at-btn z-index-1" to="/contact">
+                                    Get a free quote
                                 </Link>
-                                <Link className="at-btn-circle" to="/auth">
+                                <Link className="at-btn-circle" to="/contact">
                                     {ARROW_CIRCLE}
                                 </Link>
                             </div>

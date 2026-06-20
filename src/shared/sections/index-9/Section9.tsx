@@ -4,7 +4,7 @@ import RevealText from "@/shared/effects/RevealText";
 const blogPosts = [
     {
         img: "/assets/imgs/pages/home-7/insight-1-retro.webp",
-        title: "How AI Generates a Full Brand Identity in Minutes",
+        title: "What Makes a Brand Identity Truly Distinctive",
         author: "Olivia",
         date: "July 3, 2026",
     },
@@ -16,13 +16,13 @@ const blogPosts = [
     },
     {
         img: "/assets/imgs/pages/home-7/insight-3-fabric.webp",
-        title: "Editing Your Brand Visually — No Designer Required",
+        title: "How AI Is Changing the Modern Design Studio",
         author: "Emma",
         date: "July 12, 2026",
     },
     {
         img: "/assets/imgs/pages/home-7/insight-4-conference.webp",
-        title: "One Brand, Everywhere: Storefront, Email and AI Agent",
+        title: "Rebranding: When and How to Do It Right",
         author: "Lucas",
         date: "July 17, 2026",
     },
@@ -46,7 +46,7 @@ export default function Section9() {
                         </div>
                         <div className="col-xl-5 col-lg-6 col-12 mt-4 mt-xl-0">
                             <p className="sec-10-home-7__lead mb-0 reveal-text">
-                                <RevealText>Practical guidance on AI branding, identity systems, and making any business look unmistakably yours.</RevealText>
+                                <RevealText>Perspectives on brand strategy, identity design, and building brands that lead their markets.</RevealText>
                             </p>
                         </div>
                         <div className="col-xl-3 col-lg-12 mt-4 mt-lg-4 mt-xl-0 ms-xl-auto text-xl-end">

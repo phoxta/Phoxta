@@ -51,7 +51,7 @@ export default function Section12() {
                             </span>
                             <h2>Stay ahead</h2>
                             <p className="fz-font-xl mb-0">
-                                Get practical AI-marketing tactics and growth playbooks <br />—delivered monthly,
+                                Get practical marketing and AI-search tactics <br />—delivered monthly,
                                 no spam.
                             </p>
                         </div>

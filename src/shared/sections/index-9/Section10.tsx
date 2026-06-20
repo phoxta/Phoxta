@@ -48,14 +48,14 @@ export default function Section10() {
                             </i>
                         </span>
                         <h1 className="contact-title common-white fw-500 mb-50 at_fade_anim mx-auto at-char-animation" data-fade-from="bottom" data-delay=".2">
-                            Make your business unmistakably yours.
+                            Let&apos;s build a brand that leads.
                         </h1>
                         <div className="at-btn-group btn-brand-1 at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
-                            <Link className="at-btn-circle" to="/auth">
+                            <Link className="at-btn-circle" to="/contact">
                                 <LongArrowRight />
                             </Link>
-                            <Link className="at-btn z-index-1" to="/auth">Get started</Link>
-                            <Link className="at-btn-circle" to="/auth">
+                            <Link className="at-btn z-index-1" to="/contact">Start a project</Link>
+                            <Link className="at-btn-circle" to="/contact">
                                 <LongArrowRight />
                             </Link>
                         </div>

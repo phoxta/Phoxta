@@ -39,16 +39,16 @@ export default function Section4() {
                     </div>
                     <div className="col-xl-9 col-lg-8 col-12">
                         <h2 className="sec-4-home-7__title mb-4 mb-lg-5">
-                            <span className="reveal-text sec-4-home-7__title-part sec-4-home-7__title-part--950"><RevealText>More than a marketplace, we act as your accelerator — giving founders a working, AI-run business and the support to grow it from day one.</RevealText></span>
+                            <span className="reveal-text sec-4-home-7__title-part sec-4-home-7__title-part--950"><RevealText>More than a course, we're a community — guiding you from your first idea to your first customers with curriculum, mentors and peers.</RevealText></span>
                         </h2>
                         <div className="sec-4-home-7__cta d-inline-flex align-items-stretch mb-60 at_fade_anim">
-                            <Link to="/auth" className="at-btn sec-4-home-7__cta-btn text-capitalize">
+                            <Link to="/contact" className="at-btn sec-4-home-7__cta-btn text-capitalize">
                                 <span>
-                                    <span className="text-1">Get started</span>
-                                    <span className="text-2">Get started</span>
+                                    <span className="text-1">Join the school</span>
+                                    <span className="text-2">Join the school</span>
                                 </span>
                             </Link>
-                            <Link to="/auth" className="sec-4-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Get started">
+                            <Link to="/contact" className="sec-4-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Join the school">
                                 {CTA_CIRCLE_SVG}
                             </Link>
                         </div>
@@ -61,7 +61,7 @@ export default function Section4() {
                                     <div className="flex-grow-1 min-w-0">
                                         <h3 className="sec-4-home-7__loc-title h6 mb-3 at-char-animation">Find us online</h3>
                                         <div className="sec-4-home-7__loc-body at_fade_anim">
-                                            <p className="mb-2">Phoxta is a fully online platform.<br />Acquire and run your business from anywhere.</p>
+                                            <p className="mb-2">Phoxta Startup School is fully online.<br />Learn from anywhere, at your own pace.</p>
                                             <p className="mb-2">
                                                 Support:{" "}
                                                 <Link to="/contact" className="sec-4-home-7__loc-strong">Contact us</Link>
@@ -76,7 +76,7 @@ export default function Section4() {
                             </div>
                             <div className="col-lg-6 col-12">
                                 <div className="sec-4-home-7__loc-body sec-4-home-7__loc-body--solo ps-lg-4 at_fade_anim">
-                                    <p className="mb-2">Prefer to talk it through first?<br />Tell us your goals and we&rsquo;ll match you to a business.</p>
+                                    <p className="mb-2">Questions before you enroll?<br />Reach out — we&rsquo;re happy to help you get started.</p>
                                     <p className="mb-2">
                                         Sales:{" "}
                                         <Link to="/contact" className="sec-4-home-7__loc-strong">Talk to us</Link>

@@ -70,7 +70,7 @@ export default function Section7() {
                                         ))}
                                     </div>
                                     <p className="text-white fz-font-sm mb-0 mt-2">
-                                        Average 4.9 rating from <br /> businesses running on Phoxta
+                                        Average 4.9 rating <br /> from our clients
                                     </p>
                                 </div>
                             </div>
@@ -99,14 +99,13 @@ export default function Section7() {
                                 </div>
                                 <div className="content">
                                     <p className="text-white fz-font-3xl fw-400 mb-50 lh-base">
-                                        Phoxta gave my business its own AI operator. Within days it was answering
-                                        inbound messages, following up with leads and booking customers — work that
-                                        used to eat my whole day now runs on its own, and I can see every action it
-                                        takes.
+                                        Phoxta's team translated a vague AI ambition into a system that actually
+                                        works in production. Within weeks we saw real gains in speed, accuracy and
+                                        decision-making across the business.
                                     </p>
-                                    <h5 className="text-white fw-500">Marcus Bell</h5>
+                                    <h5 className="text-white fw-500">Michael Turner</h5>
                                     <p className="text-white fz-font-md fw-500 opacity-75 mb-0">
-                                        Owner, a Phoxta business
+                                        CTO, Nexora Systems
                                     </p>
                                 </div>
                             </div>

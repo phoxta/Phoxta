@@ -64,7 +64,7 @@ export default function Section6() {
                             <OdometerCounter count={190} suffix="+" />
                         </h1>
                         <h6 className="fw-500 mb-0">
-                            Automations live across <br /> Phoxta businesses.
+                            AI systems shipped <br /> for our clients.
                         </h6>
                     </div>
                 </div>

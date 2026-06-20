@@ -25,7 +25,7 @@ const COL1_MEMBERS = [
     {
         name: "Darrell",
         surname: "Steward",
-        role: "Founder Success Lead",
+        role: "Head of Curriculum",
         img: "/assets/imgs/pages/home-7/team-1-darrell.webp",
         alt: "Darrell Steward",
         badgeClass: "",
@@ -33,7 +33,7 @@ const COL1_MEMBERS = [
     {
         name: "Amelia",
         surname: "Courtney",
-        role: "Launch Manager",
+        role: "Lead Instructor",
         img: "/assets/imgs/pages/home-7/team-2-amelia.webp",
         alt: "Amelia Courtney",
         badgeClass: "sec-8-home-7__badge--dark",
@@ -44,7 +44,7 @@ const COL2_MEMBERS = [
     {
         name: "Esther",
         surname: "Howard",
-        role: "AI Engineer",
+        role: "Founder Mentor",
         img: "/assets/imgs/pages/home-7/team-3-esther.webp",
         alt: "Esther Howard",
         badgeClass: "",
@@ -52,7 +52,7 @@ const COL2_MEMBERS = [
     {
         name: "Jacob",
         surname: "Jones",
-        role: "Founder & CEO",
+        role: "Community Lead",
         img: "/assets/imgs/pages/home-7/team-4-jacob.webp",
         alt: "Jacob Jones",
         badgeClass: "",
@@ -77,7 +77,7 @@ export default function Section8() {
 
                         <p className="sec-8-home-7__desc mb-40 reveal-text">
                             <RevealText>
-                                The team building the accelerator — operators, engineers and founders who&rsquo;ve launched and scaled real businesses.
+                                Your instructors and mentors — founders, operators and industry experts who&rsquo;ve built and scaled real companies.
                             </RevealText>
                         </p>
 

@@ -1,13 +1,13 @@
 import Marquee from "react-fast-marquee";
 
 const TICKER_ITEMS = [
-    "Omnichannel outreach",
+    "Performance marketing",
     "AI search · GEO",
-    "Content autopilot",
-    "Email & SMS",
-    "WhatsApp",
-    "Lead follow-up",
+    "Content & creative",
+    "Paid media",
+    "Email & lifecycle",
     "Conversion",
+    "Analytics",
 ];
 
 const SCROLL_ICON = (

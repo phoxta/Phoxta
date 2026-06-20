@@ -1,9 +1,9 @@
 const stats = [
-    { value: 30, suffix: "%", label: "More conversions" },
-    { value: 24, suffix: "/7", label: "Always-on outreach" },
-    { value: 5, suffix: "+", label: "Channels, one inbox" },
-    { value: 40, suffix: "%", label: "Less manual work" },
-    { value: 3, suffix: "×", label: "Faster follow-ups" },
+    { value: 120, suffix: "%", label: "Average ROI increase" },
+    { value: 3, suffix: "×", label: "More qualified leads" },
+    { value: 40, suffix: "%", label: "Lower cost per acquisition" },
+    { value: 5, suffix: "+", label: "Channels managed" },
+    { value: 24, suffix: "/7", label: "Campaigns optimized" },
 ];
 
 export default function Section5() {

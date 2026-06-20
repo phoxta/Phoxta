@@ -53,7 +53,7 @@ export default function Section1() {
                             </div>
                             <div className="testimonial-content p-3">
                                 <h6 className="fw-400 reveal-text py-3">
-                                    &ldquo; Real businesses. Real growth. Owners turn on AI marketing and watch outreach, content and follow-ups run themselves. &rdquo;
+                                    &ldquo; Real brands. Real growth. See how teams partner with Phoxta to win visibility, leads and revenue. &rdquo;
                                 </h6>
                                 <div className="testimonial-author d-flex align-items-start mb-0 gap-2">
                                     <div className="testimonial-left-img size-30 rounded-2 overflow-hidden">
@@ -66,7 +66,7 @@ export default function Section1() {
                                     </div>
                                     <div className="testimonial-content">
                                         <h6 className="testimonial-content-author-name fw-600 mb-0 fz-font-md">Hannah Lee</h6>
-                                        <p className="testimonial-content-author-position m-0 fz-font-label">Owner, Phoxta business</p>
+                                        <p className="testimonial-content-author-position m-0 fz-font-label">Marketing Director</p>
                                     </div>
                                 </div>
                             </div>
@@ -76,8 +76,8 @@ export default function Section1() {
                     <div className="col-xxl-4 col-lg-5 align-self-center order-1 order-lg-2">
                         <span className="at-btn common-black text-uppercase bg-transparent mb-10 rounded-0 p-0">
                             <span className="text-uppercase">
-                                <span className="text-1">AI Marketing, Built In</span>
-                                <span className="text-2">AI Marketing, Built In</span>
+                                <span className="text-1">AI Marketing Agency</span>
+                                <span className="text-2">AI Marketing Agency</span>
                             </span>
                             <i>
                                 {ARROW_SVG}
@@ -85,31 +85,31 @@ export default function Section1() {
                             </i>
                         </span>
                         <h1 className="fw-900 lh-1 mt-10">
-                            Marketing <br /> that runs <br /> on <span className="theme-primary">autopilot</span>
+                            Marketing <br /> that wins the <br /> <span className="theme-primary">AI era</span>
                         </h1>
                         <p className="fz-font-lg neutral-500 mb-65 mt-25">
-                            Phoxta builds an autonomous marketing engine into your business — reaching customers across every channel, optimizing for AI search, and turning conversations into conversions, automatically.
+                            Phoxta is a marketing agency for the AI era. We make your brand the answer customers and AI engines choose — across search, content, paid media and every channel.
                         </p>
                         <div className="d-flex flex-wrap align-items-center gap-4">
                             <div className="at-btn-group at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
-                                <Link to="/marketplace" className="at-btn-circle">
+                                <Link to="/contact" className="at-btn-circle">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 16 15" fill="none">
                                         <path d="M0.0001297 8.99993L0 3.00407e-05L2 0L2.0001 6.99993L12.1719 7.00003L8.22224 3.05027L9.63644 1.63606L16.0003 8.00003L9.63644 14.364L8.22224 12.9497L12.1719 9.00003L0.0001297 8.99993Z" fill="currentColor" />
                                     </svg>
                                 </Link>
-                                <Link to="/marketplace" className="at-btn z-index-1">
-                                    Explore the marketplace
+                                <Link to="/contact" className="at-btn z-index-1">
+                                    Get a proposal
                                 </Link>
-                                <Link to="/marketplace" className="at-btn-circle">
+                                <Link to="/contact" className="at-btn-circle">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 16 15" fill="none">
                                         <path d="M0.0001297 8.99993L0 3.00407e-05L2 0L2.0001 6.99993L12.1719 7.00003L8.22224 3.05027L9.63644 1.63606L16.0003 8.00003L9.63644 14.364L8.22224 12.9497L12.1719 9.00003L0.0001297 8.99993Z" fill="currentColor" />
                                     </svg>
                                 </Link>
                             </div>
-                            <Link to="/pricing" className="at-btn common-black border-bottom-900 text-uppercase bg-transparent rounded-0 p-0 pb-2">
+                            <Link to="/contact" className="at-btn common-black border-bottom-900 text-uppercase bg-transparent rounded-0 p-0 pb-2">
                                 <span className="text-uppercase">
-                                    <span className="text-1">View Pricing Plan </span>
-                                    <span className="text-2">View Pricing Plan </span>
+                                    <span className="text-1">Talk to our team </span>
+                                    <span className="text-2">Talk to our team </span>
                                 </span>
                                 <i>
                                     {ARROW_SVG}

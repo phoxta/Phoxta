@@ -11,8 +11,8 @@ const FEATURE_DATA = [
                 <path fillRule="evenodd" clipRule="evenodd" d="M40 20V0H20H0V20V40H20L40 20ZM40 20H20V40L0 20L20 0L40 20Z" fill="currentColor" />
             </svg>
         ),
-        title: "Start at scale",
-        desc: "Skip the 0-to-1 grind. Acquire a business that already works and launch in days, not years — with no code to write.",
+        title: "100% practical",
+        desc: "No passive lectures. You work on your own idea and run a real business as you learn, from day one.",
     },
     {
         icon: (
@@ -23,8 +23,8 @@ const FEATURE_DATA = [
                 <path d="M8 20L0 12V0H12L20 8H8V20Z" fill="currentColor" />
             </svg>
         ),
-        title: "Pre-validated",
-        desc: "Every business in our marketplace is built on a proven blueprint with real demand — not an untested idea you have to gamble on.",
+        title: "Industry-expert classes",
+        desc: "Live classes led by founders, operators and industry experts who've built and scaled real companies.",
     },
     {
         icon: (
@@ -32,15 +32,15 @@ const FEATURE_DATA = [
                 <path fillRule="evenodd" clipRule="evenodd" d="M39.5 0.5L26.5 13.5L13.5 0.5L0.5 13.5V39.5L13.5 26.5L26.5 39.5L39.5 26.5V0.5ZM13.5 26.5V13.5H26.5V26.5H13.5Z" fill="currentColor" />
             </svg>
         ),
-        title: "AI does the operating",
-        desc: "Your business runs on Phoxta's AI agent and operating console, so a single founder can run what used to take a whole team.",
+        title: "Mentors & community",
+        desc: "Get paired with mentors, find a co-founder, and grow alongside a global community of builders.",
     },
 ];
 
 const STAT_DATA = [
-    { value: 5, suffix: "+", label: "Pre-validated business blueprints ready to acquire" },
-    { value: 24, suffix: "/7", label: "AI operator running your business for you" },
-    { value: 100, suffix: "%", label: "Ownership — it's your business and your revenue" },
+    { value: 6, suffix: " wk", label: "From first idea to launch, at your own pace" },
+    { value: 100, suffix: "%", label: "Free to start — online and self-paced" },
+    { value: 50, suffix: "k+", label: "Founders learning in our global community" },
 ];
 
 const IMG_DATA = [
@@ -63,17 +63,17 @@ export default function Section2() {
                 <div className="sec-2-home-7__intro row g-0 pt-100 pb-60">
                     <div className="col-lg-7 col-12 pe-lg-4">
                         <Link to="/about" className="sec-2-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-30 text-uppercase">
-                            <span className="text-scramble" data-scramble-text="The Accelerator">The Accelerator</span>
+                            <span className="text-scramble" data-scramble-text="Startup School">Startup School</span>
                             {EYEBROW_ARROW_SVG}
                         </Link>
                         <h2 className="sec-2-home-7__headline mb-0">
-                            <span className="sec-2-home-7__headline-strong reveal-text"><RevealText>The accelerator for founders who&rsquo;d rather acquire than build</RevealText></span>
+                            <span className="sec-2-home-7__headline-strong reveal-text"><RevealText>Learn to build a startup — by building one</RevealText></span>
                         </h2>
                     </div>
                     <div className="col-lg-5 col-12 mt-4 mt-lg-0 ps-lg-4 d-flex align-items-end">
                         <p className="sec-2-home-7__desc mb-0 reveal-text">
                             <RevealText>
-                                <strong>Phoxta</strong> is more than a marketplace; we are an accelerator for founders who&rsquo;d rather acquire than build. We <strong>hand you a working</strong> business and the playbooks, support and network to <strong>grow it from</strong> day one.
+                                <strong>Phoxta Startup School</strong> is fully practical. You don&rsquo;t just study theory — you work on your own idea and <strong>run a real business</strong>, guided by <strong>industry-expert classes and mentors</strong>.
                             </RevealText>
                         </p>
                     </div>

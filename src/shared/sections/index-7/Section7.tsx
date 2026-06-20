@@ -4,10 +4,10 @@ import RevealText from "@/shared/effects/RevealText";
 {/* Home 7 Section 7 (CTA — Ready to Build the Future?) */}
 
 const FEATURES = [
-    { text: "Pre-validated businesses", delay: "0.1" },
-    { text: "Launch in days, not years", delay: "0.2" },
-    { text: "AI runs the operations", delay: "0.3" },
-    { text: "Playbooks & founder network", delay: "0.4" },
+    { text: "Run a real business", delay: "0.1" },
+    { text: "Industry-expert classes", delay: "0.2" },
+    { text: "1:1 mentorship", delay: "0.3" },
+    { text: "Global founder community", delay: "0.4" },
 ];
 
 export default function Section7() {
@@ -45,7 +45,7 @@ export default function Section7() {
 
                             <p className="sec-7-home-7__headline mb-4 mb-lg-40 reveal-text">
                                 <RevealText>
-                                    Stop building from scratch, start owning. Whether you&apos;re exploring your first business or scaling a portfolio, Phoxta gets you running fast.
+                                    Stop wondering, start learning. Whether you have an idea or just the ambition, Startup School helps you take the first step.
                                 </RevealText>
                             </p>
 
@@ -64,13 +64,13 @@ export default function Section7() {
                             </ul>
 
                             <div className="sec-7-home-7__cta d-inline-flex align-items-stretch at_fade_anim">
-                                <Link to="/auth" className="at-btn sec-7-home-7__cta-btn">
+                                <Link to="/contact" className="at-btn sec-7-home-7__cta-btn">
                                     <span>
-                                        <span className="text-1">Get started</span>
-                                        <span className="text-2">Get started</span>
+                                        <span className="text-1">Join the school</span>
+                                        <span className="text-2">Join the school</span>
                                     </span>
                                 </Link>
-                                <Link to="/auth" className="sec-7-home-7__cta-circle" aria-label="Get started">
+                                <Link to="/contact" className="sec-7-home-7__cta-circle" aria-label="Join the school">
                                     <img
                                         src="/assets/imgs/pages/home-7/sec-7-btn-arrow.svg"
                                         alt=""

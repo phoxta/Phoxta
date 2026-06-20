@@ -26,10 +26,10 @@ export default function Section11() {
                 <div className="row align-items-start g-4 g-xl-5">
                     <div className="col-xl-5 col-lg-6 col-12">
                         <div className="sec-11-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-4 text-uppercase">
-                            <span className="text-scramble" data-scramble-text="Contact us">Contact us</span>
+                            <span className="text-scramble" data-scramble-text="Enroll">Enroll</span>
                             {EYEBROW_ARROW_SVG}
                         </div>
-                        <h2 className="sec-11-home-7__title mb-0 reveal-text"><RevealText>Get in touch</RevealText></h2>
+                        <h2 className="sec-11-home-7__title mb-0 reveal-text"><RevealText>Join Startup School</RevealText></h2>
                     </div>
                     <div className="col-xl-6 col-lg-6 ms-lg-auto">
                         <form className="sec-4-about-form sec-11-home-7__form" action="#" method="post">

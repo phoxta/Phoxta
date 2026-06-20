@@ -5,7 +5,7 @@ type Item = { to: string; label: string };
 
 const SOLUTIONS_LINKS: Item[] = [
   { to: "/ai-tech", label: "Phoxta AI & Tech" },
-  { to: "/startup-accelerator", label: "Startup Accelerator" },
+  { to: "/startup-school", label: "Startup School" },
   { to: "/marketing", label: "Marketing" },
   { to: "/brand-design", label: "Brand Design" },
 ];

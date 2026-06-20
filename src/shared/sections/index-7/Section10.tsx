@@ -18,25 +18,25 @@ const ALL_INSIGHTS_ARROW_SVG = (
 const INSIGHTS = [
     {
         img: "/assets/imgs/pages/home-7/insight-1-retro.webp",
-        title: "Buy vs. Build: Why More Founders Are Acquiring Businesses",
+        title: "The MVP Roadmap: Ship Faster Without Losing Quality",
         author: "Olivia",
         date: "July 3, 2026",
     },
     {
         img: "/assets/imgs/pages/home-7/insight-2-office.webp",
-        title: "Entrepreneurship Through Acquisition, Explained",
+        title: "Fundraising 101: Closing Your First Round",
         author: "Daniel",
         date: "July 8, 2026",
     },
     {
         img: "/assets/imgs/pages/home-7/insight-3-fabric.webp",
-        title: "How One Founder Can Run a Whole Business with AI",
+        title: "Finding Product-Market Fit (Before You Run Out of Runway)",
         author: "Emma",
         date: "July 12, 2026",
     },
     {
         img: "/assets/imgs/pages/home-7/insight-4-conference.webp",
-        title: "Building a Portfolio of AI-Run Businesses",
+        title: "Go-to-Market Strategies for Early-Stage Startups",
         author: "Lucas",
         date: "July 17, 2026",
     },
@@ -59,7 +59,7 @@ export default function Section10() {
                     <div className="col-xl-5 col-lg-6 col-12 mt-4 mt-xl-0">
                         <p className="sec-10-home-7__lead mb-0 reveal-text">
                             <RevealText>
-                                Practical guidance on acquiring a business, launching it with AI, and scaling as a solo or portfolio founder.
+                                Practical guidance on building startups — from MVP and fundraising to product-market fit and growth.
                             </RevealText>
                         </p>
                     </div>

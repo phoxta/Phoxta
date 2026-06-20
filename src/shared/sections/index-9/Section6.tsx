@@ -31,8 +31,8 @@ const teamMembers = [
         quote: "Code should be as elegant as the UI it powers.",
         avatar: "/assets/imgs/pages/home-9/sec-6-avatar-4.webp",
         name: "Julian Voss",
-        role: "Platform Engineering Lead",
-        skills: "Studio Editor, Custom Domains, Performance.",
+        role: "Web & Digital Lead",
+        skills: "Websites, Motion, Performance.",
         imgAward: "/assets/imgs/pages/home-9/sec-6-fly-4.webp",
         accent: false,
     },
@@ -125,7 +125,7 @@ export default function Section6() {
                             <div className="sec-6-home-9__footer-block">
                                 <h3 className="sec-6-home-9__footer-heading at_fade_anim" data-delay=".1">Find us online</h3>
                                 <div className="sec-6-home-9__footer-lines at_fade_anim" data-delay=".2">
-                                    <p>Phoxta is a fully online platform.<br />Brand and launch from anywhere.</p>
+                                    <p>Phoxta is a remote brand studio.<br />We work with clients worldwide.</p>
                                     <p>Support: <Link className="sec-6-home-9__footer-link" to="/contact">Contact us</Link></p>
                                     <p>Email: <a className="sec-6-home-9__footer-link" href="mailto:hello@phoxta.com">hello@phoxta.com</a></p>
                                 </div>

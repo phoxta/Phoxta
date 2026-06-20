@@ -38,7 +38,7 @@ export const TEAM_INTRO_DEFAULTS = {
     eyebrow: "MEET OUR TEAM",
     heading: "The people behind Phoxta",
     intro:
-        "Marketers, engineers and operators building the AI that grows your business faster and runs your marketing for you.",
+        "Marketers, strategists and creatives who help ambitious brands grow faster and lead their markets.",
     ctaLabel: "View open roles",
     ctaHref: "/careers",
     team: [

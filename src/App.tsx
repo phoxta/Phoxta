@@ -14,7 +14,7 @@ const Home13Page = lazy(() => import("@/pages/Home13Page")); // /invest
 // Solutions pages (linked from the nav's Solutions dropdown)
 const MarketingSolutionPage = lazy(() => import("@/pages/MarketingSolutionPage")); // /marketing
 const AiTechPage = lazy(() => import("@/pages/AiTechPage")); // /ai-tech
-const StartupAcceleratorPage = lazy(() => import("@/pages/StartupAcceleratorPage")); // /startup-accelerator
+const StartupSchoolPage = lazy(() => import("@/pages/StartupSchoolPage")); // /startup-school
 const BrandDesignPage = lazy(() => import("@/pages/BrandDesignPage")); // /brand-design
 const About2Page = lazy(() => import("@/pages/About2Page"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
@@ -74,7 +74,8 @@ const LEGACY_REDIRECTS: [string, string][] = [
   ["/blog-details", "/blog"], ["/archive-1", "/blog"],
   ["/team", "/about"], ["/team-details", "/about"],
   ["/services-1", "/about"], ["/services-2", "/about"], ["/services-3", "/about"], ["/services-details", "/about"],
-  ["/index-3", "/marketing"], ["/index-4", "/ai-tech"], ["/index-7", "/startup-accelerator"], ["/index-9", "/brand-design"],
+  ["/index-3", "/marketing"], ["/index-4", "/ai-tech"], ["/index-7", "/startup-school"], ["/index-9", "/brand-design"],
+  ["/startup-accelerator", "/startup-school"],
 ];
 
 const RouteFallback = () => (
@@ -155,7 +156,7 @@ export default function App() {
         <Route path="/ai-tech" element={<AiTechPage />} />
       </Route>
       <Route element={<MainLayout headerStyle={16} footerStyle={7} />}>
-        <Route path="/startup-accelerator" element={<StartupAcceleratorPage />} />
+        <Route path="/startup-school" element={<StartupSchoolPage />} />
       </Route>
       <Route element={<MainLayout headerStyle={16} footerStyle={9} headerProps={{ light: true }} />}>
         <Route path="/brand-design" element={<BrandDesignPage />} />

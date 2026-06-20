@@ -34,27 +34,27 @@ const col1Cards = [
         img: "/assets/imgs/pages/home-9/sec-4-img-1.webp",
         category: "marketing",
         tag: "Rebrand",
-        metric: "Full identity in minutes",
-        excerpt: "AI generated the logo, palette, type and voice; refined in Studio and shipped on a custom domain.",
-        project: "Aurelia — fashion",
+        metric: "Full brand refresh",
+        excerpt: "Strategy, identity, type and motion for a category-defining fintech.",
+        project: "Lumen — fintech",
         badge: "Featured",
     },
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-2.webp",
         category: "photography",
         tag: "Logo",
-        metric: "Logo + favicon, on brand",
+        metric: "Identity system",
         excerpt: "",
-        project: "Carento — car rental",
+        project: "Carta — retail",
         badge: "",
     },
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-3.webp",
         category: "photography",
         tag: "Palette",
-        metric: "Cohesive color & type",
+        metric: "Color & type system",
         excerpt: "",
-        project: "Voyage — travel",
+        project: "Vela — travel",
         badge: "",
     },
 ];
@@ -64,25 +64,25 @@ const col2Cards = [
         img: "/assets/imgs/pages/home-9/sec-4-img-4.webp",
         category: "design",
         tag: "Voice",
-        metric: "Brand voice across channels",
+        metric: "Brand voice & messaging",
         excerpt: "",
-        project: "Atlas — services",
+        project: "Onyx — services",
         badge: "",
     },
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-5.webp",
         category: "design",
-        tag: "Domain",
-        metric: "Live on your own domain",
+        tag: "Identity",
+        metric: "Visual identity",
         excerpt: "",
-        project: "Nimbus — SaaS",
+        project: "Pulse — SaaS",
         badge: "",
     },
     {
         img: "/assets/imgs/pages/home-9/sec-4-img-6.webp",
         category: "marketing",
         tag: "Rebrand",
-        metric: "Restyled in an afternoon",
+        metric: "End-to-end rebrand",
         excerpt: "",
         project: "Bloom — wellness",
         badge: "",
@@ -116,7 +116,7 @@ export default function Section4() {
                             {col1Cards.map((card, i) => (
                                 <article key={i} className="sec-4-home-9__card mg-portfolio-item" data-category={card.category}>
                                     <div className="sec-4-home-9__visual">
-                                        <Link to="/marketplace" className="sec-4-home-9__visual-link cursor-hide">
+                                        <Link to="/contact" className="sec-4-home-9__visual-link cursor-hide">
                                             <div className="fix anim-zoomin">
                                                 <img src={card.img} alt="phoxta" width={600} height={450} loading="lazy" />
                                             </div>
@@ -133,10 +133,10 @@ export default function Section4() {
                                         )}
                                     </div>
                                     <div className="sec-4-home-9__bar">
-                                        <Link to="/marketplace">
+                                        <Link to="/contact">
                                             <h3 className="sec-4-home-9__project">{card.project}</h3>
                                         </Link>
-                                        <Link to="/marketplace" className="sec-4-home-9__case">
+                                        <Link to="/contact" className="sec-4-home-9__case">
                                             <span>View case</span>
                                             <CaseArrow />
                                         </Link>
@@ -149,7 +149,7 @@ export default function Section4() {
                             {col2Cards.map((card, i) => (
                                 <article key={i} className="sec-4-home-9__card mg-portfolio-item" data-category={card.category}>
                                     <div className="sec-4-home-9__visual">
-                                        <Link to="/marketplace" className="sec-4-home-9__visual-link cursor-hide">
+                                        <Link to="/contact" className="sec-4-home-9__visual-link cursor-hide">
                                             <div className="fix anim-zoomin">
                                                 <img src={card.img} alt="phoxta" width={600} height={450} loading="lazy" />
                                             </div>
@@ -160,10 +160,10 @@ export default function Section4() {
                                         </Link>
                                     </div>
                                     <div className="sec-4-home-9__bar">
-                                        <Link to="/marketplace">
+                                        <Link to="/contact">
                                             <h3 className="sec-4-home-9__project">{card.project}</h3>
                                         </Link>
-                                        <Link to="/marketplace" className="sec-4-home-9__case">
+                                        <Link to="/contact" className="sec-4-home-9__case">
                                             <span>View case</span>
                                             <CaseArrow />
                                         </Link>
@@ -175,12 +175,12 @@ export default function Section4() {
 
                     <div className="sec-4-home-9__cta">
                         <p className="sec-4-home-9__cta-text reveal-text">
-                            <RevealText>Phoxta turns any business into a brand — generate a complete identity with AI, refine it visually, and launch it on your own domain.</RevealText>
+                            <RevealText>Phoxta is a brand design studio. We turn ambitious ideas into distinctive identities — with the craft of a top studio and the speed of AI.</RevealText>
                         </p>
-                        <Link className="at-btn at_fade_anim" to="/auth" data-delay=".5">
+                        <Link className="at-btn at_fade_anim" to="/contact" data-delay=".5">
                             <span>
-                                <span className="text-1">GET STARTED</span>
-                                <span className="text-2">GET STARTED</span>
+                                <span className="text-1">START A PROJECT</span>
+                                <span className="text-2">START A PROJECT</span>
                             </span>
                             <i>
                                 <ArrowIcon />

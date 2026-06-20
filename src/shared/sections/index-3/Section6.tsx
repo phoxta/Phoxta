@@ -28,10 +28,10 @@ const CASE_STUDIES = [
         link: "/portfolio-details-2",
         linkCase: "#",
         img: "/assets/imgs/pages/img-63.webp",
-        category: "Outreach",
+        category: "Performance",
         headline: "+72% ROAS in 90 days",
         description:
-            "Phoxta turned on omnichannel outreach, AI search optimization and automated follow-ups — lifting results without adding headcount.",
+            "We restructured campaigns, sharpened targeting, and optimized for both customers and AI search — lifting results while cutting wasted spend.",
         title: "Ecommerce Brand",
         featured: true,
     },
@@ -43,7 +43,7 @@ const CASE_STUDIES = [
         category: "Growth",
         headline: "3× qualified leads in 4 months",
         description:
-            "Phoxta turned on omnichannel outreach, AI search optimization and automated follow-ups — lifting results without adding headcount.",
+            "We restructured campaigns, sharpened targeting, and optimized for both customers and AI search — lifting results while cutting wasted spend.",
         title: "SaaS Startup",
         featured: false,
     },
@@ -55,7 +55,7 @@ const CASE_STUDIES = [
         category: "Conversion",
         headline: "–38% Cost per acquisition",
         description:
-            "Phoxta turned on omnichannel outreach, AI search optimization and automated follow-ups — lifting results without adding headcount.",
+            "We restructured campaigns, sharpened targeting, and optimized for both customers and AI search — lifting results while cutting wasted spend.",
         title: "Fintech Platform",
         featured: false,
     },
@@ -67,7 +67,7 @@ const CASE_STUDIES = [
         category: "Brand",
         headline: "+41% conversion rate",
         description:
-            "Phoxta turned on omnichannel outreach, AI search optimization and automated follow-ups — lifting results without adding headcount.",
+            "We restructured campaigns, sharpened targeting, and optimized for both customers and AI search — lifting results while cutting wasted spend.",
         title: "B2B Service Company",
         featured: false,
     },
@@ -79,7 +79,7 @@ const CASE_STUDIES = [
         category: "Performance",
         headline: "+54% revenue growth YoY",
         description:
-            "Phoxta turned on omnichannel outreach, AI search optimization and automated follow-ups — lifting results without adding headcount.",
+            "We restructured campaigns, sharpened targeting, and optimized for both customers and AI search — lifting results while cutting wasted spend.",
         title: "DTC Brand",
         featured: false,
     },
@@ -91,7 +91,7 @@ const CASE_STUDIES = [
         category: "Performance",
         headline: "$1.4M revenue in 6 months",
         description:
-            "Phoxta turned on omnichannel outreach, AI search optimization and automated follow-ups — lifting results without adding headcount.",
+            "We restructured campaigns, sharpened targeting, and optimized for both customers and AI search — lifting results while cutting wasted spend.",
         title: "Global Brand",
         featured: false,
     },
@@ -132,13 +132,13 @@ export default function Section6() {
                             data-fade-from="bottom"
                             data-ease="bounce"
                         >
-                            <Link className="at-btn-circle" to="/marketplace">
+                            <Link className="at-btn-circle" to="/contact">
                                 {ARROW_CIRCLE}
                             </Link>
-                            <Link className="at-btn z-index-1" to="/marketplace">
-                                Explore the marketplace
+                            <Link className="at-btn z-index-1" to="/contact">
+                                Explore all case studies
                             </Link>
-                            <Link className="at-btn-circle" to="/marketplace">
+                            <Link className="at-btn-circle" to="/contact">
                                 {ARROW_CIRCLE}
                             </Link>
                         </div>

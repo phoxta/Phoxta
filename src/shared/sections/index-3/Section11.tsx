@@ -14,11 +14,11 @@ const ARROW_SVG = (
 
 const POSTS = [
     { category: "GEO", title: "How to become the answer AI search recommends", author: "Daniel", date: "July 8, 2026", img: "/assets/imgs/pages/img-71.webp" },
-    { category: "Outreach", title: "Omnichannel messages customers actually reply to", author: "Olivia", date: "July 3, 2026", img: "/assets/imgs/pages/img-72.webp" },
-    { category: "Automation", title: "Marketing automations that run while you sleep", author: "Lucas", date: "July 17, 2026", img: "/assets/imgs/pages/img-73.webp" },
-    { category: "Conversion", title: "Turning conversations into conversions with AI", author: "Olivia", date: "July 28, 2026", img: "/assets/imgs/pages/img-51.webp" },
-    { category: "Inbox", title: "One inbox for email, SMS and WhatsApp", author: "Daniel", date: "July 08, 2026", img: "/assets/imgs/pages/img-52.webp" },
-    { category: "Content", title: "Content autopilot: a blog that writes and ranks itself", author: "Emma", date: "July 17, 2026", img: "/assets/imgs/pages/img-53.webp" },
+    { category: "Campaigns", title: "Campaigns customers actually respond to", author: "Olivia", date: "July 3, 2026", img: "/assets/imgs/pages/img-72.webp" },
+    { category: "Lifecycle", title: "Lifecycle marketing that compounds over time", author: "Lucas", date: "July 17, 2026", img: "/assets/imgs/pages/img-73.webp" },
+    { category: "Conversion", title: "Turning more visitors into customers with CRO", author: "Olivia", date: "July 28, 2026", img: "/assets/imgs/pages/img-51.webp" },
+    { category: "Paid media", title: "Paid media in the age of AI search", author: "Daniel", date: "July 08, 2026", img: "/assets/imgs/pages/img-52.webp" },
+    { category: "Content", title: "Content that ranks in Google and in AI answers", author: "Emma", date: "July 17, 2026", img: "/assets/imgs/pages/img-53.webp" },
 ];
 
 export default function Section11() {

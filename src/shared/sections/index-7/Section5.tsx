@@ -20,37 +20,37 @@ const ACCORDION_ITEMS = [
         id: "Sec5H71",
         headingId: "headingSec5H71",
         num: "01",
-        title: "Acquire a working business",
+        title: "Structured curriculum",
         expanded: true,
-        text: "Skip the build entirely. Pick a pre-validated business from the marketplace and own it from day one — no idea to test, no code to write.",
-        tags: ["Pre-validated", "Live in days", "No code"],
+        text: "A clear, week-by-week curriculum covering ideas, customers, product, fundraising and growth — at your own pace.",
+        tags: ["Self-paced", "Video lessons", "Templates"],
     },
     {
         id: "Sec5H72",
         headingId: "headingSec5H72",
         num: "02",
-        title: "Make it yours",
+        title: "Run a real business",
         expanded: false,
-        text: "Rebrand with AI, customize your storefront in the visual Studio, and connect your own domain — so it feels established from day one.",
-        tags: ["AI branding", "Visual Studio", "Custom domain"],
+        text: "This isn't theory. You launch and operate a real business inside the program, applying every lesson live.",
+        tags: ["Real business", "Hands-on", "Feedback"],
     },
     {
         id: "Sec5H73",
         headingId: "headingSec5H73",
         num: "03",
-        title: "AI runs the operations",
+        title: "Mentors & expert sessions",
         expanded: false,
-        text: "Your business comes with an AI agent and an operating console that handle the front office — messages, follow-ups and admin — for you.",
-        tags: ["AI agent", "Operating console", "Automations"],
+        text: "Live group sessions, office hours and Q&As with founders and operators who have actually done it.",
+        tags: ["Office hours", "Workshops", "Q&A"],
     },
     {
         id: "Sec5H74",
         headingId: "headingSec5H74",
         num: "04",
-        title: "Grow with support",
+        title: "Community & co-founders",
         expanded: false,
-        text: "Launching is just the start. Playbooks, built-in AI marketing and a founder network help you scale revenue after you go live.",
-        tags: ["Growth playbooks", "AI marketing", "Founder network"],
+        text: "Join a global community, find a co-founder, and stay accountable with weekly goals and peer feedback.",
+        tags: ["Community", "Co-founder match", "Accountability"],
     },
 ];
 
@@ -81,15 +81,15 @@ export default function Section5() {
                             <span className="text-scramble" data-scramble-text="Specialized services">Specialized services</span>
                             {EYEBROW_ARROW_SVG}
                         </div>
-                        <h2 className="sec-5-home-7__title mb-4 mb-xl-5 reveal-text"><RevealText>Everything a founder needs to launch and grow.</RevealText></h2>
+                        <h2 className="sec-5-home-7__title mb-4 mb-xl-5 reveal-text"><RevealText>Everything you need to learn how to start up.</RevealText></h2>
                         <div className="sec-5-home-7__cta d-inline-flex align-items-stretch at_fade_anim">
-                            <Link to="/auth" className="at-btn sec-5-home-7__cta-btn text-capitalize">
+                            <Link to="/contact" className="at-btn sec-5-home-7__cta-btn text-capitalize">
                                 <span>
-                                    <span className="text-1">Get started</span>
-                                    <span className="text-2">Get started</span>
+                                    <span className="text-1">Join the school</span>
+                                    <span className="text-2">Join the school</span>
                                 </span>
                             </Link>
-                            <Link to="/auth" className="sec-5-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Get started">
+                            <Link to="/contact" className="sec-5-home-7__cta-circle d-inline-flex align-items-center justify-content-center text-white" aria-label="Join the school">
                                 {CTA_CIRCLE_SVG}
                             </Link>
                         </div>
@@ -151,7 +151,7 @@ export default function Section5() {
             </div>
             <div className="container-fluid px-0 text-center">
                 <div className="scroll-move-up">
-                    <h6 className="mb-4 mb-xl-5 reveal-text"><RevealText>Backing the next wave of founders building AI-run businesses.</RevealText></h6>
+                    <h6 className="mb-4 mb-xl-5 reveal-text"><RevealText>Teaching the next generation of founders to build.</RevealText></h6>
                 </div>
             </div>
 

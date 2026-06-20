@@ -17,23 +17,23 @@ const testimonials = [
     {
         img: "/assets/imgs/pages/home-9/testimonial-1.webp",
         logo: "/assets/imgs/pages/home-9/logo-3.svg",
-        quote: "Phoxta generated our whole brand — logo, colors, type and voice — in minutes, then let us fine-tune it visually. It looks like we hired an agency.",
+        quote: "Phoxta delivered a complete brand — strategy, logo, palette and voice — that finally captures who we are. It looks like the work of a top-tier studio.",
         name: "Amelia Wright",
-        position: "Owner, a fashion store on Phoxta",
+        position: "Head of Marketing",
     },
     {
         img: "/assets/imgs/pages/home-9/testimonial-2.webp",
         logo: "/assets/imgs/pages/home-9/logo-4.svg",
-        quote: "I described the vibe and Phoxta gave us a complete identity. We refined it in the Studio editor and launched on our own domain the same day.",
+        quote: "They translated complex brand values into a clean, high-impact identity. Our conversion rates jumped within the first month of launch.",
         name: "Sophia Sterling",
-        position: "Founder, a travel business on Phoxta",
+        position: "Founder, AURA",
     },
     {
         img: "/assets/imgs/pages/home-9/testimonial-3.webp",
         logo: "/assets/imgs/pages/home-9/logo-2.svg",
-        quote: "The best part is consistency — our brand shows up the same across the storefront, emails and even the AI agent's tone. No design skills needed.",
+        quote: "The consistency across everything — web, social, packaging — is what sets the work apart. Phoxta felt like true partners, not just a vendor.",
         name: "Marcus Thorne",
-        position: "Owner, a services business on Phoxta",
+        position: "Brand Director",
     },
 ];
 
@@ -54,7 +54,7 @@ export default function Section8() {
                             </i>
                         </span>
                         <div className="title-right">
-                            <p className="neutral-900 m-0 fw-500 text-decoration-underline at_fade_anim" data-delay=".3">Loved by founders on Phoxta</p>
+                            <p className="neutral-900 m-0 fw-500 text-decoration-underline at_fade_anim" data-delay=".3">Trusted by brands worldwide</p>
                         </div>
                     </div>
 

@@ -1,17 +1,17 @@
 {/* Home 7 Section 9 (Marquee — carouselTicker + GSAP scroll-move) */}
 
 const MARQUEE_ITEMS = [
-    "Acquire a business",
-    "Pre-validated",
-    "Launch in days",
-    "AI operator",
-    "Custom domain",
-    "Founder network",
-    "Growth playbooks",
-    "No code",
-    "Own your revenue",
-    "Operating console",
-    "Built-in marketing",
+    "Practical curriculum",
+    "Expert-led classes",
+    "Run a real business",
+    "1:1 mentorship",
+    "Co-founder matching",
+    "Community",
+    "Live workshops",
+    "Office hours",
+    "Product-market fit",
+    "Demo day",
+    "Certificate",
 ];
 
 function generateMarqueeItems(prefix: string) {
