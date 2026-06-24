@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import NoIndex from "@/seo/NoIndex";
 import { useAuth } from "@/auth/AuthProvider";
-import { preloadAllDashboard, preloadRoute } from "@/pages/dashboard/preload";
+import KeepAliveOutlet from "@/layouts/KeepAliveOutlet";
+import { preloadRoute } from "@/pages/dashboard/preload";
+import { warmDashboard } from "@/lib/cache/warmDashboard";
 import {
   listNotifications,
   markNotificationRead,
@@ -35,6 +37,10 @@ const NAV: NavItem[] = [
   { to: "/dashboard/settings", label: "Settings", icon: <Icon d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 13a7.9 7.9 0 000-2l2-1.5-2-3.5-2.4 1a8 8 0 00-1.7-1l-.4-2.5H10.1l-.4 2.5a8 8 0 00-1.7 1l-2.4-1-2 3.5L3.6 11a7.9 7.9 0 000 2l-2 1.5 2 3.5 2.4-1a8 8 0 001.7 1l.4 2.5h3.8l.4-2.5a8 8 0 001.7-1l2.4 1 2-3.5z" /> },
 ];
 
+// The top-level nav pages are all param-free, so they're kept mounted (via <Activity>)
+// after their first visit — instant revisits with preserved scroll + in-page state.
+const KEEP_ALIVE_PATHS = NAV.map((item) => item.to);
+
 const MENU_ICON = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
     <path d="M3 6h18M3 12h18M3 18h18" />
@@ -50,6 +56,7 @@ const BELL_ICON = (
 export default function DashboardLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   // ProtectedRoute guarantees the session + completed onboarding before this
   // layout mounts, so we render immediately (no second onboarding fetch here).
@@ -83,17 +90,13 @@ export default function DashboardLayout() {
     markAllNotificationsRead();
   }
 
-  // Warm every dashboard tab's lazy chunk shortly after the dashboard loads, so
-  // switching tabs is instant (no route-level Suspense spinner on first click).
+  // Preload the whole dashboard the moment the shell mounts after sign-in — every nav
+  // page's DATA + JS CHUNK — so the first click on any page is instant. It starts
+  // immediately (not on idle) but runs through a concurrency pool, so it's a steady
+  // stream of requests, never a stampede. Re-runs if the signed-in user changes.
   useEffect(() => {
-    const ric = window.requestIdleCallback;
-    if (ric) {
-      const id = ric(() => preloadAllDashboard(), { timeout: 2000 });
-      return () => window.cancelIdleCallback?.(id);
-    }
-    const t = window.setTimeout(() => preloadAllDashboard(), 300);
-    return () => window.clearTimeout(t);
-  }, []);
+    warmDashboard(user?.id ?? null);
+  }, [user?.id]);
 
   // App-shell scroll containment: the dashboard is a fixed 100vh stage with its own
   // scrollable main column, so the document itself must NOT scroll. Lock body/html
@@ -315,7 +318,7 @@ export default function DashboardLayout() {
         )}
 
         {/* Main column (scrolls inside the card) */}
-        <div className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0, overflow: "auto" }}>
+        <div ref={scrollRef} className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0, overflow: "auto" }}>
           {/* Mobile-only top bar */}
           <div className="d-flex d-lg-none align-items-center gap-2 px-3 py-3 border-bottom sticky-top bg-neutral-0">
             <button type="button" className="btn btn-link p-0 neutral-700" aria-label="Open menu" onClick={() => setOpen(true)}>
@@ -328,7 +331,7 @@ export default function DashboardLayout() {
           </div>
 
           <main className="px-3 px-lg-4 px-xl-5 py-4 flex-grow-1">
-            <Outlet />
+            <KeepAliveOutlet keepPaths={KEEP_ALIVE_PATHS} scrollContainerRef={scrollRef} />
           </main>
         </div>
       </div>

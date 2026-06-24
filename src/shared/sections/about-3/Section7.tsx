@@ -16,7 +16,7 @@ const FAQ_ITEMS = [
         id: "collapseOne",
         num: "1",
         question: "Is there a free trial?",
-        answer: "Yes. Start on a free trial to explore your console, brand your storefront and test the AI agent. You only go live when you're ready, and you can cancel anytime.",
+        answer: "No — Phoxta doesn't offer a free trial. You can preview any business live before you buy, then go live and run it on a Phoxta plan, cancelling anytime.",
         open: true,
     },
     {

@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { profileQuery } from "@/lib/cache/dashboardQueries";
 import {
-  getMyProfile,
   saveMyProfile,
   COMPANY_SIZES,
   PRIMARY_GOALS,
@@ -22,38 +23,32 @@ const EMPTY: ProfileForm = {
 
 export default function SettingsPage() {
   const { user, updatePassword } = useAuth();
+  const { data: profile, loading, error: readError } = useCachedData(profileQuery.key, profileQuery.fetch);
   const [form, setForm] = useState<ProfileForm>(EMPTY);
   const [newPassword, setNewPassword] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  // Seed the editable form from the cached profile once it arrives. The guard stops
+  // a background revalidation (or kept-alive remount) from clobbering unsaved edits.
+  const seededRef = useRef(false);
   useEffect(() => {
-    let active = true;
-    getMyProfile().then(({ data, error }) => {
-      if (!active) return;
-      if (error) setError(error);
-      if (data) {
-        setForm({
-          full_name: data.full_name ?? "",
-          phone: data.phone ?? "",
-          job_title: data.job_title ?? "",
-          company_name: data.company_name ?? "",
-          company_size: data.company_size ?? "",
-          industry: data.industry ?? "",
-          country: data.country ?? "",
-          primary_goal: data.primary_goal ?? "",
-        });
-      }
-      setLoading(false);
+    if (!profile || seededRef.current) return;
+    seededRef.current = true;
+    setForm({
+      full_name: profile.full_name ?? "",
+      phone: profile.phone ?? "",
+      job_title: profile.job_title ?? "",
+      company_name: profile.company_name ?? "",
+      company_size: profile.company_size ?? "",
+      industry: profile.industry ?? "",
+      country: profile.country ?? "",
+      primary_goal: profile.primary_goal ?? "",
     });
-    return () => {
-      active = false;
-    };
-  }, []);
+  }, [profile]);
 
   function update<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -86,9 +81,9 @@ export default function SettingsPage() {
           <div className="fw-600">{user?.email}</div>
         </div>
 
-        {error && (
+        {(error || readError) && (
           <div className="alert alert-danger py-2 px-3 fz-font-md" role="alert">
-            {error}
+            {error || readError}
           </div>
         )}
         {saved && (

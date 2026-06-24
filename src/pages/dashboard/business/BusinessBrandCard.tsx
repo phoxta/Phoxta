@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
     aiRebrand,
     EMPTY_BRANDING,
@@ -24,8 +26,12 @@ const fontHref = (families: string[]) =>
         .join("&")}&display=swap`;
 
 export default function BusinessBrandCard({ org, canManage }: Props) {
+    const { data: branding, loading } = useCachedData(
+        `branding:${org.id}`,
+        async () => (await getBranding(org.id)).data,
+        { ttl: DASHBOARD_TTL },
+    );
     const [b, setB] = useState<Branding>({ ...EMPTY_BRANDING });
-    const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState<string | null>(null);
     const [prompt, setPrompt] = useState("");
@@ -43,12 +49,13 @@ export default function BusinessBrandCard({ org, canManage }: Props) {
         if (url) setB((p) => ({ ...p, [key]: url }));
     }
 
+    // Seed the editable branding once from cache (guard avoids clobbering edits).
+    const seededRef = useRef(false);
     useEffect(() => {
-        getBranding(org.id).then(({ data }) => {
-            setB({ ...EMPTY_BRANDING, ...data, colors: { ...EMPTY_BRANDING.colors, ...data.colors }, fonts: { ...EMPTY_BRANDING.fonts, ...data.fonts } });
-            setLoading(false);
-        });
-    }, [org.id]);
+        if (!branding || seededRef.current) return;
+        seededRef.current = true;
+        setB({ ...EMPTY_BRANDING, ...branding, colors: { ...EMPTY_BRANDING.colors, ...branding.colors }, fonts: { ...EMPTY_BRANDING.fonts, ...branding.fonts } });
+    }, [branding]);
 
     // Load the chosen Google Fonts so the preview renders in them.
     useEffect(() => {

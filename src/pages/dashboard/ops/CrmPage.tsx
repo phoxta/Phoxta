@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
   listContacts,
   createContact,
@@ -31,8 +33,15 @@ function scoreColor(score: number | null): string {
 
 export default function CrmPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [rows, setRows] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rows = [], loading, error: loadError, reload, setData: setRows } = useCachedData(
+    `ops:crm:${orgId}`,
+    async () => {
+      const { data, error } = await listContacts(orgId);
+      if (error) throw new Error(error);
+      return data;
+    },
+    { ttl: DASHBOARD_TTL },
+  );
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", company: "", stage: "lead" as ContactStage });
   const [saving, setSaving] = useState(false);
@@ -44,15 +53,6 @@ export default function CrmPage() {
   const [matchIds, setMatchIds] = useState<string[] | null>(null);
   const [searching, setSearching] = useState(false);
 
-  async function load() {
-    const { data, error } = await listContacts(orgId);
-    if (error) setError(error);
-    setRows(data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    load();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -64,18 +64,18 @@ export default function CrmPage() {
     else {
       setForm({ name: "", email: "", company: "", stage: "lead" });
       drainEmbeddings(); // index the new contact for semantic search
-      load();
+      reload();
     }
   }
 
   async function onStage(c: Contact, stage: ContactStage) {
     await updateContactStage(c.id, stage);
-    setRows((r) => r.map((x) => (x.id === c.id ? { ...x, stage } : x)));
+    setRows((r) => (r ?? []).map((x) => (x.id === c.id ? { ...x, stage } : x)));
   }
 
   async function onDelete(id: string) {
     await deleteContact(id);
-    setRows((r) => r.filter((x) => x.id !== id));
+    setRows((r) => (r ?? []).filter((x) => x.id !== id));
   }
 
   async function scoreOne(id: string) {
@@ -84,7 +84,7 @@ export default function CrmPage() {
     setScoring((s) => ({ ...s, [id]: false }));
     if (data) {
       setRows((r) =>
-        r.map((x) =>
+        (r ?? []).map((x) =>
           x.id === id
             ? { ...x, lead_score: Math.round(data.lead_score), churn_risk: data.churn_risk, ai_summary: data.summary, scored_at: new Date().toISOString() }
             : x,
@@ -149,7 +149,7 @@ export default function CrmPage() {
         </div>
       </div>
 
-      {error && <div className="alert alert-warning py-2 px-3 fz-font-md">{error}</div>}
+      {(error || loadError) && <div className="alert alert-warning py-2 px-3 fz-font-md">{error || loadError}</div>}
 
       <form onSubmit={onAdd} className="bg-neutral-0 rounded-4 p-3 border-100 mb-4">
         <div className="row g-2">

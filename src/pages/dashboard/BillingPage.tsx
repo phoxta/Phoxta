@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useCachedData } from "@/lib/hooks/useCachedData";
-import { listMySubscriptions, listMyPurchases, type Subscription, type Purchase } from "@/lib/db/billing";
-import { listAiUsageThisMonth } from "@/lib/db/ai";
+import { billingQuery } from "@/lib/cache/dashboardQueries";
+import { type Subscription, type Purchase } from "@/lib/db/billing";
 import { formatPrice } from "@/lib/db/marketplace";
 
 const STATUS_STYLE: Record<Subscription["status"], string> = {
@@ -33,11 +33,7 @@ const PURCHASE_STYLE: Record<Purchase["status"], string> = {
 };
 
 export default function BillingPage() {
-  const { data, loading, error } = useCachedData("billing", async () => {
-    const [s, p, a] = await Promise.all([listMySubscriptions(), listMyPurchases(), listAiUsageThisMonth()]);
-    if (s.error) throw new Error(s.error);
-    return { subs: s.data, purchases: p.data, aiUsage: a.data };
-  });
+  const { data, loading, error } = useCachedData(billingQuery.key, billingQuery.fetch);
   const subs = data?.subs ?? [];
   const purchases = data?.purchases ?? [];
   const aiUsage = data?.aiUsage ?? [];
@@ -61,7 +57,7 @@ export default function BillingPage() {
         <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>
       ) : subs.length === 0 ? (
         <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center">
-          <p className="neutral-500 mb-3">No active subscriptions yet. Each business you start includes a free trial.</p>
+          <p className="neutral-500 mb-3">No active subscriptions yet. Each business you own runs on a Phoxta plan.</p>
           <Link to="/dashboard/marketplace" className="at-btn">
             <span>
               <span className="text-1">Browse the marketplace</span>

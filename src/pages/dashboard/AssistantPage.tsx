@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
-import { listMyOrganizations, type Organization } from "@/lib/db/organizations";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { organizationsQuery, DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
   listConversations,
   listMessages,
@@ -11,32 +12,26 @@ import {
 } from "@/lib/db/ai";
 
 export default function AssistantPage() {
-  const [orgs, setOrgs] = useState<Organization[]>([]);
+  // The business list comes from the shared, warmed "organizations" cache.
+  const { data: orgRows = [], loading, error: orgsError } = useCachedData(
+    organizationsQuery.key,
+    organizationsQuery.fetch,
+    { ttl: DASHBOARD_TTL },
+  );
+  const orgs = orgRows.map((d) => d.organization);
   const [orgId, setOrgId] = useState<string>("");
   const [conversations, setConversations] = useState<AiConversation[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [draft, setDraft] = useState("");
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
 
-  // Load the user's businesses once.
+  // Default to the first business once the org list is available.
   useEffect(() => {
-    let active = true;
-    listMyOrganizations().then(({ data, error }) => {
-      if (!active) return;
-      if (error) setError(error);
-      const list = data.map((d) => d.organization);
-      setOrgs(list);
-      if (list.length > 0) setOrgId(list[0].id);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (!orgId && orgRows.length > 0) setOrgId(orgRows[0].organization.id);
+  }, [orgRows, orgId]);
 
   // When the business changes, load its conversations and open the latest.
   useEffect(() => {
@@ -214,9 +209,9 @@ export default function AssistantPage() {
                 )}
               </div>
 
-              {error && (
+              {(error || orgsError) && (
                 <div className="alert alert-warning py-2 px-3 fz-font-md m-3 mb-0" role="alert">
-                  {error}
+                  {error || orgsError}
                 </div>
               )}
 

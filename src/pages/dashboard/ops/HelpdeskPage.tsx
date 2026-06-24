@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
   listTickets,
   createTicket,
@@ -29,10 +31,17 @@ const STATUS_STYLE: Record<Ticket["status"], string> = {
 
 export default function HelpdeskPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const { data: tickets = [], loading, error: loadError, reload: loadTickets, setData: setTickets } = useCachedData(
+    `ops:helpdesk:${orgId}`,
+    async () => {
+      const { data, error } = await listTickets(orgId);
+      if (error) throw new Error(error);
+      return data;
+    },
+    { ttl: DASHBOARD_TTL },
+  );
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -40,16 +49,6 @@ export default function HelpdeskPage() {
   const [classifying, setClassifying] = useState(false);
 
   const [tForm, setTForm] = useState({ subject: "", customer: "", message: "" });
-
-  async function loadTickets() {
-    const { data, error } = await listTickets(orgId);
-    if (error) setError(error);
-    setTickets(data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    loadTickets();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function open(t: Ticket) {
     setSelected(t);
@@ -72,7 +71,7 @@ export default function HelpdeskPage() {
     if (data) {
       const updated = { ...selected, category: data.category, sentiment: data.sentiment, priority: (["low", "normal", "high"].includes(data.priority) ? data.priority : "normal") as Ticket["priority"], ai_summary: data.summary };
       setSelected(updated);
-      setTickets((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+      setTickets((list) => (list ?? []).map((x) => (x.id === updated.id ? updated : x)));
     }
   }
 
@@ -122,7 +121,7 @@ export default function HelpdeskPage() {
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       {/* Ticket list */}
       <div className="col-lg-5">

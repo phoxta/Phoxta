@@ -52,10 +52,38 @@ export default function Section1() {
                 <div className="anim-zoomin">
                     <img
                         className="sec-1-home-7__img"
-                        src="/assets/imgs/pages/home-7/hero-vr.webp"
-                        alt="Futuristic VR experience"
+                        src="/assets/imgs/pages/Startup%20School%20Hero.jpeg"
+                        alt="Phoxta Startup School"
                         width={960}
                         height={1080} loading="lazy" />
+                </div>
+                {/* Legibility scrim under the overlaid proof */}
+                <div
+                    className="position-absolute bottom-0 start-0 end-0"
+                    style={{ height: "45%", background: "linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0))", pointerEvents: "none", zIndex: 1 }}
+                    aria-hidden="true"
+                />
+                {/* Social proof: avatar stack + copy — overlaid bottom-left on the hero image */}
+                <div className="sec-1-home-7__proof position-absolute bottom-0 start-0 d-flex align-items-center flex-wrap gap-3 p-4" style={{ zIndex: 2 }}>
+                    <div className="sec-1-home-7__avatars">
+                        {AVATARS.map((avatar, i) => (
+                            <span
+                                key={i}
+                                className="sec-1-home-7__avatar at_fade_anim"
+                                data-start="100%"
+                                data-delay={avatar.delay}
+                            >
+                                <img
+                                    src={avatar.src}
+                                    alt={avatar.alt}
+                                    width={48}
+                                    height={48} loading="lazy" />
+                            </span>
+                        ))}
+                    </div>
+                    <p className="sec-1-home-7__proof-text text-white fw-700 mb-0 at_fade_anim" data-start="100%" data-delay="0.6">
+                        Founders from around the <br className="d-none d-xl-inline" />world start here
+                    </p>
                 </div>
             </div>
 
@@ -94,12 +122,12 @@ export default function Section1() {
                             </div>
 
                             {/* Description */}
-                            <p className="sec-1-home-7__desc text-white mb-40 at_fade_anim" data-start="100%" data-delay="0.5">
+                            <p className="sec-1-home-7__desc text-white mb-30 at_fade_anim" data-start="100%" data-delay="0.5">
                                 Learn strategy, finance, marketing and the AI tools reshaping business — then apply it all by building and running a real company, with expert mentors beside you.
                             </p>
 
                             {/* Primary CTA + icon bubble */}
-                            <div className="sec-1-home-7__cta d-flex align-items-center flex-wrap gap-2 mb-60">
+                            <div className="sec-1-home-7__cta d-flex align-items-center flex-wrap gap-2 mb-10">
                                 <Link to="/contact" className="sec-1-home-7__cta-btn at_fade_anim" data-start="100%" data-delay="0.3">
                                     <span>Join the school</span>
                                 </Link>
@@ -108,28 +136,6 @@ export default function Section1() {
                                 </Link>
                             </div>
 
-                            {/* Social proof: avatar stack + copy */}
-                            <div className="sec-1-home-7__proof d-flex align-items-center flex-wrap gap-3">
-                                <div className="sec-1-home-7__avatars">
-                                    {AVATARS.map((avatar, i) => (
-                                        <span
-                                            key={i}
-                                            className="sec-1-home-7__avatar at_fade_anim"
-                                            data-start="100%"
-                                            data-delay={avatar.delay}
-                                        >
-                                            <img
-                                                src={avatar.src}
-                                                alt={avatar.alt}
-                                                width={48}
-                                                height={48} loading="lazy" />
-                                        </span>
-                                    ))}
-                                </div>
-                                <p className="sec-1-home-7__proof-text text-white fw-700 mb-0 at_fade_anim" data-start="100%" data-delay="0.6">
-                                    Founders from around the <br className="d-none d-xl-inline" />world start here
-                                </p>
-                            </div>
                         </div>
                     </div>
                 </div>

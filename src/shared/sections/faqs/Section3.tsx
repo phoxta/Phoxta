@@ -165,7 +165,7 @@ const FAQ_SECTIONS: FaqSection[] = [
             </>
         ),
         description:
-            "How pricing works, trials, cancellation, and getting help.",
+            "How pricing works, billing, cancellation, and getting help.",
         accordionId: "accordionFaq4",
         items: [
             {
@@ -181,7 +181,7 @@ const FAQ_SECTIONS: FaqSection[] = [
                 num: "2",
                 question: "Is there a free trial?",
                 answer:
-                    "Yes — start on a trial, explore your console and storefront, and only go live when you're ready. You can cancel anytime.",
+                    "No — Phoxta doesn't offer a free trial. Pricing is simple: a monthly plan plus a one-time price per business. You can preview any business live before you buy, and cancel anytime.",
                 open: false,
             },
             {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
-import { listMyOrganizations, type Organization } from "@/lib/db/organizations";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { organizationsQuery, DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { listPages, createVisualPage, type CmsPage } from "@/lib/db/ops/cms";
 import { SECTION_MANIFESTS } from "@/builder/registry";
 import { PAGE_TEMPLATES } from "@/builder/templates/generated";
@@ -9,8 +10,6 @@ import type { PageDocument } from "@/builder/types";
 import BusinessBrandCard from "@/pages/dashboard/business/BusinessBrandCard";
 
 const LAST_ORG_KEY = "phoxta-studio-last-org";
-
-type BizRow = { role: "owner" | "admin" | "staff" | "viewer"; organization: Organization };
 
 /**
  * Studio — the design home for a business you own. Pick a business (every business
@@ -20,10 +19,14 @@ type BizRow = { role: "owner" | "admin" | "staff" | "viewer"; organization: Orga
  */
 export default function StudioPage() {
   const navigate = useNavigate();
-  const [biz, setBiz] = useState<BizRow[]>([]);
+  // Businesses come from the shared, warmed "organizations" cache.
+  const { data: biz = [], loading: loadingBiz, error: bizError } = useCachedData(
+    organizationsQuery.key,
+    organizationsQuery.fetch,
+    { ttl: DASHBOARD_TTL },
+  );
   const [orgId, setOrgId] = useState<string>(() => localStorage.getItem(LAST_ORG_KEY) ?? "");
   const [pages, setPages] = useState<CmsPage[]>([]);
-  const [loadingBiz, setLoadingBiz] = useState(true);
   const [loadingPages, setLoadingPages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -34,15 +37,12 @@ export default function StudioPage() {
   const current = useMemo(() => biz.find((b) => b.organization.id === orgId) ?? null, [biz, orgId]);
   const canManage = current?.role === "owner" || current?.role === "admin";
 
+  // Keep the last business if it's still ours, else default to the first, once the
+  // (shared, warmed) business list is available.
   useEffect(() => {
-    listMyOrganizations().then(({ data, error }) => {
-      if (error) setError(error);
-      setBiz(data);
-      // Keep the last business if it's still ours, else default to the first.
-      setOrgId((cur) => (cur && data.some((d) => d.organization.id === cur) ? cur : data[0]?.organization.id ?? ""));
-      setLoadingBiz(false);
-    });
-  }, []);
+    if (biz.length === 0) return;
+    setOrgId((cur) => (cur && biz.some((d) => d.organization.id === cur) ? cur : biz[0]?.organization.id ?? ""));
+  }, [biz]);
 
   useEffect(() => {
     if (!orgId) { setPages([]); return; }
@@ -86,7 +86,7 @@ export default function StudioPage() {
         </p>
       </div>
 
-      {error && <div className="alert alert-warning py-2 px-3 fz-font-md">{error}</div>}
+      {(error || bizError) && <div className="alert alert-warning py-2 px-3 fz-font-md">{error || bizError}</div>}
 
       {loadingBiz ? (
         <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading your businesses…</div>

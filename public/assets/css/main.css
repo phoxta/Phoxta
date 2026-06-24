@@ -13252,9 +13252,9 @@ input.footer-15__form-input:focus {
 /*  sec-1-home-7 (Advancing Startup Innovation Hero)
 /*----------------------------------------*/
 .sec-1-home-7 {
-  min-height: 100vh;
+  min-height: 40vh;
   color: #fff;
-  padding-top: 130px;
+  padding-top: 90px;
 }
 @media only screen and (min-width: 992px) and (max-width: 1199px), only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
   .sec-1-home-7 {
@@ -13320,12 +13320,12 @@ input.footer-15__form-input:focus {
   height: 100%;
 }
 .sec-1-home-7__left {
-  min-height: 760px;
+  min-height: 280px;
   padding: 0;
 }
 @media only screen and (min-width: 992px) and (max-width: 1199px) {
   .sec-1-home-7__left {
-    min-height: 640px;
+    min-height: 240px;
   }
 }
 @media only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
@@ -13338,8 +13338,8 @@ input.footer-15__form-input:focus {
   position: absolute;
   inset: 0 0 0 0;
   overflow: hidden;
-  max-width: 45%;
-  margin-top: 80px;
+  max-width: 50%;
+  margin-top: 0;
 }
 @media only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
   .sec-1-home-7__img-wrap {
@@ -13357,8 +13357,8 @@ input.footer-15__form-input:focus {
   height: 100%;
   -o-object-fit: cover;
      object-fit: cover;
-  -o-object-position: center top;
-     object-position: center top;
+  -o-object-position: center;
+     object-position: center;
 }
 .sec-1-home-7__coords {
   position: absolute;
@@ -13503,38 +13503,38 @@ input.footer-15__form-input:focus {
 }
 .sec-1-home-7__headline {
   font-family: var(--at-ff-heading);
-  font-size: 92px;
+  font-size: 64px;
   line-height: 1;
   letter-spacing: -0.02em;
 }
 @media only screen and (min-width: 1400px) and (max-width: 1599px) {
   .sec-1-home-7__headline {
-    font-size: 82px;
+    font-size: 58px;
   }
 }
 @media only screen and (min-width: 1200px) and (max-width: 1399px) {
   .sec-1-home-7__headline {
-    font-size: 72px;
+    font-size: 52px;
   }
 }
 @media only screen and (min-width: 992px) and (max-width: 1199px) {
   .sec-1-home-7__headline {
-    font-size: 62px;
+    font-size: 46px;
   }
 }
 @media only screen and (min-width: 768px) and (max-width: 991px) {
   .sec-1-home-7__headline {
-    font-size: 64px;
+    font-size: 46px;
   }
 }
 @media only screen and (min-width: 576px) and (max-width: 767px) {
   .sec-1-home-7__headline {
-    font-size: 52px;
+    font-size: 40px;
   }
 }
 @media (max-width: 574.98px) {
   .sec-1-home-7__headline {
-    font-size: 40px;
+    font-size: 32px;
   }
 }
 .sec-1-home-7__headline-arrow-cover {

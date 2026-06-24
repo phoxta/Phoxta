@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { listCanned, createCanned, deleteCanned, type CannedResponse } from "@/lib/db/ops/agent";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { listCanned, createCanned, deleteCanned } from "@/lib/db/ops/agent";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 const CHANNELS = ["any", "sms", "whatsapp", "email", "web"];
@@ -8,25 +10,24 @@ const BLANK = { title: "", shortcut: "", body: "", channel: "any", is_whatsapp_t
 
 export default function SnippetsPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [items, setItems] = useState<CannedResponse[]>([]);
+  const { data: items = [], loading, error: loadError, reload } = useCachedData(
+    `agent:snippets:${orgId}`,
+    async () => {
+      const { data, error } = await listCanned(orgId);
+      if (error) throw new Error(error);
+      return data;
+    },
+    { ttl: DASHBOARD_TTL },
+  );
   const [form, setForm] = useState({ ...BLANK });
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  async function load() {
-    const { data, error } = await listCanned(orgId);
-    if (error) setError(error);
-    setItems(data);
-    setLoading(false);
-  }
-  useEffect(() => { load(); }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
     if (!form.body.trim()) return;
     const { error } = await createCanned(orgId, form);
     if (error) setError(error);
-    else { setForm({ ...BLANK }); load(); }
+    else { setForm({ ...BLANK }); reload(); }
   }
 
   const snippets = items.filter((i) => !i.is_whatsapp_template);
@@ -36,7 +37,7 @@ export default function SnippetsPage() {
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       <div className="col-lg-5">
         <h6 className="fw-600 mb-3">New snippet / template</h6>
@@ -77,7 +78,7 @@ export default function SnippetsPage() {
                   <div className="fw-600">{c.title || c.shortcut || "Snippet"} <span className="badge bg-neutral-100 neutral-700 fw-500 text-capitalize ms-1">{c.channel}</span></div>
                   <div className="fz-font-sm neutral-500" style={{ whiteSpace: "pre-wrap" }}>{c.body}</div>
                 </div>
-                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await deleteCanned(c.id); load(); }}>Remove</button>
+                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await deleteCanned(c.id); reload(); }}>Remove</button>
               </div>
             ))}
           </div>
@@ -95,7 +96,7 @@ export default function SnippetsPage() {
                   <div className="fz-font-sm neutral-500" style={{ whiteSpace: "pre-wrap" }}>{c.body}</div>
                   {c.whatsapp_template_sid && <div className="fz-font-sm neutral-400">SID: {c.whatsapp_template_sid}</div>}
                 </div>
-                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await deleteCanned(c.id); load(); }}>Remove</button>
+                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await deleteCanned(c.id); reload(); }}>Remove</button>
               </div>
             ))}
           </div>

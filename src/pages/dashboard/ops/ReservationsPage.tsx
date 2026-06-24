@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
     listReservations,
     setReservationStatus,
     listBlackouts,
     createBlackout,
     removeBlackout,
-    type Reservation,
     type ReservationStatus,
-    type Blackout,
 } from "@/lib/db/ops/reservations";
-import { listProducts, type Product } from "@/lib/db/ops/commerce";
+import { listProducts } from "@/lib/db/ops/commerce";
 import AvailabilityCalendar from "./AvailabilityCalendar";
 import { formatPrice } from "@/lib/db/marketplace";
 import type { OpsContext } from "@/layouts/OperatingLayout";
@@ -32,24 +32,20 @@ const days = (a: string, b: string) => Math.max(1, Math.round((new Date(b).getTi
 
 export default function ReservationsPage() {
   const { orgId, console: cfg } = useOutletContext<OpsContext>();
-  const [rows, setRows] = useState<Reservation[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [blackouts, setBlackouts] = useState<Blackout[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error: loadError, reload } = useCachedData(
+    `ops:reservations:${orgId}`,
+    async () => {
+      const [r, b, p] = await Promise.all([listReservations(orgId), listBlackouts(orgId), listProducts(orgId)]);
+      if (r.error) throw new Error(r.error);
+      return { rows: r.data, blackouts: b.data, products: p.data };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const rows = data?.rows ?? [];
+  const products = data?.products ?? [];
+  const blackouts = data?.blackouts ?? [];
   const [error, setError] = useState<string | null>(null);
   const [bForm, setBForm] = useState({ product_id: "", start_date: todayPlus(1), end_date: todayPlus(3), reason: "" });
-
-  async function load() {
-    const [r, b, p] = await Promise.all([listReservations(orgId), listBlackouts(orgId), listProducts(orgId)]);
-    if (r.error) setError(r.error);
-    setRows(r.data);
-    setBlackouts(b.data);
-    setProducts(p.data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    load();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function addBlackout(e: React.FormEvent) {
     e.preventDefault();
@@ -60,7 +56,7 @@ export default function ReservationsPage() {
     const { error } = await createBlackout(orgId, bForm);
     if (error) return setError(error);
     setBForm({ product_id: "", start_date: todayPlus(1), end_date: todayPlus(3), reason: "" });
-    load();
+    reload();
   }
 
   if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
@@ -81,7 +77,7 @@ export default function ReservationsPage() {
 
   return (
     <div>
-      {error && <div className="alert alert-warning py-2 px-3 fz-font-md">{error}</div>}
+      {(error || loadError) && <div className="alert alert-warning py-2 px-3 fz-font-md">{error || loadError}</div>}
 
       <div className="row g-3 mb-4">
         <KPI label="Total reservations" value={rows.length} />
@@ -127,13 +123,13 @@ export default function ReservationsPage() {
                 <div className="d-flex align-items-center gap-2 flex-wrap justify-content-end">
                   <span className={`badge fw-500 text-capitalize ${STYLE[r.status]}`}>{r.status}</span>
                   {r.status === "pending" && (
-                    <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await setReservationStatus(r.id, "confirmed"); load(); }}>Confirm</button>
+                    <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await setReservationStatus(r.id, "confirmed"); reload(); }}>Confirm</button>
                   )}
                   {r.status === "confirmed" && (
-                    <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await setReservationStatus(r.id, "completed"); load(); }}>Complete</button>
+                    <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await setReservationStatus(r.id, "completed"); reload(); }}>Complete</button>
                   )}
                   {(r.status === "pending" || r.status === "confirmed") && (
-                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await setReservationStatus(r.id, "cancelled"); load(); }}>Cancel</button>
+                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await setReservationStatus(r.id, "cancelled"); reload(); }}>Cancel</button>
                   )}
                 </div>
               </div>
@@ -169,7 +165,7 @@ export default function ReservationsPage() {
                 <span className="fw-600">{b.product_name}</span>
                 <span className="fz-font-sm neutral-500"> · {b.start_date} → {b.end_date}{b.reason ? ` · ${b.reason}` : ""}</span>
               </div>
-              <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await removeBlackout(b.id); load(); }}>Remove</button>
+              <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await removeBlackout(b.id); reload(); }}>Remove</button>
             </div>
           ))}
         </div>

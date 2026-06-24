@@ -8,7 +8,7 @@ export default function PricingPage() {
     <>
       <PageMeta
         title="Pricing — Phoxta"
-        description="Simple, transparent pricing for owning an AI-powered business on Phoxta. One monthly subscription per account plus a one-time price per business. Start free, cancel anytime."
+        description="Simple, transparent pricing for owning an AI-powered business on Phoxta. One monthly subscription per account plus a one-time price per business. No free trial — cancel anytime."
         path="/pricing"
       />
       {/* Top padding clears the transparent, absolutely-positioned header so the

@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import {
     listAiAutomations,
@@ -9,30 +11,25 @@ import {
     runAutomation,
     listAutomationRuns,
     type Automation,
-    type AutomationRun,
 } from "@/lib/db/ops/proactive";
 
 export default function ProactivePage() {
     const { orgId } = useOutletContext<OpsContext>();
-    const [autos, setAutos] = useState<Automation[]>([]);
-    const [runs, setRuns] = useState<AutomationRun[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data, loading, error: loadError, reload } = useCachedData(
+        `agent:proactive:${orgId}`,
+        async () => {
+            const [a, r] = await Promise.all([listAiAutomations(orgId), listAutomationRuns(orgId)]);
+            return { autos: a.data, runs: r.data };
+        },
+        { ttl: DASHBOARD_TTL },
+    );
+    const autos = data?.autos ?? [];
+    const runs = data?.runs ?? [];
     const [form, setForm] = useState<{ name: string; action: "ai_briefing" | "ai_task"; schedule: "schedule_daily" | "schedule_weekly"; instruction: string; channel: "email" | "dashboard" }>({ name: "", action: "ai_briefing", schedule: "schedule_daily", instruction: "", channel: "email" });
     const [busy, setBusy] = useState(false);
     const [running, setRunning] = useState<string | null>(null);
     const [output, setOutput] = useState<{ id: string; text: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    async function load() {
-        const [a, r] = await Promise.all([listAiAutomations(orgId), listAutomationRuns(orgId)]);
-        setAutos(a.data);
-        setRuns(r.data);
-        setLoading(false);
-    }
-    useEffect(() => {
-        load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [orgId]);
 
     async function create(e: React.FormEvent) {
         e.preventDefault();
@@ -43,7 +40,7 @@ export default function ProactivePage() {
         setBusy(false);
         if (error) return setError(error);
         setForm({ name: "", action: "ai_briefing", schedule: "schedule_daily", instruction: "", channel: "email" });
-        load();
+        reload();
     }
     async function run(a: Automation) {
         setRunning(a.id);
@@ -53,7 +50,7 @@ export default function ProactivePage() {
         setRunning(null);
         if (error) return setError(error);
         setOutput({ id: a.id, text: out ?? "" });
-        load();
+        reload();
     }
 
     const scheduleLabel = (t: string) => (t === "schedule_weekly" ? "Weekly" : "Daily");
@@ -77,7 +74,7 @@ export default function ProactivePage() {
                         <select className="form-select rounded-3" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value as typeof form.channel })}><option value="email">Email it to me</option><option value="dashboard">Dashboard only</option></select>
                         <button className="btn btn-dark rounded-3" disabled={busy}>{busy ? "…" : "Create automation"}</button>
                     </form>
-                    {error && <div className="alert alert-warning py-2 px-3 fz-font-sm mt-3 mb-0">{error}</div>}
+                    {(error || loadError) && <div className="alert alert-warning py-2 px-3 fz-font-sm mt-3 mb-0">{error || loadError}</div>}
                 </div>
             </div>
 
@@ -97,8 +94,8 @@ export default function ProactivePage() {
                                         </div>
                                         <div className="d-flex align-items-center gap-2">
                                             <button className="btn btn-dark btn-sm rounded-pill px-3" onClick={() => run(a)} disabled={running === a.id}>{running === a.id ? "Running…" : "Run now"}</button>
-                                            <div className="form-check form-switch m-0"><input className="form-check-input" type="checkbox" checked={a.active} onChange={async (e) => { await toggleAutomation(a.id, e.target.checked); load(); }} /></div>
-                                            <button className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await removeAutomation(a.id); load(); }}>Remove</button>
+                                            <div className="form-check form-switch m-0"><input className="form-check-input" type="checkbox" checked={a.active} onChange={async (e) => { await toggleAutomation(a.id, e.target.checked); reload(); }} /></div>
+                                            <button className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await removeAutomation(a.id); reload(); }}>Remove</button>
                                         </div>
                                     </div>
                                     {output?.id === a.id && <div className="mt-2 p-2 bg-neutral-50 rounded-3 fz-font-sm neutral-900" style={{ whiteSpace: "pre-wrap" }}>{output.text}</div>}

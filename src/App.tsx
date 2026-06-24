@@ -10,6 +10,7 @@ import AgentLayout from "@/layouts/AgentLayout";
 // Pages are lazy-loaded so each route ships its own chunk (smaller first load).
 // Marketing site — the curated, public Phoxta pages.
 const Home1Page = lazy(() => import("@/pages/Home1Page"));
+const HomeV2Page = lazy(() => import("@/pages/HomeV2Page")); // /home-v2 (rebuilt homepage preview)
 const Home13Page = lazy(() => import("@/pages/Home13Page")); // /invest
 // Solutions pages (linked from the nav's Solutions dropdown)
 const MarketingSolutionPage = lazy(() => import("@/pages/MarketingSolutionPage")); // /marketing
@@ -144,6 +145,8 @@ export default function App() {
       {/* ── Marketing site (public, curated) ───────────────────────────── */}
       <Route element={<MainLayout headerStyle={4} footerStyle={1} noHeader />}>
         <Route path="/" element={<Home1Page />} />
+        {/* Rebuilt homepage — preview at /home-v2 before promoting to "/" */}
+        <Route path="/home-v2" element={<HomeV2Page />} />
       </Route>
       <Route element={<MainLayout headerStyle={16} footerStyle={13} noFooter headerProps={{ light: true }} />}>
         <Route path="/invest" element={<Home13Page />} />

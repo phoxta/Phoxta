@@ -1,26 +1,21 @@
-import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { getAgentSummary, getAgentConfig, CAPABILITY_LABELS, type AgentSummary, type AgentConfig } from "@/lib/db/ops/agent";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { getAgentSummary, getAgentConfig, CAPABILITY_LABELS, type AgentSummary } from "@/lib/db/ops/agent";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 export default function AgentOverviewPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [s, setS] = useState<AgentSummary>({});
-  const [config, setConfig] = useState<AgentConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    Promise.all([getAgentSummary(orgId), getAgentConfig(orgId)]).then(([sum, cfg]) => {
-      if (!active) return;
-      setS(sum.data);
-      setConfig(cfg.data);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [orgId]);
+  const { data, loading } = useCachedData(
+    `agent:overview:${orgId}`,
+    async () => {
+      const [sum, cfg] = await Promise.all([getAgentSummary(orgId), getAgentConfig(orgId)]);
+      return { s: sum.data, config: cfg.data };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const s = data?.s ?? ({} as AgentSummary);
+  const config = data?.config ?? null;
 
   const n = (k: string) => (typeof s[k] === "number" ? (s[k] as number) : 0);
   const byLocation = (s.calls_by_location as Record<string, number>) ?? {};

@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
-import { getBusiness, listMembers, type Organization, type Member } from "@/lib/db/organizations";
-import { getSubscriptionForOrg, type Subscription } from "@/lib/db/billing";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { getBusiness, listMembers, type Organization } from "@/lib/db/organizations";
+import { getSubscriptionForOrg } from "@/lib/db/billing";
 import BusinessSiteCard from "@/pages/dashboard/business/BusinessSiteCard";
 import BusinessBrandCard from "@/pages/dashboard/business/BusinessBrandCard";
 import BusinessProfileCard from "@/pages/dashboard/business/BusinessProfileCard";
@@ -24,12 +26,29 @@ const INVITE_ROLES: { value: Invitation["role"]; label: string }[] = [
 export default function BusinessDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
-  const [org, setOrg] = useState<Organization | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [sub, setSub] = useState<Subscription | null>(null);
-  const [invites, setInvites] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error, reload } = useCachedData(
+    id ? `business:${id}` : "business:none",
+    async () => {
+      if (!id) return null;
+      const [o, m, s, inv] = await Promise.all([
+        getBusiness(id),
+        listMembers(id),
+        getSubscriptionForOrg(id),
+        listInvitations(id),
+      ]);
+      if (o.error) throw new Error(o.error);
+      return { org: o.data, members: m.data, sub: s.data, invites: inv.data };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const members = data?.members ?? [];
+  const sub = data?.sub ?? null;
+  const invites = data?.invites ?? [];
+
+  // Local patch applied over the cached org (e.g. after the site card saves). It
+  // resets naturally because this detail route remounts per business id.
+  const [orgPatch, setOrgPatch] = useState<Partial<Organization>>({});
+  const org = data?.org ? { ...data.org, ...orgPatch } : null;
 
   // Invite form
   const [inviteEmail, setInviteEmail] = useState("");
@@ -39,30 +58,6 @@ export default function BusinessDetailPage() {
 
   const myRole = members.find((m) => m.user_id === user?.id)?.role;
   const canManage = myRole === "owner" || myRole === "admin";
-
-  async function reloadInvites(orgId: string) {
-    const { data } = await listInvitations(orgId);
-    setInvites(data);
-  }
-
-  useEffect(() => {
-    if (!id) return;
-    let active = true;
-    Promise.all([getBusiness(id), listMembers(id), getSubscriptionForOrg(id), listInvitations(id)]).then(
-      ([o, m, s, inv]) => {
-        if (!active) return;
-        if (o.error) setError(o.error);
-        setOrg(o.data);
-        setMembers(m.data);
-        setSub(s.data);
-        setInvites(inv.data);
-        setLoading(false);
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [id]);
 
   async function onInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -76,7 +71,7 @@ export default function BusinessDetailPage() {
     } else {
       setInviteEmail("");
       setInviteMsg("Invitation sent.");
-      reloadInvites(id);
+      reload();
     }
   }
 
@@ -84,7 +79,7 @@ export default function BusinessDetailPage() {
     if (!id) return;
     const { error: revErr } = await revokeInvitation(inviteId);
     if (revErr) setInviteMsg(revErr);
-    else reloadInvites(id);
+    else reload();
   }
 
   const pendingInvites = invites.filter((i) => i.status === "pending");
@@ -157,7 +152,7 @@ export default function BusinessDetailPage() {
           <BusinessSiteCard
             org={org}
             canManage={canManage}
-            onUpdated={(patch) => setOrg((prev) => (prev ? { ...prev, ...patch } : prev))}
+            onUpdated={(patch) => setOrgPatch((p) => ({ ...p, ...patch }))}
           />
         </div>
 

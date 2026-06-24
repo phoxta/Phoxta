@@ -1,30 +1,26 @@
-import { useEffect, useState } from "react";
-import { listVariants, setVariantStock, generateVariants, type Variant } from "@/lib/db/ops/variants";
+import { useState } from "react";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { listVariants, setVariantStock, generateVariants } from "@/lib/db/ops/variants";
 
 // Editable size × colour stock grid for one product (retail/fashion).
 export default function VariantMatrix({ orgId, productId }: { orgId: string; productId: string }) {
-  const [variants, setVariants] = useState<Variant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: variants = [], loading, reload, setData: setVariants } = useCachedData(
+    `ops:variants:${productId}`,
+    async () => (await listVariants(productId)).data,
+    { ttl: DASHBOARD_TTL },
+  );
   const [busy, setBusy] = useState(false);
-
-  async function load() {
-    const { data } = await listVariants(productId);
-    setVariants(data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    load();
-  }, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function gen() {
     setBusy(true);
     await generateVariants(orgId, productId);
-    await load();
+    await reload();
     setBusy(false);
   }
   async function save(id: string, val: number) {
     await setVariantStock(id, val);
-    setVariants((vs) => vs.map((v) => (v.id === id ? { ...v, stock: Math.max(0, Math.round(val) || 0) } : v)));
+    setVariants((vs) => (vs ?? []).map((v) => (v.id === id ? { ...v, stock: Math.max(0, Math.round(val) || 0) } : v)));
   }
 
   if (loading) return <div className="fz-font-sm neutral-500 p-2">Loading variants…</div>;
@@ -70,7 +66,7 @@ export default function VariantMatrix({ orgId, productId }: { orgId: string; pro
                       className={`form-control form-control-sm rounded-2 ${v.stock === 0 ? "border-warning" : ""}`}
                       style={{ width: 64 }}
                       value={v.stock}
-                      onChange={(e) => setVariants((vs) => vs.map((x) => (x.id === v.id ? { ...x, stock: Number(e.target.value) } : x)))}
+                      onChange={(e) => setVariants((vs) => (vs ?? []).map((x) => (x.id === v.id ? { ...x, stock: Number(e.target.value) } : x)))}
                       onBlur={(e) => save(v.id, Number(e.target.value))}
                     />
                   </td>

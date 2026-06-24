@@ -27,7 +27,7 @@ const PLANS = [
         title: "Starter",
         priceClass: "text-price-starter",
         desc: "Launch your first AI-powered business and start serving customers.",
-        btnText: "Start free",
+        btnText: "Get started",
         features: [
             "1 business",
             "AI agent on every channel",
@@ -42,7 +42,7 @@ const PLANS = [
         title: "Growth",
         priceClass: "text-price-growth",
         desc: "Grow an established business on your own brand and domain.",
-        btnText: "Start free",
+        btnText: "Get started",
         features: [
             "Up to 3 businesses",
             "Connect your own custom domain",
@@ -57,7 +57,7 @@ const PLANS = [
         title: "Scale",
         priceClass: "text-price-scale",
         desc: "Run multiple businesses with a team and advanced AI.",
-        btnText: "Start free",
+        btnText: "Get started",
         features: [
             "Up to 10 businesses",
             "5M AI tokens / month",

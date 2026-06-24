@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
   listInvoices,
   createInvoice,
@@ -8,7 +10,6 @@ import {
   createCustomerSubscription,
   setSubscriptionStatus,
   type Invoice,
-  type CustomerSubscription,
 } from "@/lib/db/ops/invoicing";
 import { invokeAction } from "@/lib/db/ops/ai";
 import { formatPrice } from "@/lib/db/marketplace";
@@ -28,9 +29,17 @@ const INV_STYLE: Record<Invoice["status"], string> = {
 
 export default function InvoicingPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [subs, setSubs] = useState<CustomerSubscription[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error: loadError, reload } = useCachedData(
+    `ops:invoicing:${orgId}`,
+    async () => {
+      const [i, s] = await Promise.all([listInvoices(orgId), listCustomerSubscriptions(orgId)]);
+      if (i.error) throw new Error(i.error);
+      return { invoices: i.data, subs: s.data };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const invoices = data?.invoices ?? [];
+  const subs = data?.subs ?? [];
   const [error, setError] = useState<string | null>(null);
 
   const [iForm, setIForm] = useState({ customer: "", description: "", amount: "", due: "" });
@@ -40,17 +49,6 @@ export default function InvoicingPage() {
   const [nlLoading, setNlLoading] = useState(false);
   const [dunning, setDunning] = useState<(Dunning & { id: string }) | null>(null);
   const [dunningId, setDunningId] = useState<string | null>(null);
-
-  async function load() {
-    const [i, s] = await Promise.all([listInvoices(orgId), listCustomerSubscriptions(orgId)]);
-    if (i.error) setError(i.error);
-    setInvoices(i.data);
-    setSubs(s.data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    load();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function addInvoice(e: React.FormEvent) {
     e.preventDefault();
@@ -63,7 +61,7 @@ export default function InvoicingPage() {
     if (error) setError(error);
     else {
       setIForm({ customer: "", description: "", amount: "", due: "" });
-      load();
+      reload();
     }
   }
 
@@ -86,7 +84,7 @@ export default function InvoicingPage() {
     if (createErr) setError(createErr);
     else {
       setNlText("");
-      load();
+      reload();
     }
   }
 
@@ -106,7 +104,7 @@ export default function InvoicingPage() {
     if (error) setError(error);
     else {
       setSForm({ plan: "", amount: "", interval: "monthly" });
-      load();
+      reload();
     }
   }
 
@@ -114,7 +112,7 @@ export default function InvoicingPage() {
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       {/* Invoices */}
       <div className="col-lg-7">
@@ -146,9 +144,9 @@ export default function InvoicingPage() {
                 </div>
                 <div className="d-flex align-items-center gap-2">
                   <span className={`badge fw-500 text-capitalize ${INV_STYLE[inv.status]}`}>{inv.status}</span>
-                  {inv.status === "draft" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await setInvoiceStatus(inv.id, "sent"); load(); }}>Send</button>}
+                  {inv.status === "draft" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await setInvoiceStatus(inv.id, "sent"); reload(); }}>Send</button>}
                   {inv.status === "sent" && <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={() => draftDunning(inv.id)} disabled={dunningId === inv.id}>{dunningId === inv.id ? "…" : "✨ Remind"}</button>}
-                  {inv.status === "sent" && <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await setInvoiceStatus(inv.id, "paid"); load(); }}>Mark paid</button>}
+                  {inv.status === "sent" && <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await setInvoiceStatus(inv.id, "paid"); reload(); }}>Mark paid</button>}
                 </div>
               </div>
             ))}
@@ -196,9 +194,9 @@ export default function InvoicingPage() {
                 <div className="d-flex align-items-center gap-2">
                   <span className={`badge fw-500 text-capitalize ${s.status === "active" ? "bg-success-subtle text-success" : "bg-neutral-100 neutral-500"}`}>{s.status}</span>
                   {s.status === "active" ? (
-                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await setSubscriptionStatus(s.id, "paused"); load(); }}>Pause</button>
+                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await setSubscriptionStatus(s.id, "paused"); reload(); }}>Pause</button>
                   ) : s.status === "paused" ? (
-                    <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none" onClick={async () => { await setSubscriptionStatus(s.id, "active"); load(); }}>Resume</button>
+                    <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none" onClick={async () => { await setSubscriptionStatus(s.id, "active"); reload(); }}>Resume</button>
                   ) : null}
                 </div>
               </div>

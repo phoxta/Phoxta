@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
   listPages,
   createPage,
   publishPage,
   unpublishPage,
   revalidatePage,
-  type CmsPage,
 } from "@/lib/db/ops/cms";
 import { invokeAction, drainEmbeddings } from "@/lib/db/ops/ai";
 import type { OpsContext } from "@/layouts/OperatingLayout";
@@ -16,23 +17,20 @@ type Scaffold = { pages: { title: string; slug: string; body: string }[] };
 
 export default function ContentPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [pages, setPages] = useState<CmsPage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: pages = [], loading, error: loadError, reload } = useCachedData(
+    `ops:content:${orgId}`,
+    async () => {
+      const { data, error } = await listPages(orgId);
+      if (error) throw new Error(error);
+      return data;
+    },
+    { ttl: DASHBOARD_TTL },
+  );
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", body: "" });
   const [brief, setBrief] = useState("");
   const [genLoading, setGenLoading] = useState(false);
   const [scaffoldLoading, setScaffoldLoading] = useState(false);
-
-  async function load() {
-    const { data, error } = await listPages(orgId);
-    if (error) setError(error);
-    setPages(data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    load();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +39,7 @@ export default function ContentPage() {
     if (error) setError(error);
     else {
       setForm({ title: "", body: "" });
-      load();
+      reload();
     }
   }
 
@@ -70,13 +68,13 @@ export default function ContentPage() {
     }
     setScaffoldLoading(false);
     setBrief("");
-    load();
+    reload();
   }
 
   return (
     <div>
       <h5 className="fw-600 mb-3">Pages</h5>
-      {error && <div className="alert alert-warning py-2 px-3 fz-font-md">{error}</div>}
+      {(error || loadError) && <div className="alert alert-warning py-2 px-3 fz-font-md">{error || loadError}</div>}
 
       <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
         <h6 className="fw-600 mb-3">✨ AI content</h6>
@@ -115,11 +113,11 @@ export default function ContentPage() {
               <div className="d-flex align-items-center gap-2">
                 <span className={`badge fw-500 text-capitalize ${p.status === "published" ? "bg-success-subtle text-success" : "bg-neutral-100 neutral-700"}`}>{p.status}</span>
                 {p.status === "draft" ? (
-                  <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await publishPage(p.id); drainEmbeddings(); load(); }}>Publish</button>
+                  <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await publishPage(p.id); drainEmbeddings(); reload(); }}>Publish</button>
                 ) : (
                   <>
-                    <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await revalidatePage(p.id); load(); }}>Revalidate</button>
-                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await unpublishPage(p.id); load(); }}>Unpublish</button>
+                    <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await revalidatePage(p.id); reload(); }}>Revalidate</button>
+                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await unpublishPage(p.id); reload(); }}>Unpublish</button>
                   </>
                 )}
               </div>

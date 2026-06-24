@@ -1,23 +1,24 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { listKnowledge, addKnowledge, removeKnowledge, type KnowledgeDoc } from "@/lib/db/ops/knowledge";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { listKnowledge, addKnowledge, removeKnowledge } from "@/lib/db/ops/knowledge";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 export default function KnowledgePage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
+  const { data: docs = [], loading, error: loadError, reload } = useCachedData(
+    `agent:knowledge:${orgId}`,
+    async () => {
+      const { data, error } = await listKnowledge(orgId);
+      if (error) throw new Error(error);
+      return data;
+    },
+    { ttl: DASHBOARD_TTL },
+  );
   const [form, setForm] = useState({ title: "", content: "" });
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function load() {
-    const { data, error } = await listKnowledge(orgId);
-    if (error) setError(error);
-    setDocs(data);
-    setLoading(false);
-  }
-  useEffect(() => { load(); }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -26,12 +27,12 @@ export default function KnowledgePage() {
     const { error } = await addKnowledge(orgId, form.title.trim(), form.content.trim());
     setSaving(false);
     if (error) setError(error);
-    else { setForm({ title: "", content: "" }); load(); }
+    else { setForm({ title: "", content: "" }); reload(); }
   }
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       <div className="col-lg-5">
         <h6 className="fw-600 mb-2">Teach your agent</h6>
@@ -59,7 +60,7 @@ export default function KnowledgePage() {
                   {d.title && <div className="fw-600">{d.title}</div>}
                   <div className="fz-font-sm neutral-500" style={{ whiteSpace: "pre-wrap" }}>{d.content}</div>
                 </div>
-                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await removeKnowledge(d.id); load(); }}>Remove</button>
+                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await removeKnowledge(d.id); reload(); }}>Remove</button>
               </div>
             ))}
           </div>

@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
-import { getMyProfile, type UserProfile } from "@/lib/db/profile";
-import { listMyOrganizations, type Organization } from "@/lib/db/organizations";
-import { listAiUsageThisMonth } from "@/lib/db/ai";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { profileQuery, organizationsQuery, aiUsageMonthQuery } from "@/lib/cache/dashboardQueries";
+import { type UserProfile } from "@/lib/db/profile";
 
 const PROFILE_FIELDS: (keyof UserProfile)[] = [
   "full_name",
@@ -24,26 +23,13 @@ function completion(profile: UserProfile | null): number {
 
 export default function DashboardHomePage() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [orgs, setOrgs] = useState<Array<{ role: string; organization: Organization }>>([]);
-  const [aiTokens, setAiTokens] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    Promise.all([getMyProfile(), listMyOrganizations(), listAiUsageThisMonth()]).then(([p, o, a]) => {
-      if (!active) return;
-      if (p.error) setError(p.error);
-      else setProfile(p.data);
-      if (!o.error) setOrgs(o.data);
-      setAiTokens(a.data.reduce((sum, u) => sum + u.tokens, 0));
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // All three reads come from the shared, warmed cache — so the first paint after
+  // login is instant (Tier-1 warming primed them) and revisits never re-flash.
+  const { data: profile = null, loading: pLoading, error } = useCachedData(profileQuery.key, profileQuery.fetch);
+  const { data: orgs = [], loading: oLoading } = useCachedData(organizationsQuery.key, organizationsQuery.fetch);
+  const { data: aiUsage = [], loading: aLoading } = useCachedData(aiUsageMonthQuery.key, aiUsageMonthQuery.fetch);
+  const loading = pLoading || oLoading || aLoading;
+  const aiTokens = aiUsage.reduce((sum, u) => sum + u.tokens, 0);
 
   const name = profile?.full_name?.trim() || user?.email?.split("@")[0] || "there";
   const pct = completion(profile);

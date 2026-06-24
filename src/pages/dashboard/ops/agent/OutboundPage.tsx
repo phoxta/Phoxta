@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
   listCampaigns,
   createCampaign,
@@ -7,9 +9,8 @@ import {
   listTasks,
   runAgentWorker,
   type OutboundCampaign,
-  type OutboundTask,
 } from "@/lib/db/ops/agent";
-import { listContacts, type Contact } from "@/lib/db/ops/crm";
+import { listContacts } from "@/lib/db/ops/crm";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 const TYPES = [
@@ -28,25 +29,21 @@ const TASK_STYLE: Record<string, string> = {
 
 export default function OutboundPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [campaigns, setCampaigns] = useState<OutboundCampaign[]>([]);
-  const [tasks, setTasks] = useState<OutboundTask[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error: loadError, reload } = useCachedData(
+    `agent:outbound:${orgId}`,
+    async () => {
+      const [c, t, ct] = await Promise.all([listCampaigns(orgId), listTasks(orgId), listContacts(orgId)]);
+      if (c.error) throw new Error(c.error);
+      return { campaigns: c.data, tasks: t.data, contacts: ct.data };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const campaigns = data?.campaigns ?? [];
+  const tasks = data?.tasks ?? [];
+  const contacts = data?.contacts ?? [];
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", type: "cold_call", channel_pref: "call", goal: "" });
   const [msg, setMsg] = useState<string | null>(null);
-
-  async function load() {
-    const [c, t, ct] = await Promise.all([listCampaigns(orgId), listTasks(orgId), listContacts(orgId)]);
-    if (c.error) setError(c.error);
-    setCampaigns(c.data);
-    setTasks(t.data);
-    setContacts(ct.data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    load();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +52,7 @@ export default function OutboundPage() {
     if (error) setError(error);
     else {
       setForm({ name: "", type: "cold_call", channel_pref: "call", goal: "" });
-      load();
+      reload();
     }
   }
 
@@ -65,21 +62,21 @@ export default function OutboundPage() {
     if (error) setError(error);
     else {
       setMsg(`Queued ${count} ${c.name} task(s).`);
-      load();
+      reload();
     }
   }
 
   function runPending() {
     runAgentWorker();
     setMsg("Running the outbound worker…");
-    setTimeout(load, 1800);
+    setTimeout(reload, 1800);
   }
 
   if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       <div className="col-lg-6">
         <h6 className="fw-600 mb-3">Campaigns</h6>

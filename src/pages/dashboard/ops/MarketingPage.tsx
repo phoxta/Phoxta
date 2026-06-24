@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
   listCampaigns,
   createCampaign,
@@ -8,11 +10,10 @@ import {
   createAutomation,
   toggleAutomation,
   type Campaign,
-  type Automation,
   type AutomationTrigger,
   type AutomationAction,
 } from "@/lib/db/ops/marketing";
-import { invokeAction, drainWorkflows, listWorkflowRuns, type WorkflowRun } from "@/lib/db/ops/ai";
+import { invokeAction, drainWorkflows, listWorkflowRuns } from "@/lib/db/ops/ai";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import PromoCodes from "./PromoCodes";
 
@@ -46,14 +47,22 @@ const CAMPAIGN_STYLE: Record<Campaign["status"], string> = {
 
 export default function MarketingPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [automations, setAutomations] = useState<Automation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error: loadError, reload } = useCachedData(
+    `ops:marketing:${orgId}`,
+    async () => {
+      const [c, a, w] = await Promise.all([listCampaigns(orgId), listAutomations(orgId), listWorkflowRuns(orgId)]);
+      if (c.error) throw new Error(c.error);
+      return { campaigns: c.data, automations: a.data, runs: w.data };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const campaigns = data?.campaigns ?? [];
+  const automations = data?.automations ?? [];
+  const runs = data?.runs ?? [];
   const [error, setError] = useState<string | null>(null);
 
   const [cForm, setCForm] = useState({ name: "", channel: "email" as "email" | "sms", subject: "" });
   const [aForm, setAForm] = useState({ name: "", trigger: "contact_created" as AutomationTrigger, action: "send_email" as AutomationAction });
-  const [runs, setRuns] = useState<WorkflowRun[]>([]);
 
   // AI
   const [genForm, setGenForm] = useState({ goal: "", channel: "email", audience: "all customers" });
@@ -62,15 +71,6 @@ export default function MarketingPage() {
   const [segDesc, setSegDesc] = useState("");
   const [seg, setSeg] = useState<(Segment & { count: number }) | null>(null);
   const [segLoading, setSegLoading] = useState(false);
-
-  async function load() {
-    const [c, a, w] = await Promise.all([listCampaigns(orgId), listAutomations(orgId), listWorkflowRuns(orgId)]);
-    if (c.error) setError(c.error);
-    setCampaigns(c.data);
-    setAutomations(a.data);
-    setRuns(w.data);
-    setLoading(false);
-  }
 
   async function genCampaign() {
     if (!genForm.goal.trim()) return;
@@ -97,11 +97,8 @@ export default function MarketingPage() {
 
   async function runPending() {
     drainWorkflows();
-    setTimeout(load, 1500);
+    setTimeout(reload, 1500);
   }
-  useEffect(() => {
-    load();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function addCampaign(e: React.FormEvent) {
     e.preventDefault();
@@ -111,7 +108,7 @@ export default function MarketingPage() {
     else {
       setCForm({ name: "", channel: "email", subject: "" });
       setGenBody("");
-      load();
+      reload();
     }
   }
 
@@ -122,7 +119,7 @@ export default function MarketingPage() {
     if (error) setError(error);
     else {
       setAForm({ name: "", trigger: "contact_created", action: "send_email" });
-      load();
+      reload();
     }
   }
 
@@ -130,7 +127,7 @@ export default function MarketingPage() {
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       <div className="col-12"><PromoCodes orgId={orgId} /></div>
 
@@ -178,7 +175,7 @@ export default function MarketingPage() {
                 </div>
                 <div className="d-flex align-items-center gap-2">
                   <span className={`badge fw-500 text-capitalize ${CAMPAIGN_STYLE[c.status]}`}>{c.status}</span>
-                  {c.status !== "sent" && <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await sendCampaign(orgId, c.id); load(); }}>Send</button>}
+                  {c.status !== "sent" && <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await sendCampaign(orgId, c.id); reload(); }}>Send</button>}
                 </div>
               </div>
             ))}
@@ -232,7 +229,7 @@ export default function MarketingPage() {
                     <div className="fz-font-sm neutral-500">When {trig} → {act}</div>
                   </div>
                   <div className="form-check form-switch m-0">
-                    <input className="form-check-input" type="checkbox" checked={a.active} onChange={async (e) => { await toggleAutomation(a.id, e.target.checked); load(); }} />
+                    <input className="form-check-input" type="checkbox" checked={a.active} onChange={async (e) => { await toggleAutomation(a.id, e.target.checked); reload(); }} />
                   </div>
                 </div>
               );

@@ -2,9 +2,13 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import HeaderNav from "@/shared/header/HeaderNav";
-// Homepage hero. The shared site nav (HeaderNav) overlays the dark hero in its
-// light variant — the same menu section used on every page. The global layout
-// header is suppressed for the homepage via MainLayout's `noHeader` prop.
+
+// Home v2 hero — the studio homepage hero (sec-1-home-4 UI) with a sharper,
+// outcome-led headline and an explicit DUAL CTA (primary: browse the
+// marketplace · secondary: see how it works), per the conversion best-practice
+// audit. UI/markup is unchanged from the studio template; only copy + the CTA
+// group are new. The preview route renders with `noHeader`, so the hero carries
+// the shared site nav itself (HeaderNav light), exactly like the live homepage.
 
 const ARROW_SVG = (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -32,10 +36,9 @@ const CARDS_IMGS = [
 
 const TAGS = ["E-commerce", "Local services", "Content & creator", "SaaS", "Marketplaces"];
 
-export default function Section1() {
+export default function Hero() {
     const [videoOpen, setVideoOpen] = useState(false);
 
-    // Close the video popup on Escape.
     useEffect(() => {
         if (!videoOpen) return;
         const onKey = (e: KeyboardEvent) => {
@@ -45,10 +48,29 @@ export default function Section1() {
         return () => document.removeEventListener("keydown", onKey);
     }, [videoOpen]);
 
+    // Smooth-scroll to the How-it-works section. Native hash jumps don't work
+    // under GSAP ScrollSmoother (the content is transform-translated), so route
+    // through the live smoother instance when present, else fall back.
+    const onSeeHow = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        const el = document.getElementById("how-it-works");
+        if (!el) return;
+        try {
+            const mod = await import("gsap/ScrollSmoother");
+            // deno-lint-ignore no-explicit-any
+            const ss = (mod.default as unknown as { get?: () => { scrollTo?: (t: Element, s?: boolean, p?: string) => void } | undefined })?.get?.();
+            if (ss?.scrollTo) {
+                ss.scrollTo(el, true, "top top");
+                return;
+            }
+        } catch {
+            /* fall through to native */
+        }
+        el.scrollIntoView({ behavior: "smooth" });
+    };
+
     return (
         <div className="bg-neutral-50">
-            {/* Portal to <body> so the overlay isn't trapped inside the GSAP
-                ScrollSmoother transform (which would break position: fixed). */}
             {videoOpen &&
                 createPortal(
                     <div
@@ -91,14 +113,50 @@ export default function Section1() {
                         <div className="row align-items-start">
                             <div className="col-xxl-6 col-lg-6 mb-5 mb-lg-0 pe-xxl-5">
                                 <h4 className="sec-1-home-4__headline fw-600 text-white mb-3 mb-md-4 lh-1">
-                                    Launch niche businesses powered entirely by automated AI pipelines.
+                                    Own a validated business that runs itself.
                                 </h4>
                                 <p className="text-white fz-font-lg mb-4 mb-md-5" style={{ opacity: 0.85, maxWidth: 540 }}>
-                                    Fully operational from day one. Zero coding, and 100% automated growth from a single, centralized command center.
+                                    Pick a vetted, AI-powered business from the marketplace, make it your own — brand,
+                                    domain and payments — and go live in days. A single AI agent runs sales and support
+                                    across every channel, 24/7.
                                 </p>
 
-                                {/* "How we work" block carried over from the original homepage hero */}
-                                <div className="at-hero-video mt-40" style={{ maxWidth: 220 }}>
+                                {/* Dual CTA — primary (browse) + secondary (how it works) */}
+                                <div className="d-flex flex-wrap align-items-center gap-3 gap-md-4 mb-40">
+                                    <div className="at-btn-group at_fade_anim" data-delay=".3" data-fade-from="bottom" data-ease="bounce">
+                                        <Link to="/marketplace" className="at-btn-circle">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 16 15" fill="none">
+                                                <path d="M0.0001297 8.99993L0 3.00407e-05L2 0L2.0001 6.99993L12.1719 7.00003L8.22224 3.05027L9.63644 1.63606L16.0003 8.00003L9.63644 14.364L8.22224 12.9497L12.1719 9.00003L0.0001297 8.99993Z" fill="currentColor" />
+                                            </svg>
+                                        </Link>
+                                        <Link to="/marketplace" className="at-btn z-index-1">
+                                            Browse the marketplace
+                                        </Link>
+                                        <Link to="/marketplace" className="at-btn-circle">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 16 15" fill="none">
+                                                <path d="M0.0001297 8.99993L0 3.00407e-05L2 0L2.0001 6.99993L12.1719 7.00003L8.22224 3.05027L9.63644 1.63606L16.0003 8.00003L9.63644 14.364L8.22224 12.9497L12.1719 9.00003L0.0001297 8.99993Z" fill="currentColor" />
+                                            </svg>
+                                        </Link>
+                                    </div>
+                                    <a
+                                        href="#how-it-works"
+                                        onClick={onSeeHow}
+                                        className="at-btn common-white text-uppercase bg-transparent rounded-0 p-0 pb-2"
+                                        style={{ borderBottom: "1px solid rgba(255,255,255,.55)" }}
+                                    >
+                                        <span className="text-uppercase">
+                                            <span className="text-1">See how it works</span>
+                                            <span className="text-2">See how it works</span>
+                                        </span>
+                                        <i>
+                                            {ARROW_SVG}
+                                            {ARROW_SVG}
+                                        </i>
+                                    </a>
+                                </div>
+
+                                {/* "How we work" video block carried over from the studio hero */}
+                                <div className="at-hero-video mt-10" style={{ maxWidth: 220 }}>
                                     <div className="rounded-3 overflow-hidden">
                                         <video
                                             className="img-cover"

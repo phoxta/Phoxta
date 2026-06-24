@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
   listServices,
   createService,
@@ -7,8 +9,6 @@ import {
   listBookings,
   createBooking,
   setBookingStatus,
-  type Service,
-  type Booking,
   type BookingStatus,
 } from "@/lib/db/ops/bookings";
 import { invokeAction } from "@/lib/db/ops/ai";
@@ -28,9 +28,17 @@ const BOOKING_STYLE: Record<BookingStatus, string> = {
 
 export default function BookingsPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [services, setServices] = useState<Service[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error: loadError, reload } = useCachedData(
+    `ops:bookings:${orgId}`,
+    async () => {
+      const [s, b] = await Promise.all([listServices(orgId), listBookings(orgId)]);
+      if (s.error) throw new Error(s.error);
+      return { services: s.data, bookings: b.data };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const services = data?.services ?? [];
+  const bookings = data?.bookings ?? [];
   const [error, setError] = useState<string | null>(null);
 
   const [sForm, setSForm] = useState({ name: "", duration: "30", price: "" });
@@ -42,17 +50,6 @@ export default function BookingsPage() {
   const [reminders, setReminders] = useState<Record<string, string>>({});
   const [aiBusy, setAiBusy] = useState<string | null>(null);
 
-  async function load() {
-    const [s, b] = await Promise.all([listServices(orgId), listBookings(orgId)]);
-    if (s.error) setError(s.error);
-    setServices(s.data);
-    setBookings(b.data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    load();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
-
   async function addService(e: React.FormEvent) {
     e.preventDefault();
     if (!sForm.name.trim()) return;
@@ -60,7 +57,7 @@ export default function BookingsPage() {
     if (error) setError(error);
     else {
       setSForm({ name: "", duration: "30", price: "" });
-      load();
+      reload();
     }
   }
 
@@ -75,7 +72,7 @@ export default function BookingsPage() {
     if (error) setError(error);
     else {
       setBForm({ serviceId: "", customer: "", start: "" });
-      load();
+      reload();
     }
   }
 
@@ -100,7 +97,7 @@ export default function BookingsPage() {
     if (createErr) setError(createErr);
     else {
       setNlText("");
-      load();
+      reload();
     }
   }
 
@@ -122,7 +119,7 @@ export default function BookingsPage() {
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       {/* Services */}
       <div className="col-lg-5">
@@ -146,7 +143,7 @@ export default function BookingsPage() {
                   <div className="fz-font-sm neutral-500">{s.duration_min} min · {formatPrice(s.price_cents, s.currency)}</div>
                 </div>
                 <div className="form-check form-switch m-0">
-                  <input className="form-check-input" type="checkbox" checked={s.active} onChange={async (e) => { await toggleService(s.id, e.target.checked); load(); }} />
+                  <input className="form-check-input" type="checkbox" checked={s.active} onChange={async (e) => { await toggleService(s.id, e.target.checked); reload(); }} />
                 </div>
               </div>
             ))}
@@ -199,9 +196,9 @@ export default function BookingsPage() {
                     <span className={`badge fw-500 text-capitalize ${BOOKING_STYLE[b.status]}`}>{b.status}</span>
                     <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none" onClick={() => checkRisk(b.id)} disabled={aiBusy === `risk-${b.id}`}>{aiBusy === `risk-${b.id}` ? "…" : "✨ Risk"}</button>
                     <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none" onClick={() => draftReminder(b.id)} disabled={aiBusy === `rem-${b.id}`}>{aiBusy === `rem-${b.id}` ? "…" : "✨ Remind"}</button>
-                    {b.status === "pending" && <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await setBookingStatus(b.id, "confirmed"); load(); }}>Confirm</button>}
-                    {b.status === "confirmed" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await setBookingStatus(b.id, "completed"); load(); }}>Complete</button>}
-                    {(b.status === "pending" || b.status === "confirmed") && <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await setBookingStatus(b.id, "cancelled"); load(); }}>Cancel</button>}
+                    {b.status === "pending" && <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await setBookingStatus(b.id, "confirmed"); reload(); }}>Confirm</button>}
+                    {b.status === "confirmed" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await setBookingStatus(b.id, "completed"); reload(); }}>Complete</button>}
+                    {(b.status === "pending" || b.status === "confirmed") && <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await setBookingStatus(b.id, "cancelled"); reload(); }}>Cancel</button>}
                   </div>
                 </div>
                 {reminders[b.id] && <div className="fz-font-sm neutral-700 mt-2 p-2 bg-neutral-50 rounded-3" style={{ whiteSpace: "pre-wrap" }}>✉️ {reminders[b.id]}</div>}

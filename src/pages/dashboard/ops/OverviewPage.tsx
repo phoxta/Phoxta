@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { getOpsSummary, type OpsSummary } from "@/lib/db/ops/analytics";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { getOpsSummary } from "@/lib/db/ops/analytics";
 import { invokeAction } from "@/lib/db/ops/ai";
 import { listReservations } from "@/lib/db/ops/reservations";
 import { formatPrice } from "@/lib/db/marketplace";
@@ -17,9 +19,24 @@ const SEV_STYLE: Record<string, string> = {
 
 export default function OverviewPage() {
   const { orgId, console: cfg } = useOutletContext<OpsContext>();
-  const [s, setS] = useState<OpsSummary | null>(null);
-  const [resv, setResv] = useState({ total: 0, upcoming: 0 });
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useCachedData(
+    `ops:overview:${orgId}`,
+    async () => {
+      const sum = await getOpsSummary(orgId);
+      let resv = { total: 0, upcoming: 0 };
+      if (cfg.booking === "reservations") {
+        const r = await listReservations(orgId);
+        resv = {
+          total: r.data.length,
+          upcoming: r.data.filter((x) => x.status === "pending" || x.status === "confirmed").length,
+        };
+      }
+      return { s: sum.data, resv };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const s = data?.s ?? null;
+  const resv = data?.resv ?? { total: 0, upcoming: 0 };
 
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
@@ -29,25 +46,6 @@ export default function OverviewPage() {
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    getOpsSummary(orgId).then(({ data }) => {
-      if (active) {
-        setS(data);
-        setLoading(false);
-      }
-    });
-    if (cfg.booking === "reservations") {
-      listReservations(orgId).then(({ data }) => {
-        if (!active) return;
-        setResv({ total: data.length, upcoming: data.filter((r) => r.status === "pending" || r.status === "confirmed").length });
-      });
-    }
-    return () => {
-      active = false;
-    };
-  }, [orgId, cfg.booking]);
 
   async function ask(e: React.FormEvent) {
     e.preventDefault();

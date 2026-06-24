@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
-import { getBlueprint, formatPrice, type Blueprint } from "@/lib/db/marketplace";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { getBlueprint, formatPrice } from "@/lib/db/marketplace";
 import { buyBlueprint } from "@/lib/db/organizations";
 import { PLAN_STARTING_PRICE } from "@/lib/plans";
 import Section12Pricing from "@/shared/sections/index-2/Section12Pricing";
@@ -18,24 +20,18 @@ export default function MarketplaceDetailPage() {
   const { slug } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [bp, setBp] = useState<Blueprint | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: bp = null, loading, error: loadError } = useCachedData(
+    slug ? `blueprint:${slug}` : "blueprint:none",
+    async () => {
+      if (!slug) return null;
+      const { data, error } = await getBlueprint(slug);
+      if (error) throw new Error(error);
+      return data;
+    },
+    { ttl: DASHBOARD_TTL },
+  );
   const [error, setError] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
-
-  useEffect(() => {
-    if (!slug) return;
-    let active = true;
-    getBlueprint(slug).then(({ data, error }) => {
-      if (!active) return;
-      if (error) setError(error);
-      setBp(data);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [slug]);
 
   async function onBuy() {
     if (!user || !bp) return;
@@ -68,7 +64,7 @@ export default function MarketplaceDetailPage() {
         ← Marketplace
       </Link>
 
-      {error && <div className="alert alert-warning py-2 px-3 fz-font-md mt-3">{error}</div>}
+      {(error || loadError) && <div className="alert alert-warning py-2 px-3 fz-font-md mt-3">{error || loadError}</div>}
 
       <div className="row g-4 mt-1">
         <div className="col-lg-7">
@@ -113,7 +109,7 @@ export default function MarketplaceDetailPage() {
             )}
             <p className="fz-font-sm neutral-500 mb-0 mt-3">
               One-time business price. Then run it from ${PLAN_STARTING_PRICE}/mo on a Phoxta plan —
-              14-day free trial, cancel anytime.
+              cancel anytime.
             </p>
           </div>
         </div>
@@ -124,7 +120,7 @@ export default function MarketplaceDetailPage() {
         <h5 className="fw-600 mb-1">Then run it from ${PLAN_STARTING_PRICE}/mo</h5>
         <p className="neutral-500 fz-font-md mb-4" style={{ maxWidth: 620 }}>
           The price above is a one-time fee to make this business yours. After setup you run it on a
-          Phoxta plan — start with a 14-day free trial, then choose the plan that fits. Manage it
+          Phoxta plan — choose the plan that fits. Manage it
           anytime in <Link to="/dashboard/billing" className="text-decoration-underline">Billing</Link>.
         </p>
         {/* Same plan cards + Monthly/Annual toggle as the Pricing page. */}

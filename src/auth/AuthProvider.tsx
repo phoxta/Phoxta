@@ -3,6 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { friendlyError } from "@/lib/friendlyError";
 import { getMyProfile } from "@/lib/db/profile";
+import { clearCachedData } from "@/lib/hooks/useCachedData";
 
 type AuthContextValue = {
   session: Session | null;
@@ -58,6 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Keyed on the user id so a token refresh doesn't trigger a refetch.
   const userId = session?.user?.id ?? null;
   useEffect(() => {
+    // The dashboard data cache is keyed by generic keys (e.g. "profile",
+    // "organizations"), so it MUST be dropped whenever the signed-in identity
+    // changes — otherwise a second user could see the first user's cached data.
+    clearCachedData();
     if (!userId) {
       setOnboarded(null);
       return;
@@ -98,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       async signOut() {
         await supabase.auth.signOut();
+        clearCachedData();
       },
       async sendPasswordReset(email) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {

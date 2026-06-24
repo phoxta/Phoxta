@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { getBusinessProfile, saveBusinessProfile, DEFAULT_HOURS, type BusinessProfile, type Hours } from "@/lib/db/businessProfile";
 import type { Organization } from "@/lib/db/organizations";
 
@@ -9,19 +11,24 @@ import type { Organization } from "@/lib/db/organizations";
 type Props = { org: Organization; canManage: boolean };
 
 export default function BusinessProfileCard({ org, canManage }: Props) {
+    const { data: profile, loading } = useCachedData(
+        `bizProfile:${org.id}`,
+        async () => (await getBusinessProfile(org.id)).data,
+        { ttl: DASHBOARD_TTL },
+    );
     const [p, setP] = useState<BusinessProfile>({});
     const [hours, setHours] = useState<Hours[]>(DEFAULT_HOURS);
-    const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState<string | null>(null);
 
+    // Seed the editable form once from the cached profile (guard avoids clobbering edits).
+    const seededRef = useRef(false);
     useEffect(() => {
-        getBusinessProfile(org.id).then(({ data }) => {
-            setP(data);
-            setHours(data.hours?.length === 7 ? data.hours : DEFAULT_HOURS);
-            setLoading(false);
-        });
-    }, [org.id]);
+        if (!profile || seededRef.current) return;
+        seededRef.current = true;
+        setP(profile);
+        setHours(profile.hours?.length === 7 ? profile.hours : DEFAULT_HOURS);
+    }, [profile]);
 
     const setHour = (i: number, patch: Partial<Hours>) => setHours((h) => h.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
 

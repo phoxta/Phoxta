@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { getAgentConfig, saveAgentConfig, CAPABILITY_LABELS, type AgentConfig } from "@/lib/db/ops/agent";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
@@ -32,26 +34,25 @@ const VOICES = [
 
 export default function ConfigurePage() {
   const { orgId, org } = useOutletContext<OpsContext>();
+  const { data: loadedConfig, loading, error: loadError, setData: setCachedConfig } = useCachedData(
+    `agent:config:${orgId}`,
+    async () => (await getAgentConfig(orgId)).data,
+    { ttl: DASHBOARD_TTL },
+  );
   const [config, setConfig] = useState<AgentConfig | null>(null);
   const suggestedPreset = VERTICAL_TO_PRESET[(org?.vertical || "").toLowerCase().trim()] ?? "generic";
   const [presetKey, setPresetKey] = useState(suggestedPreset);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Seed the editable config once from the cache (guard avoids clobbering edits).
+  const seededRef = useRef(false);
   useEffect(() => {
-    let active = true;
-    getAgentConfig(orgId).then(({ data, error }) => {
-      if (!active) return;
-      if (error) setError(error);
-      setConfig(data);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [orgId]);
+    if (loadedConfig === undefined || seededRef.current) return;
+    seededRef.current = true;
+    setConfig(loadedConfig);
+  }, [loadedConfig]);
 
   function patch(p: Partial<AgentConfig>) {
     setConfig((c) => (c ? { ...c, ...p } : c));
@@ -88,7 +89,10 @@ export default function ConfigurePage() {
     });
     setSaving(false);
     if (error) setError(error);
-    else setSaved(true);
+    else {
+      setCachedConfig(config); // keep the cache coherent so a revisit shows the saved config
+      setSaved(true);
+    }
   }
 
   if (loading || !config) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
@@ -98,7 +102,7 @@ export default function ConfigurePage() {
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       <div className="col-lg-7">
         <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">

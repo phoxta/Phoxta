@@ -3,17 +3,17 @@ import { Link, useNavigate } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 import { useCachedData } from "@/lib/hooks/useCachedData";
-import { listBlueprints, formatPrice, type Blueprint } from "@/lib/db/marketplace";
+import { marketplaceBlueprintsQuery } from "@/lib/cache/dashboardQueries";
+import { formatPrice, type Blueprint } from "@/lib/db/marketplace";
 import { buyBlueprint } from "@/lib/db/organizations";
 
 export default function MarketplacePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data, loading, error: loadError } = useCachedData("marketplace.blueprints", async () => {
-    const { data, error } = await listBlueprints();
-    if (error) throw new Error(error);
-    return data;
-  });
+  const { data, loading, error: loadError } = useCachedData(
+    marketplaceBlueprintsQuery.key,
+    marketplaceBlueprintsQuery.fetch,
+  );
   const items = data ?? [];
   const [actionError, setActionError] = useState<string | null>(null);
   const error = loadError || actionError;

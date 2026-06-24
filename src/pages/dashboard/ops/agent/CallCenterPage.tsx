@@ -1,13 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { listLocations, createLocation, deleteLocation, listCallLogs, listConversationMessages, type Location, type CallLog, type ConversationMessage } from "@/lib/db/ops/agent";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { listLocations, createLocation, deleteLocation, listCallLogs, listConversationMessages, type Location, type ConversationMessage } from "@/lib/db/ops/agent";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 export default function CallCenterPage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [calls, setCalls] = useState<CallLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error: loadError, reload } = useCachedData(
+    `agent:call-center:${orgId}`,
+    async () => {
+      const [l, c] = await Promise.all([listLocations(orgId), listCallLogs(orgId)]);
+      if (l.error) throw new Error(l.error);
+      return { locations: l.data, calls: c.data };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const locations = data?.locations ?? [];
+  const calls = data?.calls ?? [];
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", zip: "", phone: "", services: "" });
   const [test, setTest] = useState({ zip: "", service: "" });
@@ -25,17 +35,6 @@ export default function CallCenterPage() {
     setTLoading(false);
   }
 
-  async function load() {
-    const [l, c] = await Promise.all([listLocations(orgId), listCallLogs(orgId)]);
-    if (l.error) setError(l.error);
-    setLocations(l.data);
-    setCalls(c.data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    load();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
-
   async function add(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) return;
@@ -48,7 +47,7 @@ export default function CallCenterPage() {
     if (error) setError(error);
     else {
       setForm({ name: "", zip: "", phone: "", services: "" });
-      load();
+      reload();
     }
   }
 
@@ -67,7 +66,7 @@ export default function CallCenterPage() {
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       <div className="col-lg-6">
         <h6 className="fw-600 mb-3">Locations</h6>
@@ -90,7 +89,7 @@ export default function CallCenterPage() {
                   <div className="fw-600">{l.name} <span className="fz-font-sm neutral-500">{l.zip}</span></div>
                   <div className="fz-font-sm neutral-500">{l.service_types.join(", ") || "All services"}</div>
                 </div>
-                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await deleteLocation(l.id); load(); }}>Remove</button>
+                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={async () => { await deleteLocation(l.id); reload(); }}>Remove</button>
               </div>
             ))}
           </div>

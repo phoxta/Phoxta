@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
     addCustomDomain,
     checkDomainStatus,
@@ -30,8 +32,12 @@ const LIFECYCLE: Array<Organization["lifecycle_stage"]> = ["draft", "building", 
 type Props = { org: Organization; canManage: boolean; onUpdated: (patch: Partial<Organization>) => void };
 
 export default function BusinessSiteCard({ org, canManage, onUpdated }: Props) {
+    const { data: cachedDomains, loading } = useCachedData(
+        `domains:${org.id}`,
+        async () => (await listDomains(org.id)).data,
+        { ttl: DASHBOARD_TTL },
+    );
     const [domains, setDomains] = useState<Domain[]>([]);
-    const [loading, setLoading] = useState(true);
     const [host, setHost] = useState("");
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState<string | null>(null);
@@ -48,12 +54,14 @@ export default function BusinessSiteCard({ org, canManage, onUpdated }: Props) {
     async function reload() {
         const { data } = await listDomains(org.id);
         setDomains(data);
-        setLoading(false);
     }
+    // Seed the domains list from cache once; reload() refreshes it after changes.
+    const seededRef = useRef(false);
     useEffect(() => {
-        reload();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [org.id]);
+        if (!cachedDomains || seededRef.current) return;
+        seededRef.current = true;
+        setDomains(cachedDomains);
+    }, [cachedDomains]);
 
     // The canonical address a visitor would type: the primary live domain, else any
     // live domain (prefer the custom one over the Phoxta subdomain).

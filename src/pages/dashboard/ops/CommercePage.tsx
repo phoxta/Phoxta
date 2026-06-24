@@ -1,5 +1,7 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import VariantMatrix from "./VariantMatrix";
 import ProductEditor from "./ProductEditor";
 import {
@@ -11,7 +13,6 @@ import {
   createOrder,
   setOrderStatus,
   fulfillOrder,
-  type Product,
   type Order,
 } from "@/lib/db/ops/commerce";
 import { invokeAction, drainEmbeddings } from "@/lib/db/ops/ai";
@@ -35,9 +36,17 @@ const ORDER_STATUS_STYLE: Record<Order["status"], string> = {
 export default function CommercePage() {
   const { orgId, console: cfg } = useOutletContext<OpsContext>();
   const [variantsFor, setVariantsFor] = useState<string | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error: loadError, reload } = useCachedData(
+    `ops:commerce:${orgId}`,
+    async () => {
+      const [p, o] = await Promise.all([listProducts(orgId), listOrders(orgId)]);
+      if (p.error) throw new Error(p.error);
+      return { products: p.data, orders: o.data };
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const products = data?.products ?? [];
+  const orders = data?.orders ?? [];
   const [error, setError] = useState<string | null>(null);
 
   const [pForm, setPForm] = useState({ name: "", price: "", stock: "", category: "" });
@@ -54,17 +63,6 @@ export default function CommercePage() {
   const [recommend, setRecommend] = useState<RecommendResult | null>(null);
   const [aiBusy, setAiBusy] = useState<string | null>(null);
 
-  async function load() {
-    const [p, o] = await Promise.all([listProducts(orgId), listOrders(orgId)]);
-    if (p.error) setError(p.error);
-    setProducts(p.data);
-    setOrders(o.data);
-    setLoading(false);
-  }
-  useEffect(() => {
-    load();
-  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
-
   async function addProduct(e: React.FormEvent) {
     e.preventDefault();
     if (!pForm.name.trim()) return;
@@ -80,7 +78,7 @@ export default function CommercePage() {
       setPForm({ name: "", price: "", stock: "", category: "" });
       setPImg("");
       drainEmbeddings(); // index for recommendations & helpdesk RAG
-      load();
+      reload();
     }
   }
 
@@ -113,7 +111,7 @@ export default function CommercePage() {
       setCopyForm({ name: "", hints: "", price: "" });
       setCopy(null);
       drainEmbeddings();
-      load();
+      reload();
     }
   }
 
@@ -151,7 +149,7 @@ export default function CommercePage() {
       setOForm({ customer: "", productId: "", qty: "1" });
       // Decrement stock locally + persist
       updateProduct(product.id, { stock: Math.max(0, product.stock - qty) });
-      load();
+      reload();
     }
   }
 
@@ -159,7 +157,7 @@ export default function CommercePage() {
 
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {(error || loadError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error || loadError}</div></div>}
 
       {/* AI tools */}
       <div className="col-12">
@@ -270,7 +268,7 @@ export default function CommercePage() {
                     {editingId === p.id && (
                       <tr>
                         <td colSpan={2} className="bg-neutral-50 p-0">
-                          <ProductEditor orgId={orgId} product={p} itemNoun={cfg.itemNoun} onSaved={() => { setEditingId(null); drainEmbeddings(); load(); }} onCancel={() => setEditingId(null)} />
+                          <ProductEditor orgId={orgId} product={p} itemNoun={cfg.itemNoun} onSaved={() => { setEditingId(null); drainEmbeddings(); reload(); }} onCancel={() => setEditingId(null)} />
                         </td>
                       </tr>
                     )}
@@ -322,11 +320,11 @@ export default function CommercePage() {
                 <div className="d-flex align-items-center gap-2">
                   <span className={`badge fw-500 text-capitalize ${ORDER_STATUS_STYLE[o.status]}`}>{o.status}</span>
                   {o.status === "paid" && o.fulfillment_status === "unfulfilled" ? (
-                    <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await fulfillOrder(o.id); load(); }}>
+                    <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await fulfillOrder(o.id); reload(); }}>
                       Fulfill
                     </button>
                   ) : o.status === "pending" ? (
-                    <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await setOrderStatus(o.id, "paid"); load(); }}>
+                    <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await setOrderStatus(o.id, "paid"); reload(); }}>
                       Mark paid
                     </button>
                   ) : null}

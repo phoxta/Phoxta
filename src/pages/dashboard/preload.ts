@@ -60,6 +60,16 @@ const EXTRA_PRELOADERS: Loader[] = [
   () => import("@/pages/dashboard/StudioSiteEditorPage"),
 ];
 
+/** Every dashboard chunk loader (top-level + ops + agent + detail/studio), deduped. */
+export const ALL_PRELOADERS: Loader[] = Array.from(
+  new Set<Loader>([
+    ...Object.values(DASHBOARD_PRELOADERS),
+    ...Object.values(OPS_PRELOADERS),
+    ...Object.values(AGENT_PRELOADERS),
+    ...EXTRA_PRELOADERS,
+  ]),
+);
+
 /** Preload one top-level route's chunk (e.g. on nav-link hover). Errors swallowed. */
 export function preloadRoute(path: string): void {
   DASHBOARD_PRELOADERS[path]?.().catch(() => {});

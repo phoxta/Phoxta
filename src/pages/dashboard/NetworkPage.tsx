@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL, networkQuery, type NetworkData } from "@/lib/cache/dashboardQueries";
 import {
-  getMyMatchProfile,
   saveMatchProfile,
-  listOpenProfiles,
   sendMatchRequest,
-  listMyMatches,
   updateMatchStatus,
   type MatchProfile,
   type MatchProfileForm,
@@ -40,55 +39,45 @@ const toList = (s: string) =>
 
 export default function NetworkPage() {
   const { user } = useAuth();
+  // The matching reads are user-scoped; the shared networkQuery descriptor is the
+  // same key + fetcher the sign-in warmer primes, so the first visit is instant.
+  const netQ = user ? networkQuery(user.id) : null;
+  const { data, loading, error: readError, reload } = useCachedData<NetworkData>(
+    netQ ? netQ.key : "network:anon",
+    netQ ? netQ.fetch : async () => ({ profile: null, people: [], matches: [] }),
+    { ttl: DASHBOARD_TTL },
+  );
+  const people = data?.people ?? [];
+  const matches = data?.matches ?? [];
+
   const [form, setForm] = useState<MatchProfileForm>(EMPTY);
   const [skillsText, setSkillsText] = useState("");
   const [verticalsText, setVerticalsText] = useState("");
-  const [people, setPeople] = useState<MatchProfile[]>([]);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [requested, setRequested] = useState<Record<string, boolean>>({});
 
-  async function loadPeople(uid: string) {
-    const { data } = await listOpenProfiles(uid);
-    setPeople(data);
-  }
-
-  async function reloadMatches() {
-    const { data } = await listMyMatches();
-    setMatches(data);
-  }
-
+  // Seed the editable profile form from the cached match profile once. The guard
+  // stops a background revalidation (or kept-alive remount) from wiping edits.
+  const seededRef = useRef(false);
   useEffect(() => {
-    if (!user) return;
-    let active = true;
-    Promise.all([getMyMatchProfile(user.id), listOpenProfiles(user.id), listMyMatches()]).then(([mine, open, mm]) => {
-      if (!active) return;
-      if (mine.error) setError(mine.error);
-      setMatches(mm.data);
-      if (mine.data) {
-        setForm({
-          role: mine.data.role,
-          headline: mine.data.headline,
-          bio: mine.data.bio,
-          skills: mine.data.skills,
-          verticals: mine.data.verticals,
-          capital_band: mine.data.capital_band,
-          location: mine.data.location,
-          is_open: mine.data.is_open,
-        });
-        setSkillsText(mine.data.skills.join(", "));
-        setVerticalsText(mine.data.verticals.join(", "));
-      }
-      setPeople(open.data);
-      setLoading(false);
+    const mine = data?.profile;
+    if (!mine || seededRef.current) return;
+    seededRef.current = true;
+    setForm({
+      role: mine.role,
+      headline: mine.headline,
+      bio: mine.bio,
+      skills: mine.skills,
+      verticals: mine.verticals,
+      capital_band: mine.capital_band,
+      location: mine.location,
+      is_open: mine.is_open,
     });
-    return () => {
-      active = false;
-    };
-  }, [user]);
+    setSkillsText(mine.skills.join(", "));
+    setVerticalsText(mine.verticals.join(", "));
+  }, [data]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
@@ -102,7 +91,7 @@ export default function NetworkPage() {
     if (error) setError(error);
     else {
       setSaved(true);
-      loadPeople(user.id);
+      reload();
     }
   }
 
@@ -113,14 +102,14 @@ export default function NetworkPage() {
     if (error) setError(error);
     else {
       setRequested((r) => ({ ...r, [p.user_id]: true }));
-      reloadMatches();
+      reload();
     }
   }
 
   async function respond(id: string, status: Match["status"]) {
     const { error } = await updateMatchStatus(id, status);
     if (error) setError(error);
-    else reloadMatches();
+    else reload();
   }
 
   const incoming = matches.filter((m) => m.target_user_id === user?.id && m.status === "pending");
@@ -134,9 +123,9 @@ export default function NetworkPage() {
         <p className="neutral-500 mb-0">Find co-founders, operators and investors — and let them find you.</p>
       </div>
 
-      {error && (
+      {(error || readError) && (
         <div className="alert alert-warning py-2 px-3 fz-font-md" role="alert">
-          {error}
+          {error || readError}
         </div>
       )}
 

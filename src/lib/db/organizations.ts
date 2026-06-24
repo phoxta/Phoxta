@@ -62,7 +62,9 @@ function makeSlug(name: string): string {
   return `${base || "business"}-${suffix}`;
 }
 
-/** Create a new business (organization). The DB triggers add the owner membership + trial subscription. */
+/** Create a new business (organization). The DB trigger adds the owner membership.
+ *  Phoxta has no free trial, so the business starts 'active' with no subscription
+ *  until the owner subscribes to a paid plan. */
 export async function createBusiness(
   userId: string,
   input: { name: string; vertical?: string | null; region?: string | null; blueprintId?: string | null },
@@ -76,7 +78,7 @@ export async function createBusiness(
       vertical: input.vertical ?? null,
       primary_region: input.region ?? null,
       blueprint_id: input.blueprintId ?? null,
-      stage: "trial",
+      stage: "active",
     })
     .select("id")
     .single();
@@ -88,7 +90,8 @@ export async function createBusiness(
  * tenant. The `app_provision_business` RPC does it atomically server-side: copies
  * the blueprint's preset (modules + AI/automation config) into the new org, sets
  * its lifecycle to `building` and `app_path`, and lets the DB triggers create the
- * owner membership, trial subscription and Phoxta subdomain, plus log the purchase.
+ * owner membership and Phoxta subdomain, plus log the purchase. No trial
+ * subscription — Phoxta does not offer a free trial.
  */
 export async function buyBlueprint(
   _userId: string,

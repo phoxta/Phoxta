@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { getBusiness, type Organization } from "@/lib/db/organizations";
@@ -82,7 +82,9 @@ export default function OperatingLayout() {
         </ul>
       </nav>
 
-      <Outlet context={{ orgId: id, org, console: cfg } satisfies OpsContext} />
+      <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>}>
+        <Outlet context={{ orgId: id, org, console: cfg } satisfies OpsContext} />
+      </Suspense>
     </div>
   );
 }

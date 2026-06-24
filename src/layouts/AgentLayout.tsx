@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { NavLink, Outlet, useOutletContext } from "react-router-dom";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import { preloadAgentTab } from "@/pages/dashboard/preload";
@@ -45,7 +46,9 @@ export default function AgentLayout() {
         </ul>
       </nav>
 
-      <Outlet context={ctx} />
+      <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>}>
+        <Outlet context={ctx} />
+      </Suspense>
     </div>
   );
 }

@@ -3,21 +3,19 @@ import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 import { useCachedData } from "@/lib/hooks/useCachedData";
-import { listMyOrganizations, createBusiness } from "@/lib/db/organizations";
-import { listMyInvitations, acceptInvitation } from "@/lib/db/collaboration";
+import { organizationsQuery, invitationsQuery } from "@/lib/cache/dashboardQueries";
+import { createBusiness } from "@/lib/db/organizations";
+import { acceptInvitation } from "@/lib/db/collaboration";
 
 export default function BusinessesPage() {
   const { user } = useAuth();
-  const { data, loading, error: loadError, reload } = useCachedData("businesses", async () => {
-    const [{ data: orgsData, error: orgsErr }, inv] = await Promise.all([
-      listMyOrganizations(),
-      listMyInvitations(),
-    ]);
-    if (orgsErr) throw new Error(orgsErr);
-    return { orgs: orgsData, invites: inv.data };
-  });
-  const orgs = data?.orgs ?? [];
-  const invites = data?.invites ?? [];
+  // Share the "organizations" cache key with Home/Assistant/Studio + Tier-1 warming
+  // (single fetch, instant first paint); invitations are their own warmed key.
+  const { data: orgs = [], loading, error: loadError, reload: reloadOrgs } = useCachedData(
+    organizationsQuery.key,
+    organizationsQuery.fetch,
+  );
+  const { data: invites = [], reload: reloadInvites } = useCachedData(invitationsQuery.key, invitationsQuery.fetch);
 
   const [actionError, setActionError] = useState<string | null>(null);
   const error = loadError || actionError;
@@ -34,7 +32,8 @@ export default function BusinessesPage() {
       setActionError(accErr);
       return;
     }
-    reload();
+    reloadOrgs();
+    reloadInvites();
   }
 
   async function onCreate(e: React.FormEvent) {
@@ -52,7 +51,7 @@ export default function BusinessesPage() {
     setVertical("");
     setRegion("");
     setShowForm(false);
-    reload();
+    reloadOrgs();
   }
 
   return (
