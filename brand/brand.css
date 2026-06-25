@@ -1,0 +1,169 @@
+/* Phoxta — Brand Identity Guidelines · shared stylesheet */
+:root{
+  --vermilion:#F0460E;        /* Phoxta Vermilion — primary */
+  --vermilion-deep:#C7260A;   /* deep accent (Startup heroes) */
+  --maroon:#800B01;           /* maroon accent */
+  --paper:#FEFEFE;            /* neutral-0 */
+  --mist:#F2F2F2;             /* neutral-50 */
+  --line:#DFDFDF;             /* neutral-100 */
+  --silver:#CDCCCC;           /* neutral-200 */
+  --steel:#B7B7B7;            /* neutral-300 */
+  --slate:#585959;            /* neutral-500 */
+  --graphite:#303030;         /* neutral-700 */
+  --coal:#212121;             /* neutral-800 */
+  --ink:#1D1D1D;              /* neutral-900 */
+  --black:#0F0F0F;            /* neutral-950 */
+  --radius:20px;
+  --maxw:1180px;
+  --ff:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--ff);color:var(--ink);background:var(--paper);line-height:1.55;-webkit-font-smoothing:antialiased;letter-spacing:-0.01em}
+a{color:var(--vermilion);text-decoration:none}
+h1,h2,h3,h4,h5,h6{font-weight:700;line-height:1.04;letter-spacing:-0.03em;margin:0}
+p{margin:0 0 1rem}
+img{max-width:100%;display:block}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+.muted{color:var(--slate)}
+.eyebrow{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--vermilion);margin-bottom:14px}
+.mark{width:1em;height:1.07em;display:inline-block;vertical-align:-0.12em;color:currentColor}
+
+/* ---- Layout: fixed sidebar nav ---- */
+.layout{display:flex;min-height:100vh}
+.sidenav{position:sticky;top:0;align-self:flex-start;width:248px;height:100vh;flex:0 0 248px;border-right:1px solid var(--line);
+  padding:26px 18px;overflow-y:auto;background:var(--paper)}
+.sidenav .brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;color:var(--ink)}
+.sidenav .brand .mark{font-size:26px}
+.sidenav .brand b{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.sidenav nav{display:flex;flex-direction:column;gap:2px}
+.sidenav a{color:var(--slate);font-size:14px;font-weight:600;padding:8px 12px;border-radius:10px}
+.sidenav a:hover{background:var(--mist);color:var(--ink)}
+.sidenav a.active{background:var(--ink);color:#fff}
+.sidenav .grp{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--steel);font-weight:700;margin:16px 12px 6px}
+.sidenav .ver{margin-top:24px;font-size:12px;color:var(--steel);padding:0 12px}
+.main{flex:1 1 auto;min-width:0}
+
+section.block{padding:84px 0;border-top:1px solid var(--line)}
+section.block:first-of-type{border-top:0}
+.h-sec{font-size:clamp(30px,4vw,46px);margin-bottom:10px}
+.lead{font-size:clamp(17px,1.6vw,20px);color:var(--slate);max-width:62ch;margin-bottom:34px}
+.grid{display:grid;gap:20px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:26px}
+.card.soft{background:var(--mist);border-color:transparent}
+.card h3{font-size:20px;margin-bottom:8px}
+.card .k{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--vermilion);font-weight:700;margin-bottom:10px}
+
+/* ---- Cover ---- */
+.cover{background:var(--black);color:#fff;padding:96px 0 80px;position:relative;overflow:hidden}
+.cover .wrap{position:relative;z-index:2}
+.cover .mark{font-size:64px;color:#fff;margin-bottom:30px}
+.cover h1{font-size:clamp(42px,7vw,92px);letter-spacing:-0.04em;margin-bottom:18px}
+.cover h1 em{font-style:normal;color:var(--vermilion)}
+.cover p{color:#b7b7b7;max-width:60ch;font-size:18px}
+.cover .meta{display:flex;flex-wrap:wrap;gap:14px 28px;margin-top:36px;font-size:13px;color:#cdcccc}
+.cover .meta b{color:#fff}
+.deco{position:absolute;inset:0;z-index:1;opacity:.5;pointer-events:none}
+.deco svg{position:absolute}
+
+/* ---- swatches ---- */
+.swatch{border-radius:16px;border:1px solid var(--line);overflow:hidden}
+.swatch .chip{height:120px}
+.swatch .meta{padding:14px 16px;background:var(--paper)}
+.swatch .name{font-weight:700;font-size:15px}
+.swatch .hex{font-size:13px;color:var(--slate);font-variant-numeric:tabular-nums;text-transform:uppercase}
+.swatch .role{font-size:12px;color:var(--steel);margin-top:2px}
+.ramp{display:grid;grid-template-columns:repeat(10,1fr);border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+.ramp div{height:64px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-size:10px;font-weight:700}
+
+/* ---- type specimen ---- */
+.specimen{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.specimen .row{display:flex;align-items:baseline;gap:18px;padding:18px 22px;border-top:1px solid var(--line)}
+.specimen .row:first-child{border-top:0}
+.specimen .tag{flex:0 0 150px;font-size:12px;color:var(--steel);text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+.specimen .demo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.weights{display:flex;flex-wrap:wrap;gap:10px}
+.weights span{border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:15px}
+
+/* ---- logo blocks ---- */
+.logoframe{display:flex;align-items:center;justify-content:center;border-radius:var(--radius);padding:48px;min-height:180px}
+.lock{display:inline-flex;align-items:center;gap:14px}
+.lock .mark{font-size:46px}
+.lock b{font-size:34px;font-weight:700;letter-spacing:-.02em}
+.on-light{background:var(--mist);color:var(--ink)}
+.on-dark{background:var(--black);color:#fff}
+.on-brand{background:var(--vermilion);color:#fff}
+.clearspace{position:relative;background:repeating-linear-gradient(45deg,#fff,#fff 9px,#f3f3f3 9px,#f3f3f3 18px);border:1px solid var(--line)}
+
+/* ---- do / dont ---- */
+.dd{border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+.dd .head{padding:10px 16px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.dd.do .head{background:#eaf7ee;color:#1c7a3f}
+.dd.dont .head{background:#fdecec;color:#c0392b}
+.dd ul{margin:0;padding:16px 18px 18px 34px}
+.dd li{margin-bottom:8px;color:var(--graphite);font-size:15px}
+
+/* ---- pills / tokens ---- */
+.pillrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:14px;font-weight:600;color:var(--graphite)}
+.pill.solid{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ---- personality sliders ---- */
+.slider{margin-bottom:16px}
+.slider .lbl{display:flex;justify-content:space-between;font-size:13px;color:var(--slate);margin-bottom:6px}
+.slider .track{height:8px;border-radius:99px;background:var(--line);position:relative}
+.slider .track i{position:absolute;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:var(--vermilion);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+
+/* ---- buttons demo ---- */
+.btn{display:inline-flex;align-items:center;gap:10px;border-radius:999px;padding:14px 26px;font-weight:600;font-size:15px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.brand{background:var(--vermilion);border-color:var(--vermilion)}
+.btn.circle{width:48px;height:48px;padding:0;justify-content:center}
+.btngroup{display:inline-flex;align-items:center;gap:6px}
+
+/* ---- imagery ---- */
+.photo{border-radius:16px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3}
+.photo img{width:100%;height:100%;object-fit:cover}
+.photo.tall{aspect-ratio:3/4}
+.duotone img{filter:grayscale(1) contrast(1.05);mix-blend-mode:luminosity}
+.duotone{background:var(--vermilion);border-radius:16px;overflow:hidden;border:0}
+
+/* ---- applications ---- */
+.app-card{border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);background:var(--mist)}
+.app-card .body{padding:18px 20px}
+.bizcard{aspect-ratio:1.75/1;border-radius:14px;background:var(--black);color:#fff;padding:22px;display:flex;flex-direction:column;justify-content:space-between}
+.bizcard.alt{background:var(--vermilion)}
+.social{aspect-ratio:1/1;border-radius:14px;background:var(--ink);color:#fff;padding:26px;display:flex;flex-direction:column;justify-content:space-between}
+.appicon{width:96px;height:96px;border-radius:22px;background:var(--vermilion);display:flex;align-items:center;justify-content:center;color:#fff}
+.appicon.dark{background:var(--black)}
+
+footer.foot{background:var(--black);color:#9a9a9a;padding:56px 0;font-size:14px}
+footer.foot b{color:#fff}
+
+@media(max-width:880px){
+  .layout{display:block}
+  .sidenav{position:sticky;top:0;width:auto;height:auto;flex:none;border-right:0;border-bottom:1px solid var(--line);
+    padding:12px 16px;z-index:20;display:flex;align-items:center;gap:14px;overflow-x:auto}
+  .sidenav .brand{margin:0}
+  .sidenav nav{flex-direction:row;gap:2px}
+  .sidenav .grp,.sidenav .ver{display:none}
+  .sidenav a{white-space:nowrap;padding:6px 10px}
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .specimen .tag{flex-basis:90px}
+  .ramp{grid-template-columns:repeat(5,1fr)}
+}
+
+/* ---- print: clean A4 brand book ---- */
+@media print{
+  .sidenav{display:none}
+  .layout{display:block}
+  body{letter-spacing:0}
+  section.block{padding:28px 0;page-break-inside:avoid;border-top:1px solid var(--line)}
+  .cover{padding:40px 0}
+  .card,.dd,.swatch,.specimen,.app-card{page-break-inside:avoid}
+  a{color:var(--ink)}
+  .deco{display:none}
+}
