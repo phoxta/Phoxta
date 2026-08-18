@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     if (d.kind === "subdomain") return json({ status: "live", verified: true });
 
     // Only members of the owning business may verify it.
-    const auth = await authorize(req, d.organization_id);
+    const auth = await authorize(req, d.organization_id, { requireAdmin: true });
     if (auth.error) return auth.error;
 
     const verifyName = `_phoxta-verify.${d.hostname}`;

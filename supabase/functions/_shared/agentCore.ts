@@ -127,7 +127,10 @@ export async function respondCore(
   // Cost guardrail: enforce the plan's monthly token allowance. The public
   // endpoint is otherwise unbounded — degrade gracefully without spending.
   const { data: sub } = await admin.from("subscriptions").select("plan, status").eq("organization_id", org.id).maybeSingle();
-  const plan = sub?.status === "active" ? (sub?.plan ?? "starter") : (sub?.plan ?? "trialing");
+  // A lapsed subscription must NOT keep its paid allowance: the old expression
+  // fell through to `sub.plan` on any non-active status, so a cancelled 'scale'
+  // org still drew 5M tokens/month. Non-active now floors to the starter cap.
+  const plan = sub?.status === "active" ? (sub?.plan ?? "starter") : "starter";
   const cap = MONTHLY_TOKEN_CAP[plan] ?? MONTHLY_TOKEN_CAP.starter;
   if ((await tokensUsedThisMonth(admin, org.id)) >= cap) {
     const capped = "Thanks for reaching out! I can't continue the conversation right now, but I've noted your message and a member of the team will follow up with you shortly.";
@@ -164,8 +167,15 @@ export async function respondCore(
   const isAfterHours = config.capabilities?.after_hours !== false && afterHours(config.business_hours);
   const caps = Object.entries(config.capabilities ?? {}).filter(([, v]) => v).map(([k]) => k).join(", ");
 
+  // Owner-authored plain-English operating procedures (the AOP pattern):
+  // injected as HARD rules the agent must follow over its own judgment.
+  const procedures = String((config as { procedures?: string }).procedures ?? "").trim();
+
   const system = [
     `You are ${config.display_name}, the AI agent for "${org.name}" (${org.vertical || "small business"}). Persona: ${config.persona} Tone: ${config.tone}.`,
+    procedures
+      ? `\nOPERATING PROCEDURES (set by the owner — these override everything else; follow them exactly):\n${procedures}\n`
+      : "",
     `You are reached on the ${params.channel} channel. You are ONE agent across every channel — greet returning customers by what you already know.`,
     longMem ? `\nDurable profile for this customer (remember and use this):\n${longMem}\n` : "",
     memory ? `\nRecent context from other conversations:\n${memory}\n` : "",
@@ -223,7 +233,7 @@ export async function respondCore(
     });
   }
 
-  await meter(admin, { organizationId: org.id, userId: params.userId, conversationId, model: run.model, feature: "agent", tier: config.model_tier ?? "balanced", inTok: run.inTok, outTok: run.outTok, latencyMs: latency });
+  await meter(admin, { organizationId: org.id, userId: params.userId, conversationId, model: run.model, feature: "agent", tier: config.model_tier ?? "balanced", inTok: run.inTok, outTok: run.outTok, cacheWriteTok: run.cacheWriteTok, cacheReadTok: run.cacheReadTok, latencyMs: latency });
 
   return { conversationId, reply, actions: ctx.actions, escalated };
 }
@@ -246,7 +256,7 @@ export async function summarizeConversation(admin: SupabaseClient, org: Org, con
     maxTokens: 200,
   });
   await admin.from("conversations").update({ summary: r.text }).eq("id", conversationId);
-  await meter(admin, { organizationId: org.id, model: r.model, feature: "agent_summary", tier: "cheap", inTok: r.inTok, outTok: r.outTok, latencyMs: Date.now() - t0 });
+  await meter(admin, { organizationId: org.id, model: r.model, feature: "agent_summary", tier: "cheap", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
 
   // Capture durable per-customer memory from the same transcript (background).
   const { data: conv } = await admin.from("conversations").select("contact_id").eq("id", conversationId).maybeSingle();

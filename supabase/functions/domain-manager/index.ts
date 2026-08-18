@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
     // --- search availability + price ----------------------------------------
     if (action === "search") {
-      const auth = await authorize(req, body.orgId);
+      const auth = await authorize(req, body.orgId, { requireAdmin: true });
       if (auth.error) return auth.error;
       const host = normalizeHost(body.query);
       if (!validHost(host)) return json({ error: "Enter a domain like yourbrand.com" }, 400);
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     // --- add (bring your own domain) ----------------------------------------
     if (action === "add") {
-      const auth = await authorize(req, body.orgId);
+      const auth = await authorize(req, body.orgId, { requireAdmin: true });
       if (auth.error) return auth.error;
       const host = normalizeHost(body.hostname);
       if (!validHost(host)) return json({ error: "Enter a valid domain, e.g. shop.yourbrand.com" }, 400);
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     if (action === "status") {
       const { data: dom } = await admin.from("domains").select("id, organization_id, hostname").eq("id", body.domainId).maybeSingle();
       if (!dom) return json({ error: "Domain not found." }, 404);
-      const auth = await authorize(req, (dom as Json).organization_id);
+      const auth = await authorize(req, (dom as Json).organization_id, { requireAdmin: true });
       if (auth.error) return auth.error;
       const proj = await projectFor((dom as Json).organization_id);
       if (!proj?.vercel_project_id) return json({ error: "Not available." }, 400);
@@ -105,7 +105,14 @@ Deno.serve(async (req) => {
 
     // --- buy (register a new domain through Phoxta) -------------------------
     if (action === "buy") {
-      const auth = await authorize(req, body.orgId);
+      // Audit 2026-08-18: this action registered the domain on the platform's
+      // Vercel account WITHOUT collecting payment. Registration is only allowed
+      // through the paid checkout (domain-checkout → webhook). Keep the action
+      // for a possible future comped path behind an explicit env opt-in.
+      if (Deno.env.get("ALLOW_UNPAID_DOMAIN_BUY") !== "true") {
+        return json({ error: "Domain purchase goes through checkout — use the Buy flow, which collects payment first." }, 403);
+      }
+      const auth = await authorize(req, body.orgId, { requireAdmin: true });
       if (auth.error) return auth.error;
       const host = normalizeHost(body.hostname);
       if (!validHost(host)) return json({ error: "Enter a valid domain." }, 400);
@@ -132,7 +139,7 @@ Deno.serve(async (req) => {
     if (action === "remove") {
       const { data: dom } = await admin.from("domains").select("id, organization_id, hostname, kind").eq("id", body.domainId).maybeSingle();
       if (!dom) return json({ error: "Domain not found." }, 404);
-      const auth = await authorize(req, (dom as Json).organization_id);
+      const auth = await authorize(req, (dom as Json).organization_id, { requireAdmin: true });
       if (auth.error) return auth.error;
       if ((dom as Json).kind !== "subdomain") {
         const proj = await projectFor((dom as Json).organization_id);

@@ -8,6 +8,7 @@ import { modelFor } from "../_shared/models.ts";
 import { runAgent } from "../_shared/anthropic.ts";
 import { READ_TOOLS, OPERATOR_READ_TOOLS, MEMORY_TOOLS, toolRunner, memoryContext } from "../_shared/tools.ts";
 import { WRITE_TOOLS, isWriteTool, executeAction } from "../_shared/actions.ts";
+import { isAdminRole } from "../_shared/auth.ts";
 import { meter } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -27,16 +28,22 @@ Deno.serve(async (req) => {
     if (!message) return json({ error: "Empty message." }, 400);
 
     const read = toolRunner(ctx.admin, orgId as string);
+    const callerIsAdmin = isAdminRole(ctx.role);
     const runner = async (name: string, input: Json): Promise<string> =>
-      isWriteTool(name) ? await executeAction(ctx.admin, orgId as string, ctx.userId, name, input) : await read(name, input);
+      isWriteTool(name)
+        ? await executeAction(ctx.admin, orgId as string, ctx.userId, name, input, callerIsAdmin)
+        : await read(name, input);
 
     const mem = await memoryContext(ctx.admin, orgId as string);
+    const { data: cfg } = await ctx.admin.from("agent_config").select("procedures").eq("organization_id", orgId).maybeSingle();
+    const procedures = String(cfg?.procedures ?? "").trim();
     const system =
       `You are the AI operator for "${ctx.org.name}" (${ctx.org.vertical || "small business"}). ` +
       `You help the owner run the business. Answer from their real data using the read tools, and make changes using the write tools. ` +
       `You can act across the whole platform: products and orders, CRM contacts, invoices, bookings and reservations, content, support tickets, marketing campaigns, locations, and Google Workspace — and you can reach customers directly by placing phone calls or sending SMS, WhatsApp or email. Reference things by name (e.g. a customer or product) and the tools will resolve them. ` +
       `Be concise and concrete; when you change something, state exactly what changed. Some write actions need the owner's approval — ` +
       `if a tool reports an action was queued, tell the owner to approve it in Agent → Operator. Use the remember tool when the owner shares a lasting preference or fact. Never invent data — always use a tool.` +
+      (procedures ? `\n\nOPERATING PROCEDURES (set by the owner — follow exactly):\n${procedures}` : "") +
       (mem ? `\n\nWhat you remember about this business:\n${mem}` : "");
 
     const t0 = Date.now();
@@ -51,7 +58,7 @@ Deno.serve(async (req) => {
       maxTurns: 8,
       maxTokens: 1500,
     });
-    await meter(ctx.admin, { organizationId: orgId as string, userId: ctx.userId, model: r.model, feature: "operator", tier: "balanced", inTok: r.inTok, outTok: r.outTok, latencyMs: Date.now() - t0 });
+    await meter(ctx.admin, { organizationId: orgId as string, userId: ctx.userId, model: r.model, feature: "operator", tier: "balanced", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
     return json({ reply: r.text, toolCalls: r.toolCalls });
   } catch (err) {
     return json({ error: String((err as Error)?.message || err) }, 500);

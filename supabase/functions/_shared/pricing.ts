@@ -1,12 +1,17 @@
 // Per-million-token prices (USD) for cost metering. xAI Grok prices are
 // approximate — verify against your xAI billing and adjust.
 export const PRICING: Record<string, { in: number; out: number }> = {
-  // Anthropic
+  // Anthropic — current generation
+  "claude-opus-5": { in: 5, out: 25 },
+  "claude-sonnet-5": { in: 3, out: 15 },
+  "claude-fable-5": { in: 10, out: 50 },
+  "claude-mythos-5": { in: 10, out: 50 },
+  // Anthropic — previous generation (still active)
   "claude-opus-4-8": { in: 5, out: 25 },
   "claude-opus-4-7": { in: 5, out: 25 },
+  "claude-opus-4-6": { in: 5, out: 25 },
   "claude-sonnet-4-6": { in: 3, out: 15 },
   "claude-haiku-4-5": { in: 1, out: 5 },
-  "claude-fable-5": { in: 10, out: 50 },
   // xAI Grok (approximate)
   "grok-4.3": { in: 3, out: 15 },
   "grok-4.20-0309-reasoning": { in: 3, out: 15 },
@@ -15,7 +20,27 @@ export const PRICING: Record<string, { in: number; out: number }> = {
   "grok-build-0.1": { in: 1, out: 5 },
 };
 
-export function costCents(model: string, inTok: number, outTok: number): number {
+// Prompt-caching multipliers on the base INPUT rate (Anthropic):
+//   cache write (5-minute TTL) = 1.25x, cache read = 0.1x.
+const CACHE_WRITE_MULT = 1.25;
+const CACHE_READ_MULT = 0.1;
+
+/**
+ * Cost of one call in cents.
+ *
+ * `inTok` is the uncached remainder only — cached prompt tokens are billed at
+ * the write/read rates above and must be passed separately, or every cached
+ * request under-reports (the cache-write premium was previously invisible).
+ */
+export function costCents(model: string, inTok: number, outTok: number, cacheWriteTok = 0, cacheReadTok = 0): number {
   const p = PRICING[model] ?? { in: 3, out: 15 };
-  return Number(((inTok / 1e6) * p.in * 100 + (outTok / 1e6) * p.out * 100).toFixed(4));
+  const perTok = (tokens: number, rate: number) => (tokens / 1e6) * rate * 100;
+  return Number(
+    (
+      perTok(inTok, p.in) +
+      perTok(outTok, p.out) +
+      perTok(cacheWriteTok, p.in * CACHE_WRITE_MULT) +
+      perTok(cacheReadTok, p.in * CACHE_READ_MULT)
+    ).toFixed(4),
+  );
 }

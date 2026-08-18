@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const model = modelFor("balanced");
     const t0 = Date.now();
     const r = await callJson<Json>({ model, system, user, maxTokens: 500 });
-    await meter(admin, { organizationId: org.id, userId: auth.ok.userId, model: r.model, feature: "brand-generate", tier: "balanced", inTok: r.inTok, outTok: r.outTok, latencyMs: Date.now() - t0 });
+    await meter(admin, { organizationId: org.id, userId: auth.ok.userId, model: r.model, feature: "brand-generate", tier: "balanced", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
 
     const d = r.data ?? {};
     const c = d.colors ?? {};

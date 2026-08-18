@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
         messages: [{ role: "user", content: `Contact: ${t.customer_name || "customer"}.` }],
         maxTokens: 400,
       });
-      await meter(admin, { organizationId, userId, model: r.model, feature: "agent_outbound", tier, inTok: r.inTok, outTok: r.outTok, latencyMs: Date.now() - t0 });
+      await meter(admin, { organizationId, userId, model: r.model, feature: "agent_outbound", tier, inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
 
       // Log it as an outbound conversation so it appears in the inbox.
       const channelType = t.channel === "call" ? "voice" : t.channel === "sms" ? "sms" : "web";

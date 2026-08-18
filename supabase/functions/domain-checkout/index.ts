@@ -1,17 +1,17 @@
-// Phoxta — domain-checkout: start a Stripe Checkout for buying a domain. Validates
-// availability + price via Vercel, creates a 'pending' domain row, and returns a
-// Stripe Checkout URL. The stripe-webhook finalizes the purchase (registers the
-// domain on Vercel) after payment succeeds — so the BUYER is charged (with our
-// markup), not the platform's Vercel account.
+// Phoxta — domain-checkout: start a PAYSTACK payment for buying a domain.
+// (Migrated off Stripe 2026-08-18 — the audit's "one money rail" consolidation;
+// the Stripe path had dormant secrets and never charged.) Validates
+// availability + price via Vercel, creates a 'pending' domain row, and returns
+// a Paystack payment URL. paystack-webhook (kind domain_purchase) finalizes:
+// registers the domain on Vercel after the charge succeeds — the BUYER pays
+// (with our markup), not the platform's Vercel account.
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { vercelFetch, vercelConfigured, CNAME_TARGET } from "../_shared/vercel.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import { PS_KEY, RATE, CURRENCY, toChargeMinor, paystack } from "../_shared/paystack.ts";
 
-const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const MARKUP = 1.25;
-const stripe = STRIPE_KEY ? new Stripe(STRIPE_KEY, { apiVersion: "2023-10-16", httpClient: Stripe.createFetchHttpClient() }) : null;
 
 const normalizeHost = (s: string) => String(s || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/\.$/, "");
 
@@ -21,9 +21,10 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     if (!vercelConfigured()) return json({ error: "The domain service isn't configured yet." }, 503);
-    if (!stripe) return json({ error: "Payments aren't configured yet (missing STRIPE_SECRET_KEY)." }, 503);
+    if (!PS_KEY) return json({ error: "Payments aren't configured yet." }, 503);
+    if (!RATE || RATE <= 0) return json({ error: "Payments misconfigured (currency rate)." }, 503);
 
-    const auth = await authorize(req, body.orgId);
+    const auth = await authorize(req, body.orgId, { requireAdmin: true });
     if (auth.error) return auth.error;
 
     const host = normalizeHost(body.hostname);
@@ -43,19 +44,24 @@ Deno.serve(async (req) => {
       { onConflict: "hostname" },
     );
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [{
-        price_data: { currency: "usd", product_data: { name: `Domain registration: ${host}`, description: "1 year · auto-renews" }, unit_amount: retailCents },
-        quantity: 1,
-      }],
-      success_url: `${returnUrl}?domain=success&host=${encodeURIComponent(host)}`,
-      cancel_url: `${returnUrl}?domain=cancel`,
-      metadata: { kind: "domain_purchase", orgId: body.orgId, hostname: host, wholesale: String(wholesale) },
-    });
+    const { data: ud } = await admin.auth.admin.getUserById(auth.ok.userId);
+    const email = ud?.user?.email;
+    if (!email) return json({ error: "Your account has no email address." }, 400);
 
-    await admin.from("domains").update({ stripe_session: session.id }).eq("hostname", host);
-    return json({ url: session.url });
+    const init = await paystack(`/transaction/initialize`, {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        amount: toChargeMinor(retailCents),
+        currency: CURRENCY,
+        callback_url: `${returnUrl}?domain=success&host=${encodeURIComponent(host)}`,
+        metadata: { kind: "domain_purchase", org_id: body.orgId, hostname: host, wholesale: String(wholesale) },
+      }),
+    });
+    if (!init.ok) return json({ error: init.body?.message || "Payment could not be started." }, 502);
+
+    await admin.from("domains").update({ stripe_session: init.body?.data?.reference }).eq("hostname", host);
+    return json({ url: init.body?.data?.authorization_url });
   } catch (err) {
     return json({ error: String((err as Error)?.message || err) }, 500);
   }

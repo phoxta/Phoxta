@@ -304,7 +304,7 @@ Return JSON { "reply": a short, friendly 1-2 sentence summary of what you change
         const t0 = Date.now();
         const model = modelFor("complex");
         const r = await runAgent({ model, system, userMessage: String(input.question ?? ""), tools: READ_TOOLS, toolRunner: toolRunner(ctx.admin, orgId), maxTokens: 900 });
-        await meter(ctx.admin, { organizationId: orgId, userId: ctx.userId, model: r.model, feature: "ask_data", tier: "complex", inTok: r.inTok, outTok: r.outTok, latencyMs: Date.now() - t0 });
+        await meter(ctx.admin, { organizationId: orgId, userId: ctx.userId, model: r.model, feature: "ask_data", tier: "complex", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
         return json({ result: { answer: r.text, tools: r.toolCalls } });
       }
       case "auto_insights": {

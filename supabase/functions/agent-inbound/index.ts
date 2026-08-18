@@ -144,7 +144,13 @@ Deno.serve(async (req) => {
     if (!message) return json({ error: "Type a message." }, 400);
     if (message.length > 4000) return json({ error: "Message too long." }, 400);
     if (await overLimit(admin, org.id)) {
-      return json({ reply: "Thanks for your message! We're handling a lot of enquiries right now — a team member will follow up shortly." });
+      // `throttled` lets transport adapters (e.g. email-inbound) tell this
+      // courtesy line apart from a real agent reply, so the per-org cap also
+      // caps outbound sends rather than only model spend.
+      return json({
+        throttled: true,
+        reply: "Thanks for your message! We're handling a lot of enquiries right now — a team member will follow up shortly.",
+      });
     }
     const result = await respondCore(admin, org, config, {
       channel: body?.channel ?? "web",

@@ -22,3 +22,14 @@ export function modelFor(tier: Tier): string {
   const table = provider === "xai" ? XAI : ANTHROPIC;
   return table[tier] || table.balanced;
 }
+
+/** Translate a model id to its same-tier equivalent on another provider —
+ *  used by the fallback gateway when the primary provider is down. */
+export function translateModel(model: string, target: "xai" | "anthropic"): string {
+  const from = model.startsWith("grok") ? XAI : ANTHROPIC;
+  const to = target === "xai" ? XAI : ANTHROPIC;
+  for (const tier of ["cheap", "balanced", "complex"] as Tier[]) {
+    if (from[tier] === model) return to[tier];
+  }
+  return to.balanced;
+}

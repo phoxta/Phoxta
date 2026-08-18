@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const orgId = (body as { organizationId?: string })?.organizationId;
     const action = (body as { action?: string })?.action ?? "url";
-    const a = await authorize(req, orgId);
+    const a = await authorize(req, orgId, { requireAdmin: true });
     if (a.error) return a.error;
 
     if (action === "disconnect") {

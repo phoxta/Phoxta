@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     await meter(admin, {
       organizationId: org.id, userId, conversationId, model: r.model,
       feature: "agent_assist", tier: config.model_tier ?? "balanced",
-      inTok: r.inTok, outTok: r.outTok, latencyMs: Date.now() - t0,
+      inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0,
     });
 
     let summary = "";

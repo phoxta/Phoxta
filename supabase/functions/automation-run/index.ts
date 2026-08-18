@@ -40,15 +40,32 @@ async function runOne(admin: SupabaseClient, automation: Json): Promise<string> 
 
   const read = toolRunner(admin, orgId);
   const runner = async (name: string, input: Json): Promise<string> =>
+    // isAdmin defaults to true here on purpose: automations are configured by an
+    // owner/admin and run unattended, so they execute at the tool's own policy
+    // rather than being downgraded to the approval queue like a member's request.
     isWriteTool(name) ? await executeAction(admin, orgId, null, name, input) : await read(name, input);
 
   const mem = await memoryContext(admin, orgId);
+  // Briefing memory (audit 2026-08-18): briefings used to repeat themselves —
+  // feed the previous run's output back so each briefing reports what CHANGED.
+  let previous = "";
+  if (!isTask) {
+    const { data: lastRun } = await admin
+      .from("automation_runs")
+      .select("output")
+      .eq("automation_id", automation.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    previous = String(lastRun?.output ?? "").slice(0, 1500);
+  }
   const system =
     `You are the AI operator for "${(orgRow as Json)?.name ?? "this business"}" (${(orgRow as Json)?.vertical ?? "small business"}). ` +
     (isTask
       ? "Carry out the owner's instruction using your tools; write actions may require their approval. "
       : "Produce a concise, concrete briefing from the business's REAL data using the read tools. Plain text, a few short lines. ") +
     "Never invent data — always use a tool." +
+    (previous ? `\n\nYour PREVIOUS briefing said:\n${previous}\n\nDo not repeat it — lead with what changed since, and only restate a number when it moved.` : "") +
     (mem ? `\n\nWhat you remember about this business:\n${mem}` : "");
 
   const t0 = Date.now();
@@ -58,7 +75,7 @@ async function runOne(admin: SupabaseClient, automation: Json): Promise<string> 
     tools: isTask ? [...READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS, ...WRITE_TOOLS] : [...READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS],
     toolRunner: runner, maxTurns: 6, maxTokens: 1200,
   });
-  await meter(admin, { organizationId: orgId, userId: "automation", model: r.model, feature: "automation", tier: "balanced", inTok: r.inTok, outTok: r.outTok, latencyMs: Date.now() - t0 });
+  await meter(admin, { organizationId: orgId, userId: "automation", model: r.model, feature: "automation", tier: "balanced", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
 
   const output = r.text || "(no output)";
   if ((cfg.channel ?? "email") === "email") {

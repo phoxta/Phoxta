@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
           "Write one short, natural, human message. Respond only with the message text.";
         const t0 = Date.now();
         const r = await callMessages({ model: modelFor(config.model_tier ?? "balanced"), system, messages: [{ role: "user", content: `To: ${t.customer_name || "customer"}.` }], maxTokens: 300 });
-        await meter(admin, { organizationId: t.organization_id, model: r.model, feature: "agent_outbound", tier: config.model_tier ?? "balanced", inTok: r.inTok, outTok: r.outTok, latencyMs: Date.now() - t0 });
+        await meter(admin, { organizationId: t.organization_id, model: r.model, feature: "agent_outbound", tier: config.model_tier ?? "balanced", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
 
         // Calls go through the business's own Pipecat agent (placeAiCall);
         // everything else through the messaging adapters.

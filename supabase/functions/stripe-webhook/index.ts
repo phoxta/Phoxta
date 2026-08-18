@@ -28,6 +28,23 @@ Deno.serve(async (req) => {
     const m = s.metadata || {};
     if (m.kind === "domain_purchase" && m.hostname && m.orgId) {
       const admin = adminClient();
+
+      // Stripe retries webhooks. Without an idempotency guard a redelivery
+      // re-ran /v4/domains/buy for an already-registered domain, that threw, and
+      // the catch below flipped a LIVE, paid domain to 'error'. Only proceed
+      // when the row is still in a pre-registration state; claim it atomically
+      // so concurrent deliveries can't both register.
+      // 'verifying' is the in-flight claim state (already permitted by the
+      // domains.status CHECK constraint); it becomes 'live' or 'error' below.
+      const { data: claimed } = await admin
+        .from("domains")
+        .update({ status: "verifying" })
+        .eq("hostname", m.hostname)
+        .not("status", "in", '("live","verifying")')
+        .select("hostname")
+        .maybeSingle();
+      if (!claimed) return json({ received: true, skipped: "already processed" });
+
       try {
         const wholesale = Number(m.wholesale) || undefined;
         const buy = await vercelFetch(`/v4/domains/buy`, { method: "POST", body: JSON.stringify({ name: m.hostname, expectedPrice: wholesale, renew: true }) });

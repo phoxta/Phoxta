@@ -409,17 +409,67 @@ async function audit(admin: SupabaseClient, orgId: string, tool: string, args: J
   await admin.from("agent_audit_log").insert({ organization_id: orgId, actor: "operator", tool, args, status, summary });
 }
 
-/** Governed execution used by the operator agent's tool runner. Returns a string for the model. */
-export async function executeAction(admin: SupabaseClient, orgId: string, userId: string | null, tool: string, args: Json): Promise<string> {
-  const mode = await policyMode(admin, orgId, tool);
+/** Governed execution used by the operator agent's tool runner. Returns a string for the model.
+ *
+ *  `isAdmin` reflects the caller's org role. Non-admins can still drive the
+ *  operator, but a tool set to 'auto' is downgraded to 'approve' for them — so a
+ *  plain member can never have the agent change prices, fulfil orders or send
+ *  mail from the business mailbox without an owner/admin signing off. */
+export async function executeAction(
+  admin: SupabaseClient,
+  orgId: string,
+  userId: string | null,
+  tool: string,
+  args: Json,
+  isAdmin = true,
+): Promise<string> {
+  let mode = await policyMode(admin, orgId, tool);
+  if (mode === "auto" && !isAdmin) mode = "approve";
   if (mode === "off") {
     await audit(admin, orgId, tool, args, "denied", "Blocked by policy");
     return "That action is turned off for this business.";
+  }
+  // Deterministic spend budget (audit 2026-08-18): outbound customer contact is
+  // hard-capped per org per day, in code — no prompt can override it. Guards
+  // runaway automations and compliance exposure (A2P/WhatsApp volume).
+  if (tool === "send_message" || tool === "place_call") {
+    const cap = Number(Deno.env.get("OUTBOUND_DAILY_CAP") ?? "200");
+    const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { count } = await admin
+      .from("agent_audit_log")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .in("tool", ["send_message", "place_call"])
+      .eq("status", "ok")
+      .gte("created_at", dayAgo);
+    if ((count ?? 0) >= cap) {
+      await audit(admin, orgId, tool, args, "denied", `Daily outbound cap reached (${cap})`);
+      return `Today's outbound limit (${cap} messages/calls) is reached for safety — try again tomorrow or raise the cap with Phoxta support.`;
+    }
   }
   if (mode === "approve") {
     const title = actionTitle(tool, args);
     await admin.from("agent_actions").insert({ organization_id: orgId, tool, args, title, requested_by: userId, status: "pending" });
     await audit(admin, orgId, tool, args, "pending", title);
+    // Tell org owners/admins there's something to approve — previously the
+    // queue filled silently and nothing surfaced it outside the Operator tab.
+    try {
+      const { data: admins } = await admin
+        .from("organization_memberships")
+        .select("user_id, role")
+        .eq("organization_id", orgId)
+        .in("role", ["owner", "admin"]);
+      const { data: orgRow } = await admin.from("organizations").select("name").eq("id", orgId).maybeSingle();
+      if (admins?.length) {
+        await admin.from("notifications").insert(admins.map((m) => ({
+          user_id: m.user_id,
+          title: `Approval needed — ${orgRow?.name ?? "your business"}`,
+          body: title,
+          kind: "ai",
+          link: `/dashboard/businesses/${orgId}/ops/agent/operator`,
+        })));
+      }
+    } catch { /* best-effort */ }
     return `Queued for the owner's approval: ${title}. They can approve it in Agent → Operator.`;
   }
   try {

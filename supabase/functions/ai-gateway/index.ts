@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       { conversation_id: conversationId, organization_id: organizationId, role: "user", content: message },
       { conversation_id: conversationId, organization_id: organizationId, role: "assistant", content: run.text, model: run.model, input_tokens: run.inTok, output_tokens: run.outTok },
     ]);
-    await meter(admin, { organizationId, userId, conversationId, model: run.model, feature: "assistant", tier: "balanced", inTok: run.inTok, outTok: run.outTok, latencyMs: latency });
+    await meter(admin, { organizationId, userId, conversationId, model: run.model, feature: "assistant", tier: "balanced", inTok: run.inTok, outTok: run.outTok, cacheWriteTok: run.cacheWriteTok, cacheReadTok: run.cacheReadTok, latencyMs: latency });
     await admin.from("ai_conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
 
     return json({ conversationId, reply: run.text, usage: { input_tokens: run.inTok, output_tokens: run.outTok }, tools: run.toolCalls });

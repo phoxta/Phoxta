@@ -129,6 +129,9 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
           contact_id: ctx.contactId,
           customer_name: input.customer_name || ctx.customer.name || "",
           customer_email: input.customer_email || ctx.customer.email || "",
+          // Recorded so a phone-only caller can later be matched to their own
+          // booking (see reschedule_appointment).
+          customer_phone: ctx.customer.phone || "",
           start_at: input.start_at,
           status: "confirmed",
         })
@@ -140,8 +143,28 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
     }
 
     if (name === "reschedule_appointment") {
-      let q = admin.from("bookings").select("id").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(1);
-      if (ctx.customer.email) q = q.eq("customer_email", ctx.customer.email);
+      // MUST be scoped to this customer. Previously the customer filter was only
+      // applied when an email was known — so an SMS/voice caller (phone only, no
+      // email) would silently match the ORG's most recent booking and reschedule
+      // a different customer's appointment. Resolve identity by contact id, then
+      // email, then phone; refuse rather than guess when we have none of them.
+      let q = admin
+        .from("bookings")
+        .select("id")
+        .eq("organization_id", orgId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (ctx.contactId) {
+        q = q.eq("contact_id", ctx.contactId);
+      } else if (ctx.customer.email) {
+        q = q.eq("customer_email", ctx.customer.email);
+      } else if (ctx.customer.phone) {
+        q = q.eq("customer_phone", ctx.customer.phone);
+      } else {
+        return "I couldn't identify which booking is yours. Could you confirm the email address or phone number you booked with?";
+      }
+
       const { data: b } = await q.maybeSingle();
       if (!b) return "No appointment found to reschedule.";
       await admin.from("bookings").update({ start_at: input.start_at, status: "confirmed" }).eq("id", (b as { id: string }).id);
