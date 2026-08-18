@@ -12,7 +12,7 @@ export default function About2Page() {
       <PageMeta
         title="About Phoxta — How owning a ready-to-run business works"
         description="Learn how Phoxta lets you buy a validated, AI-powered business and operate it from day one — the model, the technology, and the team behind it."
-        path="/about-2"
+        path="/about"
       />
                 <Section1 />
                 <Section2 />

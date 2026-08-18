@@ -83,9 +83,6 @@ const Footer2 = forwardRef<HTMLElement>(function Footer2(_, ref) {
                     <li className="mb-15">
                       <Link to="/pricing">Pricing</Link>
                     </li>
-                    <li className="mb-15">
-                      <Link to="/about">About</Link>
-                    </li>
                   </ul>
                 </div>
                 <div className="alt-footer-link-item col-6">

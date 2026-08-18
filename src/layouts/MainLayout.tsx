@@ -35,6 +35,7 @@ import { MobileMenuCloneProvider } from "@/shared/mobile-menu/MobileMenuCloneCon
 import GlobalEffects from "@/shared/effects/GlobalEffects";
 import ThemeRouteSync from "@/shared/effects/ThemeRouteSync";
 import BackToTop from "@/shared/elements/BackToTop";
+import PromoBanner from "@/shared/elements/PromoBanner";
 import FloatingVoiceWidget from "@/shared/elements/FloatingVoiceWidget";
 import SmoothScrollEffect from "@/shared/effects/SmoothScrollEffect";
 import SiteJsonLd from "@/seo/SiteJsonLd";
@@ -214,6 +215,7 @@ export default function MainLayout({
 
       <div id="smooth-wrapper">
         <div id="smooth-content" className="z-index-3">
+          <PromoBanner />
           <main className={mainClass}>
             {children ?? <Outlet />}
           </main>

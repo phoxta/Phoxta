@@ -27,7 +27,7 @@ type FaqSection = {
     items: FaqItem[];
 };
 
-const FAQ_SECTIONS: FaqSection[] = [
+export const FAQ_SECTIONS: FaqSection[] = [
     {
         number: "01",
         title: "Getting started",

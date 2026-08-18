@@ -17,6 +17,10 @@ export type PortfolioCard2Props = {
   description: string;
   linkCase: string;
   featuredHtml?: ReactNode;
+  /** Original price shown struck-through before `title` (promo display). */
+  compareAt?: string;
+  /** Small promo pill shown on the image, e.g. "35% OFF". */
+  dealLabel?: string;
 };
 
 export default function PortfolioCard2({
@@ -29,6 +33,8 @@ export default function PortfolioCard2({
   description,
   linkCase,
   featuredHtml,
+  compareAt,
+  dealLabel,
 }: PortfolioCard2Props) {
   return (
     <div
@@ -46,11 +52,21 @@ export default function PortfolioCard2({
             <p className="text-white fz-font-md mb-0 mt-10 text-truncate-3 des pr-250">{description}</p>
           </div>
         </span>
+        {dealLabel && (
+          <span className="alt-portfolio-tag bg-danger px-3 py-2 rounded-pill p-absolute top-0 start-0 m-4 fz-10 fw-600 text-white">
+            {dealLabel}
+          </span>
+        )}
         {featuredHtml}
       </Link>
       <div className="alt-portfolio-content d-flex justify-content-between">
         <h5 className="alt-portfolio-title mb-0 fw-600">
           <Link to={link} className="common-underline">
+            {compareAt && (
+              <del className="neutral-500 fw-400 me-2" aria-label={`Was ${compareAt}`}>
+                {compareAt}
+              </del>
+            )}
             {title}
           </Link>
         </h5>

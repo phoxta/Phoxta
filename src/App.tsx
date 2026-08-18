@@ -10,7 +10,6 @@ import AgentLayout from "@/layouts/AgentLayout";
 // Pages are lazy-loaded so each route ships its own chunk (smaller first load).
 // Marketing site — the curated, public Phoxta pages.
 const Home1Page = lazy(() => import("@/pages/Home1Page"));
-const Home13Page = lazy(() => import("@/pages/Home13Page")); // /invest
 // Solutions pages (linked from the nav's Solutions dropdown)
 const MarketingSolutionPage = lazy(() => import("@/pages/MarketingSolutionPage")); // /marketing
 const AiTechPage = lazy(() => import("@/pages/AiTechPage")); // /ai-tech
@@ -19,7 +18,8 @@ const BrandDesignPage = lazy(() => import("@/pages/BrandDesignPage")); // /brand
 const About2Page = lazy(() => import("@/pages/About2Page"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
 const ProductArchivePage = lazy(() => import("@/pages/ProductArchivePage")); // /marketplace
-const BlogDetailsPage = lazy(() => import("@/pages/BlogDetailsPage")); // /blog
+const BlogPage = lazy(() => import("@/pages/BlogPage")); // /blog (index)
+const ArticlePage = lazy(() => import("@/pages/ArticlePage")); // /blog/:slug
 const FaqsPage = lazy(() => import("@/pages/FaqsPage"));
 const CareersPage = lazy(() => import("@/pages/CareersPage"));
 const Contact1Page = lazy(() => import("@/pages/Contact1Page")); // /contact
@@ -36,6 +36,7 @@ const MarketplaceDetailPage = lazy(() => import("@/pages/dashboard/MarketplaceDe
 const BusinessesPage = lazy(() => import("@/pages/dashboard/BusinessesPage"));
 const BusinessDetailPage = lazy(() => import("@/pages/dashboard/BusinessDetailPage"));
 const BillingPage = lazy(() => import("@/pages/dashboard/BillingPage"));
+const PaymentCallbackPage = lazy(() => import("@/pages/dashboard/PaymentCallbackPage"));
 const NetworkPage = lazy(() => import("@/pages/dashboard/NetworkPage"));
 const SettingsPage = lazy(() => import("@/pages/dashboard/SettingsPage"));
 const AssistantPage = lazy(() => import("@/pages/dashboard/AssistantPage"));
@@ -136,6 +137,7 @@ export default function App() {
             </Route>
           </Route>
           <Route path="/dashboard/billing" element={<BillingPage />} />
+          <Route path="/dashboard/payment/callback" element={<PaymentCallbackPage />} />
           <Route path="/dashboard/network" element={<NetworkPage />} />
           <Route path="/dashboard/settings" element={<SettingsPage />} />
         </Route>
@@ -145,27 +147,30 @@ export default function App() {
       <Route element={<MainLayout headerStyle={4} footerStyle={1} noHeader />}>
         <Route path="/" element={<Home1Page />} />
       </Route>
-      <Route element={<MainLayout headerStyle={16} footerStyle={13} noFooter headerProps={{ light: true }} />}>
-        <Route path="/invest" element={<Home13Page />} />
-      </Route>
+      {/* /invest taken down 2026-08-18 (audit): the page offered securities
+          (Growth Notes, APR figures) with no product, KYC, or filings behind
+          it — a regulatory liability while indexed. Redirect until a real,
+          papered offering exists. */}
+      <Route path="/invest" element={<Navigate to="/contact" replace />} />
       {/* Solutions pages (nav → Solutions dropdown) */}
-      <Route element={<MainLayout headerStyle={16} footerStyle={3} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
         <Route path="/marketing" element={<MarketingSolutionPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={16} footerStyle={4} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
         <Route path="/ai-tech" element={<AiTechPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={16} footerStyle={7} headerProps={{ light: true }} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={1} headerProps={{ light: true }} />}>
         <Route path="/startup-school" element={<StartupSchoolPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={16} footerStyle={9} headerProps={{ light: true }} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={1} headerProps={{ light: true }} />}>
         <Route path="/brand-design" element={<BrandDesignPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={16} footerStyle={2} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
         <Route path="/about" element={<About2Page />} />
         <Route path="/marketplace" element={<ProductArchivePage />} />
         <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/blog" element={<BlogDetailsPage />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/blog/:slug" element={<ArticlePage />} />
         <Route path="/faqs" element={<FaqsPage />} />
         <Route path="/careers" element={<CareersPage />} />
         <Route path="/contact" element={<Contact1Page />} />

@@ -62,20 +62,20 @@ export default function MainMenu() {
       </li>
 
       <li>
-        <MenuLink to="/about">
-          <LinkSwap label="About" />
-        </MenuLink>
-      </li>
-
-      <li>
         <MenuLink to="/blog">
           <LinkSwap label="Blog" />
         </MenuLink>
       </li>
 
       <li>
-        <MenuLink to="/invest">
-          <LinkSwap label="Invest" />
+        <MenuLink to="/faqs">
+          <LinkSwap label="FAQs" />
+        </MenuLink>
+      </li>
+
+      <li>
+        <MenuLink to="/contact">
+          <LinkSwap label="Contact" />
         </MenuLink>
       </li>
     </MainMenuRootList>

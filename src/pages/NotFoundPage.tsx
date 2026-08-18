@@ -56,7 +56,7 @@ export default function NotFoundPage() {
                             <p className="fw-400 fz-font-3xl neutral-900 mb-40 w-75 lh-sm">
                                 It looks like nothing was found at this location. Maybe try one of the links below or a search?
                             </p>
-                            <form action="/page-search-results" method="get" className="w-75 pt-50 pb-60">
+                            <form action="/marketplace" method="get" className="w-75 pt-50 pb-60">
                                 <div className="at-search-form-input opacity-100">
                                     <input type="text" name="q" placeholder="Search..." required />
                                     <span className="at-search-focus-border"></span>

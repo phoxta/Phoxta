@@ -74,13 +74,11 @@ export default function Section6() {
             <section id="sec-6-home-1" className="sec-6-home-1 mx-lg-3 mx-2 bg-black pt-100 pb-100 rounded-5 changeless overflow-hidden">
                 <div className="container">
                     <div className="row align-items-end mb-50 g-3 z-index-2">
-                        <div className="col-md-8">
-                            {LOGO_SVG}
-                            <h2 className="alt-section-title lh-1 mb-10 reveal-text text-white">
-                                <RevealText>Owners who made it theirs</RevealText>
+                        <div className="col-md-8"><h2 className="alt-section-title lh-1 mb-10 reveal-text text-white">
+                                <RevealText>Testimonials</RevealText>
                             </h2>
                             <p className="mg-portfolio-dec mb-50 text-white mb-0">
-                                Real people running real businesses they launched in days.
+                                Real people running real profitable businesses.
                             </p>
                         </div>
                         <div className="col-lg-2 ms-auto">
@@ -127,24 +125,6 @@ export default function Section6() {
                                     />
                                 ))}
                             </SwiperDynamic>
-                        </div>
-                        <div className="col-12 text-center pt-50 z-index-1">
-                            <Link to="mailto:hello@phoxta.com" className="at-btn bg-transparent p-relative">
-                                <img
-                                    className="badge-zoon-in"
-                                    src="/assets/imgs/icons/badge-2.svg"
-                                    alt="phoxta"
-                                    width={120}
-                                    height={120} loading="lazy" />
-                                <span className="position-absolute top-50 start-50 translate-middle d-flex flex-column align-items-center justify-content-center overflow-unset">
-                                    <span className="mt-2 badge-text-zoom-in overflow-unset text-wrap">
-                                        <span className="fw-700 common-white text-uppercase overflow-unset">
-                                            Client <br />
-                                            Stories
-                                        </span>
-                                    </span>
-                                </span>
-                            </Link>
                         </div>
                     </div>
                 </div>

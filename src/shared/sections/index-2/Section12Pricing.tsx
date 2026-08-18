@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { approxNgn } from "@/lib/plans";
 const ARROW_SVG = (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path
@@ -141,8 +142,11 @@ export default function Section12Pricing({ titleSlot, footerSlot }: Section12Pri
                                         {isAnnual ? "/mo, billed yearly" : "/monthly"}
                                     </span>
                                 </div>
+                                <p className="fz-font-sm neutral-500 mb-2">
+                                    ≈ {approxNgn(parseInt(prices[plan.key].replace(/[^0-9]/g, ""), 10))}/mo charged in NGN
+                                </p>
                                 <p className="home-2-pricing-card__desc">{plan.desc}</p>
-                                <Link className="at-btn px-5" to="/auth">
+                                <Link className="at-btn px-5" to="/auth?mode=signup&redirect=/dashboard/billing">
                                     <span>
                                         <span className="text-1 text-capitalize">{plan.btnText}</span>
                                         <span className="text-2 text-capitalize">{plan.btnText}</span>
@@ -153,7 +157,12 @@ export default function Section12Pricing({ titleSlot, footerSlot }: Section12Pri
                                     </i>
                                 </Link>
                             </div>
-                            <ul className="home-2-pricing-card__features">
+                                            {plan.key === "growth" && (
+                                    <p className="fz-font-sm neutral-500 mb-0 mt-2">
+                                        First month free with any purchased business.
+                                    </p>
+                                )}
+                <ul className="home-2-pricing-card__features">
                                 {plan.features.map((feature, i) => (
                                     <li key={i}>
                                         <span className="home-2-pricing-card__feature-icon dark-mode-invert">

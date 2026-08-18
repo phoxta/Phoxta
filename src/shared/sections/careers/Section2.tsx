@@ -29,7 +29,7 @@ export default function Section2() {
                     {ROLES.map((role, i) => (
                         <div key={i} className="col-12">
                             <Link
-                                to="/contact-1"
+                                to="/contact"
                                 className="d-flex flex-wrap align-items-center justify-content-between gap-3 p-4 rounded-3 bg-neutral-50 at-hover-item"
                             >
                                 <div>

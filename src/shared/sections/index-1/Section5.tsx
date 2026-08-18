@@ -89,15 +89,14 @@ export default function Section5({ classList = "" }: { classList?: string }) {
                 <div className="row">
                     <div className="col-xxl-4 col-lg-4">
                         <div className="mg-portfolio-title-wrap mg-portfolio-pin mb-30">
-                            {CUBE_SVG}
                             <h2 className="alt-section-title lh-1 mb-30 reveal-text">
                                 <RevealText>
-                                    Businesses ready to make your own
+                                    Our Best Sellers
                                 </RevealText>
                             </h2>
                             <div className="at_fade_anim" data-delay=".3">
                                 <p className="mg-portfolio-dec mb-50">
-                                    A handpicked selection of live, AI-powered businesses with a proven track record &mdash; each one ready to brand, launch and run as your own in minutes.
+                                    Fully operational, AI-powered businesses with proven profitability in multiple regions.
                                 </p>
                             </div>
                             <div className="at-btn-group at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">

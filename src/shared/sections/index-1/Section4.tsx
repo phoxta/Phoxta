@@ -33,16 +33,7 @@ export default function Section4() {
                     <div className="col-12">
                         <div className="at-service-subtitle-wrap at-about-border d-flex justify-content-between gap-3 mb-50">
                             <span className="at-btn common-black text-uppercase bg-transparent mb-10 rounded-0 p-0">
-                                <span className="text-uppercase">
-                                    <span className="text-1">WHAT YOU GET</span>
-                                    <span className="text-2">WHAT YOU GET</span>
-                                </span>
-                                <i>
-                                    {ARROW_SVG}
-                                    {ARROW_SVG}
-                                </i>
                             </span>
-                            <span className="fs-font-md fw-500 text-decoration-underline">Live from 2026</span>
                         </div>
                     </div>
                     <div className="col-xxl-4 col-lg-4 col-xl-4 mb-40">
@@ -60,10 +51,6 @@ export default function Section4() {
                                         </div>
                                     ))}
                                 </div>
-                                <h5 className="fw-600 mb-0 mt-10">
-                                    <OdometerCounter count={10} suffix="+" />
-                                </h5>
-                                <span className="fz-font-lg neutral-500 fw-500">Businesses ready to own</span>
                             </div>
                         </div>
                     </div>
@@ -85,18 +72,6 @@ export default function Section4() {
                                     </div>
                                 </Link>
                             ))}
-                            <div className="at-service-btn pt-30">
-                                <Link className="at-btn" to="/product-archive">
-                                    <span>
-                                        <span className="text-1">Explore the marketplace</span>
-                                        <span className="text-2">Explore the marketplace</span>
-                                    </span>
-                                    <i>
-                                        {ARROW_SVG}
-                                        {ARROW_SVG}
-                                    </i>
-                                </Link>
-                            </div>
                         </div>
                     </div>
                 </div>

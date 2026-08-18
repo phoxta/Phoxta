@@ -82,8 +82,7 @@ export default function Section12({ className = "", showNoise = true }: Section1
                                 titleSlot={
                                     <h3 className="reveal-text fw-700 mb-0">
                                         <RevealText>
-                                            Simple, transparent pricing to launch
-                                            and grow your business
+                                            AI Operating Console Pricing
                                         </RevealText>
                                     </h3>
                                 }

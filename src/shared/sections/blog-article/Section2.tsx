@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import RevealText from "@/shared/effects/RevealText";
 import ArticleCard1 from "@/shared/cards/ArticleCard1";
 import { ARTICLES_BY_DATE } from "@/data/articles";
 
-const HOMEPAGE_POSTS = ARTICLES_BY_DATE.slice(0, 4);
+// blog-article section 2 — "More articles" grid shown under a post.
+// Prefers posts in the same category, then fills from the newest remaining.
 
 const ARROW_SVG = (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -14,31 +14,24 @@ const ARROW_SVG = (
     </svg>
 );
 
-// Homepage strip = the newest posts, straight from the blog data.
+const MAX_RELATED = 4;
 
-export default function Section13() {
+export default function Section2({ currentSlug }: { currentSlug: string }) {
+    const current = ARTICLES_BY_DATE.find((a) => a.slug === currentSlug);
+    const others = ARTICLES_BY_DATE.filter((a) => a.slug !== currentSlug);
+    const sameCategory = others.filter((a) => a.category === current?.category);
+    const related = [...sameCategory, ...others.filter((a) => !sameCategory.includes(a))].slice(0, MAX_RELATED);
+
+    if (related.length === 0) return null;
+
     return (
-        <div className="at-sec13-thumb fix w-100 scale-up-img p-relative pt-120 pb-120">
+        <section className="sec-2-blog-details overflow-hidden pb-120">
             <div className="container">
                 <div className="row align-items-end mb-50">
-                    <div className="col-lg-8 col-xxl-6">
-                        <span className="at-btn common-black bg-transparent mb-10 rounded-0 p-0">
-                            <span className="text-uppercase">
-                                <span className="text-1">FROM THE BLOG</span>
-                                <span className="text-2">FROM THE BLOG</span>
-                            </span>
-                            <i>
-                                {ARROW_SVG}
-                                {ARROW_SVG}
-                            </i>
-                        </span>
-                        <h3 className="alt-section-title lh-1 neutral-900 fw-700 mb-30 reveal-text mb-0">
-                            <RevealText>
-                                Articles and startup guides.
-                            </RevealText>
-                        </h3>
+                    <div className="col-lg-8">
+                        <h3 className="alt-section-title lh-1 neutral-900 fw-700 mb-0">More articles</h3>
                     </div>
-                    <div className="col-xxl-2 col-lg-3 ms-auto text-xxl-end text-lg-end">
+                    <div className="col-lg-3 ms-auto text-lg-end">
                         <div className="at-service-btn pt-30">
                             <Link className="at-btn" to="/blog">
                                 <span>
@@ -54,7 +47,7 @@ export default function Section13() {
                     </div>
                 </div>
                 <div className="row">
-                    {HOMEPAGE_POSTS.map((post) => (
+                    {related.map((post) => (
                         <ArticleCard1
                             key={post.slug}
                             classList="col-lg-3 col-md-6 col-12"
@@ -69,6 +62,6 @@ export default function Section13() {
                     ))}
                 </div>
             </div>
-        </div>
+        </section>
     );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 
 type ScrollSmootherInstance = {
@@ -35,6 +35,11 @@ export default function SmoothScrollEffect() {
       const gsap = (await import("gsap")).default;
       const ScrollTrigger = (await import("gsap/ScrollTrigger")).default;
       gsap.registerPlugin(ScrollTrigger);
+      // SPA navigation: stop ScrollTrigger.refresh() from restoring a remembered
+      // scroll position from the previous route (it briefly re-pinned the native
+      // scroll to the old page's offset after our route-change reset). Also sets
+      // history.scrollRestoration to "manual", per GSAP's SPA guidance.
+      (ScrollTrigger as unknown as { clearScrollMemory?: (mode?: string) => void }).clearScrollMemory?.("manual");
 
       if (!mounted) return;
 
@@ -134,6 +139,51 @@ export default function SmoothScrollEffect() {
       scrollSmootherRef.current = null;
     };
   }, []);
+
+  // Jump to the top of the new page BEFORE the browser paints it, then HOLD it
+  // there through the settle period. The one-shot reset is not enough: late image
+  // loads, ScrollTrigger refreshes and the smoother's own catch-up can each yank
+  // the scroll back toward the previous page's position hundreds of ms after
+  // navigation — which is how a clicked article opened at the end of the page.
+  // The hold undoes any scroll displacement for ~1.2s after navigation, and is
+  // released immediately by real user input (wheel / touch / keys / scrollbar via
+  // pointerdown) so it never fights an actual reader. Skipped on first render so
+  // a hard refresh keeps the browser's own scroll restoration.
+  const firstScrollResetRef = useRef(true);
+  useLayoutEffect(() => {
+    if (firstScrollResetRef.current) {
+      firstScrollResetRef.current = false;
+      return;
+    }
+    const pin = () => {
+      scrollSmootherRef.current?.scrollTo?.(0, false);
+      window.scrollTo(0, 0);
+    };
+    pin();
+
+    let released = false;
+    const release = () => {
+      released = true;
+    };
+    const onScroll = () => {
+      if (!released && window.scrollY !== 0) pin();
+    };
+    window.addEventListener("wheel", release, { passive: true, once: true });
+    window.addEventListener("touchstart", release, { passive: true, once: true });
+    window.addEventListener("keydown", release, { once: true });
+    window.addEventListener("pointerdown", release, { once: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    const timer = window.setTimeout(release, 1200);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("wheel", release);
+      window.removeEventListener("touchstart", release);
+      window.removeEventListener("keydown", release);
+      window.removeEventListener("pointerdown", release);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [pathname]);
 
   // Re-scan `[data-speed]` / `[data-lag]` only on SUBSEQUENT route changes (not the initial
   // render — `effects: true` at create time already scanned). ScrollSmoother only auto-scans

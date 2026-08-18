@@ -22,6 +22,18 @@ function readEnvLocal() {
     }
 }
 
+// Article slugs are derived from src/data/articles.ts so publishing a post adds
+// it here automatically. Plain regex rather than an import, because this is a
+// Node script and the source is TypeScript.
+function articleSlugs() {
+    try {
+        const src = readFileSync(new URL("../src/data/articles.ts", import.meta.url), "utf8");
+        return [...src.matchAll(/^\s*slug:\s*"([^"]+)"/gm)].map((m) => m[1]);
+    } catch {
+        return [];
+    }
+}
+
 const env = readEnvLocal();
 const SITE_URL = (
     process.env.SITE_URL ||
@@ -35,13 +47,17 @@ const ROUTES = [
     { path: "/marketplace", priority: 0.9, changefreq: "weekly" },
     { path: "/pricing", priority: 0.8, changefreq: "monthly" },
     { path: "/about", priority: 0.8, changefreq: "monthly" },
-    { path: "/invest", priority: 0.7, changefreq: "monthly" },
+    { path: "/marketing", priority: 0.7, changefreq: "monthly" },
+    { path: "/ai-tech", priority: 0.7, changefreq: "monthly" },
+    { path: "/startup-school", priority: 0.7, changefreq: "monthly" },
+    { path: "/brand-design", priority: 0.7, changefreq: "monthly" },
     { path: "/blog", priority: 0.6, changefreq: "weekly" },
     { path: "/faqs", priority: 0.6, changefreq: "monthly" },
     { path: "/careers", priority: 0.6, changefreq: "monthly" },
     { path: "/contact", priority: 0.7, changefreq: "yearly" },
     { path: "/privacy", priority: 0.3, changefreq: "yearly" },
     { path: "/terms", priority: 0.3, changefreq: "yearly" },
+    ...articleSlugs().map((slug) => ({ path: `/blog/${slug}`, priority: 0.6, changefreq: "monthly" })),
 ];
 
 const lastmod = new Date().toISOString().slice(0, 10);

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
+import { leadFormSubmit } from "@/lib/db/platformLead";
 
 // Contact 1 Section 1 - Reach out / Contact form
 
@@ -123,6 +125,8 @@ const SOCIAL_ITEMS = [
 ];
 
 export default function Section1() {
+    const [lead, setLead] = useState<{ status: "idle" | "sending" | "sent" | "error"; error?: string }>({ status: "idle" });
+    const onLeadSubmit = leadFormSubmit("contact", setLead);
     return (
         <section className="sec-1-contact overflow-hidden pt-120">
             <div className="container">
@@ -215,7 +219,18 @@ export default function Section1() {
                 <div className="row g-5 pt-120 align-items-end">
                     <div className="col-xxl-6 col-lg-7">
                         <h4>Drop us a line</h4>
-                        <form className="sec-4-about-form" action="#" method="post">
+                        <form className="sec-4-about-form" onSubmit={onLeadSubmit} noValidate={false}>
+                            {lead.status === "sent" && (
+                                <div className="alert alert-success py-2 px-3 fz-font-md" role="status">
+                                    Thanks — your message is in. We reply within one business day.
+                                </div>
+                            )}
+                            {lead.status === "error" && (
+                                <div className="alert alert-danger py-2 px-3 fz-font-md" role="alert">
+                                    {lead.error}
+                                </div>
+                            )}
+                            <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: "absolute", left: "-9999px", height: 0, width: 0, opacity: 0 }} />
                             <div className="sec-4-about-form__field">
                                 <input
                                     type="text"
@@ -257,10 +272,10 @@ export default function Section1() {
                                 />
                             </div>
                             <div className="sec-4-about-form__actions">
-                                <button type="submit" className="sec-4-about-form__btn at-btn">
+                                <button type="submit" className="sec-4-about-form__btn at-btn" disabled={lead.status === "sending"}>
                                     <span>
-                                        <span className="text-1 text-capitalize">Send Message</span>
-                                        <span className="text-2 text-capitalize">Send Message</span>
+                                        <span className="text-1 text-capitalize">{lead.status === "sending" ? "Sending…" : "Send Message"}</span>
+                                        <span className="text-2 text-capitalize">{lead.status === "sending" ? "Sending…" : "Send Message"}</span>
                                     </span>
                                     <i>
                                         {ARROW_SVG}
@@ -270,11 +285,11 @@ export default function Section1() {
                             </div>
                             <p className="sec-4-about-form__disclaimer">
                                 By submitting, you agree to our{" "}
-                                <Link to="#" className="sec-4-about-form__link">
+                                <Link to="/terms" className="sec-4-about-form__link">
                                     Terms
                                 </Link>{" "}
                                 and{" "}
-                                <Link to="#" className="sec-4-about-form__link">
+                                <Link to="/privacy" className="sec-4-about-form__link">
                                     Privacy Policy
                                 </Link>
                                 .

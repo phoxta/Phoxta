@@ -17,29 +17,29 @@ const FAQ_ITEMS = [
     {
         id: "collapseOne",
         num: "1",
-        question: "Do I actually own the business?",
-        answer: "Completely. It's an independent business under your brand, your domain and your own payment account — and you can export your data and customers whenever you like. No lock-in.",
+        question: "What exactly do I receive upon purchase?",
+        answer: "You get a completely turnkey. This includes a fully responsive website customized to your niche, pre-loaded content or products, pre-configured payment gateways, and a dedicated AI console with your autonomous AI agents already hooked up to your communication channels (phone, SMS, web, and social).",
         open: true,
     },
     {
         id: "collapseTwo",
         num: "2",
-        question: "How quickly can I be live?",
-        answer: "Most owners launch within days. From there, a 30-day onboarding helps you reach your first revenue, with setup videos and a guided checklist along the way.",
+        question: "How automated are these businesses, really?",
+        answer: "They are designed to handle 90% of daily operations autonomously. The integrated AI pipeline automatically captures and qualifies incoming leads, schedules bookings, answers customer support tickets using your data, and handles follow-ups. Your primary role is high-level oversight via your dashboard.",
         open: false,
     },
     {
         id: "collapseThree",
         num: "3",
-        question: "Will my customers know it runs on a shared platform?",
-        answer: "No. Your storefront is fully custom, on your own domain and branding. Your customers only ever see your business — never the platform underneath.",
+        question: "Can I customize the branding, products, and pricing?",
+        answer: "Yes, 100%. While the business is fully operational out of the box, you have complete ownership. You can easily upload your own logos, tweak the pricing margins, add or remove products, and update the AI’s knowledge base to reflect your unique brand voice.",
         open: false,
     },
     {
         id: "collapseFour",
         num: "4",
-        question: "What if someone else buys the same business?",
-        answer: "Each one is entirely separate — its own data, customers, payments and domain. You simply start from the same proven design, and geographic exclusivity is available on premium tiers.",
+        question: "Do I need any coding or technical skills?",
+        answer: "None at all. These businesses are built on modern, zero-code infrastructure. You don't need to write a single line of code or manage complex databases to run, update, or scale your business. If you can click a mouse, you can manage this console.",
         open: false,
     },
 ];
@@ -52,15 +52,19 @@ export default function Section11({ classList = "" }: { classList?: string }) {
                     <div className="col-lg-5">
                         <div className="alt-faq-title-wrap mb-40">
                             <div className="rounded-4 overflow-hidden anim-zoomin">
+                                {/* Cropped above the subject's hands: the source photo
+                                    (img-125) has malformed fingers, a generation artifact
+                                    that is very visible at this size. */}
                                 <img
-                                    src="/assets/imgs/pages/img-21.webp"
-                                    width={600}
-                                    height={700}
+                                    src="/assets/imgs/pages/img-125-faq.webp"
+                                    width={553}
+                                    height={425}
                                     className="w-100"
-                                    alt="phoxta" loading="lazy" />
+                                    alt="A member of the Phoxta team at their desk, ready to answer questions"
+                                    loading="lazy" />
                             </div>
                             <h6 className="mb-15 pt-50">Still have questions? We&apos;re here to help.</h6>
-                            <p className="at-faq-dec mb-35">Talk to us before you buy &mdash; no pressure.</p>
+                            <p className="at-faq-dec mb-35">femi@phoxta.com, +447350172153.</p>
                             <div
                                 className="at-btn-group at_fade_anim"
                                 data-delay=".4"
@@ -93,7 +97,7 @@ export default function Section11({ classList = "" }: { classList?: string }) {
                             </span>
                             <h3 className="at-section-title reveal-text">
                                 <RevealText>
-                                    Answered questions. Everything you might want to know—up front.
+                                    Everything you might want to know.
                                 </RevealText>
                             </h3>
                             <div className="accordion pt-80" id="accordionExample">

@@ -28,7 +28,7 @@ export default function Section1() {
                         </p>
                     </div>
                     <div className="col-lg-4 text-lg-end mt-4 mt-lg-0">
-                        <Link to="/contact-1" className="at-btn text-white rounded-0">
+                        <Link to="/contact" className="at-btn text-white rounded-0">
                             <span>
                                 <span className="text-1">GET IN TOUCH</span>
                                 <span className="text-2">GET IN TOUCH</span>

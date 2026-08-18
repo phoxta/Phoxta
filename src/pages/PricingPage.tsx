@@ -8,15 +8,13 @@ export default function PricingPage() {
     <>
       <PageMeta
         title="Pricing — Phoxta"
-        description="Simple, transparent pricing for owning an AI-powered business on Phoxta. One monthly subscription per account plus a one-time price per business. No free trial — cancel anytime."
+        description="Operating Console Pricing."
         path="/pricing"
       />
       {/* Top padding clears the transparent, absolutely-positioned header so the
           nav menu sits over a clean band (mirrors the pt-150 hero on other pages). */}
       <div className="pt-150">
         <Section1 showNoise={false} />
-        <Section2 />
-        <Section3 />
       </div>
     </>
   );

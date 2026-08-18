@@ -51,9 +51,16 @@ export default function PopupSearch({ open, onClose }: PopupSearchProps) {
           <div className="row justify-content-center">
             <div className="col-lg-12">
               <div className="at-search-form">
-                <form action="#" onSubmit={(e) => e.preventDefault()}>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const q = new FormData(e.currentTarget).get("q");
+                    onClose();
+                    window.location.assign(`/marketplace?q=${encodeURIComponent(String(q ?? ""))}`);
+                  }}
+                >
                   <div className="at-search-form-input">
-                    <input type="text" placeholder="Find what you need…" required />
+                    <input type="text" name="q" placeholder="Search businesses…" required />
                     <span className="at-search-focus-border" />
                     <button className="at-search-form-btn at-btn" type="submit">
                       <span>

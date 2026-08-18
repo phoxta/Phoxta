@@ -1,4 +1,6 @@
+import { useState } from "react";
 import RevealText from "@/shared/effects/RevealText";
+import { leadFormSubmit } from "@/lib/db/platformLead";
 
 {/* Home 7 Section 11 — Get in touch (contact form) */}
 
@@ -20,6 +22,8 @@ const SUBMIT_ARROW_SVG = (
 );
 
 export default function Section11() {
+    const [lead, setLead] = useState<{ status: "idle" | "sending" | "sent" | "error"; error?: string }>({ status: "idle" });
+    const onLeadSubmit = leadFormSubmit("startup-school", setLead);
     return (
         <div className="sec-11-home-7 pt-120 pb-120">
             <div className="container-2200 px-lg-5 px-3">
@@ -32,7 +36,18 @@ export default function Section11() {
                         <h2 className="sec-11-home-7__title mb-0 reveal-text"><RevealText>Join Startup School</RevealText></h2>
                     </div>
                     <div className="col-xl-6 col-lg-6 ms-lg-auto">
-                        <form className="sec-4-about-form sec-11-home-7__form" action="#" method="post">
+                        <form className="sec-4-about-form sec-11-home-7__form" onSubmit={onLeadSubmit}>
+                            {lead.status === "sent" && (
+                                <div className="alert alert-success py-2 px-3 fz-font-md" role="status">
+                                    You&apos;re on the list — we&apos;ll be in touch about the next cohort.
+                                </div>
+                            )}
+                            {lead.status === "error" && (
+                                <div className="alert alert-danger py-2 px-3 fz-font-md" role="alert">
+                                    {lead.error}
+                                </div>
+                            )}
+                            <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: "absolute", left: "-9999px", height: 0, width: 0, opacity: 0 }} />
                             <div className="sec-4-about-form__field at_fade_anim">
                                 <input type="text" className="sec-4-about-form__input" name="name" placeholder="Your name *" required aria-label="Your name" />
                             </div>
@@ -46,10 +61,10 @@ export default function Section11() {
                                 <textarea className="sec-4-about-form__input sec-4-about-form__textarea" name="message" placeholder="Your message *" rows={5} required aria-label="Your message"></textarea>
                             </div>
                             <div className="sec-4-about-form__actions at_fade_anim">
-                                <button type="submit" className="sec-4-about-form__btn at-btn at_fade_anim">
+                                <button type="submit" className="sec-4-about-form__btn at-btn at_fade_anim" disabled={lead.status === "sending"}>
                                     <span>
-                                        <span className="text-1 text-capitalize">Send Message</span>
-                                        <span className="text-2 text-capitalize">Send Message</span>
+                                        <span className="text-1 text-capitalize">{lead.status === "sending" ? "Sending…" : "Send Message"}</span>
+                                        <span className="text-2 text-capitalize">{lead.status === "sending" ? "Sending…" : "Send Message"}</span>
                                     </span>
                                     <i>
                                         {SUBMIT_ARROW_SVG}

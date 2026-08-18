@@ -8,7 +8,7 @@ export default function Contact1Page() {
       <PageMeta
         title="Contact Phoxta — Talk to our team"
         description="Questions about owning a Phoxta business? Get in touch with our team about blueprints, onboarding, pricing and partnerships."
-        path="/contact-1"
+        path="/contact"
       />
             <Section1 />
             <Section2 />

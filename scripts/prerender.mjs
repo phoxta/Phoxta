@@ -16,7 +16,7 @@
 //   node scripts/prerender.mjs        (usually via `npm run build`)
 
 import { preview } from "vite";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,6 +52,18 @@ const DIST = resolve(__dirname, "../dist");
 
 // Public, indexable routes — keep in sync with SITEMAP_ROUTES in
 // src/seo/seo.config.ts. Private/app routes are deliberately excluded.
+// Article slugs are derived from src/data/articles.ts so publishing a post adds
+// it here automatically. Plain regex rather than an import, because this is a
+// Node script and the source is TypeScript.
+function articleSlugs() {
+    try {
+        const src = readFileSync(new URL("../src/data/articles.ts", import.meta.url), "utf8");
+        return [...src.matchAll(/^\s*slug:\s*"([^"]+)"/gm)].map((m) => m[1]);
+    } catch {
+        return [];
+    }
+}
+
 const ROUTES = [
     "/",
     "/about",
@@ -61,9 +73,13 @@ const ROUTES = [
     "/faqs",
     "/careers",
     "/contact",
-    "/invest",
+    "/marketing",
+    "/ai-tech",
+    "/startup-school",
+    "/brand-design",
     "/privacy",
     "/terms",
+    ...articleSlugs().map((slug) => `/blog/${slug}`),
 ];
 
 const PORT = 4181;

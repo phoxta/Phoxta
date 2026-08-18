@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, EffectFade, Pagination } from "swiper/modules";
 import HeaderNav from "@/shared/header/HeaderNav";
 // Homepage hero. The shared site nav (HeaderNav) overlays the dark hero in its
 // light variant — the same menu section used on every page. The global layout
@@ -32,8 +34,25 @@ const CARDS_IMGS = [
 
 const TAGS = ["E-commerce", "Local services", "Content & creator", "SaaS", "Marketplaces"];
 
+// Hero headline variants — auto-rotated by the fade slider below. Each slide
+// keeps the exact classes of the original static heading/subtext so typography
+// and spacing are unchanged.
+const HERO_SLIDES = [
+    {
+        title: "Own a business that already works.",
+        sub: "Pick a validated, AI-powered business, make it your own, and go from launch to revenue in days.",
+    },
+    {
+        title: "Get started with your Business Ideas",
+        sub: "Autonomous agents handle sales, support and daily operations — you steer everything from one console.",
+    },
+];
+
 export default function Section1() {
     const [videoOpen, setVideoOpen] = useState(false);
+    // External pagination target — a real flex sibling BESIDE the slider, so
+    // Swiper's absolute-positioned default pagination never overlaps the text.
+    const dotsRef = useRef<HTMLDivElement | null>(null);
 
     // Close the video popup on Escape.
     useEffect(() => {
@@ -90,12 +109,76 @@ export default function Section1() {
                     <div className="container p-relative z-index-1">
                         <div className="row align-items-start">
                             <div className="col-xxl-6 col-lg-6 mb-5 mb-lg-0 pe-xxl-5">
-                                <h4 className="sec-1-home-4__headline fw-600 text-white mb-3 mb-md-4 lh-1">
-                                    Launch niche businesses powered entirely by automated AI pipelines.
-                                </h4>
-                                <p className="text-white fz-font-lg mb-4 mb-md-5" style={{ opacity: 0.85, maxWidth: 540 }}>
-                                    Fully operational from day one. Zero coding, and 100% automated growth from a single, centralized command center.
-                                </p>
+                                {/* Dot nav is a flex SIBLING to the left of the slider — never
+                                    absolutely positioned, so it can't overlap the text. The
+                                    !important overrides neutralise swiper-bundle.css rules that
+                                    target external pagination elements (bottom/left/width). */}
+                                <style>{`
+                                    .hero-headline-dots {
+                                        position: static !important;
+                                        bottom: auto !important;
+                                        left: auto !important;
+                                        width: auto !important;
+                                        display: flex;
+                                        flex-direction: column;
+                                        gap: 12px;
+                                        flex-shrink: 0;
+                                        opacity: 0.5;
+                                        transition: opacity 0.2s ease;
+                                    }
+                                    .hero-headline-dots:hover { opacity: 1; }
+                                    .hero-headline-dots .swiper-pagination-bullet {
+                                        display: block;
+                                        width: 11px;
+                                        height: 11px;
+                                        margin: 0;
+                                        border-radius: 50%;
+                                        background: transparent;
+                                        border: 2px solid rgba(254, 254, 254, 0.55);
+                                        opacity: 1;
+                                        cursor: pointer;
+                                        transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+                                    }
+                                    .hero-headline-dots .swiper-pagination-bullet:hover {
+                                        border-color: #fefefe;
+                                        transform: scale(1.2);
+                                    }
+                                    .hero-headline-dots .swiper-pagination-bullet-active {
+                                        background: #fefefe;
+                                        border-color: #fefefe;
+                                    }
+                                `}</style>
+                                <div className="d-flex align-items-center gap-3 mb-4 mb-md-5">
+                                    <div ref={dotsRef} className="hero-headline-dots" aria-label="Hero slides" />
+                                    <Swiper
+                                        modules={[Autoplay, EffectFade, Pagination]}
+                                        effect="fade"
+                                        fadeEffect={{ crossFade: true }}
+                                        autoplay={{ delay: 8000, disableOnInteraction: false }}
+                                        pagination={{ el: null, clickable: true }}
+                                        onBeforeInit={(swiper) => {
+                                            if (typeof swiper.params.pagination === "object") {
+                                                swiper.params.pagination.el = dotsRef.current;
+                                            }
+                                        }}
+                                        loop
+                                        speed={900}
+                                        slidesPerView={1}
+                                        allowTouchMove={false}
+                                        className="hero-headline-swiper flex-grow-1 mx-0"
+                                    >
+                                        {HERO_SLIDES.map((slide) => (
+                                            <SwiperSlide key={slide.title}>
+                                                <h2 className="at-section-title fw-600 text-white mb-3 mb-md-4 lh-1">
+                                                    {slide.title}
+                                                </h2>
+                                                <p className="text-white fz-font-lg mb-0" style={{ opacity: 0.85, maxWidth: 540 }}>
+                                                    {slide.sub}
+                                                </p>
+                                            </SwiperSlide>
+                                        ))}
+                                    </Swiper>
+                                </div>
 
                                 {/* "How we work" block carried over from the original homepage hero */}
                                 <div className="at-hero-video mt-40" style={{ maxWidth: 220 }}>

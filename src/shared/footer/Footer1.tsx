@@ -1,14 +1,4 @@
 import { Link } from "react-router-dom";
-import RevealText from "@/shared/effects/RevealText";
-
-const ARROW_SVG = (
-  <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path
-      d="M0.21967 9.40717C-0.0732232 9.70006 -0.0732232 10.1749 0.21967 10.4678C0.512563 10.7607 0.987437 10.7607 1.28033 10.4678L0.21967 9.40717ZM10.6875 0.75C10.6875 0.335786 10.3517 2.97145e-09 9.9375 1.50485e-07L3.1875 -2.70983e-07C2.77329 -2.70983e-07 2.4375 0.335786 2.4375 0.75C2.4375 1.16421 2.77329 1.5 3.1875 1.5H9.1875V7.5C9.1875 7.91421 9.52329 8.25 9.9375 8.25C10.3517 8.25 10.6875 7.91421 10.6875 7.5L10.6875 0.75ZM0.75 9.9375L1.28033 10.4678L10.4678 1.28033L9.9375 0.75L9.40717 0.21967L0.21967 9.40717L0.75 9.9375Z"
-      fill="currentColor"
-    />
-  </svg>
-);
 
 const SOCIAL_ARROW = (
   <svg xmlns="http://www.w3.org/2000/svg" width="9" height="10" viewBox="0 0 9 10" fill="none" aria-hidden="true">
@@ -19,44 +9,12 @@ const SOCIAL_ARROW = (
   </svg>
 );
 
-const FOOTER_SERVICES = ["AI Agent", "Operating Console", "Branded Storefront", "Custom Domains"];
-
 const SOCIAL_LINKS = [
   { label: "X (Twitter)", href: "https://x.com/phoxta" },
   { label: "LinkedIn", href: "https://www.linkedin.com/company/phoxta" },
-  { label: "Instagram", href: "https://www.instagram.com/phoxta" },
-  { label: "YouTube", href: "https://www.youtube.com/@phoxta" },
+  { label: "Instagram", href: "https://www.instagram.com/officialphoxta" },
+  { label: "YouTube", href: "https://www.youtube.com/phoxta" },
 ] as const;
-
-const NAV_LINKS = [
-  { label: "Home", href: "/" },
-  { label: "Marketplace", href: "/marketplace" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
-] as const;
-
-const SHOP_LINKS = [
-  { label: "Blog", href: "/blog" },
-  { label: "FAQs", href: "/faqs" },
-  { label: "Careers", href: "/careers" },
-  { label: "Invest", href: "/invest" },
-] as const;
-
-function FooterServiceTag({ label }: { label: string }) {
-  return (
-    <div className="at-btn border-0 ps-2 pe-2 py-0 common-white opacity-50 bg-transparent rounded-0">
-      <span>
-        <span className="text-1">{label}</span>
-        <span className="text-2">{label}</span>
-      </span>
-      <i>
-        {ARROW_SVG}
-        {ARROW_SVG}
-      </i>
-    </div>
-  );
-}
 
 export default function Footer1() {
   return (
@@ -65,27 +23,10 @@ export default function Footer1() {
         <div className="container">
           <div className="row g-5">
             <div className="col-xxl-4 col-lg-6">
-              <div className="d-flex flex-wrap align-items-start gap-4">
-                <img
-                  className="mt-5"
-                  data-width="50"
-                  src="/assets/imgs/template/logo/favicon-dark.svg"
-                  alt="Phoxta"
-                  width={50}
-                  height={50}
-                />
-                <div>
-                  <h4 className="text-white reveal-text">
-                    <RevealText>
-                      Own a business <br />
-                      that already works
-                    </RevealText>
-                  </h4>
-                  <p className="mb-0">
-                    Online-first — serving <br />
-                    business owners worldwide.
-                  </p>
-                </div>
+              <div className="col-xxl-9 col-lg-8 col-12 text-lg-end">
+                <h1 className="fz-160 common-white mb-0 text-scale-anim">
+                  Phoxta<sup className="fz-80 fw-400">®</sup>
+                </h1>
               </div>
             </div>
             <div className="col-xxl-3 col-lg-5 col-md-8 ms-lg-auto text-lg-end">
@@ -93,11 +34,11 @@ export default function Footer1() {
                 <h6 className="text-white">
                   <a href="mailto:sales@phoxta.com" className="text-white text-decoration-none">sales@phoxta.com</a>
                 </h6>
-                <h4 className="text-white text-decoration-underline text-wrap">
-                  <a href="mailto:hello@phoxta.com" className="text-white text-decoration-underline">
-                    hello@phoxta.com
+                <h5 className="text-white text-decoration-underline text-wrap">
+                  <a href="mailto:femi@phoxta.com" className="text-white text-decoration-underline">
+                    femi@phoxta.com
                   </a>
-                </h4>
+                </h5>
                 <div className="at-footer-widget at-footer-link pt-50">
                   <div className="at-hero-social justify-content-lg-end">
                     {SOCIAL_LINKS.map(({ label, href }) => (
@@ -112,63 +53,56 @@ export default function Footer1() {
             </div>
           </div>
 
-          <div className="at-about pt-100 pb-60 p-relative">
-            <div className="row align-items-end g-5">
-              <div className="col-xxl-3 col-lg-4 col-md-6">
-                <div className="at-footer-widget alt-footer-link-item-wrap row">
-                  <span className="d-block fz-font-label neutral-0 opacity-50 text-uppercase mb-3">Navigation</span>
-                  <div className="alt-footer-link-item col-6">
-                    <ul>
-                      {NAV_LINKS.map(({ label, href }) => (
-                        <li key={label} className="mb-15">
-                          <Link to={href}>{label}</Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="alt-footer-link-item col-6">
-                    <ul>
-                      {SHOP_LINKS.map(({ label, href }) => (
-                        <li key={label} className="mb-15">
-                          <Link to={href}>{label}</Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+          <div className="at-about pt-40 pb-60 p-relative">
+            <div className="row g-5">
+              <div className="col-6 col-md-3">
+                <h6 className="text-white fw-600 mb-3">Platform</h6>
+                <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+                  <li><Link to="/marketplace" className="text-white text-decoration-none opacity-75">Marketplace</Link></li>
+                  <li><Link to="/pricing" className="text-white text-decoration-none opacity-75">Pricing</Link></li>
+                  <li><Link to="/faqs" className="text-white text-decoration-none opacity-75">FAQs</Link></li>
+                </ul>
               </div>
-              <div className="col-xxl-9 col-lg-8 col-12 text-lg-end">
-                <h1 className="fz-160 common-white mb-0 text-scale-anim">
-                  Phoxta Studio<sup className="fz-80 fw-400">®</sup>
-                </h1>
+              <div className="col-6 col-md-3">
+                <h6 className="text-white fw-600 mb-3">Solutions</h6>
+                <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+                  <li><Link to="/ai-tech" className="text-white text-decoration-none opacity-75">AI &amp; Tech</Link></li>
+                  <li><Link to="/marketing" className="text-white text-decoration-none opacity-75">Marketing</Link></li>
+                  <li><Link to="/brand-design" className="text-white text-decoration-none opacity-75">Brand Design</Link></li>
+                  <li><Link to="/startup-school" className="text-white text-decoration-none opacity-75">Startup School</Link></li>
+                </ul>
+              </div>
+              <div className="col-6 col-md-3">
+                <h6 className="text-white fw-600 mb-3">Company</h6>
+                <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+                  <li><Link to="/about" className="text-white text-decoration-none opacity-75">About</Link></li>
+                  <li><Link to="/blog" className="text-white text-decoration-none opacity-75">Blog</Link></li>
+                  <li><Link to="/careers" className="text-white text-decoration-none opacity-75">Careers</Link></li>
+                  <li><Link to="/contact" className="text-white text-decoration-none opacity-75">Contact</Link></li>
+                </ul>
+              </div>
+              <div className="col-6 col-md-3">
+                <h6 className="text-white fw-600 mb-3">Get started</h6>
+                <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+                  <li><Link to="/auth?mode=signup" className="text-white text-decoration-none opacity-75">Create account</Link></li>
+                  <li><Link to="/auth" className="text-white text-decoration-none opacity-75">Sign in</Link></li>
+                </ul>
               </div>
             </div>
           </div>
 
-          <div className="at-footer-copyright-area at-about-border pt-40 pb-40">
+          <div className="at-footer-copyright-area at-about-border pt-20 pb-20">
             <div className="row align-items-center g-3">
               <div className="col-lg-2">
                 <div className="at-footer-copyright-wrap text">
-                  <span className="at-footer-copyright">Phoxta © 2026 </span>
-                  <div className="d-flex flex-wrap gap-3 mt-2">
+                  <span className="at-footer-copyright">Phoxta © 2026 
                     <Link to="/privacy" className="neutral-0 opacity-50 fz-font-md text-decoration-none">Privacy</Link>
                     <Link to="/terms" className="neutral-0 opacity-50 fz-font-md text-decoration-none">Terms</Link>
-                  </div>
+                    
+                  </span>
                 </div>
-              </div>
-              <div className="col-lg-8">
-                <ul className="d-flex flex-wrap gap-lg-4 gap-3 ps-3">
-                  {FOOTER_SERVICES.map((label) => (
-                    <li key={label}>
-                      <FooterServiceTag label={label} />
-                    </li>
-                  ))}
-                </ul>
               </div>
               <div className="col-lg-2">
-                <div className="at-footer-copyright-wrap text-lg-end">
-                  <span className="at-footer-copyright">[ Since 2012 ]</span>
-                </div>
               </div>
             </div>
           </div>

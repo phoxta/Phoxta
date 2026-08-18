@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { listBlueprints, formatPrice, type Blueprint } from "@/lib/db/marketplace";
+import { PROMO, promoPriceCents } from "@/lib/promo";
 
 // The marketplace's main UI — the "Selected work" grid design from the
 // brand-design page (sec-4-home-9), populated with the REAL businesses for sale
@@ -35,10 +36,22 @@ function Card({ b }: { b: Blueprint }) {
           </div>
           <div className="sec-4-home-9__overlay">
             <span className="sec-4-home-9__tag text-capitalize">{b.vertical}</span>
-            <p className="sec-4-home-9__metric text-white">{formatPrice(b.price_cents, b.currency)} · one-time</p>
+            {PROMO.active ? (
+              <p className="sec-4-home-9__metric text-white">
+                <del style={{ opacity: 0.6 }}>{formatPrice(b.price_cents, b.currency)}</del>{" "}
+                {formatPrice(promoPriceCents(b.price_cents), b.currency)} · one-time
+              </p>
+            ) : (
+              <p className="sec-4-home-9__metric text-white">{formatPrice(b.price_cents, b.currency)} · one-time</p>
+            )}
             {b.tagline && <p className="sec-4-home-9__excerpt text-white">{b.tagline}</p>}
           </div>
         </a>
+        {PROMO.active && (
+          <span className="sec-4-home-9__badge" style={{ right: "auto", left: "clamp(16px, 1.2vw, 23px)" }}>
+            {PROMO.label}
+          </span>
+        )}
         {b.verified && <span className="sec-4-home-9__badge">Verified</span>}
       </div>
       <div className="sec-4-home-9__bar">
@@ -55,11 +68,18 @@ function Card({ b }: { b: Blueprint }) {
 export default function MarketplaceMainGrid() {
   const [items, setItems] = useState<Blueprint[]>([]);
   const [active, setActive] = useState("all");
+  // ?q= powers the site-wide search (the WebSite JSON-LD SearchAction, the
+  // header popup search, and the 404 page's search all land here).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = (searchParams.get("q") ?? "").trim().toLowerCase();
 
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let on = true;
     listBlueprints().then(({ data }) => {
-      if (on) setItems(data);
+      if (!on) return;
+      setItems(data);
+      setLoaded(true);
     });
     return () => {
       on = false;
@@ -72,7 +92,11 @@ export default function MarketplaceMainGrid() {
     return [{ slug: "all", label: "All businesses" }, ...[...map].map(([slug, label]) => ({ slug, label }))];
   }, [items]);
 
-  const visible = active === "all" ? items : items.filter((b) => slugify(b.vertical || "other") === active);
+  const byVertical = active === "all" ? items : items.filter((b) => slugify(b.vertical || "other") === active);
+  const visible = q
+    ? byVertical.filter((b) =>
+        `${b.name} ${b.tagline ?? ""} ${b.description ?? ""} ${b.vertical ?? ""}`.toLowerCase().includes(q))
+    : byVertical;
   const col1 = visible.filter((_, i) => i % 2 === 0);
   const col2 = visible.filter((_, i) => i % 2 === 1);
 
@@ -80,6 +104,19 @@ export default function MarketplaceMainGrid() {
     <section className="sec-4-home-9 overflow-hidden bg-neutral-50">
       <div className="sec-4-home-9__container">
         <h2 className="sec-4-home-9__title">The marketplace</h2>
+
+        {q && (
+          <p className="text-center neutral-500 mb-4" role="status">
+            {visible.length} result{visible.length === 1 ? "" : "s"} for “{searchParams.get("q")}”
+            <button
+              type="button"
+              className="btn btn-link p-0 ms-2 fz-font-md text-decoration-underline"
+              onClick={() => setSearchParams({}, { replace: true })}
+            >
+              Clear
+            </button>
+          </p>
+        )}
 
         {filters.length > 2 && (
           <div className="sec-4-home-9__filters d-flex flex-wrap justify-content-center align-items-center gap-2">
@@ -94,6 +131,46 @@ export default function MarketplaceMainGrid() {
               </button>
             ))}
           </div>
+        )}
+
+        {!loaded && (
+          <div className="text-center py-5" role="status" aria-label="Loading businesses">
+            <div className="spinner-border text-dark" />
+          </div>
+        )}
+        {loaded && visible.length === 0 && (
+          <p className="text-center neutral-500 py-5">
+            {q ? "Nothing matches that search — try a different word or " : "Listings are temporarily unavailable — "}
+            <Link to="/contact" className="text-decoration-underline">talk to us</Link>.
+          </p>
+        )}
+
+        {/* Product/Offer JSON-LD so the catalog is machine-readable to search
+            and AI shopping surfaces (the marketplace itself is a product list). */}
+        {loaded && items.length > 0 && (
+          <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "ItemList",
+              itemListElement: items.map((b, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                item: {
+                  "@type": "Product",
+                  name: b.name,
+                  description: b.tagline ?? undefined,
+                  url: "https://www.phoxta.com/marketplace",
+                  brand: { "@type": "Brand", name: "Phoxta" },
+                  offers: {
+                    "@type": "Offer",
+                    price: (b.price_cents / 100).toFixed(0),
+                    priceCurrency: b.currency || "USD",
+                    availability: "https://schema.org/InStock",
+                  },
+                },
+              })),
+            })}
+          </script>
         )}
 
         <div className="sec-4-home-9__grid">
