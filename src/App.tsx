@@ -37,6 +37,7 @@ const BusinessesPage = lazy(() => import("@/pages/dashboard/BusinessesPage"));
 const BusinessDetailPage = lazy(() => import("@/pages/dashboard/BusinessDetailPage"));
 const BillingPage = lazy(() => import("@/pages/dashboard/BillingPage"));
 const PaymentCallbackPage = lazy(() => import("@/pages/dashboard/PaymentCallbackPage"));
+const ConsolePage = lazy(() => import("@/pages/dashboard/ConsolePage"));
 const NetworkPage = lazy(() => import("@/pages/dashboard/NetworkPage"));
 const SettingsPage = lazy(() => import("@/pages/dashboard/SettingsPage"));
 const AssistantPage = lazy(() => import("@/pages/dashboard/AssistantPage"));
@@ -108,6 +109,7 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardHomePage />} />
           <Route path="/dashboard/studio" element={<StudioPage />} />
           <Route path="/dashboard/assistant" element={<AssistantPage />} />
+          <Route path="/dashboard/console" element={<ConsolePage />} />
           <Route path="/dashboard/marketplace" element={<MarketplacePage />} />
           <Route path="/dashboard/marketplace/:slug" element={<MarketplaceDetailPage />} />
           <Route path="/dashboard/businesses" element={<BusinessesPage />} />

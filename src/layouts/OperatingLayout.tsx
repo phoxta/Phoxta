@@ -1,16 +1,32 @@
 import { Suspense, useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useParams } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { getBusiness, type Organization } from "@/lib/db/organizations";
 import { resolveConsole, consoleTabs, type VerticalConsole } from "@/lib/ops/consoleConfig";
 import { preloadOpsConsole, preloadOpsTab } from "@/pages/dashboard/preload";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { organizationsQuery } from "@/lib/cache/dashboardQueries";
+import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
 
 export type OpsContext = { orgId: string; org: Organization; console: VerticalConsole };
 
 export default function OperatingLayout() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
+  // All the user's businesses, for the in-console switcher (shared warmed cache).
+  const { data: myOrgs = [] } = useCachedData(organizationsQuery.key, organizationsQuery.fetch);
+
+  // Remember the business being worked in — the sidebar Console entry and
+  // /dashboard/console jump straight back here next time.
+  useEffect(() => {
+    if (!id) return;
+    try {
+      localStorage.setItem(LAST_ORG_KEY, id);
+    } catch { /* storage unavailable */ }
+  }, [id]);
 
   // Warm every console tab's chunk on idle so switching tabs is instant, even
   // when a user deep-links straight into the console.
@@ -57,6 +73,23 @@ export default function OperatingLayout() {
       </div>
       <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
         <h2 className="fw-600 mb-0 me-2">Operating console</h2>
+        {myOrgs.length > 1 && (
+          <select
+            className="form-select form-select-sm w-auto"
+            value={id}
+            aria-label="Switch business"
+            onChange={(e) => {
+              const next = e.target.value;
+              if (!next || next === id) return;
+              // Keep the same console tab when hopping businesses.
+              navigate(pathname.replace(`/dashboard/businesses/${id}/ops`, `/dashboard/businesses/${next}/ops`));
+            }}
+          >
+            {myOrgs.map(({ organization: o }) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        )}
         {org.vertical && <span className="badge bg-neutral-900 text-white text-capitalize fw-500">{org.vertical}</span>}
         <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{org.stage}</span>
       </div>
