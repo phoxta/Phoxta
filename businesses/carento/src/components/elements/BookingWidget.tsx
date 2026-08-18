@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { requestReservation, type Car } from "@/lib/phoxta";
+import { requestReservation, supabase, type Car } from "@/lib/phoxta";
 
 // Real rental booking: pick a date range for THIS vehicle, add extras (insurance /
 // GPS / seats — owner-defined per vehicle, priced per day server-side) and the
@@ -24,6 +24,7 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState<string | null>(null);
+  const [payUrl, setPayUrl] = useState<string | null>(null);
 
   const nights = useMemo(() => {
     const n = Math.round((new Date(dropoff).getTime() - new Date(pickup).getTime()) / 86400000);
@@ -44,6 +45,27 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
     });
   }
 
+  /** Try to start an online payment for the freshly created reservation. If the
+   *  tenant hasn't configured payments (or the edge fn errors) we silently keep
+   *  the existing pay-later confirmation — never block the booking on payment. */
+  async function startPayment(reservationId: string, customerEmail: string): Promise<void> {
+    if (!orgId) return;
+    try {
+      const returnUrl = `${location.origin}/manage-booking?ref=${encodeURIComponent(reservationId)}&email=${encodeURIComponent(customerEmail)}`;
+      const { data, error: fnError } = await supabase.functions.invoke("paystack-storefront-checkout", {
+        body: { orgId, kind: "reservation", id: reservationId, returnUrl },
+      });
+      if (fnError) return;
+      const url = (data as { url?: string } | null)?.url;
+      if (url) {
+        setPayUrl(url);
+        window.location.assign(url);
+      }
+    } catch {
+      /* payments unavailable — pay-later confirmation stands */
+    }
+  }
+
   async function book() {
     setError("");
     if (!car) { setError("Select a vehicle first."); return; }
@@ -59,6 +81,7 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
           driver: { license: license.trim(), age: age.trim() },
         });
         setConfirmed(id);
+        if (id) await startPayment(id, email.trim());
       }
     } catch (e) {
       setError((e as Error)?.message || "Could not complete the booking.");
@@ -77,6 +100,19 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
             {" "}({nights} {nights === 1 ? "day" : "days"}) is in. We'll confirm by email at {email}.
           </p>
           <p className="text-sm-medium neutral-500">Reference: {confirmed}</p>
+          {payUrl && (
+            <>
+              <p className="text-md-medium neutral-700 mt-3 mb-2">Secure your booking by paying online now.</p>
+              <div className="box-button-book">
+                <button className="btn btn-book" onClick={() => window.location.assign(payUrl)}>
+                  Pay now
+                  <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 15L15 8L8 1M15 8L1 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );

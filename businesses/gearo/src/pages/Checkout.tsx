@@ -3,7 +3,7 @@ import Layout from "@/components/layout/Layout";
 import Breadcrumb from "@/components/layout/Breadcrumb";
 import { useCart } from "@/util/cart";
 import { useCatalog } from "@/util/catalog";
-import { placeOrder } from "@/lib/phoxta";
+import { placeOrder, startOrderPayment } from "@/lib/phoxta";
 import { money } from "@/util/products";
 import RLink from "@/components/common/RLink";
 
@@ -14,22 +14,32 @@ export default function Checkout() {
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    const [placed, setPlaced] = useState<{ id: string | null } | null>(null);
+    const [placed, setPlaced] = useState<{ id: string | null; payUrl: string | null } | null>(null);
 
     async function place() {
         setSubmitting(true);
         let id: string | null = null;
+        let payUrl: string | null = null;
         try {
             // Live tenant → record a real order (priced server-side, shows in the
             // operating console). Demo/dev just confirms locally.
             if (live && orgId) {
                 const items = lines.filter((l) => l.product.dbId).map((l) => ({ product_id: l.product.dbId as string, quantity: l.qty }));
                 if (items.length) id = await placeOrder(orgId, `${firstName} ${lastName}`.trim() || "Guest", email, items);
+                // Best-effort online payment: when the tenant has payments set up we
+                // get a hosted checkout URL; otherwise the order stays pay-later.
+                if (id) {
+                    const returnUrl = `${location.origin}/order?ref=${encodeURIComponent(id)}&email=${encodeURIComponent(email)}`;
+                    payUrl = await startOrderPayment(orgId, id, returnUrl);
+                }
             }
         } catch { /* keep demo confirmation */ }
         clear();
         setSubmitting(false);
-        setPlaced({ id });
+        setPlaced({ id, payUrl });
+        // Hand straight over to secure payment; the confirmation behind keeps a
+        // "Pay now" fallback button if the shopper comes back or it's blocked.
+        if (payUrl) window.location.assign(payUrl);
     }
 
     return (
@@ -42,9 +52,19 @@ export default function Checkout() {
                             <h4 className="mb-2">Thank you — your order is in!</h4>
                             <p className="text_secondary mb-3">
                                 {placed.id ? <>Order reference <strong>{placed.id}</strong>. We've emailed your confirmation.</> : "We've received your order and will be in touch shortly."}
+                                {placed.payUrl && <> Taking you to secure payment…</>}
                             </p>
+                            {placed.payUrl && (
+                                <button
+                                    className="tf-btn btn-fill w-100 mb-2"
+                                    style={{ height: 48 }}
+                                    onClick={() => window.location.assign(placed.payUrl as string)}
+                                >
+                                    Pay now
+                                </button>
+                            )}
                             {placed.id && (
-                                <RLink to="order.html" className="tf-btn btn-fill" style={{ height: 46, display: "inline-flex", alignItems: "center", padding: "0 22px" }}>Track your order</RLink>
+                                <RLink to="order.html" className={placed.payUrl ? "tf-btn btn-line" : "tf-btn btn-fill"} style={{ height: 46, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>Track your order</RLink>
                             )}
                         </div>
                     ) : (

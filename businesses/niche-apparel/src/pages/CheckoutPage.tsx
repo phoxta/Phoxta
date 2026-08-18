@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "@/util/cart";
 import { useCatalog } from "@/util/catalog";
-import { placeOrder } from "@/lib/phoxta";
+import { placeOrder, supabase } from "@/lib/phoxta";
 
 export default function CheckoutPage() {
     const { lines, subtotal, clear } = useCart();
     const { orgId } = useCatalog();
     const [done, setDone] = useState<{ code: string; ref: string | null } | null>(null);
+    const [payUrl, setPayUrl] = useState<string | null>(null);
     const [first, setFirst] = useState("");
     const [last, setLast] = useState("");
     const [email, setEmail] = useState("");
@@ -28,6 +29,21 @@ export default function CheckoutPage() {
                 const items = lines.map((l) => ({ product_id: l.id, quantity: l.qty, size: l.size, color: l.color }));
                 const id = await placeOrder(orgId, `${first} ${last}`.trim(), email, items);
                 setDone({ code: id ? `AUR-${id.slice(0, 8).toUpperCase()}` : "AUR-" + Math.floor(10000 + Math.random() * 89999), ref: id });
+                if (id) {
+                    // Best-effort online payment: if the tenant has Paystack configured
+                    // we get a checkout url; otherwise the pay-later confirmation stands.
+                    try {
+                        const returnUrl = `${location.origin}/track-order?ref=${encodeURIComponent(id)}&email=${encodeURIComponent(email)}`;
+                        const { data } = await supabase.functions.invoke("paystack-storefront-checkout", {
+                            body: { orgId, kind: "order", id, returnUrl },
+                        });
+                        const url = (data as { url?: string } | null)?.url;
+                        if (url) {
+                            setPayUrl(url);
+                            window.location.assign(url);
+                        }
+                    } catch { /* payments unavailable — keep pay-later confirmation */ }
+                }
             } else {
                 // Unconfigured/local fallback — confirm without a backend write.
                 setDone({ code: "AUR-" + Math.floor(10000 + Math.random() * 89999), ref: null });
@@ -48,8 +64,10 @@ export default function CheckoutPage() {
                         <h2 className="fw-600 mb-2">Order confirmed</h2>
                         <p className="neutral-500 mb-1">Thank you — your order <strong>{done.code}</strong> is on its way.</p>
                         {done.ref && <p className="neutral-500 mb-1 fz-14">Tracking reference: <strong>{done.ref}</strong> — keep this to track your order.</p>}
-                        <div className="d-flex gap-2 justify-content-center mt-3">
-                            <Link to="/" className="at-btn bg-dark text-white"><span><span className="text-1">Continue Shopping</span><span className="text-2">Continue Shopping</span></span></Link>
+                        {payUrl && <p className="neutral-500 mb-1 fz-14">Complete your payment securely to confirm your order.</p>}
+                        <div className="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+                            {payUrl && <button type="button" onClick={() => window.location.assign(payUrl)} className="at-btn bg-dark text-white"><span><span className="text-1">Pay Now</span><span className="text-2">Pay Now</span></span></button>}
+                            <Link to="/" className={payUrl ? "at-btn bg-white text-dark" : "at-btn bg-dark text-white"}><span><span className="text-1">Continue Shopping</span><span className="text-2">Continue Shopping</span></span></Link>
                             {done.ref && <Link to="/track-order" className="at-btn bg-white text-dark"><span><span className="text-1">Track Order</span><span className="text-2">Track Order</span></span></Link>}
                         </div>
                     </div>

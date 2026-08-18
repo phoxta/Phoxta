@@ -59,9 +59,32 @@ export function applyBranding(brand?: Branding | null): void {
   if (brand.name) document.title = brand.name;
 }
 
+// ---- Demand engine: publish this tenant's inventory as schema.org JSON-LD ----
+// Fetched from the platform feed and appended to <head> so crawlers/AI agents can
+// discover the fleet. Fire-and-forget: any failure leaves the page untouched.
+let schemaFeedInjected = false;
+function injectSchemaFeed(): void {
+  if (schemaFeedInjected || typeof document === "undefined" || typeof location === "undefined") return;
+  schemaFeedInjected = true;
+  try {
+    fetch(`https://ktgleoqvdikngocygdkn.supabase.co/functions/v1/storefront-feed?host=${encodeURIComponent(location.host)}&format=schema`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!json) return;
+        const s = document.createElement("script");
+        s.type = "application/ld+json";
+        s.textContent = JSON.stringify(json);
+        document.head.appendChild(s);
+      })
+      .catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Resolve the tenant (org id + name) for this storefront: baked ORG_ID, else by host. */
 export async function resolveTenant(host?: string): Promise<Tenant | null> {
-  if (BAKED_ORG_ID) return { id: BAKED_ORG_ID, name: null };
+  if (BAKED_ORG_ID) { injectSchemaFeed(); return { id: BAKED_ORG_ID, name: null }; }
   if (!isConfigured) return null;
   const h = host ?? (typeof location !== "undefined" ? location.host : "");
   if (!h) return null;
@@ -70,6 +93,7 @@ export async function resolveTenant(host?: string): Promise<Tenant | null> {
     const row = (data as Array<{ organization_id: string; name: string; branding?: Branding; profile?: BusinessProfile }> | null)?.[0];
     if (!row) return null;
     applyBranding(row.branding ?? null);
+    injectSchemaFeed();
     return { id: row.organization_id, name: row.name ?? null, branding: row.branding ?? null, profile: row.profile ?? null };
   } catch {
     return null;

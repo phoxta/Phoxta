@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { useCart } from "@/util/cart";
 import { useMenu } from "@/util/menu";
-import { placeOrder, validatePromo } from "@/lib/phoxta";
+import { placeOrder, startPayment, validatePromo } from "@/lib/phoxta";
 import { money } from "@/data/menu";
 
 export default function Checkout() {
@@ -39,18 +39,28 @@ export default function Checkout() {
         e.preventDefault();
         setSubmitting(true);
         let id = "SVR-" + Math.floor(1000 + Math.random() * 9000);
+        let payUrl: string | null = null;
         try {
             // Live tenant → record a real order (priced server-side, shows in the
             // operating console). Demo/dev falls back to a local confirmation id.
             if (live && orgId) {
                 const items = lines.map((l) => ({ product_id: l.dish.id, quantity: l.qty, options: l.options.map((o) => ({ group: o.group, label: o.label })), notes: l.note }));
                 const oid = await placeOrder(orgId, name || "Guest", email, items, orderNote.trim(), promo?.code);
-                if (oid) id = oid;
+                if (oid) {
+                    id = oid;
+                    // Pay now (best-effort): ask the platform for a hosted checkout
+                    // link. null → payments not configured, keep pay-later as is.
+                    const returnUrl = `${location.origin}/track?order=${encodeURIComponent(oid)}&email=${encodeURIComponent(email)}`;
+                    payUrl = await startPayment(orgId, "order", oid, returnUrl);
+                }
             }
         } catch { /* keep the local id */ }
         clear();
         setSubmitting(false);
-        nav(`/track?order=${encodeURIComponent(id)}`);
+        nav(`/track?order=${encodeURIComponent(id)}&email=${encodeURIComponent(email)}`, payUrl ? { state: { payUrl } } : undefined);
+        // Head straight to secure payment; the tracking page keeps a Pay now
+        // fallback button (via router state) if this redirect doesn't happen.
+        if (payUrl) window.location.assign(payUrl);
     }
 
     return (

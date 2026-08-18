@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { getOrgId } from "@/data/live";
-import { requestReservation } from "@/lib/phoxta";
+import { initReservationPayment, requestReservation } from "@/lib/phoxta";
 
 // Unified booking box for the stay / car / experience detail sidebars. Pricing +
 // availability are enforced server-side by app_request_reservation; the booking
@@ -31,6 +31,7 @@ export default function ReserveBox({ listing, vertical }: { listing: any; vertic
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState<string | null>(null);
+  const [payUrl, setPayUrl] = useState<string | null>(null);
 
   const nights = useMemo(() => {
     if (!cfg.range) return 1;
@@ -53,6 +54,15 @@ export default function ReserveBox({ listing, vertical }: { listing: any; vertic
       } else {
         const id = await requestReservation(orgId, String(listing.id), name.trim(), email.trim(), start, endDate, qty);
         setConfirmed(id);
+        // Offer online payment when configured for this tenant; the booking is
+        // already saved, so any failure here just keeps the pay-later flow.
+        if (id) {
+          const url = await initReservationPayment(orgId, id, email.trim());
+          if (url) {
+            setPayUrl(url);
+            window.location.assign(url);
+          }
+        }
       }
     } catch (e: any) {
       setError(e?.message || "Could not complete the booking.");
@@ -74,6 +84,17 @@ export default function ReserveBox({ listing, vertical }: { listing: any; vertic
           We&apos;ll confirm by email at {email}.
         </p>
         <p className="text-xs text-muted-foreground">Reference: {confirmed}</p>
+        {payUrl && (
+          <>
+            <button
+              onClick={() => window.location.assign(payUrl)}
+              className="w-full rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground sm:h-12"
+            >
+              Pay now
+            </button>
+            <p className="text-center text-xs text-muted-foreground">You&apos;ll be taken to our secure payment page.</p>
+          </>
+        )}
       </div>
     );
   }

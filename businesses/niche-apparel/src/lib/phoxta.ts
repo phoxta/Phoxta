@@ -60,10 +60,30 @@ export function applyBranding(brand?: Branding | null): void {
   if (brand.name) document.title = brand.name;
 }
 
+// ---- JSON-LD demand feed ----
+let schemaInjected = false;
+/** Inject this tenant's schema.org catalogue feed (storefront-feed edge fn) as a
+ *  JSON-LD <script> so search engines / AI shopping agents can read the live
+ *  catalogue. Runs once per page load, only after a tenant resolved; fails silently. */
+function injectSchemaFeed(): void {
+  if (schemaInjected || typeof document === "undefined" || typeof location === "undefined") return;
+  schemaInjected = true;
+  fetch(`https://ktgleoqvdikngocygdkn.supabase.co/functions/v1/storefront-feed?host=${encodeURIComponent(location.host)}&format=schema`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((json) => {
+      if (!json) return;
+      const s = document.createElement("script");
+      s.type = "application/ld+json";
+      s.textContent = JSON.stringify(json);
+      document.head.appendChild(s);
+    })
+    .catch(() => { /* demand feed is best-effort */ });
+}
+
 /** Resolve the tenant (org id + display name) for this storefront: baked ORG_ID,
  *  else by hostname via app_resolve_domain. The name is used for the page title. */
 export async function resolveTenant(host?: string): Promise<Tenant | null> {
-  if (BAKED_ORG_ID) return { id: BAKED_ORG_ID, name: null };
+  if (BAKED_ORG_ID) { injectSchemaFeed(); return { id: BAKED_ORG_ID, name: null }; }
   if (!isConfigured) return null;
   const h = host ?? (typeof location !== "undefined" ? location.host : "");
   if (!h) return null;
@@ -72,6 +92,7 @@ export async function resolveTenant(host?: string): Promise<Tenant | null> {
     const row = (data as Array<{ organization_id: string; name: string; branding?: Branding; profile?: BusinessProfile }> | null)?.[0];
     if (!row) return null;
     applyBranding(row.branding ?? null);
+    injectSchemaFeed();
     return { id: row.organization_id, name: row.name ?? null, branding: row.branding ?? null, profile: row.profile ?? null };
   } catch {
     return null;

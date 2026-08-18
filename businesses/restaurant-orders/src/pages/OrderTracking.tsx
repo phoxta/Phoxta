@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 
 const STEPS = [
@@ -12,6 +12,9 @@ const STEPS = [
 export default function OrderTracking() {
     const [sp] = useSearchParams();
     const order = sp.get("order") ?? "SVR-0000";
+    // Handed over from Checkout when the tenant has payments configured —
+    // fallback in case the automatic redirect to the payment page didn't run.
+    const payUrl = (useLocation().state as { payUrl?: string } | null)?.payUrl;
     const [step, setStep] = useState(0);
 
     useEffect(() => {
@@ -26,6 +29,15 @@ export default function OrderTracking() {
             </header>
             <section className="menu-section">
                 <div className="container" style={{ maxWidth: 720 }}>
+                    {payUrl && (
+                        <div className="card-box" style={{ marginBottom: 20, textAlign: "center" }}>
+                            <h3 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>Complete your payment</h3>
+                            <p style={{ fontSize: 14, color: "var(--text-light)", marginBottom: 14 }}>Your order is in — pay now to confirm it with the kitchen.</p>
+                            <button type="button" className="btn-accent" style={{ borderRadius: 8, justifyContent: "center", padding: "12px 28px" }} onClick={() => window.location.assign(payUrl)}>
+                                <i className="fas fa-lock" style={{ marginRight: 8 }} />Pay now
+                            </button>
+                        </div>
+                    )}
                     <div className="card-box">
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                             {STEPS.map((s, i) => {

@@ -4,7 +4,7 @@ import ButtonPrimary from '@/components/button-primary'
 import { Field, Label } from '@/components/fieldset'
 import { Heading } from '@/components/heading'
 import Input from '@/components/input'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getOrgId } from '@/data/live'
 import { lookupReservation, type ReservationLookup } from '@/lib/phoxta'
 
@@ -19,19 +19,35 @@ const PageManageBooking = () => {
   const [result, setResult] = useState<ReservationLookup | null>(null)
   const [err, setErr] = useState('')
 
-  async function lookup(e: any) {
-    e.preventDefault()
+  async function doLookup(refVal: string, emailVal: string) {
     setErr('')
     setResult(null)
-    if (!ref.trim() || !email.trim()) { setErr('Enter your booking reference and the email you booked with.'); return }
+    if (!refVal.trim() || !emailVal.trim()) { setErr('Enter your booking reference and the email you booked with.'); return }
     const orgId = getOrgId()
     if (!orgId) { setErr('Booking lookup works on the live store.'); return }
     setBusy(true)
-    const r = await lookupReservation(orgId, ref.trim(), email.trim())
+    const r = await lookupReservation(orgId, refVal.trim(), emailVal.trim())
     setBusy(false)
     if (r && r.found) setResult(r)
     else setErr('No booking found with that reference and email.')
   }
+
+  async function lookup(e: any) {
+    e.preventDefault()
+    await doLookup(ref, email)
+  }
+
+  // Payment return: /manage-booking?ref=…&email=… — prefill and look up the
+  // booking automatically so the traveller lands straight on their booking.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const qRef = q.get('ref') || ''
+    const qEmail = q.get('email') || ''
+    if (qRef) setRef(qRef)
+    if (qEmail) setEmail(qEmail)
+    if (qRef && qEmail) void doLookup(qRef, qEmail)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="pt-10 pb-24 sm:py-24 lg:py-32">

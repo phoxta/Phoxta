@@ -1,5 +1,5 @@
 import Layout from "@/components/layout/Layout";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFleet } from "@/util/fleet";
 import { lookupReservation, type ReservationLookup } from "@/lib/phoxta";
 
@@ -14,6 +14,24 @@ export default function ManageBooking() {
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<ReservationLookup | null>(null);
     const [err, setErr] = useState("");
+
+    // Prefill (and auto-look up) from ?ref=&email= — this is where the Paystack
+    // checkout returnUrl lands after an online payment.
+    useEffect(() => {
+        const sp = new URLSearchParams(window.location.search);
+        const qRef = sp.get("ref") ?? "";
+        const qEmail = sp.get("email") ?? "";
+        if (qRef) setRef(qRef);
+        if (qEmail) setEmail(qEmail);
+        if (qRef && qEmail && orgId) {
+            (async () => {
+                setBusy(true);
+                const r = await lookupReservation(orgId, qRef, qEmail);
+                setBusy(false);
+                if (r && r.found) setResult(r);
+            })();
+        }
+    }, [orgId]);
 
     async function lookup(e: any) {
         e.preventDefault();

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import PageHero from "@/components/PageHero";
 import { useCatalog } from "@/util/catalog";
 import { lookupOrder, type OrderLookup } from "@/lib/phoxta";
@@ -13,8 +14,10 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function OrderTrackingPage() {
     const { orgId } = useCatalog();
-    const [ref, setRef] = useState("");
-    const [email, setEmail] = useState("");
+    // Prefilled when arriving back from the payment return url (?ref=…&email=…).
+    const [params] = useSearchParams();
+    const [ref, setRef] = useState(params.get("ref") ?? "");
+    const [email, setEmail] = useState(params.get("email") ?? "");
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<OrderLookup | null>(null);
     const [err, setErr] = useState("");

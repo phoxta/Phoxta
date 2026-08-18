@@ -15,8 +15,11 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function OrderLookup({ compact = false }: { compact?: boolean }) {
     const { orgId } = useCatalog();
-    const [ref, setRef] = useState("");
-    const [email, setEmail] = useState("");
+    // Prefill from the payment return URL (/order?ref=…&email=…) so a shopper
+    // landing back from checkout only has to press "Track order".
+    const params = typeof location !== "undefined" ? new URLSearchParams(location.search) : new URLSearchParams();
+    const [ref, setRef] = useState(params.get("ref") ?? "");
+    const [email, setEmail] = useState(params.get("email") ?? "");
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<TOrderLookup | null>(null);
     const [err, setErr] = useState("");

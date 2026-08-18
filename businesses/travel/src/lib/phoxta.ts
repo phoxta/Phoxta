@@ -60,8 +60,33 @@ export function applyBranding(brand?: Branding | null): void {
   if (brand.name) document.title = brand.name;
 }
 
+/** Demand engine: inject the tenant's schema.org catalogue as JSON-LD.
+ *  Fetches the public storefront-feed edge function for this host and appends a
+ *  <script type="application/ld+json"> to <head>. Runs at most once per page
+ *  load, only after a tenant resolved, and fails silently on any error. */
+let schemaInjected = false;
+function injectSchemaFeed(): void {
+  if (schemaInjected || typeof document === "undefined" || typeof location === "undefined") return;
+  schemaInjected = true;
+  const host = location.host;
+  if (!host) return;
+  fetch(`https://ktgleoqvdikngocygdkn.supabase.co/functions/v1/storefront-feed?host=${encodeURIComponent(host)}&format=schema`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((json) => {
+      if (!json) return;
+      const s = document.createElement("script");
+      s.type = "application/ld+json";
+      s.text = JSON.stringify(json);
+      document.head.appendChild(s);
+    })
+    .catch(() => {});
+}
+
 export async function resolveTenant(host?: string): Promise<Tenant | null> {
-  if (BAKED_ORG_ID) return { id: BAKED_ORG_ID, name: null };
+  if (BAKED_ORG_ID) {
+    injectSchemaFeed();
+    return { id: BAKED_ORG_ID, name: null };
+  }
   if (!isConfigured) return null;
   const h = host ?? (typeof location !== "undefined" ? location.host : "");
   if (!h) return null;
@@ -70,6 +95,7 @@ export async function resolveTenant(host?: string): Promise<Tenant | null> {
     const row = (data as Array<{ organization_id: string; name: string; branding?: Branding; profile?: BusinessProfile }> | null)?.[0];
     if (!row) return null;
     applyBranding(row.branding ?? null);
+    injectSchemaFeed();
     return { id: row.organization_id, name: row.name ?? null, branding: row.branding ?? null, profile: row.profile ?? null };
   } catch {
     return null;
@@ -133,6 +159,25 @@ export async function requestReservation(
   });
   if (error) throw new Error(error.message);
   return (data as string | null) ?? null;
+}
+
+/** Start an online payment for a just-created reservation via the Paystack
+ *  storefront checkout edge function. Returns the hosted checkout URL, or null
+ *  when payments aren't configured for this tenant / anything fails — callers
+ *  keep the pay-later confirmation in that case. Never throws. */
+export async function initReservationPayment(orgId: string, reservationId: string, customerEmail: string): Promise<string | null> {
+  try {
+    const origin = typeof location !== "undefined" ? location.origin : "";
+    const returnUrl = `${origin}/manage-booking?ref=${encodeURIComponent(reservationId)}&email=${encodeURIComponent(customerEmail)}`;
+    const { data, error } = await supabase.functions.invoke("paystack-storefront-checkout", {
+      body: { orgId, kind: "reservation", id: reservationId, returnUrl },
+    });
+    if (error) return null;
+    const url = (data as { url?: string } | null)?.url;
+    return typeof url === "string" && url ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 // ---- Content (reviews, blog, cms, contact) ----

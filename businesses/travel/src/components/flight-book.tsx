@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { getOrgId } from '@/data/live'
-import { requestReservation } from '@/lib/phoxta'
+import { initReservationPayment, requestReservation } from '@/lib/phoxta'
 
 // Compact flight booking inside the flight card's detail panel. A flight is a
 // fare (product, stock = seats); booking N seats for a chosen departure date
@@ -24,6 +24,7 @@ export default function FlightBook({ flight }: { flight: any }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [ref, setRef] = useState<string | null>(null)
+  const [payUrl, setPayUrl] = useState<string | null>(null)
 
   async function book() {
     setError('')
@@ -41,6 +42,15 @@ export default function FlightBook({ flight }: { flight: any }) {
       } else {
         const id = await requestReservation(orgId, String(flight.id), name.trim(), email.trim(), depart, end.toISOString().slice(0, 10), pax)
         setRef(id)
+        // Offer online payment when configured; the booking is already saved,
+        // so any failure just keeps the existing pay-later confirmation.
+        if (id) {
+          const url = await initReservationPayment(orgId, id, email.trim())
+          if (url) {
+            setPayUrl(url)
+            window.location.assign(url)
+          }
+        }
       }
     } catch (e: any) {
       setError(e?.message || 'Could not book this fare.')
@@ -51,8 +61,18 @@ export default function FlightBook({ flight }: { flight: any }) {
 
   if (ref) {
     return (
-      <div className="rounded-xl border border-border p-4 text-sm md:ms-24">
-        Booked {pax} seat{pax > 1 ? 's' : ''} on <strong>{flight.name}</strong> departing {depart}. Reference: {ref}
+      <div className="flex flex-col gap-3 rounded-xl border border-border p-4 text-sm md:ms-24">
+        <span>
+          Booked {pax} seat{pax > 1 ? 's' : ''} on <strong>{flight.name}</strong> departing {depart}. Reference: {ref}
+        </span>
+        {payUrl && (
+          <button
+            onClick={() => window.location.assign(payUrl)}
+            className="self-start rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground"
+          >
+            Pay now
+          </button>
+        )}
       </div>
     )
   }
