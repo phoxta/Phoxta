@@ -43,7 +43,7 @@ export default function InvoicingPage() {
   const subs = data?.subs ?? [];
   const [error, setError] = useState<string | null>(null);
 
-  const [iForm, setIForm] = useState({ customer: "", description: "", amount: "", due: "" });
+  const [iForm, setIForm] = useState({ customer: "", email: "", description: "", amount: "", due: "" });
   const [sForm, setSForm] = useState({ plan: "", amount: "", interval: "monthly" as "monthly" | "yearly" });
 
   const [nlText, setNlText] = useState("");
@@ -56,12 +56,13 @@ export default function InvoicingPage() {
     if (!iForm.customer.trim()) return;
     const { error } = await createInvoice(orgId, {
       customer_name: iForm.customer,
+      customer_email: iForm.email,
       due_date: iForm.due || null,
       items: [{ description: iForm.description || "Services", quantity: 1, unit_price_cents: toCents(iForm.amount) }],
     });
     if (error) setError(error);
     else {
-      setIForm({ customer: "", description: "", amount: "", due: "" });
+      setIForm({ customer: "", email: "", description: "", amount: "", due: "" });
       reload();
     }
   }
@@ -128,6 +129,7 @@ export default function InvoicingPage() {
         <form onSubmit={addInvoice} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
           <div className="row g-2">
             <div className="col-md-4"><input className="form-control rounded-3" placeholder="Customer" value={iForm.customer} onChange={(e) => setIForm({ ...iForm, customer: e.target.value })} required /></div>
+            <div className="col-md-4"><input type="email" className="form-control rounded-3" placeholder="Customer email (for the pay link)" value={iForm.email} onChange={(e) => setIForm({ ...iForm, email: e.target.value })} /></div>
             <div className="col-md-4"><input className="form-control rounded-3" placeholder="Description" value={iForm.description} onChange={(e) => setIForm({ ...iForm, description: e.target.value })} /></div>
             <div className="col-md-2"><input className="form-control rounded-3" placeholder="Amount" value={iForm.amount} onChange={(e) => setIForm({ ...iForm, amount: e.target.value })} /></div>
             <div className="col-md-2"><button type="submit" className="btn btn-dark w-100 rounded-3">Create</button></div>

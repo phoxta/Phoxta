@@ -79,6 +79,7 @@ export default function ConfigurePage() {
     const { error } = await saveAgentConfig(config.id, {
       display_name: config.display_name,
       persona: config.persona,
+      procedures: config.procedures,
       greeting: config.greeting,
       tone: config.tone,
       model_tier: config.model_tier,

@@ -27,12 +27,13 @@ Deno.serve(async (req) => {
       .eq("id", ticketId).eq("organization_id", org.id).maybeSingle();
     if (!ticket) return json({ error: "Ticket not found." }, 404);
 
-    await admin.from("ticket_messages").insert({
+    const { error: storeErr } = await admin.from("ticket_messages").insert({
       organization_id: org.id,
       ticket_id: ticket.id,
-      role: asAi ? "ai" : "agent",
+      author: asAi ? "ai" : "agent",
       body: message,
     });
+    if (storeErr) return json({ error: `Could not store the reply: ${storeErr.message}` }, 500);
 
     let delivery = "no-email";
     if (ticket.customer_email) {

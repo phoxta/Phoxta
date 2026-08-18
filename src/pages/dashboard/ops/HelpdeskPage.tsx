@@ -119,6 +119,9 @@ export default function HelpdeskPage() {
       setDeliveryNote("Reply emailed to the customer.");
     } else if (delivery === "no-email") {
       setDeliveryNote("Saved. This ticket has no customer email, so nothing was sent.");
+    } else {
+      // 'failed' / 'simulated' / anything else: stored, but the email did not go out.
+      setDeliveryNote("Saved, but the email could not be delivered — the customer has not been notified.");
     }
     setDraft("");
     const { data: msgs } = await getTicketMessages(selected.id);
