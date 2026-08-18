@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
+import { trackEvent } from "@/lib/analytics";
 
 type Mode = "login" | "signup" | "forgot" | "reset";
 const MODES: Mode[] = ["login", "signup", "forgot", "reset"];
@@ -29,12 +30,36 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  // Only allow internal, same-origin redirects — reject absolute, protocol-
-  // relative (//host) and backslash (/\host) targets that resolve cross-origin.
+  // Only allow internal, same-origin redirects.
+  //
+  // This is the app's single user-controlled navigation target, so it is also
+  // what mitigates the unpatched react-router open-redirect advisories
+  // (GHSA-wrjc-x8rr-h8h6) — there is no fixed 6.x release, so the guard has to
+  // hold on its own. Resolve against a throwaway origin and require the result
+  // to stay on it, rather than pattern-matching prefixes: that covers absolute
+  // URLs, protocol-relative `//host`, backslash `/\host`, and the control-
+  // character variants (`/\thost`, `/\nhost`) browsers strip before parsing.
   const redirectTo = useMemo(() => {
-    const r = params.get("redirect");
-    const safe = r && r.startsWith("/") && !r.startsWith("//") && !r.startsWith("/\\");
-    return safe ? (r as string) : "/dashboard";
+    const raw = params.get("redirect");
+    if (!raw) return "/dashboard";
+    // Drop the C0 control characters and DEL that browsers ignore when parsing
+    // a URL authority (a tab/CR/LF is what smuggles a host past prefix checks).
+    // Done by char code rather than a regex so no control characters or unicode
+    // escapes have to survive in the source.
+    const cleaned = Array.from(raw)
+      .filter((ch) => { const c = ch.charCodeAt(0); return c > 0x20 && c !== 0x7f; })
+      .join("");
+    if (!cleaned.startsWith("/") || cleaned.startsWith("//") || cleaned.startsWith("/\\")) {
+      return "/dashboard";
+    }
+    try {
+      const probe = "https://phoxta.invalid";
+      const url = new URL(cleaned, probe);
+      if (url.origin !== probe) return "/dashboard";
+      return `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+      return "/dashboard";
+    }
   }, [params]);
 
   const initialMode = useMemo<Mode>(() => {
@@ -117,9 +142,11 @@ export default function AuthPage() {
     setLoading(true);
     try {
       if (mode === "login") {
+        trackEvent("login_submitted");
         const { error } = await signIn(email.trim(), password);
         if (error) setError(error);
       } else if (mode === "signup") {
+        trackEvent("signup_submitted");
         const { error, needsConfirmation } = await signUp(email.trim(), password);
         if (error) setError(error);
         else if (needsConfirmation) setNotice("Check your inbox to confirm your email, then sign in.");

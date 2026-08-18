@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 import { useCachedData } from "@/lib/hooks/useCachedData";
-import { profileQuery, organizationsQuery, aiUsageMonthQuery } from "@/lib/cache/dashboardQueries";
+import { profileQuery, organizationsQuery, aiUsageMonthQuery, revenue30Query } from "@/lib/cache/dashboardQueries";
 import { type UserProfile } from "@/lib/db/profile";
 
 const PROFILE_FIELDS: (keyof UserProfile)[] = [
@@ -28,6 +28,7 @@ export default function DashboardHomePage() {
   const { data: profile = null, loading: pLoading, error } = useCachedData(profileQuery.key, profileQuery.fetch);
   const { data: orgs = [], loading: oLoading } = useCachedData(organizationsQuery.key, organizationsQuery.fetch);
   const { data: aiUsage = [], loading: aLoading } = useCachedData(aiUsageMonthQuery.key, aiUsageMonthQuery.fetch);
+  const { data: revenue30 = 0 } = useCachedData(revenue30Query.key, revenue30Query.fetch);
   const loading = pLoading || oLoading || aLoading;
   const aiTokens = aiUsage.reduce((sum, u) => sum + u.tokens, 0);
 
@@ -69,8 +70,10 @@ export default function DashboardHomePage() {
         <div className="col-xl-3 col-md-6">
           <div className="bg-neutral-0 rounded-4 p-4 h-100 border-100">
             <div className="fz-font-md neutral-500 mb-2">Revenue (30d)</div>
-            <div className="fz-60 fw-700 lh-1 mb-2">$0</div>
-            <div className="fz-font-sm neutral-500">Connect a store to track</div>
+            <div className="fz-60 fw-700 lh-1 mb-2">
+              ${Math.round((revenue30 ?? 0) / 100).toLocaleString("en-US")}
+            </div>
+            <div className="fz-font-sm neutral-500">Paid orders + confirmed bookings, all businesses</div>
           </div>
         </div>
         <Link to="/dashboard/assistant" className="col-xl-3 col-md-6 text-decoration-none">

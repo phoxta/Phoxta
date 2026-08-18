@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { marketplaceBlueprintsQuery } from "@/lib/cache/dashboardQueries";
 import { formatPrice, type Blueprint } from "@/lib/db/marketplace";
-import { buyBlueprint } from "@/lib/db/organizations";
+import { PROMO, promoPriceCents } from "@/lib/promo";
+import { startBlueprintCheckout } from "@/lib/db/payments";
 
 export default function MarketplacePage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { data, loading, error: loadError } = useCachedData(
     marketplaceBlueprintsQuery.key,
     marketplaceBlueprintsQuery.fetch,
@@ -23,17 +23,19 @@ export default function MarketplacePage() {
   const verticals = useMemo(() => ["All", ...Array.from(new Set(items.map((i) => i.vertical))).sort()], [items]);
   const shown = vertical === "All" ? items : items.filter((i) => i.vertical === vertical);
 
+  // Buying goes through Paystack — the webhook provisions the business after
+  // the charge succeeds, so this only starts the hosted checkout.
   async function onBuy(bp: Blueprint) {
     if (!user) return;
     setActionError(null);
     setBuyingId(bp.id);
-    const { id, error } = await buyBlueprint(user.id, bp);
-    setBuyingId(null);
-    if (error && !id) {
-      setActionError(error);
+    const { url, error } = await startBlueprintCheckout(bp.id);
+    if (error || !url) {
+      setBuyingId(null);
+      setActionError(error ?? "Could not start the checkout.");
       return;
     }
-    navigate("/dashboard/businesses");
+    window.location.assign(url);
   }
 
   return (
@@ -104,7 +106,15 @@ export default function MarketplacePage() {
                 <p className="fz-font-sm neutral-500 flex-grow-1 mb-0">{bp.tagline}</p>
                 <div className="d-flex align-items-center justify-content-between mt-3">
                   <div>
-                    <div className="fw-700 fz-20 lh-1">{formatPrice(bp.price_cents, bp.currency)}</div>
+                    {PROMO.active ? (
+                      <div className="fw-700 fz-20 lh-1">
+                        <del className="neutral-500 fw-400 fz-font-md me-1">{formatPrice(bp.price_cents, bp.currency)}</del>
+                        {formatPrice(promoPriceCents(bp.price_cents), bp.currency)}
+                        <span className="badge bg-danger ms-2 align-middle">{PROMO.label}</span>
+                      </div>
+                    ) : (
+                      <div className="fw-700 fz-20 lh-1">{formatPrice(bp.price_cents, bp.currency)}</div>
+                    )}
                     <div className="fz-font-sm neutral-500 text-capitalize">{bp.tier} · one-time</div>
                   </div>
                   <button type="button" className="at-btn" disabled={buyingId === bp.id} onClick={() => onBuy(bp)}>

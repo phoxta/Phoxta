@@ -8,6 +8,8 @@ export type AgentConfig = {
   organization_id: string;
   display_name: string;
   persona: string;
+  /** Plain-English operating procedures — hard rules injected into every agent prompt. */
+  procedures: string;
   greeting: string;
   tone: string;
   model_tier: "cheap" | "balanced" | "complex";

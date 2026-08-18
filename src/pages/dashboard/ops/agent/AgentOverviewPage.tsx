@@ -2,6 +2,7 @@ import { useOutletContext } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { getAgentSummary, getAgentConfig, CAPABILITY_LABELS, type AgentSummary } from "@/lib/db/ops/agent";
+import { supabase } from "@/lib/supabaseClient";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 export default function AgentOverviewPage() {
@@ -9,8 +10,21 @@ export default function AgentOverviewPage() {
   const { data, loading } = useCachedData(
     `agent:overview:${orgId}`,
     async () => {
-      const [sum, cfg] = await Promise.all([getAgentSummary(orgId), getAgentConfig(orgId)]);
-      return { s: sum.data, config: cfg.data };
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const [sum, cfg, qa, usage] = await Promise.all([
+        getAgentSummary(orgId),
+        getAgentConfig(orgId),
+        // Quality: LLM-judge scores written by the qa-scorer cron (100% coverage).
+        supabase.from("conversations").select("qa_score").eq("organization_id", orgId).not("qa_score", "is", null).limit(500),
+        // Cost: the metering telemetry, finally surfaced to the owner.
+        supabase.from("ai_usage").select("cost_cents").eq("organization_id", orgId).gte("created_at", monthStart.toISOString()).limit(1000),
+      ]);
+      const scores = (qa.data ?? []).map((r) => r.qa_score as number);
+      const qaAvg = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
+      const costCents = (usage.data ?? []).reduce((a, r) => a + (r.cost_cents || 0), 0);
+      return { s: sum.data, config: cfg.data, qaAvg, qaCount: scores.length, costCents };
     },
     { ttl: DASHBOARD_TTL },
   );
@@ -26,6 +40,8 @@ export default function AgentOverviewPage() {
     { label: "After-hours calls captured", value: n("after_hours_calls") },
     { label: "Appointments booked", value: n("bookings") },
     { label: "Outbound done", value: n("outbound_done"), sub: `${n("outbound_queued")} queued` },
+    { label: "AI quality", value: data?.qaAvg != null ? `${data.qaAvg}/5` : "—", sub: data?.qaCount ? `${data.qaCount} conversations graded` : "grading runs every 2h" },
+    { label: "AI cost (mo.)", value: `$${(((data?.costCents ?? 0)) / 100).toFixed(2)}`, sub: "all agent features" },
     { label: "Locations", value: n("locations") },
   ];
 

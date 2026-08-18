@@ -136,6 +136,11 @@ export default function StudioPage() {
               {/* Pages */}
               <div className="bg-neutral-0 rounded-4 p-4 border-100">
                 <h6 className="fw-600 mb-3">Pages</h6>
+                <p className="fz-font-sm neutral-500 mb-3">
+                  Two editors, two jobs: <b>Edit site content</b> (above) changes the text and images
+                  of your live storefront in place. <b>Pages</b> (below) builds extra pages — landing
+                  pages, promos — published at their own links.
+                </p>
                 {canManage && (
                   <form onSubmit={create} className="bg-neutral-50 rounded-3 p-3 mb-3">
                     <div className="row g-2 align-items-end">

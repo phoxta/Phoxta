@@ -13,6 +13,7 @@ import {
   type TicketMessage,
 } from "@/lib/db/ops/helpdesk";
 import { drainEmbeddings, invokeAction } from "@/lib/db/ops/ai";
+import { supabase } from "@/lib/supabaseClient";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 type Classification = { category: string; sentiment: string; priority: string; summary: string };
@@ -100,15 +101,28 @@ export default function HelpdeskPage() {
     }
   }
 
+  const [deliveryNote, setDeliveryNote] = useState<string | null>(null);
   async function send(author: "agent" | "ai") {
     if (!selected || !draft.trim()) return;
-    await addTicketMessage(orgId, selected.id, author, draft);
-    if (author === "ai") {
-      await setTicketStatus(selected.id, "resolved", true);
+    setDeliveryNote(null);
+    // ticket-reply stores the message AND emails it to the ticket's customer —
+    // replies used to live only in this console and never reach anyone.
+    const { data, error } = await supabase.functions.invoke("ticket-reply", {
+      body: { orgId, ticketId: selected.id, message: draft, asAi: author === "ai", resolve: author === "ai" },
+    });
+    const delivery = (data as { delivery?: string } | null)?.delivery;
+    if (error) {
+      // Fall back to the old store-only path so the reply is never lost.
+      await addTicketMessage(orgId, selected.id, author, draft);
+      setDeliveryNote("Saved, but email delivery failed — the customer has not been notified.");
+    } else if (delivery === "sent") {
+      setDeliveryNote("Reply emailed to the customer.");
+    } else if (delivery === "no-email") {
+      setDeliveryNote("Saved. This ticket has no customer email, so nothing was sent.");
     }
     setDraft("");
-    const { data } = await getTicketMessages(selected.id);
-    setMessages(data);
+    const { data: msgs } = await getTicketMessages(selected.id);
+    setMessages(msgs);
     loadTickets();
   }
 
@@ -213,6 +227,9 @@ export default function HelpdeskPage() {
                   {aiLoading ? "Drafting…" : "✨ Draft AI reply"}
                 </button>
               </div>
+              {deliveryNote && (
+                <p className="fz-font-sm neutral-500 mb-2" role="status">{deliveryNote}</p>
+              )}
               <textarea className="form-control rounded-3 mb-2" rows={4} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Type a reply, or draft one with AI…" />
               <div className="d-flex gap-2">
                 <button type="button" className="btn btn-dark rounded-3 px-4" onClick={() => send("agent")} disabled={!draft.trim()}>Send reply</button>

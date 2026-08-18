@@ -35,6 +35,23 @@ export async function getBlueprint(slug: string): Promise<{ data: Blueprint | nu
   return { data: (data as Blueprint | null) ?? null, error: friendlyError(error?.message) };
 }
 
+export type BlueprintScorecard = {
+  blueprint_id: string;
+  businesses: number;
+  orders_90d: number;
+  gmv_90d_cents: number;
+  reservations_90d: number;
+  conversations_90d: number;
+  avg_qa_score: number | null;
+};
+
+/** Platform-verified per-blueprint activity aggregates (anonymized) — the
+ *  trust data no shell-seller can fake. */
+export async function getBlueprintScorecards(): Promise<{ data: BlueprintScorecard[]; error: string | null }> {
+  const { data, error } = await supabase.rpc("app_blueprint_scorecards");
+  return { data: (data as BlueprintScorecard[] | null) ?? [], error: friendlyError(error?.message) };
+}
+
 export function formatPrice(cents: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(cents / 100);
 }

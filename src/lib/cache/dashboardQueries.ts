@@ -7,6 +7,7 @@
 // Each fetcher unwraps the repo's standard `{ data, error }` db result, throwing on
 // error so useCachedData surfaces it.
 
+import { supabase } from "@/lib/supabaseClient";
 import { getMyProfile } from "@/lib/db/profile";
 import { listMyOrganizations } from "@/lib/db/organizations";
 import { listMyInvitations, listNotifications } from "@/lib/db/collaboration";
@@ -49,6 +50,19 @@ export const notificationsQuery = query("notifications", () => unwrap(listNotifi
 
 /** This month's assistant token usage (Home + Billing). */
 export const aiUsageMonthQuery = query("ai.usage.month", () => unwrap(listAiUsageThisMonth()));
+
+/** Real 30-day revenue across every business the user belongs to (RLS scopes
+ *  both tables to their orgs): paid/fulfilled orders + confirmed/completed
+ *  reservations. Replaces the hardcoded $0 tile the audit flagged. */
+export const revenue30Query = query("revenue.30d", async () => {
+  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const [orders, reservations] = await Promise.all([
+    supabase.from("orders").select("total_cents").in("status", ["paid", "fulfilled"]).gte("created_at", since),
+    supabase.from("reservations").select("total_cents").in("status", ["confirmed", "completed"]).gte("created_at", since),
+  ]);
+  const sum = (rows: { total_cents: number }[] | null) => (rows ?? []).reduce((s, r) => s + (r.total_cents || 0), 0);
+  return sum(orders.data) + sum(reservations.data);
+});
 
 /** Marketplace blueprint catalog. */
 export const marketplaceBlueprintsQuery = query("marketplace.blueprints", () => unwrap(listBlueprints()));

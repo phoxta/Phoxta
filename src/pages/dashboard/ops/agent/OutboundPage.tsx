@@ -11,6 +11,7 @@ import {
   type OutboundCampaign,
 } from "@/lib/db/ops/agent";
 import { listContacts } from "@/lib/db/ops/crm";
+import { invokeAction } from "@/lib/db/ops/ai";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 const TYPES = [
@@ -56,12 +57,33 @@ export default function OutboundPage() {
     }
   }
 
+  // Optional AI audience: describe who to target and the segmenter picks the
+  // matching contacts (the Marketing module's segment engine, finally wired to
+  // Outbound instead of queueing every contact blindly).
+  const [audience, setAudience] = useState("");
+  const [segmenting, setSegmenting] = useState(false);
   async function queue(c: OutboundCampaign) {
     setMsg(null);
-    const { count, error } = await queueCampaign(orgId, c, contacts.map((x) => ({ id: x.id, name: x.name, email: x.email, phone: x.phone })));
+    let targets = contacts.map((x) => ({ id: x.id, name: x.name, email: x.email, phone: x.phone }));
+    if (audience.trim()) {
+      setSegmenting(true);
+      const { data, error } = await invokeAction<{ contact_ids?: string[] }>(orgId, "segment_audience", { description: audience.trim() });
+      setSegmenting(false);
+      if (error) {
+        setError(error);
+        return;
+      }
+      const ids = new Set(data?.contact_ids ?? []);
+      targets = targets.filter((t) => ids.has(t.id));
+      if (targets.length === 0) {
+        setMsg("No contacts match that audience — nothing queued.");
+        return;
+      }
+    }
+    const { count, error } = await queueCampaign(orgId, c, targets);
     if (error) setError(error);
     else {
-      setMsg(`Queued ${count} ${c.name} task(s).`);
+      setMsg(`Queued ${count} ${c.name} task(s)${audience.trim() ? ` to the matched audience (${targets.length})` : ""}.`);
       reload();
     }
   }
@@ -107,6 +129,16 @@ export default function OutboundPage() {
           <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No campaigns yet.</div>
         ) : (
           <div className="d-flex flex-column gap-2">
+            <div className="bg-neutral-0 rounded-4 p-3 border-100">
+              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1">Audience (optional — AI-matched)</label>
+              <input
+                className="form-control rounded-3"
+                value={audience}
+                onChange={(e) => setAudience(e.target.value)}
+                placeholder={`e.g. "customers who haven't ordered in 60 days" — empty = all ${contacts.length} contacts`}
+              />
+              {segmenting && <p className="fz-font-sm neutral-500 mt-1 mb-0">Matching audience…</p>}
+            </div>
             {campaigns.map((c) => (
               <div key={c.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2">
                 <div>

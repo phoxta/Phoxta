@@ -129,6 +129,17 @@ export default function ConfigurePage() {
               </select>
             </div>
             <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1">Persona / instructions</label><textarea className="form-control rounded-3" rows={2} value={config.persona} onChange={(e) => patch({ persona: e.target.value })} /></div>
+            <div className="col-12">
+              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1">Operating procedures</label>
+              <textarea
+                className="form-control rounded-3"
+                rows={4}
+                value={config.procedures ?? ""}
+                onChange={(e) => patch({ procedures: e.target.value })}
+                placeholder={"Plain-English rules the agent must always follow, e.g.:\n• If an order is unshipped, offer an exchange before a refund.\n• Never promise delivery dates — say \"usually 3–5 business days\".\n• Discounts above 10% need my approval."}
+              />
+              <p className="fz-font-sm neutral-500 mt-1 mb-0">These are hard rules — the agent follows them over its own judgment, on every channel.</p>
+            </div>
             <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1">Greeting</label><input className="form-control rounded-3" value={config.greeting} onChange={(e) => patch({ greeting: e.target.value })} /></div>
           </div>
         </div>

@@ -124,7 +124,11 @@ export default function AssistantPage() {
       <div className="mb-4 d-flex flex-wrap align-items-end justify-content-between gap-3">
         <div>
           <h2 className="fw-600 mb-1">Assistant</h2>
-          <p className="neutral-500 mb-0">Your business's AI — drafts, plans, answers and next steps.</p>
+          <p className="neutral-500 mb-0">
+            Your business's AI — drafts, plans, answers and next steps. Want it to{" "}
+            <em>take actions</em> (change prices, fulfil orders, message customers)? Open your
+            business's <b>Operator</b> in the console: Businesses → your business → Agent → Operator.
+          </p>
         </div>
         {orgs.length > 0 && (
           <div style={{ minWidth: 220 }}>

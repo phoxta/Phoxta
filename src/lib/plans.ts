@@ -38,3 +38,11 @@ export const PLATFORM_PLANS: PlatformPlan[] = [
 
 /** Lowest monthly plan price — for "from $X/mo" copy. */
 export const PLAN_STARTING_PRICE = Math.min(...PLATFORM_PLANS.map((p) => p.priceMonthly));
+
+/** Display-only NGN presentment rate — mirrors the PAYSTACK_RATE_PER_USD secret
+ *  (charging authority stays server-side). Update both together. */
+export const NGN_PER_USD = 1600;
+
+export function approxNgn(usd: number): string {
+  return `₦${(usd * NGN_PER_USD).toLocaleString("en-US")}`;
+}

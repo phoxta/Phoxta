@@ -119,6 +119,14 @@ export default function OperatorPage() {
                             {pending.map((a) => (
                                 <div key={a.id} className="border-100 rounded-3 p-3">
                                     <div className="fw-600 fz-font-md mb-2">{a.title}</div>
+                                    {a.args && Object.keys(a.args as Record<string, unknown>).length > 0 && (
+                                        <details className="mb-2">
+                                            <summary className="fz-font-sm neutral-500" style={{ cursor: "pointer" }}>What exactly will change</summary>
+                                            <pre className="fz-font-sm bg-neutral-50 rounded-2 p-2 mt-1 mb-0" style={{ whiteSpace: "pre-wrap", maxHeight: 160, overflow: "auto" }}>
+                                                {JSON.stringify(a.args, null, 1)}
+                                            </pre>
+                                        </details>
+                                    )}
                                     <div className="d-flex gap-2">
                                         <button className="btn btn-dark btn-sm rounded-pill px-3" onClick={() => decide(a.id, "approve")}>Approve</button>
                                         <button className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => decide(a.id, "reject")}>Reject</button>

@@ -3,6 +3,7 @@ import { friendlyError } from "@/lib/friendlyError";
 
 export type Subscription = {
   id: string;
+  organization_id: string;
   plan: "starter" | "growth" | "scale" | "enterprise";
   status: "trialing" | "active" | "past_due" | "canceled";
   amount_cents: number;
@@ -15,7 +16,7 @@ export type Subscription = {
 export async function listMySubscriptions(): Promise<{ data: Subscription[]; error: string | null }> {
   const { data, error } = await supabase
     .from("subscriptions")
-    .select("id, plan, status, amount_cents, currency, current_period_end, organizations(name)")
+    .select("id, organization_id, plan, status, amount_cents, currency, current_period_end, organizations(name)")
     .order("created_at", { ascending: true });
   return { data: (data as unknown as Subscription[] | null) ?? [], error: friendlyError(error?.message) };
 }

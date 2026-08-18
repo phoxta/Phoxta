@@ -1,25 +1,29 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
-import { getBlueprint, formatPrice } from "@/lib/db/marketplace";
-import { buyBlueprint } from "@/lib/db/organizations";
-import { PLAN_STARTING_PRICE } from "@/lib/plans";
+import { getBlueprint, formatPrice, getBlueprintScorecards, type BlueprintScorecard } from "@/lib/db/marketplace";
+import { PROMO, promoPriceCents } from "@/lib/promo";
+import { startBlueprintCheckout } from "@/lib/db/payments";
+import { PLATFORM_PLANS } from "@/lib/plans";
 import Section12Pricing from "@/shared/sections/index-2/Section12Pricing";
+
+const GROWTH_PRICE = PLATFORM_PLANS.find((p) => p.key === "growth")?.priceMonthly ?? 250;
 
 const INCLUDED = [
   "A live storefront and mobile-ready experience",
   "Pre-configured AI assistants and automations",
   "Your own brand, domain and payment account",
   "A 30-day hands-on onboarding to your first sale",
+  "Your first month of the Growth plan — free",
+  "The Phoxta Launch Guarantee (below)",
 ];
 
 export default function MarketplaceDetailPage() {
   const { slug } = useParams();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { data: bp = null, loading, error: loadError } = useCachedData(
     slug ? `blueprint:${slug}` : "blueprint:none",
     async () => {
@@ -32,18 +36,29 @@ export default function MarketplaceDetailPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
+  const [scorecard, setScorecard] = useState<BlueprintScorecard | null>(null);
+  useEffect(() => {
+    if (!bp?.id) return;
+    let on = true;
+    getBlueprintScorecards().then(({ data }) => {
+      if (on) setScorecard(data.find((s) => s.blueprint_id === bp.id) ?? null);
+    });
+    return () => { on = false; };
+  }, [bp?.id]);
 
+  // Buying goes through Paystack — the webhook provisions the business after
+  // the charge succeeds, so this only starts the hosted checkout.
   async function onBuy() {
     if (!user || !bp) return;
     setBuying(true);
     setError(null);
-    const { id, error } = await buyBlueprint(user.id, bp);
-    setBuying(false);
-    if (error && !id) {
-      setError(error);
+    const { url, error } = await startBlueprintCheckout(bp.id);
+    if (error || !url) {
+      setBuying(false);
+      setError(error ?? "Could not start the checkout.");
       return;
     }
-    navigate("/dashboard/businesses");
+    window.location.assign(url);
   }
 
   if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
@@ -76,6 +91,22 @@ export default function MarketplaceDetailPage() {
           <h2 className="fw-600 mb-2">{bp.name}</h2>
           <p className="neutral-700 mb-4">{bp.description || bp.tagline}</p>
 
+          {scorecard && (scorecard.orders_90d > 0 || scorecard.reservations_90d > 0 || scorecard.conversations_90d > 0) && (
+            <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-4">
+              <h6 className="fw-600 mb-2">Verified platform activity — last 90 days</h6>
+              <p className="fz-font-sm neutral-500 mb-2">
+                Live, anonymized data from businesses running this blueprint on Phoxta — not projections.
+              </p>
+              <div className="d-flex flex-wrap gap-3 fz-font-md">
+                <span><b>{scorecard.businesses}</b> running business{scorecard.businesses === 1 ? "" : "es"}</span>
+                {scorecard.orders_90d > 0 && <span><b>{scorecard.orders_90d}</b> orders</span>}
+                {scorecard.reservations_90d > 0 && <span><b>{scorecard.reservations_90d}</b> reservations</span>}
+                {scorecard.conversations_90d > 0 && <span><b>{scorecard.conversations_90d}</b> customer conversations handled</span>}
+                {scorecard.avg_qa_score != null && <span><b>{scorecard.avg_qa_score}/5</b> AI quality score</span>}
+              </div>
+            </div>
+          )}
+
           <h6 className="fw-600 mb-2">What&apos;s included</h6>
           <ul className="list-unstyled d-flex flex-column gap-2">
             {INCLUDED.map((line) => (
@@ -91,7 +122,15 @@ export default function MarketplaceDetailPage() {
 
         <div className="col-lg-5">
           <div className="bg-neutral-0 rounded-4 p-4 border-100 position-sticky" style={{ top: 88 }}>
-            <div className="fw-700 fz-60 lh-1 mb-1">{formatPrice(bp.price_cents, bp.currency)}</div>
+            {PROMO.active && (
+              <div className="mb-2">
+                <del className="neutral-500 fz-24 fw-500 me-2">{formatPrice(bp.price_cents, bp.currency)}</del>
+                <span className="badge bg-danger align-middle">{PROMO.label}</span>
+              </div>
+            )}
+            <div className="fw-700 fz-60 lh-1 mb-1">
+              {formatPrice(PROMO.active ? promoPriceCents(bp.price_cents) : bp.price_cents, bp.currency)}
+            </div>
             <div className="fz-font-md neutral-500 text-capitalize mb-3">{bp.tier} business · one-time</div>
             <button type="button" className="at-btn w-100 justify-content-center mb-2" disabled={buying} onClick={onBuy}>
               <span>
@@ -108,20 +147,30 @@ export default function MarketplaceDetailPage() {
               </a>
             )}
             <p className="fz-font-sm neutral-500 mb-0 mt-3">
-              One-time business price. Then run it from ${PLAN_STARTING_PRICE}/mo on a Phoxta plan —
-              cancel anytime.
+              One-time business price — your first month of the Growth plan is included free.
+              After that it&apos;s ${GROWTH_PRICE}/mo (change or cancel anytime in Billing).
             </p>
           </div>
         </div>
       </div>
 
+      {/* The named outcome guarantee no acquisition marketplace offers. */}
+      <div className="mt-4 bg-neutral-0 rounded-4 p-4 border-100" style={{ maxWidth: 640 }}>
+        <h6 className="fw-600 mb-1">The Phoxta Launch Guarantee</h6>
+        <p className="fz-font-md neutral-700 mb-0">
+          Your business is live on its own address with every channel connected — web chat, SMS,
+          WhatsApp, email and phone — and your AI agent handling real customer conversations within
+          30 days of purchase, or we refund the purchase price in full.
+        </p>
+      </div>
+
       {/* Monthly plan after purchase — the ongoing platform subscription. */}
       <div className="mt-5 pt-4 border-top border-100">
-        <h5 className="fw-600 mb-1">Then run it from ${PLAN_STARTING_PRICE}/mo</h5>
+        <h5 className="fw-600 mb-1">Your first month of Growth is on us</h5>
         <p className="neutral-500 fz-font-md mb-4" style={{ maxWidth: 620 }}>
-          The price above is a one-time fee to make this business yours. After setup you run it on a
-          Phoxta plan — choose the plan that fits. Manage it
-          anytime in <Link to="/dashboard/billing" className="text-decoration-underline">Billing</Link>.
+          The price above is a one-time fee to make this business yours — and it includes a free
+          month of the Growth plan. After that, Growth (${GROWTH_PRICE}/mo) continues automatically;
+          switch plans or cancel anytime in <Link to="/dashboard/billing" className="text-decoration-underline">Billing</Link>.
         </p>
         {/* Same plan cards + Monthly/Annual toggle as the Pricing page. */}
         <Section12Pricing />

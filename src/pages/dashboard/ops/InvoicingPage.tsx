@@ -12,6 +12,7 @@ import {
   type Invoice,
 } from "@/lib/db/ops/invoicing";
 import { invokeAction } from "@/lib/db/ops/ai";
+import { supabase } from "@/lib/supabaseClient";
 import { formatPrice } from "@/lib/db/marketplace";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
@@ -144,7 +145,14 @@ export default function InvoicingPage() {
                 </div>
                 <div className="d-flex align-items-center gap-2">
                   <span className={`badge fw-500 text-capitalize ${INV_STYLE[inv.status]}`}>{inv.status}</span>
-                  {inv.status === "draft" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => { await setInvoiceStatus(inv.id, "sent"); reload(); }}>Send</button>}
+                  {inv.status === "draft" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={async () => {
+                    // Emails the invoice to the customer WITH a Paystack payment
+                    // link; the webhook flips it to paid when they pay.
+                    const { data, error } = await supabase.functions.invoke("paystack-checkout", { body: { kind: "invoice_send", orgId, invoiceId: inv.id } });
+                    const err = error || (data as { error?: string })?.error;
+                    if (err) { window.alert(typeof err === "string" ? err : "Could not send — check the customer email and try again."); return; }
+                    reload();
+                  }}>Send + pay link</button>}
                   {inv.status === "sent" && <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={() => draftDunning(inv.id)} disabled={dunningId === inv.id}>{dunningId === inv.id ? "…" : "✨ Remind"}</button>}
                   {inv.status === "sent" && <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={async () => { await setInvoiceStatus(inv.id, "paid"); reload(); }}>Mark paid</button>}
                 </div>

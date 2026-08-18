@@ -75,9 +75,15 @@ function revalidate<T>(key: string, fetcher: () => Promise<T>, ttl?: number, for
   const p = (async () => {
     try {
       const result = await fetcher();
-      store.set(key, result);
-      stamps.set(key, Date.now());
-      notify(key);
+      // Only publish if a newer fetch hasn't superseded this one. Without this
+      // guard a slow pre-mutation request could resolve AFTER a forced reload()
+      // and overwrite the fresh post-mutation data with stale data — the caller
+      // still gets its own result, but the shared cache stays correct.
+      if (generation.get(key) === myGen) {
+        store.set(key, result);
+        stamps.set(key, Date.now());
+        notify(key);
+      }
       return result;
     } finally {
       // Only clear if no newer fetch (e.g. a forced reload) has superseded this one.
@@ -97,18 +103,28 @@ export function prefetchCachedData<T>(key: string, fetcher: () => Promise<T>, op
   );
 }
 
-/** Drop a cached entry (or everything) — e.g. on sign-out. */
+/** Drop a cached entry (or everything) — e.g. on sign-out.
+ *
+ *  Bumps the generation for each cleared key so any in-flight fetch started
+ *  under the previous identity can no longer publish its result, and notifies
+ *  subscribers so mounted components drop the data they already rendered.
+ *  Without both, a sign-out → sign-in could briefly show the previous user's
+ *  data: clearing the store alone leaves it in each component's local state. */
+function invalidate(key: string): void {
+  store.delete(key);
+  stamps.delete(key);
+  inflight.delete(key);
+  // Bump rather than delete: revalidate() compares against this to decide
+  // whether it may still write, so it must keep moving forward.
+  generation.set(key, (generation.get(key) ?? 0) + 1);
+  notify(key);
+}
+
 export function clearCachedData(key?: string): void {
   if (key) {
-    store.delete(key);
-    stamps.delete(key);
-    inflight.delete(key);
-    generation.delete(key);
+    invalidate(key);
   } else {
-    store.clear();
-    stamps.clear();
-    inflight.clear();
-    generation.clear();
+    for (const k of [...store.keys(), ...inflight.keys()]) invalidate(k);
   }
 }
 
@@ -156,7 +172,9 @@ export function useCachedData<T>(key: string, fetcher: () => Promise<T>, opts: O
     // or by prefetch) to this component.
     const unsub = subscribe(key, () => {
       setLocalData(store.get(key) as T | undefined);
-      setLoading(false);
+      // A clear (e.g. sign-out) notifies with the entry gone — fall back to the
+      // loading state rather than rendering the now-dropped data.
+      setLoading(!store.has(key));
     });
 
     // Re-sync to the cache for this key (handles key changes), then revalidate.
