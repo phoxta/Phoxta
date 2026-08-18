@@ -153,15 +153,52 @@ export async function placeOrder(
   return (data as string | null) ?? null;
 }
 
-/** Ask the platform for a hosted Paystack checkout link for a just-placed
- *  record. Returns the payment URL, or null when payments aren't configured for
- *  this tenant — callers keep the pay-later confirmation in that case. */
-export async function startPayment(orgId: string, kind: "order" | "reservation", id: string, returnUrl: string): Promise<string | null> {
+export type StorefrontPayment = {
+  /** Hosted Paystack checkout page — the popup's full-page fallback. */
+  url: string;
+  /** Inline.js v2 access code to open the same transaction as an overlay. */
+  access_code: string | null;
+  /** Paystack transaction reference. */
+  reference: string | null;
+};
+
+/** Ask the platform for a Paystack transaction for a just-placed record.
+ *  Returns { url, access_code, reference } (access_code opens the in-page
+ *  popup, url is the hosted fallback), or null when payments aren't configured
+ *  for this tenant — callers keep the pay-later confirmation in that case. */
+export async function startPayment(orgId: string, kind: "order" | "reservation", id: string, returnUrl: string): Promise<StorefrontPayment | null> {
   try {
     const { data, error } = await supabase.functions.invoke("paystack-storefront-checkout", { body: { orgId, kind, id, returnUrl } });
     if (error) return null;
-    const url = (data as { url?: unknown } | null)?.url;
-    return typeof url === "string" && url ? url : null;
+    const d = (data ?? {}) as { url?: unknown; access_code?: unknown; reference?: unknown };
+    const url = typeof d.url === "string" && d.url ? d.url : null;
+    if (!url) return null;
+    return {
+      url,
+      access_code: typeof d.access_code === "string" && d.access_code ? d.access_code : null,
+      reference: typeof d.reference === "string" && d.reference ? d.reference : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---- Guest order lookup (same RPC the /track page uses — migration 0060) ----
+export type OrderLookupItem = { name: string; quantity: number; unit_price_cents: number };
+export type OrderLookup = {
+  found: boolean; status: string; fulfillment_status: string | null;
+  total_cents: number; currency: string; created_at: string;
+  customer_name: string; items: OrderLookupItem[];
+};
+
+/** Look up an order privately: the reference (order id) AND email must match.
+ *  Used by /track both to show status and to verify payment landed (the
+ *  Paystack webhook flips orders.status to 'paid'). */
+export async function lookupOrder(orgId: string, ref: string, email: string): Promise<OrderLookup | null> {
+  try {
+    const { data, error } = await supabase.rpc("app_lookup_order", { p_org: orgId, p_ref: ref, p_email: email });
+    if (error || !data) return null;
+    return data as OrderLookup;
   } catch {
     return null;
   }

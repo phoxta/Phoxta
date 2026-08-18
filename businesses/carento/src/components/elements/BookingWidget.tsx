@@ -1,17 +1,36 @@
-import { useMemo, useState } from "react";
-import { requestReservation, supabase, type Car } from "@/lib/phoxta";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { lookupReservation, requestReservation, supabase, type Car } from "@/lib/phoxta";
+import { openPaystackPopup } from "@/lib/paystackPopup";
 
 // Real rental booking: pick a date range for THIS vehicle, add extras (insurance /
 // GPS / seats — owner-defined per vehicle, priced per day server-side) and the
 // driver's details, then request a reservation. Price + availability are enforced
 // by app_request_reservation; it lands in the operating console as 'pending'.
 // Falls back to a simulated confirmation when not backend-connected (local dev).
+//
+// Payment flow: when the tenant has Paystack configured, the checkout edge fn
+// returns { url, access_code } — we show a "complete your payment" state (NOT a
+// thank-you: the reservation isn't paid yet), open the Paystack overlay popup,
+// and poll app_lookup_reservation every 3s (max 2 min) until the webhook marks
+// it paid (status 'confirmed' — set together with metadata.paid). Only then do
+// we celebrate. If payments aren't configured the pay-later thank-you stands.
 
 const todayPlus = (d: number) => {
   const t = new Date();
   t.setDate(t.getDate() + d);
   return t.toISOString().slice(0, 10);
 };
+
+/** Statuses that mean the money actually arrived (paystack-webhook sets
+ *  'confirmed' together with metadata.paid=true on charge.success). */
+const PAID_STATUSES = new Set(["confirmed", "completed"]);
+
+const ARROW = (
+  <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 15L15 8L8 1M15 8L1 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string | null }) {
   const [pickup, setPickup] = useState(todayPlus(1));
@@ -24,7 +43,14 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState<string | null>(null);
-  const [payUrl, setPayUrl] = useState<string | null>(null);
+  // Online payment: set when the checkout fn returned a transaction. While
+  // non-null and !paid we're in the "complete your payment" state.
+  const [payment, setPayment] = useState<{ accessCode: string | null; url: string | null } | null>(null);
+  const [paid, setPaid] = useState(false);
+  const pollTimer = useRef<number | null>(null);
+  const pollDeadline = useRef(0);
+
+  useEffect(() => () => stopPolling(), []);
 
   const nights = useMemo(() => {
     const n = Math.round((new Date(dropoff).getTime() - new Date(pickup).getTime()) / 86400000);
@@ -45,6 +71,52 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
     });
   }
 
+  function stopPolling() {
+    if (pollTimer.current !== null) {
+      window.clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
+  }
+
+  /** One lookup via the same anon RPC the manage-booking page uses; flips to
+   *  the real success state once the webhook has marked the reservation paid. */
+  async function checkPaid(reservationId: string, customerEmail: string): Promise<void> {
+    if (!orgId) return;
+    try {
+      const r = await lookupReservation(orgId, reservationId, customerEmail);
+      const meta = (r as unknown as { metadata?: Record<string, unknown> } | null)?.metadata;
+      if (r && r.found && (PAID_STATUSES.has(r.status) || meta?.paid === true)) {
+        stopPolling();
+        setPaid(true);
+      }
+    } catch {
+      /* transient — next poll tick will retry */
+    }
+  }
+
+  /** Poll the reservation lookup every 3s for up to 2 minutes. This is the
+   *  source of truth for "paid" — the popup callbacks are best-effort only. */
+  function beginPaidPolling(reservationId: string, customerEmail: string) {
+    stopPolling();
+    pollDeadline.current = Date.now() + 120000;
+    pollTimer.current = window.setInterval(() => {
+      if (Date.now() > pollDeadline.current) {
+        stopPolling();
+        return;
+      }
+      void checkPaid(reservationId, customerEmail);
+    }, 3000);
+  }
+
+  function openPopup(reservationId: string, customerEmail: string, accessCode: string | null, url: string | null) {
+    void openPaystackPopup(accessCode, url, {
+      onSuccess: () => void checkPaid(reservationId, customerEmail),
+      onCancel: () => {
+        /* pending-payment state stays; the Pay now button re-opens the popup */
+      },
+    });
+  }
+
   /** Try to start an online payment for the freshly created reservation. If the
    *  tenant hasn't configured payments (or the edge fn errors) we silently keep
    *  the existing pay-later confirmation — never block the booking on payment. */
@@ -56,11 +128,13 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
         body: { orgId, kind: "reservation", id: reservationId, returnUrl },
       });
       if (fnError) return;
-      const url = (data as { url?: string } | null)?.url;
-      if (url) {
-        setPayUrl(url);
-        window.location.assign(url);
-      }
+      const d = data as { url?: string; access_code?: string } | null;
+      if (!d?.url && !d?.access_code) return;
+      // Payment exists: DON'T celebrate — show the complete-your-payment state,
+      // auto-open the Paystack popup, and start verifying via the lookup RPC.
+      setPayment({ accessCode: d.access_code ?? null, url: d.url ?? null });
+      beginPaidPolling(reservationId, customerEmail);
+      openPopup(reservationId, customerEmail, d.access_code ?? null, d.url ?? null);
     } catch {
       /* payments unavailable — pay-later confirmation stands */
     }
@@ -90,6 +164,57 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
     }
   }
 
+  // Paid online — the ONLY place we thank the customer in the payment path.
+  if (confirmed && paid) {
+    const manageHref = `/manage-booking?ref=${encodeURIComponent(confirmed)}&email=${encodeURIComponent(email.trim())}`;
+    return (
+      <div className="booking-form">
+        <div className="head-booking-form"><p className="text-xl-bold neutral-1000">Payment received — thank you!</p></div>
+        <div className="content-booking-form">
+          <p className="text-md-medium neutral-700 mb-3">
+            Thanks {name || "there"} — your booking of the <strong>{car?.name}</strong> from {pickup} to {dropoff}
+            {" "}({nights} {nights === 1 ? "day" : "days"}) is confirmed. A receipt is on its way to {email}.
+          </p>
+          <p className="text-sm-medium neutral-500 mb-3">Reference: {confirmed}</p>
+          <div className="box-button-book">
+            <Link className="btn btn-book" to={manageHref}>
+              Manage my booking
+              {ARROW}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Payment started but NOT verified yet — no thank-you, no "confirmed".
+  if (confirmed && payment) {
+    return (
+      <div className="booking-form">
+        <div className="head-booking-form"><p className="text-xl-bold neutral-1000">Complete your payment</p></div>
+        <div className="content-booking-form">
+          <p className="text-md-medium neutral-700 mb-3">
+            Your booking of the <strong>{car?.name}</strong> from {pickup} to {dropoff}
+            {" "}({nights} {nights === 1 ? "day" : "days"}) is reserved — complete payment to confirm it.
+          </p>
+          <div className="item-line-booking last-item">
+            <strong className="text-md-bold neutral-1000">Amount due</strong>
+            <div className="line-booking-right"><p className="text-xl-bold neutral-1000">${total}</p></div>
+          </div>
+          <p className="text-sm-medium neutral-500 mb-3">Reference: {confirmed}</p>
+          <div className="box-button-book">
+            <button className="btn btn-book" onClick={() => openPopup(confirmed, email.trim(), payment.accessCode, payment.url)}>
+              Pay now
+              {ARROW}
+            </button>
+          </div>
+          <p className="text-sm-medium neutral-500 mt-2 mb-0">This page updates automatically once your payment is received.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Pay-later path (payments not configured / demo): today's flow, unchanged.
   if (confirmed) {
     return (
       <div className="booking-form">
@@ -100,19 +225,6 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
             {" "}({nights} {nights === 1 ? "day" : "days"}) is in. We'll confirm by email at {email}.
           </p>
           <p className="text-sm-medium neutral-500">Reference: {confirmed}</p>
-          {payUrl && (
-            <>
-              <p className="text-md-medium neutral-700 mt-3 mb-2">Secure your booking by paying online now.</p>
-              <div className="box-button-book">
-                <button className="btn btn-book" onClick={() => window.location.assign(payUrl)}>
-                  Pay now
-                  <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 15L15 8L8 1M15 8L1 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </div>
-            </>
-          )}
         </div>
       </div>
     );
@@ -177,9 +289,7 @@ export default function BookingWidget({ car, orgId }: { car?: Car; orgId: string
         <div className="box-button-book">
           <button className="btn btn-book" onClick={book} disabled={busy}>
             {busy ? "Booking…" : "Book Now"}
-            <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M8 15L15 8L8 1M15 8L1 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            {ARROW}
           </button>
         </div>
       </div>

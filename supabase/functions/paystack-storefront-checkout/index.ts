@@ -88,7 +88,14 @@ Deno.serve(async (req) => {
     };
     const init = await paystack(`/transaction/initialize`, { method: "POST", body: JSON.stringify(payload) });
     if (!init.ok) return json({ error: init.body?.message || "Payment could not be started." }, 502);
-    return json({ url: init.body?.data?.authorization_url, reference: init.body?.data?.reference });
+    // access_code lets the storefront open this transaction as an in-page
+    // Paystack popup (inline.js resumeTransaction) instead of a full redirect;
+    // url stays as the fallback when the popup script can't load.
+    return json({
+      url: init.body?.data?.authorization_url,
+      access_code: init.body?.data?.access_code,
+      reference: init.body?.data?.reference,
+    });
   } catch (err) {
     return json({ error: String((err as Error)?.message || err) }, 500);
   }

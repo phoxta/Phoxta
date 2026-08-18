@@ -152,17 +152,31 @@ export async function placeOrder(
 }
 
 // ── Payments (Paystack) ───────────────────────────────────────────────────
-/** Start an online payment for a just-placed order. Returns the hosted checkout
- *  URL, or null when payments aren't configured for this tenant (order simply
- *  stays pay-later). Never throws — payment must never block order creation. */
-export async function startOrderPayment(orgId: string, orderId: string, returnUrl: string): Promise<string | null> {
+export type OrderPayment = {
+  /** Hosted checkout URL — the full-page fallback when the popup can't open. */
+  url: string | null;
+  /** Paystack access_code for the inline.js v2 in-page popup. */
+  accessCode: string | null;
+  /** Paystack transaction reference. */
+  reference: string | null;
+};
+
+/** Start an online payment for a just-placed order. Returns the transaction
+ *  handles (popup access_code + hosted URL fallback), or null when payments
+ *  aren't configured for this tenant (order simply stays pay-later). Never
+ *  throws — payment must never block order creation. */
+export async function startOrderPayment(orgId: string, orderId: string, returnUrl: string): Promise<OrderPayment | null> {
   try {
     const { data, error } = await supabase.functions.invoke("paystack-storefront-checkout", {
       body: { orgId, kind: "order", id: orderId, returnUrl },
     });
     if (error) return null;
-    const url = (data as { url?: unknown } | null)?.url;
-    return typeof url === "string" && url ? url : null;
+    const d = data as { url?: unknown; access_code?: unknown; reference?: unknown } | null;
+    const url = typeof d?.url === "string" && d.url ? d.url : null;
+    const accessCode = typeof d?.access_code === "string" && d.access_code ? d.access_code : null;
+    const reference = typeof d?.reference === "string" && d.reference ? d.reference : null;
+    if (!url && !accessCode) return null;
+    return { url, accessCode, reference };
   } catch {
     return null;
   }
@@ -218,7 +232,15 @@ export type OrderLookup = {
   found: boolean; status: string; fulfillment_status: string | null;
   total_cents: number; currency: string; created_at: string;
   customer_name: string; items: OrderLookupItem[];
+  /** Present when the order has been paid (used to verify online payment). */
+  paid_at?: string | null;
 };
+
+/** True once the guest lookup shows the order as paid. */
+export function isOrderPaid(r: OrderLookup): boolean {
+  const s = (r.status || "").toLowerCase();
+  return s === "paid" || s === "fulfilled" || Boolean(r.paid_at);
+}
 
 /** Track an order privately: the reference (order id) AND the email must match. */
 export async function lookupOrder(orgId: string, ref: string, email: string): Promise<OrderLookup | null> {

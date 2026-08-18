@@ -162,10 +162,13 @@ export async function requestReservation(
 }
 
 /** Start an online payment for a just-created reservation via the Paystack
- *  storefront checkout edge function. Returns the hosted checkout URL, or null
- *  when payments aren't configured for this tenant / anything fails — callers
- *  keep the pay-later confirmation in that case. Never throws. */
-export async function initReservationPayment(orgId: string, reservationId: string, customerEmail: string): Promise<string | null> {
+ *  storefront checkout edge function. Returns { url, accessCode, reference }
+ *  (accessCode drives the inline popup; url is the hosted-page fallback), or
+ *  null when payments aren't configured for this tenant / anything fails —
+ *  callers keep the pay-later confirmation in that case. Never throws. */
+export type ReservationPayment = { url: string; accessCode: string | null; reference: string | null };
+
+export async function initReservationPayment(orgId: string, reservationId: string, customerEmail: string): Promise<ReservationPayment | null> {
   try {
     const origin = typeof location !== "undefined" ? location.origin : "";
     const returnUrl = `${origin}/manage-booking?ref=${encodeURIComponent(reservationId)}&email=${encodeURIComponent(customerEmail)}`;
@@ -173,8 +176,14 @@ export async function initReservationPayment(orgId: string, reservationId: strin
       body: { orgId, kind: "reservation", id: reservationId, returnUrl },
     });
     if (error) return null;
-    const url = (data as { url?: string } | null)?.url;
-    return typeof url === "string" && url ? url : null;
+    const body = data as { url?: string; access_code?: string; reference?: string } | null;
+    const url = typeof body?.url === "string" && body.url ? body.url : null;
+    if (!url) return null;
+    return {
+      url,
+      accessCode: typeof body?.access_code === "string" && body.access_code ? body.access_code : null,
+      reference: typeof body?.reference === "string" && body.reference ? body.reference : null,
+    };
   } catch {
     return null;
   }
@@ -223,6 +232,7 @@ export type ReservationLookup = {
   found: boolean; status: string; product: string;
   start_date: string; end_date: string; units: number;
   total_cents: number; currency: string; customer_name: string;
+  metadata?: Record<string, unknown> | null;
 };
 
 /** Look up a booking privately: the reference (reservation id) AND the email must match. */
@@ -230,4 +240,12 @@ export async function lookupReservation(orgId: string, ref: string, email: strin
   const { data, error } = await supabase.rpc("app_lookup_reservation", { p_org: orgId, p_ref: ref, p_email: email });
   if (error || !data) return null;
   return data as ReservationLookup;
+}
+
+/** Payment verification: the Paystack webhook flips a paid reservation to
+ *  status 'confirmed' and stamps metadata.paid = true. Either signal counts. */
+export function isReservationPaid(r: ReservationLookup | null): boolean {
+  if (!r || !r.found) return false;
+  const status = (r.status || "").toLowerCase();
+  return status === "confirmed" || status === "completed" || r.metadata?.paid === true;
 }

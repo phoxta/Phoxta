@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getOrgId } from '@/data/live'
-import { initReservationPayment, requestReservation } from '@/lib/phoxta'
+import { initReservationPayment, isReservationPaid, lookupReservation, requestReservation, type ReservationPayment } from '@/lib/phoxta'
+import { openPaystackPopup } from '@/lib/paystackPopup'
 
 // Compact flight booking inside the flight card's detail panel. A flight is a
 // fare (product, stock = seats); booking N seats for a chosen departure date
@@ -24,7 +25,12 @@ export default function FlightBook({ flight }: { flight: any }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [ref, setRef] = useState<string | null>(null)
-  const [payUrl, setPayUrl] = useState<string | null>(null)
+  // Payment-enabled path: pending until the reservation lookup verifies payment.
+  const [payment, setPayment] = useState<ReservationPayment | null>(null)
+  const [paid, setPaid] = useState(false)
+  const [pollExpired, setPollExpired] = useState(false)
+  const checkingRef = useRef(false)
+  const autoOpenedRef = useRef(false)
 
   async function book() {
     setError('')
@@ -41,16 +47,13 @@ export default function FlightBook({ flight }: { flight: any }) {
         setRef('demo-' + Math.random().toString(36).slice(2, 10))
       } else {
         const id = await requestReservation(orgId, String(flight.id), name.trim(), email.trim(), depart, end.toISOString().slice(0, 10), pax)
-        setRef(id)
         // Offer online payment when configured; the booking is already saved,
         // so any failure just keeps the existing pay-later confirmation.
         if (id) {
-          const url = await initReservationPayment(orgId, id, email.trim())
-          if (url) {
-            setPayUrl(url)
-            window.location.assign(url)
-          }
+          const pay = await initReservationPayment(orgId, id, email.trim())
+          if (pay) setPayment(pay) // pending-payment state; popup auto-opens below
         }
+        setRef(id)
       }
     } catch (e: any) {
       setError(e?.message || 'Could not book this fare.')
@@ -59,20 +62,110 @@ export default function FlightBook({ flight }: { flight: any }) {
     }
   }
 
+  // Verify payment via the same guest lookup manage-booking uses; the Paystack
+  // webhook marks the reservation paid server-side, so this works even when
+  // the popup callbacks never fire.
+  const checkPaid = useCallback(async () => {
+    if (checkingRef.current || paid || !ref) return
+    const orgId = getOrgId()
+    if (!orgId) return
+    checkingRef.current = true
+    try {
+      const r = await lookupReservation(orgId, ref, email.trim())
+      if (isReservationPaid(r)) setPaid(true)
+    } finally {
+      checkingRef.current = false
+    }
+  }, [ref, email, paid])
+
+  const openPopup = useCallback(() => {
+    if (!payment) return
+    if (payment.accessCode) {
+      void openPaystackPopup(payment.accessCode, payment.url, {
+        onSuccess: () => { void checkPaid() },
+        onCancel: () => {},
+      })
+    } else {
+      window.location.assign(payment.url)
+    }
+  }, [payment, checkPaid])
+
+  // Auto-open the popup once the payment is initialised.
+  useEffect(() => {
+    if (payment && !autoOpenedRef.current) {
+      autoOpenedRef.current = true
+      openPopup()
+    }
+  }, [payment, openPopup])
+
+  // Poll the lookup every 3s for up to 2 minutes while payment is outstanding.
+  useEffect(() => {
+    if (!payment || !ref || paid) return
+    const startedAt = Date.now()
+    const timer = window.setInterval(() => {
+      if (Date.now() - startedAt > 120000) {
+        window.clearInterval(timer)
+        setPollExpired(true)
+        return
+      }
+      void checkPaid()
+    }, 3000)
+    return () => window.clearInterval(timer)
+  }, [payment, ref, paid, checkPaid])
+
+  // Payment verified — the real success state.
+  if (ref && paid) {
+    return (
+      <div className="flex flex-col gap-3 rounded-xl border border-border p-4 text-sm md:ms-24">
+        <span>
+          Payment received — thank you! {pax} seat{pax > 1 ? 's' : ''} on <strong>{flight.name}</strong> departing {depart} confirmed. Reference: {ref}
+        </span>
+        <a
+          className="self-start rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground"
+          href={`/manage-booking?ref=${encodeURIComponent(ref)}&email=${encodeURIComponent(email.trim())}`}
+        >
+          Manage booking
+        </a>
+      </div>
+    )
+  }
+
+  // Payment initialised but not yet verified — no thank-you until it's paid.
+  if (ref && payment) {
+    return (
+      <div className="flex flex-col gap-3 rounded-xl border border-border p-4 text-sm md:ms-24">
+        <span className="font-medium">Complete your payment</span>
+        <span>
+          {pax} seat{pax > 1 ? 's' : ''} on <strong>{flight.name}</strong> departing {depart} — reserved. Complete payment of ${(pax * fare).toLocaleString()} to confirm. Reference: {ref}
+        </span>
+        <button
+          onClick={openPopup}
+          className="self-start rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground"
+        >
+          Pay now
+        </button>
+        <span className="text-xs text-muted-foreground">
+          Payment opens in a secure Paystack window. This updates automatically once your payment is received.
+          {pollExpired && (
+            <>
+              {' '}Already paid?{' '}
+              <a className="underline" href={`/manage-booking?ref=${encodeURIComponent(ref)}&email=${encodeURIComponent(email.trim())}`}>
+                Check your booking
+              </a>.
+            </>
+          )}
+        </span>
+      </div>
+    )
+  }
+
+  // Pay-later flow (payments not configured for this tenant / demo mode).
   if (ref) {
     return (
       <div className="flex flex-col gap-3 rounded-xl border border-border p-4 text-sm md:ms-24">
         <span>
           Booked {pax} seat{pax > 1 ? 's' : ''} on <strong>{flight.name}</strong> departing {depart}. Reference: {ref}
         </span>
-        {payUrl && (
-          <button
-            onClick={() => window.location.assign(payUrl)}
-            className="self-start rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground"
-          >
-            Pay now
-          </button>
-        )}
       </div>
     )
   }

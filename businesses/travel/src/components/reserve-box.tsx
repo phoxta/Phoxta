@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getOrgId } from "@/data/live";
-import { initReservationPayment, requestReservation } from "@/lib/phoxta";
+import { initReservationPayment, isReservationPaid, lookupReservation, requestReservation, type ReservationPayment } from "@/lib/phoxta";
+import { openPaystackPopup } from "@/lib/paystackPopup";
 
 // Unified booking box for the stay / car / experience detail sidebars. Pricing +
 // availability are enforced server-side by app_request_reservation; the booking
@@ -31,7 +32,12 @@ export default function ReserveBox({ listing, vertical }: { listing: any; vertic
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState<string | null>(null);
-  const [payUrl, setPayUrl] = useState<string | null>(null);
+  // Payment-enabled path: pending until the reservation lookup verifies payment.
+  const [payment, setPayment] = useState<ReservationPayment | null>(null);
+  const [paid, setPaid] = useState(false);
+  const [pollExpired, setPollExpired] = useState(false);
+  const checkingRef = useRef(false);
+  const autoOpenedRef = useRef(false);
 
   const nights = useMemo(() => {
     if (!cfg.range) return 1;
@@ -53,16 +59,13 @@ export default function ReserveBox({ listing, vertical }: { listing: any; vertic
         setConfirmed("demo-" + Math.random().toString(36).slice(2, 10));
       } else {
         const id = await requestReservation(orgId, String(listing.id), name.trim(), email.trim(), start, endDate, qty);
-        setConfirmed(id);
         // Offer online payment when configured for this tenant; the booking is
         // already saved, so any failure here just keeps the pay-later flow.
         if (id) {
-          const url = await initReservationPayment(orgId, id, email.trim());
-          if (url) {
-            setPayUrl(url);
-            window.location.assign(url);
-          }
+          const pay = await initReservationPayment(orgId, id, email.trim());
+          if (pay) setPayment(pay); // pending-payment state; popup auto-opens below
         }
+        setConfirmed(id);
       }
     } catch (e: any) {
       setError(e?.message || "Could not complete the booking.");
@@ -71,30 +74,128 @@ export default function ReserveBox({ listing, vertical }: { listing: any; vertic
     }
   }
 
+  // Verify payment against the same guest lookup the manage-booking page uses.
+  // The Paystack webhook marks the reservation paid server-side, so this works
+  // even when the popup's callbacks never fire.
+  const checkPaid = useCallback(async () => {
+    if (checkingRef.current || paid || !confirmed) return;
+    const orgId = getOrgId();
+    if (!orgId) return;
+    checkingRef.current = true;
+    try {
+      const r = await lookupReservation(orgId, confirmed, email.trim());
+      if (isReservationPaid(r)) setPaid(true);
+    } finally {
+      checkingRef.current = false;
+    }
+  }, [confirmed, email, paid]);
+
+  const openPopup = useCallback(() => {
+    if (!payment) return;
+    if (payment.accessCode) {
+      void openPaystackPopup(payment.accessCode, payment.url, {
+        onSuccess: () => { void checkPaid(); },
+        onCancel: () => {},
+      });
+    } else {
+      window.location.assign(payment.url);
+    }
+  }, [payment, checkPaid]);
+
+  // Auto-open the popup as soon as the payment is initialised (once).
+  useEffect(() => {
+    if (payment && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      openPopup();
+    }
+  }, [payment, openPopup]);
+
+  // Poll the lookup every 3s for up to 2 minutes while payment is outstanding.
+  useEffect(() => {
+    if (!payment || !confirmed || paid) return;
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      if (Date.now() - startedAt > 120000) {
+        window.clearInterval(timer);
+        setPollExpired(true);
+        return;
+      }
+      void checkPaid();
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [payment, confirmed, paid, checkPaid]);
+
   const wrap = "listingSection__wrap rounded-2xl shadow-lg-for-card bg-card p-4 sm:p-6 2xl:p-7 flex flex-col gap-4";
   const field = "rounded-xl border border-border bg-transparent px-4 py-3 text-sm w-full";
 
+  const when = cfg.range ? ` from ${start} to ${end}` : ` on ${start}`;
+
+  // Payment verified — the real success state.
+  if (confirmed && paid) {
+    return (
+      <div className={wrap}>
+        <h3 className="text-xl font-semibold">Payment received — thank you!</h3>
+        <p className="text-sm text-muted-foreground">
+          {name ? `${name}, your` : "Your"} booking for <strong>{listing?.title || listing?.name}</strong>
+          {when} ({qty} {cfg.qtyL.toLowerCase()}) is confirmed. A confirmation email is on its way to {email}.
+        </p>
+        <p className="text-xs text-muted-foreground">Reference: {confirmed}</p>
+        <a
+          href={`/manage-booking?ref=${encodeURIComponent(confirmed)}&email=${encodeURIComponent(email.trim())}`}
+          className="w-full rounded-full bg-primary px-6 py-3 text-center text-sm font-medium text-primary-foreground sm:h-12 sm:leading-6"
+        >
+          Manage booking
+        </a>
+      </div>
+    );
+  }
+
+  // Payment initialised but not yet verified — no thank-you until it's paid.
+  if (confirmed && payment) {
+    return (
+      <div className={wrap}>
+        <h3 className="text-xl font-semibold">Complete your payment</h3>
+        <p className="text-sm text-muted-foreground">
+          Your booking for <strong>{listing?.title || listing?.name}</strong>
+          {when} ({qty} {cfg.qtyL.toLowerCase()}) is reserved — complete payment to confirm it.
+        </p>
+        <p className="text-xs text-muted-foreground">Reference: {confirmed}</p>
+        <div className="flex items-center justify-between border-t border-border pt-3 font-medium">
+          <span>Amount due</span>
+          <span>${total.toLocaleString()}</span>
+        </div>
+        <button
+          onClick={openPopup}
+          className="w-full rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground sm:h-12"
+        >
+          Pay now
+        </button>
+        <p className="text-center text-xs text-muted-foreground">
+          Payment opens in a secure Paystack window. This page updates automatically once your payment is received.
+        </p>
+        {pollExpired && (
+          <p className="text-center text-xs text-muted-foreground">
+            Still waiting on payment confirmation. Already paid? Check{" "}
+            <a className="underline" href={`/manage-booking?ref=${encodeURIComponent(confirmed)}&email=${encodeURIComponent(email.trim())}`}>
+              Manage booking
+            </a>.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Pay-later flow (payments not configured for this tenant / demo mode).
   if (confirmed) {
     return (
       <div className={wrap}>
         <h3 className="text-xl font-semibold">Booking requested</h3>
         <p className="text-sm text-muted-foreground">
           Thanks {name || "there"} — your booking for <strong>{listing?.title || listing?.name}</strong>
-          {cfg.range ? ` from ${start} to ${end}` : ` on ${start}`} ({qty} {cfg.qtyL.toLowerCase()}) is in.
+          {when} ({qty} {cfg.qtyL.toLowerCase()}) is in.
           We&apos;ll confirm by email at {email}.
         </p>
         <p className="text-xs text-muted-foreground">Reference: {confirmed}</p>
-        {payUrl && (
-          <>
-            <button
-              onClick={() => window.location.assign(payUrl)}
-              className="w-full rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground sm:h-12"
-            >
-              Pay now
-            </button>
-            <p className="text-center text-xs text-muted-foreground">You&apos;ll be taken to our secure payment page.</p>
-          </>
-        )}
       </div>
     );
   }
