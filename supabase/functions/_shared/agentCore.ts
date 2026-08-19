@@ -7,6 +7,7 @@ import { buildAgentTools, agentToolRunner, resolveBookingMode, type AgentCtx } f
 import { meter, tokensUsedThisMonth, MONTHLY_TOKEN_CAP } from "./meter.ts";
 import { guardInput, guardOutput, INJECTION_GUARD_NOTE } from "./guardrails.ts";
 import { loadCustomerMemory, extractCustomerMemory } from "./memory.ts";
+import { phoneForStorage } from "./telephony.ts";
 import type { SupabaseClient } from "./supabaseAdmin.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -93,7 +94,7 @@ async function resolveConversation(
       channel_type: channel,
       contact_id: contactId,
       customer_name: customer.name ?? "",
-      customer_phone: customer.phone ?? "",
+      customer_phone: phoneForStorage(customer.phone),
       customer_email: customer.email ?? "",
       is_test: isTest,
     })

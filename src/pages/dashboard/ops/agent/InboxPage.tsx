@@ -45,6 +45,7 @@ import {
 } from "@/lib/db/ops/inbox";
 import { invokeAction, drainEmbeddings } from "@/lib/db/ops/ai";
 import { toast, toastError, reportMutation } from "@/lib/ops/feedback";
+import { callablePhone, displayPhone } from "@/lib/ops/phone";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import { supabase } from "@/lib/supabaseClient";
 import EmailComposer from "./EmailComposer";
@@ -511,6 +512,12 @@ export default function InboxPage() {
 
   const selConv = selected?.kind === "conversation" ? selected.conv : null;
   const selTicket = selected?.kind === "ticket" ? selected.ticket : null;
+
+  // The number to dial, or null when there is nothing dialable on the
+  // conversation. Voice threads with no PSTN leg carry a label ("web visitor")
+  // in customer_phone, so a truthiness check would offer a call the backend
+  // rejects — gate every call affordance on this instead.
+  const callTo = callablePhone(selConv?.customer_phone);
 
   const memberName = (id: string | null) => (id ? members.find((m) => m.user_id === id)?.full_name || "Teammate" : "");
   const scrollThread = (smooth = true) =>
@@ -1016,10 +1023,10 @@ export default function InboxPage() {
 
   // ── Calls (unchanged behaviour, feedback added) ───────────────────────────
   async function call() {
-    if (!selConv?.customer_phone || calling) return;
+    if (!selConv || !callTo || calling) return;
     setCalling(true);
     setSendNote(null);
-    const r = await placeCall(orgId, selConv.customer_phone, {
+    const r = await placeCall(orgId, callTo, {
       conversationId: selConv.id,
       mode: callMode as "ai" | "bridge",
       opening: callMode === "ai" ? callOpening.trim() || undefined : undefined,
@@ -1030,8 +1037,8 @@ export default function InboxPage() {
     // A placed call is a success — it belongs in a toast, not in the yellow
     // banner this file uses for problems.
     toast(callMode === "bridge"
-      ? `Calling you${callPhone.trim() ? ` on ${callPhone.trim()}` : ""} — pick up and we'll connect ${selConv.customer_phone}.`
-      : `Calling ${selConv.customer_phone} — your AI agent will speak with them.`);
+      ? `Calling you${callPhone.trim() ? ` on ${callPhone.trim()}` : ""} — pick up and we'll connect ${callTo}.`
+      : `Calling ${callTo} — your AI agent will speak with them.`);
     setCallOpen(false);
   }
   function endBrowserCall() {
@@ -1044,7 +1051,7 @@ export default function InboxPage() {
     setMuted(false);
   }
   async function startBrowserCall() {
-    if (!selConv?.customer_phone || connecting || inCall) return;
+    if (!selConv || !callTo || connecting || inCall) return;
     setConnecting(true);
     setSendNote(null);
     try {
@@ -1053,7 +1060,7 @@ export default function InboxPage() {
       const { Device } = await import("@twilio/voice-sdk");
       const device = new Device(token, { logLevel: "error" });
       deviceRef.current = device;
-      const c = await device.connect({ params: { To: selConv.customer_phone } });
+      const c = await device.connect({ params: { To: callTo } });
       callRef.current = c;
       c.on("accept", () => { setInCall(true); setConnecting(false); });
       c.on("disconnect", endBrowserCall);
@@ -1439,10 +1446,10 @@ export default function InboxPage() {
                   {selConv.intent && <span className="badge bg-neutral-100 neutral-700 fw-500 fz-font-sm">{selConv.intent}</span>}
                   {selConv.sentiment && <span className={`badge fw-500 fz-font-sm text-capitalize ${SENTIMENT_STYLE[selConv.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{selConv.sentiment}</span>}
                 </h2>
-                <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{[selConv.customer_phone, selConv.customer_email].filter(Boolean).join(" · ") || "—"}</div>
+                <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{[displayPhone(selConv.customer_phone), selConv.customer_email].filter(Boolean).join(" · ") || "—"}</div>
               </div>
               <div className="d-flex flex-wrap gap-2 align-items-center">
-                {selConv.customer_phone && <button type="button" className={`btn btn-sm rounded-pill px-3 ops-tap ${callOpen ? "btn-dark" : "btn-outline-dark"}`} aria-expanded={callOpen} onClick={() => setCallOpen((o) => !o)} disabled={calling}><span aria-hidden="true">📞 </span>Call</button>}
+                {callTo && <button type="button" className={`btn btn-sm rounded-pill px-3 ops-tap ${callOpen ? "btn-dark" : "btn-outline-dark"}`} aria-expanded={callOpen} onClick={() => setCallOpen((o) => !o)} disabled={calling}><span aria-hidden="true">📞 </span>Call</button>}
                 {/* On an email thread this is the rich path — say what it adds,
                     and carry whatever is already typed into it. */}
                 {selConv.customer_email && (
@@ -1492,11 +1499,11 @@ export default function InboxPage() {
               </div>
             </div>
 
-            {callOpen && selConv.customer_phone && (
+            {callOpen && callTo && (
               <div className="border-100 rounded-3 p-3 mb-2 bg-neutral-50">
                 {connecting || inCall ? (
                   <div className="d-flex align-items-center justify-content-between gap-2">
-                    <span className="fz-font-md fw-600">{connecting ? "Connecting…" : <><span aria-hidden="true">🔊 </span>On call</>} · {selConv.customer_phone}</span>
+                    <span className="fz-font-md fw-600">{connecting ? "Connecting…" : <><span aria-hidden="true">🔊 </span>On call</>} · {callTo}</span>
                     <div className="d-flex gap-2">
                       {inCall && <button type="button" className={`btn btn-sm rounded-pill px-3 ${muted ? "btn-warning" : "btn-outline-secondary"}`} onClick={toggleMute}>{muted ? "Unmute" : "Mute"}</button>}
                       <button type="button" className="btn btn-danger btn-sm rounded-pill px-3" onClick={endBrowserCall}>Hang up</button>
@@ -1522,9 +1529,9 @@ export default function InboxPage() {
                       </>
                     )}
                     <div className="fz-font-sm neutral-500 mb-2">
-                      {callMode === "ai" && `The AI agent will call ${selConv.customer_phone} and talk to them.`}
-                      {callMode === "bridge" && `We'll call you first, then connect you to ${selConv.customer_phone}.`}
-                      {callMode === "browser" && `Talk to ${selConv.customer_phone} from this browser — allow microphone access when prompted.`}
+                      {callMode === "ai" && `The AI agent will call ${callTo} and talk to them.`}
+                      {callMode === "bridge" && `We'll call you first, then connect you to ${callTo}.`}
+                      {callMode === "browser" && `Talk to ${callTo} from this browser — allow microphone access when prompted.`}
                     </div>
                     <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={callMode === "browser" ? startBrowserCall : call} disabled={calling || connecting}>
                       {calling || connecting ? "…" : callMode === "browser" ? "Start call" : "Place call"}
@@ -1640,12 +1647,15 @@ export default function InboxPage() {
         {selected && (
           <div className="d-flex flex-column gap-3">
             {/* What this customer has bought or booked comes first — it is what
-                answers the message. Admin controls sit underneath. */}
+                answers the message. Admin controls sit underneath.
+                phone is filtered: a label like "web visitor" is not an identity,
+                and matching on it would pull every other web-chat thread's
+                history into this one. */}
             <InboxContextRail
               orgId={orgId}
               currency={orgCurrency}
               email={selConv?.customer_email || selTicket?.customer_email}
-              phone={selConv?.customer_phone}
+              phone={displayPhone(selConv?.customer_phone) ?? undefined}
               excludeConversationId={selConv?.id}
               modules={consoleCfg.modules}
             />
@@ -1654,7 +1664,7 @@ export default function InboxPage() {
             <div className="bg-neutral-0 rounded-4 p-3 border-100">
               <h3 className="fz-font-sm fw-600 neutral-500 mb-2">Customer</h3>
               <div className="fw-600" style={{ overflowWrap: "anywhere" }}>{(selConv?.customer_name || selTicket?.customer_name) || "Customer"}</div>
-              <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{selConv ? selConv.customer_phone || "No phone" : "—"}</div>
+              <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{selConv ? displayPhone(selConv.customer_phone) || "No phone" : "—"}</div>
               <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{(selConv?.customer_email || selTicket?.customer_email) || "No email"}</div>
               {selConv && (selConv.qualified || selConv.lead_score != null) && (
                 <div className="fz-font-sm neutral-500 mt-2 d-flex flex-wrap align-items-center gap-2">

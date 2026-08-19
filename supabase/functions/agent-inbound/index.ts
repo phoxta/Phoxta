@@ -11,6 +11,7 @@ import { respondCore, summarizeConversation, loadConfig, type Org } from "../_sh
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
 import { meter } from "../_shared/meter.ts";
+import { phoneForStorage } from "../_shared/telephony.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -164,7 +165,7 @@ Deno.serve(async (req) => {
       const customer = body.customer ?? {};
       const { data: conv } = await admin
         .from("conversations")
-        .insert({ organization_id: org.id, channel_type: body.channel ?? "voice", customer_name: customer.name ?? "", customer_phone: customer.phone ?? "", customer_email: customer.email ?? "", is_test: body?.test === true })
+        .insert({ organization_id: org.id, channel_type: body.channel ?? "voice", customer_name: customer.name ?? "", customer_phone: phoneForStorage(customer.phone), customer_email: customer.email ?? "", is_test: body?.test === true })
         .select("id")
         .single();
       return json({ conversationId: (conv as Json)?.id, reply: config.greeting });
@@ -175,7 +176,7 @@ Deno.serve(async (req) => {
       const customer = body.customer ?? {};
       const { data: conv } = await admin
         .from("conversations")
-        .insert({ organization_id: org.id, channel_type: "web", customer_name: customer.name ?? "", customer_phone: customer.phone ?? "", customer_email: customer.email ?? "", summary: "Requested an instant callback." })
+        .insert({ organization_id: org.id, channel_type: "web", customer_name: customer.name ?? "", customer_phone: phoneForStorage(customer.phone), customer_email: customer.email ?? "", summary: "Requested an instant callback." })
         .select("id")
         .single();
       await admin.from("outbound_tasks").insert({

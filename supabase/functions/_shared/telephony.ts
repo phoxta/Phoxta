@@ -32,14 +32,41 @@ const HIGH_RISK_PREFIXES = [
 
 export type CallCheck = { ok: true; to: string } | { ok: false; error: string };
 
+/** The E.164 form of `raw`, or null when it is not a phone number at all.
+ *  Format only — country policy is applied separately by checkDestination. */
+export function normalizeE164(raw: unknown): string | null {
+  // Strip spaces, dashes, parens and a leading 00 international prefix.
+  let to = String(raw ?? "").trim().replace(/[\s()\-.]/g, "");
+  if (to.startsWith("00")) to = "+" + to.slice(2);
+  return E164.test(to) ? to : null;
+}
+
+/** Storage guard for customer_phone. Voice bridges pass a *label* in the caller
+ *  field for sessions that have no PSTN number ("web visitor" for the web
+ *  widget, "outbound" for AI-placed calls — see the <Parameter name="from">
+ *  TwiML in _shared/dispatch.ts). Storing those verbatim makes a conversation
+ *  look callable to the console when there is nothing to dial.
+ *
+ *  Drops labels, keeps numbers: a real E.164 value is canonicalised, and a
+ *  human-entered number that merely lacks a country code ("0803 123 4567" from
+ *  the callback form) is preserved as typed — losing a lead's callback number
+ *  would be worse than storing one the dialler cannot use. Only a value with no
+ *  digits at all is treated as a label and dropped. */
+export function phoneForStorage(raw: unknown): string {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  const e164 = normalizeE164(s);
+  if (e164) return e164;
+  return /\d/.test(s) ? s : "";
+}
+
 /** Validate and normalise a destination number before it reaches Twilio. */
 export function checkDestination(raw: string): CallCheck {
-  // Strip spaces, dashes, parens and a leading 00 international prefix.
-  let to = (raw ?? "").trim().replace(/[\s()\-.]/g, "");
-  if (to.startsWith("00")) to = "+" + to.slice(2);
-  if (!E164.test(to)) {
+  const normalized = normalizeE164(raw);
+  if (!normalized) {
     return { ok: false, error: "Enter the number in international format, e.g. +14155550123." };
   }
+  const to = normalized;
 
   const allow = allowedPrefixes();
   if (allow.length > 0) {
