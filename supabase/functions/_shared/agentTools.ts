@@ -3,6 +3,13 @@
 // business: schedule, capture/qualify leads, open tickets, route by location,
 // schedule callbacks, escalate. All hard-scoped to one org; actions are
 // recorded on the shared ctx so the caller can show what the agent did.
+//
+// HONESTY UPGRADE: booking tools are now VERTICAL-AWARE. Rental/stay/experience
+// businesses get real per-day availability + reservations (RPCs from 0028),
+// restaurants get table-request tools (0050), and appointment businesses get
+// slots generated from the owner's actual business hours + service durations —
+// never the old hardcoded Mon–Fri 9/11/13/15 UTC fiction. Every tool reports
+// what it truly knows; when config is missing it says so instead of inventing.
 import type { SupabaseClient } from "./supabaseAdmin.ts";
 import type { Tool } from "./anthropic.ts";
 import { READ_TOOLS, toolRunner } from "./tools.ts";
@@ -15,18 +22,40 @@ export type AgentCtx = {
   customer: { name?: string; phone?: string; email?: string; zip?: string };
   contactId: string | null;
   locationId: string | null;
+  /** Channel the customer reached us on (web/sms/whatsapp/voice/email…). */
+  channel?: string;
   actions: string[];
 };
 
-const WRITE_TOOLS: Tool[] = [
+// ---------------------------------------------------------------------------
+// Booking mode: which booking model this business actually runs on.
+// ---------------------------------------------------------------------------
+export type BookingMode = "reservations" | "table" | "appointments";
+
+const RESERVATION_VERTICAL =
+  /\b(rental|rentals|car|cars|vehicle|vehicles|fleet|stay|stays|hotel|hotels|apartment|apartments|experience|experiences|tour|tours|travel)\b/;
+const TABLE_VERTICAL = /\b(restaurant|restaurants|dining|bistro|cafe|café)\b/;
+
+export function resolveBookingMode(vertical: string | null | undefined): BookingMode {
+  const v = (vertical || "").toLowerCase();
+  if (RESERVATION_VERTICAL.test(v)) return "reservations";
+  if (TABLE_VERTICAL.test(v)) return "table";
+  return "appointments";
+}
+
+// ---------------------------------------------------------------------------
+// Tool declarations (per booking mode + shared write tools)
+// ---------------------------------------------------------------------------
+const APPOINTMENT_TOOLS: Tool[] = [
   {
     name: "check_availability",
-    description: "Check open appointment slots before offering a time. Optionally filter by service.",
+    description:
+      "Check real open appointment slots (from the business's configured hours and existing bookings) before offering a time. Optionally filter by service.",
     input_schema: { type: "object", properties: { service: { type: "string" } } },
   },
   {
     name: "book_appointment",
-    description: "Book an appointment once the customer confirms a specific time (ISO 8601).",
+    description: "Book an appointment once the customer confirms a specific time (ISO 8601). Refuses times that conflict with another booking.",
     input_schema: {
       type: "object",
       properties: { service: { type: "string" }, start_at: { type: "string" }, customer_name: { type: "string" }, customer_email: { type: "string" } },
@@ -38,6 +67,63 @@ const WRITE_TOOLS: Tool[] = [
     description: "Move the customer's most recent appointment to a new time (ISO 8601).",
     input_schema: { type: "object", properties: { start_at: { type: "string" } }, required: ["start_at"] },
   },
+];
+
+const RESERVATION_TOOLS: Tool[] = [
+  {
+    name: "check_availability",
+    description:
+      "Check REAL per-day availability for a bookable resource (car, room, experience) over a date range before offering dates. Omit product_name to list what can be booked. Dates are YYYY-MM-DD; end_date is the checkout/return day.",
+    input_schema: {
+      type: "object",
+      properties: { product_name: { type: "string" }, start_date: { type: "string" }, end_date: { type: "string" } },
+    },
+  },
+  {
+    name: "create_reservation",
+    description:
+      "Reserve the resource for the customer once they confirm the item and dates (YYYY-MM-DD; end_date = return/checkout day). Requires the customer's name and email. The request is verified against real availability.",
+    input_schema: {
+      type: "object",
+      properties: {
+        product_name: { type: "string" },
+        start_date: { type: "string" },
+        end_date: { type: "string" },
+        units: { type: "number" },
+        customer_name: { type: "string" },
+        customer_email: { type: "string" },
+      },
+      required: ["product_name", "start_date", "end_date"],
+    },
+  },
+];
+
+const TABLE_TOOLS: Tool[] = [
+  {
+    name: "check_availability",
+    description:
+      "Explain how table booking works here: the restaurant takes requests (date, time, party size) and confirms each one personally — there is NO live table map, so never promise a specific table is free.",
+    input_schema: { type: "object", properties: { date: { type: "string", description: "YYYY-MM-DD" } } },
+  },
+  {
+    name: "book_table",
+    description: "Submit a table reservation REQUEST (date YYYY-MM-DD, time, party size). Needs the customer's name and an email or phone. The restaurant confirms it — present it as a request, not a confirmed table.",
+    input_schema: {
+      type: "object",
+      properties: {
+        date: { type: "string" },
+        time: { type: "string" },
+        party: { type: "number" },
+        customer_name: { type: "string" },
+        customer_email: { type: "string" },
+        customer_phone: { type: "string" },
+      },
+      required: ["date"],
+    },
+  },
+];
+
+const COMMON_WRITE_TOOLS: Tool[] = [
   {
     name: "capture_lead",
     description: "Save the customer as a CRM contact/lead. Call this whenever you learn their name and a phone or email.",
@@ -79,67 +165,306 @@ const WRITE_TOOLS: Tool[] = [
   },
 ];
 
-export const AGENT_TOOLS: Tool[] = [...READ_TOOLS, ...WRITE_TOOLS];
+const BOOKING_TOOL_NAMES = new Set(
+  [...APPOINTMENT_TOOLS, ...RESERVATION_TOOLS, ...TABLE_TOOLS].map((t) => t.name),
+);
+const LEAD_TOOL_NAMES = new Set(["capture_lead", "qualify_lead"]);
 
-const isWrite = new Set(WRITE_TOOLS.map((t) => t.name));
+const isWrite = new Set([...BOOKING_TOOL_NAMES, ...COMMON_WRITE_TOOLS.map((t) => t.name)]);
 
-export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: AgentCtx) {
+/** The tool surface for one business: read tools + the booking tools that match
+ *  its vertical, filtered by the owner's enabled capabilities (a missing key
+ *  defaults to enabled for back-compat). */
+export function buildAgentTools(mode: BookingMode, capabilities?: Record<string, boolean> | null): Tool[] {
+  const on = (key: string) => capabilities?.[key] !== false;
+  const booking = mode === "reservations" ? RESERVATION_TOOLS : mode === "table" ? TABLE_TOOLS : APPOINTMENT_TOOLS;
+  let tools: Tool[] = [...READ_TOOLS, ...(on("bookings") ? booking : []), ...COMMON_WRITE_TOOLS];
+  if (!on("leads")) tools = tools.filter((t) => !LEAD_TOOL_NAMES.has(t.name));
+  if (!on("tickets")) tools = tools.filter((t) => t.name !== "create_ticket");
+  return tools;
+}
+
+// ---------------------------------------------------------------------------
+// Time helpers (business-hours slot generation in the org's timezone)
+// ---------------------------------------------------------------------------
+function tzParts(tz: string, at: Date): Record<string, string> {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const p: Record<string, string> = {};
+  for (const part of dtf.formatToParts(at)) p[part.type] = part.value;
+  return p;
+}
+
+function tzOffsetMs(tz: string, at: Date): number {
+  try {
+    const p = tzParts(tz, at);
+    const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second);
+    return asUtc - at.getTime();
+  } catch {
+    return 0; // unknown tz → behave as UTC
+  }
+}
+
+/** The UTC instant of local wall time (y, m, d, hh, mm) in tz (DST-aware). */
+function zonedUtc(tz: string, y: number, m: number, d: number, hh: number, mm: number): Date {
+  const wall = Date.UTC(y, m - 1, d, hh, mm);
+  let ts = wall - tzOffsetMs(tz, new Date(wall));
+  ts = wall - tzOffsetMs(tz, new Date(ts)); // second pass refines across DST edges
+  return new Date(ts);
+}
+
+/** Today's calendar date in tz. */
+function localToday(tz: string): { y: number; m: number; d: number } {
+  try {
+    const p = tzParts(tz, new Date());
+    return { y: +p.year, m: +p.month, d: +p.day };
+  } catch {
+    const now = new Date();
+    return { y: now.getUTCFullYear(), m: now.getUTCMonth() + 1, d: now.getUTCDate() };
+  }
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+function parseDay(v: unknown): string | null {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------------------
+// Runner
+// ---------------------------------------------------------------------------
+export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: AgentCtx, mode: BookingMode = "appointments") {
   const readRun = toolRunner(admin, orgId);
 
-  async function findServiceId(name?: string): Promise<string | null> {
+  async function findService(name?: string): Promise<{ id: string; name: string; duration_min: number } | null> {
     if (!name) return null;
-    const { data } = await admin.from("services").select("id").eq("organization_id", orgId).ilike("name", `%${name}%`).limit(1).maybeSingle();
-    return (data as { id: string } | null)?.id ?? null;
+    const { data } = await admin
+      .from("services")
+      .select("id, name, duration_min")
+      .eq("organization_id", orgId)
+      .ilike("name", `%${name}%`)
+      .limit(1)
+      .maybeSingle();
+    return (data as { id: string; name: string; duration_min: number } | null) ?? null;
+  }
+
+  async function findProduct(name: string): Promise<{ id: string; name: string; price_cents: number; currency: string; stock: number } | null> {
+    const { data } = await admin
+      .from("products")
+      .select("id, name, price_cents, currency, stock")
+      .eq("organization_id", orgId)
+      .eq("status", "active")
+      .ilike("name", `%${name}%`)
+      .limit(1)
+      .maybeSingle();
+    return (data as Json) ?? null;
+  }
+
+  async function listResources(): Promise<Json[]> {
+    const { data } = await admin
+      .from("products")
+      .select("name, price_cents, currency, stock")
+      .eq("organization_id", orgId)
+      .eq("status", "active")
+      .gt("stock", 0)
+      .limit(30);
+    return (data as Json[] | null) ?? [];
+  }
+
+  /** The owner's configured hours, or null when nothing usable is configured. */
+  async function loadHours(): Promise<{ tz: string; days: number[]; openMin: number; closeMin: number } | null> {
+    const { data } = await admin.from("agent_config").select("business_hours").eq("organization_id", orgId).maybeSingle();
+    const hours = (data as Json)?.business_hours;
+    if (!hours || typeof hours !== "object") return null;
+    const [oh, om] = String(hours.open ?? "09:00").split(":").map(Number);
+    const [ch, cm] = String(hours.close ?? "17:00").split(":").map(Number);
+    if (![oh, om, ch, cm].every(Number.isFinite)) return null;
+    const openMin = oh * 60 + (om || 0);
+    const closeMin = ch * 60 + (cm || 0);
+    if (closeMin <= openMin) return null;
+    const days: number[] = Array.isArray(hours.days) && hours.days.length ? hours.days.map(Number) : [1, 2, 3, 4, 5];
+    return { tz: String(hours.tz || "UTC"), days, openMin, closeMin };
+  }
+
+  /** Existing pending/confirmed bookings as busy [startMs, endMs) intervals. */
+  async function loadBusy(fromMs: number, toMs: number): Promise<[number, number][]> {
+    const { data } = await admin
+      .from("bookings")
+      .select("start_at, services(duration_min)")
+      .eq("organization_id", orgId)
+      .in("status", ["pending", "confirmed"])
+      // include bookings that started up to a day before the window but may still overlap it
+      .gte("start_at", new Date(fromMs - 86400000).toISOString())
+      .lte("start_at", new Date(toMs).toISOString());
+    return (((data as Json[] | null) ?? []) as Json[]).map((b) => {
+      const s = new Date(b.start_at).getTime();
+      const durMin = Number(b.services?.duration_min) || 60;
+      return [s, s + durMin * 60000] as [number, number];
+    });
   }
 
   return async (name: string, input: Json): Promise<string> => {
     if (!isWrite.has(name)) return readRun(name, input);
 
+    // ---------------- check_availability (vertical-aware) ----------------
     if (name === "check_availability") {
-      const { data: booked } = await admin
-        .from("bookings")
-        .select("start_at")
-        .eq("organization_id", orgId)
-        .gte("start_at", new Date().toISOString());
-      const taken = new Set(((booked as { start_at: string }[] | null) ?? []).map((b) => new Date(b.start_at).toISOString().slice(0, 13)));
-      const slots: string[] = [];
-      const d = new Date();
-      d.setUTCHours(0, 0, 0, 0);
-      for (let day = 1; day <= 14 && slots.length < 6; day++) {
-        const date = new Date(d.getTime() + day * 86400000);
-        const dow = date.getUTCDay();
-        if (dow === 0 || dow === 6) continue;
-        for (const hour of [9, 11, 13, 15]) {
-          const slot = new Date(date);
-          slot.setUTCHours(hour, 0, 0, 0);
-          if (!taken.has(slot.toISOString().slice(0, 13))) slots.push(slot.toISOString());
-          if (slots.length >= 6) break;
+      if (mode === "reservations") {
+        const today = new Date().toISOString().slice(0, 10);
+        const from = parseDay(input.start_date) ?? today;
+        const to = parseDay(input.end_date) ?? new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+        if (!input.product_name) {
+          const resources = await listResources();
+          if (!resources.length) return "There are no bookable listings configured yet — I can't offer availability. Take the customer's details and the team will follow up.";
+          return JSON.stringify({ note: "Ask which of these the customer wants, then re-check availability with product_name.", resources });
+        }
+        const prod = await findProduct(String(input.product_name));
+        if (!prod) {
+          const resources = await listResources();
+          return `I couldn't find a listing matching "${input.product_name}". Bookable options: ${JSON.stringify(resources)}`;
+        }
+        const { data, error } = await admin.rpc("app_resource_availability", { p_product: prod.id, p_from: from, p_to: to });
+        if (error) return `I couldn't check availability right now (${error.message}). Don't guess — offer to have the team confirm.`;
+        return JSON.stringify({ resource: prod.name, rate_cents_per_day: prod.price_cents, currency: prod.currency, per_day: data ?? [] });
+      }
+
+      if (mode === "table") {
+        const date = parseDay(input.date);
+        return `We take table requests for ${date ?? "any upcoming date"} — there is no live table map, so never promise a specific table or time is free. Collect the date, preferred time and party size, submit the request with book_table, and tell the customer the restaurant will confirm it personally.`;
+      }
+
+      // appointments: real hours + service durations, org timezone.
+      const hours = await loadHours();
+      if (!hours) {
+        return "I don't have the schedule configured for this business, so I can't offer specific times. Take the customer's preferred time and contact details and the team will confirm.";
+      }
+      const svc = await findService(input.service);
+      if (input.service && !svc) {
+        const { data: services } = await admin.from("services").select("name, duration_min").eq("organization_id", orgId).eq("active", true).limit(30);
+        return `No service matches "${input.service}". Available services: ${JSON.stringify(services ?? [])}`;
+      }
+      const duration = svc?.duration_min || 60;
+      const now = Date.now();
+      const busy = await loadBusy(now, now + 14 * 86400000);
+      const t0 = localToday(hours.tz);
+      const base = Date.UTC(t0.y, t0.m - 1, t0.d);
+      const slots: { start_at: string; local: string }[] = [];
+      for (let day = 0; day <= 14 && slots.length < 8; day++) {
+        const dt = new Date(base + day * 86400000);
+        const y = dt.getUTCFullYear();
+        const mo = dt.getUTCMonth() + 1;
+        const dd = dt.getUTCDate();
+        if (!hours.days.includes(dt.getUTCDay())) continue;
+        for (let mins = hours.openMin; mins + duration <= hours.closeMin && slots.length < 8; mins += duration) {
+          const start = zonedUtc(hours.tz, y, mo, dd, Math.floor(mins / 60), mins % 60);
+          const s = start.getTime();
+          const e = s + duration * 60000;
+          if (s < now + 3600000) continue; // at least an hour's notice
+          if (busy.some(([bs, be]) => s < be && bs < e)) continue;
+          slots.push({ start_at: start.toISOString(), local: `${y}-${pad2(mo)}-${pad2(dd)} ${pad2(Math.floor(mins / 60))}:${pad2(mins % 60)} (${hours.tz})` });
         }
       }
-      return JSON.stringify({ available: slots });
+      if (!slots.length) return JSON.stringify({ timezone: hours.tz, slot_minutes: duration, available: [], note: "No open slots in the next 14 days — offer a callback instead." });
+      return JSON.stringify({ timezone: hours.tz, slot_minutes: duration, service: svc?.name ?? null, available: slots });
     }
 
+    // ---------------- reservations mode ----------------
+    if (name === "create_reservation") {
+      if (mode !== "reservations") return "This business doesn't take date-range reservations.";
+      const prod = await findProduct(String(input.product_name ?? ""));
+      if (!prod) return `I couldn't find a listing matching "${input.product_name}" — re-check availability first to see what's bookable.`;
+      const start = parseDay(input.start_date);
+      const end = parseDay(input.end_date);
+      if (!start || !end) return "I need valid start and end dates (YYYY-MM-DD) before reserving.";
+      const customerName = String(input.customer_name || ctx.customer.name || "").trim();
+      const customerEmail = String(input.customer_email || ctx.customer.email || "").trim();
+      if (!customerEmail) return "I need the customer's email address before creating the reservation — please ask for it.";
+      const units = Math.max(1, Math.round(Number(input.units) || 1));
+      const { data, error } = await admin.rpc("app_request_reservation", {
+        p_org: orgId,
+        p_product: prod.id,
+        p_customer_name: customerName,
+        p_customer_email: customerEmail,
+        p_start: start,
+        p_end: end,
+        p_units: units,
+      });
+      if (error) return `Could not reserve: ${error.message}`;
+      const { data: resv } = await admin.from("reservations").select("total_cents, currency").eq("id", data as string).maybeSingle();
+      const total = resv ? ` Total ${(resv as Json).currency} ${(((resv as Json).total_cents ?? 0) / 100).toFixed(2)}.` : "";
+      ctx.actions.push(`Reserved ${prod.name} ${start} → ${end}`);
+      return `Reservation requested (${data}) for ${prod.name}, ${start} to ${end}.${total} Status: pending — the business will confirm.`;
+    }
+
+    // ---------------- table mode ----------------
+    if (name === "book_table") {
+      if (mode !== "table") return "This business doesn't take table reservations.";
+      const date = parseDay(input.date);
+      if (!date) return "I need the reservation date (YYYY-MM-DD) first.";
+      const customerName = String(input.customer_name || ctx.customer.name || "").trim();
+      const customerEmail = String(input.customer_email || ctx.customer.email || "").trim();
+      const customerPhone = String(input.customer_phone || ctx.customer.phone || "").trim();
+      if (!customerEmail && !customerPhone) return "I need an email or phone number for the table request — please ask the customer.";
+      const party = Math.max(1, Math.round(Number(input.party) || 1));
+      const time = String(input.time ?? "").trim();
+      const { data, error } = await admin.rpc("app_request_table", {
+        p_org: orgId,
+        p_name: customerName,
+        p_email: customerEmail,
+        p_date: date,
+        p_time: time,
+        p_party: party,
+        p_notes: customerPhone ? `Phone: ${customerPhone}` : "",
+      });
+      if (error) return `Could not submit the table request: ${error.message}`;
+      ctx.actions.push(`Requested a table for ${date}${time ? ` at ${time}` : ""} (${party} guests)`);
+      return `Table request submitted (${data}) for ${date}${time ? ` at ${time}` : ""}, party of ${party}. The restaurant will confirm — present it as a request, not a confirmed table.`;
+    }
+
+    // ---------------- appointments mode ----------------
     if (name === "book_appointment") {
-      const serviceId = await findServiceId(input.service);
+      if (mode !== "appointments") return "This business doesn't book appointment slots — use its reservation tools instead.";
+      const start = new Date(String(input.start_at ?? ""));
+      if (isNaN(start.getTime())) return "That start time is invalid — please confirm an exact date and time (ISO 8601).";
+      const svc = await findService(input.service);
+      const duration = svc?.duration_min || 60;
+      const s = start.getTime();
+      const e = s + duration * 60000;
+      // Re-check the true overlap at insert time — never double-book.
+      const busy = await loadBusy(s, e);
+      if (busy.some(([bs, be]) => s < be && bs < e)) {
+        return "That time conflicts with another booking and is no longer available. Re-check availability and offer the customer a different slot.";
+      }
       const { data, error } = await admin
         .from("bookings")
         .insert({
           organization_id: orgId,
-          service_id: serviceId,
+          service_id: svc?.id ?? null,
           contact_id: ctx.contactId,
           customer_name: input.customer_name || ctx.customer.name || "",
           customer_email: input.customer_email || ctx.customer.email || "",
           // Recorded so a phone-only caller can later be matched to their own
           // booking (see reschedule_appointment).
           customer_phone: ctx.customer.phone || "",
-          start_at: input.start_at,
+          start_at: start.toISOString(),
           status: "confirmed",
         })
         .select("id")
         .single();
       if (error) return `Could not book: ${error.message}`;
-      ctx.actions.push(`Booked appointment for ${new Date(input.start_at).toLocaleString()}`);
-      return `Booked (${(data as { id: string }).id}) for ${input.start_at}.`;
+      ctx.actions.push(`Booked appointment for ${start.toLocaleString()}`);
+      return `Booked (${(data as { id: string }).id}) for ${start.toISOString()}.`;
     }
 
     if (name === "reschedule_appointment") {
@@ -173,20 +498,37 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
     }
 
     if (name === "capture_lead") {
-      const email = input.email || ctx.customer.email || "";
-      const name2 = input.name || ctx.customer.name || "Lead";
-      const phone = input.phone || ctx.customer.phone || "";
+      const email = String(input.email || ctx.customer.email || "").trim();
+      const newName = String(input.name || ctx.customer.name || "").trim();
+      const newPhone = String(input.phone || ctx.customer.phone || "").trim();
+      const newNotes = String(input.notes ?? "").trim();
       let contactId: string | null = null;
+      let existing: { id: string; notes: string | null } | null = null;
       if (email) {
-        const { data: existing } = await admin.from("crm_contacts").select("id").eq("organization_id", orgId).eq("email", email).maybeSingle();
-        contactId = (existing as { id: string } | null)?.id ?? null;
+        const { data } = await admin.from("crm_contacts").select("id, notes").eq("organization_id", orgId).eq("email", email).maybeSingle();
+        existing = (data as { id: string; notes: string | null } | null) ?? null;
+        contactId = existing?.id ?? null;
       }
-      if (contactId) {
-        await admin.from("crm_contacts").update({ name: name2, phone, notes: input.notes ?? "" }).eq("id", contactId);
+      if (contactId && existing) {
+        // MERGE, never destroy: only set fields we actually learned, and append
+        // notes to what's already there instead of replacing it.
+        const patch: Record<string, unknown> = {};
+        if (newName) patch.name = newName;
+        if (newPhone) patch.phone = newPhone;
+        if (newNotes) patch.notes = existing.notes ? `${existing.notes}\n---\n${newNotes}` : newNotes;
+        if (Object.keys(patch).length) await admin.from("crm_contacts").update(patch).eq("id", contactId);
       } else {
         const { data: created } = await admin
           .from("crm_contacts")
-          .insert({ organization_id: orgId, name: name2, email, phone, notes: input.notes ?? "", stage: "lead" })
+          .insert({
+            organization_id: orgId,
+            name: newName || "Lead",
+            email,
+            phone: newPhone,
+            notes: newNotes,
+            stage: "lead",
+            source: `agent:${ctx.channel || "web"}`,
+          })
           .select("id")
           .single();
         contactId = (created as { id: string } | null)?.id ?? null;
@@ -197,10 +539,11 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
     }
 
     if (name === "qualify_lead") {
+      // The score belongs to THIS conversation. The contact's own lead_score is
+      // maintained by the CRM scoring action — don't clobber it from here.
       if (ctx.conversationId) {
         await admin.from("conversations").update({ qualified: !!input.qualified, lead_score: Math.round(input.score ?? 0) }).eq("id", ctx.conversationId);
       }
-      if (ctx.contactId) await admin.from("crm_contacts").update({ lead_score: Math.round(input.score ?? 0) }).eq("id", ctx.contactId);
       ctx.actions.push(`Qualified lead (${input.qualified ? "hot" : "not yet"}, score ${Math.round(input.score ?? 0)})`);
       return "Recorded.";
     }

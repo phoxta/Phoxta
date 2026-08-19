@@ -8,9 +8,60 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { respondCore, summarizeConversation, loadConfig, type Org } from "../_shared/agentCore.ts";
+import { callJson } from "../_shared/anthropic.ts";
+import { modelFor } from "../_shared/models.ts";
+import { meter } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
+
+// ---------------------------------------------------------------------------
+// Ingest classification: after the agent replies, tag the conversation with the
+// customer's intent + sentiment (cheap tier, metered). Best-effort — never
+// fails the request; runs via waitUntil when the runtime supports it.
+// ---------------------------------------------------------------------------
+const INTENTS = ["question", "order", "booking", "complaint", "refund", "pricing", "other"];
+const SENTIMENTS = ["positive", "neutral", "negative"];
+
+async function classifyInbound(admin: ReturnType<typeof adminClient>, org: Org, conversationId: string, message: string): Promise<void> {
+  try {
+    const t0 = Date.now();
+    const r = await callJson<{ intent?: string; sentiment?: string }>({
+      model: modelFor("cheap"),
+      system:
+        `Classify a customer message sent to the business "${org.name}". ` +
+        `Return JSON { "intent": one of ${INTENTS.join("|")}, "sentiment": one of ${SENTIMENTS.join("|")} }.`,
+      user: message.slice(0, 2000),
+      maxTokens: 100,
+    });
+    await meter(admin, {
+      organizationId: org.id,
+      conversationId,
+      model: r.model,
+      feature: "ingest_classify",
+      tier: "cheap",
+      inTok: r.inTok,
+      outTok: r.outTok,
+      cacheWriteTok: r.cacheWriteTok,
+      cacheReadTok: r.cacheReadTok,
+      latencyMs: Date.now() - t0,
+    });
+    const patch: Record<string, string> = {};
+    if (INTENTS.includes(String(r.data?.intent))) patch.intent = String(r.data.intent);
+    if (SENTIMENTS.includes(String(r.data?.sentiment))) patch.sentiment = String(r.data.sentiment);
+    if (Object.keys(patch).length) await admin.from("conversations").update(patch).eq("id", conversationId);
+  } catch (e) {
+    console.error("classifyInbound failed", e); // non-blocking by contract
+  }
+}
+
+/** Run the classification without delaying/failing the response when possible. */
+async function classifyLater(task: Promise<void>): Promise<void> {
+  // deno-lint-ignore no-explicit-any
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(task);
+  else await task; // already error-safe
+}
 
 // Public-endpoint abuse/cost throttle: max inbound customer messages per business
 // per hour. Beyond this the agent politely defers (the per-plan monthly token cap
@@ -96,6 +147,7 @@ Deno.serve(async (req) => {
         customer: { name: sender.name, email: sender.email, phone: sender.phone_number },
         message,
       });
+      await classifyLater(classifyInbound(admin, org, result.conversationId, message));
       await postToChatwoot(body.account?.id, body.conversation?.id, result.reply);
       return json({ ok: true });
     }
@@ -112,7 +164,7 @@ Deno.serve(async (req) => {
       const customer = body.customer ?? {};
       const { data: conv } = await admin
         .from("conversations")
-        .insert({ organization_id: org.id, channel_type: body.channel ?? "voice", customer_name: customer.name ?? "", customer_phone: customer.phone ?? "", customer_email: customer.email ?? "" })
+        .insert({ organization_id: org.id, channel_type: body.channel ?? "voice", customer_name: customer.name ?? "", customer_phone: customer.phone ?? "", customer_email: customer.email ?? "", is_test: body?.test === true })
         .select("id")
         .single();
       return json({ conversationId: (conv as Json)?.id, reply: config.greeting });
@@ -157,7 +209,11 @@ Deno.serve(async (req) => {
       conversationId: body?.conversationId,
       customer: body?.customer ?? {},
       message,
+      // Sandbox: test:true opens the conversation with is_test=true (subsequent
+      // messages carry the conversationId, whose row already has the flag).
+      isTest: body?.test === true,
     });
+    await classifyLater(classifyInbound(admin, org, result.conversationId, message));
     return json({ conversationId: result.conversationId, reply: result.reply });
   } catch (err) {
     console.error("agent-inbound error", err);

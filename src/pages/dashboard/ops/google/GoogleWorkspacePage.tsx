@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import GmailApp from "./GmailApp";
 import DriveApp from "./DriveApp";
@@ -11,15 +11,16 @@ const pill = (active: boolean) => `btn btn-sm rounded-pill px-3 ${active ? "btn-
 const APPS = [
   { key: "gmail", name: "Gmail", icon: "✉️", desc: "Inbox · compose · reply" },
   { key: "drive", name: "Drive", icon: "📁", desc: "Files & folders" },
-  { key: "docs", name: "Docs", icon: "📄", desc: "Documents" },
-  { key: "sheets", name: "Sheets", icon: "📊", desc: "Spreadsheets" },
   { key: "calendar", name: "Calendar", icon: "📅", desc: "Events & scheduling" },
 ];
 
 export default function GoogleWorkspacePage() {
   const { orgId } = useOutletContext<OpsContext>();
-  const [tab, setTab] = useState<"apps" | "configure">("apps");
-  const [app, setApp] = useState<string | null>(null);
+  // Settings deep-links in with ?app=gmail|drive|calendar or ?tab=configure.
+  const [params] = useSearchParams();
+  const wanted = params.get("app");
+  const [tab, setTab] = useState<"apps" | "configure">(params.get("tab") === "configure" ? "configure" : "apps");
+  const [app, setApp] = useState<string | null>(APPS.some((a) => a.key === wanted) ? wanted : null);
 
   return (
     <div>
@@ -34,9 +35,7 @@ export default function GoogleWorkspacePage() {
         <div>
           <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none mb-3" onClick={() => setApp(null)}>← All apps</button>
           {app === "gmail" && <GmailApp orgId={orgId} />}
-          {app === "drive" && <DriveApp orgId={orgId} filter="all" />}
-          {app === "docs" && <DriveApp orgId={orgId} filter="docs" />}
-          {app === "sheets" && <DriveApp orgId={orgId} filter="sheets" />}
+          {app === "drive" && <DriveApp orgId={orgId} />}
           {app === "calendar" && <CalendarApp orgId={orgId} />}
         </div>
       ) : (

@@ -88,6 +88,9 @@ export type EmailSendResult = { ok: boolean; id?: string; status: DispatchResult
 
 export async function sendEmail(opts: {
   to: string[]; cc?: string[]; bcc?: string[]; subject: string; html: string; text?: string; replyTo?: string; attachments?: EmailAttachment[];
+  /** Extra SMTP headers passed straight through to Resend — e.g.
+   *  'List-Unsubscribe' + 'List-Unsubscribe-Post' for one-click opt-out. */
+  headers?: Record<string, string>;
 }): Promise<EmailSendResult> {
   const key = env("RESEND_API_KEY");
   const from = env("RESEND_FROM");
@@ -99,6 +102,7 @@ export async function sendEmail(opts: {
   if (opts.bcc?.length) body.bcc = opts.bcc;
   if (opts.replyTo) body.reply_to = opts.replyTo;
   if (opts.attachments?.length) body.attachments = opts.attachments;
+  if (opts.headers && Object.keys(opts.headers).length) body.headers = opts.headers;
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

@@ -6,14 +6,7 @@ import { preloadAgentTab } from "@/pages/dashboard/preload";
 const SUBTABS = [
   { seg: "", label: "Overview", end: true },
   { seg: "operator", label: "Operator" },
-  { seg: "proactive", label: "Proactive" },
-  { seg: "configure", label: "Configure" },
-  { seg: "knowledge", label: "Knowledge" },
-  { seg: "inbox", label: "Inbox" },
-  { seg: "snippets", label: "Snippets" },
-  { seg: "outbound", label: "Outbound" },
-  { seg: "call-center", label: "Call Center" },
-  { seg: "test", label: "Test the agent" },
+  { seg: "configure", label: "Train" },
 ];
 
 export default function AgentLayout() {
@@ -24,7 +17,6 @@ export default function AgentLayout() {
     <div>
       <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
         <h4 className="fw-600 mb-0 me-2">AI Agent</h4>
-        <span className="badge bg-neutral-900 text-white fw-500">One brain · every touchpoint</span>
       </div>
 
       <nav className="mb-4">

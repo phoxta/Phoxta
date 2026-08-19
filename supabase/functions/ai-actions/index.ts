@@ -145,10 +145,10 @@ Deno.serve(async (req) => {
         return json({ result });
       }
       case "nl_invoice": {
-        const result = await run<{ customer_name: string; due_date: string | null; items: { description: string; quantity: number; unit_price_cents: number }[] }>(
+        const result = await run<{ customer_name: string; customer_email: string | null; due_date: string | null; items: { description: string; quantity: number; unit_price_cents: number }[] }>(
           "balanced",
           "nl_invoice",
-          `${biz} Convert the instruction into an invoice. Money in cents. Return JSON { "customer_name": string, "due_date": ISO date or null, "items": [{ "description": string, "quantity": number, "unit_price_cents": number }] }.`,
+          `${biz} Convert the instruction into an invoice. Money in cents. Return JSON { "customer_name": string, "customer_email": email found in the text or null, "due_date": ISO date or null, "items": [{ "description": string, "quantity": number, "unit_price_cents": number }] }.`,
           String(input.text ?? ""),
           500,
         );
@@ -245,30 +245,6 @@ Return JSON { "reply": a short, friendly 1-2 sentence summary of what you change
         );
         return json({ result });
       }
-      case "no_show_risk": {
-        const { data: b } = await ctx.admin.from("bookings").select("customer_name, start_at, status, created_at, notes").eq("id", input.bookingId).eq("organization_id", orgId).maybeSingle();
-        if (!b) return json({ error: "Booking not found." }, 404);
-        const result = await run<{ risk: number; reasons: string[] }>(
-          "cheap",
-          "no_show_risk",
-          `${biz} Estimate no-show risk. Return JSON { "risk": 0-1, "reasons": string[] }.`,
-          JSON.stringify(b),
-          300,
-        );
-        return json({ result });
-      }
-      case "nl_booking": {
-        const { data: services } = await ctx.admin.from("services").select("id, name").eq("organization_id", orgId).eq("active", true).limit(30);
-        const result = await run<{ service_name: string | null; customer_name: string; start_at: string; notes: string }>(
-          "balanced",
-          "nl_booking",
-          `${biz} Parse the booking request. Now is ${new Date().toISOString()}. Services: ${JSON.stringify(services ?? [])}. Return JSON { "service_name": string|null, "customer_name": string, "start_at": ISO datetime, "notes": string }.`,
-          String(input.text ?? ""),
-          400,
-        );
-        return json({ result });
-      }
-
       // ---- Marketing ----
       case "campaign_copy": {
         const result = await run<{ name: string; subject: string; body: string }>(
@@ -298,9 +274,12 @@ Return JSON { "reply": a short, friendly 1-2 sentence summary of what you change
 
       // ---- Analytics ----
       case "ask_data": {
+        const { data: orgRow } = await ctx.admin.from("organizations").select("currency").eq("id", orgId).maybeSingle();
+        const cur = String((orgRow as Json)?.currency || "USD").toUpperCase();
         const system =
           `${biz} You are a precise analytics assistant. Use the tools to read this business's real data, then answer the question with concrete numbers. ` +
-          "If money, format with $. Be brief. Respond only with the answer.";
+          `If money: amounts in the data are ${cur} minor units (e.g. cents/kobo — divide by 100); format them as ${cur} amounts like "${cur} 1,234.56". ` +
+          "Be brief. Respond only with the answer.";
         const t0 = Date.now();
         const model = modelFor("complex");
         const r = await runAgent({ model, system, userMessage: String(input.question ?? ""), tools: READ_TOOLS, toolRunner: toolRunner(ctx.admin, orgId), maxTokens: 900 });
@@ -319,21 +298,60 @@ Return JSON { "reply": a short, friendly 1-2 sentence summary of what you change
         return json({ result });
       }
       case "forecast": {
+        // Deterministic 30-day run-rate, computed HERE (not by the model): a
+        // recency-weighted average of daily revenue/order-count over the last
+        // 60 days (3-week half-life, zero days included) × 30. The LLM only
+        // writes the 2-sentence narrative around the computed numbers.
         const { data: orders } = await ctx.admin
           .from("orders")
           .select("total_cents, status, created_at")
           .eq("organization_id", orgId)
           .in("status", ["paid", "fulfilled"])
           .order("created_at", { ascending: false })
-          .limit(180);
-        const result = await run<{ revenue_next_30d_cents: number; orders_next_30d: number; narrative: string }>(
-          "balanced",
-          "forecast",
-          `${biz} From recent paid orders, project the next 30 days. Now is ${new Date().toISOString()}. Return JSON { "revenue_next_30d_cents": number, "orders_next_30d": number, "narrative": 1-2 sentences }.`,
-          `Orders: ${JSON.stringify(orders ?? [])}`,
-          500,
-        );
-        return json({ result });
+          .limit(500);
+        const rows = ((orders as { total_cents: number | null; created_at: string }[] | null) ?? []);
+        const WINDOW_DAYS = 60;
+        const now = Date.now();
+        const revByAge = new Array<number>(WINDOW_DAYS).fill(0);
+        const cntByAge = new Array<number>(WINDOW_DAYS).fill(0);
+        let rev30 = 0;
+        let revPrev30 = 0;
+        for (const o of rows) {
+          const age = Math.floor((now - new Date(o.created_at).getTime()) / 86400000);
+          if (age < 0 || age >= WINDOW_DAYS) continue;
+          const cents = o.total_cents ?? 0;
+          revByAge[age] += cents;
+          cntByAge[age] += 1;
+          if (age < 30) rev30 += cents;
+          else revPrev30 += cents;
+        }
+        let wSum = 0;
+        let revRate = 0;
+        let cntRate = 0;
+        for (let age = 0; age < WINDOW_DAYS; age++) {
+          const w = Math.pow(0.5, age / 21); // 3-week half-life: recent days dominate
+          wSum += w;
+          revRate += w * revByAge[age];
+          cntRate += w * cntByAge[age];
+        }
+        const revenue_next_30d_cents = wSum > 0 ? Math.round((revRate / wSum) * 30) : 0;
+        const orders_next_30d = wSum > 0 ? Math.round((cntRate / wSum) * 30) : 0;
+
+        const { data: orgRow } = await ctx.admin.from("organizations").select("currency").eq("id", orgId).maybeSingle();
+        const cur = String((orgRow as Json)?.currency || "USD").toUpperCase();
+        const fmt = (cents: number) => `${cur} ${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        let narrative = `Projected ${fmt(revenue_next_30d_cents)} from about ${orders_next_30d} orders over the next 30 days, based on the recent-weighted daily run-rate.`;
+        try {
+          const nar = await run<{ narrative: string }>(
+            "cheap",
+            "forecast",
+            `${biz} You write a short narrative around PRECOMPUTED forecast numbers. Do NOT change, recompute or invent any number — quote them as given (money is ${cur}; the *_cents figures are minor units, divide by 100). Return JSON { "narrative": exactly 2 sentences }.`,
+            JSON.stringify({ currency: cur, revenue_next_30d_cents, orders_next_30d, revenue_last_30d_cents: rev30, revenue_previous_30d_cents: revPrev30 }),
+            300,
+          );
+          if (nar?.narrative) narrative = nar.narrative;
+        } catch { /* keep the deterministic fallback narrative */ }
+        return json({ result: { revenue_next_30d_cents, orders_next_30d, narrative } });
       }
 
       default:

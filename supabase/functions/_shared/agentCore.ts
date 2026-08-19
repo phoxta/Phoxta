@@ -3,7 +3,7 @@
 // loads unified cross-channel memory, runs the tool-using agent, persists, meters.
 import { runAgent, callMessages } from "./anthropic.ts";
 import { modelFor, type Tier } from "./models.ts";
-import { AGENT_TOOLS, agentToolRunner, type AgentCtx } from "./agentTools.ts";
+import { buildAgentTools, agentToolRunner, resolveBookingMode, type AgentCtx } from "./agentTools.ts";
 import { meter, tokensUsedThisMonth, MONTHLY_TOKEN_CAP } from "./meter.ts";
 import { guardInput, guardOutput, INJECTION_GUARD_NOTE } from "./guardrails.ts";
 import { loadCustomerMemory, extractCustomerMemory } from "./memory.ts";
@@ -54,6 +54,7 @@ async function resolveConversation(
   channel: string,
   conversationId: string | undefined,
   customer: AgentCtx["customer"],
+  isTest = false,
 ): Promise<{ id: string; contactId: string | null }> {
   if (conversationId) {
     const { data } = await admin.from("conversations").select("id, contact_id").eq("id", conversationId).eq("organization_id", orgId).maybeSingle();
@@ -68,6 +69,7 @@ async function resolveConversation(
       .eq("organization_id", orgId)
       .eq("channel_type", channel)
       .eq("customer_phone", customer.phone)
+      .eq("is_test", isTest) // sandbox threads never mix with real ones
       .neq("status", "closed")
       .order("last_message_at", { ascending: false })
       .limit(1)
@@ -93,6 +95,7 @@ async function resolveConversation(
       customer_name: customer.name ?? "",
       customer_phone: customer.phone ?? "",
       customer_email: customer.email ?? "",
+      is_test: isTest,
     })
     .select("id")
     .single();
@@ -103,9 +106,9 @@ export async function respondCore(
   admin: SupabaseClient,
   org: Org,
   config: AgentConfig,
-  params: { channel: string; conversationId?: string; customer: AgentCtx["customer"]; message: string; userId?: string | null },
+  params: { channel: string; conversationId?: string; customer: AgentCtx["customer"]; message: string; userId?: string | null; isTest?: boolean },
 ): Promise<{ conversationId: string; reply: string; actions: string[]; escalated: boolean }> {
-  const { id: conversationId, contactId } = await resolveConversation(admin, org.id, params.channel, params.conversationId, params.customer);
+  const { id: conversationId, contactId } = await resolveConversation(admin, org.id, params.channel, params.conversationId, params.customer, params.isTest === true);
 
   // Input guardrail: bound length + flag prompt-injection attempts. Use the
   // sanitized text everywhere downstream (run, history, persistence).
@@ -167,6 +170,25 @@ export async function respondCore(
   const isAfterHours = config.capabilities?.after_hours !== false && afterHours(config.business_hours);
   const caps = Object.entries(config.capabilities ?? {}).filter(([, v]) => v).map(([k]) => k).join(", ");
 
+  // Vertical-aware booking model + capability-gated tool surface: a business
+  // with leads/bookings/tickets switched off simply doesn't expose those write
+  // tools (missing keys default to enabled for back-compat).
+  const bookingMode = resolveBookingMode(org.vertical);
+  const capOn = (k: string) => config.capabilities?.[k] !== false;
+  const tools = buildAgentTools(bookingMode, config.capabilities);
+  const actVerbs = [
+    capOn("bookings")
+      ? bookingMode === "reservations"
+        ? "check real availability and create reservations"
+        : bookingMode === "table"
+          ? "take table reservation requests (the restaurant confirms them)"
+          : "check availability and book/reschedule appointments"
+      : "",
+    capOn("leads") ? "capture and qualify leads" : "",
+    capOn("tickets") ? "open tickets" : "",
+    "recommend products for upsell, route callers to the right location by ZIP, schedule callbacks, and escalate to a human when needed",
+  ].filter(Boolean).join(", ");
+
   // Owner-authored plain-English operating procedures (the AOP pattern):
   // injected as HARD rules the agent must follow over its own judgment.
   const procedures = String((config as { procedures?: string }).procedures ?? "").trim();
@@ -181,7 +203,8 @@ export async function respondCore(
     memory ? `\nRecent context from other conversations:\n${memory}\n` : "",
     inGuard.injection ? INJECTION_GUARD_NOTE : "",
     `Enabled capabilities: ${caps}.`,
-    "Use your tools to ACT, not just talk: check availability and book/reschedule appointments, capture and qualify leads, open tickets, recommend products for upsell, route callers to the right location by ZIP, schedule callbacks, and escalate to a human when needed.",
+    `Use your tools to ACT, not just talk: ${actVerbs}.`,
+    "NEVER invent availability, times, prices or confirmations — only state what a tool actually returned, and if a tool says something isn't configured or available, tell the customer honestly and offer a follow-up instead.",
     isAfterHours
       ? "It is currently OUTSIDE business hours — still help fully, capture the lead, book if possible, and offer a callback; never send anyone to voicemail."
       : "It is within business hours.",
@@ -189,7 +212,7 @@ export async function respondCore(
     "Always look up real business data with the read tools before stating facts. Be concise, warm and helpful. Respond only with your reply to the customer.",
   ].join(" ");
 
-  const ctx: AgentCtx = { conversationId, customer: params.customer, contactId, locationId: null, actions: [] };
+  const ctx: AgentCtx = { conversationId, customer: params.customer, contactId, locationId: null, channel: params.channel, actions: [] };
   const model = modelFor(config.model_tier ?? "balanced");
   const t0 = Date.now();
   const run = await runAgent({
@@ -197,8 +220,8 @@ export async function respondCore(
     system,
     userMessage: userText,
     history,
-    tools: AGENT_TOOLS,
-    toolRunner: agentToolRunner(admin, org.id, ctx),
+    tools,
+    toolRunner: agentToolRunner(admin, org.id, ctx, bookingMode),
     maxTurns: 8,
     maxTokens: 1024,
   });

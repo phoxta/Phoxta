@@ -24,6 +24,8 @@ const FaqsPage = lazy(() => import("@/pages/FaqsPage"));
 const CareersPage = lazy(() => import("@/pages/CareersPage"));
 const Contact1Page = lazy(() => import("@/pages/Contact1Page")); // /contact
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
+const RatePage = lazy(() => import("@/pages/CustomerActionPage").then((m) => ({ default: m.RatePage })));
+const UnsubscribePage = lazy(() => import("@/pages/CustomerActionPage").then((m) => ({ default: m.UnsubscribePage })));
 const TermsPage = lazy(() => import("@/pages/TermsPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
@@ -50,22 +52,16 @@ const OverviewPage = lazy(() => import("@/pages/dashboard/ops/OverviewPage"));
 const CrmPage = lazy(() => import("@/pages/dashboard/ops/CrmPage"));
 const CommercePage = lazy(() => import("@/pages/dashboard/ops/CommercePage"));
 const InvoicingPage = lazy(() => import("@/pages/dashboard/ops/InvoicingPage"));
-const ContentPage = lazy(() => import("@/pages/dashboard/ops/ContentPage"));
 const BookingsPage = lazy(() => import("@/pages/dashboard/ops/BookingsPage"));
 const ReservationsPage = lazy(() => import("@/pages/dashboard/ops/ReservationsPage"));
-const HelpdeskPage = lazy(() => import("@/pages/dashboard/ops/HelpdeskPage"));
 const MarketingPage = lazy(() => import("@/pages/dashboard/ops/MarketingPage"));
+const OpsInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
+const OpsSettingsPage = lazy(() => import("@/pages/dashboard/ops/SettingsPage"));
 const AgentOverviewPage = lazy(() => import("@/pages/dashboard/ops/agent/AgentOverviewPage"));
 const AgentOperatorPage = lazy(() => import("@/pages/dashboard/ops/agent/OperatorPage"));
-const AgentProactivePage = lazy(() => import("@/pages/dashboard/ops/agent/ProactivePage"));
 const AgentConfigurePage = lazy(() => import("@/pages/dashboard/ops/agent/ConfigurePage"));
 const AgentKnowledgePage = lazy(() => import("@/pages/dashboard/ops/agent/KnowledgePage"));
-const AgentInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
 const GoogleWorkspacePage = lazy(() => import("@/pages/dashboard/ops/google/GoogleWorkspacePage"));
-const AgentSnippetsPage = lazy(() => import("@/pages/dashboard/ops/agent/SnippetsPage"));
-const AgentOutboundPage = lazy(() => import("@/pages/dashboard/ops/agent/OutboundPage"));
-const AgentCallCenterPage = lazy(() => import("@/pages/dashboard/ops/agent/CallCenterPage"));
-const AgentTestPage = lazy(() => import("@/pages/dashboard/ops/agent/TestPage"));
 
 // 301-style redirects from the original template URLs to the clean Phoxta paths,
 // so old links / bookmarks / indexed URLs never 404.
@@ -116,26 +112,32 @@ export default function App() {
           <Route path="/dashboard/businesses/:id" element={<BusinessDetailPage />} />
           <Route path="/dashboard/businesses/:id/ops" element={<OperatingLayout />}>
             <Route index element={<OverviewPage />} />
+            <Route path="inbox" element={<OpsInboxPage />} />
             <Route path="crm" element={<CrmPage />} />
             <Route path="commerce" element={<CommercePage />} />
             <Route path="invoicing" element={<InvoicingPage />} />
-            <Route path="content" element={<ContentPage />} />
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="reservations" element={<ReservationsPage />} />
-            <Route path="helpdesk" element={<HelpdeskPage />} />
             <Route path="marketing" element={<MarketingPage />} />
+            <Route path="settings" element={<OpsSettingsPage />} />
+            {/* Google Workspace lives inside Settings now — the route stays valid
+                (Settings links into it) but it's no longer a top-level tab. */}
             <Route path="google" element={<GoogleWorkspacePage />} />
+            {/* IA redirects: old tab URLs keep working after the console reshuffle. */}
+            <Route path="helpdesk" element={<Navigate to="../inbox" replace />} />
+            <Route path="content" element={<Navigate to=".." replace />} />
             <Route path="agent" element={<AgentLayout />}>
               <Route index element={<AgentOverviewPage />} />
               <Route path="operator" element={<AgentOperatorPage />} />
-              <Route path="proactive" element={<AgentProactivePage />} />
               <Route path="configure" element={<AgentConfigurePage />} />
               <Route path="knowledge" element={<AgentKnowledgePage />} />
-              <Route path="inbox" element={<AgentInboxPage />} />
-              <Route path="snippets" element={<AgentSnippetsPage />} />
-              <Route path="outbound" element={<AgentOutboundPage />} />
-              <Route path="call-center" element={<AgentCallCenterPage />} />
-              <Route path="test" element={<AgentTestPage />} />
+              {/* Old agent sub-tabs → their new homes. */}
+              <Route path="inbox" element={<Navigate to="../../inbox" replace />} />
+              <Route path="snippets" element={<Navigate to="../../inbox" replace />} />
+              <Route path="outbound" element={<Navigate to="../../marketing" replace />} />
+              <Route path="proactive" element={<Navigate to="../../marketing" replace />} />
+              <Route path="call-center" element={<Navigate to="../../settings" replace />} />
+              <Route path="test" element={<Navigate to="../configure" replace />} />
             </Route>
           </Route>
           <Route path="/dashboard/billing" element={<BillingPage />} />
@@ -178,6 +180,9 @@ export default function App() {
         <Route path="/contact" element={<Contact1Page />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        {/* Public landing pages for links inside customer messages. */}
+        <Route path="/rate" element={<RatePage />} />
+        <Route path="/unsubscribe" element={<UnsubscribePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 

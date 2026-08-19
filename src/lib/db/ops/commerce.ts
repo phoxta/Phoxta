@@ -66,7 +66,7 @@ export async function uploadProductImage(orgId: string, file: File): Promise<{ u
 }
 
 // --- Orders + fulfillment --------------------------------------------------
-export type OrderStatus = "pending" | "paid" | "fulfilled" | "cancelled" | "refunded";
+export type OrderStatus = "pending" | "paid" | "fulfilled" | "cancelled" | "refunded" | "partially_refunded";
 export type Order = {
   id: string;
   customer_name: string;
@@ -76,24 +76,37 @@ export type Order = {
   total_cents: number;
   currency: string;
   created_at: string;
+  payment_reference: string | null;
+  paid_at: string | null;
+  discount_cents: number | null;
+  promo_code: string | null;
+  notes: string | null;
+  shipping: Record<string, unknown> | null;
+  source: string | null;
+  refunded_cents: number | null;
+  tracking: string | null;
 };
 export type OrderItemInput = { name: string; quantity: number; unit_price_cents: number; product_id?: string | null };
 export type OrderItem = { id: string; name: string; quantity: number; unit_price_cents: number };
 
-const ORDER_SELECT = "id, customer_name, customer_email, status, fulfillment_status, total_cents, currency, created_at";
+const ORDER_SELECT =
+  "id, customer_name, customer_email, status, fulfillment_status, total_cents, currency, created_at, payment_reference, paid_at, discount_cents, promo_code, notes, shipping, source, refunded_cents, tracking";
 
-export async function listOrders(orgId: string): Promise<{ data: Order[]; error: string | null }> {
+/** Paged newest-first order list. Fetches one extra row to signal `hasMore`. */
+export async function listOrders(orgId: string, limit = 50): Promise<{ data: Order[]; hasMore: boolean; error: string | null }> {
   const { data, error } = await supabase
     .from("orders")
     .select(ORDER_SELECT)
     .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
-  return { data: (data as Order[] | null) ?? [], error: friendlyError(error?.message) };
+    .order("created_at", { ascending: false })
+    .limit(limit + 1);
+  const rows = (data as Order[] | null) ?? [];
+  return { data: rows.slice(0, limit), hasMore: rows.length > limit, error: friendlyError(error?.message) };
 }
 
 export async function createOrder(
   orgId: string,
-  input: { customer_name: string; customer_email?: string; status?: OrderStatus; items: OrderItemInput[] },
+  input: { customer_name: string; customer_email?: string; status?: OrderStatus; notes?: string; currency?: string; items: OrderItemInput[] },
 ): Promise<{ error: string | null }> {
   const total = input.items.reduce((s, i) => s + i.quantity * i.unit_price_cents, 0);
   const { data: order, error } = await supabase
@@ -102,8 +115,12 @@ export async function createOrder(
       organization_id: orgId,
       customer_name: input.customer_name.trim(),
       customer_email: input.customer_email?.trim() ?? "",
-      status: input.status ?? "paid",
+      status: input.status ?? "pending",
       total_cents: total,
+      source: "console",
+      ...(input.notes ? { notes: input.notes } : {}),
+      ...(input.currency ? { currency: input.currency } : {}),
+      ...(input.status === "paid" ? { paid_at: new Date().toISOString() } : {}),
     })
     .select("id")
     .single();
@@ -134,14 +151,82 @@ export async function getOrderItems(orderId: string): Promise<{ data: OrderItem[
 }
 
 export async function setOrderStatus(id: string, status: OrderStatus): Promise<{ error: string | null }> {
-  const { error } = await supabase.from("orders").update({ status }).eq("id", id);
+  const patch: Record<string, unknown> = { status };
+  if (status === "paid") patch.paid_at = new Date().toISOString();
+  const { error } = await supabase.from("orders").update(patch).eq("id", id);
   return { error: friendlyError(error?.message) };
 }
 
-export async function fulfillOrder(id: string): Promise<{ error: string | null }> {
-  const { error } = await supabase
-    .from("orders")
-    .update({ fulfillment_status: "fulfilled", status: "fulfilled" })
-    .eq("id", id);
+/** Mark an order fulfilled. Touches ONLY fulfillment_status — `status` stays the
+ *  financial truth ('paid' etc). Optionally records a tracking number. */
+export async function fulfillOrder(id: string, tracking?: string): Promise<{ error: string | null }> {
+  const patch: Record<string, unknown> = { fulfillment_status: "fulfilled" };
+  if (tracking && tracking.trim()) patch.tracking = tracking.trim();
+  const { error } = await supabase.from("orders").update(patch).eq("id", id);
   return { error: friendlyError(error?.message) };
+}
+
+export async function saveOrderTracking(id: string, tracking: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("orders").update({ tracking: tracking.trim() || null }).eq("id", id);
+  return { error: friendlyError(error?.message) };
+}
+
+/** Member-guarded cancel with stock restore (product + exact size/colour variant). */
+export async function cancelOrder(orderId: string, restock = true): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("app_cancel_order", { p_order: orderId, p_restock: restock });
+  return { error: friendlyError(error?.message) };
+}
+
+// --- Edge-function bridges -------------------------------------------------
+async function invokeEdge<T>(name: string, body: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke(name, { body });
+  if (error) {
+    let serverMessage: string | null = null;
+    try {
+      const ctx = (error as { context?: Response }).context;
+      if (ctx && typeof ctx.json === "function") {
+        const payload = await ctx.json();
+        if (payload?.error) serverMessage = String(payload.error);
+      }
+    } catch {
+      /* fall through */
+    }
+    return { data: null, error: serverMessage ?? friendlyError(error.message) };
+  }
+  if (data && typeof data === "object" && "error" in data && (data as { error?: unknown }).error) {
+    return { data: null, error: String((data as { error: unknown }).error) };
+  }
+  return { data: (data as T) ?? null, error: null };
+}
+
+export type CommerceNotifyKind =
+  | "order_fulfilled"
+  | "order_cancelled"
+  | "reservation_confirmed"
+  | "reservation_cancelled"
+  | "booking_confirmed"
+  | "booking_cancelled"
+  | "invoice_reminder";
+
+/** Notify the customer about an order/reservation/booking event (commerce-notify fn). */
+export async function notifyCommerce(
+  orgId: string,
+  input: { kind: CommerceNotifyKind; orderId?: string; reservationId?: string; bookingId?: string; invoiceId?: string; tracking?: string; subject?: string; message?: string },
+): Promise<{ delivery: "sent" | "no-email" | "failed" | null; error: string | null }> {
+  const { data, error } = await invokeEdge<{ ok: boolean; delivery: "sent" | "no-email" | "failed" }>("commerce-notify", { orgId, ...input });
+  return { delivery: data?.delivery ?? null, error };
+}
+
+/** Full or partial Paystack refund. Omit amountCents for a full refund. */
+export async function refundOrder(
+  orgId: string,
+  orderId: string,
+  amountCents?: number,
+  restock?: boolean,
+): Promise<{ refundedCents: number | null; error: string | null }> {
+  const body: Record<string, unknown> = { orgId, orderId };
+  if (typeof amountCents === "number") body.amountCents = amountCents;
+  if (typeof restock === "boolean") body.restock = restock;
+  const { data, error } = await invokeEdge<{ ok: boolean; refunded_cents: number }>("paystack-refund", body);
+  return { refundedCents: data?.refunded_cents ?? null, error };
 }

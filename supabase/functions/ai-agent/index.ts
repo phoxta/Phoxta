@@ -35,6 +35,9 @@ Deno.serve(async (req) => {
         customer: body?.customer ?? {},
         message,
         userId,
+        // Owner-side sandbox (Train preview): keeps test threads out of the
+        // Inbox, CRM and QA/cost stats.
+        isTest: body?.test === true,
       });
       return json(result);
     }

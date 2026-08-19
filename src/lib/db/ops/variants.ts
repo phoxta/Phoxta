@@ -28,6 +28,37 @@ export async function setVariantStock(id: string, stock: number): Promise<{ erro
   return { error: friendlyError(error?.message) };
 }
 
+/** Per-variant price override in cents; null = inherit the product price. */
+export async function setVariantPrice(id: string, priceCents: number | null): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("product_variants").update({ price_cents: priceCents }).eq("id", id);
+  return { error: friendlyError(error?.message) };
+}
+
+/** Decrement stock on the exact size/colour variant (console manual orders).
+ *  No-op (no error) when the combination has no variant row. */
+export async function decrementVariantStock(
+  productId: string,
+  size: string,
+  color: string,
+  qty: number,
+): Promise<{ error: string | null }> {
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select("id, stock")
+    .eq("product_id", productId)
+    .eq("size", size)
+    .eq("color", color)
+    .maybeSingle();
+  if (error) return { error: friendlyError(error.message) };
+  if (!data) return { error: null };
+  const v = data as { id: string; stock: number };
+  const { error: uErr } = await supabase
+    .from("product_variants")
+    .update({ stock: Math.max(0, v.stock - Math.max(1, Math.round(qty))) })
+    .eq("id", v.id);
+  return { error: friendlyError(uErr?.message) };
+}
+
 export async function removeVariant(id: string): Promise<{ error: string | null }> {
   const { error } = await supabase.from("product_variants").delete().eq("id", id);
   return { error: friendlyError(error?.message) };

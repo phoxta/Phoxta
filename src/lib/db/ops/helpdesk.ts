@@ -15,6 +15,8 @@ export type Ticket = {
   sentiment: string | null;
   category: string | null;
   ai_summary: string | null;
+  /** Latest message timestamp (falls back to created_at) — drives inbox ordering. */
+  last_activity_at: string;
 };
 export type TicketMessage = { id: string; author: "customer" | "agent" | "ai"; body: string; created_at: string };
 
@@ -22,12 +24,21 @@ const TICKET_SELECT =
   "id, subject, customer_name, customer_email, status, priority, ai_deflected, created_at, sentiment, category, ai_summary";
 
 export async function listTickets(orgId: string): Promise<{ data: Ticket[]; error: string | null }> {
+  // Embed only the newest message's timestamp so the unified inbox can sort
+  // tickets by real last activity, not just creation time.
   const { data, error } = await supabase
     .from("tickets")
-    .select(TICKET_SELECT)
+    .select(`${TICKET_SELECT}, ticket_messages(created_at)`)
     .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
-  return { data: (data as Ticket[] | null) ?? [], error: friendlyError(error?.message) };
+    .order("created_at", { ascending: false })
+    .order("created_at", { referencedTable: "ticket_messages", ascending: false })
+    .limit(1, { referencedTable: "ticket_messages" });
+  type Row = Ticket & { ticket_messages?: { created_at: string }[] | null };
+  const rows = (((data as Row[] | null) ?? [])).map(({ ticket_messages, ...t }) => ({
+    ...t,
+    last_activity_at: ticket_messages?.[0]?.created_at ?? t.created_at,
+  }));
+  return { data: rows, error: friendlyError(error?.message) };
 }
 
 export async function createTicket(
@@ -89,6 +100,38 @@ export async function setTicketStatus(
   if (aiDeflected !== undefined) patch.ai_deflected = aiDeflected;
   const { error } = await supabase.from("tickets").update(patch).eq("id", id);
   return { error: friendlyError(error?.message) };
+}
+
+/**
+ * Reply to a ticket via the `ticket-reply` Edge Function: stores the message
+ * AND emails it to the ticket's customer, optionally resolving the ticket.
+ * `delivery` surfaces exactly what happened: 'sent' | 'no-email' | 'failed' |
+ * 'simulated' — the UI must show anything that isn't 'sent'.
+ */
+export async function sendTicketReply(
+  orgId: string,
+  ticketId: string,
+  message: string,
+  opts: { asAi?: boolean; resolve?: boolean } = {},
+): Promise<{ ok: boolean; delivery: string | null; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("ticket-reply", {
+    body: { orgId, ticketId, message, asAi: opts.asAi === true, resolve: opts.resolve === true },
+  });
+  if (error) {
+    let serverMessage: string | null = null;
+    try {
+      const ctx = (error as { context?: Response }).context;
+      if (ctx && typeof ctx.json === "function") {
+        const payload = await ctx.json();
+        if (payload?.error) serverMessage = String(payload.error);
+      }
+    } catch {
+      /* generic message below */
+    }
+    return { ok: false, delivery: null, error: serverMessage ?? friendlyError(error.message) };
+  }
+  if (data?.error) return { ok: false, delivery: null, error: String(data.error) };
+  return { ok: !!data?.ok, delivery: (data?.delivery as string | undefined) ?? null, error: null };
 }
 
 /**

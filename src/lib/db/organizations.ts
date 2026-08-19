@@ -16,12 +16,14 @@ export type Organization = {
   app_path?: string | null;       // which storefront app, e.g. "businesses/carento"
   site_url?: string | null;       // deployed storefront URL
   provisioned_at?: string | null;
+  /** ISO currency for every money surface in this business's console. */
+  currency?: string;
 };
 
 export type Member = { user_id: string; role: "owner" | "admin" | "staff" | "viewer"; created_at: string };
 
 const ORG_SELECT =
-  "id, name, slug, stage, vertical, primary_region, created_at, lifecycle_stage, app_path, site_url, provisioned_at";
+  "id, name, slug, stage, vertical, primary_region, created_at, lifecycle_stage, app_path, site_url, provisioned_at, currency";
 
 /** A single business the user can access (RLS scopes to members). */
 export async function getBusiness(id: string): Promise<{ data: Organization | null; error: string | null }> {

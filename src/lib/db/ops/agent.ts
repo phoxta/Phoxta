@@ -41,6 +41,11 @@ export type Conversation = {
   first_response_at: string | null;
   csat_score: number | null;
   csat_requested: boolean;
+  /** '' | 'customer' | legacy values — who actually entered the CSAT score. */
+  csat_source: string | null;
+  /** Set true by a DB trigger on inbound customer messages; cleared on open. */
+  unread: boolean;
+  sentiment: string | null;
   contact_id: string | null;
   created_at: string;
 };
@@ -120,19 +125,20 @@ async function invokeFn<T>(fn: string, body: Record<string, unknown>): Promise<{
 
 // ---------- Inbox ----------
 const CONV_COLS =
-  "id, channel_type, customer_name, customer_email, customer_phone, status, intent, qualified, lead_score, summary, last_message_at, assigned_to, tags, snoozed_until, first_response_at, csat_score, csat_requested, contact_id, created_at";
+  "id, channel_type, customer_name, customer_email, customer_phone, status, intent, qualified, lead_score, summary, last_message_at, assigned_to, tags, snoozed_until, first_response_at, csat_score, csat_requested, csat_source, unread, sentiment, contact_id, created_at";
 
 export async function listConversations(
   orgId: string,
   opts: { limit?: number; search?: string; channel?: string; status?: string; assignedTo?: string } = {},
 ): Promise<{ data: Conversation[]; error: string | null }> {
-  let q = supabase.from("conversations").select(CONV_COLS).eq("organization_id", orgId);
+  // Sandbox conversations (is_test) never surface in the console inbox.
+  let q = supabase.from("conversations").select(CONV_COLS).eq("organization_id", orgId).eq("is_test", false);
   if (opts.channel) q = q.eq("channel_type", opts.channel);
   if (opts.status) q = q.eq("status", opts.status);
   if (opts.assignedTo) q = q.eq("assigned_to", opts.assignedTo);
   const s = opts.search?.trim();
   if (s) q = q.or(`customer_name.ilike.%${s}%,customer_phone.ilike.%${s}%,customer_email.ilike.%${s}%,summary.ilike.%${s}%`);
-  const { data, error } = await q.order("last_message_at", { ascending: false }).limit(opts.limit ?? 300);
+  const { data, error } = await q.order("last_message_at", { ascending: false }).limit(opts.limit ?? 500);
   return { data: (data as Conversation[] | null) ?? [], error: friendlyError(error?.message) };
 }
 export async function listConversationMessages(convId: string): Promise<{ data: ConversationMessage[]; error: string | null }> {
@@ -224,10 +230,6 @@ export async function snoozeConversation(convId: string, until: string | null): 
   const { error } = await supabase.from("conversations").update({ status: until ? "snoozed" : "open", snoozed_until: until }).eq("id", convId);
   return { error: friendlyError(error?.message) };
 }
-export async function setCsat(convId: string, score: number): Promise<{ error: string | null }> {
-  const { error } = await supabase.from("conversations").update({ csat_score: score, csat_requested: true }).eq("id", convId);
-  return { error: friendlyError(error?.message) };
-}
 
 // ---------- Collision presence (who's viewing) ----------
 export async function touchPresence(orgId: string, convId: string, userId: string): Promise<void> {
@@ -260,6 +262,10 @@ export async function listCanned(orgId: string): Promise<{ data: CannedResponse[
 }
 export async function createCanned(orgId: string, input: Partial<CannedResponse>): Promise<{ error: string | null }> {
   const { error } = await supabase.from("canned_responses").insert({ organization_id: orgId, ...input });
+  return { error: friendlyError(error?.message) };
+}
+export async function updateCanned(id: string, patch: Partial<Omit<CannedResponse, "id">>): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("canned_responses").update(patch).eq("id", id);
   return { error: friendlyError(error?.message) };
 }
 export async function deleteCanned(id: string): Promise<{ error: string | null }> {

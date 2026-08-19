@@ -167,7 +167,10 @@ Deno.serve(async (req) => {
 
       const { sendEmail } = await import("../_shared/dispatch.ts");
       const label = inv.number ? `Invoice ${inv.number}` : "Invoice";
-      const amount = `$${(inv.total_cents / 100).toLocaleString("en-US")}`;
+      // Show the invoice's OWN currency (code-prefixed, e.g. "NGN 12,500.00") —
+      // never a hardcoded "$". The Paystack charge conversion above is unchanged.
+      const invCurrency = String(inv.currency || "USD").toUpperCase();
+      const amount = `${invCurrency} ${(inv.total_cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       const emailed = await sendEmail({
         to: [inv.customer_email],
         subject: `${label} from ${auth.ok.org.name} — ${amount}`,

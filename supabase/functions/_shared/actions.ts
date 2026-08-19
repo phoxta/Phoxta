@@ -400,6 +400,74 @@ export function actionTitle(tool: string, a: Json): string {
   }
 }
 
+/**
+ * Before→after snapshots for the approval queue: when an action is queued,
+ * capture the current values of the fields its args will change so the owner
+ * can judge the diff ("$120 → $90") instead of a bare instruction. Stored under
+ * args.__before (jsonb-safe, ignored by runWrite). Best-effort — a failed
+ * lookup simply queues the action without a snapshot; per-tool map, default =
+ * no snapshot. No schema change.
+ */
+async function captureBefore(admin: SupabaseClient, orgId: string, tool: string, a: Json): Promise<Json | null> {
+  try {
+    const product = (cols: string) => resolveRow(admin, orgId, "products", cols, String(a.product), ["name", "sku"]);
+    switch (tool) {
+      case "update_product_price": {
+        const p = await product("id, name, price_cents");
+        return p ? { name: p.name, price_cents: p.price_cents } : null;
+      }
+      case "set_product_stock": {
+        const p = await product("id, name, stock");
+        return p ? { name: p.name, stock: p.stock } : null;
+      }
+      case "set_product_status": {
+        const p = await product("id, name, status");
+        return p ? { name: p.name, status: p.status } : null;
+      }
+      case "fulfill_order": {
+        const { data } = await admin.from("orders").select("customer_name, status, fulfillment_status").eq("id", a.order_id).eq("organization_id", orgId).maybeSingle();
+        return data ?? null;
+      }
+      case "set_order_status": {
+        const o = await resolveRow(admin, orgId, "orders", "id, customer_name, status", String(a.order), ["customer_name", "customer_email"]);
+        return o ? { customer_name: o.customer_name, status: o.status } : null;
+      }
+      case "set_reservation_status": {
+        const { data } = await admin.from("reservations").select("customer_name, status").eq("id", a.reservation_id).eq("organization_id", orgId).maybeSingle();
+        return data ?? null;
+      }
+      case "update_contact_stage": {
+        const c = await resolveRow(admin, orgId, "crm_contacts", "id, name, stage", String(a.contact), ["name", "email", "phone"]);
+        return c ? { name: c.name, stage: c.stage } : null;
+      }
+      case "tag_contact": {
+        const c = await resolveRow(admin, orgId, "crm_contacts", "id, name, tags", String(a.contact), ["name", "email", "phone"]);
+        return c ? { name: c.name, tags: c.tags } : null;
+      }
+      case "set_invoice_status": {
+        const inv = await resolveRow(admin, orgId, "invoices", "id, number, status", String(a.invoice), ["number", "customer_name"]);
+        return inv ? { number: inv.number, status: inv.status } : null;
+      }
+      case "set_booking_status": {
+        const b = await resolveRow(admin, orgId, "bookings", "id, customer_name, status", String(a.booking), ["customer_name", "customer_email"], "start_at");
+        return b ? { customer_name: b.customer_name, status: b.status } : null;
+      }
+      case "set_ticket_status": {
+        const t = await resolveRow(admin, orgId, "tickets", "id, subject, status", String(a.ticket), ["subject", "customer_name"]);
+        return t ? { subject: t.subject, status: t.status } : null;
+      }
+      case "publish_page": {
+        const { data } = await admin.from("cms_pages").select("title, status").eq("organization_id", orgId).eq("slug", slugify(String(a.slug))).maybeSingle();
+        return data ?? null;
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
 async function policyMode(admin: SupabaseClient, orgId: string, tool: string): Promise<"off" | "approve" | "auto"> {
   const { data } = await admin.from("agent_tool_policy").select("mode").eq("organization_id", orgId).eq("tool", tool).maybeSingle();
   return ((data as { mode?: string } | null)?.mode as "off" | "approve" | "auto") ?? "approve"; // safe default
@@ -449,7 +517,9 @@ export async function executeAction(
   }
   if (mode === "approve") {
     const title = actionTitle(tool, args);
-    await admin.from("agent_actions").insert({ organization_id: orgId, tool, args, title, requested_by: userId, status: "pending" });
+    const before = await captureBefore(admin, orgId, tool, args);
+    const queuedArgs = before ? { ...args, __before: before } : args;
+    await admin.from("agent_actions").insert({ organization_id: orgId, tool, args: queuedArgs, title, requested_by: userId, status: "pending" });
     await audit(admin, orgId, tool, args, "pending", title);
     // Tell org owners/admins there's something to approve — previously the
     // queue filled silently and nothing surfaced it outside the Operator tab.

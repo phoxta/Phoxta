@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { updateProduct, uploadProductImage, type Product, type ProductStatus } from "@/lib/db/ops/commerce";
+import { toastError, reportMutation } from "@/lib/ops/feedback";
 
-const toCents = (s: string) => Math.round((parseFloat(s) || 0) * 100);
+/** Strict money parse: returns cents, or null when the input isn't a valid amount. */
+const parseCents = (s: string): number | null => {
+  const t = s.trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null;
+};
+const splitCsv = (s: string): string[] => [...new Set(s.split(",").map((x) => x.trim()).filter(Boolean))];
 
 type ModOpt = { label: string; price: string };
 type ModGrp = { name: string; required: boolean; options: ModOpt[] };
@@ -20,6 +28,8 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
   const [description, setDescription] = useState(product.description ?? "");
   const [imageUrl, setImageUrl] = useState(product.image_url ?? "");
   const [status, setStatus] = useState<ProductStatus>(product.status);
+  const [sizesStr, setSizesStr] = useState(Array.isArray(meta.sizes) ? (meta.sizes as string[]).join(", ") : "");
+  const [colorsStr, setColorsStr] = useState(Array.isArray(meta.colors) ? (meta.colors as string[]).join(", ") : "");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -51,23 +61,52 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
 
   async function save() {
     if (!name.trim()) return;
+    const priceCents = parseCents(price);
+    if (priceCents === null) {
+      toastError("Price must be a valid number (e.g. 24.99).");
+      return;
+    }
+    const stockT = stock.trim();
+    const stockN = stockT === "" ? 0 : Number(stockT);
+    if (!Number.isFinite(stockN) || !Number.isInteger(stockN) || stockN < 0) {
+      toastError("Stock must be a whole number, 0 or more.");
+      return;
+    }
+    for (const g of mods) {
+      for (const o of g.options) {
+        if (o.label.trim() && o.price.trim() && parseCents(o.price) === null) {
+          toastError(`Option price "${o.price}" in "${g.name || "options"}" isn't a valid number.`);
+          return;
+        }
+      }
+    }
     setBusy(true);
     setErr(null);
     const modifiers = mods
-      .map((g) => ({ name: g.name.trim(), required: g.required, options: g.options.filter((o) => o.label.trim()).map((o) => ({ label: o.label.trim(), price: toCents(o.price) })) }))
+      .map((g) => ({ name: g.name.trim(), required: g.required, options: g.options.filter((o) => o.label.trim()).map((o) => ({ label: o.label.trim(), price: parseCents(o.price) ?? 0 })) }))
       .filter((g) => g.name && g.options.length);
-    const { error } = await updateProduct(product.id, {
-      name: name.trim(),
-      price_cents: toCents(price),
-      stock: parseInt(stock) || 0,
-      description,
-      status,
-      image_url: imageUrl || null,
-      metadata: { ...meta, category: category.trim() || undefined, modifiers: modifiers.length ? modifiers : undefined },
-    });
+    const sizes = splitCsv(sizesStr);
+    const colors = splitCsv(colorsStr);
+    const ok = await reportMutation(
+      updateProduct(product.id, {
+        name: name.trim(),
+        price_cents: priceCents,
+        stock: stockN,
+        description,
+        status,
+        image_url: imageUrl || null,
+        metadata: {
+          ...meta,
+          category: category.trim() || undefined,
+          modifiers: modifiers.length ? modifiers : undefined,
+          sizes: sizes.length ? sizes : undefined,
+          colors: colors.length ? colors : undefined,
+        },
+      }),
+      "Saved",
+    );
     setBusy(false);
-    if (error) setErr(error);
-    else onSaved();
+    if (ok) onSaved();
   }
 
   return (
@@ -91,8 +130,8 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
         <div className="flex-grow-1" style={{ minWidth: 240 }}>
           <div className="row g-2">
             <div className="col-12"><label className="fz-font-sm neutral-500 d-block mb-1">{itemNoun} name</label><input className="form-control form-control-sm rounded-3" value={name} onChange={(e) => setName(e.target.value)} /></div>
-            <div className="col-4"><label className="fz-font-sm neutral-500 d-block mb-1">Price</label><input className="form-control form-control-sm rounded-3" value={price} onChange={(e) => setPrice(e.target.value)} /></div>
-            <div className="col-4"><label className="fz-font-sm neutral-500 d-block mb-1">Stock</label><input className="form-control form-control-sm rounded-3" value={stock} onChange={(e) => setStock(e.target.value)} /></div>
+            <div className="col-4"><label className="fz-font-sm neutral-500 d-block mb-1">Price ({product.currency})</label><input type="number" min={0} step={0.01} className="form-control form-control-sm rounded-3" value={price} onChange={(e) => setPrice(e.target.value)} /></div>
+            <div className="col-4"><label className="fz-font-sm neutral-500 d-block mb-1">Stock</label><input type="number" min={0} step={1} className="form-control form-control-sm rounded-3" value={stock} onChange={(e) => setStock(e.target.value)} /></div>
             <div className="col-4">
               <label className="fz-font-sm neutral-500 d-block mb-1">Status</label>
               <select className="form-select form-select-sm rounded-3" value={status} onChange={(e) => setStatus(e.target.value as ProductStatus)}>
@@ -103,6 +142,10 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
             </div>
             <div className="col-12"><label className="fz-font-sm neutral-500 d-block mb-1">Category / section</label><input className="form-control form-control-sm rounded-3" placeholder="e.g. Mains, Desserts, Office Chairs…" value={category} onChange={(e) => setCategory(e.target.value)} /></div>
             <div className="col-12"><label className="fz-font-sm neutral-500 d-block mb-1">Description</label><textarea className="form-control form-control-sm rounded-3" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+
+            {/* Sizes & colours drive the variant grid (metadata.sizes / metadata.colors) */}
+            <div className="col-6"><label className="fz-font-sm neutral-500 d-block mb-1">Sizes (comma-separated)</label><input className="form-control form-control-sm rounded-3" placeholder="e.g. S, M, L, XL" value={sizesStr} onChange={(e) => setSizesStr(e.target.value)} /></div>
+            <div className="col-6"><label className="fz-font-sm neutral-500 d-block mb-1">Colours (comma-separated)</label><input className="form-control form-control-sm rounded-3" placeholder="e.g. Black, Ivory" value={colorsStr} onChange={(e) => setColorsStr(e.target.value)} /></div>
 
             <div className="col-12">
               <div className="d-flex align-items-center justify-content-between mb-1">

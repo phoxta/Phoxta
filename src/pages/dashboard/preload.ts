@@ -25,14 +25,15 @@ export const DASHBOARD_PRELOADERS: Record<string, Loader> = {
 export const OPS_PRELOADERS: Record<string, Loader> = {
   "": () => import("@/pages/dashboard/ops/OverviewPage"),
   overview: () => import("@/pages/dashboard/ops/OverviewPage"),
+  inbox: () => import("@/pages/dashboard/ops/agent/InboxPage"),
   crm: () => import("@/pages/dashboard/ops/CrmPage"),
   commerce: () => import("@/pages/dashboard/ops/CommercePage"),
   invoicing: () => import("@/pages/dashboard/ops/InvoicingPage"),
-  content: () => import("@/pages/dashboard/ops/ContentPage"),
   bookings: () => import("@/pages/dashboard/ops/BookingsPage"),
   reservations: () => import("@/pages/dashboard/ops/ReservationsPage"),
-  helpdesk: () => import("@/pages/dashboard/ops/HelpdeskPage"),
   marketing: () => import("@/pages/dashboard/ops/MarketingPage"),
+  settings: () => import("@/pages/dashboard/ops/SettingsPage"),
+  // Not a tab anymore, but Settings links into it — keep the chunk warm.
   google: () => import("@/pages/dashboard/ops/google/GoogleWorkspacePage"),
   agent: () => import("@/pages/dashboard/ops/agent/AgentOverviewPage"),
 };
@@ -41,14 +42,9 @@ export const OPS_PRELOADERS: Record<string, Loader> = {
 export const AGENT_PRELOADERS: Record<string, Loader> = {
   "": () => import("@/pages/dashboard/ops/agent/AgentOverviewPage"),
   operator: () => import("@/pages/dashboard/ops/agent/OperatorPage"),
-  proactive: () => import("@/pages/dashboard/ops/agent/ProactivePage"),
   configure: () => import("@/pages/dashboard/ops/agent/ConfigurePage"),
+  // Route still exists (deep links), just no longer a sub-tab.
   knowledge: () => import("@/pages/dashboard/ops/agent/KnowledgePage"),
-  inbox: () => import("@/pages/dashboard/ops/agent/InboxPage"),
-  snippets: () => import("@/pages/dashboard/ops/agent/SnippetsPage"),
-  outbound: () => import("@/pages/dashboard/ops/agent/OutboundPage"),
-  "call-center": () => import("@/pages/dashboard/ops/agent/CallCenterPage"),
-  test: () => import("@/pages/dashboard/ops/agent/TestPage"),
 };
 
 /** Detail / studio screens — warmed in the background (not hover-keyed). */

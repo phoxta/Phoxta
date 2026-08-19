@@ -56,8 +56,8 @@ export const OPERATOR_READ_TOOLS: Tool[] = [
   { name: "list_contacts", description: "List CRM contacts with stage, email, phone, company and value.", input_schema: { type: "object", properties: {} } },
   { name: "list_invoices", description: "List invoices with number, customer, status, total and due date.", input_schema: { type: "object", properties: {} } },
   { name: "list_tickets", description: "List support tickets with subject, customer, status and priority.", input_schema: { type: "object", properties: {} } },
-  { name: "list_bookings", description: "List appointments/bookings with customer, time, status and service.", input_schema: { type: "object", properties: {} } },
-  { name: "list_reservations", description: "List reservations (rentals/stays) with customer, dates, status and resource.", input_schema: { type: "object", properties: {} } },
+  { name: "list_bookings", description: "List appointments/bookings with customer (name, email, phone), time, status and service.", input_schema: { type: "object", properties: {} } },
+  { name: "list_reservations", description: "List reservations (rentals/stays) with customer, dates, status, resource, total, currency, whether paid and the payment reference — use this to answer payment questions like 'which upcoming rentals are unpaid?'.", input_schema: { type: "object", properties: {} } },
   { name: "list_campaigns", description: "List marketing campaigns with channel, status and recipients.", input_schema: { type: "object", properties: {} } },
   { name: "list_services", description: "List bookable services with duration, price and whether active.", input_schema: { type: "object", properties: {} } },
   { name: "list_locations", description: "List business/branch locations with ZIP, phone and service types.", input_schema: { type: "object", properties: {} } },
@@ -129,12 +129,20 @@ export function toolRunner(admin: SupabaseClient, orgId: string) {
       return JSON.stringify(data ?? []);
     }
     if (name === "list_bookings") {
-      const { data } = await admin.from("bookings").select("customer_name, customer_email, start_at, status, services(name)").eq("organization_id", orgId).order("start_at", { ascending: true }).limit(60);
+      const { data } = await admin.from("bookings").select("customer_name, customer_email, customer_phone, start_at, status, services(name)").eq("organization_id", orgId).order("start_at", { ascending: true }).limit(60);
       return JSON.stringify(data ?? []);
     }
     if (name === "list_reservations") {
-      const { data } = await admin.from("reservations").select("customer_name, start_date, end_date, units, status, products(name)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(60);
-      return JSON.stringify(data ?? []);
+      const { data } = await admin.from("reservations").select("customer_name, start_date, end_date, units, status, total_cents, currency, metadata, products(name)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(60);
+      // Surface payment state from metadata (set by the payment webhook) so the
+      // operator can answer "which upcoming rentals are unpaid?".
+      const rows = ((data as Json[] | null) ?? []).map((r) => {
+        const meta = (r.metadata ?? {}) as Json;
+        const rest = { ...r };
+        delete rest.metadata;
+        return { ...rest, paid: meta.paid === true, payment_reference: meta.payment_reference ?? null };
+      });
+      return JSON.stringify(rows);
     }
     if (name === "list_campaigns") {
       const { data } = await admin.from("campaigns").select("name, channel, status, recipients").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(40);

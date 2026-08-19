@@ -64,6 +64,55 @@ export const revenue30Query = query("revenue.30d", async () => {
   return sum(orders.data) + sum(reservations.data);
 });
 
+/** Windowed operating metrics for one business — rpc app_org_ops_window (0073).
+ *  Money fields are cents in the org's currency (also returned). `_prev` fields
+ *  are the immediately preceding window of the same length, for delta arrows. */
+export type OpsWindow = {
+  currency: string;
+  revenue: number;
+  revenue_prev: number;
+  orders: number;
+  orders_prev: number;
+  unfulfilled: number;
+  unread: number;
+  escalated: number;
+  approvals: number;
+  low_stock: number;
+  arrivals_today: number;
+  departures_today: number;
+  bookings_today: number;
+  overdue_invoices: number;
+  reservations_pending: number;
+  reservations_upcoming: number;
+};
+
+const EMPTY_OPS_WINDOW: OpsWindow = {
+  currency: "USD",
+  revenue: 0,
+  revenue_prev: 0,
+  orders: 0,
+  orders_prev: 0,
+  unfulfilled: 0,
+  unread: 0,
+  escalated: 0,
+  approvals: 0,
+  low_stock: 0,
+  arrivals_today: 0,
+  departures_today: 0,
+  bookings_today: 0,
+  overdue_invoices: 0,
+  reservations_pending: 0,
+  reservations_upcoming: 0,
+};
+
+/** Fetch the 30-day (default) ops window for an org. Throws on error so
+ *  useCachedData / callers surface it; missing keys fall back to 0. */
+export async function getOpsWindow(orgId: string, days = 30): Promise<OpsWindow> {
+  const { data, error } = await supabase.rpc("app_org_ops_window", { p_org: orgId, p_days: days });
+  if (error) throw new Error(error.message);
+  return { ...EMPTY_OPS_WINDOW, ...((data as Partial<OpsWindow> | null) ?? {}) };
+}
+
 /** Marketplace blueprint catalog. */
 export const marketplaceBlueprintsQuery = query("marketplace.blueprints", () => unwrap(listBlueprints()));
 

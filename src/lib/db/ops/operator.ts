@@ -5,7 +5,7 @@ import { friendlyError } from "@/lib/friendlyError";
 // plus the approval queue, audit trail and per-tool policy that make it safe.
 export type OperatorMsg = { role: "user" | "assistant"; content: string };
 export type AgentAction = { id: string; tool: string; args: Record<string, unknown>; title: string; status: string; result: string | null; error: string | null; created_at: string };
-export type AuditEntry = { id: string; actor: string; tool: string; status: string; summary: string; created_at: string };
+export type AuditEntry = { id: string; actor: string; tool: string; status: string; summary: string; args: Record<string, unknown> | null; created_at: string };
 export type ToolPolicy = { tool: string; mode: "off" | "approve" | "auto" };
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
@@ -56,13 +56,19 @@ export async function decideAction(actionId: string, decision: "approve" | "reje
   return { status: data?.status ?? null, error };
 }
 
-export async function listAudit(orgId: string): Promise<{ data: AuditEntry[]; error: string | null }> {
+/** Approve-with-edit: rewrite a still-pending action's args before deciding it. */
+export async function updateActionArgs(actionId: string, args: Record<string, unknown>): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("agent_actions").update({ args }).eq("id", actionId).eq("status", "pending");
+  return { error: friendlyError(error?.message) };
+}
+
+export async function listAudit(orgId: string, limit = 25): Promise<{ data: AuditEntry[]; error: string | null }> {
   const { data, error } = await supabase
     .from("agent_audit_log")
-    .select("id, actor, tool, status, summary, created_at")
+    .select("id, actor, tool, status, summary, args, created_at")
     .eq("organization_id", orgId)
     .order("created_at", { ascending: false })
-    .limit(25);
+    .limit(limit);
   return { data: (data as AuditEntry[] | null) ?? [], error: friendlyError(error?.message) };
 }
 
@@ -150,6 +156,13 @@ export async function listMemory(orgId: string): Promise<{ data: MemoryNote[]; e
 
 export async function addMemory(orgId: string, content: string, title = ""): Promise<{ error: string | null }> {
   const { error } = await supabase.from("agent_memory").insert({ organization_id: orgId, content, title, source: "owner" });
+  return { error: friendlyError(error?.message) };
+}
+
+export async function updateMemory(id: string, content: string, title?: string): Promise<{ error: string | null }> {
+  const patch: Record<string, string> = { content };
+  if (title !== undefined) patch.title = title;
+  const { error } = await supabase.from("agent_memory").update(patch).eq("id", id);
   return { error: friendlyError(error?.message) };
 }
 

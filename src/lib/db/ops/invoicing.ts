@@ -31,23 +31,29 @@ export async function listInvoices(orgId: string): Promise<{ data: Invoice[]; er
 
 export async function createInvoice(
   orgId: string,
-  input: { customer_name: string; customer_email?: string; due_date?: string | null; items: InvoiceItemInput[] },
+  input: {
+    customer_name: string;
+    customer_email?: string;
+    due_date?: string | null;
+    currency?: string;
+    items: InvoiceItemInput[];
+  },
 ): Promise<{ error: string | null }> {
   const total = input.items.reduce((s, i) => s + i.quantity * i.unit_price_cents, 0);
-  const number = `INV-${Date.now().toString().slice(-6)}`;
-  const { data: invoice, error } = await supabase
-    .from("invoices")
-    .insert({
-      organization_id: orgId,
-      number,
-      customer_name: input.customer_name.trim(),
-      customer_email: input.customer_email?.trim() ?? "",
-      due_date: input.due_date || null,
-      total_cents: total,
-      status: "draft",
-    })
-    .select("id")
-    .single();
+  // Per-org sequential number (INV-0001 …) issued by the database.
+  const { data: number, error: numErr } = await supabase.rpc("app_next_invoice_number", { p_org: orgId });
+  if (numErr || !number) return { error: friendlyError(numErr?.message ?? "invoice number unavailable") };
+  const row: Record<string, unknown> = {
+    organization_id: orgId,
+    number: number as string,
+    customer_name: input.customer_name.trim(),
+    customer_email: input.customer_email?.trim() ?? "",
+    due_date: input.due_date || null,
+    total_cents: total,
+    status: "draft",
+  };
+  if (input.currency) row.currency = input.currency;
+  const { data: invoice, error } = await supabase.from("invoices").insert(row).select("id").single();
   if (error || !invoice) return { error: friendlyError(error?.message) };
 
   if (input.items.length > 0) {
@@ -78,47 +84,13 @@ export async function setInvoiceStatus(id: string, status: InvoiceStatus): Promi
   return { error: friendlyError(error?.message) };
 }
 
-// --- Recurring subscriptions (per business) --------------------------------
-export type SubStatus = "active" | "paused" | "canceled";
-export type CustomerSubscription = {
-  id: string;
-  plan_name: string;
-  amount_cents: number;
-  currency: string;
-  interval: "monthly" | "yearly";
-  status: SubStatus;
-  current_period_end: string | null;
-  created_at: string;
-};
-
-export async function listCustomerSubscriptions(
-  orgId: string,
-): Promise<{ data: CustomerSubscription[]; error: string | null }> {
-  const { data, error } = await supabase
-    .from("customer_subscriptions")
-    .select("id, plan_name, amount_cents, currency, interval, status, current_period_end, created_at")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
-  return { data: (data as CustomerSubscription[] | null) ?? [], error: friendlyError(error?.message) };
-}
-
-export async function createCustomerSubscription(
-  orgId: string,
-  input: { plan_name: string; amount_cents: number; interval?: "monthly" | "yearly" },
-): Promise<{ error: string | null }> {
-  const periodDays = input.interval === "yearly" ? 365 : 30;
-  const { error } = await supabase.from("customer_subscriptions").insert({
-    organization_id: orgId,
-    plan_name: input.plan_name.trim(),
-    amount_cents: input.amount_cents,
-    interval: input.interval ?? "monthly",
-    status: "active",
-    current_period_end: new Date(Date.now() + periodDays * 86400000).toISOString(),
-  });
-  return { error: friendlyError(error?.message) };
-}
-
-export async function setSubscriptionStatus(id: string, status: SubStatus): Promise<{ error: string | null }> {
-  const { error } = await supabase.from("customer_subscriptions").update({ status }).eq("id", id);
+/** Permanently remove a draft invoice and its line items. Drafts only. */
+export async function deleteDraftInvoice(id: string): Promise<{ error: string | null }> {
+  const { data: inv, error: checkErr } = await supabase.from("invoices").select("id, status").eq("id", id).single();
+  if (checkErr || !inv) return { error: friendlyError(checkErr?.message ?? "not found") };
+  if ((inv as { status: string }).status !== "draft") return { error: "Only draft invoices can be deleted." };
+  const { error: itemsErr } = await supabase.from("invoice_items").delete().eq("invoice_id", id);
+  if (itemsErr) return { error: friendlyError(itemsErr.message) };
+  const { error } = await supabase.from("invoices").delete().eq("id", id).eq("status", "draft");
   return { error: friendlyError(error?.message) };
 }

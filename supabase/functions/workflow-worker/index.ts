@@ -60,6 +60,9 @@ Deno.serve(async (req) => {
   const pf = preflight(req);
   if (pf) return pf;
 
+  // requireUser also admits the trusted scheduler via x-cron-secret
+  // (CRON_SECRET / BILLING_CRON_SECRET) — same drain either way, so pg_cron
+  // and the Railway worker-cron can keep this queue moving without a session.
   const auth = await requireUser(req);
   if ("error" in auth) return auth.error;
 
@@ -86,8 +89,19 @@ Deno.serve(async (req) => {
         const who = source?.customer_name || source?.name || "a customer";
 
         if (action === "send_email") {
-          const subject = `${automation?.name ?? "Automation"} — ${r.trigger.replace("_", " ")}`;
-          const res = await sendEmail(recipient, subject, `Hi ${who}, this is an automated message from your business.`);
+          // Owner-authored subject/body from the automation's config, with
+          // {{name}} / {{business}} substitution; sensible defaults otherwise.
+          const { data: orgRow } = await admin.from("organizations").select("name").eq("id", r.organization_id).maybeSingle();
+          const business = (orgRow as { name?: string } | null)?.name || "your business";
+          const fill = (s: string) => s.replaceAll("{{name}}", who).replaceAll("{{business}}", business);
+          const cfg = (automation?.config ?? {}) as Json;
+          const subject = fill(
+            String(cfg?.subject ?? "").trim() || `${automation?.name ?? "An update"} from ${business}`,
+          );
+          const bodyText = fill(
+            String(cfg?.body ?? "").trim() || `Hi ${who}, thanks for being a customer of ${business}. This is a quick automated update from us — just reply to this email if you have any questions.`,
+          );
+          const res = await sendEmail(recipient, subject, bodyText);
           steps.push({ type: "send_email", to: recipient, status: res.status });
         } else if (action === "add_tag") {
           const tag = (automation?.config?.tag as string) || "automation";

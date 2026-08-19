@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { composeEmail } from "@/lib/db/ops/agent";
+import { confirmDanger, toast } from "@/lib/ops/feedback";
 
 type Attachment = { filename: string; content: string; size: number };
 const MAX_TOTAL = 5 * 1024 * 1024; // 5 MB total (base64 inflates ~33%)
@@ -68,30 +69,40 @@ export default function EmailComposer({
     });
     setSending(false);
     if (!ok || error) { setError(error ?? "Could not send."); return; }
+    toast("Email sent.");
     onSent(cid);
     onClose();
   }
 
+  /** Closing loses the draft — confirm when there's anything in it. */
+  function requestClose() {
+    const html = (bodyRef.current?.innerHTML ?? "").replace(/<br\s*\/?>/gi, "").trim();
+    const dirty =
+      !!html || !!subject.trim() || attachments.length > 0 || !!cc.trim() || !!bcc.trim() || to.trim() !== initialTo.trim();
+    if (dirty && !confirmDanger("Discard this email draft?")) return;
+    onClose();
+  }
+
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 1050 }} className="d-flex align-items-center justify-content-center p-3" onMouseDown={onClose}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 1050 }} className="d-flex align-items-center justify-content-center p-3" onMouseDown={requestClose}>
       <div className="bg-neutral-0 rounded-4 border-100 p-4 w-100" style={{ maxWidth: 640, maxHeight: "90vh", overflow: "auto" }} onMouseDown={(e) => e.stopPropagation()}>
         <div className="d-flex align-items-center justify-content-between mb-3">
           <h6 className="fw-600 mb-0">{conversationId ? "Reply by email" : "New email"}</h6>
-          <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={onClose}>✕</button>
+          <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" aria-label="Close composer" onClick={requestClose}>✕</button>
         </div>
         {error && <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2">{error}</div>}
 
         <div className="d-flex align-items-center gap-2 mb-2">
-          <input className="form-control rounded-3" placeholder="To (comma-separated)" value={to} onChange={(e) => setTo(e.target.value)} />
+          <input className="form-control rounded-3" placeholder="To (comma-separated)" aria-label="To recipients (comma-separated)" value={to} onChange={(e) => setTo(e.target.value)} />
           <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none text-nowrap" onClick={() => setShowCcBcc((v) => !v)}>Cc/Bcc</button>
         </div>
         {showCcBcc && (
           <>
-            <input className="form-control rounded-3 mb-2" placeholder="Cc" value={cc} onChange={(e) => setCc(e.target.value)} />
-            <input className="form-control rounded-3 mb-2" placeholder="Bcc" value={bcc} onChange={(e) => setBcc(e.target.value)} />
+            <input className="form-control rounded-3 mb-2" placeholder="Cc" aria-label="Cc recipients" value={cc} onChange={(e) => setCc(e.target.value)} />
+            <input className="form-control rounded-3 mb-2" placeholder="Bcc" aria-label="Bcc recipients" value={bcc} onChange={(e) => setBcc(e.target.value)} />
           </>
         )}
-        <input className="form-control rounded-3 mb-2" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
+        <input className="form-control rounded-3 mb-2" placeholder="Subject" aria-label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
 
         <div className="border-100 rounded-3 mb-2">
           <div className="d-flex gap-1 p-2 border-bottom border-100">
@@ -100,7 +111,7 @@ export default function EmailComposer({
             ))}
             <button type="button" className="btn btn-sm btn-outline-secondary rounded-2 px-2 py-0" onMouseDown={(e) => { e.preventDefault(); link(); }}>Link</button>
           </div>
-          <div ref={bodyRef} contentEditable suppressContentEditableWarning className="p-3 fz-font-md" style={{ minHeight: 160, outline: "none", whiteSpace: "pre-wrap" }} />
+          <div ref={bodyRef} contentEditable suppressContentEditableWarning role="textbox" aria-label="Email body" aria-multiline="true" className="p-3 fz-font-md" style={{ minHeight: 160, outline: "none", whiteSpace: "pre-wrap" }} />
         </div>
 
         <div className="d-flex flex-wrap gap-1 mb-2">
@@ -115,7 +126,7 @@ export default function EmailComposer({
             <input type="file" multiple className="d-none" onChange={onFiles} />
           </label>
           <div className="d-flex gap-2">
-            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none px-2" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none px-2" onClick={requestClose}>Cancel</button>
             <button type="button" className="btn btn-dark rounded-pill px-4" onClick={send} disabled={sending}>{sending ? "Sending…" : "Send"}</button>
           </div>
         </div>

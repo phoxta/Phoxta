@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
 import { driveList, docsCreate, type DriveFile } from "@/lib/db/ops/google";
 
-const MIME: Record<string, string | undefined> = {
-  all: undefined,
-  docs: "application/vnd.google-apps.document",
-  sheets: "application/vnd.google-apps.spreadsheet",
-};
 const kind = (mime: string) =>
   mime.includes("document") ? "Doc" : mime.includes("spreadsheet") ? "Sheet" : mime.includes("presentation") ? "Slides" : mime.includes("folder") ? "Folder" : mime.includes("pdf") ? "PDF" : mime.includes("image") ? "Image" : "File";
 
-export default function DriveApp({ orgId, filter = "all" }: { orgId: string; filter?: "all" | "docs" | "sheets" }) {
+export default function DriveApp({ orgId }: { orgId: string }) {
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
@@ -19,12 +14,12 @@ export default function DriveApp({ orgId, filter = "all" }: { orgId: string; fil
 
   async function load(query = "") {
     setLoading(true);
-    const { data, error } = await driveList(orgId, { q: query, mime: MIME[filter] });
+    const { data, error } = await driveList(orgId, { q: query });
     if (error) setError(error);
     setFiles(data);
     setLoading(false);
   }
-  useEffect(() => { load(); }, [orgId, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function newDoc() {
     const title = window.prompt("Document title");
@@ -43,10 +38,10 @@ export default function DriveApp({ orgId, filter = "all" }: { orgId: string; fil
       {notice && <div className="alert alert-info py-2 px-3 fz-font-sm mb-3">{notice}</div>}
       <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
         <form className="d-flex gap-2 flex-grow-1" onSubmit={(e) => { e.preventDefault(); load(q); }} style={{ maxWidth: 420 }}>
-          <input className="form-control form-control-sm rounded-3" placeholder={`Search ${filter === "all" ? "Drive" : filter}…`} value={q} onChange={(e) => setQ(e.target.value)} />
+          <input aria-label="Search Drive" className="form-control form-control-sm rounded-3" placeholder="Search Drive…" value={q} onChange={(e) => setQ(e.target.value)} />
           <button className="btn btn-dark btn-sm rounded-3 px-3" type="submit">Search</button>
         </form>
-        {filter !== "sheets" && <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap" onClick={newDoc} disabled={busy}>＋ New Doc</button>}
+        <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap" onClick={newDoc} disabled={busy}>＋ New Doc</button>
       </div>
       {loading ? (
         <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">Loading…</div>
