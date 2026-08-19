@@ -15,6 +15,7 @@ import { listAiUsageThisMonth } from "@/lib/db/ai";
 import { listMySubscriptions, listMyPurchases } from "@/lib/db/billing";
 import { listBlueprints } from "@/lib/db/marketplace";
 import { getMyMatchProfile, listOpenProfiles, listMyMatches, type MatchProfile, type Match } from "@/lib/db/matching";
+import { listDomains, type Domain } from "@/lib/db/domains";
 
 export type CacheQuery<T> = { key: string; fetch: () => Promise<T> };
 
@@ -111,6 +112,20 @@ export async function getOpsWindow(orgId: string, days = 30): Promise<OpsWindow>
   const { data, error } = await supabase.rpc("app_org_ops_window", { p_org: orgId, p_days: days });
   if (error) throw new Error(error.message);
   return { ...EMPTY_OPS_WINDOW, ...((data as Partial<OpsWindow> | null) ?? {}) };
+}
+
+/** Domains for one business — the Phoxta subdomain plus any linked/bought ones.
+ *  Read by Business details ("Site & domains") and by the operating console's
+ *  "View live site" link, so both share one cache entry under this key. */
+export const domainsQuery = (orgId: string): CacheQuery<Domain[]> =>
+  query(`domains:${orgId}`, async () => (await listDomains(orgId)).data);
+
+/** The canonical public address for a business: the primary live domain, else a
+ *  live custom domain, else any live one. Mirrors the "Live at" precedence on
+ *  Business details so the console never disagrees with it. */
+export function primaryLiveDomain(domains: Domain[] | undefined): Domain | null {
+  const live = (domains ?? []).filter((d) => d.status === "live");
+  return live.find((d) => d.is_primary) ?? live.find((d) => d.kind === "custom") ?? live[0] ?? null;
 }
 
 /** Marketplace blueprint catalog. */

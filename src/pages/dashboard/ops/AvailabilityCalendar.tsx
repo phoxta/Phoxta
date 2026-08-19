@@ -35,16 +35,20 @@ export default function AvailabilityCalendar({
   blackouts,
   reservations = [],
   onBlockDate,
+  itemNoun = "item",
 }: {
   products: Product[];
   blackouts: Blackout[];
   reservations?: Reservation[];
   onBlockDate?: (productId: string, date: string) => void;
+  /** What this business calls a bookable resource ("Vehicle", "Listing", …). */
+  itemNoun?: string;
 }) {
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [avail, setAvail] = useState<Record<string, AvailDay>>({});
   const [loading, setLoading] = useState(false);
+  const [availError, setAvailError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,16 +60,25 @@ export default function AvailabilityCalendar({
   }, [productId, cursor]);
 
   useEffect(() => {
-    if (!productId) { setAvail({}); return; }
+    if (!productId) { setAvail({}); setAvailError(null); return; }
     const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
     const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
     setLoading(true);
-    resourceAvailability(productId, ymd(start), ymd(end)).then((rows) => {
-      const m: Record<string, AvailDay> = {};
-      rows.forEach((r) => { m[String(r.day).slice(0, 10)] = r; });
-      setAvail(m);
-      setLoading(false);
-    });
+    setAvailError(null);
+    resourceAvailability(productId, ymd(start), ymd(end))
+      .then((res) => {
+        const m: Record<string, AvailDay> = {};
+        res.data.forEach((r) => { m[String(r.day).slice(0, 10)] = r; });
+        setAvail(m);
+        setAvailError(res.error);
+        setLoading(false);
+      })
+      // A rejection (network drop) would otherwise leave `loading` stuck on forever.
+      .catch(() => {
+        setAvail({});
+        setAvailError("Something went wrong. Please try again.");
+        setLoading(false);
+      });
   }, [productId, cursor]);
 
   const blackoutDays = useMemo(() => {
@@ -136,7 +149,7 @@ export default function AvailabilityCalendar({
         )}
       </div>
       {products.length === 0 ? (
-        <div className="neutral-500 fz-font-md">Add a resource first.</div>
+        <div className="neutral-500 fz-font-md">Add a {itemNoun.toLowerCase()} first.</div>
       ) : (
         <>
           <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
@@ -255,7 +268,10 @@ export default function AvailabilityCalendar({
             <Legend cls="bg-success-subtle" text="Open" />
             <Legend cls="bg-warning-subtle" text="Limited (number = left)" />
             <Legend cls="bg-danger-subtle" text="Full, or blocked (“Off”)" />
-            <span className="ms-auto" role="status" aria-live="polite">{loading ? "Loading…" : ""}</span>
+            {availError && (
+              <span className="ms-auto text-danger" role="alert">Couldn't load availability for this month</span>
+            )}
+            <span className={availError ? "" : "ms-auto"} role="status" aria-live="polite">{loading ? "Loading…" : ""}</span>
           </div>
         </>
       )}

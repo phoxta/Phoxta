@@ -59,9 +59,34 @@ const ORDER_FILTERS: { v: "all" | Order["status"]; label: string }[] = [
 
 const ORDERS_PAGE = 50;
 
+/** Orders are a headline surface for sell-a-thing verticals and a rarely-used
+ *  add-on for reservation ones — same capability, different prominence. */
+function OrdersFrame({ show, children }: { show: boolean; children: React.ReactNode }) {
+  if (show) {
+    return (
+      <>
+        <h2 className="fz-font-lg fw-600 mb-3">Orders</h2>
+        {children}
+      </>
+    );
+  }
+  return (
+    <details>
+      <summary className="fz-font-lg fw-600 ops-tap" style={{ cursor: "pointer" }}>Manual orders</summary>
+      <div className="fz-font-sm neutral-500 mt-1 mb-3">Most money arrives through reservations — use this for one-off add-on sales.</div>
+      {children}
+    </details>
+  );
+}
+
 export default function CommercePage() {
   const { orgId, org, console: cfg } = useOutletContext<OpsContext>();
   const orgCurrency = org.currency || "USD";
+  // Reservation verticals (fleet, stays, experiences) take money through
+  // reservations, not orders — so the Orders panel is demoted to a collapsed
+  // "Manual orders" block there instead of owning half the tab. A restaurant
+  // keeps it: takeaway/delivery orders are a real, daily surface.
+  const showOrders = cfg.booking === "none" || cfg.commerceLabel === "Menu";
   const [variantsFor, setVariantsFor] = useState<string | null>(null);
 
   const { data: products = [], loading: productsLoading, error: productsError, reload: reloadProducts } = useCachedData(
@@ -189,7 +214,10 @@ export default function CommercePage() {
   }
 
   async function genCopy() {
-    if (!copyForm.name.trim()) return;
+    if (!copyForm.name.trim()) {
+      toastError(`Name the ${cfg.itemNoun.toLowerCase()} first — the AI writes copy from it.`);
+      return;
+    }
     setCopyLoading(true);
     const { data, error } = await invokeAction<ProductCopy>(orgId, "product_copy", { name: copyForm.name, hints: copyForm.hints });
     setCopyLoading(false);
@@ -198,7 +226,14 @@ export default function CommercePage() {
   }
 
   async function createFromCopy() {
-    if (!copyForm.name.trim() || !copy) return;
+    if (!copyForm.name.trim()) {
+      toastError(`Name the ${cfg.itemNoun.toLowerCase()} first — the AI writes copy from it.`);
+      return;
+    }
+    if (!copy) {
+      toastError("Generate the copy first, then create from it.");
+      return;
+    }
     const priceCents = parseCents(copyForm.price);
     if (priceCents === null) {
       toastError("Price must be a valid number (e.g. 24.99).");
@@ -290,7 +325,7 @@ export default function CommercePage() {
       )}
 
       {/* Products */}
-      <div className="col-lg-6">
+      <div className={showOrders ? "col-lg-6" : "col-12"}>
         <h2 className="fz-font-lg fw-600 mb-3">{cfg.commerceLabel}</h2>
         <form onSubmit={addProduct} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
           <div className="row g-2 align-items-center">
@@ -313,7 +348,7 @@ export default function CommercePage() {
                 half-width column — give them room instead. */}
             <div className="col"><input className="form-control rounded-3" placeholder={`${cfg.itemNoun} name`} aria-label={`${cfg.itemNoun} name`} value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} required /></div>
             <div className="col-12"><input className="form-control rounded-3" placeholder="Category / section" aria-label="Category / section" value={pForm.category} onChange={(e) => setPForm({ ...pForm, category: e.target.value })} /></div>
-            <div className="col-6"><input type="number" min={0} step={0.01} className="form-control rounded-3" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={pForm.price} onChange={(e) => setPForm({ ...pForm, price: e.target.value })} /></div>
+            <div className="col-6"><input type="number" inputMode="decimal" min={0} step={0.01} className="form-control rounded-3" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={pForm.price} onChange={(e) => setPForm({ ...pForm, price: e.target.value })} /></div>
             <div className="col-6"><input type="number" min={0} step={1} className="form-control rounded-3" placeholder="Stock" aria-label="Stock" value={pForm.stock} onChange={(e) => setPForm({ ...pForm, stock: e.target.value })} /></div>
             <div className="col-12"><button type="submit" className="btn btn-dark w-100 rounded-3 px-3" disabled={pUploading}>Add</button></div>
           </div>
@@ -338,10 +373,12 @@ export default function CommercePage() {
 
         {visibleProducts.length === 0 ? (
           <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">
-            {products.length === 0 ? "No products yet." : "Nothing matches that filter."}
+            {products.length === 0 ? `No ${cfg.itemNoun.toLowerCase()}s yet.` : "Nothing matches that filter."}
           </div>
         ) : (
-          <div className="bg-neutral-0 rounded-4 border-100 overflow-hidden ops-scroll-x">
+          // No `overflow-hidden` here: Bootstrap sets it !important and would beat
+          // .ops-scroll-x's overflow-x:auto, clipping the right-hand action cell.
+          <div className="bg-neutral-0 rounded-4 border-100 ops-scroll-x">
             <table className="table mb-0 align-middle" style={{ minWidth: 520 }}>
               <tbody>
                 {visibleProducts.map((p) => (
@@ -401,8 +438,8 @@ export default function CommercePage() {
       </div>
 
       {/* Orders */}
-      <div className="col-lg-6">
-        <h2 className="fz-font-lg fw-600 mb-3">Orders</h2>
+      <div className={showOrders ? "col-lg-6" : "col-12"}>
+        <OrdersFrame show={showOrders}>
         <form onSubmit={addOrder} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
           <div className="row g-2">
             <div className="col-md-6"><input className="form-control rounded-3" placeholder="Customer name" aria-label="Customer name" value={oForm.customer} onChange={(e) => setOForm({ ...oForm, customer: e.target.value })} required /></div>
@@ -427,8 +464,8 @@ export default function CommercePage() {
                   </select>
                 </div>
                 <div className="col-6">
-                  <select className="form-select rounded-3" aria-label="Colour" value={oForm.color} onChange={(e) => setOForm({ ...oForm, color: e.target.value })}>
-                    <option value="">Colour…</option>
+                  <select className="form-select rounded-3" aria-label="Color" value={oForm.color} onChange={(e) => setOForm({ ...oForm, color: e.target.value })}>
+                    <option value="">Color…</option>
                     {variantColors.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
@@ -534,6 +571,7 @@ export default function CommercePage() {
             )}
           </div>
         )}
+        </OrdersFrame>
       </div>
 
       {/* AI tools — below the operational surfaces on purpose */}
@@ -550,7 +588,7 @@ export default function CommercePage() {
           <div className="row g-2 align-items-end">
             <div className="col-md-4"><input className="form-control rounded-3" placeholder={`${cfg.itemNoun} name`} aria-label={`${cfg.itemNoun} name`} value={copyForm.name} onChange={(e) => setCopyForm({ ...copyForm, name: e.target.value })} /></div>
             <div className="col-md-4"><input className="form-control rounded-3" placeholder="Hints (features, audience)" aria-label="Hints" value={copyForm.hints} onChange={(e) => setCopyForm({ ...copyForm, hints: e.target.value })} /></div>
-            <div className="col-md-2"><input type="number" min={0} step={0.01} className="form-control rounded-3" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={copyForm.price} onChange={(e) => setCopyForm({ ...copyForm, price: e.target.value })} /></div>
+            <div className="col-md-2"><input type="number" inputMode="decimal" min={0} step={0.01} className="form-control rounded-3" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={copyForm.price} onChange={(e) => setCopyForm({ ...copyForm, price: e.target.value })} /></div>
             <div className="col-md-2"><button type="button" className="btn btn-dark w-100 rounded-3" onClick={genCopy} disabled={copyLoading}>{copyLoading ? "…" : "Generate copy"}</button></div>
           </div>
 
@@ -563,7 +601,7 @@ export default function CommercePage() {
                 </ul>
               )}
               <div className="fz-font-sm neutral-500 mb-2">SEO: {copy.seo_title} — {copy.seo_description}</div>
-              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={createFromCopy}>Create product with this copy</button>
+              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={createFromCopy}>Create {cfg.itemNoun.toLowerCase()} with this copy</button>
             </div>
           )}
 

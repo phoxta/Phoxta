@@ -1,4 +1,4 @@
-import { useOutletContext, useSearchParams } from "react-router-dom";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import GmailApp from "./GmailApp";
 import DriveApp from "./DriveApp";
@@ -32,6 +32,13 @@ export default function GoogleWorkspacePage() {
 
   return (
     <div>
+      {/* /ops/google is not a console tab, so nothing in the tab bar highlights
+          while it is open — this breadcrumb is the signposted way back. */}
+      <nav aria-label="Breadcrumb" className="mb-2">
+        <Link to={`/dashboard/businesses/${orgId}/ops/settings`} className="fz-font-sm neutral-500 text-decoration-none ops-tap">
+          <span aria-hidden="true">← </span>Settings
+        </Link>
+      </nav>
       <h2 className="fz-font-lg fw-600 mb-1">Google Workspace</h2>
       <p className="fz-font-sm neutral-500 mb-3">Your business Gmail, Drive and Calendar, inside the console.</p>
 

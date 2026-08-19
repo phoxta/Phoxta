@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
@@ -133,7 +133,7 @@ const ACTIONS: { value: AutomationAction; label: string }[] = [
 ];
 
 const OUTBOUND_TYPES = [
-  { value: "cold_call", label: "Cold calling / SDR" },
+  { value: "cold_call", label: "Cold calling" },
   { value: "upsell", label: "Upsell" },
   { value: "cross_sell", label: "Cross-sell" },
   { value: "nurture", label: "Lead nurturing" },
@@ -142,7 +142,12 @@ const OUTBOUND_TYPES = [
 // ---------------------------------------------------------------------------
 export default function MarketingPage() {
   const { orgId, org } = useOutletContext<OpsContext>();
-  const [tab, setTab] = useState<SectionKey>("campaigns");
+  // The open section lives in the URL, so it survives Back, sharing, and the
+  // business switcher (which preserves the pathname + query).
+  const [params, setParams] = useSearchParams();
+  const requested = params.get("tab");
+  const tab = (SECTIONS.some((s) => s.key === requested) ? requested : "campaigns") as SectionKey;
+  const setTab = (k: SectionKey) => setParams(k === "campaigns" ? {} : { tab: k });
 
   const { data, loading, error: loadError, reload } = useCachedData(
     `ops:marketing:${orgId}`,
@@ -158,7 +163,9 @@ export default function MarketingPage() {
         listAiAutomations(orgId),
         listAutomationRuns(orgId),
       ]);
-      if (c.error) throw new Error(c.error);
+      // Any one of the nine failing would otherwise read as "you have none of these".
+      const err = [c, seg, ct, a, r, oc, ot, aa, ar].map((x) => x.error).find(Boolean);
+      if (err) throw new Error(err);
       return {
         campaigns: c.data, segments: seg.data, contacts: ct.data, automations: a.data, runs: r.data,
         outbound: oc.data, tasks: ot.data, aiAutos: aa.data, aiRuns: ar.data,
@@ -270,7 +277,7 @@ function CampaignsTab({ orgId, campaigns, segments, contacts, reload }: {
   }
 
   async function removeSegment(s: Segment) {
-    if (!confirmDanger(`Delete the segment "${s.name}"? Campaigns targeting it will no longer resolve.`)) return;
+    if (!confirmDanger(`Delete the segment "${s.name}"? Campaigns aimed at it will stop reaching anyone.`)) return;
     const ok = await reportMutation(deleteSegment(s.id), "Segment deleted.");
     if (ok) reload();
   }
@@ -306,7 +313,8 @@ function CampaignsTab({ orgId, campaigns, segments, contacts, reload }: {
     const { campaign, eligible } = sendPrep;
     if (eligible.length === 0) { toastError("No eligible recipients — everyone is opted out or missing an address."); return; }
     const label = campaign.subject || campaign.name;
-    if (!confirmDanger(`Send "${label}" to ${eligible.length} contact(s) via ${campaign.channel}? This cannot be undone.`)) return;
+    // No extra confirm dialog: the inline review panel above IS the confirmation,
+    // and it shows strictly more (audience, skipped count, body preview).
     setSending(true);
     const ok = await reportMutation(
       queueCampaignSend(orgId, campaign, eligible),
@@ -648,7 +656,7 @@ function AutomationsTab({ orgId, businessName, automations, runs, reload }: {
                     <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={() => startEdit(a)}>Edit</button>
                     <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap" onClick={() => remove(a)}>Delete</button>
                     <div className="form-check form-switch m-0">
-                      <input className="form-check-input" type="checkbox" aria-label={`${a.name} active`} checked={a.active} onChange={async (e) => { const ok = await reportMutation(toggleAutomation(a.id, e.target.checked)); if (ok) reload(); }} />
+                      <input className="form-check-input" type="checkbox" aria-label={`${a.name} active`} checked={a.active} onChange={async (e) => { const ok = await reportMutation(toggleAutomation(a.id, e.target.checked), e.target.checked ? "Automation turned on." : "Automation paused."); if (ok) reload(); }} />
                     </div>
                   </div>
                 </div>
@@ -660,7 +668,7 @@ function AutomationsTab({ orgId, businessName, automations, runs, reload }: {
         <div className="mt-4">
           <h3 className="fz-font-md fw-600 mb-2">Automation runs</h3>
           {runs.length === 0 ? (
-            <p className="fz-font-sm neutral-500 mb-0">No runs yet. Runs happen automatically when a trigger fires — pending ones are drained by the scheduler.</p>
+            <p className="fz-font-sm neutral-500 mb-0">Nothing yet. Runs start on their own whenever a trigger fires — usually within a few minutes.</p>
           ) : (
             <div className="d-flex flex-column gap-1">
               {runs.slice(0, 8).map((r) => (
@@ -725,7 +733,7 @@ function OutreachTab({ orgId, outbound, tasks, contacts, aiAutos, aiRuns, reload
     let targets = contacts.map((x) => ({ id: x.id, name: x.name, email: x.email, phone: x.phone }));
     if (filterActive) {
       // Mandatory pre-flight: the audience must already be resolved.
-      if (!matched || matched.desc !== audience.trim()) { toastError("Match the audience first — the filter hasn't been resolved yet."); return; }
+      if (!matched || matched.desc !== audience.trim()) { toastError("Choose your audience first — tap Match to see who's included."); return; }
       const ids = new Set(matched.ids);
       targets = targets.filter((t) => ids.has(t.id));
       if (targets.length === 0) { toastError("No contacts match that audience — nothing queued."); return; }
@@ -788,7 +796,7 @@ function OutreachTab({ orgId, outbound, tasks, contacts, aiAutos, aiRuns, reload
             <button type="button" className="btn btn-outline-dark rounded-3 px-3 text-nowrap flex-shrink-0" onClick={matchAudience} disabled={matching || !filterActive}>{matching ? "Matching…" : "Match"}</button>
           </div>
           <div role="status" aria-live="polite">
-            {filterActive && !filterResolved && <p className="fz-font-sm neutral-500 mt-1 mb-0">Resolve the audience with Match before queueing — queue buttons stay disabled until then.</p>}
+            {filterActive && !filterResolved && <p className="fz-font-sm neutral-500 mt-1 mb-0">Tap Match to see who this will reach — until then the send buttons stay off.</p>}
             {filterResolved && <p className="fz-font-sm neutral-700 mt-1 mb-0">Matched <span className="fw-600">{matched.ids.length}</span> contact(s) for &quot;{matched.desc}&quot;.</p>}
           </div>
         </div>
@@ -819,7 +827,7 @@ function OutreachTab({ orgId, outbound, tasks, contacts, aiAutos, aiRuns, reload
         <div className="mt-4">
           <h3 className="fz-font-md fw-600 mb-2">Task queue</h3>
           {tasks.length === 0 ? (
-            <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No outbound tasks yet. Reminders also appear here automatically from upcoming bookings. Pending tasks are drained by the scheduler.</div>
+            <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No outreach yet. Once a campaign goes out, each call or message shows up here with its result. Booking reminders appear here automatically too.</div>
           ) : (
             // No `overflow-hidden` here: it is !important and would clip the
             // horizontal scroll `.ops-scroll-x` provides on phones.
@@ -943,7 +951,7 @@ function ProactiveSection({ orgId, autos, runs, reload }: {
                   </div>
                   <div className="d-flex align-items-center gap-3 flex-shrink-0">
                     <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 text-nowrap" onClick={() => run(a)} disabled={running === a.id}>{running === a.id ? "Running…" : "Run now"}</button>
-                    <div className="form-check form-switch m-0"><input className="form-check-input" type="checkbox" aria-label={`${a.name} active`} checked={a.active} onChange={async (e) => { const ok = await reportMutation(toggleAiAutomation(a.id, e.target.checked)); if (ok) reload(); }} /></div>
+                    <div className="form-check form-switch m-0"><input className="form-check-input" type="checkbox" aria-label={`${a.name} active`} checked={a.active} onChange={async (e) => { const ok = await reportMutation(toggleAiAutomation(a.id, e.target.checked), e.target.checked ? "Automation turned on." : "Automation paused."); if (ok) reload(); }} /></div>
                     <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap" onClick={() => remove(a)}>Remove</button>
                   </div>
                 </div>

@@ -69,7 +69,7 @@ export default function SettingsPage() {
   }
 
   // ── Locations & call routing ──────────────────────────────────────────────
-  const { data: locations = [], loading: locLoading, reload } = useCachedData<Location[]>(
+  const { data: locations = [], loading: locLoading, error: locError, reload } = useCachedData<Location[]>(
     `ops:settings:locations:${orgId}`,
     async () => {
       const { data, error } = await listLocations(orgId);
@@ -144,17 +144,17 @@ export default function SettingsPage() {
         <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100 d-flex flex-column gap-3">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div style={{ minWidth: 0 }}>
-              <h3 className="fz-font-md fw-600 mb-0">Tool policies</h3>
-              <div className="fz-font-sm neutral-500">What the AI may do on its own — per-tool off / approve / auto, with an approval queue.</div>
+              <h3 className="fz-font-md fw-600 mb-0">What the AI may do on its own</h3>
+              <div className="fz-font-sm neutral-500">Choose what runs automatically and what waits for your approval.</div>
             </div>
             <Link to={`${base}/agent/operator`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap ops-tap">Open</Link>
           </div>
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top border-100 pt-3">
             <div style={{ minWidth: 0 }}>
-              <h3 className="fz-font-md fw-600 mb-0">Training &amp; persona</h3>
+              <h3 className="fz-font-md fw-600 mb-0">Train your agent</h3>
               <div className="fz-font-sm neutral-500">Greeting, tone, procedures, business hours and escalation rules.</div>
             </div>
-            <Link to={`${base}/agent/configure`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap ops-tap">Configure</Link>
+            <Link to={`${base}/agent/configure`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap ops-tap">Train</Link>
           </div>
         </div>
 
@@ -214,6 +214,12 @@ export default function SettingsPage() {
 
         {locLoading ? (
           <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500" role="status">Loading…</div>
+        ) : locError ? (
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center" role="alert">
+            <div className="text-danger fw-600 mb-2">Couldn&rsquo;t load locations</div>
+            <div className="fz-font-md neutral-500 mb-3">{locError}</div>
+            <button type="button" className="btn btn-dark btn-sm rounded-pill px-4 ops-tap" onClick={() => reload()}>Retry</button>
+          </div>
         ) : locations.length === 0 ? (
           <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No locations yet. Single-location businesses can skip this — add branches only if calls should route by ZIP.</div>
         ) : (

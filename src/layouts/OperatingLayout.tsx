@@ -5,7 +5,7 @@ import { getBusiness, type Organization } from "@/lib/db/organizations";
 import { resolveConsole, consoleTabs, type VerticalConsole } from "@/lib/ops/consoleConfig";
 import { preloadOpsConsole, preloadOpsTab } from "@/pages/dashboard/preload";
 import { useCachedData } from "@/lib/hooks/useCachedData";
-import { organizationsQuery } from "@/lib/cache/dashboardQueries";
+import { DASHBOARD_TTL, domainsQuery, organizationsQuery, primaryLiveDomain } from "@/lib/cache/dashboardQueries";
 import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
 import { OpsToasts } from "@/lib/ops/feedback";
 import { supabase } from "@/lib/supabaseClient";
@@ -26,6 +26,14 @@ export default function OperatingLayout() {
   const [badges, setBadges] = useState<TabBadges>({ unread: 0, approvals: 0 });
   // All the user's businesses, for the in-console switcher (shared warmed cache).
   const { data: myOrgs = [] } = useCachedData(organizationsQuery.key, organizationsQuery.fetch);
+  // This business's domains — the canonical live address lives here, not on
+  // `org.site_url` (which is only the manual override). Same cache entry the
+  // Business details "Site & domains" card reads, so it's usually already warm.
+  const { data: domains } = useCachedData(
+    domainsQuery(id ?? "").key,
+    async () => (id ? await domainsQuery(id).fetch() : []),
+    { ttl: DASHBOARD_TTL },
+  );
 
   // Remember the business being worked in — the sidebar Console entry and
   // /dashboard/console jump straight back here next time.
@@ -124,6 +132,9 @@ export default function OperatingLayout() {
   const base = `/dashboard/businesses/${id}/ops`;
   const cfg = resolveConsole(org.vertical);
   const tabs = consoleTabs(cfg);
+  // Prefer the resolved primary live domain; fall back to the manual override.
+  const liveDomain = primaryLiveDomain(domains);
+  const liveUrl = liveDomain ? `https://${liveDomain.hostname}` : org.site_url || null;
 
   return (
     <div>
@@ -132,15 +143,19 @@ export default function OperatingLayout() {
         <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
           ← Business details
         </Link>
-        {org.site_url && (
+        {liveUrl ? (
           <a
-            href={org.site_url}
+            href={liveUrl}
             target="_blank"
             rel="noreferrer"
             className="fz-font-sm fw-600 text-decoration-none"
           >
             View live site ↗
           </a>
+        ) : (
+          <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
+            Not live yet — set up your domain
+          </Link>
         )}
       </div>
       {/* The business being operated is the headline — "Operating console" is a

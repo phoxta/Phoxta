@@ -138,8 +138,14 @@ export async function removeBlackout(id: string): Promise<{ error: string | null
 // --- Per-day availability (for the calendar) — factors stock, bookings, blackouts.
 export type AvailDay = { day: string; units_total: number; units_booked: number; available: number };
 
-export async function resourceAvailability(productId: string, from: string, to: string): Promise<AvailDay[]> {
+export async function resourceAvailability(
+  productId: string,
+  from: string,
+  to: string,
+): Promise<{ data: AvailDay[]; error: string | null }> {
   const { data, error } = await supabase.rpc("app_resource_availability", { p_product: productId, p_from: from, p_to: to });
-  if (error) return [];
-  return (data as AvailDay[] | null) ?? [];
+  // friendlyError(null/"") is null, so keep a fallback — an errored RPC must never
+  // report success to the calendar.
+  if (error) return { data: [], error: friendlyError(error.message) ?? "Something went wrong. Please try again." };
+  return { data: (data as AvailDay[] | null) ?? [], error: null };
 }

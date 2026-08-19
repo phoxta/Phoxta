@@ -67,9 +67,25 @@ export function OpsToasts() {
       listeners.delete(on);
     };
   }, []);
-  if (items.length === 0) return null;
+  // The live region must be in the DOM *before* a message arrives — screen
+  // readers only announce changes to a region they are already observing, so
+  // returning null while empty silently swallowed the first toast.
   return (
-    <div style={{ position: "fixed", right: 16, bottom: 16, zIndex: 2000, display: "flex", flexDirection: "column", gap: 8, maxWidth: 360 }} aria-live="polite">
+    <div
+      aria-live="polite"
+      aria-atomic="false"
+      style={{
+        position: "fixed",
+        right: 16,
+        bottom: 16,
+        zIndex: 2000,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        maxWidth: 360,
+        pointerEvents: items.length === 0 ? "none" : undefined,
+      }}
+    >
       {items.map((t) => (
         <div key={t.id} className={`rounded-3 px-3 py-2 shadow fz-font-md ${KIND_CLASS[t.kind]}`}>{t.text}</div>
       ))}

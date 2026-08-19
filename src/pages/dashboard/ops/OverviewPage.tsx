@@ -68,10 +68,15 @@ type Kpi = {
   to?: string;
   /** Marks a number that also appears in the needs-attention queue. */
   dup?: string;
+  /** Which query produced the number — "win" tiles go blank if that RPC failed. */
+  src?: "win" | "sum";
 };
 
 /** The shared stat tile. `to` present = navigates (arrow + hover). */
-function StatTile({ label, value, sub, delta, to }: Kpi) {
+function StatTile({ label, value, sub, delta, to, src, winFailed }: Kpi & { winFailed?: boolean }) {
+  // A failed 30-day window must not read as a real zero — the tile goes to an
+  // em dash and says so, rather than claiming "$0 revenue".
+  const failed = src === "win" && winFailed;
   const body = (
     <div className={`ops-tile rounded-4 p-3 p-md-4 h-100 border-100 ${to ? "bg-neutral-0" : "bg-neutral-50"}`}>
       <div className="d-flex align-items-start gap-2 mb-2">
@@ -83,10 +88,14 @@ function StatTile({ label, value, sub, delta, to }: Kpi) {
         )}
       </div>
       <div className="d-flex align-items-baseline flex-wrap gap-2">
-        <span className="fz-32 ops-tile-value fw-700 lh-1 neutral-900">{value}</span>
-        {delta && <Delta now={delta.now} prev={delta.prev} />}
+        <span className="fz-32 ops-tile-value fw-700 lh-1 neutral-900">{failed ? "—" : value}</span>
+        {!failed && delta && <Delta now={delta.now} prev={delta.prev} />}
       </div>
-      {sub && <div className="fz-font-sm neutral-400 mt-1">{sub}</div>}
+      {failed ? (
+        <div className="fz-font-sm neutral-500 mt-1">Couldn't load</div>
+      ) : (
+        sub && <div className="fz-font-sm neutral-400 mt-1">{sub}</div>
+      )}
     </div>
   );
   return (
@@ -192,6 +201,10 @@ export default function OverviewPage() {
   // KPI grid so the same figure is never rendered twice.
   const queued = new Set(attention.map((a) => a.dup).filter((d): d is string => Boolean(d)));
 
+  // The catalogue subtitle only earns its place when the noun says something the
+  // module label doesn't — otherwise STAYS renders "Listings / listing listings".
+  const listingSub = noun === cfg.commerceLabel.toLowerCase().replace(/s$/, "") ? undefined : `${noun} listings`;
+
   // ---------- Windowed KPI tiles (the quieter second tier) ----------
   const allStats: Kpi[] = [
     {
@@ -200,6 +213,7 @@ export default function OverviewPage() {
       delta: win ? { now: win.revenue, prev: win.revenue_prev } : undefined,
       sub: s ? `${formatPrice(s.revenue_cents ?? 0, currency)} all-time` : undefined,
       to: "commerce",
+      src: "win",
     },
     {
       label: "Orders (30d)",
@@ -207,6 +221,7 @@ export default function OverviewPage() {
       delta: win ? { now: win.orders, prev: win.orders_prev } : undefined,
       sub: s ? `${s.orders ?? 0} all-time` : undefined,
       to: "commerce",
+      src: "win",
     },
     ...(isBooking
       ? [
@@ -215,8 +230,9 @@ export default function OverviewPage() {
             value: String(win?.reservations_upcoming ?? 0),
             sub: `${win?.reservations_pending ?? 0} pending`,
             to: "reservations",
+            src: "win" as const,
           },
-          { label: cfg.commerceLabel, value: String(s?.products ?? 0), sub: `${noun} listings`, to: "commerce" },
+          { label: cfg.commerceLabel, value: String(s?.products ?? 0), sub: listingSub, to: "commerce" },
         ]
       : []),
     { label: "Customers", value: String(s?.customers ?? 0), sub: `${s?.contacts ?? 0} contacts`, to: "crm" },
@@ -225,9 +241,9 @@ export default function OverviewPage() {
           // The listings count used to ride along as the "Low stock" sub-line;
           // it gets its own tile so nothing is lost when Low stock is already
           // in the attention queue above.
-          ...(isBooking ? [] : [{ label: cfg.commerceLabel, value: String(s?.products ?? 0), sub: `${noun} listings`, to: "commerce" }]),
-          { label: "Unfulfilled orders", value: String(win?.unfulfilled ?? 0), to: "commerce", dup: "unfulfilled" },
-          { label: "Low stock", value: String(win?.low_stock ?? 0), to: "commerce", dup: "low_stock" },
+          ...(isBooking ? [] : [{ label: cfg.commerceLabel, value: String(s?.products ?? 0), sub: listingSub, to: "commerce" }]),
+          { label: "Unfulfilled orders", value: String(win?.unfulfilled ?? 0), to: "commerce", dup: "unfulfilled", src: "win" as const },
+          { label: "Low stock", value: String(win?.low_stock ?? 0), to: "commerce", dup: "low_stock", src: "win" as const },
         ]
       : []),
     ...(has("invoicing")
@@ -320,7 +336,7 @@ export default function OverviewPage() {
         </h2>
         <div className="row g-3">
           {stats.map((stat) => (
-            <StatTile key={stat.label} {...stat} />
+            <StatTile key={stat.label} {...stat} winFailed={Boolean(data?.winError)} />
           ))}
         </div>
         {data?.sumError && (

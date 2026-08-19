@@ -135,6 +135,15 @@ function humanSentence(a: AgentAction, currency: string): ReactNode | null {
     }
 }
 
+// Raw DB status strings ('ok' / 'error' / 'denied') are engineer words — the
+// audit line is read by the owner, so map them before rendering.
+const AUDIT_STATUS: Record<string, string> = {
+    ok: "Done",
+    error: "Failed",
+    denied: "Blocked",
+    pending: "Waiting",
+};
+
 const argsSummary = (args: Args | null): string => {
     if (!args) return "";
     const rest = { ...args };
@@ -162,6 +171,8 @@ export default function OperatorPage() {
     const [editDrafts, setEditDrafts] = useState<Record<string, string>>({});
     const [deciding, setDeciding] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    // Until the first load lands, an empty queue is unknown — not "nothing to approve".
+    const [loading, setLoading] = useState(true);
     const bodyRef = useRef<HTMLDivElement>(null);
 
     async function refresh() {
@@ -170,9 +181,13 @@ export default function OperatorPage() {
         setAudit(au.data);
         setPolicies(p.data);
         setMemory(m.data);
+        // A failed read must never render as a confident empty state.
+        const msg = a.error || au.error || p.error || m.error;
+        setError(msg ?? null);
     }
     useEffect(() => {
-        refresh();
+        setLoading(true);
+        refresh().finally(() => setLoading(false));
         listOperatorMessages(orgId).then(({ data }) => {
             if (data.length) {
                 setMsgs(data);
@@ -186,9 +201,11 @@ export default function OperatorPage() {
     // voice, automations) — poll every 30s and refresh on window focus so the
     // approvals pane never shows a stale queue.
     useEffect(() => {
-        const tick = () => {
-            listActions(orgId).then(({ data }) => setActions(data));
-            listAudit(orgId).then(({ data }) => setAudit(data));
+        const tick = async () => {
+            const [a, au] = await Promise.all([listActions(orgId), listAudit(orgId)]);
+            setActions(a.data);
+            setAudit(au.data);
+            setError(a.error || au.error || null);
         };
         const iv = window.setInterval(tick, 30_000);
         const onFocus = () => tick();
@@ -252,7 +269,7 @@ export default function OperatorPage() {
 
     const modeOf = (tool: string) => policies.find((p) => p.tool === tool)?.mode ?? "approve";
     async function changeMode(tool: string, mode: ToolPolicy["mode"]) {
-        await reportMutation(setToolPolicy(orgId, tool, mode), "Policy updated.");
+        await reportMutation(setToolPolicy(orgId, tool, mode), "Saved — permission updated.");
         refresh();
     }
 
@@ -279,9 +296,17 @@ export default function OperatorPage() {
 
     return (
         <div className="row g-4">
+            {/* Anything that failed to load or send is stated at the very top —
+                never buried under the chat, where the queue looks simply empty. */}
+            {error && (
+                <div className="col-12">
+                    <div className="alert alert-danger py-2 px-3 fz-font-md mb-0" role="alert">{error}</div>
+                </div>
+            )}
+
             {/* Approvals lead the page — on a phone this is the first thing you see,
                 on desktop it spans the full width above the chat. */}
-            {pending.length > 0 && (
+            {!loading && pending.length > 0 && (
                 <div className="col-12">
                     <section className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100" aria-labelledby="ops-approvals-heading">
                         <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
@@ -358,7 +383,6 @@ export default function OperatorPage() {
                         ))}
                         {busy && <div className="align-self-start bg-neutral-100 fz-font-md" style={{ padding: "10px 14px", borderRadius: 12 }}>…</div>}
                     </div>
-                    {error && <div className="px-3 px-lg-4"><div className="alert alert-danger py-2 px-3 fz-font-sm mb-2" role="alert">{error}</div></div>}
                     <form className="d-flex gap-2 p-3 border-top border-100 align-items-end" onSubmit={(e) => { e.preventDefault(); send(draft); }}>
                         <label className="visually-hidden" htmlFor="operator-draft">Message your operator</label>
                         <textarea
@@ -383,12 +407,17 @@ export default function OperatorPage() {
             </div>
 
             <div className="col-12 col-lg-5 d-flex flex-column gap-4">
-                {pending.length === 0 && (
+                {loading ? (
+                    <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+                        <h2 className="fz-font-md fw-600 mb-2">Waiting for you</h2>
+                        <p className="neutral-500 fz-font-md mb-0" role="status">Loading&hellip;</p>
+                    </div>
+                ) : pending.length === 0 ? (
                     <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
                         <h2 className="fz-font-md fw-600 mb-2">Waiting for you</h2>
                         <p className="neutral-500 fz-font-md mb-0">Nothing waiting. Actions you&rsquo;ve set to &ldquo;Ask me&rdquo; appear here for approval.</p>
                     </div>
-                )}
+                ) : null}
 
                 <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
                     <h2 className="fz-font-md fw-600 mb-1">What the operator may do</h2>
@@ -457,17 +486,19 @@ export default function OperatorPage() {
                             <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none fz-font-sm ops-tap" onClick={() => setAuditAll(null)}>Collapse</button>
                         )}
                     </div>
-                    {(auditAll ?? audit).length === 0 ? (
+                    {loading ? (
+                        <p className="neutral-500 fz-font-md mb-0" role="status">Loading&hellip;</p>
+                    ) : (auditAll ?? audit).length === 0 ? (
                         <p className="neutral-500 fz-font-md mb-0">No activity yet.</p>
                     ) : (
                         <ul className="list-unstyled m-0 d-flex flex-column gap-2" style={auditAll ? { maxHeight: 420, overflowY: "auto" } : undefined}>
                             {(auditAll ?? audit.slice(0, 8)).map((a) => (
                                 <li key={a.id} className="fz-font-sm d-flex gap-2 align-items-start">
-                                    <span className={`badge fw-500 flex-shrink-0 ${a.status === "ok" ? "bg-success-subtle text-success" : a.status === "error" || a.status === "denied" ? "bg-danger-subtle text-danger" : "bg-neutral-100 neutral-700"}`} style={{ height: "fit-content" }}>{a.status}</span>
+                                    <span className={`badge fw-500 flex-shrink-0 ${a.status === "ok" ? "bg-success-subtle text-success" : a.status === "error" || a.status === "denied" ? "bg-danger-subtle text-danger" : "bg-neutral-100 neutral-700"}`} style={{ height: "fit-content" }}>{AUDIT_STATUS[a.status] ?? a.status}</span>
                                     <span className="d-flex flex-column" style={{ minWidth: 0 }}>
                                         <span className="neutral-700">{a.summary}</span>
                                         <span className="neutral-500">
-                                            {new Date(a.created_at).toLocaleString()} · {a.tool}
+                                            {new Date(a.created_at).toLocaleString()} · {WRITE_TOOL_LABELS[a.tool] ?? a.tool}
                                             {auditAll && argsSummary(a.args) ? ` · ${argsSummary(a.args)}` : ""}
                                         </span>
                                     </span>

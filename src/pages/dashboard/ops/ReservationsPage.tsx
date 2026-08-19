@@ -149,7 +149,7 @@ export default function ReservationsPage() {
   async function addBlackout(e: React.FormEvent) {
     e.preventDefault();
     if (!bForm.product_id || !bForm.start_date || !bForm.end_date || bForm.end_date < bForm.start_date) {
-      toastError("Pick a resource and a valid date range.");
+      toastError(`Pick a ${cfg.itemNoun.toLowerCase()} and a valid date range.`);
       return;
     }
     const overlap = await countOverlappingReservations(orgId, bForm.product_id, bForm.start_date, bForm.end_date);
@@ -234,6 +234,10 @@ export default function ReservationsPage() {
 
   const ManifestRow = ({ r, action, first }: { r: Reservation; action: "in" | "out"; first: boolean }) => {
     const md = reservationMeta(r);
+    // r.units is HOW MANY resources are booked; the span is a separate count of
+    // nights/days. Both use this business's own vocabulary, same as ReservationCard.
+    const noun = cfg.itemNoun.toLowerCase();
+    const span = days(r.start_date, r.end_date);
     return (
       <div
         className="d-flex align-items-center justify-content-between gap-2 flex-wrap py-3"
@@ -251,7 +255,7 @@ export default function ReservationsPage() {
           <div className="fz-font-sm neutral-500">
             {isTableReservation(r)
               ? `${md.time || "Time TBC"} · ${r.units} guest${r.units === 1 ? "" : "s"}`
-              : `${r.units} ${r.units === 1 ? "unit" : "units"} · ${r.start_date} → ${r.end_date}`}
+              : `${r.units} ${noun}${r.units === 1 ? "" : "s"} · ${span} ${unitWord}${span === 1 ? "" : "s"} · ${r.start_date} → ${r.end_date}`}
             {/* The table RPC echoes time + party into notes; don't print it twice. */}
             {r.notes && !(isTableReservation(r) && md.time && r.notes.includes(md.time)) ? ` · “${r.notes}”` : ""}
           </div>
@@ -381,7 +385,7 @@ export default function ReservationsPage() {
       {!isRestaurant && (
         <>
           <div className="mb-4">
-            <AvailabilityCalendar products={products} blackouts={blackouts} reservations={rows} onBlockDate={prefillBlackout} />
+            <AvailabilityCalendar products={products} blackouts={blackouts} reservations={rows} onBlockDate={prefillBlackout} itemNoun={cfg.itemNoun} />
           </div>
 
           <h2 className="fw-600 fz-font-lg mb-1">Blocked dates</h2>

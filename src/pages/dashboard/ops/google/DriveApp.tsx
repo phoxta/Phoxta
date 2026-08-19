@@ -1,50 +1,56 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useCachedData } from "@/lib/hooks/useCachedData";
+import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { toast, toastError } from "@/lib/ops/feedback";
 import { driveList, docsCreate, type DriveFile } from "@/lib/db/ops/google";
 
 const kind = (mime: string) =>
   mime.includes("document") ? "Doc" : mime.includes("spreadsheet") ? "Sheet" : mime.includes("presentation") ? "Slides" : mime.includes("folder") ? "Folder" : mime.includes("pdf") ? "PDF" : mime.includes("image") ? "Image" : "File";
 
 export default function DriveApp({ orgId }: { orgId: string }) {
-  const [files, setFiles] = useState<DriveFile[]>([]);
   const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(true);
+  // The *committed* search term — typing doesn't refetch, submitting does.
+  const [applied, setApplied] = useState("");
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   // Inline "new doc" row instead of a native window.prompt — usable on a phone.
   const [newTitle, setNewTitle] = useState<string | null>(null);
 
-  async function load(query = "") {
-    setLoading(true);
-    const { data, error } = await driveList(orgId, { q: query });
-    setError(error ?? null);
-    setFiles(data);
-    setLoading(false);
+  const { data: files = [], loading, error, reload } = useCachedData<DriveFile[]>(
+    `google:drive:${orgId}:${applied}`,
+    async () => {
+      const { data, error } = await driveList(orgId, { q: applied });
+      if (error) throw new Error(error);
+      return data;
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+
+  function runSearch() {
+    const term = q.trim();
+    if (term === applied) reload();
+    else setApplied(term);
   }
-  useEffect(() => { load(); }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function newDoc(e: React.FormEvent) {
     e.preventDefault();
     const title = (newTitle ?? "").trim();
     if (!title) return;
     setBusy(true);
-    setNotice(null);
     const { ok, link, error } = await docsCreate(orgId, { title });
     setBusy(false);
-    if (!ok || error) { setNotice(error ?? "Couldn't create the doc."); return; }
+    if (!ok || error) { toastError(error ?? "Couldn't create the doc."); return; }
     setNewTitle(null);
-    setNotice(`Created “${title}”.`);
+    toast(`Created “${title}”.`);
     if (link) window.open(link, "_blank");
-    load(q);
+    reload();
   }
 
   return (
     <div>
-      {error && <div className="alert alert-warning py-2 px-3 fz-font-md mb-3" role="alert">{error}</div>}
-      {notice && <div className="alert alert-info py-2 px-3 fz-font-sm mb-3" role="status">{notice}</div>}
+      {error && <div className="alert alert-danger py-2 px-3 fz-font-md mb-3" role="alert">{error}</div>}
 
       <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-between gap-2 mb-3">
-        <form className="d-flex gap-2 flex-grow-1" onSubmit={(e) => { e.preventDefault(); load(q); }} style={{ maxWidth: 420 }}>
+        <form className="d-flex gap-2 flex-grow-1" onSubmit={(e) => { e.preventDefault(); runSearch(); }} style={{ maxWidth: 420 }}>
           <label className="visually-hidden" htmlFor="drive-search">Search Drive</label>
           <input id="drive-search" type="search" className="form-control form-control-sm rounded-3" style={{ minWidth: 0 }} placeholder="Search Drive…" value={q} onChange={(e) => setQ(e.target.value)} />
           <button className="btn btn-dark btn-sm rounded-3 px-3 flex-shrink-0 ops-tap" type="submit">Search</button>
@@ -74,7 +80,7 @@ export default function DriveApp({ orgId }: { orgId: string }) {
       {loading ? (
         <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500" role="status">Loading…</div>
       ) : files.length === 0 ? (
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">{q.trim() ? "No files match that search." : "No files yet."}</div>
+        <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">{applied ? "No files match that search." : "No files yet."}</div>
       ) : (
         <ul className="list-unstyled m-0 d-flex flex-column gap-2">
           {files.map((f) => (

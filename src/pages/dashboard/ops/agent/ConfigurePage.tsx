@@ -32,12 +32,14 @@ const VERTICAL_TO_PRESET: Record<string, string> = {
   retail: "retail", ecommerce: "retail", fashion: "retail", apparel: "retail", shop: "retail",
 };
 
+// Owner-facing labels only — `provider` still carries the routing, so the
+// supplier brand never has to appear on the top-level control.
 const VOICES = [
-  { provider: "deepgram", id: "aura-asteria-en", label: "Deepgram · Asteria (female, US)" },
-  { provider: "deepgram", id: "aura-luna-en", label: "Deepgram · Luna (female, US)" },
-  { provider: "deepgram", id: "aura-orion-en", label: "Deepgram · Orion (male, US)" },
-  { provider: "deepgram", id: "aura-arcas-en", label: "Deepgram · Arcas (male, US)" },
-  { provider: "cartesia", id: "", label: "Cartesia · custom / cloned voice (enter ID)" },
+  { provider: "deepgram", id: "aura-asteria-en", label: "Asteria — warm female (US)" },
+  { provider: "deepgram", id: "aura-luna-en", label: "Luna — bright female (US)" },
+  { provider: "deepgram", id: "aura-orion-en", label: "Orion — steady male (US)" },
+  { provider: "deepgram", id: "aura-arcas-en", label: "Arcas — deep male (US)" },
+  { provider: "cartesia", id: "", label: "Use my own recorded voice (advanced)" },
 ];
 
 // The FOUR honest capability switches — each gates real agent tools server-side.
@@ -91,9 +93,16 @@ function withDefaults(c: AgentConfig): AgentConfig {
 
 export default function ConfigurePage() {
   const { orgId, org } = useOutletContext<OpsContext>();
-  const { data: loadedConfig, loading, error: loadError, setData: setCachedConfig } = useCachedData(
+  const { data: loadedConfig, loading, error: loadError, setData: setCachedConfig, reload: reloadConfig } = useCachedData(
     `agent:config:${orgId}`,
-    async () => (await getAgentConfig(orgId)).data,
+    // Throw, don't swallow: getAgentConfig resolves {data: null, error} on an
+    // RLS/network failure, and a silently-null "success" leaves the page
+    // spinning forever with nothing to retry.
+    async () => {
+      const { data, error } = await getAgentConfig(orgId);
+      if (error) throw new Error(error);
+      return data;
+    },
     { ttl: DASHBOARD_TTL },
   );
   const [config, setConfig] = useState<AgentConfig | null>(null);
@@ -139,7 +148,10 @@ export default function ConfigurePage() {
       if (!a) return;
       const href = a.getAttribute("href") || "";
       if (!href.startsWith("/") || href === window.location.pathname) return;
-      if (!window.confirm("You have unsaved changes on Train. Leave without saving?")) {
+      // NOTE: this gate runs inside a capture-phase click handler, so the
+      // confirmation must be SYNCHRONOUS — preventDefault/stopPropagation
+      // cannot be deferred. confirmDanger must stay synchronous for this site.
+      if (!confirmDanger("You have unsaved changes on Train. Leave without saving?")) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -261,7 +273,7 @@ export default function ConfigurePage() {
   }
 
   async function deleteDoc(id: string, title: string) {
-    if (!confirmDanger(`Delete "${title || "this doc"}"? The agent stops using it immediately.`)) return;
+    if (!confirmDanger(`Delete "${title || "this answer"}"? The agent stops using it immediately.`)) return;
     const ok = await reportMutation(removeKnowledge(id), "Deleted.");
     if (ok) {
       if (editingId === id) { setEditingId(null); setDocForm({ title: "", content: "" }); }
@@ -323,7 +335,7 @@ export default function ConfigurePage() {
         if (error) { toastError(error); return; }
       }
       drainEmbeddings();
-      toast(`Synced ${products.length} product${products.length === 1 ? "" : "s"}, ${pages.length} page${pages.length === 1 ? "" : "s"} and ${faqs.length} FAQ${faqs.length === 1 ? "" : "s"} into ${composed.length} knowledge doc${composed.length === 1 ? "" : "s"}.`);
+      toast(`Pulled in ${products.length} product${products.length === 1 ? "" : "s"}, ${pages.length} page${pages.length === 1 ? "" : "s"} and ${faqs.length} FAQ${faqs.length === 1 ? "" : "s"} as ${composed.length} answer${composed.length === 1 ? "" : "s"}.`);
       reloadDocs();
     } finally {
       setSyncing(false);
@@ -339,7 +351,17 @@ export default function ConfigurePage() {
     }
   }
 
-  if (loading || !config) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">{loadError ? loadError : "Loading…"}</div>;
+  // A failure is an alert with a way out — never a spinner that never resolves.
+  if (loadError && !config) {
+    return (
+      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center" role="alert">
+        <div className="text-danger fw-600 mb-2">Couldn&rsquo;t load your agent</div>
+        <div className="fz-font-md neutral-500 mb-3">{loadError}</div>
+        <button type="button" className="btn btn-dark btn-sm rounded-pill px-4 ops-tap" onClick={() => reloadConfig()}>Try again</button>
+      </div>
+    );
+  }
+  if (loading || !config) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">Loading…</div>;
 
   const days = config.business_hours?.days ?? [1, 2, 3, 4, 5];
   const snippet = `<script src="https://www.phoxta.com/phoxta-agent.js" data-org="${config.public_key}" defer></script>`;
@@ -357,10 +379,10 @@ export default function ConfigurePage() {
               {docs.length > 0 && <span className="badge bg-neutral-100 neutral-700 fw-500 fz-font-sm ms-2 align-middle">{docs.length}</span>}
             </h2>
             <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3 ops-tap" onClick={syncFromStore} disabled={syncing}>
-              {syncing ? "Syncing…" : "Sync from your store"}
+              {syncing ? "Pulling in…" : "Pull in my products & pages"}
             </button>
           </div>
-          <p className="fz-font-sm neutral-500 mb-3">Facts, policies and FAQs the agent answers from — embedded and retrieved automatically across chat, SMS, WhatsApp and voice. Sync pulls your products, published pages and FAQs into auto-updated docs.</p>
+          <p className="fz-font-sm neutral-500 mb-3">Facts, policies and FAQs your agent answers from — it uses these on chat, SMS, WhatsApp and phone calls automatically. Pulling in your store adds your products, published pages and FAQs, kept up to date.</p>
 
           <form onSubmit={submitDoc} className="bg-neutral-50 rounded-4 p-3 mb-3">
             <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">{editingId ? "Edit this answer" : "Add an answer"}</h3>
@@ -388,7 +410,7 @@ export default function ConfigurePage() {
           {docsLoading ? (
             <div className="text-center neutral-500 py-4" role="status">Loading…</div>
           ) : visibleDocs.length === 0 ? (
-            <div className="text-center neutral-500 py-4 fz-font-md">{docs.length === 0 ? "Nothing yet. Add what the agent should know — or hit Sync from your store." : "No docs match your search."}</div>
+            <div className="text-center neutral-500 py-4 fz-font-md">{docs.length === 0 ? "Nothing yet. Add what the agent should know — or hit Pull in my products & pages." : "No answers match your search."}</div>
           ) : (
             <ul className="list-unstyled m-0 d-flex flex-column gap-2">
               {visibleDocs.map((d) => {
@@ -541,7 +563,7 @@ export default function ConfigurePage() {
 
             <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
               <h3 className="fz-font-md fw-600 mb-2">Voice</h3>
-              <p className="fz-font-sm neutral-500 mb-2">The voice your AI uses on phone calls. Pick a preset, or choose Cartesia and paste a custom / cloned voice ID.</p>
+              <p className="fz-font-sm neutral-500 mb-2">The voice your AI uses on phone calls.</p>
               <label className="visually-hidden" htmlFor="agent-voice">Voice</label>
               <select
                 id="agent-voice"
@@ -554,10 +576,14 @@ export default function ConfigurePage() {
               >
                 {VOICES.map((v) => <option key={v.label} value={`${v.provider}|${v.id}`}>{v.label}</option>)}
               </select>
+              {/* Cartesia is only named where it's actionable — behind the
+                  "own recorded voice" option, which needs an ID from them. */}
               {config.voice?.provider === "cartesia" && (
-                <input aria-label="Cartesia voice ID" className="form-control rounded-3" placeholder="Cartesia voice ID (preset or cloned)" value={config.voice?.voice_id || ""} onChange={(e) => patch({ voice: { provider: "cartesia", voice_id: e.target.value } })} />
+                <>
+                  <input aria-label="Cartesia voice ID" className="form-control rounded-3" placeholder="Cartesia voice ID (preset or cloned)" value={config.voice?.voice_id || ""} onChange={(e) => patch({ voice: { provider: "cartesia", voice_id: e.target.value } })} />
+                  <div className="fz-font-sm neutral-500 mt-1">To clone a voice: create it in Cartesia, then paste its voice ID here.</div>
+                </>
               )}
-              <div className="fz-font-sm neutral-500 mt-1">To clone a voice: create it in Cartesia, then paste its voice ID here.</div>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import {
   listConversations,
   listConversationMessages,
@@ -56,30 +56,66 @@ import type { Call, Device } from "@twilio/voice-sdk";
 // Constants & small helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Badge colours use the -emphasis text tokens: Bootstrap's plain .text-warning /
+// .text-danger / .text-success on their -subtle backgrounds fall below the 4.5:1
+// contrast these small badges need.
 const STATUS_STYLE: Record<ConvStatus, string> = {
-  open: "bg-warning-subtle text-warning",
-  handled: "bg-success-subtle text-success",
-  escalated: "bg-danger-subtle text-danger",
-  snoozed: "bg-neutral-100 neutral-500",
+  open: "bg-warning-subtle text-warning-emphasis",
+  handled: "bg-success-subtle text-success-emphasis",
+  escalated: "bg-danger-subtle text-danger-emphasis",
+  // Snoozed is a live state, not a finished one — it must not look like closed.
+  snoozed: "bg-info-subtle text-info-emphasis",
   closed: "bg-neutral-100 neutral-500",
 };
+/** Owner-facing wording for the raw enum (the button says "Take over", not "escalate"). */
+const STATUS_LABEL: Record<ConvStatus, string> = {
+  open: "Open",
+  handled: "Handled",
+  escalated: "Taken over",
+  snoozed: "⏰ Snoozed",
+  closed: "Closed",
+};
+/** Confirmation wording, so a click on "Take over" never toasts "Marked escalated." */
+const CONV_STATUS_TOAST: Record<ConvStatus, string> = {
+  open: "Reopened",
+  handled: "Marked handled",
+  escalated: "You've taken this over",
+  snoozed: "Snoozed",
+  closed: "Conversation closed",
+};
+const TICKET_STATUS_TOAST: Record<TicketStatus, string> = {
+  open: "Ticket reopened",
+  pending: "Ticket set to pending",
+  resolved: "Ticket resolved",
+  closed: "Ticket closed",
+};
 const TICKET_STATUS_STYLE: Record<TicketStatus, string> = {
-  open: "bg-warning-subtle text-warning",
+  open: "bg-warning-subtle text-warning-emphasis",
   pending: "bg-neutral-100 neutral-700",
-  resolved: "bg-success-subtle text-success",
+  resolved: "bg-success-subtle text-success-emphasis",
   closed: "bg-neutral-100 neutral-500",
 };
 const SENTIMENT_STYLE: Record<string, string> = {
-  positive: "bg-success-subtle text-success",
+  positive: "bg-success-subtle text-success-emphasis",
   neutral: "bg-neutral-100 neutral-700",
-  negative: "bg-danger-subtle text-danger",
+  negative: "bg-danger-subtle text-danger-emphasis",
 };
 const CHANNEL_STYLE: Record<string, string> = {
   sms: "bg-info-subtle text-info-emphasis",
-  whatsapp: "bg-success-subtle text-success",
+  whatsapp: "bg-success-subtle text-success-emphasis",
   web: "bg-neutral-100 neutral-700",
   voice: "bg-primary-subtle text-primary-emphasis",
-  email: "bg-warning-subtle text-warning",
+  email: "bg-warning-subtle text-warning-emphasis",
+};
+/**
+ * Delivery state in owner language. `sent`/`delivered` say nothing worth saying,
+ * and "simulated" is an internal word for "we recorded it but nobody got it".
+ */
+const DELIVERY_LABEL: Record<string, string> = {
+  queued: "Sending…",
+  sending: "Sending…",
+  simulated: "Not delivered (no channel connected)",
+  failed: "Not delivered",
 };
 /** Brand casing — `text-capitalize` turns these into "Sms" and "Whatsapp". */
 const CHANNEL_LABEL: Record<string, string> = {
@@ -117,16 +153,48 @@ const BUBBLE_META = "d-flex flex-wrap align-items-center gap-1 text-uppercase op
 const WA_WINDOW_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 500;
 
-type QueueFilter = "all" | "unread" | "open" | "escalated" | "snoozed" | "closed" | "tickets";
+/**
+ * Owner-facing buckets, not raw enums: conversations and tickets use different
+ * status words for the same three situations, and filtering on the raw values
+ * made an item vanish from every chip the moment you replied to it.
+ *   needs_reply = conversation open/escalated + ticket open
+ *   waiting     = conversation handled/snoozed + ticket pending
+ *   done        = conversation closed + ticket resolved/closed
+ */
+type QueueFilter = "all" | "unread" | "needs_reply" | "waiting" | "escalated" | "done" | "tickets";
 const QUEUE_FILTERS: { v: QueueFilter; label: string }[] = [
   { v: "all", label: "All" },
   { v: "unread", label: "Unread" },
-  { v: "open", label: "Open" },
-  { v: "escalated", label: "Escalated" },
-  { v: "snoozed", label: "Snoozed" },
-  { v: "closed", label: "Closed" },
+  { v: "needs_reply", label: "Needs reply" },
+  { v: "waiting", label: "Waiting" },
+  { v: "escalated", label: "Taken over" },
+  { v: "done", label: "Done" },
   { v: "tickets", label: "Tickets" },
 ];
+/** Stable identity for a queue row (ids are only unique within their own table). */
+const itemKey = (it: QueueItem) => `${it.kind}:${it.id}`;
+/** A ticket has no unread flag — an untouched (still `open`) ticket is the equivalent. */
+const isUnread = (it: QueueItem) => (it.kind === "conversation" ? it.conv.unread : it.ticket.status === "open");
+const inBucket = (it: QueueItem, f: QueueFilter): boolean => {
+  switch (f) {
+    case "all": return true;
+    case "unread": return isUnread(it);
+    case "needs_reply":
+      return it.kind === "conversation"
+        ? it.conv.status === "open" || it.conv.status === "escalated"
+        : it.ticket.status === "open";
+    case "waiting":
+      return it.kind === "conversation"
+        ? it.conv.status === "handled" || it.conv.status === "snoozed"
+        : it.ticket.status === "pending";
+    case "escalated": return it.kind === "conversation" && it.conv.status === "escalated";
+    case "done":
+      return it.kind === "conversation"
+        ? it.conv.status === "closed"
+        : it.ticket.status === "resolved" || it.ticket.status === "closed";
+    case "tickets": return it.kind === "ticket";
+  }
+};
 const CHANNEL_FILTERS = ["", "sms", "whatsapp", "web", "voice", "email"];
 const SNOOZE_OPTIONS: { label: string; ms: number }[] = [
   { label: "1 hour", ms: 3_600_000 },
@@ -163,17 +231,32 @@ const fillVars = (body: string, vars: { name: string; business: string }) =>
 // Presentational subcomponents
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ShortcutsHint() {
-  const [open, setOpen] = useState(false);
+/** Close a popover when the next mousedown lands outside its wrapper. */
+function useOutsideClick<T extends HTMLElement>(open: boolean, onClose: () => void) {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open, onClose]);
+  return ref;
+}
+
+/** `open` lives on the page so Escape can close this before it clears the selection. */
+function ShortcutsHint({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => void }) {
+  const wrapRef = useOutsideClick<HTMLDivElement>(open, useCallback(() => setOpen(false), [setOpen]));
   return (
-    <div className="position-relative d-inline-block flex-shrink-0">
+    <div className="position-relative d-inline-block flex-shrink-0" ref={wrapRef}>
       <button
         type="button"
         className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none text-nowrap"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(!open)}
       >
-        ⌨ Shortcuts
+        <span aria-hidden="true">⌨ </span>Shortcuts
       </button>
       {open && (
         <div className="position-absolute bg-neutral-0 border-100 rounded-3 shadow p-3" style={{ zIndex: 40, width: 280, right: 0, top: "100%" }}>
@@ -192,6 +275,7 @@ function ShortcutsHint() {
 
 /** Conversation message bubble. Emails whose meta carries an html body render in a sandboxed iframe. */
 function MessageBubble({ m }: { m: ConversationMessage }) {
+  const [expanded, setExpanded] = useState(false);
   if (m.role === "note") {
     return (
       <div className="align-self-center text-center" style={{ maxWidth: "92%" }}>
@@ -206,6 +290,7 @@ function MessageBubble({ m }: { m: ConversationMessage }) {
   const html = typeof meta.html === "string" && meta.html.trim() ? meta.html : null;
   const subject = typeof meta.subject === "string" && meta.subject.trim() ? meta.subject : null;
   const failed = m.delivery_status === "failed";
+  const delivery = m.delivery_status ? DELIVERY_LABEL[m.delivery_status] : undefined;
   return (
     <div className={`d-flex ${mine ? "justify-content-end" : "justify-content-start"}`}>
       <div
@@ -215,14 +300,19 @@ function MessageBubble({ m }: { m: ConversationMessage }) {
         <div className={BUBBLE_META} style={{ fontSize: 10 }}>
           <span>{AUTHOR_LABEL[m.role] ?? m.role}</span>
           <span>· {sentAt(m.created_at)}</span>
-          {mine && m.delivery_status && (
-            <span className={failed ? "text-danger fw-600" : ""}>· {m.delivery_status}</span>
+          {mine && delivery && (
+            <span className={failed ? "text-danger fw-600" : ""}>· {delivery}</span>
           )}
         </div>
         {subject && <div className="fw-600 mb-1">{subject}</div>}
         {html ? (
           // sandbox="" blocks scripts/navigation; content scrolls inside a fixed max height.
-          <iframe sandbox="" srcDoc={html} title="Email content" className="w-100 rounded-2 bg-white" style={{ border: 0, height: 260, maxHeight: 260 }} />
+          <>
+            <iframe sandbox="" srcDoc={html} title="Email content" className="w-100 rounded-2 bg-white" style={{ border: 0, height: expanded ? 640 : 260, maxHeight: expanded ? "70vh" : 260 }} />
+            <button type="button" className="btn btn-link btn-sm p-0 mt-1 text-decoration-none fz-font-sm" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
+              {expanded ? "Show less" : "Show full email"}
+            </button>
+          </>
         ) : (
           m.body
         )}
@@ -246,18 +336,101 @@ function TicketBubble({ m }: { m: TicketMessage }) {
   );
 }
 
+/** One control shape for "what state is this in?", used by both threads. */
+function StatusPills<T extends string>({
+  label, options, current, onPick,
+}: {
+  label: string;
+  options: { v: T; label: string }[];
+  current: T;
+  onPick: (v: T) => void;
+}) {
+  return (
+    <div className="d-flex flex-wrap gap-2" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o.v}
+          type="button"
+          aria-pressed={current === o.v}
+          className={`btn btn-sm rounded-pill px-3 ops-tap ${current === o.v ? "btn-dark" : "btn-outline-secondary"}`}
+          onClick={() => onPick(o.v)}
+          disabled={current === o.v}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The saved-replies picker — identical on both threads, so it lives once. */
+function SnippetSelect({
+  snippets, onInsert, onManage,
+}: {
+  snippets: CannedResponse[];
+  onInsert: (c: CannedResponse) => void;
+  onManage: () => void;
+}) {
+  return (
+    <select
+      className="form-select form-select-sm rounded-3"
+      style={{ width: "auto" }}
+      aria-label="Saved replies"
+      value=""
+      onChange={(e) => {
+        if (e.target.value === "__manage") { onManage(); return; }
+        const c = snippets.find((x) => x.id === e.target.value);
+        if (c) onInsert(c);
+      }}
+    >
+      <option value="">Saved replies…</option>
+      {snippets.map((c) => <option key={c.id} value={c.id}>{c.title || c.shortcut}</option>)}
+      <option value="__manage">＋ Manage saved replies…</option>
+    </select>
+  );
+}
+
+/** AI drafts are previewed before they go anywhere — same card for both threads. */
+function AiDraftCard({
+  summary, text, unsure, onUse,
+}: {
+  summary?: string;
+  text: string;
+  /** The model was not confident — say so in words, not as a percentage. */
+  unsure?: boolean;
+  onUse: () => void;
+}) {
+  return (
+    <div className="border-100 rounded-3 p-3 mb-2 bg-neutral-50">
+      {summary && <div className="fz-font-sm neutral-500 mb-1"><strong>Summary:</strong> {summary}</div>}
+      {text && (
+        <>
+          {unsure && <div className="fz-font-sm text-warning-emphasis mb-1">The AI is unsure — read this before sending.</div>}
+          <div className="fz-font-md neutral-800" style={{ whiteSpace: "pre-wrap" }}>{text}</div>
+          <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 mt-2" onClick={onUse}>Use this reply</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The Inbox
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function InboxPage() {
-  const { orgId, org } = useOutletContext<OpsContext>();
+  const { orgId, org, console: consoleCfg } = useOutletContext<OpsContext>();
   const orgCurrency = org.currency || "USD";
+  // ?c=<conversation id> / ?t=<ticket id> — makes an open thread linkable and
+  // survives a refresh (the AI Agent overview links straight to a conversation).
+  const [params, setParams] = useSearchParams();
 
   // Queue data (kept live — this console streams realtime changes, so it skips the SWR cache by design).
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Raising the page size refetches — the button has to say so and stand down. */
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE_SIZE);
 
@@ -267,7 +440,11 @@ export default function InboxPage() {
   const [ticketMsgs, setTicketMsgs] = useState<TicketMessage[]>([]);
   const [calls, setCalls] = useState<ConversationCall[]>([]);
   const [showTranscript, setShowTranscript] = useState(false);
-  const [cursor, setCursor] = useState(0);
+  /** The keyboard cursor is stored as an item key, not an index — realtime
+   *  re-sorts the queue, which used to slide the highlight onto another row. */
+  const [cursorKey, setCursorKey] = useState<string | null>(null);
+  /** The hard ring only appears once someone actually uses the keyboard. */
+  const [keyboardActive, setKeyboardActive] = useState(false);
 
   // Composer
   const [draft, setDraft] = useState("");
@@ -294,9 +471,10 @@ export default function InboxPage() {
   const [tagDraft, setTagDraft] = useState("");
   const [tpl, setTpl] = useState<CannedResponse | null>(null);
   const [tplVars, setTplVars] = useState<Record<string, string>>({});
-  const [composer, setComposer] = useState<{ to: string; subject: string; conversationId?: string } | null>(null);
+  const [composer, setComposer] = useState<{ to: string; subject: string; body?: string; conversationId?: string } | null>(null);
   const [repliesOpen, setRepliesOpen] = useState(false);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [requestingCsat, setRequestingCsat] = useState(false);
 
   // Ticket AI
@@ -306,6 +484,7 @@ export default function InboxPage() {
 
   // New-ticket form
   const [newTicketOpen, setNewTicketOpen] = useState(false);
+  const [creatingTicket, setCreatingTicket] = useState(false);
   const [tForm, setTForm] = useState({ subject: "", customer: "", email: "", message: "" });
 
   // Calls (kept from the original console)
@@ -323,6 +502,12 @@ export default function InboxPage() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  /** Only one thread is open at a time, so both reply boxes can share one ref.
+   *  The send shortcut checks it, so ⌘+Enter in the search box can't send. */
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  /** Half-written replies, kept per item so switching threads never loses one. */
+  const draftsRef = useRef<Record<string, { draft: string; subject: string }>>({});
+  const snoozeWrapRef = useOutsideClick<HTMLDivElement>(snoozeOpen, useCallback(() => setSnoozeOpen(false), []));
 
   const selConv = selected?.kind === "conversation" ? selected.conv : null;
   const selTicket = selected?.kind === "ticket" ? selected.ticket : null;
@@ -347,6 +532,7 @@ export default function InboxPage() {
     setConvos(c.data);
     setTickets(t.data);
     setLoading(false);
+    setLoadingMore(false);
     // Keep the open item in sync with refreshed rows.
     setSelected((sel) => {
       if (!sel) return sel;
@@ -453,40 +639,14 @@ export default function InboxPage() {
   }, [convos, tickets, fChannel, search]);
 
   const counts = useMemo(() => {
-    const n: Record<QueueFilter, number> = { all: items.length, unread: 0, open: 0, escalated: 0, snoozed: 0, closed: 0, tickets: 0 };
-    for (const it of items) {
-      if (it.kind === "ticket") {
-        n.tickets++;
-        if (it.ticket.status === "open") n.open++;
-        if (it.ticket.status === "closed") n.closed++;
-      } else {
-        const c = it.conv;
-        if (c.unread) n.unread++;
-        if (c.status === "open") n.open++;
-        if (c.status === "escalated") n.escalated++;
-        if (c.status === "snoozed") n.snoozed++;
-        if (c.status === "closed") n.closed++;
-      }
-    }
+    const n = {} as Record<QueueFilter, number>;
+    for (const f of QUEUE_FILTERS) n[f.v] = items.filter((it) => inBucket(it, f.v)).length;
     return n;
   }, [items]);
 
-  const visible = useMemo(
-    () =>
-      items.filter((it) => {
-        switch (fQueue) {
-          case "all": return true;
-          case "unread": return it.kind === "conversation" && it.conv.unread;
-          case "open": return it.kind === "conversation" ? it.conv.status === "open" : it.ticket.status === "open";
-          case "escalated": return it.kind === "conversation" && it.conv.status === "escalated";
-          case "snoozed": return it.kind === "conversation" && it.conv.status === "snoozed";
-          case "closed": return it.kind === "conversation" ? it.conv.status === "closed" : it.ticket.status === "closed";
-          case "tickets": return it.kind === "ticket";
-        }
-      }),
-    [items, fQueue],
-  );
-  useEffect(() => { setCursor((c) => Math.min(c, Math.max(0, visible.length - 1))); }, [visible.length]);
+  const visible = useMemo(() => items.filter((it) => inBucket(it, fQueue)), [items, fQueue]);
+  /** Derived, so a re-sorted queue keeps the highlight on the same item. */
+  const cursor = useMemo(() => visible.findIndex((it) => itemKey(it) === cursorKey), [visible, cursorKey]);
 
   // "Nothing matches this filter" and "nothing here yet" are different problems.
   const filtersActive = !!search || !!fChannel || fQueue !== "all";
@@ -508,14 +668,33 @@ export default function InboxPage() {
   }, []);
 
   // ── Open an item ──────────────────────────────────────────────────────────
-  async function openItem(it: QueueItem, index?: number) {
+  async function openItem(it: QueueItem) {
+    // Park whatever is in the composer under the item it belongs to, then bring
+    // back that item's own draft — switching threads must never destroy typing.
+    const prev = selectedRef.current;
+    const key = itemKey(it);
+    if (prev && itemKey(prev) !== key) {
+      if (draft.trim() || emailSubject.trim()) draftsRef.current[itemKey(prev)] = { draft, subject: emailSubject };
+      else delete draftsRef.current[itemKey(prev)];
+    }
+    // Re-opening the row that's already open keeps whatever is being typed.
+    const restored =
+      prev && itemKey(prev) === key
+        ? { draft, subject: emailSubject }
+        : draftsRef.current[key] ?? { draft: "", subject: "" };
     setSelected(it);
-    if (index != null) setCursor(index);
+    setCursorKey(key);
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      next.delete(it.kind === "conversation" ? "t" : "c");
+      next.set(it.kind === "conversation" ? "c" : "t", it.id);
+      return next;
+    }, { replace: true });
     setSuggestion(null);
     setSendNote(null);
     setMode("reply");
-    setDraft("");
-    setEmailSubject("");
+    setDraft(restored.draft);
+    setEmailSubject(restored.subject);
     setTpl(null);
     setTplVars({});
     setSnoozeOpen(false);
@@ -544,6 +723,43 @@ export default function InboxPage() {
     }
     scrollThread(false);
   }
+
+  /** Leaving a thread parks its draft and drops the URL pointer. */
+  function closeSelected() {
+    const prev = selectedRef.current;
+    if (prev) {
+      if (draft.trim() || emailSubject.trim()) draftsRef.current[itemKey(prev)] = { draft, subject: emailSubject };
+      else delete draftsRef.current[itemKey(prev)];
+    }
+    setSelected(null);
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      next.delete("c");
+      next.delete("t");
+      return next;
+    }, { replace: true });
+  }
+  /** A sent reply must not come back when the owner returns to the thread. */
+  function dropDraft(it: QueueItem | null) {
+    if (it) delete draftsRef.current[itemKey(it)];
+  }
+
+  // ── Deep link: ?c=<conversation> / ?t=<ticket> opens that thread on arrival ──
+  const openItemRef = useRef(openItem);
+  openItemRef.current = openItem;
+  const deepLinkDone = useRef(false);
+  useEffect(() => {
+    if (deepLinkDone.current || loading) return;
+    deepLinkDone.current = true;
+    const cid = params.get("c");
+    const tid = params.get("t");
+    if (!cid && !tid) return;
+    const target = items.find((it) =>
+      cid ? it.kind === "conversation" && it.id === cid : it.kind === "ticket" && it.id === tid,
+    );
+    if (target) openItemRef.current(target);
+    else toastError("That conversation isn't in the current list — clear the filters or search for it.");
+  }, [items, loading, params]);
 
   async function refreshThread() {
     const sel = selectedRef.current;
@@ -582,9 +798,10 @@ export default function InboxPage() {
       }
       const conv = selected.conv;
       if (mode === "note") {
-        const ok = await reportMutation(addInternalNote(orgId, conv.id, text), "Note saved.");
+        const ok = await reportMutation(addInternalNote(orgId, conv.id, text), "Note saved");
         if (!ok) return;
         setDraft("");
+        dropDraft(selected);
         refreshThread();
         return;
       }
@@ -607,10 +824,11 @@ export default function InboxPage() {
         setSendNote("Recorded, but no live channel is configured — the message was not actually delivered.");
         toast("Recorded — no live channel configured, nothing was delivered.", "info");
       } else {
-        toast(closeAfter ? "Sent — conversation closed." : "Sent.");
+        toast(closeAfter ? "Sent — conversation closed." : "Sent");
       }
       setDraft("");
       setEmailSubject("");
+      dropDraft(selected);
       // Triage: a reply advances open/escalated → handled; Send & close closes.
       const next: ConvStatus | null = closeAfter ? "closed" : conv.status === "open" || conv.status === "escalated" ? "handled" : null;
       if (next) {
@@ -648,6 +866,7 @@ export default function InboxPage() {
       toastError("Saved, but the email could not be delivered — the customer has not been notified.");
     }
     setDraft("");
+    dropDraft(selectedRef.current);
     if (r.ok && !r.error) {
       if (resolveAfter) updateTicket(t.id, { status: "resolved" });
       else if (t.status === "open") updateTicket(t.id, { status: "pending" });
@@ -668,7 +887,7 @@ export default function InboxPage() {
       toastError(msg);
       return;
     }
-    toast("Template sent.");
+    toast("Template sent");
     setTpl(null);
     setTplVars({});
     refreshThread();
@@ -690,7 +909,8 @@ export default function InboxPage() {
     setAiDrafting(false);
     if (error) { toastError(error); return; }
     if (reply) {
-      setDraft(reply);
+      // Same shape as the conversation path: preview first, insert on request.
+      setSuggestion({ summary: "", suggestion: reply });
       setConfidence(conf);
     }
   }
@@ -708,19 +928,19 @@ export default function InboxPage() {
         priority: (["low", "normal", "high"].includes(data.priority) ? data.priority : "normal") as Ticket["priority"],
         ai_summary: data.summary,
       });
-      toast("Ticket classified.");
+      toast("Ticket classified");
     }
   }
 
   // ── Triage actions ────────────────────────────────────────────────────────
   async function setStatus(s: ConvStatus) {
     if (!selConv) return;
-    const ok = await reportMutation(setConversationStatus(selConv.id, s), `Marked ${s}.`);
+    const ok = await reportMutation(setConversationStatus(selConv.id, s), CONV_STATUS_TOAST[s]);
     if (ok) { updateConv(selConv.id, { status: s }); load(); }
   }
   async function changeTicketStatus(s: TicketStatus) {
     if (!selTicket) return;
-    const ok = await reportMutation(setTicketStatus(selTicket.id, s), `Ticket ${s}.`);
+    const ok = await reportMutation(setTicketStatus(selTicket.id, s), TICKET_STATUS_TOAST[s]);
     if (ok) { updateTicket(selTicket.id, { status: s }); load(); }
   }
   async function addTag(e: React.FormEvent) {
@@ -728,18 +948,18 @@ export default function InboxPage() {
     const t = tagDraft.trim();
     if (!selConv || !t || selConv.tags.includes(t)) { setTagDraft(""); return; }
     const tags = [...selConv.tags, t];
-    const ok = await reportMutation(setConversationTags(selConv.id, tags), "Tag added.");
+    const ok = await reportMutation(setConversationTags(selConv.id, tags), "Tag added");
     if (ok) { updateConv(selConv.id, { tags }); setTagDraft(""); }
   }
   async function removeTag(t: string) {
     if (!selConv) return;
     const tags = selConv.tags.filter((x) => x !== t);
-    const ok = await reportMutation(setConversationTags(selConv.id, tags), "Tag removed.");
+    const ok = await reportMutation(setConversationTags(selConv.id, tags), "Tag removed");
     if (ok) updateConv(selConv.id, { tags });
   }
   async function assign(userId: string | null) {
     if (!selConv) return;
-    const ok = await reportMutation(assignConversation(selConv.id, userId), userId ? "Assigned." : "Unassigned.");
+    const ok = await reportMutation(assignConversation(selConv.id, userId), userId ? "Assigned" : "Unassigned");
     if (ok) updateConv(selConv.id, { assigned_to: userId });
   }
   async function snoozeFor(ms: number) {
@@ -750,7 +970,7 @@ export default function InboxPage() {
   }
   async function unsnooze() {
     if (!selConv) return;
-    const ok = await reportMutation(snoozeConversation(selConv.id, null), "Unsnoozed.");
+    const ok = await reportMutation(snoozeConversation(selConv.id, null), "Unsnoozed");
     if (ok) { updateConv(selConv.id, { status: "open", snoozed_until: null }); setSnoozeOpen(false); load(); }
   }
 
@@ -763,7 +983,7 @@ export default function InboxPage() {
       const r = await sendConversationReply(orgId, selConv.id, msg, selConv.channel_type);
       if (r.windowClosed) { toastError("WhatsApp's 24-hour window is closed — the survey can't be sent right now."); return; }
       if (!r.ok || r.error) { toastError(r.error ?? "Could not send the rating request."); return; }
-      const ok = await reportMutation(markCsatRequested(selConv.id), "Rating request sent.");
+      const ok = await reportMutation(markCsatRequested(selConv.id), "Rating request sent");
       if (ok) { updateConv(selConv.id, { csat_requested: true }); refreshThread(); }
     } finally {
       setRequestingCsat(false);
@@ -773,19 +993,25 @@ export default function InboxPage() {
   // ── New ticket ────────────────────────────────────────────────────────────
   async function submitTicket(e: React.FormEvent) {
     e.preventDefault();
+    if (creatingTicket) return; // a second click on a slow link created a second ticket
     if (!tForm.subject.trim() || !tForm.customer.trim()) { toastError("A subject and customer name are required."); return; }
-    const { ticketId, error } = await createTicket(orgId, {
-      subject: tForm.subject,
-      customer_name: tForm.customer,
-      customer_email: tForm.email.trim() || undefined,
-      message: tForm.message,
-    });
-    if (error || !ticketId) { toastError(error ?? "Could not create the ticket."); return; }
-    toast("Ticket created.");
-    drainEmbeddings(); // index it for RAG deflection
-    setTForm({ subject: "", customer: "", email: "", message: "" });
-    setNewTicketOpen(false);
-    load();
+    setCreatingTicket(true);
+    try {
+      const { ticketId, error } = await createTicket(orgId, {
+        subject: tForm.subject,
+        customer_name: tForm.customer,
+        customer_email: tForm.email.trim() || undefined,
+        message: tForm.message,
+      });
+      if (error || !ticketId) { toastError(error ?? "Could not create the ticket."); return; }
+      toast("Ticket created");
+      drainEmbeddings(); // index it for RAG deflection
+      setTForm({ subject: "", customer: "", email: "", message: "" });
+      setNewTicketOpen(false);
+      load();
+    } finally {
+      setCreatingTicket(false);
+    }
   }
 
   // ── Calls (unchanged behaviour, feedback added) ───────────────────────────
@@ -801,9 +1027,11 @@ export default function InboxPage() {
     });
     setCalling(false);
     if (!r.ok) { toastError(r.error ?? "Call could not be placed."); return; }
-    setSendNote(callMode === "bridge"
-      ? `📞 Calling you${callPhone.trim() ? ` on ${callPhone.trim()}` : ""} — pick up and we'll connect ${selConv.customer_phone}.`
-      : `📞 Calling ${selConv.customer_phone} — your AI agent will speak with them.`);
+    // A placed call is a success — it belongs in a toast, not in the yellow
+    // banner this file uses for problems.
+    toast(callMode === "bridge"
+      ? `Calling you${callPhone.trim() ? ` on ${callPhone.trim()}` : ""} — pick up and we'll connect ${selConv.customer_phone}.`
+      : `Calling ${selConv.customer_phone} — your AI agent will speak with them.`);
     setCallOpen(false);
   }
   function endBrowserCall() {
@@ -859,14 +1087,15 @@ export default function InboxPage() {
   });
 
   // ── Keyboard layer ────────────────────────────────────────────────────────
-  const stateRef = useRef({ visible, cursor, snoozeOpen, modalOpen: false, hasDraft: false });
-  stateRef.current = { visible, cursor, snoozeOpen, modalOpen: !!composer || repliesOpen, hasDraft: !!draft.trim() };
-  const actionsRef = useRef<{ send: (c: boolean) => void; open: (it: QueueItem, i: number) => void; closeOrResolve: () => void; move: (d: number) => void }>({
-    send: () => {}, open: () => {}, closeOrResolve: () => {}, move: () => {},
+  const stateRef = useRef({ visible, cursor, snoozeOpen, shortcutsOpen, modalOpen: false, hasDraft: false });
+  stateRef.current = { visible, cursor, snoozeOpen, shortcutsOpen, modalOpen: !!composer || repliesOpen, hasDraft: !!draft.trim() };
+  const actionsRef = useRef<{ send: (c: boolean) => void; open: (it: QueueItem) => void; closeOrResolve: () => void; move: (d: number) => void; close: () => void }>({
+    send: () => {}, open: () => {}, closeOrResolve: () => {}, move: () => {}, close: () => {},
   });
   actionsRef.current = {
     send,
-    open: (it, i) => { openItem(it, i); },
+    open: (it) => { openItem(it); },
+    close: closeSelected,
     closeOrResolve: () => {
       const sel = selectedRef.current;
       if (!sel) return;
@@ -874,14 +1103,18 @@ export default function InboxPage() {
       else if (sel.ticket.status !== "resolved") changeTicketStatus("resolved");
     },
     move: (delta: number) => {
-      const vis = stateRef.current.visible;
+      const { visible: vis, cursor: cur } = stateRef.current;
       if (vis.length === 0) return;
-      setCursor((c) => {
-        const next = Math.max(0, Math.min(vis.length - 1, c + delta));
-        requestAnimationFrame(() => {
-          listScrollRef.current?.querySelector(`[data-idx="${next}"]`)?.scrollIntoView({ block: "nearest" });
-        });
-        return next;
+      // No cursor yet (fresh page, or the row left the filter): start at the top.
+      const next = cur < 0 ? 0 : Math.max(0, Math.min(vis.length - 1, cur + delta));
+      setKeyboardActive(true);
+      setCursorKey(itemKey(vis[next]));
+      requestAnimationFrame(() => {
+        // Focus, not just scroll — otherwise Tab-focus and the j/k cursor drift
+        // apart and Enter opens whichever row the cursor happens to sit on.
+        const el = listScrollRef.current?.querySelector<HTMLElement>(`[data-idx="${next}"]`);
+        el?.scrollIntoView({ block: "nearest" });
+        el?.focus({ preventScroll: true });
       });
     },
   };
@@ -894,20 +1127,34 @@ export default function InboxPage() {
     const onKey = (e: KeyboardEvent) => {
       const st = stateRef.current;
       if (st.modalOpen) return; // EmailComposer / RepliesDrawer handle their own keys
-      // The composer send combos are the only shortcuts allowed while typing.
+      // Send only ever fires from the composer itself — this used to send a real
+      // customer reply from the search box or the new-ticket form.
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        if (e.target !== composerRef.current) return;
         if (!selectedRef.current || !st.hasDraft) return;
         e.preventDefault();
         actionsRef.current.send(e.shiftKey);
         return;
       }
       if (isTyping(e.target)) return;
+      // Escape works from anywhere: it dismisses the topmost thing that's open.
+      if (e.key === "Escape") {
+        if (st.shortcutsOpen) { setShortcutsOpen(false); return; }
+        if (st.snoozeOpen) { setSnoozeOpen(false); return; }
+        actionsRef.current.close();
+        return;
+      }
+      // Single-key shortcuts are scoped to the queue (or to nothing being
+      // focused), so they can't fire while the owner is working elsewhere.
+      const active = document.activeElement;
+      const inQueue = !active || active === document.body || !!listScrollRef.current?.contains(active);
+      if (!inQueue) return;
       switch (e.key) {
         case "j": e.preventDefault(); actionsRef.current.move(1); break;
         case "k": e.preventDefault(); actionsRef.current.move(-1); break;
         case "Enter": {
           const it = st.visible[st.cursor];
-          if (it) { e.preventDefault(); actionsRef.current.open(it, st.cursor); }
+          if (it) { e.preventDefault(); setKeyboardActive(true); actionsRef.current.open(it); }
           break;
         }
         case "e": e.preventDefault(); actionsRef.current.closeOrResolve(); break;
@@ -915,10 +1162,6 @@ export default function InboxPage() {
           if (selectedRef.current?.kind === "conversation") { e.preventDefault(); setSnoozeOpen((o) => !o); }
           break;
         case "/": e.preventDefault(); searchRef.current?.focus(); break;
-        case "Escape":
-          if (stateRef.current.snoozeOpen) { setSnoozeOpen(false); break; }
-          setSelected(null);
-          break;
         default: break;
       }
     };
@@ -933,18 +1176,20 @@ export default function InboxPage() {
 
   const isVoice = selConv?.channel_type === "voice";
   const voiceCollapsed = isVoice && calls.length > 0 && !showTranscript;
+  const transcriptLines = messages.filter((m) => m.role !== "note").length;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">{error}</div></div>}
+      {error && <div className="col-12"><div className="alert alert-danger py-2 px-3 fz-font-md mb-0" role="alert">{error}</div></div>}
       {composer && (
         <EmailComposer
           orgId={orgId}
           initialTo={composer.to}
           initialSubject={composer.subject}
+          initialBody={composer.body}
           conversationId={composer.conversationId}
           onClose={() => setComposer(null)}
           onSent={() => load()}
@@ -964,9 +1209,9 @@ export default function InboxPage() {
       <div className={`col-lg-4 ${selected ? "d-none d-lg-block" : ""}`}>
         <h2 className="visually-hidden">Conversations and tickets</h2>
         <div className="d-flex align-items-center gap-2 mb-2">
-          <button type="button" className="btn btn-dark btn-sm rounded-3 flex-grow-1 py-2" onClick={() => setComposer({ to: "", subject: "" })}>✉ New email</button>
+          <button type="button" className="btn btn-dark btn-sm rounded-3 flex-grow-1 py-2" onClick={() => setComposer({ to: "", subject: "" })}><span aria-hidden="true">✉ </span>New email</button>
           <button type="button" className={`btn btn-sm rounded-3 py-2 px-3 text-nowrap ${newTicketOpen ? "btn-secondary" : "btn-outline-dark"}`} aria-expanded={newTicketOpen} onClick={() => setNewTicketOpen((o) => !o)}>+ Ticket</button>
-          <div className="d-none d-lg-block"><ShortcutsHint /></div>
+          <div className="d-none d-lg-block"><ShortcutsHint open={shortcutsOpen} setOpen={setShortcutsOpen} /></div>
         </div>
         {newTicketOpen && (
           <form onSubmit={submitTicket} className="bg-neutral-0 rounded-4 p-3 border-100 mb-2">
@@ -980,7 +1225,7 @@ export default function InboxPage() {
             <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="nt-message">What did the customer ask?</label>
             <textarea id="nt-message" className="form-control form-control-sm rounded-3 mb-2" rows={2} value={tForm.message} onChange={(e) => setTForm({ ...tForm, message: e.target.value })} />
             <div className="d-flex align-items-center gap-2">
-              <button type="submit" className="btn btn-dark btn-sm rounded-3 px-3">Create</button>
+              <button type="submit" className="btn btn-dark btn-sm rounded-3 px-3" disabled={creatingTicket}>{creatingTicket ? "Creating…" : "Create"}</button>
               <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setNewTicketOpen(false)}>Cancel</button>
             </div>
           </form>
@@ -1043,19 +1288,22 @@ export default function InboxPage() {
           <div className="d-flex flex-column gap-2" style={{ maxHeight: "calc(100vh - 240px)", overflowY: "auto" }} ref={listScrollRef}>
             {visible.map((it, i) => {
               const isSel = selected?.id === it.id && selected?.kind === it.kind;
-              const isCursor = cursor === i;
+              // The ring is a keyboard affordance — it stayed on row 1 on every
+              // load before, competing with the row that was actually open.
+              const isCursor = keyboardActive && cursor === i;
               const rowClass = `text-start w-100 bg-neutral-0 rounded-4 p-3 border-100 ${isSel ? "bg-neutral-100" : ""}`;
-              const rowStyle = isCursor ? { boxShadow: "inset 0 0 0 2px #111" } : undefined;
+              const rowStyle: React.CSSProperties | undefined =
+                isCursor ? { boxShadow: "inset 0 0 0 2px #111" } : isSel ? { borderLeft: "3px solid #111" } : undefined;
               if (it.kind === "ticket") {
                 const t = it.ticket;
                 return (
-                  <button key={`t-${it.id}`} data-idx={i} type="button" onClick={() => openItem(it, i)} className={rowClass} style={rowStyle} aria-current={isSel}>
+                  <button key={`t-${it.id}`} data-idx={i} type="button" onClick={() => openItem(it)} onFocus={() => setCursorKey(itemKey(it))} className={rowClass} style={rowStyle} aria-current={isSel}>
                     <div className="d-flex align-items-center justify-content-between gap-2">
                       <span className="fw-600 text-truncate" style={{ minWidth: 0 }}>{t.subject || t.customer_name || "Ticket"}</span>
                       <span className={`badge fw-500 text-capitalize flex-shrink-0 ${TICKET_STATUS_STYLE[t.status]}`}>{t.status}</span>
                     </div>
                     <div className="fz-font-sm neutral-500 d-flex flex-wrap align-items-center gap-1 mt-1">
-                      <span className="badge bg-neutral-900 text-white fw-500">🎫 Ticket</span>
+                      <span className="badge bg-neutral-900 text-white fw-500"><span aria-hidden="true">🎫 </span>Ticket</span>
                       {t.category && <span className="badge bg-neutral-100 neutral-700 fw-500">{t.category}</span>}
                       {t.sentiment && <span className={`badge fw-500 text-capitalize ${SENTIMENT_STYLE[t.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{t.sentiment}</span>}
                       <span className="text-truncate" style={{ minWidth: 0 }}>{t.customer_name}</span>
@@ -1066,13 +1314,19 @@ export default function InboxPage() {
               }
               const c = it.conv;
               return (
-                <button key={`c-${it.id}`} data-idx={i} type="button" onClick={() => openItem(it, i)} className={rowClass} style={rowStyle} aria-current={isSel}>
+                <button key={`c-${it.id}`} data-idx={i} type="button" onClick={() => openItem(it)} onFocus={() => setCursorKey(itemKey(it))} className={rowClass} style={rowStyle} aria-current={isSel}>
                   <div className="d-flex align-items-center justify-content-between gap-2">
                     <span className={`text-truncate ${c.unread ? "fw-700" : "fw-600"}`} style={{ minWidth: 0 }}>
-                      {c.unread && <span className="text-primary me-1" aria-label="Unread">●</span>}
-                      {c.customer_name || c.customer_phone || "Visitor"}
+                      {/* A bare <span aria-label> is a generic role — screen readers drop the name. */}
+                      {c.unread && (
+                        <>
+                          <span className="visually-hidden">Unread. </span>
+                          <span className="text-primary me-1" aria-hidden="true">●</span>
+                        </>
+                      )}
+                      {c.customer_name || c.customer_phone || "Customer"}
                     </span>
-                    <span className={`badge fw-500 text-capitalize flex-shrink-0 ${STATUS_STYLE[c.status]}`}>{c.status}</span>
+                    <span className={`badge fw-500 flex-shrink-0 ${STATUS_STYLE[c.status]}`}>{STATUS_LABEL[c.status]}</span>
                   </div>
                   <div className="fz-font-sm neutral-500 d-flex flex-wrap align-items-center gap-1 mt-1">
                     <span className={`badge fw-500 ${CHANNEL_STYLE[c.channel_type] ?? "bg-neutral-100 neutral-700"}`}>{channelLabel(c.channel_type)}</span>
@@ -1087,8 +1341,8 @@ export default function InboxPage() {
               );
             })}
             {convos.length >= limit && (
-              <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 py-2" onClick={() => setLimit((l) => l + PAGE_SIZE)}>
-                Load more
+              <button type="button" className="btn btn-outline-dark btn-sm rounded-3 w-100 py-2" disabled={loadingMore} onClick={() => { setLoadingMore(true); setLimit((l) => l + PAGE_SIZE); }}>
+                {loadingMore ? "Loading…" : "Load more"}
               </button>
             )}
           </div>
@@ -1105,29 +1359,27 @@ export default function InboxPage() {
         ) : selected.kind === "ticket" && selTicket ? (
           /* ---- Ticket thread ---- */
           <div className="bg-neutral-0 rounded-4 border-100 p-3 p-lg-4 d-flex flex-column" style={{ minHeight: 480 }}>
-            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none d-lg-none text-start mb-2 ops-tap" onClick={() => setSelected(null)}>← Inbox</button>
+            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none d-lg-none text-start mb-2 ops-tap" onClick={closeSelected}>← Inbox</button>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
               <div style={{ minWidth: 0 }}>
                 <h2 className="fw-600 fz-font-lg mb-0">
                   {selTicket.subject}
-                  <span className="badge bg-neutral-900 text-white fw-500 ms-2 align-middle fz-font-sm">🎫 Ticket</span>
+                  <span className="badge bg-neutral-900 text-white fw-500 ms-2 align-middle fz-font-sm"><span aria-hidden="true">🎫 </span>Ticket</span>
                 </h2>
                 <div className="fz-font-sm neutral-500">{[selTicket.customer_name, selTicket.customer_email].filter(Boolean).join(" · ") || "—"}</div>
               </div>
               <div className="d-flex flex-wrap gap-2">
-                <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 ops-tap" onClick={classifyTicket} disabled={classifying}>{classifying ? "…" : "✨ Classify"}</button>
-                {(["open", "pending", "resolved"] as TicketStatus[]).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    aria-pressed={selTicket.status === s}
-                    className={`btn btn-sm rounded-pill px-3 text-capitalize ops-tap ${selTicket.status === s ? "btn-dark" : "btn-outline-secondary"}`}
-                    onClick={() => changeTicketStatus(s)}
-                    disabled={selTicket.status === s}
-                  >
-                    {s}
-                  </button>
-                ))}
+                <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 ops-tap" onClick={classifyTicket} disabled={classifying}>{classifying ? "…" : <><span aria-hidden="true">✨ </span>Classify</>}</button>
+                <StatusPills
+                  label="Ticket status"
+                  current={selTicket.status}
+                  onPick={changeTicketStatus}
+                  options={[
+                    { v: "open" as TicketStatus, label: "Open" },
+                    { v: "pending" as TicketStatus, label: "Pending" },
+                    { v: "resolved" as TicketStatus, label: "Resolved" },
+                  ]}
+                />
               </div>
             </div>
 
@@ -1137,7 +1389,7 @@ export default function InboxPage() {
                   {selTicket.category && <span className="badge bg-neutral-100 neutral-700 fw-500">{selTicket.category}</span>}
                   {selTicket.sentiment && <span className={`badge fw-500 text-capitalize ${SENTIMENT_STYLE[selTicket.sentiment] ?? SENTIMENT_STYLE.neutral}`}>{selTicket.sentiment}</span>}
                   <span className="badge bg-neutral-100 neutral-700 fw-500 text-capitalize">{selTicket.priority} priority</span>
-                  {selTicket.ai_deflected && <span className="badge bg-success-subtle text-success fw-500">AI-deflected</span>}
+                  {selTicket.ai_deflected && <span className="badge bg-success-subtle text-success-emphasis fw-500">Answered by AI</span>}
                 </div>
                 {selTicket.ai_summary && <div className="fz-font-sm neutral-500">{selTicket.ai_summary}</div>}
               </div>
@@ -1149,32 +1401,26 @@ export default function InboxPage() {
               {ticketMsgs.map((m) => <TicketBubble key={m.id} m={m} />)}
             </div>
 
+            {suggestion && (
+              <AiDraftCard
+                summary={suggestion.summary}
+                text={suggestion.suggestion}
+                unsure={confidence != null && confidence < 0.7}
+                onUse={() => { setDraft(suggestion.suggestion); setSuggestion(null); }}
+              />
+            )}
+
             {sendNote && <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2" role="alert">{sendNote}</div>}
 
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-              <span className="fz-font-sm fw-600 neutral-500">
-                Reply
-                {confidence != null && (
-                  <span className={`badge ms-2 fw-500 ${confidence >= 0.7 ? "bg-success-subtle text-success" : "bg-neutral-100 neutral-700"}`}>
-                    AI confidence {Math.round(confidence * 100)}%
-                  </span>
-                )}
-              </span>
+              <span className="fz-font-sm fw-600 neutral-500">Reply</span>
               <div className="d-flex gap-2 align-items-center">
-                <select className="form-select form-select-sm rounded-3" style={{ width: "auto" }} aria-label="Canned replies" value="" onChange={(e) => {
-                  if (e.target.value === "__manage") { setRepliesOpen(true); return; }
-                  const c = snippets.find((x) => x.id === e.target.value);
-                  if (c) insertSnippet(c);
-                }}>
-                  <option value="">Replies…</option>
-                  {snippets.map((c) => <option key={c.id} value={c.id}>{c.title || c.shortcut}</option>)}
-                  <option value="__manage">＋ Manage replies…</option>
-                </select>
-                <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap" onClick={aiDraftTicket} disabled={aiDrafting}>{aiDrafting ? "Drafting…" : "✨ Draft AI reply"}</button>
+                <SnippetSelect snippets={snippets} onInsert={insertSnippet} onManage={() => setRepliesOpen(true)} />
+                <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap" onClick={aiDraftTicket} disabled={aiDrafting}>{aiDrafting ? "Drafting…" : <><span aria-hidden="true">✨ </span>Draft with AI</>}</button>
               </div>
             </div>
             <form className="d-flex flex-column flex-sm-row gap-2" onSubmit={(e) => { e.preventDefault(); send(false); }}>
-              <textarea className="form-control rounded-3" rows={2} aria-label="Ticket reply" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Type a reply, or draft one with AI…" />
+              <textarea ref={composerRef} className="form-control rounded-3" rows={2} aria-label="Ticket reply" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Type a reply, or draft one with AI…" />
               <div className="d-flex flex-row flex-sm-column gap-2 align-self-stretch align-self-sm-end">
                 <button type="submit" className="btn btn-dark rounded-3 px-3 text-nowrap flex-grow-1" disabled={busy || !draft.trim()}>{busy ? "…" : "Send"}</button>
                 <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 text-nowrap flex-grow-1" disabled={busy || !draft.trim()} onClick={() => send(true)} title="Send the reply and resolve the ticket">Send &amp; resolve</button>
@@ -1184,11 +1430,11 @@ export default function InboxPage() {
         ) : selConv ? (
           /* ---- Conversation thread ---- */
           <div className="bg-neutral-0 rounded-4 border-100 p-3 p-lg-4 d-flex flex-column" style={{ minHeight: 480 }}>
-            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none d-lg-none text-start mb-2 ops-tap" onClick={() => setSelected(null)}>← Inbox</button>
+            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none d-lg-none text-start mb-2 ops-tap" onClick={closeSelected}>← Inbox</button>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
               <div style={{ minWidth: 0 }}>
                 <h2 className="fw-600 fz-font-lg mb-0 d-flex align-items-center flex-wrap gap-2">
-                  {selConv.customer_name || selConv.customer_phone || "Visitor"}
+                  {selConv.customer_name || selConv.customer_phone || "Customer"}
                   <span className={`badge fw-500 fz-font-sm ${CHANNEL_STYLE[selConv.channel_type] ?? "bg-neutral-100 neutral-700"}`}>{channelLabel(selConv.channel_type)}</span>
                   {selConv.intent && <span className="badge bg-neutral-100 neutral-700 fw-500 fz-font-sm">{selConv.intent}</span>}
                   {selConv.sentiment && <span className={`badge fw-500 fz-font-sm text-capitalize ${SENTIMENT_STYLE[selConv.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{selConv.sentiment}</span>}
@@ -1196,10 +1442,20 @@ export default function InboxPage() {
                 <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{[selConv.customer_phone, selConv.customer_email].filter(Boolean).join(" · ") || "—"}</div>
               </div>
               <div className="d-flex flex-wrap gap-2 align-items-center">
-                {selConv.customer_phone && <button type="button" className={`btn btn-sm rounded-pill px-3 ops-tap ${callOpen ? "btn-dark" : "btn-outline-dark"}`} aria-expanded={callOpen} onClick={() => setCallOpen((o) => !o)} disabled={calling}>📞 Call</button>}
-                {selConv.customer_email && <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 ops-tap" onClick={() => setComposer({ to: selConv.customer_email, subject: "", conversationId: selConv.id })}>✉ Email</button>}
+                {selConv.customer_phone && <button type="button" className={`btn btn-sm rounded-pill px-3 ops-tap ${callOpen ? "btn-dark" : "btn-outline-dark"}`} aria-expanded={callOpen} onClick={() => setCallOpen((o) => !o)} disabled={calling}><span aria-hidden="true">📞 </span>Call</button>}
+                {/* On an email thread this is the rich path — say what it adds,
+                    and carry whatever is already typed into it. */}
+                {selConv.customer_email && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-dark btn-sm rounded-pill px-3 ops-tap"
+                    onClick={() => setComposer({ to: selConv.customer_email, subject: emailSubject, body: draft, conversationId: selConv.id })}
+                  >
+                    <span aria-hidden="true">✉ </span>{selConv.channel_type === "email" ? "Attach / format" : "Email"}
+                  </button>
+                )}
                 {selConv.status !== "escalated" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap" onClick={() => setStatus("escalated")}>Take over</button>}
-                <div className="position-relative">
+                <div className="position-relative" ref={snoozeWrapRef}>
                   <button type="button" className={`btn btn-sm rounded-pill px-3 ops-tap ${snoozeOpen ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setSnoozeOpen((o) => !o)} aria-expanded={snoozeOpen}>
                     {selConv.status === "snoozed" ? "Snoozed" : "Snooze"}
                   </button>
@@ -1221,11 +1477,18 @@ export default function InboxPage() {
                     </div>
                   )}
                 </div>
-                {selConv.status !== "closed" ? (
-                  <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setStatus("closed")}>Close</button>
-                ) : (
-                  <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setStatus("open")}>Reopen</button>
-                )}
+                {/* Same control shape as the ticket header — a text link reading
+                    "Close" also read like "close this panel". */}
+                <StatusPills
+                  label="Conversation status"
+                  current={selConv.status}
+                  onPick={setStatus}
+                  options={[
+                    { v: "open" as ConvStatus, label: "Open" },
+                    { v: "handled" as ConvStatus, label: "Handled" },
+                    { v: "closed" as ConvStatus, label: "Closed" },
+                  ]}
+                />
               </div>
             </div>
 
@@ -1233,7 +1496,7 @@ export default function InboxPage() {
               <div className="border-100 rounded-3 p-3 mb-2 bg-neutral-50">
                 {connecting || inCall ? (
                   <div className="d-flex align-items-center justify-content-between gap-2">
-                    <span className="fz-font-md fw-600">{connecting ? "Connecting…" : "🔊 On call"} · {selConv.customer_phone}</span>
+                    <span className="fz-font-md fw-600">{connecting ? "Connecting…" : <><span aria-hidden="true">🔊 </span>On call</>} · {selConv.customer_phone}</span>
                     <div className="d-flex gap-2">
                       {inCall && <button type="button" className={`btn btn-sm rounded-pill px-3 ${muted ? "btn-warning" : "btn-outline-secondary"}`} onClick={toggleMute}>{muted ? "Unmute" : "Mute"}</button>}
                       <button type="button" className="btn btn-danger btn-sm rounded-pill px-3" onClick={endBrowserCall}>Hang up</button>
@@ -1241,13 +1504,23 @@ export default function InboxPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="btn-group btn-group-sm mb-2" role="group">
+                    <div className="btn-group btn-group-sm mb-2" role="group" aria-label="Call mode">
                       <button type="button" className={`btn rounded-pill px-3 ${callMode === "ai" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("ai")}>AI agent calls</button>
                       <button type="button" className={`btn rounded-pill px-3 ms-1 ${callMode === "bridge" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("bridge")}>Connect me</button>
                       <button type="button" className={`btn rounded-pill px-3 ms-1 ${callMode === "browser" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setCallMode("browser")}>Talk here</button>
                     </div>
-                    {callMode === "ai" && <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Opening line (optional) — what should the agent say first?" aria-label="Opening line" value={callOpening} onChange={(e) => setCallOpening(e.target.value)} />}
-                    {callMode === "bridge" && <input type="tel" className="form-control form-control-sm rounded-3 mb-2" placeholder="Your number (blank = your profile phone)" aria-label="Your phone number" value={callPhone} onChange={(e) => setCallPhone(e.target.value)} />}
+                    {callMode === "ai" && (
+                      <>
+                        <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="call-opening">Opening line <span className="neutral-400 fw-400">— optional</span></label>
+                        <input id="call-opening" className="form-control form-control-sm rounded-3 mb-2" placeholder="e.g. Hi, I'm calling about your order…" value={callOpening} onChange={(e) => setCallOpening(e.target.value)} />
+                      </>
+                    )}
+                    {callMode === "bridge" && (
+                      <>
+                        <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="call-phone">Your number <span className="neutral-400 fw-400">— blank uses your profile phone</span></label>
+                        <input id="call-phone" type="tel" className="form-control form-control-sm rounded-3 mb-2" placeholder="+1 555 000 1234" value={callPhone} onChange={(e) => setCallPhone(e.target.value)} />
+                      </>
+                    )}
                     <div className="fz-font-sm neutral-500 mb-2">
                       {callMode === "ai" && `The AI agent will call ${selConv.customer_phone} and talk to them.`}
                       {callMode === "bridge" && `We'll call you first, then connect you to ${selConv.customer_phone}.`}
@@ -1261,7 +1534,7 @@ export default function InboxPage() {
               </div>
             )}
 
-            {viewers.length > 0 && <div className="alert alert-warning py-1 px-3 fz-font-sm mb-2" role="status">👀 {viewers.map(memberName).join(", ") || "A teammate"} is also viewing this conversation.</div>}
+            {viewers.length > 0 && <div className="alert alert-warning py-1 px-3 fz-font-sm mb-2" role="status"><span aria-hidden="true">👀 </span>{viewers.map(memberName).join(", ") || "A teammate"} is also viewing this conversation.</div>}
 
             {/* minHeight keeps recent messages visible even when the WhatsApp notice,
                 template panel and suggestion panel all stack below. */}
@@ -1271,7 +1544,7 @@ export default function InboxPage() {
                   {calls.map((c) => (
                     <div key={c.id} className="mb-2">
                       <div className="d-flex align-items-center justify-content-between gap-2">
-                        <span className="fz-font-sm fw-600 text-capitalize">📞 {c.direction} call{c.after_hours ? " · after hours" : ""}</span>
+                        <span className="fz-font-sm fw-600 text-capitalize"><span aria-hidden="true">📞 </span>{c.direction} call{c.after_hours ? " · after hours" : ""}</span>
                         <span className="badge bg-neutral-100 neutral-700 fw-500 text-capitalize">{c.outcome}</span>
                       </div>
                       <div className="fz-font-sm neutral-500">{new Date(c.created_at).toLocaleString()}</div>
@@ -1283,18 +1556,20 @@ export default function InboxPage() {
                     </div>
                   ))}
                   <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none ops-tap" aria-expanded={showTranscript} onClick={() => setShowTranscript((v) => !v)}>
-                    {showTranscript ? "Hide transcript" : `View transcript (${messages.filter((m) => m.role !== "note").length} lines)`}
+                    {showTranscript ? "Hide transcript" : `View transcript (${transcriptLines} lines)`}
                   </button>
                 </div>
               )}
               {!voiceCollapsed && messages.length === 0 && <div className="neutral-500 fz-font-md">No messages yet.</div>}
-              {!voiceCollapsed && messages.map((m) => <MessageBubble key={m.id} m={m} />)}
+              {/* Internal notes are the team's own writing — collapsing the call
+                  transcript must never hide them. */}
+              {(voiceCollapsed ? messages.filter((m) => m.role === "note") : messages).map((m) => <MessageBubble key={m.id} m={m} />)}
             </div>
 
             {waWindowClosed && (
               <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2" role="status">
                 WhatsApp's 24-hour window is closed. Free-form replies will be rejected — send an approved template:
-                {templates.length === 0 ? <span className="d-block mt-1 neutral-500">No templates yet — add one via “Manage replies”.</span> : (
+                {templates.length === 0 ? <span className="d-block mt-1 neutral-500">No templates yet — add one via “Saved replies”.</span> : (
                   <div className="d-flex flex-wrap gap-1 mt-2">
                     {templates.map((t) => <button key={t.id} type="button" className={`btn btn-sm rounded-pill px-2 py-0 ${tpl?.id === t.id ? "btn-dark" : "btn-outline-dark"}`} onClick={() => { setTpl(t); setTplVars({}); }}>{t.title || t.shortcut}</button>)}
                   </div>
@@ -1306,9 +1581,12 @@ export default function InboxPage() {
               <div className="border-100 rounded-3 p-3 mb-2 bg-neutral-50">
                 <div className="fz-font-sm fw-600 neutral-700 mb-1">Template · {tpl.title || tpl.shortcut}</div>
                 <div className="fz-font-md neutral-800 mb-2" style={{ whiteSpace: "pre-wrap" }}>{renderTpl(tpl.body, tplVars)}</div>
-                {!tpl.whatsapp_template_sid && <div className="alert alert-warning py-1 px-2 fz-font-sm mb-2">No template SID on this snippet — add it via “Manage replies” so it can be sent.</div>}
+                {!tpl.whatsapp_template_sid && <div className="alert alert-warning py-1 px-2 fz-font-sm mb-2">No approval code on this saved reply — add it via “Saved replies” so it can be sent.</div>}
                 {tplKeys(tpl.body).map((k) => (
-                  <input key={k} className="form-control form-control-sm rounded-3 mb-2" placeholder={`Value for {{${k}}}`} aria-label={`Template value ${k}`} value={tplVars[k] ?? ""} onChange={(e) => setTplVars((v) => ({ ...v, [k]: e.target.value }))} />
+                  <div key={k}>
+                    <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor={`tplvar-${k}`}>{`Value for {{${k}}}`}</label>
+                    <input id={`tplvar-${k}`} className="form-control form-control-sm rounded-3 mb-2" value={tplVars[k] ?? ""} onChange={(e) => setTplVars((v) => ({ ...v, [k]: e.target.value }))} />
+                  </div>
                 ))}
                 <div className="d-flex gap-2">
                   <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" disabled={busy || !tpl.whatsapp_template_sid || tplKeys(tpl.body).some((k) => !tplVars[k]?.trim())} onClick={sendTemplate}>Send template</button>
@@ -1318,15 +1596,11 @@ export default function InboxPage() {
             )}
 
             {suggestion && (
-              <div className="border-100 rounded-3 p-3 mb-2 bg-neutral-50">
-                {suggestion.summary && <div className="fz-font-sm neutral-500 mb-1"><strong>Summary:</strong> {suggestion.summary}</div>}
-                {suggestion.suggestion && (
-                  <>
-                    <div className="fz-font-md neutral-800" style={{ whiteSpace: "pre-wrap" }}>{suggestion.suggestion}</div>
-                    <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 mt-2" onClick={() => { setMode("reply"); setDraft(suggestion.suggestion); }}>Use this reply</button>
-                  </>
-                )}
-              </div>
+              <AiDraftCard
+                summary={suggestion.summary}
+                text={suggestion.suggestion}
+                onUse={() => { setMode("reply"); setDraft(suggestion.suggestion); setSuggestion(null); }}
+              />
             )}
 
             {sendNote && <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2" role="alert">{sendNote}</div>}
@@ -1337,26 +1611,19 @@ export default function InboxPage() {
                 <button type="button" className={`btn rounded-pill px-3 ms-1 ${mode === "note" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setMode("note")}>Internal note</button>
               </div>
               <div className="d-flex gap-2 align-items-center">
-                {mode === "reply" && (
-                  <select className="form-select form-select-sm rounded-3" style={{ width: "auto" }} aria-label="Canned replies" value="" onChange={(e) => {
-                    if (e.target.value === "__manage") { setRepliesOpen(true); return; }
-                    const c = snippets.find((x) => x.id === e.target.value);
-                    if (c) insertSnippet(c);
-                  }}>
-                    <option value="">Replies…</option>
-                    {snippets.map((c) => <option key={c.id} value={c.id}>{c.title || c.shortcut}</option>)}
-                    <option value="__manage">＋ Manage replies…</option>
-                  </select>
-                )}
-                <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={runSuggest} disabled={suggesting}>{suggesting ? "…" : "✨ Suggest"}</button>
+                {mode === "reply" && <SnippetSelect snippets={snippets} onInsert={insertSnippet} onManage={() => setRepliesOpen(true)} />}
+                <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={runSuggest} disabled={suggesting}>{suggesting ? "…" : <><span aria-hidden="true">✨ </span>Draft with AI</>}</button>
               </div>
             </div>
 
             {mode === "reply" && selConv.channel_type === "email" && (
-              <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Subject (optional)" aria-label="Email subject" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
+              <>
+                <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="conv-subject">Subject <span className="neutral-400 fw-400">— optional</span></label>
+                <input id="conv-subject" className="form-control form-control-sm rounded-3 mb-2" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
+              </>
             )}
             <form className="d-flex flex-column flex-sm-row gap-2" onSubmit={(e) => { e.preventDefault(); send(false); }}>
-              <textarea className="form-control rounded-3" rows={2} aria-label={mode === "note" ? "Internal note" : "Reply"} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={mode === "note" ? "Private note for your team (not sent)…" : `Reply over ${channelLabel(selConv.channel_type)}…`} />
+              <textarea ref={composerRef} className="form-control rounded-3" rows={2} aria-label={mode === "note" ? "Internal note" : "Reply"} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={mode === "note" ? "Private note for your team (not sent)…" : `Reply over ${channelLabel(selConv.channel_type)}…`} />
               <div className="d-flex flex-row flex-sm-column gap-2 align-self-stretch align-self-sm-end">
                 <button type="submit" className="btn btn-dark rounded-3 px-3 text-nowrap flex-grow-1" disabled={busy || !draft.trim()}>{busy ? "…" : mode === "note" ? "Save" : "Send"}</button>
                 {mode === "reply" && (
@@ -1380,17 +1647,18 @@ export default function InboxPage() {
               email={selConv?.customer_email || selTicket?.customer_email}
               phone={selConv?.customer_phone}
               excludeConversationId={selConv?.id}
+              modules={consoleCfg.modules}
             />
 
             {/* Customer basics */}
             <div className="bg-neutral-0 rounded-4 p-3 border-100">
               <h3 className="fz-font-sm fw-600 neutral-500 mb-2">Customer</h3>
-              <div className="fw-600" style={{ overflowWrap: "anywhere" }}>{(selConv?.customer_name || selTicket?.customer_name) || "Unknown"}</div>
+              <div className="fw-600" style={{ overflowWrap: "anywhere" }}>{(selConv?.customer_name || selTicket?.customer_name) || "Customer"}</div>
               <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{selConv ? selConv.customer_phone || "No phone" : "—"}</div>
               <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{(selConv?.customer_email || selTicket?.customer_email) || "No email"}</div>
               {selConv && (selConv.qualified || selConv.lead_score != null) && (
                 <div className="fz-font-sm neutral-500 mt-2 d-flex flex-wrap align-items-center gap-2">
-                  {selConv.qualified && <span className="badge bg-success-subtle text-success fw-500">Qualified</span>}
+                  {selConv.qualified && <span className="badge bg-success-subtle text-success-emphasis fw-500">Qualified</span>}
                   {selConv.lead_score != null && <span>Score: {selConv.lead_score}</span>}
                 </div>
               )}
@@ -1428,10 +1696,10 @@ export default function InboxPage() {
                 <div className="fz-font-sm fw-500 neutral-700 mb-1">Satisfaction rating</div>
                 {selConv.csat_score != null ? (
                   <div className="d-flex align-items-center gap-2 flex-wrap">
-                    <span className={`badge fw-500 ${selConv.csat_score >= 4 ? "bg-success-subtle text-success" : selConv.csat_score <= 2 ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning"}`}>
+                    <span className={`badge fw-500 ${selConv.csat_score >= 4 ? "bg-success-subtle text-success-emphasis" : selConv.csat_score <= 2 ? "bg-danger-subtle text-danger-emphasis" : "bg-warning-subtle text-warning-emphasis"}`}>
                       {selConv.csat_score}/5
                     </span>
-                    <span className="fz-font-sm neutral-500">{selConv.csat_source === "customer" ? "rated by the customer" : "legacy (owner-entered)"}</span>
+                    <span className="fz-font-sm neutral-500">{selConv.csat_source === "customer" ? "rated by the customer" : "entered by your team"}</span>
                   </div>
                 ) : (
                   <>

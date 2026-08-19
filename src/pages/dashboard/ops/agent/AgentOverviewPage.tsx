@@ -42,7 +42,28 @@ const REAL_CAPABILITIES: { key: string; label: string }[] = [
 /** Row caps for the month-to-date QA / cost scans. */
 const SCAN_CAP = 2000;
 
-type WorstConv = { id: string; qa_score: number; qa_verdict: string | null };
+/** Brand casing — the drill-down rows name the channel, not a UUID fragment. */
+const CHANNEL_LABEL: Record<string, string> = {
+  sms: "SMS",
+  whatsapp: "WhatsApp",
+  web: "Web",
+  voice: "Voice",
+  email: "Email",
+};
+const channelLabel = (c: string | null) => (c ? CHANNEL_LABEL[c] ?? c : "Conversation");
+const shortDay = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+
+type WorstConv = {
+  id: string;
+  qa_score: number;
+  qa_verdict: string | null;
+  channel_type: string | null;
+  created_at: string | null;
+};
+
+/** A number that couldn't be loaded renders as an em dash, never as a confident 0. */
+const num = (v: number | null | undefined) => (v == null ? "—" : String(v));
 
 type Tile = {
   label: string;
@@ -104,7 +125,8 @@ function StatTile({
 export default function AgentOverviewPage() {
   const { orgId } = useOutletContext<OpsContext>();
   const [showQa, setShowQa] = useState(false);
-  const { data, loading } = useCachedData(
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
+  const { data, loading, error, reload } = useCachedData(
     `agent:overview:v2:${orgId}`,
     async () => {
       // Both quality and cost are month-to-date so the two tiles describe the
@@ -135,7 +157,7 @@ export default function AgentOverviewPage() {
         // The 10 lowest-scoring conversations this month (QA tile drill-down).
         supabase
           .from("conversations")
-          .select("id, qa_score, qa_verdict")
+          .select("id, qa_score, qa_verdict, channel_type, created_at")
           .eq("organization_id", orgId)
           .eq("is_test", false)
           .not("qa_score", "is", null)
@@ -145,57 +167,84 @@ export default function AgentOverviewPage() {
         // Cost: the metering telemetry, month-to-date.
         supabase.from("ai_usage").select("cost_cents").eq("organization_id", orgId).gte("created_at", since).limit(SCAN_CAP),
       ]);
+      // Nothing here throws, so a failed sub-query would otherwise render as a
+      // confident 0. Collect every sub-error and let the page say so, and hand
+      // back `null` for the numbers that couldn't be read.
+      const errors: string[] = [];
+      const note = (label: string, e: { message: string } | string | null) => {
+        if (e) errors.push(`${label}: ${typeof e === "string" ? e : e.message}`);
+      };
+      note("Agent totals", sum.error);
+      note("Agent settings", cfg.error);
+      note("Conversations", convTotal.error);
+      note("Open conversations", convOpen.error);
+      note("Escalated conversations", convEscalated.error);
+      note("Qualified leads", convQualified.error);
+      note("Quality scores", qa.error);
+      note("Lowest-scoring conversations", worst.error);
+      note("AI usage", usage.error);
+
       const scores = (qa.data ?? []).map((r) => r.qa_score as number);
       const qaAvg = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
       const usageRows = usage.data ?? [];
-      const costCents = usageRows.reduce((a, r) => a + (r.cost_cents || 0), 0);
+      const costCents = usage.error ? null : usageRows.reduce((a, r) => a + (r.cost_cents || 0), 0);
       return {
-        s: sum.data,
+        s: sum.error ? null : sum.data,
+        sumFailed: Boolean(sum.error),
         config: cfg.data,
         conv: {
-          total: convTotal.count ?? 0,
-          open: convOpen.count ?? 0,
-          escalated: convEscalated.count ?? 0,
-          qualified: convQualified.count ?? 0,
+          total: convTotal.error ? null : convTotal.count ?? 0,
+          open: convOpen.error ? null : convOpen.count ?? 0,
+          escalated: convEscalated.error ? null : convEscalated.count ?? 0,
+          qualified: convQualified.error ? null : convQualified.count ?? 0,
         },
         qaAvg,
+        qaFailed: Boolean(qa.error),
         qaCount: scores.length,
-        qaCapped: scores.length >= SCAN_CAP,
         worst: (worst.data as WorstConv[] | null) ?? [],
         costCents,
-        costCapped: usageRows.length >= SCAN_CAP,
+        errors,
       };
     },
     { ttl: DASHBOARD_TTL },
   );
   const s = data?.s ?? ({} as AgentSummary);
   const config = data?.config ?? null;
-  const conv = data?.conv ?? { total: 0, open: 0, escalated: 0, qualified: 0 };
+  const conv = data?.conv ?? { total: null, open: null, escalated: null, qualified: null };
 
-  const n = (k: string) => (typeof s[k] === "number" ? (s[k] as number) : 0);
+  // Null (not 0) whenever the summary itself failed to load.
+  const n = (k: string): number | null => (!data || data.sumFailed ? null : typeof s[k] === "number" ? (s[k] as number) : 0);
   const byLocation = (s.calls_by_location as Record<string, number>) ?? {};
-  const locations = n("locations");
+  const locations = n("locations") ?? 0;
+
+  // One banner for every sub-query that failed, dismissible per distinct message.
+  const problem = error ?? (data?.errors?.length ? data.errors.join(" · ") : null);
+  const showProblem = Boolean(problem) && problem !== dismissedError;
 
   // `to` is only set where a page actually shows that number's detail:
   // conversations live in the console inbox, outbound tasks in marketing.
   const stats: Tile[] = [
-    { label: "Conversations", value: conv.total, sub: `${conv.open} open · ${conv.escalated} escalated`, to: "../inbox" },
-    { label: "Qualified leads", value: conv.qualified },
-    { label: "After-hours calls captured", value: n("after_hours_calls") },
-    { label: "Appointments booked", value: n("bookings") },
-    { label: "Outbound done", value: n("outbound_done"), sub: `${n("outbound_queued")} queued`, to: "../marketing" },
+    { label: "Conversations", value: num(conv.total), sub: `${num(conv.open)} open · ${num(conv.escalated)} escalated`, to: "../inbox" },
+    { label: "Qualified leads", value: num(conv.qualified) },
+    { label: "After-hours calls captured", value: num(n("after_hours_calls")) },
+    { label: "Appointments booked", value: num(n("bookings")) },
+    { label: "Calls & messages completed", value: num(n("outbound_done")), sub: `${num(n("outbound_queued"))} queued`, to: "../marketing" },
     {
-      label: "AI quality (mo.)",
+      label: "AI quality this month",
       value: data?.qaAvg != null ? `${data.qaAvg}/5` : "—",
-      sub: data?.qaCount
-        ? `${data.qaCapped ? `first ${SCAN_CAP}` : data.qaCount} graded · see the lowest`
-        : "grading runs every 2h",
+      sub: data?.qaFailed
+        ? "Couldn't load"
+        : data?.qaCount
+          ? `${data.qaCount} graded · see the lowest`
+          : "Scored automatically through the day",
       qa: true,
     },
     {
-      label: "AI cost (mo.)",
-      value: `$${((data?.costCents ?? 0) / 100).toFixed(2)}`,
-      sub: data?.costCapped ? `first ${SCAN_CAP} usage rows` : "all agent features",
+      // The provider bill is settled in US dollars, so this one figure is USD
+      // even when the business trades in another currency — hence the label.
+      label: "AI spend this month (USD)",
+      value: data?.costCents == null ? "—" : `$${(data.costCents / 100).toFixed(2)}`,
+      sub: "Across everything the AI did",
     },
     ...(locations > 1 ? [{ label: "Locations", value: locations }] : []),
   ];
@@ -211,6 +260,24 @@ export default function AgentOverviewPage() {
   return (
     <div>
       <style>{TILE_CSS + ROW_CSS}</style>
+
+      {showProblem && (
+        <div className="alert alert-warning rounded-4 d-flex align-items-start flex-wrap gap-2 fz-font-sm mb-4" role="alert">
+          <span className="me-auto">
+            Some numbers couldn't be loaded, so they show as a dash instead of a zero. {problem}
+          </span>
+          <button type="button" className="btn btn-outline-dark btn-sm rounded-3 ops-tap" onClick={() => void reload()}>
+            Retry
+          </button>
+          <button
+            type="button"
+            className="btn btn-link neutral-500 text-decoration-none btn-sm ops-tap"
+            onClick={() => setDismissedError(problem)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <section className="mb-5" aria-labelledby="agent-activity-h">
         <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
@@ -250,7 +317,10 @@ export default function AgentOverviewPage() {
                       to="../inbox"
                       className="ops-row-link text-decoration-none ops-tap d-flex align-items-center flex-wrap gap-2 gap-md-3 p-2 rounded-3 bg-neutral-50"
                     >
-                      <span className="fw-600 fz-font-md neutral-900">#{w.id.slice(0, 8)}</span>
+                      <span className="fw-600 fz-font-md neutral-900">
+                        {channelLabel(w.channel_type)}
+                        {shortDay(w.created_at) && <span className="neutral-500 fw-400"> · {shortDay(w.created_at)}</span>}
+                      </span>
                       <span
                         className={`badge fw-500 ${w.qa_score <= 2 ? "bg-danger-subtle text-danger" : "bg-neutral-100 neutral-700"}`}
                       >

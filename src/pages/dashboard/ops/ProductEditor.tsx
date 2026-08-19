@@ -64,7 +64,12 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
   }
 
   async function save() {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      // Save is a plain button outside any <form>, so nothing else would tell
+      // the owner why clicking it did nothing.
+      toastError(`${itemNoun} name can't be empty.`);
+      return;
+    }
     const priceCents = parseCents(price);
     if (priceCents === null) {
       toastError("Price must be a valid number (e.g. 24.99).");
@@ -141,7 +146,7 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
             </div>
             <div className="col-6 col-sm-4">
               <label htmlFor={fid("price")} className="fz-font-sm neutral-500 d-block mb-1">Price ({product.currency})</label>
-              <input id={fid("price")} type="number" min={0} step={0.01} className="form-control form-control-sm rounded-3" value={price} onChange={(e) => setPrice(e.target.value)} />
+              <input id={fid("price")} type="number" inputMode="decimal" min={0} step={0.01} className="form-control form-control-sm rounded-3" value={price} onChange={(e) => setPrice(e.target.value)} />
             </div>
             <div className="col-6 col-sm-4">
               <label htmlFor={fid("stock")} className="fz-font-sm neutral-500 d-block mb-1">Stock</label>
@@ -170,7 +175,7 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
               <input id={fid("sizes")} className="form-control form-control-sm rounded-3" placeholder="e.g. S, M, L, XL" value={sizesStr} onChange={(e) => setSizesStr(e.target.value)} />
             </div>
             <div className="col-12 col-sm-6">
-              <label htmlFor={fid("colors")} className="fz-font-sm neutral-500 d-block mb-1">Colours (comma-separated)</label>
+              <label htmlFor={fid("colors")} className="fz-font-sm neutral-500 d-block mb-1">Colors (comma-separated)</label>
               <input id={fid("colors")} className="form-control form-control-sm rounded-3" placeholder="e.g. Black, Ivory" value={colorsStr} onChange={(e) => setColorsStr(e.target.value)} />
             </div>
 

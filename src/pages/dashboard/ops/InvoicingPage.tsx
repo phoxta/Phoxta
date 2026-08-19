@@ -240,13 +240,64 @@ export default function InvoicingPage() {
   }
 
   if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+  // Hard fail: nothing loaded at all, so don't show empty states that read as "no invoices".
+  if (loadError && !data) {
+    return (
+      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center" role="alert">
+        <div className="text-danger fw-600 mb-2">Couldn&apos;t load invoices</div>
+        <div className="fz-font-md neutral-500 mb-3">{loadError}</div>
+        <button type="button" className="btn btn-dark btn-sm rounded-pill px-4 ops-tap" onClick={() => reload()}>Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div className="row g-4">
-      {loadError && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">{loadError}</div></div>}
+      {/* Stale data is still on screen, so this is a warning about freshness, not an empty page. */}
+      {loadError && (
+        <div className="col-12 order-first">
+          <div className="alert alert-danger py-2 px-3 fz-font-md mb-0 d-flex flex-wrap align-items-center justify-content-between gap-2" role="alert">
+            <span>{loadError}</span>
+            <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" onClick={() => reload()}>Retry</button>
+          </div>
+        </div>
+      )}
+
+      {/* Totals + overdue — leads on a phone, sits on the right from lg up. */}
+      <div className="col-lg-5 order-0 order-lg-1">
+        <h2 className="fz-font-lg fw-600 mb-3">Summary</h2>
+        <div className="row g-2">
+          <div className="col-6">
+            <div className="bg-neutral-0 rounded-4 p-3 border-100 h-100">
+              <div className="fz-font-sm neutral-500">Outstanding (sent)</div>
+              <div className="fz-32 fw-700 lh-1 neutral-900 mt-1" style={{ overflowWrap: "anywhere" }}>{formatPrice(outstandingCents, orgCurrency)}</div>
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="bg-neutral-0 rounded-4 p-3 border-100 h-100">
+              <div className="fz-font-sm neutral-500">Paid this month</div>
+              <div className="fz-32 fw-700 lh-1 text-success mt-1" style={{ overflowWrap: "anywhere" }}>{formatPrice(paidThisMonthCents, orgCurrency)}</div>
+            </div>
+          </div>
+          <div className="col-12">
+            <div
+              className={`rounded-4 p-3 border-100 h-100 ${overdueList.length > 0 ? "bg-danger-subtle" : "bg-neutral-0"}`}
+              style={overdueList.length > 0 ? { boxShadow: "inset 4px 0 0 var(--bs-danger, #dc3545)" } : undefined}
+            >
+              <div className={`fz-font-sm ${overdueList.length > 0 ? "text-danger fw-600" : "neutral-500"}`}>
+                Overdue{overdueList.length > 0 ? ` · ${overdueList.length} invoice${overdueList.length === 1 ? "" : "s"}` : ""}
+              </div>
+              <div className={`fz-32 fw-700 lh-1 mt-1 ${overdueList.length > 0 ? "text-danger" : "neutral-900"}`} style={{ overflowWrap: "anywhere" }}>{formatPrice(overdueCents, orgCurrency)}</div>
+              <div className={`fz-font-sm mt-1 ${overdueList.length > 0 ? "text-danger" : "neutral-500"}`}>
+                {overdueList.length > 0 ? "Overdue invoices are listed first — use ✨ Remind on any of them." : "Nothing overdue — nice."}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Invoices */}
-      <div className="col-lg-7">
+      <div className="col-lg-7 order-1 order-lg-0">
         <h2 className="fz-font-lg fw-600 mb-3">Invoices</h2>
         <form onSubmit={addInvoice} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
           <div className="row g-2">
@@ -316,7 +367,7 @@ export default function InvoicingPage() {
                       <span className={`badge fw-500 text-capitalize ${INV_STYLE[inv.status]}`}>{inv.status}</span>
                       {inv.status === "draft" && (
                         <>
-                          <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 text-nowrap" onClick={() => sendWithPayLink(inv)} disabled={busyId === inv.id}>{busyId === inv.id ? "Sending…" : "Send + pay link"}</button>
+                          <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 text-nowrap" onClick={() => sendWithPayLink(inv)} disabled={busyId === inv.id}>{busyId === inv.id ? "Sending…" : "Send + pay link"}</button>
                           <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={() => voidInvoice(inv)}>Void</button>
                           <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap" onClick={() => deleteDraft(inv)}>Delete draft</button>
                         </>
@@ -368,54 +419,6 @@ export default function InvoicingPage() {
             <input id="inv-nl" className="form-control rounded-3 flex-grow-1" style={{ minWidth: "12rem" }} placeholder="e.g. Invoice Acme Co 500 for consulting, due in 14 days" value={nlText} onChange={(e) => setNlText(e.target.value)} />
             <button type="button" className="btn btn-dark rounded-3 px-3 text-nowrap flex-shrink-0" onClick={createFromText} disabled={nlLoading}>{nlLoading ? "Reading…" : "Create invoice"}</button>
           </div>
-        </div>
-      </div>
-
-      {/* Totals + overdue */}
-      <div className="col-lg-5">
-        <h2 className="fz-font-lg fw-600 mb-3">Summary</h2>
-        <div className="row g-2 mb-3">
-          <div className="col-6">
-            <div className="bg-neutral-0 rounded-4 p-3 border-100 h-100">
-              <div className="fz-font-sm neutral-500">Outstanding (sent)</div>
-              <div className="fz-32 fw-700 lh-1 neutral-900 mt-1" style={{ overflowWrap: "anywhere" }}>{formatPrice(outstandingCents, orgCurrency)}</div>
-            </div>
-          </div>
-          <div className="col-6">
-            <div className="bg-neutral-0 rounded-4 p-3 border-100 h-100">
-              <div className="fz-font-sm neutral-500">Paid this month</div>
-              <div className="fz-32 fw-700 lh-1 text-success mt-1" style={{ overflowWrap: "anywhere" }}>{formatPrice(paidThisMonthCents, orgCurrency)}</div>
-            </div>
-          </div>
-          <div className="col-12">
-            <div
-              className={`rounded-4 p-3 border-100 h-100 ${overdueList.length > 0 ? "bg-danger-subtle" : "bg-neutral-0"}`}
-              style={overdueList.length > 0 ? { boxShadow: "inset 4px 0 0 var(--bs-danger, #dc3545)" } : undefined}
-            >
-              <div className={`fz-font-sm ${overdueList.length > 0 ? "text-danger fw-600" : "neutral-500"}`}>
-                Overdue{overdueList.length > 0 ? ` · ${overdueList.length} invoice${overdueList.length === 1 ? "" : "s"}` : ""}
-              </div>
-              <div className={`fz-32 fw-700 lh-1 mt-1 ${overdueList.length > 0 ? "text-danger" : "neutral-900"}`} style={{ overflowWrap: "anywhere" }}>{formatPrice(overdueCents, orgCurrency)}</div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-neutral-0 rounded-4 p-3 border-100">
-          <h3 className="fz-font-sm fw-600 neutral-500 mb-2">Needs chasing</h3>
-          {overdueList.length === 0 ? (
-            <div className="fz-font-sm neutral-500">Nothing overdue — nice.</div>
-          ) : (
-            <div className="d-flex flex-column gap-2">
-              {overdueList.map((inv) => (
-                <div key={inv.id} className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                  <div style={{ minWidth: "10rem" }} className="flex-grow-1">
-                    <div className="fz-font-md fw-600">{inv.number} · {inv.customer_name || "Customer"}</div>
-                    <div className="fz-font-sm text-danger fw-500">{lateLabel(daysOverdue(inv))} · {formatPrice(inv.total_cents, inv.currency)}</div>
-                  </div>
-                  <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap flex-shrink-0" onClick={() => draftDunning(inv.id)} disabled={dunningId === inv.id}>{dunningId === inv.id ? "Writing…" : "✨ Remind"}</button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

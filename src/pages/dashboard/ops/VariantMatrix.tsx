@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { listVariants, setVariantStock, setVariantPrice, generateVariants } from "@/lib/db/ops/variants";
@@ -23,6 +23,24 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
   // Local drafts so typing garbage never writes through; keyed by variant id.
   const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  // One acknowledgement per burst of cell edits — a toast per cell would spam
+  // anyone tabbing across the grid, but silence leaves saves unconfirmed.
+  const savedAck = useRef<number | null>(null);
+
+  function ackSaved() {
+    if (savedAck.current !== null) window.clearTimeout(savedAck.current);
+    savedAck.current = window.setTimeout(() => {
+      savedAck.current = null;
+      toast("Variants saved");
+    }, 800);
+  }
+
+  useEffect(
+    () => () => {
+      if (savedAck.current !== null) window.clearTimeout(savedAck.current);
+    },
+    [],
+  );
 
   async function gen() {
     setBusy(true);
@@ -63,6 +81,8 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
       // Roll the optimistic update back so the grid shows the real value.
       setVariants((vs) => (vs ?? []).map((v) => (v.id === id ? { ...v, stock: prevStock } : v)));
       toastError(error);
+    } else {
+      ackSaved();
     }
   }
 
@@ -92,6 +112,8 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
     if (error) {
       setVariants((vs) => (vs ?? []).map((v) => (v.id === id ? { ...v, price_cents: prevPrice } : v)));
       toastError(error);
+    } else {
+      ackSaved();
     }
   }
 
@@ -100,9 +122,9 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
   if (variants.length === 0) {
     return (
       <div className="p-2">
-        <div className="fz-font-sm neutral-500 mb-2">No variants yet. Set sizes &amp; colours in the editor, then generate the grid.</div>
+        <div className="fz-font-sm neutral-500 mb-2">No variants yet. Set sizes &amp; colors in the editor, then generate the grid.</div>
         <button type="button" className="btn btn-outline-dark btn-sm rounded-3" onClick={gen} disabled={busy}>
-          {busy ? "…" : "Generate from sizes & colours"}
+          {busy ? "…" : "Generate from sizes & colors"}
         </button>
       </div>
     );
@@ -121,13 +143,13 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
   return (
     <div className="p-2">
       <div className="fz-font-sm neutral-500 mb-2">
-        Stock &amp; price by size × colour · <span className="fw-600 neutral-700">{total} in stock</span>
+        Stock &amp; price by size × color · <span className="fw-600 neutral-700">{total} in stock</span>
         {outOfStock > 0 && <span className="text-danger fw-600"> · {outOfStock} variant{outOfStock === 1 ? "" : "s"} at 0</span>}
         <span className="neutral-400"> · blank price = inherits {formatPrice(basePriceCents, currency)}</span>
       </div>
       <div className="ops-scroll-x bg-neutral-0 rounded-3 border-100 mb-2">
         <table className="table table-sm align-middle mb-0" style={{ minWidth: gridMinWidth }}>
-          <caption className="visually-hidden">Stock and price override for every size and colour combination</caption>
+          <caption className="visually-hidden">Stock and price override for every size and color combination</caption>
           <thead>
             <tr>
               <th scope="col" className="fz-font-sm neutral-500 fw-500" style={{ position: "sticky", left: 0, background: "var(--at-neutral-0)", zIndex: 2 }}>Size</th>
@@ -178,7 +200,7 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
           </tbody>
         </table>
       </div>
-      <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={gen} disabled={busy}>+ Sync new sizes / colours</button>
+      <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={gen} disabled={busy}>+ Sync new sizes / colors</button>
     </div>
   );
 }

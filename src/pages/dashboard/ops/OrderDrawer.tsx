@@ -253,7 +253,7 @@ ${order.notes ? `<h2>Notes</h2><p>${esc(order.notes)}</p>` : ""}
               {busy === "tracking" ? "Saving…" : "Save tracking"}
             </button>
           )}
-          <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={packingSlip}>Packing slip</button>
+          <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={packingSlip}>Print packing slip</button>
           {order.status === "pending" && (
             <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={doMarkPaid} disabled={busy !== null}>
               {busy === "paid" ? "Saving…" : "Payment collected"}
@@ -277,6 +277,7 @@ ${order.notes ? `<h2>Notes</h2><p>${esc(order.notes)}</p>` : ""}
             <input
               id={`refund-${order.id}`}
               type="number"
+              inputMode="decimal"
               min={0.01}
               step={0.01}
               className="form-control form-control-sm rounded-3"

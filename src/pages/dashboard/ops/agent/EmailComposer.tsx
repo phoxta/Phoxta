@@ -1,10 +1,23 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { composeEmail } from "@/lib/db/ops/agent";
 import { confirmDanger, toast } from "@/lib/ops/feedback";
 import { useDialog } from "@/lib/ops/useDialog";
 
 type Attachment = { filename: string; content: string; size: number };
 const MAX_TOTAL = 5 * 1024 * 1024; // 5 MB total (base64 inflates ~33%)
+
+/** A mistyped address fails silently at the provider — catch it before we send. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Split a comma/semicolon list, drop empties and unwrap `Name <addr>`. */
+const splitAddresses = (s: string): string[] =>
+  s
+    .split(/[,;]/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => {
+      const m = p.match(/<([^>]+)>\s*$/);
+      return (m ? m[1] : p).trim();
+    });
 
 const TOOLBAR: { cmd: string; label: string; arg?: never }[] = [
   { cmd: "bold", label: "B" },
@@ -14,11 +27,13 @@ const TOOLBAR: { cmd: string; label: string; arg?: never }[] = [
 ];
 
 export default function EmailComposer({
-  orgId, initialTo = "", initialSubject = "", conversationId, onClose, onSent,
+  orgId, initialTo = "", initialSubject = "", initialBody = "", conversationId, onClose, onSent,
 }: {
   orgId: string;
   initialTo?: string;
   initialSubject?: string;
+  /** Plain-text seed for the body — lets the inline composer hand its draft over. */
+  initialBody?: string;
   conversationId?: string;
   onClose: () => void;
   onSent: (conversationId: string | null) => void;
@@ -32,6 +47,17 @@ export default function EmailComposer({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  /** What the body looked like before the owner touched it — the dirty baseline. */
+  const initialHtmlRef = useRef("");
+
+  // Seed the body once, so "Attach / format" can carry the inline draft across.
+  useEffect(() => {
+    if (!initialBody || !bodyRef.current) return;
+    bodyRef.current.innerText = initialBody;
+    initialHtmlRef.current = (bodyRef.current.innerHTML ?? "").replace(/<br\s*\/?>/gi, "").trim();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function exec(cmd: string) {
     document.execCommand(cmd, false);
@@ -62,6 +88,10 @@ export default function EmailComposer({
   async function send() {
     const html = (bodyRef.current?.innerHTML ?? "").trim();
     if (!to.trim() || !html || html === "<br>") { setError("Add a recipient and a message."); return; }
+    // Validate every address before the round trip — a typo here just bounces.
+    const addresses = [...splitAddresses(to), ...(showCcBcc ? [...splitAddresses(cc), ...splitAddresses(bcc)] : [])];
+    const bad = addresses.find((a) => !EMAIL_RE.test(a));
+    if (bad) { setError(`"${bad}" doesn't look like an email address.`); return; }
     setSending(true);
     setError(null);
     const { ok, conversationId: cid, error } = await composeEmail(orgId, {
@@ -70,7 +100,7 @@ export default function EmailComposer({
     });
     setSending(false);
     if (!ok || error) { setError(error ?? "Could not send."); return; }
-    toast("Email sent.");
+    toast("Email sent");
     onSent(cid);
     onClose();
   }
@@ -79,7 +109,9 @@ export default function EmailComposer({
   function requestClose() {
     const html = (bodyRef.current?.innerHTML ?? "").replace(/<br\s*\/?>/gi, "").trim();
     const dirty =
-      !!html || !!subject.trim() || attachments.length > 0 || !!cc.trim() || !!bcc.trim() || to.trim() !== initialTo.trim();
+      html !== initialHtmlRef.current ||
+      subject.trim() !== initialSubject.trim() ||
+      attachments.length > 0 || !!cc.trim() || !!bcc.trim() || to.trim() !== initialTo.trim();
     if (dirty && !confirmDanger("Discard this email draft?")) return;
     onClose();
   }
@@ -89,7 +121,9 @@ export default function EmailComposer({
   const dialogRef = useDialog<HTMLDivElement>(requestClose);
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 1050 }} className="d-flex align-items-center justify-content-center p-2 p-sm-3" onMouseDown={requestClose}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 1055 }} className="d-flex align-items-center justify-content-center p-2 p-sm-3" onMouseDown={requestClose}>
+      {/* The body is a contentEditable, so the focus ring has to live on its frame. */}
+      <style>{".ec-body-frame:focus-within{outline:2px solid #111;outline-offset:-2px;}"}</style>
       <div
         ref={dialogRef}
         className="bg-neutral-0 rounded-4 border-100 p-3 p-sm-4 w-100"
@@ -103,7 +137,7 @@ export default function EmailComposer({
           <h2 className="fw-600 fz-font-lg mb-0">{conversationId ? "Reply by email" : "New email"}</h2>
           <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" aria-label="Close composer" onClick={requestClose}>✕</button>
         </div>
-        {error && <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2" role="alert">{error}</div>}
+        {error && <div className="alert alert-danger py-2 px-3 fz-font-sm mb-2" role="alert">{error}</div>}
 
         <div className="d-flex align-items-center justify-content-between gap-2">
           <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="ec-to">To <span className="neutral-400 fw-400">— separate addresses with commas</span></label>
@@ -122,21 +156,21 @@ export default function EmailComposer({
         <input id="ec-subject" className="form-control rounded-3 mb-2" value={subject} onChange={(e) => setSubject(e.target.value)} />
 
         <div className="fz-font-sm fw-500 neutral-700 mb-1" id="ec-body-label">Message</div>
-        <div className="border-100 rounded-3 mb-2">
+        <div className="ec-body-frame border-100 rounded-3 mb-2">
           <div className="ops-scroll-x d-flex flex-nowrap gap-1 p-2 border-bottom border-100" role="group" aria-label="Formatting">
             {TOOLBAR.map((t) => (
               <button key={t.cmd} type="button" className="btn btn-sm btn-outline-secondary rounded-2 px-2 py-1 flex-shrink-0 text-nowrap" style={{ minWidth: 36 }} aria-label={t.cmd === "insertUnorderedList" ? "Bulleted list" : t.cmd} onMouseDown={(e) => { e.preventDefault(); exec(t.cmd); }}>{t.label}</button>
             ))}
             <button type="button" className="btn btn-sm btn-outline-secondary rounded-2 px-2 py-1 flex-shrink-0" onMouseDown={(e) => { e.preventDefault(); link(); }}>Link</button>
           </div>
-          <div ref={bodyRef} contentEditable suppressContentEditableWarning role="textbox" aria-labelledby="ec-body-label" aria-multiline="true" className="p-3 fz-font-md" style={{ minHeight: 160, maxHeight: "40vh", overflowY: "auto", outline: "none", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }} />
+          <div ref={bodyRef} contentEditable suppressContentEditableWarning role="textbox" aria-labelledby="ec-body-label" aria-multiline="true" className="p-3 fz-font-md" style={{ minHeight: 160, maxHeight: "40vh", overflowY: "auto", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }} />
         </div>
 
         {attachments.length > 0 && (
           <div className="d-flex flex-wrap gap-1 mb-2">
             {attachments.map((a, i) => (
               <span key={i} className="badge bg-neutral-100 neutral-700 fw-500 d-inline-flex align-items-center gap-1" style={{ maxWidth: "100%", overflowWrap: "anywhere" }}>
-                📎 {a.filename}
+                <span aria-hidden="true">📎 </span>{a.filename}
                 <button type="button" className="btn btn-link btn-sm p-0 px-1 neutral-500 text-decoration-none ops-tap" aria-label={`Remove attachment ${a.filename}`} onClick={() => setAttachments(attachments.filter((_, j) => j !== i))}>×</button>
               </span>
             ))}
@@ -144,10 +178,12 @@ export default function EmailComposer({
         )}
 
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <label className="btn btn-outline-secondary btn-sm rounded-pill px-3 mb-0">
-            Attach a file
-            <input type="file" multiple className="d-none" onChange={onFiles} />
-          </label>
+          {/* A real button, not a <label> wrapping a display:none input — the
+              wrapper isn't focusable, which made attaching mouse-only. */}
+          <div>
+            <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => fileRef.current?.click()}>Attach a file</button>
+            <input ref={fileRef} type="file" multiple hidden tabIndex={-1} aria-hidden="true" onChange={onFiles} />
+          </div>
           <div className="d-flex align-items-center gap-2">
             <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none px-2 ops-tap" onClick={requestClose}>Cancel</button>
             <button type="button" className="btn btn-dark rounded-pill px-4" onClick={send} disabled={sending}>{sending ? "Sending…" : "Send"}</button>
