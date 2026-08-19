@@ -16,8 +16,10 @@ const FN = "https://ktgleoqvdikngocygdkn.supabase.co/functions/v1";
 type State = { status: "idle" | "working" | "done" | "error"; message: string };
 
 function Shell({ children }: { children: React.ReactNode }) {
+  // The site header overlays the page, so clear it explicitly rather than
+  // relying on section-padding — these pages have no hero to sit under it.
   return (
-    <section className="section-padding">
+    <section style={{ paddingTop: 180, paddingBottom: 120, minHeight: "70vh" }}>
       <div className="container">
         <div className="row justify-content-center">
           <div className="col-lg-6">
