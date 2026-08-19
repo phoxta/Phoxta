@@ -1099,6 +1099,7 @@ li,
   */
   --at-fz-body: 14px;
   --at-fz-font-label: 12px;
+  --at-fz-font-sm: 13px;
   --at-fz-font-md: 16px;
   --at-fz-font-lg: 20px;
   --at-fz-font-xl: 22px;
@@ -1127,7 +1128,9 @@ li,
   --at-neutral-100: #DFDFDF;
   --at-neutral-200: #CDCCCC;
   --at-neutral-300: #B7B7B7;
+  --at-neutral-400: #8A8A8A;
   --at-neutral-500: #585959;
+  --at-neutral-600: #444444;
   --at-neutral-700: #303030;
   --at-neutral-800: #212121;
   --at-neutral-900: #1D1D1D;
@@ -1139,7 +1142,9 @@ li,
   --at-neutral-dark-100: #212121;
   --at-neutral-dark-200: #2D2D2D;
   --at-neutral-dark-300: #404040;
+  --at-neutral-dark-400: #7A7A7A;
   --at-neutral-dark-500: #B3B3B3;
+  --at-neutral-dark-600: #C9C9C9;
   --at-neutral-dark-700: #535353;
   --at-neutral-dark-800: #EAEAEA;
   --at-neutral-dark-900: #EFEFEF;
@@ -1722,8 +1727,65 @@ input[type=color] {
   font-size: var(--at-fz-font-label);
 }
 
+/* Used ~300x across the operating console for helper/meta text. */
+.fz-font-sm {
+  font-size: var(--at-fz-font-sm);
+}
+
 .fz-font-md {
   font-size: var(--at-fz-font-md);
+}
+
+/* ── Operating console helpers ─────────────────────────────────────────── */
+
+/* Tab strip: a single horizontally-scrollable line. With 9 tabs this wrapped
+   to four rows on a phone and ate the whole first screen. */
+.ops-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ops-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ops-tabs > ul {
+  flex-wrap: nowrap;
+}
+
+.ops-tabs a {
+  white-space: nowrap;
+}
+
+/* Wide content (tables, matrices) scrolls inside its own box instead of
+   being clipped by a rounded `overflow-hidden` card. */
+.ops-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Comfortable hit area for the console's small text buttons on touch. */
+@media (max-width: 991.98px) {
+  .ops-tap {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Numeric display sizes used by the console's KPI tiles. */
+.fz-20 {
+  font-size: 20px;
+}
+
+.fz-32 {
+  font-size: 32px;
+}
+
+.fz-40 {
+  font-size: 40px;
 }
 
 .fz-font-lg {
@@ -1823,8 +1885,16 @@ input[type=color] {
   color: var(--at-neutral-300) !important;
 }
 
+.neutral-400 {
+  color: var(--at-neutral-400) !important;
+}
+
 .neutral-500 {
   color: var(--at-neutral-500) !important;
+}
+
+.neutral-600 {
+  color: var(--at-neutral-600) !important;
 }
 
 .neutral-700 {
@@ -37087,7 +37157,9 @@ body.at-magic-cursor #magic-cursor {
   --at-neutral-100: var(--at-neutral-dark-100);
   --at-neutral-200: var(--at-neutral-dark-200);
   --at-neutral-300: var(--at-neutral-dark-300);
+  --at-neutral-400: var(--at-neutral-dark-400);
   --at-neutral-500: var(--at-neutral-dark-500);
+  --at-neutral-600: var(--at-neutral-dark-600);
   --at-neutral-700: var(--at-neutral-dark-700);
   --at-neutral-800: var(--at-neutral-dark-800);
   --at-neutral-900: var(--at-neutral-dark-900);

@@ -25,6 +25,8 @@ const STATUS_BADGE: Record<Reservation["status"], string> = {
   cancelled: "bg-danger-subtle text-danger",
 };
 
+const DIVIDER = "1px solid var(--at-neutral-100)";
+
 // Month availability calendar for one resource — visualises open / limited / full /
 // blocked days at a glance (the booking backend factors stock, bookings + blackouts).
 // Clicking a day opens a panel with that day's reservations + a block-date shortcut.
@@ -87,16 +89,22 @@ export default function AvailabilityCalendar({
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(cursor.getFullYear(), cursor.getMonth(), d));
 
+  const todayKey = ymd(new Date());
+  const thisMonth = new Date();
+  const offCurrentMonth = cursor.getFullYear() !== thisMonth.getFullYear() || cursor.getMonth() !== thisMonth.getMonth();
+
   // Theme classes (same palette the console status badges use) so days stay
   // legible on light and dark backgrounds — no hardcoded hex.
-  function styleFor(date: Date): { cls: string; label: string } {
+  // `short` is what a ~40px-wide phone cell can hold; the full word shows from
+  // 576px up and is always available to screen readers via aria-label/title.
+  function styleFor(date: Date): { cls: string; label: string; short: string } {
     const key = ymd(date);
-    if (blackoutDays.has(key)) return { cls: "bg-danger-subtle text-danger", label: "Blocked" };
+    if (blackoutDays.has(key)) return { cls: "bg-danger-subtle text-danger", label: "Blocked", short: "Off" };
     const a = avail[key];
-    if (!a) return { cls: "bg-neutral-100 neutral-500", label: "" };
-    if (a.available <= 0) return { cls: "bg-danger-subtle text-danger", label: "Full" };
-    if (a.available < a.units_total) return { cls: "bg-warning-subtle text-warning", label: `${a.available} left` };
-    return { cls: "bg-success-subtle text-success", label: "Open" };
+    if (!a) return { cls: "bg-neutral-100 neutral-500", label: "", short: "" };
+    if (a.available <= 0) return { cls: "bg-danger-subtle text-danger", label: "Full", short: "Full" };
+    if (a.available < a.units_total) return { cls: "bg-warning-subtle text-warning", label: `${a.available} left`, short: String(a.available) };
+    return { cls: "bg-success-subtle text-success", label: "Open", short: "" };
   }
 
   const Legend = ({ cls, text }: { cls: string; text: string }) => (
@@ -109,67 +117,121 @@ export default function AvailabilityCalendar({
   const selectedProduct = products.find((p) => p.id === productId);
 
   return (
-    <div className="bg-neutral-0 rounded-4 p-4 border-100">
+    <div className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100">
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <h5 className="fw-600 mb-0">Availability calendar</h5>
-        <select
-          className="form-select form-select-sm rounded-3"
-          style={{ width: "auto", maxWidth: 240 }}
-          value={productId}
-          aria-label="Resource"
-          onChange={(e) => setProductId(e.target.value)}
-        >
-          {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        <h2 className="fw-600 fz-font-lg mb-0">Availability calendar</h2>
+        {products.length > 0 && (
+          <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+            <label className="fz-font-sm neutral-500 mb-0" htmlFor="cal-resource">Showing</label>
+            <select
+              id="cal-resource"
+              className="form-select form-select-sm rounded-3"
+              style={{ width: "auto", maxWidth: 200 }}
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+            >
+              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        )}
       </div>
       {products.length === 0 ? (
         <div className="neutral-500 fz-font-md">Add a resource first.</div>
       ) : (
         <>
-          <div className="d-flex align-items-center justify-content-between mb-2">
-            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none neutral-700" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}>← Prev</button>
-            <strong>{cursor.toLocaleString(undefined, { month: "long", year: "numeric" })}</strong>
-            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none neutral-700" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}>Next →</button>
+          <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap"
+              aria-label="Previous month"
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+            >
+              ←
+            </button>
+            <div className="text-center" style={{ minWidth: 0 }}>
+              <div className="fw-600 fz-font-md neutral-900">{cursor.toLocaleString(undefined, { month: "long", year: "numeric" })}</div>
+              {offCurrentMonth && (
+                <button
+                  type="button"
+                  className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none fz-font-sm"
+                  onClick={() => setCursor(new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1))}
+                >
+                  Back to this month
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap"
+              aria-label="Next month"
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+            >
+              →
+            </button>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
-            {WEEK.map((d) => <div key={d} className="fz-font-sm neutral-500 text-center fw-600">{d}</div>)}
+          {/* minmax(0,1fr) — plain 1fr uses each cell's min-content width as a floor,
+              which pushed the whole page sideways on a phone. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 4 }}>
+            {WEEK.map((d) => (
+              <div key={d} className="fz-font-sm neutral-500 text-center fw-600" style={{ minWidth: 0, overflow: "hidden" }}>
+                <span className="d-sm-none" aria-hidden="true">{d.slice(0, 1)}</span>
+                <span className="d-none d-sm-inline">{d}</span>
+                <span className="visually-hidden d-sm-none">{d}</span>
+              </div>
+            ))}
             {cells.map((date, i) => {
               if (!date) return <div key={i} />;
               const key = ymd(date);
               const s = styleFor(date);
               const selected = selectedDay === key;
+              const isToday = key === todayKey;
               return (
                 <button
                   key={i}
                   type="button"
                   className={`border-0 rounded-3 ${s.cls}`}
-                  style={{ padding: "6px 4px", minHeight: 52, textAlign: "center", cursor: "pointer", boxShadow: selected ? "inset 0 0 0 2px currentColor" : undefined }}
-                  aria-label={`${key}${s.label ? ` — ${s.label}` : ""}`}
+                  style={{
+                    padding: "6px 2px",
+                    minHeight: 52,
+                    minWidth: 0,
+                    textAlign: "center",
+                    cursor: "pointer",
+                    boxShadow: selected ? "inset 0 0 0 2px currentColor" : isToday ? "inset 0 0 0 1px currentColor" : undefined,
+                  }}
+                  title={`${key}${s.label ? ` — ${s.label}` : ""}`}
+                  aria-label={`${key}${s.label ? ` — ${s.label}` : ""}${isToday ? " — today" : ""}`}
                   aria-pressed={selected}
                   onClick={() => setSelectedDay(selected ? null : key)}
                 >
-                  <div className="fw-600 fz-font-md">{date.getDate()}</div>
-                  <div style={{ fontSize: 10 }}>{s.label}</div>
+                  <div className={`fz-font-md ${isToday ? "fw-700" : "fw-600"}`}>{date.getDate()}</div>
+                  <div style={{ fontSize: 10, lineHeight: 1.2, overflow: "hidden", whiteSpace: "nowrap" }}>
+                    <span className="d-none d-sm-inline">{s.label}</span>
+                    <span className="d-sm-none">{s.short}</span>
+                  </div>
                 </button>
               );
             })}
           </div>
           {selectedDay && (
             <div className="bg-neutral-100 rounded-3 p-3 mt-3">
-              <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-                <div className="fw-600 fz-font-md">
+              <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                <h3 className="fw-600 fz-font-md mb-0">
                   {parseLocal(selectedDay).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
                   {selectedProduct ? <span className="neutral-500 fw-500"> · {selectedProduct.name}</span> : null}
-                </div>
-                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setSelectedDay(null)}>Close</button>
+                </h3>
+                <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setSelectedDay(null)}>Close</button>
               </div>
               {dayReservations.length === 0 ? (
                 <div className="fz-font-sm neutral-500 mb-2">No reservations on this day.</div>
               ) : (
-                <div className="d-flex flex-column gap-1 mb-2">
-                  {dayReservations.map((r) => (
-                    <div key={r.id} className="d-flex align-items-center justify-content-between gap-2 fz-font-sm">
-                      <span>
+                <div className="d-flex flex-column mb-2">
+                  {dayReservations.map((r, idx) => (
+                    <div
+                      key={r.id}
+                      className="d-flex align-items-center justify-content-between gap-2 flex-wrap fz-font-sm py-1"
+                      style={idx ? { borderTop: DIVIDER } : undefined}
+                    >
+                      <span style={{ minWidth: 0 }}>
                         <span className="fw-600">{r.customer_name || "Guest"}</span>
                         <span className="neutral-500">
                           {isTableReservation(r)
@@ -183,7 +245,7 @@ export default function AvailabilityCalendar({
                 </div>
               )}
               {onBlockDate && (
-                <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => onBlockDate(productId, selectedDay)}>
+                <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap" onClick={() => onBlockDate(productId, selectedDay)}>
                   Block this date
                 </button>
               )}
@@ -191,9 +253,9 @@ export default function AvailabilityCalendar({
           )}
           <div className="d-flex gap-3 mt-3 fz-font-sm neutral-500 flex-wrap align-items-center">
             <Legend cls="bg-success-subtle" text="Open" />
-            <Legend cls="bg-warning-subtle" text="Limited" />
-            <Legend cls="bg-danger-subtle" text="Full / blocked" />
-            {loading && <span className="ms-auto">Loading…</span>}
+            <Legend cls="bg-warning-subtle" text="Limited (number = left)" />
+            <Legend cls="bg-danger-subtle" text="Full, or blocked (“Off”)" />
+            <span className="ms-auto" role="status" aria-live="polite">{loading ? "Loading…" : ""}</span>
           </div>
         </>
       )}

@@ -51,7 +51,53 @@ import PromoCodes from "./PromoCodes";
 type CampaignCopy = { name: string; subject: string; body: string };
 type AiSegment = { criteria: string; contact_ids: string[]; rationale: string };
 
-const pill = (active: boolean) => `btn btn-sm rounded-pill px-3 ${active ? "btn-dark" : "btn-outline-secondary"}`;
+type SectionKey = "campaigns" | "automations" | "outreach" | "promos";
+
+const SECTIONS: { key: SectionKey; label: string }[] = [
+  { key: "campaigns", label: "Campaigns" },
+  { key: "automations", label: "Automations" },
+  { key: "outreach", label: "AI Outreach" },
+  { key: "promos", label: "Promo codes" },
+];
+
+/** Underlined sub-tab strip: navigation between the four Marketing sections.
+ *  Deliberately NOT the rounded pills used for list filters elsewhere, and
+ *  visually subordinate to the console shell's tab bar. */
+function SectionTabs({ tab, setTab }: { tab: SectionKey; setTab: (k: SectionKey) => void }) {
+  function move(e: React.KeyboardEvent, i: number) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    const next = SECTIONS[(i + (e.key === "ArrowRight" ? 1 : SECTIONS.length - 1)) % SECTIONS.length];
+    setTab(next.key);
+    document.getElementById(`mk-tab-${next.key}`)?.focus();
+  }
+  return (
+    <div className="ops-scroll-x border-bottom mb-4">
+      <div className="d-flex flex-nowrap" role="tablist" aria-label="Marketing sections">
+        {SECTIONS.map((s, i) => {
+          const active = tab === s.key;
+          return (
+            <button
+              key={s.key}
+              id={`mk-tab-${s.key}`}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-controls={`mk-panel-${s.key}`}
+              tabIndex={active ? 0 : -1}
+              onKeyDown={(e) => move(e, i)}
+              onClick={() => setTab(s.key)}
+              className={`btn btn-sm rounded-0 bg-transparent text-nowrap px-3 py-2 ops-tap ${active ? "neutral-900 fw-700" : "neutral-500 fw-500"}`}
+              style={{ border: "none", borderBottom: `2px solid ${active ? "#212529" : "transparent"}`, marginBottom: -1 }}
+            >
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const RUN_STYLE: Record<string, string> = {
   pending: "bg-neutral-100 neutral-700",
@@ -96,7 +142,7 @@ const OUTBOUND_TYPES = [
 // ---------------------------------------------------------------------------
 export default function MarketingPage() {
   const { orgId, org } = useOutletContext<OpsContext>();
-  const [tab, setTab] = useState<"campaigns" | "automations" | "outreach" | "promos">("campaigns");
+  const [tab, setTab] = useState<SectionKey>("campaigns");
 
   const { data, loading, error: loadError, reload } = useCachedData(
     `ops:marketing:${orgId}`,
@@ -125,45 +171,42 @@ export default function MarketingPage() {
 
   return (
     <div>
-      <div className="d-flex gap-1 mb-4 flex-wrap">
-        <button type="button" className={pill(tab === "campaigns")} onClick={() => setTab("campaigns")}>Campaigns</button>
-        <button type="button" className={pill(tab === "automations")} onClick={() => setTab("automations")}>Automations</button>
-        <button type="button" className={pill(tab === "outreach")} onClick={() => setTab("outreach")}>AI Outreach</button>
-        <button type="button" className={pill(tab === "promos")} onClick={() => setTab("promos")}>Promo codes</button>
+      <SectionTabs tab={tab} setTab={setTab} />
+
+      {loadError && <div className="alert alert-warning py-2 px-3 fz-font-md mb-3" role="alert">{loadError}</div>}
+
+      <div id={`mk-panel-${tab}`} role="tabpanel" aria-labelledby={`mk-tab-${tab}`}>
+        {tab === "campaigns" && (
+          <CampaignsTab
+            orgId={orgId}
+            campaigns={data?.campaigns ?? []}
+            segments={data?.segments ?? []}
+            contacts={data?.contacts ?? []}
+            reload={reload}
+          />
+        )}
+        {tab === "automations" && (
+          <AutomationsTab
+            orgId={orgId}
+            businessName={org.name}
+            automations={data?.automations ?? []}
+            runs={data?.runs ?? []}
+            reload={reload}
+          />
+        )}
+        {tab === "outreach" && (
+          <OutreachTab
+            orgId={orgId}
+            outbound={data?.outbound ?? []}
+            tasks={data?.tasks ?? []}
+            contacts={data?.contacts ?? []}
+            aiAutos={data?.aiAutos ?? []}
+            aiRuns={data?.aiRuns ?? []}
+            reload={reload}
+          />
+        )}
+        {tab === "promos" && <PromoCodes orgId={orgId} />}
       </div>
-
-      {loadError && <div className="alert alert-warning py-2 px-3 fz-font-md mb-3">{loadError}</div>}
-
-      {tab === "campaigns" && (
-        <CampaignsTab
-          orgId={orgId}
-          campaigns={data?.campaigns ?? []}
-          segments={data?.segments ?? []}
-          contacts={data?.contacts ?? []}
-          reload={reload}
-        />
-      )}
-      {tab === "automations" && (
-        <AutomationsTab
-          orgId={orgId}
-          businessName={org.name}
-          automations={data?.automations ?? []}
-          runs={data?.runs ?? []}
-          reload={reload}
-        />
-      )}
-      {tab === "outreach" && (
-        <OutreachTab
-          orgId={orgId}
-          outbound={data?.outbound ?? []}
-          tasks={data?.tasks ?? []}
-          contacts={data?.contacts ?? []}
-          aiAutos={data?.aiAutos ?? []}
-          aiRuns={data?.aiRuns ?? []}
-          reload={reload}
-        />
-      )}
-      {tab === "promos" && <PromoCodes orgId={orgId} />}
     </div>
   );
 }
@@ -282,21 +325,7 @@ function CampaignsTab({ orgId, campaigns, segments, contacts, reload }: {
   return (
     <div className="row g-4">
       <div className="col-lg-7">
-        <h5 className="fw-600 mb-3">Campaigns</h5>
-
-        <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <div className="fz-font-sm fw-600 neutral-500 mb-2">✨ Generate campaign</div>
-          <div className="row g-2">
-            <div className="col-md-6"><input className="form-control rounded-3" aria-label="Campaign goal" placeholder="Goal (e.g. win back lapsed customers)" value={genForm.goal} onChange={(e) => setGenForm({ ...genForm, goal: e.target.value })} /></div>
-            <div className="col-md-3">
-              <select className="form-select rounded-3" aria-label="Channel" value={genForm.channel} onChange={(e) => setGenForm({ ...genForm, channel: e.target.value })}>
-                <option value="email">Email</option>
-                <option value="sms">SMS</option>
-              </select>
-            </div>
-            <div className="col-md-3"><button type="button" className="btn btn-dark w-100 rounded-3" onClick={genCampaign} disabled={genLoading}>{genLoading ? "…" : "Generate"}</button></div>
-          </div>
-        </div>
+        <h2 className="fz-font-lg fw-600 mb-3">Campaigns</h2>
 
         <form onSubmit={addCampaign} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
           <div className="row g-2">
@@ -326,15 +355,15 @@ function CampaignsTab({ orgId, campaigns, segments, contacts, reload }: {
               <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-c-body">Body</label>
               <textarea id="mk-c-body" className="form-control rounded-3" rows={5} value={cForm.body} onChange={(e) => setCForm({ ...cForm, body: e.target.value })} />
             </div>
-            <div className="col-12 d-flex align-items-center gap-3">
-              <button type="submit" className="btn btn-dark rounded-3 px-4">Create campaign</button>
+            <div className="col-12 d-flex flex-wrap align-items-center gap-2">
+              <button type="submit" className="btn btn-dark rounded-3 px-4 text-nowrap flex-shrink-0">Create campaign</button>
               <span className="fz-font-sm neutral-500">Every marketing email automatically includes an unsubscribe footer.</span>
             </div>
           </div>
         </form>
 
         {sendPrep && (
-          <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-3" style={{ borderLeft: "3px solid #212529" }}>
+          <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-3" style={{ boxShadow: "inset 3px 0 0 #212529" }} role="status">
             <div className="fw-600 mb-1">
               Send &quot;{sendPrep.campaign.subject || sendPrep.campaign.name}&quot; to {sendPrep.eligible.length} contact{sendPrep.eligible.length === 1 ? "" : "s"} via {sendPrep.campaign.channel}
             </div>
@@ -344,9 +373,9 @@ function CampaignsTab({ orgId, campaigns, segments, contacts, reload }: {
             {sendPrep.campaign.body
               ? <div className="p-2 bg-neutral-50 rounded-3 fz-font-sm neutral-700 mb-2" style={{ whiteSpace: "pre-wrap", maxHeight: 180, overflowY: "auto" }}>{sendPrep.campaign.body}</div>
               : <div className="fz-font-sm text-danger mb-2">This campaign has no body — it will send empty.</div>}
-            <div className="d-flex gap-2">
-              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={confirmSend} disabled={sending || sendPrep.eligible.length === 0}>{sending ? "Queuing…" : `Confirm send to ${sendPrep.eligible.length}`}</button>
-              <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => setSendPrep(null)} disabled={sending}>Cancel</button>
+            <div className="d-flex flex-wrap gap-2">
+              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 text-nowrap" onClick={confirmSend} disabled={sending || sendPrep.eligible.length === 0}>{sending ? "Queuing…" : `Confirm send to ${sendPrep.eligible.length}`}</button>
+              <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 text-nowrap" onClick={() => setSendPrep(null)} disabled={sending}>Cancel</button>
             </div>
           </div>
         )}
@@ -356,12 +385,12 @@ function CampaignsTab({ orgId, campaigns, segments, contacts, reload }: {
         ) : (
           <div className="d-flex flex-column gap-2">
             {campaigns.map((c) => (
-              <div key={c.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2">
-                <div>
+              <div key={c.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div style={{ minWidth: "12rem" }} className="flex-grow-1">
                   <div className="fw-600">{c.name} <span className="badge bg-neutral-100 neutral-700 fw-500 text-uppercase ms-1">{c.channel}</span></div>
                   <div className="fz-font-sm neutral-500">{statusLine(c)}</div>
                 </div>
-                <div className="d-flex align-items-center gap-2">
+                <div className="d-flex align-items-center gap-2 flex-shrink-0">
                   <span className={`badge fw-500 text-capitalize ${CAMPAIGN_STYLE[c.status] ?? CAMPAIGN_STYLE.draft}`}>{c.status === "sending" ? "Sending…" : c.status}</span>
                   {(c.status === "draft" || c.status === "scheduled") && (
                     <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={() => prepareSend(c)}>Send</button>
@@ -371,44 +400,69 @@ function CampaignsTab({ orgId, campaigns, segments, contacts, reload }: {
             ))}
           </div>
         )}
+
+        {/* AI helper sits below the operational surface, like Commerce. */}
+        <div className="bg-neutral-0 rounded-4 p-3 border-100 mt-3">
+          <h3 className="fz-font-sm fw-600 neutral-500 mb-1">✨ Generate campaign</h3>
+          <p className="fz-font-sm neutral-500 mb-2">Writes draft copy into the campaign form above — you review and edit before anything is created.</p>
+          <div className="row g-2">
+            <div className="col-md-6">
+              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-g-goal">Goal</label>
+              <input id="mk-g-goal" className="form-control rounded-3" placeholder="e.g. win back lapsed customers" value={genForm.goal} onChange={(e) => setGenForm({ ...genForm, goal: e.target.value })} />
+            </div>
+            <div className="col-6 col-md-3">
+              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-g-channel">Channel</label>
+              <select id="mk-g-channel" className="form-select rounded-3" value={genForm.channel} onChange={(e) => setGenForm({ ...genForm, channel: e.target.value })}>
+                <option value="email">Email</option>
+                <option value="sms">SMS</option>
+              </select>
+            </div>
+            <div className="col-6 col-md-3 d-flex align-items-end">
+              <button type="button" className="btn btn-dark w-100 rounded-3 text-nowrap" onClick={genCampaign} disabled={genLoading}>{genLoading ? "Writing…" : "Generate"}</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="col-lg-5">
-        <h5 className="fw-600 mb-3">Segments</h5>
-        <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <div className="fz-font-sm fw-600 neutral-500 mb-2">✨ AI audience builder</div>
-          <div className="d-flex gap-2">
-            <input className="form-control rounded-3" aria-label="Describe the audience" placeholder="e.g. high-value customers at churn risk" value={segDesc} onChange={(e) => setSegDesc(e.target.value)} />
-            <button type="button" className="btn btn-dark rounded-3 px-3" onClick={runSegment} disabled={segLoading}>{segLoading ? "…" : "Build"}</button>
-          </div>
-          {seg && (
-            <div className="mt-2">
-              <div className="fz-font-md neutral-700 mb-2">
-                <span className="fw-600">{seg.criteria}</span> — {seg.count} contacts. <span className="neutral-500">{seg.rationale}</span>
-              </div>
-              <div className="d-flex gap-2">
-                <input className="form-control rounded-3" aria-label="Segment name" placeholder="Segment name" value={segName} onChange={(e) => setSegName(e.target.value)} />
-                <button type="button" className="btn btn-dark rounded-3 px-3 text-nowrap" onClick={saveSegment}>Save segment</button>
-              </div>
-            </div>
-          )}
-        </div>
+        <h2 className="fz-font-lg fw-600 mb-3">Segments</h2>
 
         {segments.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No saved segments yet — build one with AI above, then target it from the campaign form.</div>
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No saved segments yet — build one with AI below, then target it from the campaign form.</div>
         ) : (
           <div className="d-flex flex-column gap-2">
             {segments.map((s) => (
-              <div key={s.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2">
-                <div>
+              <div key={s.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div style={{ minWidth: "10rem" }} className="flex-grow-1">
                   <div className="fw-600">{s.name}</div>
                   <div className="fz-font-sm neutral-500">{s.contact_ids?.length ?? 0} contacts · {s.criteria}</div>
                 </div>
-                <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none" onClick={() => removeSegment(s)}>Delete</button>
+                <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap flex-shrink-0" onClick={() => removeSegment(s)}>Delete</button>
               </div>
             ))}
           </div>
         )}
+
+        <div className="bg-neutral-0 rounded-4 p-3 border-100 mt-3">
+          <h3 className="fz-font-sm fw-600 neutral-500 mb-1">✨ AI audience builder</h3>
+          <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-s-desc">Describe the audience</label>
+          <div className="d-flex flex-wrap gap-2">
+            <input id="mk-s-desc" className="form-control rounded-3 flex-grow-1" style={{ minWidth: "12rem" }} placeholder="e.g. high-value customers at churn risk" value={segDesc} onChange={(e) => setSegDesc(e.target.value)} />
+            <button type="button" className="btn btn-dark rounded-3 px-3 text-nowrap flex-shrink-0" onClick={runSegment} disabled={segLoading}>{segLoading ? "Building…" : "Build"}</button>
+          </div>
+          {seg && (
+            <div className="mt-3 pt-3 border-top">
+              <div className="fz-font-md neutral-700 mb-2">
+                <span className="fw-600">{seg.criteria}</span> — {seg.count} contacts. <span className="neutral-500">{seg.rationale}</span>
+              </div>
+              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-s-name">Segment name</label>
+              <div className="d-flex flex-wrap gap-2">
+                <input id="mk-s-name" className="form-control rounded-3 flex-grow-1" style={{ minWidth: "12rem" }} placeholder="Segment name" value={segName} onChange={(e) => setSegName(e.target.value)} />
+                <button type="button" className="btn btn-dark rounded-3 px-3 text-nowrap flex-shrink-0" onClick={saveSegment}>Save segment</button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -513,15 +567,15 @@ function AutomationsTab({ orgId, businessName, automations, runs, reload }: {
   return (
     <div className="row g-4">
       <div className="col-12">
-        <h5 className="fw-600 mb-3">Recipes</h5>
+        <h2 className="fz-font-lg fw-600 mb-3">Recipes</h2>
         <div className="row g-3">
           {recipeDefs(businessName).map((r) => (
             <div key={r.key} className="col-md-4">
               <div className="bg-neutral-0 rounded-4 p-3 border-100 h-100 d-flex flex-column">
-                <div className="fw-600">{r.title}</div>
+                <h3 className="fz-font-md fw-600 mb-1">{r.title}</h3>
                 <div className="fz-font-sm neutral-500 mb-2 flex-grow-1">{r.desc}</div>
                 <div>
-                  <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={() => addRecipe(r)} disabled={busyRecipe === r.key}>
+                  <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap" onClick={() => addRecipe(r)} disabled={busyRecipe === r.key}>
                     {busyRecipe === r.key ? "Adding…" : "Add automation"}
                   </button>
                 </div>
@@ -532,7 +586,7 @@ function AutomationsTab({ orgId, businessName, automations, runs, reload }: {
       </div>
 
       <div className="col-lg-6">
-        <h5 className="fw-600 mb-3">{editingId ? "Edit automation" : "New automation"}</h5>
+        <h2 className="fz-font-lg fw-600 mb-3">{editingId ? "Edit automation" : "New automation"}</h2>
         <form onSubmit={submit} className="bg-neutral-0 rounded-4 p-3 border-100">
           <div className="row g-2">
             <div className="col-12">
@@ -564,16 +618,16 @@ function AutomationsTab({ orgId, businessName, automations, runs, reload }: {
                 </div>
               </>
             )}
-            <div className="col-12 d-flex gap-2">
-              <button type="submit" className="btn btn-dark rounded-3 px-4">{editingId ? "Save changes" : "Add automation"}</button>
-              {editingId && <button type="button" className="btn btn-outline-secondary rounded-3 px-3" onClick={() => { setEditingId(null); setForm(blank); }}>Cancel</button>}
+            <div className="col-12 d-flex flex-wrap gap-2">
+              <button type="submit" className="btn btn-dark rounded-3 px-4 text-nowrap">{editingId ? "Save changes" : "Add automation"}</button>
+              {editingId && <button type="button" className="btn btn-outline-secondary rounded-3 px-3 text-nowrap" onClick={() => { setEditingId(null); setForm(blank); }}>Cancel</button>}
             </div>
           </div>
         </form>
       </div>
 
       <div className="col-lg-6">
-        <h5 className="fw-600 mb-3">Your automations</h5>
+        <h2 className="fz-font-lg fw-600 mb-3">Your automations</h2>
         {automations.length === 0 ? (
           <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No automations yet — try a recipe above.</div>
         ) : (
@@ -583,16 +637,16 @@ function AutomationsTab({ orgId, businessName, automations, runs, reload }: {
               const act = ACTIONS.find((x) => x.value === a.action)?.label ?? a.action;
               return (
                 <div key={a.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                  <div>
+                  <div style={{ minWidth: "12rem" }} className="flex-grow-1">
                     <div className="fw-600">
                       {a.name}
                       {lastRunFailed.get(a.id) && <span className="badge bg-danger-subtle text-danger fw-500 ms-2">Last run failed</span>}
                     </div>
                     <div className="fz-font-sm neutral-500">When {trig} → {act}{a.config?.subject ? ` · "${a.config.subject}"` : ""}</div>
                   </div>
-                  <div className="d-flex align-items-center gap-2">
-                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => startEdit(a)}>Edit</button>
-                    <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none" onClick={() => remove(a)}>Delete</button>
+                  <div className="d-flex align-items-center gap-3 flex-shrink-0">
+                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={() => startEdit(a)}>Edit</button>
+                    <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap" onClick={() => remove(a)}>Delete</button>
                     <div className="form-check form-switch m-0">
                       <input className="form-check-input" type="checkbox" aria-label={`${a.name} active`} checked={a.active} onChange={async (e) => { const ok = await reportMutation(toggleAutomation(a.id, e.target.checked)); if (ok) reload(); }} />
                     </div>
@@ -604,15 +658,15 @@ function AutomationsTab({ orgId, businessName, automations, runs, reload }: {
         )}
 
         <div className="mt-4">
-          <h6 className="fw-600 mb-2">Automation runs</h6>
+          <h3 className="fz-font-md fw-600 mb-2">Automation runs</h3>
           {runs.length === 0 ? (
             <p className="fz-font-sm neutral-500 mb-0">No runs yet. Runs happen automatically when a trigger fires — pending ones are drained by the scheduler.</p>
           ) : (
             <div className="d-flex flex-column gap-1">
               {runs.slice(0, 8).map((r) => (
-                <div key={r.id} className="d-flex align-items-center justify-content-between fz-font-sm gap-2">
+                <div key={r.id} className="d-flex flex-wrap align-items-center justify-content-between fz-font-sm gap-2">
                   <span className="neutral-700">{r.automations?.name ?? "Automation"} · {r.trigger.replace("_", " ")} · {new Date(r.created_at).toLocaleString()}</span>
-                  <span className={`badge fw-500 text-capitalize ${RUN_STYLE[r.status] ?? RUN_STYLE.pending}`}>{r.status}</span>
+                  <span className={`badge fw-500 text-capitalize flex-shrink-0 ${RUN_STYLE[r.status] ?? RUN_STYLE.pending}`}>{r.status}</span>
                 </div>
               ))}
             </div>
@@ -690,7 +744,7 @@ function OutreachTab({ orgId, outbound, tasks, contacts, aiAutos, aiRuns, reload
   return (
     <div className="row g-4">
       <div className="col-lg-6">
-        <h5 className="fw-600 mb-3">Outreach campaigns</h5>
+        <h2 className="fz-font-lg fw-600 mb-3">Outreach campaigns</h2>
         <form onSubmit={create} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
           <div className="row g-2">
             <div className="col-12">
@@ -716,24 +770,27 @@ function OutreachTab({ orgId, outbound, tasks, contacts, aiAutos, aiRuns, reload
               <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-o-goal">Goal</label>
               <input id="mk-o-goal" className="form-control rounded-3" placeholder="e.g. rebook lapsed customers" value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} />
             </div>
-            <div className="col-12"><button type="submit" className="btn btn-dark rounded-3 px-4">Create campaign</button></div>
+            <div className="col-12"><button type="submit" className="btn btn-dark rounded-3 px-4 text-nowrap">Create campaign</button></div>
           </div>
         </form>
 
         <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-2">
           <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-o-audience">Audience (optional — AI-matched before queueing)</label>
-          <div className="d-flex gap-2">
+          <div className="d-flex flex-wrap gap-2">
             <input
               id="mk-o-audience"
-              className="form-control rounded-3"
+              className="form-control rounded-3 flex-grow-1"
+              style={{ minWidth: "12rem" }}
               value={audience}
               onChange={(e) => setAudience(e.target.value)}
               placeholder={`e.g. "customers who haven't ordered in 60 days" — empty = all ${contacts.length} contacts`}
             />
-            <button type="button" className="btn btn-outline-dark rounded-3 px-3 text-nowrap" onClick={matchAudience} disabled={matching || !filterActive}>{matching ? "Matching…" : "Match"}</button>
+            <button type="button" className="btn btn-outline-dark rounded-3 px-3 text-nowrap flex-shrink-0" onClick={matchAudience} disabled={matching || !filterActive}>{matching ? "Matching…" : "Match"}</button>
           </div>
-          {filterActive && !filterResolved && <p className="fz-font-sm neutral-500 mt-1 mb-0">Resolve the audience with Match before queueing — queue buttons stay disabled until then.</p>}
-          {filterResolved && <p className="fz-font-sm neutral-700 mt-1 mb-0">Matched <span className="fw-600">{matched.ids.length}</span> contact(s) for &quot;{matched.desc}&quot;.</p>}
+          <div role="status" aria-live="polite">
+            {filterActive && !filterResolved && <p className="fz-font-sm neutral-500 mt-1 mb-0">Resolve the audience with Match before queueing — queue buttons stay disabled until then.</p>}
+            {filterResolved && <p className="fz-font-sm neutral-700 mt-1 mb-0">Matched <span className="fw-600">{matched.ids.length}</span> contact(s) for &quot;{matched.desc}&quot;.</p>}
+          </div>
         </div>
 
         {outbound.length === 0 ? (
@@ -741,14 +798,14 @@ function OutreachTab({ orgId, outbound, tasks, contacts, aiAutos, aiRuns, reload
         ) : (
           <div className="d-flex flex-column gap-2">
             {outbound.map((c) => (
-              <div key={c.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2">
-                <div>
+              <div key={c.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div style={{ minWidth: "12rem" }} className="flex-grow-1">
                   <div className="fw-600">{c.name} <span className="badge bg-neutral-100 neutral-700 fw-500 ms-1 text-capitalize">{c.type.replace("_", " ")}</span></div>
                   <div className="fz-font-sm neutral-500">{c.channel_pref} · {c.goal || "—"}</div>
                 </div>
                 <button
                   type="button"
-                  className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap"
+                  className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap flex-shrink-0"
                   onClick={() => queue(c)}
                   disabled={queuing === c.id || (filterActive && !filterResolved)}
                 >
@@ -760,12 +817,14 @@ function OutreachTab({ orgId, outbound, tasks, contacts, aiAutos, aiRuns, reload
         )}
 
         <div className="mt-4">
-          <h6 className="fw-600 mb-2">Task queue</h6>
+          <h3 className="fz-font-md fw-600 mb-2">Task queue</h3>
           {tasks.length === 0 ? (
             <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No outbound tasks yet. Reminders also appear here automatically from upcoming bookings. Pending tasks are drained by the scheduler.</div>
           ) : (
-            <div className="bg-neutral-0 rounded-4 border-100 overflow-hidden">
-              <table className="table mb-0 align-middle">
+            // No `overflow-hidden` here: it is !important and would clip the
+            // horizontal scroll `.ops-scroll-x` provides on phones.
+            <div className="bg-neutral-0 rounded-4 border-100 ops-scroll-x">
+              <table className="table mb-0 align-middle" style={{ minWidth: 520 }}>
                 <tbody>
                   {tasks.map((t) => (
                     <tr key={t.id}>
@@ -838,7 +897,7 @@ function ProactiveSection({ orgId, autos, runs, reload }: {
   return (
     <div className="d-flex flex-column gap-4">
       <div>
-        <h5 className="fw-600 mb-3">Proactive briefings &amp; tasks</h5>
+        <h2 className="fz-font-lg fw-600 mb-3">Proactive briefings &amp; tasks</h2>
         <div className="bg-neutral-0 rounded-4 p-3 border-100">
           <p className="fz-font-sm neutral-500 mb-2">Have the AI run on a schedule — a briefing it emails you, or a task it performs.</p>
           <form onSubmit={create} className="d-flex flex-column gap-2">
@@ -864,13 +923,13 @@ function ProactiveSection({ orgId, autos, runs, reload }: {
               <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-p-channel">Deliver to</label>
               <select id="mk-p-channel" className="form-select rounded-3" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value as typeof form.channel })}><option value="email">Email it to me</option><option value="dashboard">Dashboard only</option></select>
             </div>
-            <button className="btn btn-dark rounded-3" disabled={busy}>{busy ? "…" : "Create automation"}</button>
+            <button type="submit" className="btn btn-dark rounded-3 text-nowrap" disabled={busy}>{busy ? "Creating…" : "Create automation"}</button>
           </form>
         </div>
       </div>
 
       <div>
-        <h6 className="fw-600 mb-2">Your scheduled AI automations</h6>
+        <h3 className="fz-font-md fw-600 mb-2">Your scheduled AI automations</h3>
         {autos.length === 0 ? (
           <div className="bg-neutral-0 rounded-4 p-4 border-100 neutral-500 fz-font-md">None yet. Try a daily &quot;Morning briefing&quot;.</div>
         ) : (
@@ -878,14 +937,14 @@ function ProactiveSection({ orgId, autos, runs, reload }: {
             {autos.map((a) => (
               <div key={a.id} className="bg-neutral-0 rounded-4 p-3 border-100">
                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                  <div>
-                    <span className="fw-600">{a.name}</span>
-                    <span className="fz-font-sm neutral-500"> · {actionLabel(a.action)} · {scheduleLabel(a.trigger)}{a.last_run_at ? ` · last run ${new Date(a.last_run_at).toLocaleString()}` : ""}</span>
+                  <div style={{ minWidth: "12rem" }} className="flex-grow-1">
+                    <div className="fw-600">{a.name}</div>
+                    <div className="fz-font-sm neutral-500">{actionLabel(a.action)} · {scheduleLabel(a.trigger)}{a.last_run_at ? ` · last run ${new Date(a.last_run_at).toLocaleString()}` : ""}</div>
                   </div>
-                  <div className="d-flex align-items-center gap-2">
-                    <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={() => run(a)} disabled={running === a.id}>{running === a.id ? "Running…" : "Run now"}</button>
+                  <div className="d-flex align-items-center gap-3 flex-shrink-0">
+                    <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 text-nowrap" onClick={() => run(a)} disabled={running === a.id}>{running === a.id ? "Running…" : "Run now"}</button>
                     <div className="form-check form-switch m-0"><input className="form-check-input" type="checkbox" aria-label={`${a.name} active`} checked={a.active} onChange={async (e) => { const ok = await reportMutation(toggleAiAutomation(a.id, e.target.checked)); if (ok) reload(); }} /></div>
-                    <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none" onClick={() => remove(a)}>Remove</button>
+                    <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap" onClick={() => remove(a)}>Remove</button>
                   </div>
                 </div>
                 {output?.id === a.id && <div className="mt-2 p-2 bg-neutral-50 rounded-3 fz-font-sm neutral-900" style={{ whiteSpace: "pre-wrap" }}>{output.text}</div>}
@@ -896,7 +955,7 @@ function ProactiveSection({ orgId, autos, runs, reload }: {
       </div>
 
       <div>
-        <h6 className="fw-600 mb-2">Recent AI runs</h6>
+        <h3 className="fz-font-md fw-600 mb-2">Recent AI runs</h3>
         {runs.length === 0 ? (
           <p className="neutral-500 fz-font-md mb-0">No runs yet.</p>
         ) : (

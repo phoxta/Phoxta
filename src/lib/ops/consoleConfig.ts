@@ -103,6 +103,12 @@ export function resolveConsole(vertical: string | null | undefined): VerticalCon
   const raw = (vertical || "").toLowerCase().trim();
   if (!raw) return DEFAULT;
   if (BY_VERTICAL[raw]) return BY_VERTICAL[raw];
+  // Punctuation-insensitive pass: "E-Commerce" / "e commerce" / "E‑Commerce"
+  // must all reach the `ecommerce` key, otherwise a retail store silently
+  // falls through to the everything-console (wrong tabs, wrong KPIs).
+  const squashed = raw.replace(/[^a-z0-9]/g, "");
+  if (BY_VERTICAL[squashed]) return BY_VERTICAL[squashed];
+  if (squashed.endsWith("s") && BY_VERTICAL[squashed.slice(0, -1)]) return BY_VERTICAL[squashed.slice(0, -1)];
   // Priority pass: substring rules over the whole string (before token matching).
   for (const rule of PHRASE_RULES) {
     if (rule.needles.some((n) => raw.includes(n))) return rule.console;

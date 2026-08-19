@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import {
   fetchContactActivity,
+  fmtDay,
   updateContact,
   type ActivityItem,
   type Contact,
@@ -11,7 +12,8 @@ import {
   type ContactStage,
 } from "@/lib/db/ops/crm";
 import { formatPrice } from "@/lib/db/marketplace";
-import { toastError, reportMutation } from "@/lib/ops/feedback";
+import { toastError, reportMutation, confirmDanger } from "@/lib/ops/feedback";
+import { useDialog } from "@/lib/ops/useDialog";
 
 const STAGES: ContactStage[] = ["lead", "prospect", "customer", "churned"];
 
@@ -35,6 +37,7 @@ const KIND_LABEL: Record<ActivityItem["kind"], string> = {
   conversation: "Conversation",
   ticket: "Ticket",
   booking: "Booking",
+  reservation: "Reservation",
 };
 
 const KIND_PATH: Record<ActivityItem["kind"], string> = {
@@ -42,6 +45,7 @@ const KIND_PATH: Record<ActivityItem["kind"], string> = {
   conversation: "inbox",
   ticket: "inbox",
   booking: "bookings",
+  reservation: "reservations",
 };
 
 const BAD_STATUS = ["cancelled", "canceled", "escalated", "failed", "no_show", "churned", "refunded"];
@@ -55,34 +59,61 @@ function statusClass(status: string): string {
 
 const isAiSource = (source: string | null) => !!source && /\b(ai|agent)\b/i.test(source);
 
+/** "no_show" → "No show" — statuses are read by non-technical owners. */
+const statusLabel = (status: string) => {
+  const s = status.replace(/[_-]+/g, " ").trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Unknown";
+};
+
+type FormState = {
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  notes: string;
+  tags: string;
+  value: string;
+  stage: ContactStage;
+};
+
+const seedForm = (c: Contact): FormState => ({
+  name: c.name,
+  email: c.email,
+  phone: c.phone,
+  company: c.company,
+  notes: c.notes,
+  tags: (c.tags ?? []).join(", "),
+  value: c.value_cents ? (c.value_cents / 100).toString() : "",
+  stage: c.stage,
+});
+
 /** Right-hand contact drawer: edit fields, provenance + opt-outs, AI scores
  *  with reasons, and a merged activity timeline across the console modules. */
 export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, scoring, onScore, onSaved, onDelete, onClose }: Props) {
-  const [form, setForm] = useState({
-    name: contact.name,
-    email: contact.email,
-    phone: contact.phone,
-    company: contact.company,
-    notes: contact.notes,
-    tags: (contact.tags ?? []).join(", "),
-    value: contact.value_cents ? (contact.value_cents / 100).toString() : "",
-    stage: contact.stage,
-  });
+  const [form, setForm] = useState(() => seedForm(contact));
+  // What's currently persisted — anything else in `form` is an unsaved edit.
+  const [baseline, setBaseline] = useState(() => seedForm(contact));
   const [saving, setSaving] = useState(false);
 
   // Re-seed the form when a different contact is opened.
   useEffect(() => {
-    setForm({
-      name: contact.name,
-      email: contact.email,
-      phone: contact.phone,
-      company: contact.company,
-      notes: contact.notes,
-      tags: (contact.tags ?? []).join(", "),
-      value: contact.value_cents ? (contact.value_cents / 100).toString() : "",
-      stage: contact.stage,
-    });
+    const seed = seedForm(contact);
+    setForm(seed);
+    setBaseline(seed);
   }, [contact.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const dirty = useMemo(
+    () => (Object.keys(baseline) as (keyof FormState)[]).some((k) => form[k] !== baseline[k]),
+    [form, baseline],
+  );
+
+  /** Closing with unsaved edits silently threw them away — confirm first. */
+  function requestClose() {
+    if (dirty && !confirmDanger("Discard your unsaved changes to this contact?")) return;
+    onClose();
+  }
+
+  const dialogRef = useDialog<HTMLDivElement>(requestClose);
 
   const { data: activity = [], loading: activityLoading, error: activityError } = useCachedData(
     `ops:crm:activity:${contact.id}`,
@@ -123,7 +154,10 @@ export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, 
     setSaving(true);
     const ok = await reportMutation(updateContact(contact.id, patch), "Contact saved");
     setSaving(false);
-    if (ok) onSaved(patch);
+    if (ok) {
+      setBaseline(form); // saved — the form is clean again
+      onSaved(patch);
+    }
   }
 
   const base = `/dashboard/businesses/${orgId}/ops`;
@@ -132,36 +166,56 @@ export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, 
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1050 }}
-      onMouseDown={onClose}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) requestClose();
+      }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
+        aria-modal="true"
         aria-label={`Contact ${contact.name}`}
-        className="bg-neutral-0 h-100 shadow p-4"
-        style={{ position: "absolute", right: 0, top: 0, width: "min(540px, 100%)", overflowY: "auto" }}
-        onMouseDown={(e) => e.stopPropagation()}
+        tabIndex={-1}
+        className="bg-neutral-0 h-100 shadow p-3 p-lg-4"
+        style={{
+          position: "absolute",
+          right: 0,
+          top: 0,
+          width: "min(540px, 100%)",
+          maxWidth: "100%",
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+        }}
       >
-        <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
-          <div>
-            <h5 className="fw-600 mb-1">{contact.name}</h5>
-            <div className="fz-font-sm neutral-500">
+        <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+          <div style={{ minWidth: 0 }}>
+            <h2 className="fz-font-lg fw-600 mb-1">{contact.name || "Unnamed contact"}</h2>
+            <p className="fz-font-sm neutral-500 mb-0">
               Added {new Date(contact.created_at).toLocaleDateString()}
               {contact.source ? ` · via ${contact.source}` : ""}
-            </div>
+            </p>
           </div>
-          <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={onClose}>
+          <button
+            type="button"
+            className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap flex-shrink-0"
+            aria-label="Close contact details"
+            onClick={requestClose}
+          >
             Close
           </button>
         </div>
 
-        <div className="d-flex flex-wrap gap-2 mb-3">
-          {isAiSource(contact.source) && <span className="badge bg-neutral-100 neutral-700 fw-500">✨ Captured by AI</span>}
-          {contact.email_opt_out && <span className="badge bg-danger-subtle text-danger fw-500">Email unsubscribed</span>}
-          {contact.sms_opt_out && <span className="badge bg-danger-subtle text-danger fw-500">SMS unsubscribed</span>}
-        </div>
+        {(isAiSource(contact.source) || contact.email_opt_out || contact.sms_opt_out) && (
+          <div className="d-flex flex-wrap gap-2 mb-3">
+            {isAiSource(contact.source) && <span className="badge fz-font-sm bg-neutral-100 neutral-700 fw-500">✨ Captured by AI</span>}
+            {contact.email_opt_out && <span className="badge fz-font-sm bg-danger-subtle text-danger fw-500">Email unsubscribed</span>}
+            {contact.sms_opt_out && <span className="badge fz-font-sm bg-danger-subtle text-danger fw-500">SMS unsubscribed</span>}
+          </div>
+        )}
 
         {/* Editable details */}
         <form onSubmit={onSave} className="bg-neutral-50 rounded-4 border-100 p-3 mb-3">
+          <h3 className="fz-font-md fw-600 mb-2">Details</h3>
           <div className="row g-2">
             <div className="col-md-6">
               <label htmlFor={fid("name")} className="form-label fz-font-sm neutral-500 mb-1">Name</label>
@@ -198,11 +252,16 @@ export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, 
               <textarea id={fid("notes")} rows={3} className="form-control form-control-sm rounded-3" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
           </div>
-          <div className="d-flex align-items-center gap-2 mt-3">
-            <button type="submit" className="btn btn-dark btn-sm rounded-pill px-3" disabled={saving}>
+          <div className="d-flex flex-wrap align-items-center gap-2 mt-3">
+            <button type="submit" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </button>
-            <button type="button" className="btn btn-link btn-sm p-0 ms-auto text-danger text-decoration-none" onClick={onDelete}>
+            {dirty && !saving && <span className="fz-font-sm neutral-500">Unsaved changes</span>}
+            <button
+              type="button"
+              className="btn btn-link btn-sm p-0 ms-auto text-danger text-decoration-none ops-tap"
+              onClick={onDelete}
+            >
               Delete contact
             </button>
           </div>
@@ -210,26 +269,30 @@ export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, 
 
         {/* AI scores */}
         <div className="bg-neutral-50 rounded-4 border-100 p-3 mb-3">
-          <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-            <span className="fw-600 fz-font-md">AI score</span>
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={onScore} disabled={scoring}>
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <h3 className="fw-600 fz-font-md mb-0">AI score</h3>
+            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 ops-tap" onClick={onScore} disabled={scoring}>
               {scoring ? "Scoring…" : contact.scored_at ? "Re-score" : "✨ Score"}
             </button>
           </div>
           {contact.scored_at == null ? (
-            <div className="fz-font-sm neutral-500">Not scored yet.</div>
+            <p className="fz-font-sm neutral-500 mb-0">Not scored yet — score this contact to get a lead score, churn risk and a suggested next step.</p>
           ) : (
             <>
-              <div className="d-flex flex-wrap gap-2 mb-2 fz-font-sm">
-                {contact.lead_score != null && <span className="badge bg-neutral-100 neutral-700 fw-600">Lead {contact.lead_score}</span>}
-                {contact.churn_risk != null && <span className="badge bg-neutral-100 neutral-700 fw-600">Churn {Math.round(contact.churn_risk * 100)}%</span>}
-                <span className="neutral-500">scored {new Date(contact.scored_at).toLocaleDateString()}</span>
+              <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                {contact.lead_score != null && (
+                  <span className="badge fz-font-sm bg-neutral-100 neutral-700 fw-600">Lead score {contact.lead_score}</span>
+                )}
+                {contact.churn_risk != null && (
+                  <span className="badge fz-font-sm bg-neutral-100 neutral-700 fw-600">Churn risk {Math.round(contact.churn_risk * 100)}%</span>
+                )}
+                <span className="fz-font-sm neutral-500">scored {new Date(contact.scored_at).toLocaleDateString()}</span>
               </div>
-              {contact.ai_summary && <div className="fz-font-sm neutral-700 mb-1">{contact.ai_summary}</div>}
+              {contact.ai_summary && <p className="fz-font-sm neutral-700 mb-2">{contact.ai_summary}</p>}
               {scoreMeta ? (
                 <>
                   {scoreMeta.next_action && (
-                    <div className="fz-font-sm neutral-700 mb-1"><span className="fw-600">Next:</span> {scoreMeta.next_action}</div>
+                    <p className="fz-font-sm neutral-700 mb-2"><span className="fw-600">Next:</span> {scoreMeta.next_action}</p>
                   )}
                   {scoreMeta.reasons.length > 0 && (
                     <ul className="fz-font-sm neutral-500 mb-0 ps-3">
@@ -238,40 +301,60 @@ export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, 
                   )}
                 </>
               ) : (
-                <div className="fz-font-sm neutral-500">Re-score to see the reasons behind this score.</div>
+                <p className="fz-font-sm neutral-500 mb-0">Re-score to see the reasons behind this score.</p>
               )}
             </>
           )}
         </div>
 
         {/* Activity timeline */}
-        <div className="fw-600 fz-font-md mb-2">Activity</div>
+        <h3 className="fw-600 fz-font-md mb-2">Activity</h3>
         {activityLoading ? (
-          <div className="fz-font-sm neutral-500 py-2">Loading activity…</div>
+          <p className="fz-font-sm neutral-500 py-2 mb-0">Loading activity…</p>
         ) : activityError ? (
-          <div className="fz-font-sm text-danger py-2">{activityError}</div>
+          <p className="fz-font-sm text-danger py-2 mb-0" role="alert">
+            {activityError}
+          </p>
         ) : activity.length === 0 ? (
-          <div className="fz-font-sm neutral-500 py-2">
-            No orders, conversations, tickets or bookings found for this contact{contact.email ? "" : " — add an email to match activity"}.
-          </div>
+          <p className="fz-font-sm neutral-500 py-2 mb-0">
+            No orders, reservations, bookings, conversations or tickets found for this contact
+            {contact.email ? "" : " — add an email address so their activity can be matched"}.
+          </p>
         ) : (
-          <div className="d-flex flex-column gap-2">
-            {activity.map((a) => (
-              <div key={`${a.kind}-${a.id}`} className="bg-neutral-50 rounded-3 border-100 p-2 d-flex align-items-start gap-2">
-                <span className={`badge fw-500 ${statusClass(a.status)}`}>{KIND_LABEL[a.kind]}</span>
-                <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                  <div className="fz-font-md fw-600 text-truncate">{a.title}</div>
-                  <div className="fz-font-sm neutral-500 text-truncate">
-                    {new Date(a.date).toLocaleDateString()} · {a.detail}
-                    {a.amount_cents != null ? ` · ${formatPrice(a.amount_cents, a.currency || orgCurrency)}` : ""}
+          <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+            {activity.map((a) => {
+              const meta = [
+                fmtDay(a.date),
+                a.detail,
+                a.amount_cents != null ? formatPrice(a.amount_cents, a.currency || orgCurrency) : "",
+              ]
+                .filter(Boolean)
+                .join(" · ");
+              return (
+                <li key={`${a.kind}-${a.id}`} className="bg-neutral-50 rounded-3 border-100 p-2">
+                  <div className="d-flex align-items-start justify-content-between gap-2">
+                    <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                      <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <span className="badge fz-font-sm bg-neutral-100 neutral-700 fw-500">{KIND_LABEL[a.kind]}</span>
+                        {/* Status is spelled out, not only colour-coded. */}
+                        <span className={`badge fz-font-sm fw-500 ${statusClass(a.status)}`}>{statusLabel(a.status)}</span>
+                      </div>
+                      <div className="fz-font-md fw-600 text-truncate">{a.title}</div>
+                      {meta && <div className="fz-font-sm neutral-500">{meta}</div>}
+                    </div>
+                    <Link
+                      to={`${base}/${KIND_PATH[a.kind]}`}
+                      className="fz-font-sm text-decoration-none flex-shrink-0 ops-tap"
+                      aria-label={`Open ${KIND_LABEL[a.kind].toLowerCase()} in ${KIND_PATH[a.kind]}`}
+                      onClick={onClose}
+                    >
+                      Open →
+                    </Link>
                   </div>
-                </div>
-                <Link to={`${base}/${KIND_PATH[a.kind]}`} className="fz-font-sm text-decoration-none flex-shrink-0" onClick={onClose}>
-                  Open →
-                </Link>
-              </div>
-            ))}
-          </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>

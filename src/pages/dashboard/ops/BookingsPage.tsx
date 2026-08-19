@@ -35,6 +35,9 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
   no_show: "No-show",
 };
 
+// Theme-aware hairline (main.css owns the neutral scale).
+const DIVIDER = "1px solid var(--at-neutral-100)";
+
 /** "12.50" -> 1250; "" -> 0; garbage/negative -> null. */
 function parseMoney(s: string): number | null {
   const t = s.trim();
@@ -186,11 +189,11 @@ export default function BookingsPage() {
     const busy = busyId === b.id;
     return (
       <div key={b.id} className="bg-neutral-0 rounded-4 p-3 border-100">
-        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-          <div>
-            <div className="fw-600">
+        <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+          <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+            <div className="fw-600 fz-font-md">
               {b.customer_name || "Customer"}
-              {b.services?.name ? ` · ${b.services.name}` : ""}
+              {b.services?.name ? <span className="neutral-500 fw-500"> · {b.services.name}</span> : null}
             </div>
             <div className="fz-font-sm neutral-500">
               {new Date(b.start_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
@@ -203,46 +206,145 @@ export default function BookingsPage() {
             <span className={`badge fw-500 ${BOOKING_STYLE[b.status]}`}>{STATUS_LABEL[b.status]}</span>
             {open && isPastDated ? (
               <>
-                <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" disabled={busy} onClick={() => changeStatus(b, "completed")}>Completed</button>
-                <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3" disabled={busy} onClick={() => changeStatus(b, "no_show")}>No-show</button>
+                <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" disabled={busy} onClick={() => changeStatus(b, "completed")}>Completed</button>
+                <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3 ops-tap" disabled={busy} onClick={() => changeStatus(b, "no_show")}>No-show</button>
               </>
             ) : (
               <>
-                {b.status === "pending" && <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" disabled={busy} onClick={() => changeStatus(b, "confirmed")}>Confirm</button>}
-                {b.status === "confirmed" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" disabled={busy} onClick={() => changeStatus(b, "completed")}>Complete</button>}
+                {b.status === "pending" && <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" disabled={busy} onClick={() => changeStatus(b, "confirmed")}>Confirm</button>}
+                {b.status === "confirmed" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap" disabled={busy} onClick={() => changeStatus(b, "completed")}>Complete</button>}
               </>
             )}
-            {open && <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" disabled={busy} onClick={() => changeStatus(b, "cancelled")}>Cancel</button>}
+            {open && <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" disabled={busy} onClick={() => changeStatus(b, "cancelled")}>Cancel</button>}
           </div>
         </div>
       </div>
     );
   }
 
-  if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+  if (loading && !data) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">Loading…</div>;
 
   return (
     <div className="row g-4">
-      {loadError && <div className="col-12"><div className="alert alert-danger py-2 px-3 fz-font-md mb-0">{loadError}</div></div>}
+      {loadError && (
+        <div className="col-12 order-first">
+          <div className="alert alert-danger py-2 px-3 fz-font-md mb-0 d-flex flex-wrap align-items-center justify-content-between gap-2" role="alert">
+            <span>{loadError}</span>
+            <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" onClick={() => reload()}>Retry</button>
+          </div>
+        </div>
+      )}
 
-      {/* Services */}
-      <div className="col-lg-5">
-        <h5 className="fw-600 mb-3">Services</h5>
+      {/* Day sheet — the daily job, so it comes first on a phone and sits on the
+          right (wider column) from lg up. */}
+      <div className="col-lg-7 order-0 order-lg-1">
+        <h2 className="fw-600 fz-font-lg mb-3">Bookings</h2>
+        <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-3 fz-font-sm neutral-700">
+          Reminders are sent automatically 24h before each booking once messaging automations are on —{" "}
+          <Link to={`/dashboard/businesses/${orgId}/ops/marketing`} className="fw-600">set up in Marketing</Link>.
+        </div>
+        <form onSubmit={addBooking} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
+          <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">Add a booking</h3>
+          <div className="row g-2 align-items-end">
+            <div className="col-12 col-md-4">
+              <label className="fz-font-sm neutral-500" htmlFor="bk-name">Customer name</label>
+              <input id="bk-name" className="form-control rounded-3" value={bForm.customer} onChange={(e) => setBForm({ ...bForm, customer: e.target.value })} required />
+            </div>
+            <div className="col-12 col-md-4">
+              <label className="fz-font-sm neutral-500" htmlFor="bk-email">Email (for confirmations)</label>
+              <input id="bk-email" type="email" className="form-control rounded-3" value={bForm.email} onChange={(e) => setBForm({ ...bForm, email: e.target.value })} />
+            </div>
+            <div className="col-12 col-md-4">
+              <label className="fz-font-sm neutral-500" htmlFor="bk-phone">Phone</label>
+              <input id="bk-phone" type="tel" className="form-control rounded-3" value={bForm.phone} onChange={(e) => setBForm({ ...bForm, phone: e.target.value })} />
+            </div>
+            <div className="col-12 col-md-4">
+              <label className="fz-font-sm neutral-500" htmlFor="bk-service">Service</label>
+              <select id="bk-service" className="form-select rounded-3" value={bForm.serviceId} onChange={(e) => setBForm({ ...bForm, serviceId: e.target.value })}>
+                <option value="">Any service</option>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-12 col-md-4">
+              <label className="fz-font-sm neutral-500" htmlFor="bk-start">Date &amp; time</label>
+              <input id="bk-start" type="datetime-local" className="form-control rounded-3" value={bForm.start} onChange={(e) => setBForm({ ...bForm, start: e.target.value })} required />
+            </div>
+            <div className="col-12 col-md-4"><button type="submit" className="btn btn-dark w-100 rounded-3 ops-tap justify-content-center">Add booking</button></div>
+          </div>
+        </form>
+
+        <div className="row g-2 mb-3">
+          <div className="col-12 col-sm-7">
+            <label className="fz-font-sm neutral-500" htmlFor="bk-search">Search</label>
+            <input id="bk-search" type="search" className="form-control rounded-3" placeholder="Customer, email, phone or service…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <div className="col-12 col-sm-5">
+            <label className="fz-font-sm neutral-500" htmlFor="bk-status">Status</label>
+            <select id="bk-status" className="form-select rounded-3" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "" | BookingStatus)}>
+              <option value="">All statuses</option>
+              {(Object.keys(STATUS_LABEL) as BookingStatus[]).map((s) => (
+                <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {todayAndUpcoming.length === 0 && past.length === 0 ? (
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">
+            {bookings.length === 0 ? "No bookings yet." : "Nothing matches that search."}
+          </div>
+        ) : (
+          <div className="d-flex flex-column gap-4">
+            {todayAndUpcoming.length === 0 && (
+              <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">Nothing coming up.</div>
+            )}
+            {todayAndUpcoming.map((g) => (
+              <div key={g.key}>
+                <div className="d-flex align-items-baseline justify-content-between gap-2 mb-2 pb-1" style={{ borderBottom: DIVIDER }}>
+                  <h3 className="fz-font-md fw-700 neutral-900 mb-0">{dayLabel(g.key)}</h3>
+                  <span className="fz-font-sm neutral-500">{g.rows.length} booking{g.rows.length === 1 ? "" : "s"}</span>
+                </div>
+                <div className="d-flex flex-column gap-2">{g.rows.map(renderBooking)}</div>
+              </div>
+            ))}
+            {past.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap"
+                  aria-expanded={showPast}
+                  onClick={() => setShowPast((v) => !v)}
+                >
+                  {showPast ? "Hide" : "Show"} past bookings ({past.length})
+                </button>
+                {showPast && <div className="d-flex flex-column gap-2 mt-2">{past.map(renderBooking)}</div>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Services — setup, so it drops below the day sheet on a phone. */}
+      <div className="col-lg-5 order-1 order-lg-0">
+        <h2 className="fw-600 fz-font-lg mb-3">Services</h2>
         <form onSubmit={addService} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
+          <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">Add a service</h3>
           <div className="row g-2 align-items-end">
             <div className="col-12">
               <label className="fz-font-sm neutral-500" htmlFor="svc-name">Service name</label>
               <input id="svc-name" className="form-control rounded-3" placeholder="e.g. Haircut" value={sForm.name} onChange={(e) => setSForm({ ...sForm, name: e.target.value })} required />
             </div>
-            <div className="col-5">
+            <div className="col-6">
               <label className="fz-font-sm neutral-500" htmlFor="svc-mins">Duration (mins)</label>
               <input id="svc-mins" type="number" min={1} step={1} className="form-control rounded-3" value={sForm.duration} onChange={(e) => setSForm({ ...sForm, duration: e.target.value })} />
             </div>
-            <div className="col-5">
+            <div className="col-6">
               <label className="fz-font-sm neutral-500" htmlFor="svc-price">Price ({org.currency})</label>
               <input id="svc-price" type="number" min={0} step="0.01" className="form-control rounded-3" placeholder="0.00" value={sForm.price} onChange={(e) => setSForm({ ...sForm, price: e.target.value })} />
             </div>
-            <div className="col-2"><button type="submit" className="btn btn-dark w-100 rounded-3" aria-label="Add service">+</button></div>
+            <div className="col-12"><button type="submit" className="btn btn-dark w-100 rounded-3 ops-tap justify-content-center">Add service</button></div>
           </div>
         </form>
         {services.length === 0 ? (
@@ -257,97 +359,44 @@ export default function BookingsPage() {
                       <label className="fz-font-sm neutral-500" htmlFor={`edit-name-${s.id}`}>Service name</label>
                       <input id={`edit-name-${s.id}`} className="form-control rounded-3" value={eForm.name} onChange={(e) => setEForm({ ...eForm, name: e.target.value })} required />
                     </div>
-                    <div className="col-4">
+                    <div className="col-6">
                       <label className="fz-font-sm neutral-500" htmlFor={`edit-mins-${s.id}`}>Duration (mins)</label>
                       <input id={`edit-mins-${s.id}`} type="number" min={1} step={1} className="form-control rounded-3" value={eForm.duration} onChange={(e) => setEForm({ ...eForm, duration: e.target.value })} />
                     </div>
-                    <div className="col-4">
+                    <div className="col-6">
                       <label className="fz-font-sm neutral-500" htmlFor={`edit-price-${s.id}`}>Price ({s.currency || org.currency})</label>
                       <input id={`edit-price-${s.id}`} type="number" min={0} step="0.01" className="form-control rounded-3" value={eForm.price} onChange={(e) => setEForm({ ...eForm, price: e.target.value })} />
                     </div>
-                    <div className="col-4 d-flex gap-2">
-                      <button type="submit" className="btn btn-dark btn-sm rounded-3 flex-grow-1">Save</button>
-                      <button type="button" className="btn btn-outline-secondary btn-sm rounded-3" onClick={() => setEditId(null)}>Cancel</button>
+                    <div className="col-12 d-flex gap-2">
+                      <button type="submit" className="btn btn-dark btn-sm rounded-3 flex-grow-1 ops-tap justify-content-center">Save</button>
+                      <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 ops-tap" onClick={() => setEditId(null)}>Cancel</button>
                     </div>
                   </div>
                 </form>
               ) : (
-                <div key={s.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2">
-                  <div>
-                    <div className="fw-600">{s.name}</div>
-                    <div className="fz-font-sm neutral-500">{s.duration_min} min · {formatPrice(s.price_cents, s.currency || org.currency)}</div>
+                <div key={s.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                  <div style={{ minWidth: 0 }}>
+                    <div className="fw-600 fz-font-md">{s.name}</div>
+                    <div className="fz-font-sm neutral-500">
+                      {s.duration_min} min · {formatPrice(s.price_cents, s.currency || org.currency)}
+                      {!s.active && <span className="badge fw-500 bg-neutral-100 neutral-700 ms-2">Hidden</span>}
+                    </div>
                   </div>
                   <div className="d-flex align-items-center gap-2">
-                    <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none" onClick={() => startEdit(s.id, s.name, s.duration_min, s.price_cents)}>Edit</button>
-                    <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none" onClick={() => removeService(s.id, s.name)}>Delete</button>
+                    <button type="button" className="btn btn-link btn-sm p-0 px-2 text-decoration-none ops-tap" aria-label={`Edit ${s.name}`} onClick={() => startEdit(s.id, s.name, s.duration_min, s.price_cents)}>Edit</button>
+                    <button type="button" className="btn btn-link btn-sm p-0 px-2 text-danger text-decoration-none ops-tap" aria-label={`Delete ${s.name}`} onClick={() => removeService(s.id, s.name)}>Delete</button>
                     <div className="form-check form-switch m-0">
-                      <input className="form-check-input" type="checkbox" aria-label={`${s.name} active`} checked={s.active} onChange={async (e) => { if (await reportMutation(toggleService(s.id, e.target.checked), e.target.checked ? "Service activated" : "Service deactivated")) reload(); }} />
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        aria-label={`Show ${s.name} to customers`}
+                        checked={s.active}
+                        onChange={async (e) => { if (await reportMutation(toggleService(s.id, e.target.checked), e.target.checked ? "Service activated" : "Service deactivated")) reload(); }}
+                      />
                     </div>
                   </div>
                 </div>
               ),
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Day sheet */}
-      <div className="col-lg-7">
-        <h5 className="fw-600 mb-3">Bookings</h5>
-        <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-3 fz-font-sm neutral-700">
-          Reminders are sent automatically 24h before each booking once messaging automations are on —{" "}
-          <Link to={`/dashboard/businesses/${orgId}/ops/marketing`} className="fw-600">set up in Marketing</Link>.
-        </div>
-        <form onSubmit={addBooking} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <div className="row g-2">
-            <div className="col-md-4"><input className="form-control rounded-3" aria-label="Customer name" placeholder="Customer name" value={bForm.customer} onChange={(e) => setBForm({ ...bForm, customer: e.target.value })} required /></div>
-            <div className="col-md-4"><input type="email" className="form-control rounded-3" aria-label="Customer email" placeholder="Email (for confirmations)" value={bForm.email} onChange={(e) => setBForm({ ...bForm, email: e.target.value })} /></div>
-            <div className="col-md-4"><input type="tel" className="form-control rounded-3" aria-label="Customer phone" placeholder="Phone" value={bForm.phone} onChange={(e) => setBForm({ ...bForm, phone: e.target.value })} /></div>
-            <div className="col-md-4">
-              <select className="form-select rounded-3" aria-label="Service" value={bForm.serviceId} onChange={(e) => setBForm({ ...bForm, serviceId: e.target.value })}>
-                <option value="">Any service</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-5"><input type="datetime-local" className="form-control rounded-3" aria-label="Start time" value={bForm.start} onChange={(e) => setBForm({ ...bForm, start: e.target.value })} required /></div>
-            <div className="col-md-3"><button type="submit" className="btn btn-dark w-100 rounded-3">Add booking</button></div>
-          </div>
-        </form>
-
-        <div className="d-flex gap-2 mb-3">
-          <input className="form-control rounded-3" aria-label="Search bookings" placeholder="Search customer, email, phone or service…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <select className="form-select rounded-3 w-auto" aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "" | BookingStatus)}>
-            <option value="">All statuses</option>
-            {(Object.keys(STATUS_LABEL) as BookingStatus[]).map((s) => (
-              <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-            ))}
-          </select>
-        </div>
-
-        {todayAndUpcoming.length === 0 && past.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">
-            {bookings.length === 0 ? "No bookings yet." : "Nothing matches that search."}
-          </div>
-        ) : (
-          <div className="d-flex flex-column gap-3">
-            {todayAndUpcoming.length === 0 && (
-              <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">Nothing coming up.</div>
-            )}
-            {todayAndUpcoming.map((g) => (
-              <div key={g.key}>
-                <div className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">{dayLabel(g.key)}</div>
-                <div className="d-flex flex-column gap-2">{g.rows.map(renderBooking)}</div>
-              </div>
-            ))}
-            {past.length > 0 && (
-              <div>
-                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none fw-600" onClick={() => setShowPast((v) => !v)}>
-                  {showPast ? "Hide" : "Show"} past bookings ({past.length})
-                </button>
-                {showPast && <div className="d-flex flex-column gap-2 mt-2">{past.map(renderBooking)}</div>}
-              </div>
             )}
           </div>
         )}

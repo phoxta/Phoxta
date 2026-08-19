@@ -7,6 +7,25 @@ import { invokeAction } from "@/lib/db/ops/ai";
 import { formatPrice } from "@/lib/db/marketplace";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
+/**
+ * One stat-tile treatment for the whole console. Kept local (and identical in
+ * agent/AgentOverviewPage.tsx) so the global stylesheet stays untouched:
+ * - a tile that navigates gets the white card, the trailing arrow and a hover lift
+ * - a tile that doesn't navigate is recessed (bg-neutral-50) and has no arrow
+ * - numerals shrink one step on phones so a long currency string never
+ *   overflows a two-up grid at 390px.
+ */
+const TILE_CSS = `
+.ops-tile{transition:border-color .15s ease,box-shadow .15s ease}
+.ops-tile-value,.ops-attn-value{overflow-wrap:anywhere}
+@media (max-width:575.98px){.ops-tile-value{font-size:24px}.ops-attn-value{font-size:32px}}
+.ops-tile-link{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;text-align:left;text-decoration:none}
+.ops-tile-link:hover .ops-tile,.ops-tile-link:focus-visible .ops-tile{border-color:var(--at-neutral-300)!important;box-shadow:0 6px 20px rgba(0,0,0,.07)}
+.ops-tile-link:hover .ops-tile-arrow{transform:translateX(3px)}
+.ops-tile-arrow{display:inline-block;transition:transform .15s ease}
+.ops-attn-card{box-shadow:0 2px 10px rgba(0,0,0,.05)}
+`;
+
 // ---------- Ask-your-data local history (per org, last 5) ----------
 type AskEntry = { q: string; a: string; at: number };
 const askKey = (orgId: string) => `phoxta:ops:ask:${orgId}`;
@@ -34,8 +53,52 @@ function Delta({ now, prev }: { now: number; prev: number }) {
   const pct = prev > 0 ? Math.round((Math.abs(now - prev) / prev) * 100) : null;
   return (
     <span className={`fz-font-sm fw-600 ${up ? "text-success" : "text-danger"}`}>
-      {up ? "▲" : "▼"} {pct != null ? `${pct}%` : "new"}
+      <span aria-hidden="true">{up ? "▲" : "▼"}</span>
+      {/* Direction is spoken, not just coloured. */}
+      <span className="visually-hidden">{up ? " up " : " down "}</span> {pct != null ? `${pct}%` : "new"}
     </span>
+  );
+}
+
+type Kpi = {
+  label: string;
+  value: string;
+  delta?: { now: number; prev: number };
+  sub?: string;
+  to?: string;
+  /** Marks a number that also appears in the needs-attention queue. */
+  dup?: string;
+};
+
+/** The shared stat tile. `to` present = navigates (arrow + hover). */
+function StatTile({ label, value, sub, delta, to }: Kpi) {
+  const body = (
+    <div className={`ops-tile rounded-4 p-3 p-md-4 h-100 border-100 ${to ? "bg-neutral-0" : "bg-neutral-50"}`}>
+      <div className="d-flex align-items-start gap-2 mb-2">
+        <span className="fz-font-sm neutral-500">{label}</span>
+        {to && (
+          <span className="ms-auto neutral-400 ops-tile-arrow" aria-hidden="true">
+            →
+          </span>
+        )}
+      </div>
+      <div className="d-flex align-items-baseline flex-wrap gap-2">
+        <span className="fz-32 ops-tile-value fw-700 lh-1 neutral-900">{value}</span>
+        {delta && <Delta now={delta.now} prev={delta.prev} />}
+      </div>
+      {sub && <div className="fz-font-sm neutral-400 mt-1">{sub}</div>}
+    </div>
+  );
+  return (
+    <div className="col-6 col-md-4 col-xl-3">
+      {to ? (
+        <Link to={to} className="ops-tile-link text-decoration-none">
+          {body}
+        </Link>
+      ) : (
+        body
+      )}
+    </div>
   );
 }
 
@@ -102,14 +165,16 @@ export default function OverviewPage() {
   const bookingSeg = isAppointments ? "bookings" : "reservations";
 
   // ---------- Needs-attention queue (from the windowed RPC) ----------
-  type Attention = { label: string; count: number; to: string; danger?: boolean };
+  type Attention = { label: string; count: number; to: string; danger?: boolean; dup?: string };
   const attention: Attention[] = win
     ? ([
         { label: "Pending approvals", count: win.approvals, to: "agent/operator" },
         { label: "Unread conversations", count: win.unread, to: "inbox" },
         { label: "Escalated conversations", count: win.escalated, to: "inbox", danger: true },
-        ...(has("commerce") ? [{ label: "Unfulfilled paid orders", count: win.unfulfilled, to: "commerce" }] : []),
-        ...(has("commerce") ? [{ label: "Low stock", count: win.low_stock, to: "commerce" }] : []),
+        ...(has("commerce")
+          ? [{ label: "Unfulfilled paid orders", count: win.unfulfilled, to: "commerce", dup: "unfulfilled" }]
+          : []),
+        ...(has("commerce") ? [{ label: "Low stock", count: win.low_stock, to: "commerce", dup: "low_stock" }] : []),
         ...(isBooking
           ? [
               { label: "Arrivals today", count: win.arrivals_today, to: bookingSeg },
@@ -117,12 +182,18 @@ export default function OverviewPage() {
             ]
           : []),
         ...(isAppointments ? [{ label: "Appointments today", count: win.bookings_today, to: bookingSeg }] : []),
-        ...(has("invoicing") ? [{ label: "Overdue invoices", count: win.overdue_invoices, to: "invoicing", danger: true }] : []),
+        ...(has("invoicing")
+          ? [{ label: "Overdue invoices", count: win.overdue_invoices, to: "invoicing", danger: true }]
+          : []),
       ] as Attention[]).filter((a) => a.count > 0)
     : [];
 
-  // ---------- Windowed KPI tiles ----------
-  const stats: { label: string; value: string; delta?: { now: number; prev: number }; sub?: string; to?: string }[] = [
+  // Numbers already surfaced (bigger) in the queue above are dropped from the
+  // KPI grid so the same figure is never rendered twice.
+  const queued = new Set(attention.map((a) => a.dup).filter((d): d is string => Boolean(d)));
+
+  // ---------- Windowed KPI tiles (the quieter second tier) ----------
+  const allStats: Kpi[] = [
     {
       label: "Revenue (30d)",
       value: formatPrice(win?.revenue ?? 0, currency),
@@ -151,8 +222,12 @@ export default function OverviewPage() {
     { label: "Customers", value: String(s?.customers ?? 0), sub: `${s?.contacts ?? 0} contacts`, to: "crm" },
     ...(isRetail || isRestaurant
       ? [
-          { label: "Unfulfilled orders", value: String(win?.unfulfilled ?? 0), to: "commerce" },
-          { label: "Low stock", value: String(win?.low_stock ?? 0), sub: `${s?.products ?? 0} ${noun}s`, to: "commerce" },
+          // The listings count used to ride along as the "Low stock" sub-line;
+          // it gets its own tile so nothing is lost when Low stock is already
+          // in the attention queue above.
+          ...(isBooking ? [] : [{ label: cfg.commerceLabel, value: String(s?.products ?? 0), sub: `${noun} listings`, to: "commerce" }]),
+          { label: "Unfulfilled orders", value: String(win?.unfulfilled ?? 0), to: "commerce", dup: "unfulfilled" },
+          { label: "Low stock", value: String(win?.low_stock ?? 0), to: "commerce", dup: "low_stock" },
         ]
       : []),
     ...(has("invoicing")
@@ -166,6 +241,7 @@ export default function OverviewPage() {
     ...(has("bookings") ? [{ label: "Upcoming appointments", value: String(s?.upcoming_bookings ?? 0), to: "bookings" }] : []),
     { label: "Open tickets", value: String(s?.open_tickets ?? 0), sub: `${s?.ai_deflected ?? 0} AI-deflected`, to: "inbox" },
   ];
+  const stats = allStats.filter((k) => !k.dup || !queued.has(k.dup));
 
   // ---------- Deterministic run-rate projection (no LLM) ----------
   // Last 30 days extrapolated forward, adjusted by the trend vs the prior
@@ -184,76 +260,93 @@ export default function OverviewPage() {
         ? ["Which service gets booked the most?", "How many appointments were missed this month?", "Who are my top customers by spend?"]
         : [`Which ${noun} gets booked the most?`, "How full are the next 14 days?", "Who are my repeat customers?"];
 
-  if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+  if (loading) {
+    return (
+      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">
+        Loading…
+      </div>
+    );
+  }
 
   return (
     <div>
-      {/* ---------- Needs attention ---------- */}
-      <div className="mb-4">
-        <div className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">Needs attention</div>
+      <style>{TILE_CSS}</style>
+
+      {/* ---------- Needs attention: the top tier of the page ---------- */}
+      <section className="mb-5" aria-labelledby="ops-attention-h">
+        <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
+          <h2 id="ops-attention-h" className="fz-font-lg fw-600 neutral-900 m-0">
+            Needs attention
+          </h2>
+          {attention.length > 0 && (
+            <span className="badge fw-500 bg-warning-subtle text-warning">
+              {attention.length} {attention.length === 1 ? "item" : "items"}
+            </span>
+          )}
+        </div>
         {data?.winError ? (
-          <div className="bg-neutral-0 rounded-4 p-3 border-100 fz-font-md text-danger">
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 fz-font-md text-danger" role="alert">
             Couldn't load today's queue: {data.winError}
           </div>
         ) : attention.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-3 border-100 fz-font-md neutral-500">
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 fz-font-md neutral-500">
             All clear — nothing needs you right now.
           </div>
         ) : (
-          <div className="row g-2">
+          <div className="row g-3">
             {attention.map((a) => (
-              <div key={a.label} className="col-xl-3 col-md-4 col-sm-6">
-                <Link to={a.to} className="text-decoration-none d-block h-100">
-                  <div className="bg-neutral-0 rounded-4 p-3 h-100 border-100 d-flex align-items-center gap-3">
-                    <span className={`fz-24 fw-700 lh-1 ${a.danger ? "text-danger" : "neutral-900"}`}>{a.count}</span>
-                    <span className="fz-font-md neutral-700">{a.label}</span>
-                    <span className="ms-auto neutral-500" aria-hidden="true">→</span>
+              <div key={a.label} className="col-12 col-md-6 col-xl-4">
+                <Link to={a.to} className="ops-tile-link text-decoration-none">
+                  <div className="ops-tile ops-attn-card bg-neutral-0 rounded-4 p-4 h-100 border-100 d-flex align-items-center gap-3">
+                    <span className={`fz-40 ops-attn-value fw-700 lh-1 ${a.danger ? "text-danger" : "neutral-900"}`}>
+                      {a.count}
+                    </span>
+                    <span className="fz-font-md fw-500 neutral-900">{a.label}</span>
+                    <span className="ms-auto neutral-400 ops-tile-arrow" aria-hidden="true">
+                      →
+                    </span>
                   </div>
                 </Link>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* ---------- KPI tiles ---------- */}
-      <div className="row g-3 mb-4">
-        {stats.map((stat) => {
-          const inner = (
-            <div className="bg-neutral-0 rounded-4 p-4 h-100 border-100">
-              <div className="fz-font-md neutral-500 mb-2">{stat.label}</div>
-              <div className="d-flex align-items-baseline gap-2">
-                <div className="fz-40 fw-700 lh-1 neutral-900">{stat.value}</div>
-                {stat.delta && <Delta now={stat.delta.now} prev={stat.delta.prev} />}
-              </div>
-              {stat.sub && <div className="fz-font-sm neutral-500 mt-1">{stat.sub}</div>}
-            </div>
-          );
-          return (
-            <div key={stat.label} className="col-xl-3 col-md-4 col-sm-6">
-              {stat.to ? <Link to={stat.to} className="text-decoration-none d-block h-100">{inner}</Link> : inner}
-            </div>
-          );
-        })}
-      </div>
-      {data?.sumError && (
-        <div className="fz-font-sm text-danger mb-4">Some all-time totals failed to load: {data.sumError}</div>
-      )}
+      {/* ---------- KPI tiles: quieter second tier ---------- */}
+      <section className="mb-5" aria-labelledby="ops-numbers-h">
+        <h2 id="ops-numbers-h" className="fz-font-lg fw-600 neutral-900 mb-3">
+          Your numbers
+        </h2>
+        <div className="row g-3">
+          {stats.map((stat) => (
+            <StatTile key={stat.label} {...stat} />
+          ))}
+        </div>
+        {data?.sumError && (
+          <div className="fz-font-sm text-danger mt-3" role="alert">
+            Some all-time totals failed to load: {data.sumError}
+          </div>
+        )}
+      </section>
 
       <div className="row g-4">
         {/* ---------- Ask your data ---------- */}
         <div className="col-lg-7">
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 h-100">
-            <h6 className="fw-600 mb-3">✨ Ask your data</h6>
-            <form onSubmit={ask} className="d-flex gap-2">
+          <div className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 h-100">
+            <h2 className="fz-font-lg fw-600 neutral-900 mb-1">Ask your data</h2>
+            <label htmlFor="ops-ask-input" className="fz-font-sm neutral-500 d-block mb-2">
+              Plain English works — you'll get an answer from your own numbers.
+            </label>
+            <form onSubmit={ask} className="d-flex flex-column flex-sm-row gap-2">
               <input
+                id="ops-ask-input"
                 className="form-control rounded-3"
-                aria-label="Ask a question about your business data"
-                placeholder="Ask anything about your business…"
+                placeholder="e.g. How did last month compare?"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
               />
-              <button type="submit" className="btn btn-dark rounded-3 px-4" disabled={asking}>
+              <button type="submit" className="btn btn-dark rounded-3 px-4 ops-tap" disabled={asking}>
                 {asking ? "Thinking…" : "Ask"}
               </button>
             </form>
@@ -262,7 +355,7 @@ export default function OverviewPage() {
                 <button
                   key={c}
                   type="button"
-                  className="btn btn-outline-dark btn-sm rounded-pill px-3"
+                  className="btn btn-outline-dark btn-sm rounded-pill px-3 ops-tap"
                   disabled={asking}
                   onClick={() => {
                     setQuestion(c);
@@ -273,15 +366,22 @@ export default function OverviewPage() {
                 </button>
               ))}
             </div>
-            {askError && <div className="mt-3 fz-font-sm text-danger">{askError}</div>}
-            {answer && (
-              <div className="mt-3 p-3 bg-neutral-50 rounded-3 fz-font-md neutral-900" style={{ whiteSpace: "pre-wrap" }}>
-                {answer}
+            {askError && (
+              <div className="mt-3 fz-font-sm text-danger" role="alert">
+                {askError}
               </div>
             )}
+            <div aria-live="polite">
+              {asking && <div className="mt-3 fz-font-sm neutral-500">Reading your data…</div>}
+              {answer && (
+                <div className="mt-3 p-3 bg-neutral-50 rounded-3 fz-font-md neutral-900" style={{ whiteSpace: "pre-wrap" }}>
+                  {answer}
+                </div>
+              )}
+            </div>
             {history.length > 0 && (
               <details className="mt-3">
-                <summary className="fz-font-sm neutral-500" style={{ cursor: "pointer" }}>
+                <summary className="fz-font-sm neutral-500 ops-tap" style={{ cursor: "pointer" }}>
                   Recent answers ({history.length})
                 </summary>
                 <ul className="list-unstyled m-0 mt-2 d-flex flex-column gap-2">
@@ -299,19 +399,19 @@ export default function OverviewPage() {
 
         {/* ---------- Run-rate projection (deterministic, no LLM) ---------- */}
         <div className="col-lg-5">
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 h-100">
-            <h6 className="fw-600 mb-3">Run-rate projection</h6>
+          <div className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 h-100">
+            <h2 className="fz-font-lg fw-600 neutral-900 mb-3">Run-rate projection</h2>
             {win ? (
               <>
-                <div className="fz-40 fw-700 lh-1 neutral-900">{formatPrice(projectedRevenue, currency)}</div>
-                <div className="fz-font-sm neutral-500 mb-2">~{projectedOrders} orders over the next 30 days</div>
+                <div className="fz-32 ops-tile-value fw-700 lh-1 neutral-900">{formatPrice(projectedRevenue, currency)}</div>
+                <div className="fz-font-sm neutral-400 mt-1 mb-3">~{projectedOrders} orders over the next 30 days</div>
                 <p className="fz-font-md neutral-700 mb-0">
                   Last 30 days ({formatPrice(win.revenue, currency)}, {win.orders} orders) carried forward at the current
                   trend vs the prior 30 days. Computed from your data — no AI involved.
                 </p>
               </>
             ) : (
-              <p className="fz-font-md text-danger mb-0">
+              <p className="fz-font-md text-danger mb-0" role="alert">
                 {data?.winError ? `Couldn't load the 30-day window: ${data.winError}` : "No window data yet."}
               </p>
             )}

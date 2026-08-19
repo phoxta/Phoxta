@@ -81,6 +81,39 @@ const CHANNEL_STYLE: Record<string, string> = {
   voice: "bg-primary-subtle text-primary-emphasis",
   email: "bg-warning-subtle text-warning",
 };
+/** Brand casing — `text-capitalize` turns these into "Sms" and "Whatsapp". */
+const CHANNEL_LABEL: Record<string, string> = {
+  sms: "SMS",
+  whatsapp: "WhatsApp",
+  web: "Web",
+  voice: "Voice",
+  email: "Email",
+};
+const channelLabel = (c: string) => CHANNEL_LABEL[c] ?? c;
+
+/**
+ * One vocabulary for both surfaces. A conversation stores the owner's own reply
+ * as `human` and the AI's as `agent`; a ticket stores them as `agent` and `ai`.
+ * Owners shouldn't have to learn two words for the same thing.
+ */
+const AUTHOR_LABEL: Record<string, string> = { customer: "Customer", human: "You", agent: "AI agent", system: "System" };
+const TICKET_AUTHOR_LABEL: Record<string, string> = { customer: "Customer", agent: "You", ai: "AI agent" };
+/** Queue rows read better with "how long ago" than with a full timestamp. */
+const relTime = (iso: string) => {
+  const mins = Math.floor(Math.max(0, Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days < 7 ? `${days}d ago` : new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+const sentAt = (iso: string) =>
+  new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+/** Long URLs, order ids and tracking numbers must wrap instead of stretching the bubble. */
+const BUBBLE_STYLE: React.CSSProperties = { maxWidth: "85%", whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" };
+const BUBBLE_META = "d-flex flex-wrap align-items-center gap-1 text-uppercase opacity-75 mb-1";
+
 const WA_WINDOW_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 500;
 
@@ -162,7 +195,7 @@ function MessageBubble({ m }: { m: ConversationMessage }) {
   if (m.role === "note") {
     return (
       <div className="align-self-center text-center" style={{ maxWidth: "92%" }}>
-        <div className="bg-warning-subtle text-warning-emphasis rounded-3 px-3 py-2 fz-font-sm" style={{ whiteSpace: "pre-wrap" }}>
+        <div className="bg-warning-subtle text-warning-emphasis rounded-3 px-3 py-2 fz-font-sm" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" }}>
           <span className="text-uppercase opacity-75 me-1" style={{ fontSize: 10 }}>Internal note</span>{m.body}
         </div>
       </div>
@@ -176,13 +209,14 @@ function MessageBubble({ m }: { m: ConversationMessage }) {
   return (
     <div className={`d-flex ${mine ? "justify-content-end" : "justify-content-start"}`}>
       <div
-        className={`px-3 py-2 rounded-4 fz-font-md ${m.role === "customer" ? "bg-neutral-100 neutral-900" : m.role === "human" ? "bg-primary-subtle text-primary-emphasis" : "bg-neutral-900 text-white"}`}
-        style={{ maxWidth: "85%", whiteSpace: "pre-wrap", ...(html ? { width: "85%" } : {}) }}
+        className={`px-3 py-2 rounded-4 fz-font-md ${m.role === "customer" ? "bg-neutral-100 neutral-900" : m.role === "agent" ? "bg-primary-subtle text-primary-emphasis" : "bg-neutral-900 text-white"}`}
+        style={{ ...BUBBLE_STYLE, ...(html ? { width: "85%" } : {}) }}
       >
-        <div className="fz-font-sm text-uppercase opacity-75 mb-1" style={{ fontSize: 10 }}>
-          {m.role === "human" ? "you" : m.role}
-          {m.role === "human" && m.delivery_status && (
-            <span className={`ms-1 ${failed ? "text-danger fw-600" : "opacity-75"}`}>· {m.delivery_status}</span>
+        <div className={BUBBLE_META} style={{ fontSize: 10 }}>
+          <span>{AUTHOR_LABEL[m.role] ?? m.role}</span>
+          <span>· {sentAt(m.created_at)}</span>
+          {mine && m.delivery_status && (
+            <span className={failed ? "text-danger fw-600" : ""}>· {m.delivery_status}</span>
           )}
         </div>
         {subject && <div className="fw-600 mb-1">{subject}</div>}
@@ -201,9 +235,12 @@ function TicketBubble({ m }: { m: TicketMessage }) {
   return (
     <div
       className={`px-3 py-2 rounded-4 fz-font-md ${m.author === "customer" ? "bg-neutral-100 neutral-900 align-self-start" : m.author === "ai" ? "bg-primary-subtle text-primary-emphasis align-self-end" : "bg-neutral-900 text-white align-self-end"}`}
-      style={{ maxWidth: "85%", whiteSpace: "pre-wrap" }}
+      style={BUBBLE_STYLE}
     >
-      <div className="fz-font-sm text-uppercase opacity-75 mb-1" style={{ fontSize: 10 }}>{m.author}</div>
+      <div className={BUBBLE_META} style={{ fontSize: 10 }}>
+        <span>{TICKET_AUTHOR_LABEL[m.author] ?? m.author}</span>
+        <span>· {sentAt(m.created_at)}</span>
+      </div>
       {m.body}
     </div>
   );
@@ -450,6 +487,15 @@ export default function InboxPage() {
     [items, fQueue],
   );
   useEffect(() => { setCursor((c) => Math.min(c, Math.max(0, visible.length - 1))); }, [visible.length]);
+
+  // "Nothing matches this filter" and "nothing here yet" are different problems.
+  const filtersActive = !!search || !!fChannel || fQueue !== "all";
+  const clearFilters = useCallback(() => {
+    setSearchInput("");
+    setSearch("");
+    setFChannel("");
+    setFQueue("all");
+  }, []);
 
   // Local write-through so list + open thread stay in sync after a mutation.
   const updateConv = useCallback((id: string, patch: Partial<Conversation>) => {
@@ -893,7 +939,7 @@ export default function InboxPage() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{error}</div></div>}
+      {error && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">{error}</div></div>}
       {composer && (
         <EmailComposer
           orgId={orgId}
@@ -916,30 +962,48 @@ export default function InboxPage() {
 
       {/* ── Unified queue ─────────────────────────────────────────────────── */}
       <div className={`col-lg-4 ${selected ? "d-none d-lg-block" : ""}`}>
-        <div className="d-flex gap-2 mb-2">
-          <button type="button" className="btn btn-dark rounded-3 flex-grow-1" onClick={() => setComposer({ to: "", subject: "" })}>✉ New email</button>
-          <button type="button" className={`btn rounded-3 ${newTicketOpen ? "btn-secondary" : "btn-outline-dark"}`} onClick={() => setNewTicketOpen((o) => !o)}>+ Ticket</button>
+        <h2 className="visually-hidden">Conversations and tickets</h2>
+        <div className="d-flex align-items-center gap-2 mb-2">
+          <button type="button" className="btn btn-dark btn-sm rounded-3 flex-grow-1 py-2" onClick={() => setComposer({ to: "", subject: "" })}>✉ New email</button>
+          <button type="button" className={`btn btn-sm rounded-3 py-2 px-3 text-nowrap ${newTicketOpen ? "btn-secondary" : "btn-outline-dark"}`} aria-expanded={newTicketOpen} onClick={() => setNewTicketOpen((o) => !o)}>+ Ticket</button>
+          <div className="d-none d-lg-block"><ShortcutsHint /></div>
         </div>
         {newTicketOpen && (
           <form onSubmit={submitTicket} className="bg-neutral-0 rounded-4 p-3 border-100 mb-2">
-            <div className="fz-font-sm fw-600 neutral-500 mb-2">New ticket</div>
-            <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Subject" aria-label="Ticket subject" required value={tForm.subject} onChange={(e) => setTForm({ ...tForm, subject: e.target.value })} />
-            <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Customer name" aria-label="Customer name" required value={tForm.customer} onChange={(e) => setTForm({ ...tForm, customer: e.target.value })} />
-            <input type="email" className="form-control form-control-sm rounded-3 mb-2" placeholder="Customer email (replies are emailed)" aria-label="Customer email" value={tForm.email} onChange={(e) => setTForm({ ...tForm, email: e.target.value })} />
-            <textarea className="form-control form-control-sm rounded-3 mb-2" rows={2} placeholder="What did the customer ask?" aria-label="Customer question" value={tForm.message} onChange={(e) => setTForm({ ...tForm, message: e.target.value })} />
-            <div className="d-flex gap-2">
+            <h3 className="fz-font-sm fw-600 neutral-500 mb-2">New ticket</h3>
+            <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="nt-subject">Subject</label>
+            <input id="nt-subject" className="form-control form-control-sm rounded-3 mb-2" required value={tForm.subject} onChange={(e) => setTForm({ ...tForm, subject: e.target.value })} />
+            <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="nt-customer">Customer name</label>
+            <input id="nt-customer" className="form-control form-control-sm rounded-3 mb-2" required value={tForm.customer} onChange={(e) => setTForm({ ...tForm, customer: e.target.value })} />
+            <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="nt-email">Customer email <span className="neutral-400 fw-400">— replies are emailed here</span></label>
+            <input id="nt-email" type="email" className="form-control form-control-sm rounded-3 mb-2" value={tForm.email} onChange={(e) => setTForm({ ...tForm, email: e.target.value })} />
+            <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="nt-message">What did the customer ask?</label>
+            <textarea id="nt-message" className="form-control form-control-sm rounded-3 mb-2" rows={2} value={tForm.message} onChange={(e) => setTForm({ ...tForm, message: e.target.value })} />
+            <div className="d-flex align-items-center gap-2">
               <button type="submit" className="btn btn-dark btn-sm rounded-3 px-3">Create</button>
-              <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setNewTicketOpen(false)}>Cancel</button>
+              <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setNewTicketOpen(false)}>Cancel</button>
             </div>
           </form>
         )}
 
+        {/* Search + channel share one line; the status chips scroll on one more.
+            Two rows of chrome instead of four keeps the first conversation on screen at 390px. */}
         <div className="d-flex align-items-center gap-2 mb-2">
-          <input ref={searchRef} className="form-control form-control-sm rounded-3" placeholder="Search name, phone, email…  ( / )" aria-label="Search conversations and tickets" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
-          <ShortcutsHint />
+          <input ref={searchRef} className="form-control form-control-sm rounded-3" placeholder="Search name, phone, email…" aria-label="Search conversations and tickets" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
+          <select
+            className="form-select form-select-sm rounded-3 flex-shrink-0"
+            style={{ width: "auto", maxWidth: 140 }}
+            aria-label="Filter by channel"
+            value={fChannel}
+            onChange={(e) => setFChannel(e.target.value)}
+          >
+            {CHANNEL_FILTERS.map((ch) => (
+              <option key={ch || "all"} value={ch}>{ch ? channelLabel(ch) : "All channels"}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="d-flex flex-wrap gap-1 mb-2">
+        <div className="ops-scroll-x d-flex flex-nowrap gap-1 mb-3 pb-1" role="group" aria-label="Filter by status">
           {QUEUE_FILTERS.map((f) => {
             const active = fQueue === f.v;
             const danger = f.v === "escalated" && counts.escalated > 0 && !active;
@@ -948,7 +1012,8 @@ export default function InboxPage() {
                 key={f.v}
                 type="button"
                 onClick={() => setFQueue(f.v)}
-                className={`btn btn-sm rounded-pill px-2 py-0 fz-font-sm ${active ? "btn-dark" : danger ? "btn-outline-danger" : "btn-outline-secondary"}`}
+                aria-pressed={active}
+                className={`btn btn-sm rounded-pill px-2 py-1 fz-font-sm flex-shrink-0 text-nowrap ${active ? "btn-dark" : danger ? "btn-outline-danger" : "btn-outline-secondary"}`}
               >
                 {f.label}
                 <span className={`ms-1 ${danger ? "fw-600" : "opacity-75"}`}>{counts[f.v]}</span>
@@ -956,36 +1021,45 @@ export default function InboxPage() {
             );
           })}
         </div>
-        <div className="d-flex flex-wrap gap-1 mb-3">
-          {CHANNEL_FILTERS.map((ch) => (
-            <button key={ch || "all"} type="button" onClick={() => setFChannel(ch)} className={`btn btn-sm rounded-pill px-2 py-0 fz-font-sm text-capitalize ${fChannel === ch ? "btn-dark" : "btn-outline-secondary"}`}>{ch || "All channels"}</button>
-          ))}
-        </div>
 
         {loading ? (
           <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">Loading…</div>
         ) : visible.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">Nothing here — adjust the filters or wait for the next message.</div>
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center">
+            {filtersActive ? (
+              <>
+                <div className="fz-font-md fw-600 neutral-700">No messages match these filters</div>
+                <div className="fz-font-sm neutral-500 mt-1">Try a different status or channel.</div>
+                <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 mt-3" onClick={clearFilters}>Clear filters</button>
+              </>
+            ) : (
+              <>
+                <div className="fz-font-md fw-600 neutral-700">No conversations yet</div>
+                <div className="fz-font-sm neutral-500 mt-1">Messages from your website chat, SMS, WhatsApp, email and calls all land here.</div>
+              </>
+            )}
+          </div>
         ) : (
-          <div className="d-flex flex-column gap-2" style={{ maxHeight: "70vh", overflowY: "auto" }} ref={listScrollRef}>
+          <div className="d-flex flex-column gap-2" style={{ maxHeight: "calc(100vh - 240px)", overflowY: "auto" }} ref={listScrollRef}>
             {visible.map((it, i) => {
               const isSel = selected?.id === it.id && selected?.kind === it.kind;
               const isCursor = cursor === i;
-              const rowClass = `text-start bg-neutral-0 rounded-4 p-3 border-100 ${isSel ? "bg-neutral-100" : ""}`;
+              const rowClass = `text-start w-100 bg-neutral-0 rounded-4 p-3 border-100 ${isSel ? "bg-neutral-100" : ""}`;
               const rowStyle = isCursor ? { boxShadow: "inset 0 0 0 2px #111" } : undefined;
               if (it.kind === "ticket") {
                 const t = it.ticket;
                 return (
                   <button key={`t-${it.id}`} data-idx={i} type="button" onClick={() => openItem(it, i)} className={rowClass} style={rowStyle} aria-current={isSel}>
                     <div className="d-flex align-items-center justify-content-between gap-2">
-                      <span className="fw-600 text-truncate">{t.subject || t.customer_name || "Ticket"}</span>
-                      <span className={`badge fw-500 text-capitalize ${TICKET_STATUS_STYLE[t.status]}`}>{t.status}</span>
+                      <span className="fw-600 text-truncate" style={{ minWidth: 0 }}>{t.subject || t.customer_name || "Ticket"}</span>
+                      <span className={`badge fw-500 text-capitalize flex-shrink-0 ${TICKET_STATUS_STYLE[t.status]}`}>{t.status}</span>
                     </div>
                     <div className="fz-font-sm neutral-500 d-flex flex-wrap align-items-center gap-1 mt-1">
                       <span className="badge bg-neutral-900 text-white fw-500">🎫 Ticket</span>
                       {t.category && <span className="badge bg-neutral-100 neutral-700 fw-500">{t.category}</span>}
                       {t.sentiment && <span className={`badge fw-500 text-capitalize ${SENTIMENT_STYLE[t.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{t.sentiment}</span>}
-                      <span className="text-truncate">{t.customer_name}</span>
+                      <span className="text-truncate" style={{ minWidth: 0 }}>{t.customer_name}</span>
+                      <span className="ms-auto text-nowrap neutral-400">{relTime(it.at)}</span>
                     </div>
                   </button>
                 );
@@ -994,25 +1068,26 @@ export default function InboxPage() {
               return (
                 <button key={`c-${it.id}`} data-idx={i} type="button" onClick={() => openItem(it, i)} className={rowClass} style={rowStyle} aria-current={isSel}>
                   <div className="d-flex align-items-center justify-content-between gap-2">
-                    <span className={`text-truncate ${c.unread ? "fw-700" : "fw-600"}`}>
+                    <span className={`text-truncate ${c.unread ? "fw-700" : "fw-600"}`} style={{ minWidth: 0 }}>
                       {c.unread && <span className="text-primary me-1" aria-label="Unread">●</span>}
                       {c.customer_name || c.customer_phone || "Visitor"}
                     </span>
-                    <span className={`badge fw-500 text-capitalize ${STATUS_STYLE[c.status]}`}>{c.status}</span>
+                    <span className={`badge fw-500 text-capitalize flex-shrink-0 ${STATUS_STYLE[c.status]}`}>{c.status}</span>
                   </div>
                   <div className="fz-font-sm neutral-500 d-flex flex-wrap align-items-center gap-1 mt-1">
-                    <span className={`badge fw-500 text-capitalize ${CHANNEL_STYLE[c.channel_type] ?? "bg-neutral-100 neutral-700"}`}>{c.channel_type}</span>
+                    <span className={`badge fw-500 ${CHANNEL_STYLE[c.channel_type] ?? "bg-neutral-100 neutral-700"}`}>{channelLabel(c.channel_type)}</span>
                     {c.intent && <span className="badge bg-neutral-100 neutral-700 fw-500">{c.intent}</span>}
                     {c.sentiment && <span className={`badge fw-500 text-capitalize ${SENTIMENT_STYLE[c.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{c.sentiment}</span>}
                     {c.assigned_to && <span className="badge bg-neutral-100 neutral-700 fw-500">@{memberName(c.assigned_to)}</span>}
                     {c.tags?.map((t) => <span key={t} className="badge bg-neutral-100 neutral-700 fw-500">#{t}</span>)}
+                    <span className="ms-auto text-nowrap neutral-400">{relTime(it.at)}</span>
                   </div>
                   {c.summary && <div className={`fz-font-sm text-truncate mt-1 ${c.unread ? "neutral-800 fw-600" : "neutral-500"}`}>{c.summary}</div>}
                 </button>
               );
             })}
             {convos.length >= limit && (
-              <button type="button" className="btn btn-outline-secondary btn-sm rounded-3" onClick={() => setLimit((l) => l + PAGE_SIZE)}>
+              <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 py-2" onClick={() => setLimit((l) => l + PAGE_SIZE)}>
                 Load more
               </button>
             )}
@@ -1023,26 +1098,30 @@ export default function InboxPage() {
       {/* ── Thread ────────────────────────────────────────────────────────── */}
       <div className={`col-lg-5 ${selected ? "" : "d-none d-lg-block"}`}>
         {!selected ? (
-          <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" style={{ minHeight: 200 }}>Select a conversation or ticket.</div>
+          <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center" style={{ minHeight: 200 }}>
+            <div className="fz-font-md fw-600 neutral-700">Pick a message to read it</div>
+            <div className="fz-font-sm neutral-500 mt-1">Choose a conversation or ticket from the list to reply.</div>
+          </div>
         ) : selected.kind === "ticket" && selTicket ? (
           /* ---- Ticket thread ---- */
-          <div className="bg-neutral-0 rounded-4 border-100 p-4 d-flex flex-column" style={{ height: "70vh", minHeight: 480 }}>
-            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none d-lg-none text-start mb-2" onClick={() => setSelected(null)}>← Inbox</button>
+          <div className="bg-neutral-0 rounded-4 border-100 p-3 p-lg-4 d-flex flex-column" style={{ minHeight: 480 }}>
+            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none d-lg-none text-start mb-2 ops-tap" onClick={() => setSelected(null)}>← Inbox</button>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-              <div>
-                <h6 className="fw-600 mb-0">
+              <div style={{ minWidth: 0 }}>
+                <h2 className="fw-600 fz-font-lg mb-0">
                   {selTicket.subject}
-                  <span className="badge bg-neutral-900 text-white fw-500 ms-2">🎫 Ticket</span>
-                </h6>
+                  <span className="badge bg-neutral-900 text-white fw-500 ms-2 align-middle fz-font-sm">🎫 Ticket</span>
+                </h2>
                 <div className="fz-font-sm neutral-500">{[selTicket.customer_name, selTicket.customer_email].filter(Boolean).join(" · ") || "—"}</div>
               </div>
               <div className="d-flex flex-wrap gap-2">
-                <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={classifyTicket} disabled={classifying}>{classifying ? "…" : "✨ Classify"}</button>
+                <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 ops-tap" onClick={classifyTicket} disabled={classifying}>{classifying ? "…" : "✨ Classify"}</button>
                 {(["open", "pending", "resolved"] as TicketStatus[]).map((s) => (
                   <button
                     key={s}
                     type="button"
-                    className={`btn btn-sm rounded-pill px-3 text-capitalize ${selTicket.status === s ? "btn-dark" : "btn-outline-secondary"}`}
+                    aria-pressed={selTicket.status === s}
+                    className={`btn btn-sm rounded-pill px-3 text-capitalize ops-tap ${selTicket.status === s ? "btn-dark" : "btn-outline-secondary"}`}
                     onClick={() => changeTicketStatus(s)}
                     disabled={selTicket.status === s}
                   >
@@ -1064,14 +1143,15 @@ export default function InboxPage() {
               </div>
             )}
 
-            <div className="d-flex flex-column gap-2 mb-3 flex-grow-1" style={{ overflowY: "auto", minHeight: 0 }} ref={bodyRef}>
+            {/* minHeight keeps recent messages visible however many panels stack below. */}
+            <div className="d-flex flex-column gap-2 mb-3" style={{ overflowY: "auto", flex: "1 1 auto", minHeight: 200, maxHeight: "55vh" }} ref={bodyRef}>
               {ticketMsgs.length === 0 && <div className="neutral-500 fz-font-md">No messages yet.</div>}
               {ticketMsgs.map((m) => <TicketBubble key={m.id} m={m} />)}
             </div>
 
-            {sendNote && <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2">{sendNote}</div>}
+            {sendNote && <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2" role="alert">{sendNote}</div>}
 
-            <div className="d-flex align-items-center justify-content-between mb-2">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
               <span className="fz-font-sm fw-600 neutral-500">
                 Reply
                 {confidence != null && (
@@ -1093,55 +1173,58 @@ export default function InboxPage() {
                 <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap" onClick={aiDraftTicket} disabled={aiDrafting}>{aiDrafting ? "Drafting…" : "✨ Draft AI reply"}</button>
               </div>
             </div>
-            <form className="d-flex gap-2" onSubmit={(e) => { e.preventDefault(); send(false); }}>
+            <form className="d-flex flex-column flex-sm-row gap-2" onSubmit={(e) => { e.preventDefault(); send(false); }}>
               <textarea className="form-control rounded-3" rows={2} aria-label="Ticket reply" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Type a reply, or draft one with AI…" />
-              <div className="d-flex flex-column gap-1 align-self-end">
-                <button type="submit" className="btn btn-dark rounded-3 px-3 text-nowrap" disabled={busy || !draft.trim()}>{busy ? "…" : "Send"}</button>
-                <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 text-nowrap" disabled={busy || !draft.trim()} onClick={() => send(true)} title="Send the reply and resolve the ticket">Send & resolve</button>
+              <div className="d-flex flex-row flex-sm-column gap-2 align-self-stretch align-self-sm-end">
+                <button type="submit" className="btn btn-dark rounded-3 px-3 text-nowrap flex-grow-1" disabled={busy || !draft.trim()}>{busy ? "…" : "Send"}</button>
+                <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 text-nowrap flex-grow-1" disabled={busy || !draft.trim()} onClick={() => send(true)} title="Send the reply and resolve the ticket">Send &amp; resolve</button>
               </div>
             </form>
           </div>
         ) : selConv ? (
           /* ---- Conversation thread ---- */
-          <div className="bg-neutral-0 rounded-4 border-100 p-4 d-flex flex-column" style={{ height: "70vh", minHeight: 480 }}>
-            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none d-lg-none text-start mb-2" onClick={() => setSelected(null)}>← Inbox</button>
+          <div className="bg-neutral-0 rounded-4 border-100 p-3 p-lg-4 d-flex flex-column" style={{ minHeight: 480 }}>
+            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none d-lg-none text-start mb-2 ops-tap" onClick={() => setSelected(null)}>← Inbox</button>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-              <div>
-                <h6 className="fw-600 mb-0 d-flex align-items-center flex-wrap gap-2">
+              <div style={{ minWidth: 0 }}>
+                <h2 className="fw-600 fz-font-lg mb-0 d-flex align-items-center flex-wrap gap-2">
                   {selConv.customer_name || selConv.customer_phone || "Visitor"}
-                  <span className={`badge fw-500 text-capitalize ${CHANNEL_STYLE[selConv.channel_type] ?? "bg-neutral-100 neutral-700"}`}>{selConv.channel_type}</span>
-                  {selConv.intent && <span className="badge bg-neutral-100 neutral-700 fw-500">{selConv.intent}</span>}
-                  {selConv.sentiment && <span className={`badge fw-500 text-capitalize ${SENTIMENT_STYLE[selConv.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{selConv.sentiment}</span>}
-                </h6>
-                <div className="fz-font-sm neutral-500">{[selConv.customer_phone, selConv.customer_email].filter(Boolean).join(" · ") || "—"}</div>
+                  <span className={`badge fw-500 fz-font-sm ${CHANNEL_STYLE[selConv.channel_type] ?? "bg-neutral-100 neutral-700"}`}>{channelLabel(selConv.channel_type)}</span>
+                  {selConv.intent && <span className="badge bg-neutral-100 neutral-700 fw-500 fz-font-sm">{selConv.intent}</span>}
+                  {selConv.sentiment && <span className={`badge fw-500 fz-font-sm text-capitalize ${SENTIMENT_STYLE[selConv.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{selConv.sentiment}</span>}
+                </h2>
+                <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{[selConv.customer_phone, selConv.customer_email].filter(Boolean).join(" · ") || "—"}</div>
               </div>
               <div className="d-flex flex-wrap gap-2 align-items-center">
-                {selConv.customer_phone && <button type="button" className={`btn btn-sm rounded-pill px-3 ${callOpen ? "btn-dark" : "btn-outline-dark"}`} onClick={() => setCallOpen((o) => !o)} disabled={calling}>📞 Call</button>}
-                {selConv.customer_email && <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={() => setComposer({ to: selConv.customer_email, subject: "", conversationId: selConv.id })}>✉ Email</button>}
-                {selConv.status !== "escalated" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => setStatus("escalated")}>Take over</button>}
+                {selConv.customer_phone && <button type="button" className={`btn btn-sm rounded-pill px-3 ops-tap ${callOpen ? "btn-dark" : "btn-outline-dark"}`} aria-expanded={callOpen} onClick={() => setCallOpen((o) => !o)} disabled={calling}>📞 Call</button>}
+                {selConv.customer_email && <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 ops-tap" onClick={() => setComposer({ to: selConv.customer_email, subject: "", conversationId: selConv.id })}>✉ Email</button>}
+                {selConv.status !== "escalated" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap" onClick={() => setStatus("escalated")}>Take over</button>}
                 <div className="position-relative">
-                  <button type="button" className={`btn btn-sm rounded-pill px-3 ${snoozeOpen ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setSnoozeOpen((o) => !o)} aria-expanded={snoozeOpen}>
+                  <button type="button" className={`btn btn-sm rounded-pill px-3 ops-tap ${snoozeOpen ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setSnoozeOpen((o) => !o)} aria-expanded={snoozeOpen}>
                     {selConv.status === "snoozed" ? "Snoozed" : "Snooze"}
                   </button>
                   {snoozeOpen && (
-                    <div className="position-absolute end-0 bg-neutral-0 border-100 rounded-3 shadow p-2 mt-1" style={{ zIndex: 30, minWidth: 150 }}>
+                    <div className="position-absolute end-0 bg-neutral-0 border-100 rounded-3 shadow p-2 mt-1" style={{ zIndex: 30, minWidth: 170 }}>
                       {selConv.status === "snoozed" ? (
                         <>
                           {selConv.snoozed_until && <div className="fz-font-sm neutral-500 px-2 mb-1">Until {new Date(selConv.snoozed_until).toLocaleString()}</div>}
-                          <button type="button" className="btn btn-sm w-100 text-start rounded-2" onClick={unsnooze}>Unsnooze now</button>
+                          <button type="button" className="btn btn-sm w-100 text-start rounded-2 py-2" onClick={unsnooze}>Unsnooze now</button>
                         </>
                       ) : (
-                        SNOOZE_OPTIONS.map((o) => (
-                          <button key={o.label} type="button" className="btn btn-sm w-100 text-start rounded-2" onClick={() => snoozeFor(o.ms)}>{o.label}</button>
-                        ))
+                        <>
+                          <div className="fz-font-sm neutral-500 px-2 mb-1">Hide until…</div>
+                          {SNOOZE_OPTIONS.map((o) => (
+                            <button key={o.label} type="button" className="btn btn-sm w-100 text-start rounded-2 py-2" onClick={() => snoozeFor(o.ms)}>{o.label}</button>
+                          ))}
+                        </>
                       )}
                     </div>
                   )}
                 </div>
                 {selConv.status !== "closed" ? (
-                  <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setStatus("closed")}>Close</button>
+                  <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setStatus("closed")}>Close</button>
                 ) : (
-                  <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setStatus("open")}>Reopen</button>
+                  <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setStatus("open")}>Reopen</button>
                 )}
               </div>
             </div>
@@ -1178,9 +1261,11 @@ export default function InboxPage() {
               </div>
             )}
 
-            {viewers.length > 0 && <div className="alert alert-warning py-1 px-3 fz-font-sm mb-2">👀 {viewers.map(memberName).join(", ") || "A teammate"} is also viewing this conversation.</div>}
+            {viewers.length > 0 && <div className="alert alert-warning py-1 px-3 fz-font-sm mb-2" role="status">👀 {viewers.map(memberName).join(", ") || "A teammate"} is also viewing this conversation.</div>}
 
-            <div className="d-flex flex-column gap-2 mb-3 flex-grow-1" style={{ overflowY: "auto", minHeight: 0 }} ref={bodyRef}>
+            {/* minHeight keeps recent messages visible even when the WhatsApp notice,
+                template panel and suggestion panel all stack below. */}
+            <div className="d-flex flex-column gap-2 mb-3" style={{ overflowY: "auto", flex: "1 1 auto", minHeight: 200, maxHeight: "55vh" }} ref={bodyRef}>
               {isVoice && calls.length > 0 && (
                 <div className="border-100 rounded-3 p-3 bg-neutral-50">
                   {calls.map((c) => (
@@ -1197,7 +1282,7 @@ export default function InboxPage() {
                       )}
                     </div>
                   ))}
-                  <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none" onClick={() => setShowTranscript((v) => !v)}>
+                  <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none ops-tap" aria-expanded={showTranscript} onClick={() => setShowTranscript((v) => !v)}>
                     {showTranscript ? "Hide transcript" : `View transcript (${messages.filter((m) => m.role !== "note").length} lines)`}
                   </button>
                 </div>
@@ -1207,7 +1292,7 @@ export default function InboxPage() {
             </div>
 
             {waWindowClosed && (
-              <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2">
+              <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2" role="status">
                 WhatsApp's 24-hour window is closed. Free-form replies will be rejected — send an approved template:
                 {templates.length === 0 ? <span className="d-block mt-1 neutral-500">No templates yet — add one via “Manage replies”.</span> : (
                   <div className="d-flex flex-wrap gap-1 mt-2">
@@ -1227,7 +1312,7 @@ export default function InboxPage() {
                 ))}
                 <div className="d-flex gap-2">
                   <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" disabled={busy || !tpl.whatsapp_template_sid || tplKeys(tpl.body).some((k) => !tplVars[k]?.trim())} onClick={sendTemplate}>Send template</button>
-                  <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setTpl(null)}>Cancel</button>
+                  <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setTpl(null)}>Cancel</button>
                 </div>
               </div>
             )}
@@ -1244,10 +1329,10 @@ export default function InboxPage() {
               </div>
             )}
 
-            {sendNote && <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2">{sendNote}</div>}
+            {sendNote && <div className="alert alert-warning py-2 px-3 fz-font-sm mb-2" role="alert">{sendNote}</div>}
 
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-              <div className="btn-group btn-group-sm" role="group">
+              <div className="btn-group btn-group-sm" role="group" aria-label="Composer mode">
                 <button type="button" className={`btn rounded-pill px-3 ${mode === "reply" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setMode("reply")}>Reply</button>
                 <button type="button" className={`btn rounded-pill px-3 ms-1 ${mode === "note" ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => setMode("note")}>Internal note</button>
               </div>
@@ -1270,12 +1355,12 @@ export default function InboxPage() {
             {mode === "reply" && selConv.channel_type === "email" && (
               <input className="form-control form-control-sm rounded-3 mb-2" placeholder="Subject (optional)" aria-label="Email subject" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
             )}
-            <form className="d-flex gap-2" onSubmit={(e) => { e.preventDefault(); send(false); }}>
-              <textarea className="form-control rounded-3" rows={2} aria-label={mode === "note" ? "Internal note" : "Reply"} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={mode === "note" ? "Private note for your team (not sent)…" : `Reply over ${selConv.channel_type}…`} />
-              <div className="d-flex flex-column gap-1 align-self-end">
-                <button type="submit" className="btn btn-dark rounded-3 px-3 text-nowrap" disabled={busy || !draft.trim()}>{busy ? "…" : mode === "note" ? "Save" : "Send"}</button>
+            <form className="d-flex flex-column flex-sm-row gap-2" onSubmit={(e) => { e.preventDefault(); send(false); }}>
+              <textarea className="form-control rounded-3" rows={2} aria-label={mode === "note" ? "Internal note" : "Reply"} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={mode === "note" ? "Private note for your team (not sent)…" : `Reply over ${channelLabel(selConv.channel_type)}…`} />
+              <div className="d-flex flex-row flex-sm-column gap-2 align-self-stretch align-self-sm-end">
+                <button type="submit" className="btn btn-dark rounded-3 px-3 text-nowrap flex-grow-1" disabled={busy || !draft.trim()}>{busy ? "…" : mode === "note" ? "Save" : "Send"}</button>
                 {mode === "reply" && (
-                  <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 text-nowrap" disabled={busy || !draft.trim()} onClick={() => send(true)} title="Send the reply and close the conversation (⇧⌘/Ctrl+Enter)">Send & close</button>
+                  <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 text-nowrap flex-grow-1" disabled={busy || !draft.trim()} onClick={() => send(true)} title="Send the reply and close the conversation (⇧⌘/Ctrl+Enter)">Send &amp; close</button>
                 )}
               </div>
             </form>
@@ -1287,68 +1372,8 @@ export default function InboxPage() {
       <div className={`col-lg-3 ${selected ? "" : "d-none d-lg-block"}`}>
         {selected && (
           <div className="d-flex flex-column gap-3">
-            {/* Customer basics */}
-            <div className="bg-neutral-0 rounded-4 p-3 border-100">
-              <div className="fz-font-sm fw-600 neutral-500 mb-2">Customer</div>
-              <div className="fw-600">{(selConv?.customer_name || selTicket?.customer_name) || "Unknown"}</div>
-              <div className="fz-font-sm neutral-500">{selConv ? selConv.customer_phone || "no phone" : "—"}</div>
-              <div className="fz-font-sm neutral-500">{(selConv?.customer_email || selTicket?.customer_email) || "no email"}</div>
-              {selConv && (
-                <div className="fz-font-sm neutral-500 mt-2 d-flex flex-wrap gap-2">
-                  {selConv.qualified && <span className="badge bg-success-subtle text-success fw-500">qualified</span>}
-                  {selConv.lead_score != null && <span>Score: {selConv.lead_score}</span>}
-                </div>
-              )}
-              {frt != null && <div className="fz-font-sm neutral-500 mt-1">First response: {frt === 0 ? "<1 min" : `${frt} min`}</div>}
-            </div>
-
-            {selConv && (
-              <>
-                <div className="bg-neutral-0 rounded-4 p-3 border-100">
-                  <div className="fz-font-sm fw-600 neutral-500 mb-2">Assignment</div>
-                  <select className="form-select form-select-sm rounded-3" aria-label="Assign conversation" value={selConv.assigned_to ?? ""} onChange={(e) => assign(e.target.value || null)}>
-                    <option value="">Unassigned</option>
-                    {me && <option value={me}>Me</option>}
-                    {members.filter((m) => m.user_id !== me).map((m) => <option key={m.user_id} value={m.user_id}>{m.full_name || "Teammate"}</option>)}
-                  </select>
-                </div>
-
-                <div className="bg-neutral-0 rounded-4 p-3 border-100">
-                  <div className="fz-font-sm fw-600 neutral-500 mb-2">Tags</div>
-                  <div className="d-flex flex-wrap gap-1 mb-2">
-                    {selConv.tags?.map((t) => (
-                      <span key={t} className="badge bg-neutral-100 neutral-700 fw-500">#{t} <button type="button" className="btn btn-link btn-sm p-0 neutral-400 text-decoration-none ms-1" aria-label={`Remove tag ${t}`} onClick={() => removeTag(t)}>×</button></span>
-                    ))}
-                    {(!selConv.tags || selConv.tags.length === 0) && <span className="fz-font-sm neutral-400">None</span>}
-                  </div>
-                  <form onSubmit={addTag}><input className="form-control form-control-sm rounded-3" placeholder="Add tag + Enter" aria-label="Add tag" value={tagDraft} onChange={(e) => setTagDraft(e.target.value)} /></form>
-                </div>
-
-                {/* Honest CSAT: the score belongs to the customer, not the owner. */}
-                <div className="bg-neutral-0 rounded-4 p-3 border-100">
-                  <div className="fz-font-sm fw-600 neutral-500 mb-2">Satisfaction (CSAT)</div>
-                  {selConv.csat_score != null ? (
-                    <div className="d-flex align-items-center gap-2 flex-wrap">
-                      <span className={`badge fw-500 ${selConv.csat_score >= 4 ? "bg-success-subtle text-success" : selConv.csat_score <= 2 ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning"}`}>
-                        {selConv.csat_score}/5
-                      </span>
-                      <span className="fz-font-sm neutral-500">{selConv.csat_source === "customer" ? "rated by the customer" : "legacy (owner-entered)"}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" disabled={selConv.csat_requested || requestingCsat} onClick={requestRating}>
-                        {requestingCsat ? "Sending…" : selConv.csat_requested ? "Rating requested" : "Request rating"}
-                      </button>
-                      <div className="fz-font-sm neutral-400 mt-1">
-                        {selConv.csat_requested ? "Survey link sent — waiting on the customer." : "Sends the customer a one-tap survey link."}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* Commerce context (Gorgias pattern) */}
+            {/* What this customer has bought or booked comes first — it is what
+                answers the message. Admin controls sit underneath. */}
             <InboxContextRail
               orgId={orgId}
               currency={orgCurrency}
@@ -1356,6 +1381,70 @@ export default function InboxPage() {
               phone={selConv?.customer_phone}
               excludeConversationId={selConv?.id}
             />
+
+            {/* Customer basics */}
+            <div className="bg-neutral-0 rounded-4 p-3 border-100">
+              <h3 className="fz-font-sm fw-600 neutral-500 mb-2">Customer</h3>
+              <div className="fw-600" style={{ overflowWrap: "anywhere" }}>{(selConv?.customer_name || selTicket?.customer_name) || "Unknown"}</div>
+              <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{selConv ? selConv.customer_phone || "No phone" : "—"}</div>
+              <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{(selConv?.customer_email || selTicket?.customer_email) || "No email"}</div>
+              {selConv && (selConv.qualified || selConv.lead_score != null) && (
+                <div className="fz-font-sm neutral-500 mt-2 d-flex flex-wrap align-items-center gap-2">
+                  {selConv.qualified && <span className="badge bg-success-subtle text-success fw-500">Qualified</span>}
+                  {selConv.lead_score != null && <span>Score: {selConv.lead_score}</span>}
+                </div>
+              )}
+              {frt != null && <div className="fz-font-sm neutral-500 mt-1">First response: {frt === 0 ? "under a minute" : `${frt} min`}</div>}
+            </div>
+
+            {selConv && (
+              /* One admin card instead of three — less to scroll past on a phone. */
+              <div className="bg-neutral-0 rounded-4 p-3 border-100">
+                <h3 className="fz-font-sm fw-600 neutral-500 mb-2">Conversation settings</h3>
+
+                <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="inbox-assign">Assigned to</label>
+                <select id="inbox-assign" className="form-select form-select-sm rounded-3 mb-3" value={selConv.assigned_to ?? ""} onChange={(e) => assign(e.target.value || null)}>
+                  <option value="">Unassigned</option>
+                  {me && <option value={me}>Me</option>}
+                  {members.filter((m) => m.user_id !== me).map((m) => <option key={m.user_id} value={m.user_id}>{m.full_name || "Teammate"}</option>)}
+                </select>
+
+                <div className="fz-font-sm fw-500 neutral-700 mb-1">Tags</div>
+                <div className="d-flex flex-wrap gap-1 mb-2">
+                  {selConv.tags?.map((t) => (
+                    <span key={t} className="badge bg-neutral-100 neutral-700 fw-500 d-inline-flex align-items-center gap-1">
+                      #{t}
+                      <button type="button" className="btn btn-link btn-sm p-0 px-1 neutral-500 text-decoration-none ops-tap" aria-label={`Remove tag ${t}`} onClick={() => removeTag(t)}>×</button>
+                    </span>
+                  ))}
+                  {(!selConv.tags || selConv.tags.length === 0) && <span className="fz-font-sm neutral-400">No tags yet</span>}
+                </div>
+                <form onSubmit={addTag} className="mb-3">
+                  <label className="visually-hidden" htmlFor="inbox-tag">Add a tag</label>
+                  <input id="inbox-tag" className="form-control form-control-sm rounded-3" placeholder="Add a tag, then press Enter" value={tagDraft} onChange={(e) => setTagDraft(e.target.value)} />
+                </form>
+
+                {/* Honest CSAT: the score belongs to the customer, not the owner. */}
+                <div className="fz-font-sm fw-500 neutral-700 mb-1">Satisfaction rating</div>
+                {selConv.csat_score != null ? (
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <span className={`badge fw-500 ${selConv.csat_score >= 4 ? "bg-success-subtle text-success" : selConv.csat_score <= 2 ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning"}`}>
+                      {selConv.csat_score}/5
+                    </span>
+                    <span className="fz-font-sm neutral-500">{selConv.csat_source === "customer" ? "rated by the customer" : "legacy (owner-entered)"}</span>
+                  </div>
+                ) : (
+                  <>
+                    <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" disabled={selConv.csat_requested || requestingCsat} onClick={requestRating}>
+                      {requestingCsat ? "Sending…" : selConv.csat_requested ? "Rating requested" : "Request rating"}
+                    </button>
+                    <div className="fz-font-sm neutral-400 mt-1">
+                      {selConv.csat_requested ? "Survey link sent — waiting on the customer." : "Sends the customer a one-tap survey link."}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

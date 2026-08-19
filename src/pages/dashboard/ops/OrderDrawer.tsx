@@ -172,47 +172,54 @@ ${order.notes ? `<h2>Notes</h2><p>${esc(order.notes)}</p>` : ""}
   }
 
   return (
-    <div className="bg-neutral-50 rounded-4 border-100 p-3">
-      <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
-        <div>
-          <div className="fw-600">{order.customer_name || "Customer"}</div>
+    <section
+      id={`order-detail-${order.id}`}
+      className="bg-neutral-50 rounded-4 border-100 p-3"
+      aria-label={`Order details for ${order.customer_name || "customer"}`}
+    >
+      <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
+        <div style={{ minWidth: 0 }}>
+          <h3 className="fz-font-md fw-600 mb-1">Order {order.id.slice(0, 8).toUpperCase()}</h3>
           <div className="fz-font-sm neutral-500">
-            {order.customer_email || "no email"} · {new Date(order.created_at).toLocaleString()}
+            {order.customer_name || "Customer"} · {order.customer_email || "no email"}
+          </div>
+          <div className="fz-font-sm neutral-500">
+            {new Date(order.created_at).toLocaleString()}
             {order.source ? ` · via ${order.source}` : ""}
           </div>
         </div>
-        <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={onClose}>Close</button>
+        <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap flex-shrink-0" onClick={onClose}>Close</button>
       </div>
 
       {/* Line items */}
       {loading ? (
         <div className="fz-font-sm neutral-500 py-2">Loading items…</div>
       ) : itemsError ? (
-        <div className="fz-font-sm text-danger py-2">{itemsError}</div>
+        <div className="fz-font-sm text-danger py-2" role="alert">{itemsError}</div>
       ) : items.length === 0 ? (
         <div className="fz-font-sm neutral-500 py-2">No line items recorded.</div>
       ) : (
-        <div className="bg-neutral-0 rounded-3 border-100 p-2 mb-2">
+        <div className="bg-neutral-0 rounded-3 border-100 p-3 mb-3">
           {items.map((i) => (
-            <div key={i.id} className="d-flex justify-content-between gap-2 fz-font-md py-1">
-              <span>{i.name} <span className="neutral-500">× {i.quantity}</span></span>
-              <span className="fw-600">{formatPrice(i.unit_price_cents * i.quantity, currency)}</span>
+            <div key={i.id} className="d-flex justify-content-between gap-3 fz-font-md py-1">
+              <span style={{ minWidth: 0 }}>{i.name} <span className="neutral-500">× {i.quantity}</span></span>
+              <span className="fw-600 text-nowrap">{formatPrice(i.unit_price_cents * i.quantity, currency)}</span>
             </div>
           ))}
-          <div className="d-flex justify-content-between gap-2 fz-font-md border-top pt-1 mt-1">
-            <span className="fw-600">Total</span>
-            <span className="fw-600">{formatPrice(order.total_cents, currency)}</span>
+          <div className="d-flex justify-content-between align-items-baseline gap-3 border-top pt-2 mt-2">
+            <span className="fz-font-sm fw-600 neutral-500 text-uppercase" style={{ letterSpacing: ".04em" }}>Total</span>
+            <span className="fz-20 fw-700 text-nowrap">{formatPrice(order.total_cents, currency)}</span>
           </div>
         </div>
       )}
 
-      <div className="row g-3 fz-font-sm mb-2">
+      <div className="row g-3 fz-font-sm mb-3">
         <div className="col-md-6">
-          <div className="fw-600 neutral-500 text-uppercase mb-1" style={{ fontSize: 11, letterSpacing: ".04em" }}>Shipping</div>
+          <h4 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-1" style={{ letterSpacing: ".04em" }}>Shipping</h4>
           {ship.length === 0 ? <div className="neutral-500">No shipping address on file.</div> : ship.map((l, i) => <div key={i} className="neutral-700">{l}</div>)}
         </div>
         <div className="col-md-6">
-          <div className="fw-600 neutral-500 text-uppercase mb-1" style={{ fontSize: 11, letterSpacing: ".04em" }}>Payment</div>
+          <h4 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-1" style={{ letterSpacing: ".04em" }}>Payment</h4>
           <div className="neutral-700">Reference: {order.payment_reference || "—"}</div>
           <div className="neutral-700">Paid: {order.paid_at ? new Date(order.paid_at).toLocaleString() : "not yet"}</div>
           {(order.discount_cents ?? 0) > 0 && (
@@ -222,65 +229,72 @@ ${order.notes ? `<h2>Notes</h2><p>${esc(order.notes)}</p>` : ""}
         </div>
       </div>
 
-      {order.notes && <div className="fz-font-sm neutral-700 mb-2"><span className="fw-600 neutral-500">Notes:</span> {order.notes}</div>}
+      {order.notes && <div className="fz-font-sm neutral-700 mb-3"><span className="fw-600 neutral-500">Notes:</span> {order.notes}</div>}
 
-      {/* Fulfilment */}
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-        <label htmlFor={`trk-${order.id}`} className="fz-font-sm neutral-500 mb-0">Tracking</label>
+      {/* Fulfilment — the tracking field takes its own line on a phone so the
+          action buttons below it stay on a full-width, tappable row. */}
+      <div className="border-top pt-3">
+        <label htmlFor={`trk-${order.id}`} className="fz-font-sm neutral-500 d-block mb-1">Tracking number (optional)</label>
         <input
           id={`trk-${order.id}`}
-          className="form-control form-control-sm rounded-3"
-          style={{ maxWidth: 220 }}
-          placeholder="Tracking number (optional)"
+          className="form-control form-control-sm rounded-3 mb-2"
+          style={{ maxWidth: 260 }}
+          placeholder="e.g. 1Z999AA10123456784"
           value={tracking}
           onChange={(e) => setTracking(e.target.value)}
         />
-        {canFulfill ? (
-          <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={doFulfill} disabled={busy !== null}>
-            {busy === "fulfill" ? "…" : "Fulfill"}
-          </button>
-        ) : (
-          <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={doSaveTracking} disabled={busy !== null || (tracking.trim() === (order.tracking ?? ""))}>
-            {busy === "tracking" ? "…" : "Save tracking"}
-          </button>
-        )}
-        <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={packingSlip}>Packing slip</button>
-        {order.status === "pending" && (
-          <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={doMarkPaid} disabled={busy !== null}>
-            {busy === "paid" ? "…" : "Payment collected"}
-          </button>
-        )}
-        {canCancel && (
-          <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={doCancel} disabled={busy !== null}>
-            {busy === "cancel" ? "…" : "Cancel order"}
-          </button>
-        )}
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          {canFulfill ? (
+            <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={doFulfill} disabled={busy !== null}>
+              {busy === "fulfill" ? "Fulfilling…" : "Mark fulfilled"}
+            </button>
+          ) : (
+            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={doSaveTracking} disabled={busy !== null || (tracking.trim() === (order.tracking ?? ""))}>
+              {busy === "tracking" ? "Saving…" : "Save tracking"}
+            </button>
+          )}
+          <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={packingSlip}>Packing slip</button>
+          {order.status === "pending" && (
+            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={doMarkPaid} disabled={busy !== null}>
+              {busy === "paid" ? "Saving…" : "Payment collected"}
+            </button>
+          )}
+          {canCancel && (
+            <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={doCancel} disabled={busy !== null}>
+              {busy === "cancel" ? "Cancelling…" : "Cancel order"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Refund */}
       {canRefund && (
-        <div className="d-flex flex-wrap align-items-center gap-2 border-top pt-2">
-          <span className="fz-font-sm neutral-500">Refund (leave blank for the full {formatPrice(remaining, currency)})</span>
-          <input
-            type="number"
-            min={0.01}
-            step={0.01}
-            aria-label="Refund amount"
-            className="form-control form-control-sm rounded-3"
-            style={{ maxWidth: 120 }}
-            placeholder="Amount"
-            value={refundAmount}
-            onChange={(e) => setRefundAmount(e.target.value)}
-          />
-          <label className="fz-font-sm neutral-600 mb-0">
-            <input type="checkbox" className="me-1" checked={refundRestock} onChange={(e) => setRefundRestock(e.target.checked)} />
-            Return items to stock
+        <div className="border-top pt-3 mt-3">
+          <label htmlFor={`refund-${order.id}`} className="fz-font-sm neutral-500 d-block mb-1">
+            Refund amount — leave blank to refund the full {formatPrice(remaining, currency)}
           </label>
-          <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={doRefund} disabled={busy !== null}>
-            {busy === "refund" ? "…" : "Refund"}
-          </button>
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            <input
+              id={`refund-${order.id}`}
+              type="number"
+              min={0.01}
+              step={0.01}
+              className="form-control form-control-sm rounded-3"
+              style={{ maxWidth: 130 }}
+              placeholder="Amount"
+              value={refundAmount}
+              onChange={(e) => setRefundAmount(e.target.value)}
+            />
+            <label className="fz-font-sm neutral-600 mb-0 ops-tap">
+              <input type="checkbox" className="me-1" checked={refundRestock} onChange={(e) => setRefundRestock(e.target.checked)} />
+              Return items to stock
+            </label>
+            <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={doRefund} disabled={busy !== null}>
+              {busy === "refund" ? "Refunding…" : "Refund"}
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

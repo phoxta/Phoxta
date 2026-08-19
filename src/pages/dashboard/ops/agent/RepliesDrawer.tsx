@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createCanned, updateCanned, deleteCanned, type CannedResponse } from "@/lib/db/ops/agent";
 import { confirmDanger, reportMutation, toastError } from "@/lib/ops/feedback";
+import { useDialog } from "@/lib/ops/useDialog";
 
 /**
  * "Manage replies" drawer — the canned replies + WhatsApp templates CRUD that
@@ -10,6 +11,8 @@ import { confirmDanger, reportMutation, toastError } from "@/lib/ops/feedback";
  */
 
 const CHANNELS = ["any", "sms", "whatsapp", "email", "web"];
+/** Brand casing — `text-capitalize` would render these as "Sms" / "Whatsapp". */
+const CHANNEL_LABEL: Record<string, string> = { sms: "SMS", whatsapp: "WhatsApp", email: "Email", web: "Web" };
 type FormState = {
   title: string;
   shortcut: string;
@@ -39,14 +42,9 @@ export default function RepliesDrawer({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Esc closes the drawer (the page-level shortcut layer stands down while it's open).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Shared dialog contract: focus moves in, Tab is trapped, Escape closes, focus
+  // is restored on exit (the page-level shortcut layer stands down while it's open).
+  const dialogRef = useDialog<HTMLDivElement>(onClose);
 
   function startEdit(c: CannedResponse) {
     setEditingId(c.id);
@@ -105,17 +103,17 @@ export default function RepliesDrawer({
             <span className="badge bg-neutral-100 neutral-700 fw-500 text-capitalize ms-1">{c.channel}</span>
           )}
         </div>
-        <div className="d-flex gap-2 flex-shrink-0">
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
           {onInsert && !isTemplate && (
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-2 py-0 fz-font-sm" onClick={() => onInsert(c)}>Insert</button>
+            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-2 py-1 fz-font-sm ops-tap" onClick={() => onInsert(c)}>Insert</button>
           )}
-          <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => startEdit(c)}>Edit</button>
-          <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none" onClick={() => remove(c)}>Delete</button>
+          <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => startEdit(c)}>Edit</button>
+          <button type="button" className="btn btn-link btn-sm p-0 px-2 text-danger text-decoration-none ops-tap" onClick={() => remove(c)}>Delete</button>
         </div>
       </div>
-      <div className="fz-font-sm neutral-500 mt-1" style={{ whiteSpace: "pre-wrap" }}>{c.body}</div>
+      <div className="fz-font-sm neutral-500 mt-1" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{c.body}</div>
       {isTemplate && (
-        <div className={`fz-font-sm mt-1 ${c.whatsapp_template_sid ? "neutral-400" : "text-danger"}`}>
+        <div className={`fz-font-sm mt-1 ${c.whatsapp_template_sid ? "neutral-400" : "text-danger"}`} style={{ overflowWrap: "anywhere" }}>
           {c.whatsapp_template_sid ? `SID: ${c.whatsapp_template_sid}` : "No template SID — it can't be sent outside the 24-hour window until you add one."}
         </div>
       )}
@@ -125,68 +123,75 @@ export default function RepliesDrawer({
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 1055 }} onMouseDown={onClose}>
       <div
-        className="bg-neutral-0 border-100 p-4 d-flex flex-column"
-        style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "min(480px, 100%)", overflowY: "auto", boxShadow: "-8px 0 24px rgba(0,0,0,.12)" }}
+        ref={dialogRef}
+        className="bg-neutral-0 border-100 p-3 p-lg-4 d-flex flex-column"
+        style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "min(480px, 100%)", maxWidth: "100%", overflowY: "auto", boxShadow: "-8px 0 24px rgba(0,0,0,.12)" }}
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-label="Manage replies"
       >
         <div className="d-flex align-items-center justify-content-between mb-3">
-          <h6 className="fw-600 mb-0">Manage replies</h6>
-          <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" aria-label="Close" onClick={onClose}>✕</button>
+          <h2 className="fw-600 fz-font-lg mb-0">Manage replies</h2>
+          <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" aria-label="Close manage replies" onClick={onClose}>✕</button>
         </div>
 
         <form onSubmit={save} className="bg-neutral-50 rounded-3 p-3 border-100 mb-3">
-          <div className="fz-font-sm fw-600 neutral-500 mb-2">{editingId ? "Edit reply" : "New reply / template"}</div>
+          <h3 className="fz-font-sm fw-600 neutral-500 mb-2">{editingId ? "Edit reply" : "New reply / template"}</h3>
           <div className="row g-2">
             <div className="col-7">
-              <input className="form-control form-control-sm rounded-3" placeholder="Title" aria-label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-title">Title</label>
+              <input id="rd-title" className="form-control form-control-sm rounded-3" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </div>
             <div className="col-5">
-              <input className="form-control form-control-sm rounded-3" placeholder="/shortcut" aria-label="Shortcut" value={form.shortcut} onChange={(e) => setForm({ ...form, shortcut: e.target.value })} />
+              <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-shortcut">Shortcut</label>
+              <input id="rd-shortcut" className="form-control form-control-sm rounded-3" placeholder="/thanks" value={form.shortcut} onChange={(e) => setForm({ ...form, shortcut: e.target.value })} />
             </div>
             <div className="col-12">
-              <textarea className="form-control form-control-sm rounded-3" rows={4} placeholder="Message body" aria-label="Message body" required value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+              <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-body">Message</label>
+              <textarea id="rd-body" className="form-control form-control-sm rounded-3" rows={4} required value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
               <div className="fz-font-sm neutral-400 mt-1">
                 Variables: <code>{"{{name}}"}</code> → customer's name, <code>{"{{business}}"}</code> → your business name (filled in when inserted). WhatsApp templates also use numbered <code>{"{{1}}"}</code>, <code>{"{{2}}"}</code>…
               </div>
             </div>
-            <div className="col-6">
-              <select className="form-select form-select-sm rounded-3" aria-label="Channel" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
+            <div className="col-12 col-sm-6">
+              <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-channel">Channel</label>
+              <select id="rd-channel" className="form-select form-select-sm rounded-3" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
                 {CHANNELS.map((c) => (
-                  <option key={c} value={c} className="text-capitalize">{c === "any" ? "Any channel" : c}</option>
+                  <option key={c} value={c}>{c === "any" ? "Any channel" : CHANNEL_LABEL[c] ?? c}</option>
                 ))}
               </select>
             </div>
-            <div className="col-6 d-flex align-items-center">
-              <div className="form-check">
+            <div className="col-12 col-sm-6 d-flex align-items-end">
+              <div className="form-check mb-1">
                 <input className="form-check-input" type="checkbox" id="rd-watpl" checked={form.is_whatsapp_template} onChange={(e) => setForm({ ...form, is_whatsapp_template: e.target.checked, channel: e.target.checked ? "whatsapp" : form.channel })} />
                 <label className="form-check-label fz-font-md" htmlFor="rd-watpl">WhatsApp template</label>
               </div>
             </div>
             {form.is_whatsapp_template && (
               <div className="col-12">
-                <input className="form-control form-control-sm rounded-3" placeholder="Approved template SID (HX…)" aria-label="Approved WhatsApp template SID" value={form.whatsapp_template_sid} onChange={(e) => setForm({ ...form, whatsapp_template_sid: e.target.value })} />
+                <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-sid">Approved template SID</label>
+                <input id="rd-sid" className="form-control form-control-sm rounded-3" placeholder="HX…" value={form.whatsapp_template_sid} onChange={(e) => setForm({ ...form, whatsapp_template_sid: e.target.value })} />
                 <div className="fz-font-sm neutral-400 mt-1">Templates are the only messages WhatsApp allows outside its 24-hour window — pre-approve them in Twilio first, then paste the ContentSid here.</div>
               </div>
             )}
-            <div className="col-12 d-flex gap-2">
+            <div className="col-12 d-flex align-items-center gap-2">
               <button type="submit" className="btn btn-dark btn-sm rounded-3 px-4" disabled={busy}>{busy ? "…" : editingId ? "Save changes" : "Save"}</button>
               {editingId && (
-                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => { setEditingId(null); setForm({ ...BLANK }); }}>Cancel edit</button>
+                <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => { setEditingId(null); setForm({ ...BLANK }); }}>Cancel edit</button>
               )}
             </div>
           </div>
         </form>
 
-        <div className="fz-font-sm fw-600 neutral-500 mb-2">Canned replies</div>
+        <h3 className="fz-font-sm fw-600 neutral-500 mb-2">Canned replies</h3>
         {snippets.length === 0 ? (
           <div className="fz-font-sm neutral-400 mb-3">No canned replies yet.</div>
         ) : (
           <div className="d-flex flex-column gap-2 mb-3">{snippets.map((c) => renderItem(c, false))}</div>
         )}
 
-        <div className="fz-font-sm fw-600 neutral-500 mb-2">WhatsApp templates</div>
+        <h3 className="fz-font-sm fw-600 neutral-500 mb-2">WhatsApp templates</h3>
         {templates.length === 0 ? (
           <div className="fz-font-sm neutral-400">No templates yet.</div>
         ) : (

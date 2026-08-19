@@ -120,16 +120,28 @@ export async function listMyOrganizations(): Promise<{
   data: Array<{ role: OrganizationMembership["role"]; organization: Organization }>;
   error: string | null;
 }> {
+  // MUST filter by the signed-in user. The RLS policy on this table is
+  // `user_id = auth.uid() OR app_is_org_member(organization_id)`, so it also
+  // returns co-members' rows — without this filter a business appears once per
+  // teammate (and could show a colleague's role as yours).
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth?.user?.id;
+  if (!userId) return { data: [], error: null };
+
   const { data, error } = await supabase
     .from("organization_memberships")
     .select("role, organizations(id, name, slug, stage, vertical, primary_region, created_at)")
+    .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
   if (error) return { data: [], error: friendlyError(error.message) };
 
   const rows = (data as unknown as OrganizationMembership[]) ?? [];
+  const seen = new Set<string>();
   const mapped = rows
     .filter((r) => r.organizations)
-    .map((r) => ({ role: r.role, organization: r.organizations as Organization }));
+    .map((r) => ({ role: r.role, organization: r.organizations as Organization }))
+    // Belt and braces: never emit the same organization twice.
+    .filter((r) => (seen.has(r.organization.id) ? false : (seen.add(r.organization.id), true)));
   return { data: mapped, error: null };
 }

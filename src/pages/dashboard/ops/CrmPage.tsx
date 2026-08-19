@@ -228,41 +228,53 @@ export default function CrmPage() {
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <h5 className="fw-600 mb-0">Contacts</h5>
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
+        <div>
+          <h2 className="fz-font-lg fw-600 mb-1">Contacts</h2>
+          <p className="fz-font-sm neutral-500 mb-0">
+            {loading
+              ? "Loading…"
+              : display.length === rows.length
+                ? `${rows.length} contact${rows.length === 1 ? "" : "s"}`
+                : `Showing ${display.length} of ${rows.length}`}
+          </p>
+        </div>
         <div className="d-flex flex-wrap align-items-center gap-2">
-          <input
-            className="form-control form-control-sm rounded-3"
-            style={{ minWidth: 220 }}
-            type="search"
-            aria-label="Search contacts by name, email or company"
-            placeholder="Search name, email, company…"
-            value={filter}
-            onChange={(e) => {
-              setFilter(e.target.value);
-              setMatchIds(null);
-            }}
-          />
-          <button
-            type="button"
-            className="btn btn-outline-dark btn-sm rounded-3 px-3"
-            title="Semantic search — finds contacts by meaning, not just text"
-            onClick={onSemanticSearch}
-            disabled={searching}
-          >
-            {searching ? "…" : "✨"}
-          </button>
+          <div className="d-flex align-items-center gap-2 flex-grow-1">
+            <input
+              className="form-control form-control-sm rounded-3 flex-grow-1"
+              style={{ minWidth: 180 }}
+              type="search"
+              aria-label="Search contacts by name, email or company"
+              placeholder="Search name, email, company…"
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setMatchIds(null);
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-outline-dark btn-sm rounded-3 px-3 ops-tap flex-shrink-0"
+              aria-label="Smart search — find contacts by meaning, not just matching text"
+              title="Smart search — finds contacts by meaning, not just text"
+              onClick={onSemanticSearch}
+              disabled={searching}
+            >
+              {searching ? "…" : "✨"}
+            </button>
+          </div>
           {matchIds != null && (
-            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setMatchIds(null)}>
-              Clear ✨
+            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={() => setMatchIds(null)}>
+              Clear smart search
             </button>
           )}
-          <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3" onClick={exportCsv}>
+          <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3 ops-tap" onClick={exportCsv}>
             Export CSV
           </button>
           <button
             type="button"
-            className="btn btn-dark btn-sm rounded-3 px-3"
+            className="btn btn-dark btn-sm rounded-3 px-3 ops-tap"
             title={`Scores up to ${SCORE_CAP} unscored contacts per run`}
             onClick={scoreAll}
             disabled={scoreProgress != null}
@@ -272,9 +284,14 @@ export default function CrmPage() {
         </div>
       </div>
 
-      {loadError && <div className="alert alert-warning py-2 px-3 fz-font-md">{loadError}</div>}
+      {loadError && (
+        <div className="alert alert-warning py-2 px-3 fz-font-md" role="alert">
+          {loadError}
+        </div>
+      )}
 
       <form onSubmit={onAdd} className="bg-neutral-0 rounded-4 p-3 border-100 mb-4">
+        <h3 className="fz-font-md fw-600 mb-2">Add a contact</h3>
         <div className="row g-2">
           <div className="col-md-3">
             <label htmlFor="crm-add-name" className="form-label fz-font-sm neutral-500 mb-1">Name</label>
@@ -308,73 +325,108 @@ export default function CrmPage() {
         <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>
       ) : display.length === 0 ? (
         <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">
-          {matchIds != null ? "No matches." : filter.trim() ? "No contacts match your search." : "No contacts yet."}
+          {matchIds != null
+            ? "No contacts match that smart search."
+            : filter.trim()
+              ? "No contacts match your search."
+              : "No contacts yet — add your first one above."}
         </div>
       ) : (
         <div className="bg-neutral-0 rounded-4 border-100 overflow-hidden">
-          <table className="table mb-0 align-middle">
-            <thead>
-              <tr className="fz-font-sm neutral-500">
-                <th className="fw-500 py-3 ps-4">Name</th>
-                <th className="fw-500 py-3">Email</th>
-                <th className="fw-500 py-3">Phone</th>
-                <th className="fw-500 py-3">Stage</th>
-                <th className="fw-500 py-3 text-center">Lead</th>
-                <th className="fw-500 py-3 text-center">Churn</th>
-                <th className="fw-500 py-3 pe-4 text-end">AI</th>
-              </tr>
-            </thead>
-            <tbody>
-              {display.map((c) => (
-                <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => setOpenId(c.id)}>
-                  <td className="py-3 ps-4">
-                    <div className="fw-600">{c.name}</div>
-                    {c.ai_summary ? (
-                      <div className="fz-font-sm neutral-500">{c.ai_summary}</div>
-                    ) : (
-                      c.company && <div className="fz-font-sm neutral-500">{c.company}</div>
-                    )}
-                  </td>
-                  <td className="py-3 fz-font-sm neutral-700">
-                    {c.email || <span className="neutral-500">—</span>}
-                    {c.email_opt_out && <span className="badge bg-danger-subtle text-danger fw-500 ms-2">unsubscribed</span>}
-                  </td>
-                  <td className="py-3 fz-font-sm neutral-700">
-                    {c.phone || <span className="neutral-500">—</span>}
-                    {c.sms_opt_out && <span className="badge bg-danger-subtle text-danger fw-500 ms-2">unsubscribed</span>}
-                  </td>
-                  <td className="py-3" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      aria-label={`Stage for ${c.name}`}
-                      className={`badge border-0 fw-500 text-capitalize ${STAGE_STYLE[c.stage]}`}
-                      value={c.stage}
-                      onChange={(e) => onStage(c, e.target.value as ContactStage)}
-                    >
-                      {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </td>
-                  <td className="py-3 text-center">
-                    {c.lead_score != null ? <span className={`badge fw-600 ${scoreColor(c.lead_score)}`}>{c.lead_score}</span> : <span className="neutral-500 fz-font-sm">—</span>}
-                  </td>
-                  <td className="py-3 text-center">
-                    {c.churn_risk != null ? (
-                      <span className={`badge fw-500 ${c.churn_risk >= 0.6 ? "bg-warning-subtle text-warning" : "bg-neutral-100 neutral-700"}`}>{Math.round(c.churn_risk * 100)}%</span>
-                    ) : (
-                      <span className="neutral-500 fz-font-sm">—</span>
-                    )}
-                  </td>
-                  <td className="py-3 pe-4 text-end" onClick={(e) => e.stopPropagation()}>
-                    <button type="button" className="btn btn-link btn-sm p-0 me-3 text-decoration-none" onClick={() => scoreOne(c.id)} disabled={scoring[c.id]}>
-                      {scoring[c.id] ? "…" : c.scored_at ? "Re-score" : "✨ Score"}
-                    </button>
-                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => onDelete(c)}>
-                      Delete
-                    </button>
-                  </td>
+          {/* Wide table scrolls inside its own container so the page never does. */}
+          <div className="ops-scroll-x">
+            <table className="table table-hover mb-0 align-middle" style={{ minWidth: 820 }}>
+              <caption className="visually-hidden">Contacts — select a name to open the full record</caption>
+              <thead>
+                <tr className="fz-font-sm neutral-500">
+                  <th scope="col" className="fw-500 py-3 ps-4">Name</th>
+                  <th scope="col" className="fw-500 py-3">Stage</th>
+                  <th scope="col" className="fw-500 py-3">Email</th>
+                  <th scope="col" className="fw-500 py-3">Phone</th>
+                  <th scope="col" className="fw-500 py-3 text-center">Lead score</th>
+                  <th scope="col" className="fw-500 py-3 text-center">Churn risk</th>
+                  <th scope="col" className="fw-500 py-3 pe-4 text-end">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {display.map((c) => (
+                  <tr key={c.id}>
+                    <td className="py-3 ps-4">
+                      {/* Real button: the record must be openable from the keyboard. */}
+                      <button
+                        type="button"
+                        className="btn btn-link px-0 py-2 text-start text-decoration-none w-100"
+                        aria-label={`Open ${c.name || "contact"}`}
+                        onClick={() => setOpenId(c.id)}
+                      >
+                        <span className="d-block fw-600 neutral-900">{c.name || "Unnamed contact"}</span>
+                        {c.ai_summary ? (
+                          <span className="d-block fz-font-sm neutral-500">{c.ai_summary}</span>
+                        ) : (
+                          c.company && <span className="d-block fz-font-sm neutral-500">{c.company}</span>
+                        )}
+                      </button>
+                    </td>
+                    <td className="py-3">
+                      <select
+                        aria-label={`Stage for ${c.name || "contact"}`}
+                        className={`badge border-0 fw-500 text-capitalize ops-tap ${STAGE_STYLE[c.stage]}`}
+                        value={c.stage}
+                        onChange={(e) => onStage(c, e.target.value as ContactStage)}
+                      >
+                        {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    <td className="py-3 fz-font-sm neutral-700">
+                      {c.email || <span className="neutral-500">—</span>}
+                      {c.email_opt_out && <span className="badge fz-font-sm bg-danger-subtle text-danger fw-500 ms-2">Unsubscribed</span>}
+                    </td>
+                    <td className="py-3 fz-font-sm neutral-700">
+                      {c.phone || <span className="neutral-500">—</span>}
+                      {c.sms_opt_out && <span className="badge fz-font-sm bg-danger-subtle text-danger fw-500 ms-2">Unsubscribed</span>}
+                    </td>
+                    <td className="py-3 text-center">
+                      {c.lead_score != null ? (
+                        <span className={`badge fw-600 fz-font-sm ${scoreColor(c.lead_score)}`}>{c.lead_score}</span>
+                      ) : (
+                        <span className="neutral-500 fz-font-sm">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 text-center">
+                      {c.churn_risk != null ? (
+                        <span className={`badge fw-500 fz-font-sm ${c.churn_risk >= 0.6 ? "bg-warning-subtle text-warning" : "bg-neutral-100 neutral-700"}`}>
+                          {Math.round(c.churn_risk * 100)}%
+                        </span>
+                      ) : (
+                        <span className="neutral-500 fz-font-sm">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 pe-4 text-end">
+                      <div className="d-inline-flex align-items-center gap-3">
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm p-0 text-decoration-none ops-tap"
+                          aria-label={`${c.scored_at ? "Re-score" : "Score"} ${c.name || "contact"} with AI`}
+                          onClick={() => scoreOne(c.id)}
+                          disabled={scoring[c.id]}
+                        >
+                          {scoring[c.id] ? "…" : c.scored_at ? "Re-score" : "✨ Score"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap"
+                          aria-label={`Delete ${c.name || "contact"}`}
+                          onClick={() => onDelete(c)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

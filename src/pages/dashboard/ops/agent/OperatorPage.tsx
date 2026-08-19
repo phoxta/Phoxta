@@ -50,7 +50,7 @@ function Diff({ before, after }: { before?: unknown; after: ReactNode }) {
     const has = before !== undefined && before !== null && String(before) !== "";
     return (
         <>
-            {has && <><s className="neutral-400">{String(before)}</s>{" → "}</>}
+            {has && <><s className="neutral-500">{String(before)}</s>{" → "}</>}
             <span className="fw-600">{after}</span>
         </>
     );
@@ -279,9 +279,78 @@ export default function OperatorPage() {
 
     return (
         <div className="row g-4">
-            <div className="col-lg-7">
-                <div className="bg-neutral-0 rounded-4 border-100 d-flex flex-column" style={{ height: 540 }}>
-                    <div className="flex-grow-1 overflow-auto p-4 d-flex flex-column gap-2" ref={bodyRef}>
+            {/* Approvals lead the page — on a phone this is the first thing you see,
+                on desktop it spans the full width above the chat. */}
+            {pending.length > 0 && (
+                <div className="col-12">
+                    <section className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100" aria-labelledby="ops-approvals-heading">
+                        <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                            <h2 id="ops-approvals-heading" className="fz-font-lg fw-600 mb-0">Waiting for you</h2>
+                            <span className="badge bg-warning-subtle text-warning fw-500">{pending.length} to approve</span>
+                        </div>
+                        <p className="fz-font-sm neutral-500 mb-3">Nothing here happens until you approve it.</p>
+                        <ul className="list-unstyled m-0 d-flex flex-column gap-2">
+                            {pending.map((a) => {
+                                const sentence = humanSentence(a, org.currency || "USD");
+                                const editable = EDITABLE_FIELD[a.tool];
+                                const editing = editDrafts[a.id] !== undefined;
+                                return (
+                                    <li key={a.id} className="bg-neutral-50 border-100 rounded-3 p-3">
+                                        {sentence ? (
+                                            <p className="fz-font-md neutral-900 mb-2">{sentence}</p>
+                                        ) : (
+                                            <>
+                                                <p className="fw-600 fz-font-md neutral-900 mb-2">{a.title}</p>
+                                                {a.args && Object.keys(a.args as Args).length > 0 && (
+                                                    <details className="mb-2">
+                                                        <summary className="fz-font-sm neutral-500 ops-tap" style={{ cursor: "pointer" }}>What exactly will change</summary>
+                                                        <pre className="fz-font-sm bg-neutral-0 rounded-2 p-2 mt-1 mb-0" style={{ whiteSpace: "pre-wrap", maxHeight: 160, overflow: "auto" }}>
+                                                            {JSON.stringify(a.args, null, 1)}
+                                                        </pre>
+                                                    </details>
+                                                )}
+                                            </>
+                                        )}
+                                        {editable && editing && (
+                                            <div className="mb-2">
+                                                <label className="fz-font-sm fw-500 neutral-500 d-block mb-1" htmlFor={`edit-${a.id}`}>Edit the message before approving</label>
+                                                <textarea
+                                                    id={`edit-${a.id}`}
+                                                    className="form-control rounded-3 fz-font-sm"
+                                                    rows={4}
+                                                    value={editDrafts[a.id]}
+                                                    onChange={(e) => setEditDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="d-flex gap-2 align-items-center flex-wrap">
+                                            <button type="button" className="btn btn-dark rounded-pill px-4 fw-600 ops-tap" disabled={deciding === a.id} onClick={() => decide(a, "approve")}>
+                                                {deciding === a.id ? "…" : editing ? "Approve edited" : "Approve"}
+                                            </button>
+                                            {editable && !editing && (
+                                                <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap" onClick={() => setEditDrafts((d) => ({ ...d, [a.id]: String((a.args as Args)?.[editable] ?? "") }))}>
+                                                    Edit first
+                                                </button>
+                                            )}
+                                            {editable && editing && (
+                                                <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setEditDrafts((d) => { const n = { ...d }; delete n[a.id]; return n; })}>
+                                                    Discard edit
+                                                </button>
+                                            )}
+                                            <button type="button" className="btn btn-link btn-sm p-0 px-2 ms-auto text-danger text-decoration-none ops-tap" disabled={deciding === a.id} onClick={() => decide(a, "reject")}>Reject</button>
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </section>
+                </div>
+            )}
+
+            <div className="col-12 col-lg-7">
+                <div className="bg-neutral-0 rounded-4 border-100 d-flex flex-column" style={{ height: "min(70vh, 720px)", minHeight: 420 }}>
+                    <h2 className="visually-hidden">Chat with your operator</h2>
+                    <div className="flex-grow-1 overflow-auto p-3 p-lg-4 d-flex flex-column gap-2" ref={bodyRef} role="log" aria-label="Operator conversation" aria-busy={busy}>
                         {msgs.map((m, i) => (
                             <div key={i} className={`fz-font-md ${m.role === "user" ? "align-self-end bg-neutral-900 text-white" : "align-self-start bg-neutral-100"}`} style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, whiteSpace: "pre-wrap" }}>
                                 {m.content}
@@ -289,14 +358,15 @@ export default function OperatorPage() {
                         ))}
                         {busy && <div className="align-self-start bg-neutral-100 fz-font-md" style={{ padding: "10px 14px", borderRadius: 12 }}>…</div>}
                     </div>
-                    {error && <div className="px-4"><div className="alert alert-danger py-2 px-3 fz-font-sm mb-2">{error}</div></div>}
+                    {error && <div className="px-3 px-lg-4"><div className="alert alert-danger py-2 px-3 fz-font-sm mb-2" role="alert">{error}</div></div>}
                     <form className="d-flex gap-2 p-3 border-top border-100 align-items-end" onSubmit={(e) => { e.preventDefault(); send(draft); }}>
+                        <label className="visually-hidden" htmlFor="operator-draft">Message your operator</label>
                         <textarea
+                            id="operator-draft"
                             className="form-control rounded-3"
-                            aria-label="Message your operator"
-                            placeholder="Ask or instruct your operator… (Enter to send, Shift+Enter for a new line)"
+                            placeholder="Ask or instruct your operator…"
                             rows={draft.includes("\n") ? 3 : 1}
-                            style={{ resize: "none" }}
+                            style={{ resize: "none", minWidth: 0 }}
                             value={draft}
                             onChange={(e) => setDraft(e.target.value)}
                             onKeyDown={(e) => {
@@ -306,86 +376,32 @@ export default function OperatorPage() {
                                 }
                             }}
                         />
-                        <button className="btn btn-dark rounded-3 px-4" disabled={busy}>{busy ? "…" : "Send"}</button>
+                        <button className="btn btn-dark rounded-3 px-4 flex-shrink-0" disabled={busy}>{busy ? "…" : "Send"}</button>
                     </form>
                 </div>
+                <p className="fz-font-sm neutral-500 mt-2 mb-0">Enter sends · Shift + Enter starts a new line.</p>
             </div>
 
-            <div className="col-lg-5 d-flex flex-column gap-4">
-                <div className="bg-neutral-0 rounded-4 p-4 border-100">
-                    <h6 className="fw-600 mb-3">Pending approvals {pending.length > 0 && <span className="badge bg-warning-subtle text-warning">{pending.length}</span>}</h6>
-                    {pending.length === 0 ? (
-                        <p className="neutral-500 fz-font-md mb-0">Nothing waiting. Actions you've set to "Ask me" will appear here for approval.</p>
-                    ) : (
-                        <div className="d-flex flex-column gap-2">
-                            {pending.map((a) => {
-                                const sentence = humanSentence(a, org.currency || "USD");
-                                const editable = EDITABLE_FIELD[a.tool];
-                                const editing = editDrafts[a.id] !== undefined;
-                                return (
-                                    <div key={a.id} className="border-100 rounded-3 p-3">
-                                        {sentence ? (
-                                            <div className="fz-font-md mb-2">{sentence}</div>
-                                        ) : (
-                                            <>
-                                                <div className="fw-600 fz-font-md mb-2">{a.title}</div>
-                                                {a.args && Object.keys(a.args as Args).length > 0 && (
-                                                    <details className="mb-2">
-                                                        <summary className="fz-font-sm neutral-500" style={{ cursor: "pointer" }}>What exactly will change</summary>
-                                                        <pre className="fz-font-sm bg-neutral-50 rounded-2 p-2 mt-1 mb-0" style={{ whiteSpace: "pre-wrap", maxHeight: 160, overflow: "auto" }}>
-                                                            {JSON.stringify(a.args, null, 1)}
-                                                        </pre>
-                                                    </details>
-                                                )}
-                                            </>
-                                        )}
-                                        {editable && editing && (
-                                            <div className="mb-2">
-                                                <label className="fz-font-sm neutral-500 d-block mb-1" htmlFor={`edit-${a.id}`}>Edit the message before approving</label>
-                                                <textarea
-                                                    id={`edit-${a.id}`}
-                                                    className="form-control form-control-sm rounded-3 fz-font-sm"
-                                                    rows={4}
-                                                    value={editDrafts[a.id]}
-                                                    onChange={(e) => setEditDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="d-flex gap-2 align-items-center flex-wrap">
-                                            <button className="btn btn-dark btn-sm rounded-pill px-3" disabled={deciding === a.id} onClick={() => decide(a, "approve")}>
-                                                {deciding === a.id ? "…" : editing ? "Approve edited" : "Approve"}
-                                            </button>
-                                            {editable && !editing && (
-                                                <button className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setEditDrafts((d) => ({ ...d, [a.id]: String((a.args as Args)?.[editable] ?? "") }))}>
-                                                    Edit first
-                                                </button>
-                                            )}
-                                            {editable && editing && (
-                                                <button className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setEditDrafts((d) => { const n = { ...d }; delete n[a.id]; return n; })}>
-                                                    Discard edit
-                                                </button>
-                                            )}
-                                            <button className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" disabled={deciding === a.id} onClick={() => decide(a, "reject")}>Reject</button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
+            <div className="col-12 col-lg-5 d-flex flex-column gap-4">
+                {pending.length === 0 && (
+                    <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+                        <h2 className="fz-font-md fw-600 mb-2">Waiting for you</h2>
+                        <p className="neutral-500 fz-font-md mb-0">Nothing waiting. Actions you&rsquo;ve set to &ldquo;Ask me&rdquo; appear here for approval.</p>
+                    </div>
+                )}
 
-                <div className="bg-neutral-0 rounded-4 p-4 border-100">
-                    <h6 className="fw-600 mb-1">What the operator may do</h6>
+                <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+                    <h2 className="fz-font-md fw-600 mb-1">What the operator may do</h2>
                     <p className="fz-font-sm neutral-500 mb-3">Off = blocked · Ask me = queued for your approval · Auto = runs immediately.</p>
                     <div className="d-flex flex-column gap-3">
                         {WRITE_TOOL_GROUPS.map((group) => (
                             <div key={group.label}>
-                                <span className="d-block fz-font-sm fw-600 text-uppercase neutral-400 mb-2">{group.label}</span>
+                                <h3 className="fz-font-sm fw-600 text-uppercase neutral-500 mb-2">{group.label}</h3>
                                 <div className="d-flex flex-column gap-2">
                                     {group.tools.map((tool) => (
                                         <div key={tool} className="d-flex align-items-center justify-content-between gap-2">
-                                            <span className="fz-font-md">{WRITE_TOOL_LABELS[tool] ?? tool}</span>
-                                            <select className="form-select form-select-sm rounded-3" style={{ width: "auto" }} aria-label={`Policy for ${WRITE_TOOL_LABELS[tool] ?? tool}`} value={modeOf(tool)} onChange={(e) => changeMode(tool, e.target.value as ToolPolicy["mode"])}>
+                                            <span className="fz-font-md" style={{ minWidth: 0 }}>{WRITE_TOOL_LABELS[tool] ?? tool}</span>
+                                            <select className="form-select form-select-sm rounded-3 flex-shrink-0" style={{ width: "auto" }} aria-label={`Policy for ${WRITE_TOOL_LABELS[tool] ?? tool}`} value={modeOf(tool)} onChange={(e) => changeMode(tool, e.target.value as ToolPolicy["mode"])}>
                                                 <option value="off">Off</option>
                                                 <option value="approve">Ask me</option>
                                                 <option value="auto">Auto</option>
@@ -398,11 +414,12 @@ export default function OperatorPage() {
                     </div>
                 </div>
 
-                <div className="bg-neutral-0 rounded-4 p-4 border-100">
-                    <h6 className="fw-600 mb-3">Memory</h6>
+                <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+                    <h2 className="fz-font-md fw-600 mb-1">Memory</h2>
+                    <p className="fz-font-sm neutral-500 mb-2">Things the agent should remember about how you work.</p>
                     <form className="d-flex gap-2 mb-2" onSubmit={async (e) => { e.preventDefault(); const t = memDraft.trim(); if (!t) return; const ok = await reportMutation(addMemory(orgId, t), "Saved."); if (ok) { setMemDraft(""); refresh(); } }}>
-                        <input className="form-control form-control-sm rounded-3" aria-label="New memory note" placeholder="Teach the agent something to remember…" value={memDraft} onChange={(e) => setMemDraft(e.target.value)} />
-                        <button className="btn btn-dark btn-sm rounded-3 px-3" type="submit">Save</button>
+                        <input className="form-control form-control-sm rounded-3" style={{ minWidth: 0 }} aria-label="New memory note" placeholder="Teach the agent something to remember…" value={memDraft} onChange={(e) => setMemDraft(e.target.value)} />
+                        <button className="btn btn-dark btn-sm rounded-3 px-3 flex-shrink-0 ops-tap" type="submit">Save</button>
                     </form>
                     {memory.length === 0 ? (
                         <p className="neutral-500 fz-font-sm mb-0">Nothing yet — the agent adds notes as you work, or add your own.</p>
@@ -411,17 +428,17 @@ export default function OperatorPage() {
                             {memory.slice(0, 8).map((m) => (
                                 <li key={m.id} className="d-flex align-items-start justify-content-between gap-2 fz-font-sm">
                                     {memEdit?.id === m.id ? (
-                                        <form className="d-flex gap-2 flex-grow-1" onSubmit={(e) => { e.preventDefault(); saveMemoryEdit(); }}>
-                                            <input className="form-control form-control-sm rounded-3" aria-label="Edit memory note" value={memEdit.text} onChange={(e) => setMemEdit({ id: m.id, text: e.target.value })} autoFocus />
-                                            <button className="btn btn-dark btn-sm rounded-3 px-2" type="submit">Save</button>
-                                            <button className="btn btn-link btn-sm p-0 neutral-400 text-decoration-none" type="button" onClick={() => setMemEdit(null)}>Cancel</button>
+                                        <form className="d-flex flex-wrap gap-2 flex-grow-1" onSubmit={(e) => { e.preventDefault(); saveMemoryEdit(); }}>
+                                            <input className="form-control form-control-sm rounded-3" style={{ flex: "1 1 160px", minWidth: 0 }} aria-label="Edit memory note" value={memEdit.text} onChange={(e) => setMemEdit({ id: m.id, text: e.target.value })} autoFocus />
+                                            <button className="btn btn-dark btn-sm rounded-3 px-3 ops-tap" type="submit">Save</button>
+                                            <button className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" type="button" onClick={() => setMemEdit(null)}>Cancel</button>
                                         </form>
                                     ) : (
                                         <>
                                             <span className="neutral-700">{m.title ? `${m.title}: ` : ""}{m.content}</span>
                                             <span className="d-flex gap-2 flex-shrink-0">
-                                                <button className="btn btn-link btn-sm p-0 neutral-400 text-decoration-none" aria-label="Edit note" onClick={() => setMemEdit({ id: m.id, text: m.content })}>Edit</button>
-                                                <button className="btn btn-link btn-sm p-0 neutral-400 text-decoration-none" aria-label="Forget note" onClick={() => forgetMemory(m.id)}>×</button>
+                                                <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" aria-label={`Edit note: ${short(m.content, 40)}`} onClick={() => setMemEdit({ id: m.id, text: m.content })}>Edit</button>
+                                                <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" aria-label={`Forget note: ${short(m.content, 40)}`} onClick={() => forgetMemory(m.id)}>×</button>
                                             </span>
                                         </>
                                     )}
@@ -431,13 +448,13 @@ export default function OperatorPage() {
                     )}
                 </div>
 
-                <div className="bg-neutral-0 rounded-4 p-4 border-100">
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                        <h6 className="fw-600 mb-0">Recent activity</h6>
+                <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+                    <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+                        <h2 className="fz-font-md fw-600 mb-0">Recent activity</h2>
                         {auditAll === null ? (
-                            <button className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none fz-font-sm" onClick={async () => { const { data, error } = await listAudit(orgId, 100); if (error) { toastError(error); return; } setAuditAll(data); }}>View all</button>
+                            <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none fz-font-sm ops-tap" onClick={async () => { const { data, error } = await listAudit(orgId, 100); if (error) { toastError(error); return; } setAuditAll(data); }}>View all</button>
                         ) : (
-                            <button className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none fz-font-sm" onClick={() => setAuditAll(null)}>Collapse</button>
+                            <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none fz-font-sm ops-tap" onClick={() => setAuditAll(null)}>Collapse</button>
                         )}
                     </div>
                     {(auditAll ?? audit).length === 0 ? (
@@ -446,10 +463,10 @@ export default function OperatorPage() {
                         <ul className="list-unstyled m-0 d-flex flex-column gap-2" style={auditAll ? { maxHeight: 420, overflowY: "auto" } : undefined}>
                             {(auditAll ?? audit.slice(0, 8)).map((a) => (
                                 <li key={a.id} className="fz-font-sm d-flex gap-2 align-items-start">
-                                    <span className={`badge fw-500 ${a.status === "ok" ? "bg-success-subtle text-success" : a.status === "error" || a.status === "denied" ? "bg-danger-subtle text-danger" : "bg-neutral-100 neutral-700"}`} style={{ height: "fit-content" }}>{a.status}</span>
-                                    <span className="d-flex flex-column">
+                                    <span className={`badge fw-500 flex-shrink-0 ${a.status === "ok" ? "bg-success-subtle text-success" : a.status === "error" || a.status === "denied" ? "bg-danger-subtle text-danger" : "bg-neutral-100 neutral-700"}`} style={{ height: "fit-content" }}>{a.status}</span>
+                                    <span className="d-flex flex-column" style={{ minWidth: 0 }}>
                                         <span className="neutral-700">{a.summary}</span>
-                                        <span className="neutral-400">
+                                        <span className="neutral-500">
                                             {new Date(a.created_at).toLocaleString()} · {a.tool}
                                             {auditAll && argsSummary(a.args) ? ` · ${argsSummary(a.args)}` : ""}
                                         </span>

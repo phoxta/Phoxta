@@ -30,10 +30,11 @@ const CURRENCIES: { code: string; label: string }[] = [
   { code: "MXN", label: "MXN — Mexican peso" },
 ];
 
+// Same order and wording as the Google Workspace page, so the two read as one place.
 const GOOGLE_APPS = [
   { app: "gmail", icon: "✉️", name: "Gmail", desc: "Inbox · compose · reply" },
-  { app: "calendar", icon: "📅", name: "Calendar", desc: "Events & scheduling" },
   { app: "drive", icon: "📁", name: "Drive", desc: "Files & folders" },
+  { app: "calendar", icon: "📅", name: "Calendar", desc: "Events & scheduling" },
 ];
 
 export default function SettingsPage() {
@@ -120,9 +121,9 @@ export default function SettingsPage() {
   return (
     <div className="row g-4">
       {/* ── Business ── */}
-      <div className="col-lg-6">
-        <h6 className="fw-600 mb-3">Business</h6>
-        <form onSubmit={saveBusiness} className="bg-neutral-0 rounded-4 p-4 border-100">
+      <div className="col-12 col-lg-6">
+        <h2 className="fz-font-lg fw-600 mb-3">Business</h2>
+        <form onSubmit={saveBusiness} className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
           <div className="mb-3">
             <label htmlFor="set-biz-name" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Business name</label>
             <input id="set-biz-name" className="form-control rounded-3" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -135,64 +136,71 @@ export default function SettingsPage() {
             </select>
             <div className="fz-font-sm neutral-500 mt-1">Changes the display currency console-wide — orders, invoices, reports and dashboards all show money in this currency.</div>
           </div>
-          <button type="submit" className="btn btn-dark rounded-3 px-4" disabled={bizBusy}>{bizBusy ? "Saving…" : "Save changes"}</button>
+          <button type="submit" className="btn btn-dark rounded-3 px-4 ops-tap justify-content-center" disabled={bizBusy}>{bizBusy ? "Saving…" : "Save changes"}</button>
         </form>
 
         {/* ── Agent permissions ── */}
-        <h6 className="fw-600 mb-3 mt-4">AI agent</h6>
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 d-flex flex-column gap-3">
-          <div className="d-flex align-items-center justify-content-between gap-2">
-            <div>
-              <div className="fw-600">Tool policies</div>
+        <h2 className="fz-font-lg fw-600 mb-3 mt-4">AI agent</h2>
+        <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100 d-flex flex-column gap-3">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div style={{ minWidth: 0 }}>
+              <h3 className="fz-font-md fw-600 mb-0">Tool policies</h3>
               <div className="fz-font-sm neutral-500">What the AI may do on its own — per-tool off / approve / auto, with an approval queue.</div>
             </div>
-            <Link to={`${base}/agent/operator`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap">Open</Link>
+            <Link to={`${base}/agent/operator`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap ops-tap">Open</Link>
           </div>
-          <div className="d-flex align-items-center justify-content-between gap-2 border-top border-100 pt-3">
-            <div>
-              <div className="fw-600">Training & persona</div>
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top border-100 pt-3">
+            <div style={{ minWidth: 0 }}>
+              <h3 className="fz-font-md fw-600 mb-0">Training &amp; persona</h3>
               <div className="fz-font-sm neutral-500">Greeting, tone, procedures, business hours and escalation rules.</div>
             </div>
-            <Link to={`${base}/agent/configure`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap">Configure</Link>
+            <Link to={`${base}/agent/configure`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap ops-tap">Configure</Link>
           </div>
         </div>
 
         {/* ── Google Workspace ── */}
-        <h6 className="fw-600 mb-3 mt-4">Google Workspace</h6>
-        <div className="bg-neutral-0 rounded-4 p-4 border-100">
+        <h2 className="fz-font-lg fw-600 mb-3 mt-4">Google Workspace</h2>
+        <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+          {/* Full-width rows on a phone, tiles from sm up — never three 72px columns. */}
           <div className="row g-2 mb-3">
             {GOOGLE_APPS.map((a) => (
-              <div className="col-4" key={a.app}>
-                <Link to={`${base}/google?app=${a.app}`} className="bg-neutral-0 rounded-4 p-3 border-100 w-100 h-100 text-center d-flex flex-column align-items-center justify-content-center gap-1 text-decoration-none">
-                  <span style={{ fontSize: 28, lineHeight: 1 }}>{a.icon}</span>
-                  <span className="fw-600 neutral-900 fz-font-md">{a.name}</span>
-                  <span className="fz-font-sm neutral-500">{a.desc}</span>
+              <div className="col-12 col-sm-4" key={a.app}>
+                <Link
+                  to={`${base}/google?app=${a.app}`}
+                  className="bg-neutral-50 rounded-4 p-3 border-100 w-100 h-100 d-flex flex-row flex-sm-column align-items-center text-sm-center gap-2 gap-sm-1 text-decoration-none"
+                >
+                  <span aria-hidden="true" style={{ fontSize: 26, lineHeight: 1 }}>{a.icon}</span>
+                  <span className="d-flex flex-column">
+                    <span className="fw-600 neutral-900 fz-font-md">{a.name}</span>
+                    <span className="fz-font-sm neutral-500">{a.desc}</span>
+                  </span>
                 </Link>
               </div>
             ))}
           </div>
-          <div className="d-flex align-items-center justify-content-between gap-2">
-            <div className="fz-font-sm neutral-500">Connect or manage the Google account and team email addresses.</div>
-            <Link to={`${base}/google?tab=configure`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap">Configure</Link>
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div className="fz-font-sm neutral-500" style={{ minWidth: 0 }}>Connect or manage the Google account and team email addresses.</div>
+            <Link to={`${base}/google?tab=configure`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap ops-tap">Configure</Link>
           </div>
         </div>
       </div>
 
       {/* ── Locations & call routing ── */}
-      <div className="col-lg-6">
-        <h6 className="fw-600 mb-3">Locations & call routing</h6>
+      <div className="col-12 col-lg-6">
+        <h2 className="fz-font-lg fw-600 mb-3">Locations &amp; call routing</h2>
         <div className="fz-font-sm neutral-500 mb-3">Routing matters mainly for multi-location businesses — the AI call agent uses these branches to send callers to the right place by ZIP and service.</div>
         <form onSubmit={addLocation} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
+          <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">Add a branch</h3>
           <div className="row g-2">
-            <div className="col-md-6">
+            <div className="col-12 col-md-6">
               <label htmlFor="set-loc-name" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Branch name</label>
               <input id="set-loc-name" className="form-control rounded-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
-            <div className="col-md-3">
+            <div className="col-6 col-md-3">
               <label htmlFor="set-loc-zip" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">ZIP</label>
               <input id="set-loc-zip" className="form-control rounded-3" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} />
             </div>
-            <div className="col-md-3">
+            <div className="col-6 col-md-3">
               <label htmlFor="set-loc-phone" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Phone</label>
               <input id="set-loc-phone" type="tel" className="form-control rounded-3" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
@@ -200,38 +208,55 @@ export default function SettingsPage() {
               <label htmlFor="set-loc-services" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Service types <span className="fw-400">(comma separated)</span></label>
               <input id="set-loc-services" className="form-control rounded-3" value={form.services} onChange={(e) => setForm({ ...form, services: e.target.value })} />
             </div>
-            <div className="col-12"><button type="submit" className="btn btn-dark rounded-3 px-4">Add location</button></div>
+            <div className="col-12"><button type="submit" className="btn btn-dark rounded-3 px-4 ops-tap justify-content-center">Add location</button></div>
           </div>
         </form>
 
         {locLoading ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">Loading…</div>
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500" role="status">Loading…</div>
         ) : locations.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No locations yet. Single-location businesses can skip this — add branches only if calls should route by ZIP.</div>
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No locations yet. Single-location businesses can skip this — add branches only if calls should route by ZIP.</div>
         ) : (
-          <div className="d-flex flex-column gap-2">
+          <ul className="list-unstyled m-0 d-flex flex-column gap-2">
             {locations.map((l) => (
-              <div key={l.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2">
-                <div>
-                  <div className="fw-600">{l.name} <span className="fz-font-sm neutral-500">{l.zip}</span></div>
+              <li key={l.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2">
+                <div style={{ minWidth: 0 }}>
+                  <div className="fw-600">{l.name} {l.zip && <span className="fz-font-sm fw-400 neutral-500">{l.zip}</span>}</div>
                   <div className="fz-font-sm neutral-500">{l.service_types.join(", ") || "All services"}{l.phone ? ` · ${l.phone}` : ""}</div>
                 </div>
-                <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => removeLocation(l)}>Remove</button>
-              </div>
+                <button
+                  type="button"
+                  className="btn btn-link btn-sm p-0 px-2 text-danger text-decoration-none ops-tap flex-shrink-0"
+                  aria-label={`Remove ${l.name}`}
+                  onClick={() => removeLocation(l)}
+                >
+                  Remove
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
 
         <form onSubmit={runRoute} className="bg-neutral-0 rounded-4 p-3 border-100 mt-3">
-          <div className="fz-font-sm fw-600 neutral-500 mb-2">Test ZIP routing</div>
-          <div className="d-flex gap-2">
-            <input aria-label="Caller ZIP code" className="form-control rounded-3" placeholder="ZIP" value={test.zip} onChange={(e) => setTest({ ...test, zip: e.target.value })} />
-            <input aria-label="Requested service" className="form-control rounded-3" placeholder="Service" value={test.service} onChange={(e) => setTest({ ...test, service: e.target.value })} />
-            <button type="submit" className="btn btn-dark rounded-3 px-3" disabled={routing}>{routing ? "…" : "Route"}</button>
+          <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">Test ZIP routing</h3>
+          <div className="row g-2">
+            <div className="col-6">
+              <label htmlFor="set-route-zip" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Caller ZIP</label>
+              <input id="set-route-zip" className="form-control rounded-3" value={test.zip} onChange={(e) => setTest({ ...test, zip: e.target.value })} />
+            </div>
+            <div className="col-6">
+              <label htmlFor="set-route-service" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Service</label>
+              <input id="set-route-service" className="form-control rounded-3" value={test.service} onChange={(e) => setTest({ ...test, service: e.target.value })} />
+            </div>
+            <div className="col-12">
+              <button type="submit" className="btn btn-dark rounded-3 px-4 ops-tap justify-content-center" disabled={routing}>{routing ? "Routing…" : "Route this call"}</button>
+            </div>
           </div>
           <div className="fz-font-sm neutral-500 mt-2">Runs the same routing decision the live call agent uses.</div>
-          {routed === "none" && <div className="fz-font-md neutral-500 mt-1">No matching location.</div>}
-          {routed && routed !== "none" && <div className="fz-font-md neutral-700 mt-1">→ Routes to <span className="fw-600">{routed.name}</span> ({routed.phone || routed.zip})</div>}
+          <div role="status" aria-live="polite">
+            {routed === "none" && <div className="fz-font-md neutral-500 mt-1">No matching location.</div>}
+            {routed && routed !== "none" && <div className="fz-font-md neutral-700 mt-1"><span aria-hidden="true">→ </span>Routes to <span className="fw-600">{routed.name}</span> ({routed.phone || routed.zip})</div>}
+          </div>
         </form>
       </div>
     </div>

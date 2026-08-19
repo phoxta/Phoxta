@@ -16,6 +16,9 @@ const STATUS_BADGE = (s: string) => {
   return "bg-neutral-100 neutral-700";
 };
 
+/** History rows are links into the matching console tab — comfortable to tap on a phone. */
+const ROW_CLASS = "d-flex align-items-center justify-content-between gap-2 text-decoration-none py-1 ops-tap";
+
 const shortId = (id: string) => `#${id.slice(0, 8)}`;
 const day = (d: string) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
@@ -61,7 +64,7 @@ export default function InboxContextRail({
 
   return (
     <div className="bg-neutral-0 rounded-4 p-3 border-100">
-      <div className="fz-font-sm fw-600 neutral-500 mb-2">Customer history</div>
+      <h3 className="fz-font-sm fw-600 neutral-500 mb-2">Customer history</h3>
 
       {!hasIdentity ? (
         <div className="fz-font-sm neutral-400">No email or phone on this conversation yet — history will appear once the customer is identified.</div>
@@ -69,18 +72,18 @@ export default function InboxContextRail({
         <div className="fz-font-sm neutral-500">Loading history…</div>
       ) : (
         <>
-          {error && <div className="alert alert-warning py-1 px-2 fz-font-sm mb-2">{error}</div>}
+          {error && <div className="alert alert-warning py-1 px-2 fz-font-sm mb-2" role="alert">{error}</div>}
 
           {/* Orders */}
-          <div className="fz-font-sm fw-600 neutral-700 mb-1">Orders</div>
+          <h4 className="fz-font-sm fw-600 neutral-700 mb-1">Orders</h4>
           {(ctx?.orders.length ?? 0) === 0 ? (
             <div className="fz-font-sm neutral-400 mb-2">No orders yet.</div>
           ) : (
-            <div className="d-flex flex-column gap-1 mb-2">
+            <div className="d-flex flex-column mb-2">
               {ctx!.orders.map((o) => (
-                <Link key={o.id} to={`${base}/commerce`} className="d-flex align-items-center justify-content-between gap-2 text-decoration-none">
-                  <span className="fz-font-sm neutral-700">{shortId(o.id)} · {formatPrice(o.total_cents, o.currency || currency)}</span>
-                  <span className={`badge fw-500 text-capitalize ${STATUS_BADGE(o.status)}`}>{o.status.replace("_", " ")}</span>
+                <Link key={o.id} to={`${base}/commerce`} className={ROW_CLASS}>
+                  <span className="fz-font-sm neutral-700" style={{ overflowWrap: "anywhere" }}>{shortId(o.id)} · {formatPrice(o.total_cents, o.currency || currency)}</span>
+                  <span className={`badge fw-500 text-capitalize flex-shrink-0 ${STATUS_BADGE(o.status)}`}>{o.status.replace("_", " ")}</span>
                 </Link>
               ))}
             </div>
@@ -89,14 +92,14 @@ export default function InboxContextRail({
           {/* Reservations + bookings */}
           {(ctx?.reservations.length ?? 0) > 0 && (
             <>
-              <div className="fz-font-sm fw-600 neutral-700 mb-1">Reservations</div>
-              <div className="d-flex flex-column gap-1 mb-2">
+              <h4 className="fz-font-sm fw-600 neutral-700 mb-1">Reservations</h4>
+              <div className="d-flex flex-column mb-2">
                 {ctx!.reservations.map((r) => (
-                  <Link key={r.id} to={`${base}/reservations`} className="d-flex align-items-center justify-content-between gap-2 text-decoration-none">
+                  <Link key={r.id} to={`${base}/reservations`} className={ROW_CLASS}>
                     <span className="fz-font-sm neutral-700 text-truncate">
                       {day(r.start_date)} → {day(r.end_date)} · {formatPrice(r.total_cents, r.currency || currency)}
                     </span>
-                    <span className={`badge fw-500 text-capitalize ${STATUS_BADGE(r.status)}`}>{r.status}</span>
+                    <span className={`badge fw-500 text-capitalize flex-shrink-0 ${STATUS_BADGE(r.status)}`}>{r.status}</span>
                   </Link>
                 ))}
               </div>
@@ -104,14 +107,14 @@ export default function InboxContextRail({
           )}
           {(ctx?.bookings.length ?? 0) > 0 && (
             <>
-              <div className="fz-font-sm fw-600 neutral-700 mb-1">Bookings</div>
-              <div className="d-flex flex-column gap-1 mb-2">
+              <h4 className="fz-font-sm fw-600 neutral-700 mb-1">Bookings</h4>
+              <div className="d-flex flex-column mb-2">
                 {ctx!.bookings.map((b) => (
-                  <Link key={b.id} to={`${base}/bookings`} className="d-flex align-items-center justify-content-between gap-2 text-decoration-none">
+                  <Link key={b.id} to={`${base}/bookings`} className={ROW_CLASS}>
                     <span className="fz-font-sm neutral-700 text-truncate">
                       {new Date(b.start_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} · {b.service_name}
                     </span>
-                    <span className={`badge fw-500 text-capitalize ${STATUS_BADGE(b.status)}`}>{b.status}</span>
+                    <span className={`badge fw-500 text-capitalize flex-shrink-0 ${STATUS_BADGE(b.status)}`}>{b.status}</span>
                   </Link>
                 ))}
               </div>
@@ -121,7 +124,7 @@ export default function InboxContextRail({
           {/* Prior conversations */}
           <div className="fz-font-sm neutral-500 mb-2">
             {ctx?.priorConversations ? (
-              <>Prior conversations: <span className="fw-600 neutral-800">{ctx.priorConversations}</span></>
+              <>Earlier conversations: <span className="fw-600 neutral-800">{ctx.priorConversations}</span></>
             ) : (
               "First conversation with this customer."
             )}
@@ -130,7 +133,7 @@ export default function InboxContextRail({
           {/* CRM contact */}
           {ctx?.contact ? (
             <div className="border-top border-100 pt-2">
-              <Link to={`${base}/crm`} className="fz-font-sm fw-600 text-decoration-none">
+              <Link to={`${base}/crm`} className="fz-font-sm fw-600 text-decoration-none ops-tap">
                 {ctx.contact.name || "CRM contact"} →
               </Link>
               <span className="badge bg-neutral-100 neutral-700 fw-500 text-capitalize ms-2">{ctx.contact.stage}</span>

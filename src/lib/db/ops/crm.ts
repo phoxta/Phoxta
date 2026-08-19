@@ -82,15 +82,24 @@ export async function deleteContact(id: string): Promise<{ error: string | null 
 
 /** One event in a contact's merged activity timeline. */
 export type ActivityItem = {
-  kind: "order" | "conversation" | "ticket" | "booking";
+  kind: "order" | "conversation" | "ticket" | "booking" | "reservation";
   id: string;
   date: string;
   title: string;
+  /** Extra context for the meta line. Never the status — the UI badges that. */
   detail: string;
   status: string;
   amount_cents: number | null;
   currency: string | null;
 };
+
+/** Format a date-only column ("2026-08-19") in local time — `new Date(s)`
+ *  parses those as UTC midnight and can render as the previous day. */
+export function fmtDay(value: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return new Date(value).toLocaleDateString();
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString();
+}
 
 // Only embed the email in PostgREST filters when it can't break the filter
 // grammar (commas/parens/quotes) — otherwise we fall back to contact_id only.
@@ -108,10 +117,23 @@ type ConversationRow = {
 };
 type TicketRow = { id: string; subject: string; status: string; created_at: string };
 type BookingRow = { id: string; start_at: string | null; status: string; created_at: string; services: { name: string } | null };
+type ReservationRow = {
+  id: string;
+  start_date: string | null;
+  end_date: string | null;
+  units: number | null;
+  total_cents: number | null;
+  currency: string | null;
+  status: string;
+  created_at: string;
+  products: { name: string } | null;
+};
 
 /**
  * Merged chronological activity for one contact: orders, conversations,
- * tickets and bookings matched by contact_id OR the contact's email.
+ * tickets, bookings and reservations matched by contact_id OR the contact's
+ * email. Reservations are the primary record for rental / stay / experience /
+ * restaurant businesses, so they must appear here too.
  */
 export async function fetchContactActivity(
   orgId: string,
@@ -132,7 +154,7 @@ export async function fetchContactActivity(
     ? convQuery.or(`contact_id.eq.${contactId},customer_email.ilike.${em}`)
     : convQuery.eq("contact_id", contactId);
 
-  const [orders, convs, tickets, bookings] = await Promise.all([
+  const [orders, convs, tickets, bookings, reservations] = await Promise.all([
     emailOk
       ? supabase
           .from("orders")
@@ -161,9 +183,24 @@ export async function fetchContactActivity(
           .order("created_at", { ascending: false })
           .limit(20)
       : Promise.resolve({ data: [], error: null }),
+    emailOk
+      ? supabase
+          .from("reservations")
+          .select("id, start_date, end_date, units, total_cents, currency, status, created_at, products(name)")
+          .eq("organization_id", orgId)
+          .ilike("customer_email", em)
+          .order("start_date", { ascending: false })
+          .limit(20)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
-  const firstError = orders.error?.message || convs.error?.message || tickets.error?.message || bookings.error?.message || null;
+  const firstError =
+    orders.error?.message ||
+    convs.error?.message ||
+    tickets.error?.message ||
+    bookings.error?.message ||
+    reservations.error?.message ||
+    null;
 
   const items: ActivityItem[] = [];
   for (const o of (orders.data as OrderRow[] | null) ?? []) {
@@ -172,7 +209,7 @@ export async function fetchContactActivity(
       id: o.id,
       date: o.created_at,
       title: `Order ${o.id.slice(0, 8).toUpperCase()}`,
-      detail: o.status,
+      detail: "",
       status: o.status,
       amount_cents: o.total_cents,
       currency: o.currency,
@@ -184,7 +221,7 @@ export async function fetchContactActivity(
       id: c.id,
       date: c.last_message_at ?? c.created_at,
       title: `Conversation${c.channel_type ? ` · ${c.channel_type}` : ""}`,
-      detail: c.summary || c.intent || c.status,
+      detail: c.summary || c.intent || "",
       status: c.status,
       amount_cents: null,
       currency: null,
@@ -196,7 +233,7 @@ export async function fetchContactActivity(
       id: t.id,
       date: t.created_at,
       title: `Ticket · ${t.subject || "no subject"}`,
-      detail: t.status,
+      detail: "",
       status: t.status,
       amount_cents: null,
       currency: null,
@@ -208,10 +245,28 @@ export async function fetchContactActivity(
       id: b.id,
       date: b.start_at ?? b.created_at,
       title: `Booking${b.services?.name ? ` · ${b.services.name}` : ""}`,
-      detail: b.start_at ? new Date(b.start_at).toLocaleString() : b.status,
+      detail: b.start_at ? new Date(b.start_at).toLocaleString() : "",
       status: b.status,
       amount_cents: null,
       currency: null,
+    });
+  }
+  for (const r of (reservations.data as unknown as ReservationRow[] | null) ?? []) {
+    const start = r.start_date;
+    const end = r.end_date;
+    // Owners read a reservation as "which dates" first — put the range in the
+    // meta line, and fall back to a single day when it isn't a range.
+    const dates = start ? (end && end !== start ? `${fmtDay(start)} – ${fmtDay(end)}` : fmtDay(start)) : "";
+    const units = r.units && r.units > 1 ? `${r.units} units` : "";
+    items.push({
+      kind: "reservation",
+      id: r.id,
+      date: start ?? r.created_at,
+      title: `Reservation${r.products?.name ? ` · ${r.products.name}` : ""}`,
+      detail: [dates, units].filter(Boolean).join(" · "),
+      status: r.status,
+      amount_cents: r.total_cents ?? null,
+      currency: r.currency,
     });
   }
   items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));

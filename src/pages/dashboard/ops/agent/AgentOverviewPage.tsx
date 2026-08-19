@@ -6,6 +6,31 @@ import { getAgentSummary, getAgentConfig, type AgentSummary } from "@/lib/db/ops
 import { supabase } from "@/lib/supabaseClient";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
+/**
+ * One stat-tile treatment for the whole console — identical to the copy in
+ * ops/OverviewPage.tsx so both pages read as the same product:
+ * - a tile that navigates or expands gets the white card, a trailing marker and a hover lift
+ * - a tile that only reports a number is recessed (bg-neutral-50) with no marker
+ * - numerals shrink one step on phones so nothing overflows a two-up grid at 390px.
+ */
+const TILE_CSS = `
+.ops-tile{transition:border-color .15s ease,box-shadow .15s ease}
+.ops-tile-value,.ops-attn-value{overflow-wrap:anywhere}
+@media (max-width:575.98px){.ops-tile-value{font-size:24px}.ops-attn-value{font-size:32px}}
+.ops-tile-link{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;text-align:left;text-decoration:none}
+.ops-tile-link:hover .ops-tile,.ops-tile-link:focus-visible .ops-tile{border-color:var(--at-neutral-300)!important;box-shadow:0 6px 20px rgba(0,0,0,.07)}
+.ops-tile-link:hover .ops-tile-arrow{transform:translateX(3px)}
+.ops-tile-arrow{display:inline-block;transition:transform .15s ease}
+.ops-attn-card{box-shadow:0 2px 10px rgba(0,0,0,.05)}
+`;
+
+/** Row affordance for the QA drill-down list (whole row is one link). */
+const ROW_CSS = `
+.ops-row-link{display:flex;text-decoration:none;transition:background-color .15s ease}
+.ops-row-link:hover,.ops-row-link:focus-visible{background-color:var(--at-neutral-100)!important}
+.ops-row-link:hover .ops-tile-arrow{transform:translateX(3px)}
+`;
+
 /** The four capability toggles that actually exist on the agent config. */
 const REAL_CAPABILITIES: { key: string; label: string }[] = [
   { key: "after_hours", label: "After-hours answering" },
@@ -18,6 +43,63 @@ const REAL_CAPABILITIES: { key: string; label: string }[] = [
 const SCAN_CAP = 2000;
 
 type WorstConv = { id: string; qa_score: number; qa_verdict: string | null };
+
+type Tile = {
+  label: string;
+  value: string | number;
+  sub?: string;
+  /** Present = the tile navigates. */
+  to?: string;
+  /** Present = the tile expands a panel in place. */
+  qa?: boolean;
+};
+
+/** The shared stat tile: navigating (arrow), expanding (chevron) or inert (flat). */
+function StatTile({
+  label,
+  value,
+  sub,
+  to,
+  onToggle,
+  expanded,
+  controls,
+}: Tile & { onToggle?: () => void; expanded?: boolean; controls?: string }) {
+  const interactive = Boolean(to || onToggle);
+  const body = (
+    <div className={`ops-tile rounded-4 p-3 p-md-4 h-100 border-100 ${interactive ? "bg-neutral-0" : "bg-neutral-50"}`}>
+      <div className="d-flex align-items-start gap-2 mb-2">
+        <span className="fz-font-sm neutral-500">{label}</span>
+        {to && (
+          <span className="ms-auto neutral-400 ops-tile-arrow" aria-hidden="true">
+            →
+          </span>
+        )}
+        {onToggle && (
+          <span className="ms-auto neutral-400" aria-hidden="true">
+            {expanded ? "▴" : "▾"}
+          </span>
+        )}
+      </div>
+      <div className="fz-32 ops-tile-value fw-700 lh-1 neutral-900">{value}</div>
+      {sub && <div className="fz-font-sm neutral-400 mt-1">{sub}</div>}
+    </div>
+  );
+  return (
+    <div className="col-6 col-md-4 col-xl-3">
+      {to ? (
+        <Link to={to} className="ops-tile-link text-decoration-none">
+          {body}
+        </Link>
+      ) : onToggle ? (
+        <button type="button" className="ops-tile-link" aria-expanded={expanded} aria-controls={controls} onClick={onToggle}>
+          {body}
+        </button>
+      ) : (
+        body
+      )}
+    </div>
+  );
+}
 
 export default function AgentOverviewPage() {
   const { orgId } = useOutletContext<OpsContext>();
@@ -94,17 +176,19 @@ export default function AgentOverviewPage() {
   const byLocation = (s.calls_by_location as Record<string, number>) ?? {};
   const locations = n("locations");
 
-  const stats: { label: string; value: string | number; sub?: string; qa?: boolean }[] = [
-    { label: "Conversations", value: conv.total, sub: `${conv.open} open · ${conv.escalated} escalated` },
+  // `to` is only set where a page actually shows that number's detail:
+  // conversations live in the console inbox, outbound tasks in marketing.
+  const stats: Tile[] = [
+    { label: "Conversations", value: conv.total, sub: `${conv.open} open · ${conv.escalated} escalated`, to: "../inbox" },
     { label: "Qualified leads", value: conv.qualified },
     { label: "After-hours calls captured", value: n("after_hours_calls") },
     { label: "Appointments booked", value: n("bookings") },
-    { label: "Outbound done", value: n("outbound_done"), sub: `${n("outbound_queued")} queued` },
+    { label: "Outbound done", value: n("outbound_done"), sub: `${n("outbound_queued")} queued`, to: "../marketing" },
     {
       label: "AI quality (mo.)",
       value: data?.qaAvg != null ? `${data.qaAvg}/5` : "—",
       sub: data?.qaCount
-        ? `${data.qaCapped ? `first ${SCAN_CAP}` : data.qaCount} graded · click for lowest`
+        ? `${data.qaCapped ? `first ${SCAN_CAP}` : data.qaCount} graded · see the lowest`
         : "grading runs every 2h",
       qa: true,
     },
@@ -116,68 +200,87 @@ export default function AgentOverviewPage() {
     ...(locations > 1 ? [{ label: "Locations", value: locations }] : []),
   ];
 
-  if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+  if (loading) {
+    return (
+      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">
+        Loading…
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="row g-3 mb-4">
-        {stats.map((st) => {
-          const inner = (
-            <div className="bg-neutral-0 rounded-4 p-4 h-100 border-100">
-              <div className="fz-font-sm neutral-500 mb-2">{st.label}</div>
-              <div className="fz-32 fw-700 lh-1 neutral-900">{st.value}</div>
-              {st.sub && <div className="fz-font-sm neutral-500 mt-1">{st.sub}</div>}
-            </div>
-          );
-          return (
-            <div key={st.label} className="col-xl-2 col-md-4 col-sm-6">
-              {st.qa ? (
-                <button
-                  type="button"
-                  className="d-block w-100 h-100 p-0 border-0 bg-transparent text-start"
-                  aria-expanded={showQa}
-                  onClick={() => setShowQa((v) => !v)}
-                >
-                  {inner}
-                </button>
-              ) : (
-                inner
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <style>{TILE_CSS + ROW_CSS}</style>
 
-      {showQa && (
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
-          <h6 className="fw-600 mb-3">Lowest-scoring conversations this month</h6>
-          {(data?.worst ?? []).length === 0 ? (
-            <p className="neutral-500 fz-font-md mb-0">No graded conversations yet this month.</p>
-          ) : (
-            <ul className="list-unstyled m-0 d-flex flex-column gap-2">
-              {(data?.worst ?? []).map((w) => (
-                <li key={w.id} className="d-flex align-items-center gap-3 fz-font-md">
-                  <Link to="../inbox" className="fw-600 text-decoration-none">#{w.id.slice(0, 8)}</Link>
-                  <span className={w.qa_score <= 2 ? "text-danger fw-600" : "neutral-700"}>{w.qa_score}/5</span>
-                  {w.qa_verdict && <span className="neutral-500 fz-font-sm">{w.qa_verdict}</span>}
-                  <Link to="../inbox" className="ms-auto fz-font-sm text-decoration-none">Open inbox →</Link>
-                </li>
-              ))}
-            </ul>
+      <section className="mb-5" aria-labelledby="agent-activity-h">
+        <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
+          <h2 id="agent-activity-h" className="fz-font-lg fw-600 neutral-900 m-0">
+            Agent activity
+          </h2>
+          <Link to="operator" className="btn btn-link neutral-500 text-decoration-none fz-font-sm ops-tap ms-auto p-0">
+            Approvals &amp; actions →
+          </Link>
+        </div>
+        <div className="row g-3">
+          {stats.map((st) =>
+            st.qa ? (
+              <StatTile
+                key={st.label}
+                {...st}
+                expanded={showQa}
+                controls="agent-qa-panel"
+                onToggle={() => setShowQa((v) => !v)}
+              />
+            ) : (
+              <StatTile key={st.label} {...st} />
+            ),
           )}
         </div>
-      )}
+
+        {showQa && (
+          <div id="agent-qa-panel" className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 mt-3">
+            <h3 className="fz-font-md fw-600 neutral-900 mb-3">Lowest-scoring conversations this month</h3>
+            {(data?.worst ?? []).length === 0 ? (
+              <p className="neutral-500 fz-font-md mb-0">No graded conversations yet this month.</p>
+            ) : (
+              <ul className="list-unstyled m-0 d-flex flex-column gap-2">
+                {(data?.worst ?? []).map((w) => (
+                  <li key={w.id}>
+                    <Link
+                      to="../inbox"
+                      className="ops-row-link text-decoration-none ops-tap d-flex align-items-center flex-wrap gap-2 gap-md-3 p-2 rounded-3 bg-neutral-50"
+                    >
+                      <span className="fw-600 fz-font-md neutral-900">#{w.id.slice(0, 8)}</span>
+                      <span
+                        className={`badge fw-500 ${w.qa_score <= 2 ? "bg-danger-subtle text-danger" : "bg-neutral-100 neutral-700"}`}
+                      >
+                        {w.qa_score}/5
+                      </span>
+                      {w.qa_verdict && <span className="neutral-500 fz-font-sm">{w.qa_verdict}</span>}
+                      <span className="ms-auto fz-font-sm neutral-400 ops-tile-arrow">Open inbox →</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </section>
 
       <div className="row g-4">
         <div className="col-lg-7">
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 h-100">
-            <h6 className="fw-600 mb-3">Active capabilities</h6>
+          <div className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 h-100">
+            <h2 className="fz-font-lg fw-600 neutral-900 mb-1">What the agent handles</h2>
+            <p className="fz-font-sm neutral-500 mb-3">Change these in Configure.</p>
             <div className="d-flex flex-wrap gap-2">
               {REAL_CAPABILITIES.map((c) => {
                 const on = config?.capabilities?.[c.key] !== false;
                 return (
                   <span key={c.key} className={`badge fw-500 ${on ? "bg-success-subtle text-success" : "bg-neutral-100 neutral-500"}`}>
-                    {on ? "● " : "○ "}{c.label}
+                    <span aria-hidden="true">{on ? "● " : "○ "}</span>
+                    {c.label}
+                    {/* State is spoken, not carried by colour alone. */}
+                    <span className="visually-hidden">{on ? " — on" : " — off"}</span>
                   </span>
                 );
               })}
@@ -185,16 +288,16 @@ export default function AgentOverviewPage() {
           </div>
         </div>
         <div className="col-lg-5">
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 h-100">
-            <h6 className="fw-600 mb-3">Calls by location</h6>
+          <div className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 h-100">
+            <h2 className="fz-font-lg fw-600 neutral-900 mb-3">Calls by location</h2>
             {Object.keys(byLocation).length === 0 ? (
               <p className="neutral-500 fz-font-md mb-0">No calls logged yet.</p>
             ) : (
               <ul className="list-unstyled m-0 d-flex flex-column gap-2">
                 {Object.entries(byLocation).map(([name, count]) => (
-                  <li key={name} className="d-flex justify-content-between fz-font-md">
+                  <li key={name} className="d-flex justify-content-between gap-3 fz-font-md">
                     <span className="neutral-700">{name}</span>
-                    <span className="fw-600">{count}</span>
+                    <span className="fw-600 neutral-900">{count}</span>
                   </li>
                 ))}
               </ul>

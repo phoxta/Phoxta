@@ -221,6 +221,8 @@ export default function ConfigurePage() {
   );
   const [docForm, setDocForm] = useState({ title: "", content: "" });
   const [editingId, setEditingId] = useState<string | null>(null);
+  // The editor sits above the list, so editing an item pulls focus back up to it.
+  const docTitleRef = useRef<HTMLInputElement>(null);
   const [docSaving, setDocSaving] = useState(false);
   const [docSearch, setDocSearch] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -337,135 +339,43 @@ export default function ConfigurePage() {
     }
   }
 
-  if (loading || !config) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">{loadError ? loadError : "Loading…"}</div>;
+  if (loading || !config) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">{loadError ? loadError : "Loading…"}</div>;
 
   const days = config.business_hours?.days ?? [1, 2, 3, 4, 5];
   const snippet = `<script src="https://www.phoxta.com/phoxta-agent.js" data-org="${config.public_key}" defer></script>`;
 
   return (
     <div className="row g-4">
-      {(loadError || docsError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{loadError || docsError}</div></div>}
+      {(loadError || docsError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">{loadError || docsError}</div></div>}
 
-      <div className="col-lg-7">
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
-          <h6 className="fw-600 mb-2">Industry starter</h6>
-          <p className="fz-font-sm neutral-500 mb-2">Apply a sensible persona, greeting and tone for your industry, then fine-tune below.</p>
-          <div className="d-flex gap-2">
-            <label className="visually-hidden" htmlFor="train-preset">Industry preset</label>
-            <select id="train-preset" className="form-select rounded-3" value={presetKey} onChange={(e) => setPresetKey(e.target.value)}>
-              {INDUSTRY_PRESETS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-            </select>
-            <button type="button" className="btn btn-outline-dark rounded-3 px-4" onClick={applyPreset}>Apply</button>
-          </div>
-        </div>
-
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
-          <h6 className="fw-600 mb-3">Persona</h6>
-          <div className="row g-3">
-            <div className="col-md-8"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-name">Agent name</label><input id="agent-name" className="form-control rounded-3" value={config.display_name} onChange={(e) => patch({ display_name: e.target.value })} /></div>
-            <div className="col-md-4"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-tone">Tone</label><input id="agent-tone" className="form-control rounded-3" value={config.tone} onChange={(e) => patch({ tone: e.target.value })} /></div>
-            <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-persona">Persona / instructions</label><textarea id="agent-persona" className="form-control rounded-3" rows={2} value={config.persona} onChange={(e) => patch({ persona: e.target.value })} /></div>
-            <div className="col-12">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-procedures">Operating procedures</label>
-              <textarea
-                id="agent-procedures"
-                className="form-control rounded-3"
-                rows={4}
-                value={config.procedures ?? ""}
-                onChange={(e) => patch({ procedures: e.target.value })}
-                placeholder={"Plain-English rules the agent must always follow, e.g.:\n• If an order is unshipped, offer an exchange before a refund.\n• Never promise delivery dates — say \"usually 3–5 business days\".\n• Discounts above 10% need my approval."}
-              />
-              <p className="fz-font-sm neutral-500 mt-1 mb-0">These are hard rules — the agent follows them over its own judgment, on every channel.</p>
-            </div>
-            <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-greeting">Greeting</label><input id="agent-greeting" className="form-control rounded-3" value={config.greeting} onChange={(e) => patch({ greeting: e.target.value })} /></div>
-          </div>
-        </div>
-
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
-          <h6 className="fw-600 mb-1">What your agent can do</h6>
-          <p className="fz-font-sm neutral-500 mb-3">Each switch gates real tools the agent uses on every channel. Everything else — answering from your knowledge, escalating to a human — is always on.</p>
-          <div className="d-flex flex-column gap-3">
-            {CAPABILITY_SWITCHES.map((c) => (
-              <div key={c.key}>
-                <div className="form-check form-switch d-flex align-items-center justify-content-between m-0 p-0">
-                  <label className="form-check-label fz-font-md fw-500 neutral-700" htmlFor={`cap-${c.key}`}>{c.label}</label>
-                  <input className="form-check-input m-0" type="checkbox" role="switch" id={`cap-${c.key}`} checked={capOn(c.key)} onChange={() => toggleCap(c.key)} />
-                </div>
-                <div className="fz-font-sm neutral-500 mt-1">{c.help}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
-          <h6 className="fw-600 mb-3">Business hours & escalation</h6>
-          <div className="row g-3">
-            <div className="col-md-3 col-6"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="hours-open">Open</label><input id="hours-open" type="time" className="form-control rounded-3" value={config.business_hours?.open ?? "09:00"} onChange={(e) => patch({ business_hours: { ...config.business_hours, open: e.target.value } })} /></div>
-            <div className="col-md-3 col-6"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="hours-close">Close</label><input id="hours-close" type="time" className="form-control rounded-3" value={config.business_hours?.close ?? "17:00"} onChange={(e) => patch({ business_hours: { ...config.business_hours, close: e.target.value } })} /></div>
-            <div className="col-md-6">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="hours-tz">Timezone</label>
-              <select id="hours-tz" className="form-select rounded-3" value={config.business_hours?.tz ?? ""} onChange={(e) => patch({ business_hours: { ...config.business_hours, tz: e.target.value } })}>
-                {!config.business_hours?.tz && <option value="">Select timezone…</option>}
-                {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>)}
-              </select>
-            </div>
-            <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="escalate-email">Escalate to (email)</label><input id="escalate-email" type="email" className="form-control rounded-3" value={config.escalation?.to_email ?? ""} onChange={(e) => patch({ escalation: { ...config.escalation, to_email: e.target.value } })} /></div>
-            <div className="col-12">
-              <span className="form-label d-block fz-font-sm fw-500 neutral-500 mb-1">Open days</span>
-              <div className="d-flex flex-wrap gap-1">
-                {DAYS.map((d, i) => (
-                  <button key={d} type="button" className={`btn btn-sm rounded-pill px-3 ${days.includes(i) ? "btn-dark" : "btn-outline-secondary"}`} onClick={() => toggleDay(i)}>{d}</button>
-                ))}
-              </div>
-              <div className="fz-font-sm neutral-500 mt-1">With after-hours answering on, the agent still replies outside these hours — it captures the lead and offers a callback.</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
-          <h6 className="fw-600 mb-2">Voice</h6>
-          <p className="fz-font-sm neutral-500 mb-2">The voice your AI uses on phone calls. Pick a preset, or choose Cartesia and paste a custom / cloned voice ID.</p>
-          <label className="visually-hidden" htmlFor="agent-voice">Voice</label>
-          <select
-            id="agent-voice"
-            className="form-select rounded-3 mb-2"
-            value={config.voice?.provider === "cartesia" ? "cartesia|" : `${config.voice?.provider || "deepgram"}|${config.voice?.voice_id || "aura-asteria-en"}`}
-            onChange={(e) => {
-              const [provider, voice_id] = e.target.value.split("|");
-              patch({ voice: { provider, voice_id: provider === "cartesia" ? (config.voice?.voice_id || "") : voice_id } });
-            }}
-          >
-            {VOICES.map((v) => <option key={v.label} value={`${v.provider}|${v.id}`}>{v.label}</option>)}
-          </select>
-          {config.voice?.provider === "cartesia" && (
-            <input aria-label="Cartesia voice ID" className="form-control rounded-3" placeholder="Cartesia voice ID (preset or cloned)" value={config.voice?.voice_id || ""} onChange={(e) => patch({ voice: { provider: "cartesia", voice_id: e.target.value } })} />
-          )}
-          <div className="fz-font-sm neutral-400 mt-1">To clone a voice: create it in Cartesia, then paste its voice ID here.</div>
-        </div>
-
-        {/* ---------------- Knowledge ---------------- */}
-        <div className="bg-neutral-0 rounded-4 p-4 border-100">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-            <h6 className="fw-600 mb-0">Knowledge</h6>
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3" onClick={syncFromStore} disabled={syncing}>
+      {/* ── Knowledge — the work you come back to, so it leads the page ── */}
+      <div className="col-12 col-lg-7">
+        <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+            <h2 className="fz-font-lg fw-600 mb-0">
+              Knowledge
+              {docs.length > 0 && <span className="badge bg-neutral-100 neutral-700 fw-500 fz-font-sm ms-2 align-middle">{docs.length}</span>}
+            </h2>
+            <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3 ops-tap" onClick={syncFromStore} disabled={syncing}>
               {syncing ? "Syncing…" : "Sync from your store"}
             </button>
           </div>
           <p className="fz-font-sm neutral-500 mb-3">Facts, policies and FAQs the agent answers from — embedded and retrieved automatically across chat, SMS, WhatsApp and voice. Sync pulls your products, published pages and FAQs into auto-updated docs.</p>
 
           <form onSubmit={submitDoc} className="bg-neutral-50 rounded-4 p-3 mb-3">
+            <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">{editingId ? "Edit this answer" : "Add an answer"}</h3>
             <div className="row g-2">
               <div className="col-12">
-                <label className="visually-hidden" htmlFor="kb-title">Title</label>
-                <input id="kb-title" className="form-control rounded-3" placeholder="Title (e.g. Refund policy)" value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} />
+                <label className="fz-font-sm fw-500 neutral-500 mb-1 d-block" htmlFor="kb-title">Title</label>
+                <input id="kb-title" ref={docTitleRef} className="form-control rounded-3" placeholder="e.g. Refund policy" value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} />
               </div>
               <div className="col-12">
-                <label className="visually-hidden" htmlFor="kb-content">Knowledge content</label>
+                <label className="fz-font-sm fw-500 neutral-500 mb-1 d-block" htmlFor="kb-content">What the agent should say</label>
                 <textarea id="kb-content" className="form-control rounded-3" rows={4} placeholder="Knowledge / answer…" value={docForm.content} onChange={(e) => setDocForm({ ...docForm, content: e.target.value })} required />
               </div>
-              <div className="col-12 d-flex gap-2">
-                <button type="submit" className="btn btn-dark rounded-3 px-4" disabled={docSaving}>{docSaving ? "Saving…" : editingId ? "Save changes" : "Add to knowledge base"}</button>
-                {editingId && <button type="button" className="btn btn-outline-secondary rounded-3 px-3" onClick={() => { setEditingId(null); setDocForm({ title: "", content: "" }); }}>Cancel edit</button>}
+              <div className="col-12 d-flex flex-wrap gap-2">
+                <button type="submit" className="btn btn-dark rounded-3 px-4 ops-tap justify-content-center" disabled={docSaving}>{docSaving ? "Saving…" : editingId ? "Save changes" : "Add to knowledge base"}</button>
+                {editingId && <button type="button" className="btn btn-outline-secondary rounded-3 px-3 ops-tap" onClick={() => { setEditingId(null); setDocForm({ title: "", content: "" }); }}>Cancel edit</button>}
               </div>
             </div>
           </form>
@@ -476,19 +386,20 @@ export default function ConfigurePage() {
           </div>
 
           {docsLoading ? (
-            <div className="text-center neutral-500 py-4">Loading…</div>
+            <div className="text-center neutral-500 py-4" role="status">Loading…</div>
           ) : visibleDocs.length === 0 ? (
             <div className="text-center neutral-500 py-4 fz-font-md">{docs.length === 0 ? "Nothing yet. Add what the agent should know — or hit Sync from your store." : "No docs match your search."}</div>
           ) : (
-            <div className="d-flex flex-column gap-2">
+            <ul className="list-unstyled m-0 d-flex flex-column gap-2">
               {visibleDocs.map((d) => {
                 const isLong = (d.content || "").length > 220 || (d.content.match(/\n/g)?.length ?? 0) >= 3;
                 const isOpen = !!expanded[d.id];
+                const label = d.title || "this answer";
                 return (
-                  <div key={d.id} className="bg-neutral-0 rounded-4 p-3 border-100">
+                  <li key={d.id} className="bg-neutral-0 rounded-4 p-3 border-100">
                     <div className="d-flex justify-content-between gap-2">
                       <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                        {d.title && <div className="fw-600">{d.title}</div>}
+                        {d.title && <h3 className="fz-font-md fw-600 mb-0">{d.title}</h3>}
                         <div
                           className="fz-font-sm neutral-500"
                           style={isOpen || !isLong
@@ -498,44 +409,167 @@ export default function ConfigurePage() {
                           {d.content}
                         </div>
                         {isLong && (
-                          <button type="button" className="btn btn-link btn-sm p-0 fz-font-sm text-decoration-none" onClick={() => setExpanded((x) => ({ ...x, [d.id]: !isOpen }))}>
+                          <button type="button" className="btn btn-link btn-sm p-0 fz-font-sm text-decoration-none ops-tap" aria-expanded={isOpen} onClick={() => setExpanded((x) => ({ ...x, [d.id]: !isOpen }))}>
                             {isOpen ? "Show less" : "Show more"}
                           </button>
                         )}
                       </div>
-                      <div className="d-flex flex-column gap-1 text-end">
-                        <button type="button" className="btn btn-link btn-sm p-0 neutral-700 text-decoration-none" onClick={() => { setEditingId(d.id); setDocForm({ title: d.title || "", content: d.content || "" }); }}>Edit</button>
-                        <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none" onClick={() => deleteDoc(d.id, d.title)}>Delete</button>
+                      <div className="d-flex flex-column gap-1 text-end flex-shrink-0">
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm p-0 px-2 neutral-700 text-decoration-none ops-tap"
+                          aria-label={`Edit ${label}`}
+                          onClick={() => { setEditingId(d.id); setDocForm({ title: d.title || "", content: d.content || "" }); docTitleRef.current?.focus(); }}
+                        >
+                          Edit
+                        </button>
+                        <button type="button" className="btn btn-link btn-sm p-0 px-2 text-danger text-decoration-none ops-tap" aria-label={`Delete ${label}`} onClick={() => deleteDoc(d.id, d.title)}>Delete</button>
                       </div>
                     </div>
-                  </div>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
         </div>
       </div>
 
-      <div className="col-lg-5">
+      {/* ── Live preview — test what you just taught it ── */}
+      <div className="col-12 col-lg-5">
         <div style={{ position: "sticky", top: 16 }}>
           <TrainPreview orgId={orgId} publicKey={config.public_key ?? null} />
 
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 mt-4">
-            <h6 className="fw-600 mb-2">Add the agent to your website</h6>
+          <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100 mt-4">
+            <h2 className="fz-font-md fw-600 mb-2">Add the agent to your website</h2>
             <p className="fz-font-sm neutral-500 mb-2">Paste this once before <code>&lt;/body&gt;</code> — a chat bubble appears on every page, answered by this agent.</p>
             <code className="d-block p-2 bg-neutral-50 rounded-3 fz-font-sm mb-2" style={{ wordBreak: "break-all" }}>{snippet}</code>
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3" onClick={() => copySnippet(snippet)}>Copy snippet</button>
+            <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3 ops-tap" onClick={() => copySnippet(snippet)}>Copy snippet</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Set-up — one-time configuration, below the daily work ── */}
+      <div className="col-12">
+        <h2 className="fz-font-lg fw-600 mb-1">Set-up</h2>
+        <p className="fz-font-sm neutral-500 mb-3">Set these once: who your agent is, what it may do, when you&rsquo;re open, and how it sounds on the phone.</p>
+
+        <div className="row g-4">
+          <div className="col-12 col-lg-6">
+            <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100 h-100">
+              <h3 className="fz-font-md fw-600 mb-1">Persona</h3>
+              <p className="fz-font-sm neutral-500 mb-3">Who your agent is on every channel.</p>
+              <div className="row g-3">
+                <div className="col-12">
+                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="train-preset">Industry starter</label>
+                  <div className="d-flex flex-wrap gap-2">
+                    <select id="train-preset" className="form-select rounded-3" style={{ flex: "1 1 200px", minWidth: 0 }} value={presetKey} onChange={(e) => setPresetKey(e.target.value)}>
+                      {INDUSTRY_PRESETS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+                    </select>
+                    <button type="button" className="btn btn-outline-dark rounded-3 px-4 ops-tap" onClick={applyPreset}>Apply</button>
+                  </div>
+                  <p className="fz-font-sm neutral-500 mt-1 mb-0">Applying replaces the persona, greeting and tone below — nothing is saved until you press Save.</p>
+                </div>
+                <div className="col-12 col-md-8"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-name">Agent name</label><input id="agent-name" className="form-control rounded-3" value={config.display_name} onChange={(e) => patch({ display_name: e.target.value })} /></div>
+                <div className="col-12 col-md-4"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-tone">Tone</label><input id="agent-tone" className="form-control rounded-3" value={config.tone} onChange={(e) => patch({ tone: e.target.value })} /></div>
+                <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-persona">Persona / instructions</label><textarea id="agent-persona" className="form-control rounded-3" rows={3} value={config.persona} onChange={(e) => patch({ persona: e.target.value })} /></div>
+                <div className="col-12">
+                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-procedures">Operating procedures</label>
+                  <textarea
+                    id="agent-procedures"
+                    className="form-control rounded-3"
+                    rows={4}
+                    value={config.procedures ?? ""}
+                    onChange={(e) => patch({ procedures: e.target.value })}
+                    placeholder={"Plain-English rules the agent must always follow, e.g.:\n• If an order is unshipped, offer an exchange before a refund.\n• Never promise delivery dates — say \"usually 3–5 business days\".\n• Discounts above 10% need my approval."}
+                  />
+                  <p className="fz-font-sm neutral-500 mt-1 mb-0">These are hard rules — the agent follows them over its own judgment, on every channel.</p>
+                </div>
+                <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-greeting">Greeting</label><input id="agent-greeting" className="form-control rounded-3" value={config.greeting} onChange={(e) => patch({ greeting: e.target.value })} /></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-12 col-lg-6 d-flex flex-column gap-4">
+            <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+              <h3 className="fz-font-md fw-600 mb-1">What your agent can do</h3>
+              <p className="fz-font-sm neutral-500 mb-3">Each switch gates real tools the agent uses on every channel. Everything else — answering from your knowledge, escalating to a human — is always on.</p>
+              <div className="d-flex flex-column gap-3">
+                {CAPABILITY_SWITCHES.map((c) => (
+                  <div key={c.key}>
+                    <div className="form-check form-switch d-flex align-items-center justify-content-between gap-3 m-0 p-0">
+                      <label className="form-check-label fz-font-md fw-500 neutral-700 ops-tap" htmlFor={`cap-${c.key}`}>{c.label}</label>
+                      <input className="form-check-input m-0 flex-shrink-0" type="checkbox" role="switch" id={`cap-${c.key}`} checked={capOn(c.key)} onChange={() => toggleCap(c.key)} aria-describedby={`cap-help-${c.key}`} />
+                    </div>
+                    <div id={`cap-help-${c.key}`} className="fz-font-sm neutral-500 mt-1">{c.help}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+              <h3 className="fz-font-md fw-600 mb-3">Business hours &amp; escalation</h3>
+              <div className="row g-3">
+                <div className="col-6 col-md-3"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="hours-open">Open</label><input id="hours-open" type="time" className="form-control rounded-3" value={config.business_hours?.open ?? "09:00"} onChange={(e) => patch({ business_hours: { ...config.business_hours, open: e.target.value } })} /></div>
+                <div className="col-6 col-md-3"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="hours-close">Close</label><input id="hours-close" type="time" className="form-control rounded-3" value={config.business_hours?.close ?? "17:00"} onChange={(e) => patch({ business_hours: { ...config.business_hours, close: e.target.value } })} /></div>
+                <div className="col-12 col-md-6">
+                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="hours-tz">Timezone</label>
+                  <select id="hours-tz" className="form-select rounded-3" value={config.business_hours?.tz ?? ""} onChange={(e) => patch({ business_hours: { ...config.business_hours, tz: e.target.value } })}>
+                    {!config.business_hours?.tz && <option value="">Select timezone…</option>}
+                    {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>)}
+                  </select>
+                </div>
+                <div className="col-12">
+                  <span className="form-label d-block fz-font-sm fw-500 neutral-500 mb-1" id="open-days-label">Open days</span>
+                  <div className="d-flex flex-wrap gap-1" role="group" aria-labelledby="open-days-label">
+                    {DAYS.map((d, i) => (
+                      <button
+                        key={d}
+                        type="button"
+                        className={`btn btn-sm rounded-pill px-3 ops-tap ${days.includes(i) ? "btn-dark" : "btn-outline-secondary"}`}
+                        aria-pressed={days.includes(i)}
+                        onClick={() => toggleDay(i)}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="fz-font-sm neutral-500 mt-1">With after-hours answering on, the agent still replies outside these hours — it captures the lead and offers a callback.</div>
+                </div>
+                <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="escalate-email">Escalate to (email)</label><input id="escalate-email" type="email" className="form-control rounded-3" value={config.escalation?.to_email ?? ""} onChange={(e) => patch({ escalation: { ...config.escalation, to_email: e.target.value } })} /></div>
+              </div>
+            </div>
+
+            <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+              <h3 className="fz-font-md fw-600 mb-2">Voice</h3>
+              <p className="fz-font-sm neutral-500 mb-2">The voice your AI uses on phone calls. Pick a preset, or choose Cartesia and paste a custom / cloned voice ID.</p>
+              <label className="visually-hidden" htmlFor="agent-voice">Voice</label>
+              <select
+                id="agent-voice"
+                className="form-select rounded-3 mb-2"
+                value={config.voice?.provider === "cartesia" ? "cartesia|" : `${config.voice?.provider || "deepgram"}|${config.voice?.voice_id || "aura-asteria-en"}`}
+                onChange={(e) => {
+                  const [provider, voice_id] = e.target.value.split("|");
+                  patch({ voice: { provider, voice_id: provider === "cartesia" ? (config.voice?.voice_id || "") : voice_id } });
+                }}
+              >
+                {VOICES.map((v) => <option key={v.label} value={`${v.provider}|${v.id}`}>{v.label}</option>)}
+              </select>
+              {config.voice?.provider === "cartesia" && (
+                <input aria-label="Cartesia voice ID" className="form-control rounded-3" placeholder="Cartesia voice ID (preset or cloned)" value={config.voice?.voice_id || ""} onChange={(e) => patch({ voice: { provider: "cartesia", voice_id: e.target.value } })} />
+              )}
+              <div className="fz-font-sm neutral-500 mt-1">To clone a voice: create it in Cartesia, then paste its voice ID here.</div>
+            </div>
           </div>
         </div>
       </div>
 
       {dirty && (
         <div className="col-12" style={{ position: "sticky", bottom: 12, zIndex: 1040 }}>
-          <div className="bg-neutral-900 text-white rounded-4 px-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2 shadow">
+          <div className="bg-neutral-900 text-white rounded-4 px-3 px-lg-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2 shadow" role="status">
             <span className="fz-font-md fw-500">Unsaved changes</span>
-            <div className="d-flex gap-2">
-              <button type="button" className="btn btn-outline-light btn-sm rounded-3 px-3" onClick={discard} disabled={saving}>Discard</button>
-              <button type="button" className="btn btn-light btn-sm rounded-3 px-4 fw-600" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+            <div className="d-flex gap-2 ms-auto">
+              <button type="button" className="btn btn-outline-light btn-sm rounded-3 px-3 ops-tap" onClick={discard} disabled={saving}>Discard</button>
+              <button type="button" className="btn btn-light btn-sm rounded-3 px-4 fw-600 ops-tap" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</button>
             </div>
           </div>
         </div>

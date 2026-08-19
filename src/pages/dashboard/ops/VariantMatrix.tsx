@@ -114,65 +114,71 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
   const total = variants.reduce((s, v) => s + v.stock, 0);
   const outOfStock = variants.filter((v) => v.stock === 0).length;
 
+  // Each colour column carries two ~88px inputs; below that width the cells crush,
+  // so the grid keeps its natural size and scrolls sideways instead.
+  const gridMinWidth = 76 + colors.length * 104;
+
   return (
-    <div className="p-2 overflow-auto">
+    <div className="p-2">
       <div className="fz-font-sm neutral-500 mb-2">
-        Stock &amp; price by size × colour · {total} total
+        Stock &amp; price by size × colour · <span className="fw-600 neutral-700">{total} in stock</span>
         {outOfStock > 0 && <span className="text-danger fw-600"> · {outOfStock} variant{outOfStock === 1 ? "" : "s"} at 0</span>}
         <span className="neutral-400"> · blank price = inherits {formatPrice(basePriceCents, currency)}</span>
       </div>
-      <table className="table table-sm align-middle mb-2" style={{ minWidth: 420 }}>
-        <thead>
-          <tr>
-            <th></th>
-            {colors.map((c) => <th key={c} className="fz-font-sm fw-600">{c}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {sizes.map((size) => (
-            <tr key={size}>
-              <td className="fz-font-sm fw-600">{size}</td>
-              {colors.map((color) => {
-                const v = cell(size, color);
-                if (!v) return <td key={color} className="neutral-300">—</td>;
-                const stockVal = stockDrafts[v.id] ?? String(v.stock);
-                const priceVal = priceDrafts[v.id] ?? (v.price_cents == null ? "" : (v.price_cents / 100).toFixed(2));
-                return (
-                  <td key={color}>
-                    <div className="d-flex flex-column gap-1">
-                      <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        aria-label={`Stock for ${size} / ${color}`}
-                        className={`form-control form-control-sm rounded-2 ${v.stock === 0 ? "border-danger" : ""}`}
-                        style={{ width: 84 }}
-                        value={stockVal}
-                        onChange={(e) => setStockDrafts((d) => ({ ...d, [v.id]: e.target.value }))}
-                        onBlur={() => saveStock(v.id)}
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        aria-label={`Price override for ${size} / ${color}`}
-                        className="form-control form-control-sm rounded-2"
-                        style={{ width: 84 }}
-                        placeholder="price"
-                        title={v.price_cents == null ? `Inherits ${formatPrice(basePriceCents, currency)}` : formatPrice(v.price_cents, currency)}
-                        value={priceVal}
-                        onChange={(e) => setPriceDrafts((d) => ({ ...d, [v.id]: e.target.value }))}
-                        onBlur={() => savePrice(v.id)}
-                      />
-                    </div>
-                  </td>
-                );
-              })}
+      <div className="ops-scroll-x bg-neutral-0 rounded-3 border-100 mb-2">
+        <table className="table table-sm align-middle mb-0" style={{ minWidth: gridMinWidth }}>
+          <caption className="visually-hidden">Stock and price override for every size and colour combination</caption>
+          <thead>
+            <tr>
+              <th scope="col" className="fz-font-sm neutral-500 fw-500" style={{ position: "sticky", left: 0, background: "var(--at-neutral-0)", zIndex: 2 }}>Size</th>
+              {colors.map((c) => <th key={c} scope="col" className="fz-font-sm fw-600 text-nowrap">{c}</th>)}
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={gen} disabled={busy}>+ Sync new sizes / colours</button>
+          </thead>
+          <tbody>
+            {sizes.map((size) => (
+              <tr key={size}>
+                <th scope="row" className="fz-font-sm fw-600 text-nowrap" style={{ position: "sticky", left: 0, background: "var(--at-neutral-0)", zIndex: 1 }}>{size}</th>
+                {colors.map((color) => {
+                  const v = cell(size, color);
+                  if (!v) return <td key={color} className="neutral-400 text-center">—</td>;
+                  const stockVal = stockDrafts[v.id] ?? String(v.stock);
+                  const priceVal = priceDrafts[v.id] ?? (v.price_cents == null ? "" : (v.price_cents / 100).toFixed(2));
+                  return (
+                    <td key={color}>
+                      <div className="d-flex flex-column gap-1" style={{ width: 88 }}>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          aria-label={`Stock for ${size} / ${color}`}
+                          className={`form-control form-control-sm rounded-2 ${v.stock === 0 ? "border-danger" : ""}`}
+                          value={stockVal}
+                          onChange={(e) => setStockDrafts((d) => ({ ...d, [v.id]: e.target.value }))}
+                          onBlur={() => saveStock(v.id)}
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          aria-label={`Price override for ${size} / ${color}`}
+                          className="form-control form-control-sm rounded-2"
+                          placeholder="price"
+                          title={v.price_cents == null ? `Inherits ${formatPrice(basePriceCents, currency)}` : formatPrice(v.price_cents, currency)}
+                          value={priceVal}
+                          onChange={(e) => setPriceDrafts((d) => ({ ...d, [v.id]: e.target.value }))}
+                          onBlur={() => savePrice(v.id)}
+                        />
+                        {v.stock === 0 && <span className="fz-font-sm text-danger fw-500">Sold out</span>}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={gen} disabled={busy}>+ Sync new sizes / colours</button>
     </div>
   );
 }

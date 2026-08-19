@@ -99,23 +99,25 @@ export default function TrainPreview({ orgId, publicKey }: { orgId: string; publ
 
   return (
     <div className="d-flex flex-column gap-4">
-      <div className="bg-neutral-0 rounded-4 border-100 d-flex flex-column" style={{ height: "56vh", minHeight: 380 }}>
-        <div className="d-flex align-items-center justify-content-between px-3 py-3 border-bottom gap-2">
+      {/* Same sizing convention as the Inbox thread and the Operator chat:
+          viewport-relative, with a floor so it stays usable on a short phone. */}
+      <div className="bg-neutral-0 rounded-4 border-100 d-flex flex-column" style={{ height: "min(70vh, 720px)", minHeight: 420 }}>
+        <div className="d-flex flex-wrap align-items-center justify-content-between px-3 py-3 border-bottom border-100 gap-2">
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="fw-600 fz-font-md">Live preview</span>
+            <h2 className="fw-600 fz-font-md mb-0">Live preview</h2>
             <label className="visually-hidden" htmlFor="train-preview-channel">Channel</label>
-            <select id="train-preview-channel" className="form-select form-select-sm rounded-3" style={{ width: "auto" }} value={channel} onChange={(e) => setChannel(e.target.value)}>
+            <select id="train-preview-channel" className="form-select form-select-sm rounded-3 text-capitalize" style={{ width: "auto" }} value={channel} onChange={(e) => setChannel(e.target.value)}>
               {CHANNELS.map((c) => <option key={c} value={c} className="text-capitalize">{c}</option>)}
             </select>
-            <span className="badge bg-neutral-100 neutral-500 fw-500">Sandbox</span>
+            <span className="badge bg-neutral-100 neutral-700 fw-500">Sandbox</span>
           </div>
-          <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={reset}>New chat</button>
+          <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={reset}>New chat</button>
         </div>
 
-        <div ref={threadRef} className="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-3">
+        <div ref={threadRef} className="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-3" role="log" aria-label="Preview conversation" aria-busy={sending}>
           {messages.length === 0 && !sending && (
-            <div className="m-auto text-center neutral-500" style={{ maxWidth: 360 }}>
-              <h6 className="fw-600 neutral-700 mb-2">Talk to your agent as a customer</h6>
+            <div className="m-auto text-center neutral-500 px-2" style={{ maxWidth: 360 }}>
+              <h3 className="fw-600 fz-font-md neutral-700 mb-2">Talk to your agent as a customer</h3>
               <p className="fz-font-md mb-0">Try “Do you have anything available this week? My name's Sam, sam@email.com”. Test chats never show in your Inbox or stats.</p>
             </div>
           )}
@@ -135,12 +137,12 @@ export default function TrainPreview({ orgId, publicKey }: { orgId: string; publ
           {sending && <div className="d-flex justify-content-start"><div className="px-3 py-2 rounded-4 fz-font-md bg-neutral-100 neutral-500">Thinking…</div></div>}
         </div>
 
-        {error && <div className="alert alert-warning py-2 px-3 fz-font-md m-3 mb-0">{error}</div>}
+        {error && <div className="alert alert-warning py-2 px-3 fz-font-md m-3 mb-0" role="alert">{error}</div>}
 
-        <form onSubmit={send} className="border-top p-3 d-flex gap-2">
+        <form onSubmit={send} className="border-top border-100 p-3 d-flex gap-2">
           <label className="visually-hidden" htmlFor="train-preview-draft">Message your agent</label>
-          <input id="train-preview-draft" className="form-control rounded-3" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Message your agent…" disabled={sending} />
-          <button type="submit" className="btn btn-dark rounded-3 px-4" disabled={sending || !draft.trim()}>Send</button>
+          <input id="train-preview-draft" className="form-control rounded-3" style={{ minWidth: 0 }} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Message your agent…" disabled={sending} />
+          <button type="submit" className="btn btn-dark rounded-3 px-4 flex-shrink-0" disabled={sending || !draft.trim()}>Send</button>
         </form>
       </div>
 

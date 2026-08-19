@@ -128,23 +128,26 @@ export default function OperatingLayout() {
   return (
     <div>
       <PageMeta title={`Phoxta - ${org.name} operations`} />
-      <div className="mb-3 d-flex flex-wrap align-items-center gap-2">
-        <Link to={`/dashboard/businesses/${id}`} className="fz-font-md neutral-500 text-decoration-none">
-          ← {org.name}
+      <div className="mb-2 d-flex flex-wrap align-items-center gap-2">
+        <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
+          ← Business details
         </Link>
         {org.site_url && (
           <a
             href={org.site_url}
             target="_blank"
             rel="noreferrer"
-            className="fz-font-md fw-600 text-decoration-none"
+            className="fz-font-sm fw-600 text-decoration-none"
           >
             View live site ↗
           </a>
         )}
       </div>
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
-        <h2 className="fw-600 mb-0 me-2">Operating console</h2>
+      {/* The business being operated is the headline — "Operating console" is a
+          constant that carries no information once you are inside it, and on a
+          phone it was costing most of the first screen. */}
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <h1 className="fw-600 mb-0 me-1 fz-font-2xl lh-1 neutral-900">{org.name}</h1>
         {myOrgs.length > 1 && (
           <select
             className="form-select form-select-sm w-auto"
@@ -173,8 +176,9 @@ export default function OperatingLayout() {
         <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{org.stage}</span>
       </div>
 
-      <nav className="mb-4 border-bottom">
-        <ul className="list-unstyled m-0 d-flex flex-wrap gap-1">
+      {/* One scrollable line rather than four wrapped rows on a phone. */}
+      <nav className="mb-4 border-bottom ops-tabs" aria-label="Console sections">
+        <ul className="list-unstyled m-0 d-flex gap-1">
           {tabs.map((t) => (
             <li key={t.seg}>
               <NavLink

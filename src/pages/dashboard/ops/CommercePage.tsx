@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
@@ -42,7 +42,20 @@ const ORDER_STATUS_STYLE: Record<Order["status"], string> = {
   partially_refunded: "bg-warning-subtle text-warning",
 };
 
-const ORDER_FILTERS: Array<"all" | Order["status"]> = ["all", "pending", "paid", "fulfilled", "cancelled", "refunded", "partially_refunded"];
+/** Sentence-case labels, matching the Inbox's filter chips. */
+const ORDER_STATUS_LABEL: Record<Order["status"], string> = {
+  pending: "Pending",
+  paid: "Paid",
+  fulfilled: "Fulfilled",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
+  partially_refunded: "Partially refunded",
+};
+
+const ORDER_FILTERS: { v: "all" | Order["status"]; label: string }[] = [
+  { v: "all", label: "All" },
+  ...(Object.keys(ORDER_STATUS_LABEL) as Order["status"][]).map((v) => ({ v, label: ORDER_STATUS_LABEL[v] })),
+];
 
 const ORDERS_PAGE = 50;
 
@@ -103,6 +116,7 @@ export default function CommercePage() {
   const [pForm, setPForm] = useState({ name: "", price: "", stock: "", category: "" });
   const [pImg, setPImg] = useState("");
   const [pUploading, setPUploading] = useState(false);
+  const pImgRef = useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Manual order form
@@ -272,25 +286,36 @@ export default function CommercePage() {
   return (
     <div className="row g-4">
       {(productsError || ordersError) && (
-        <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0">{productsError || ordersError}</div></div>
+        <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">{productsError || ordersError}</div></div>
       )}
 
       {/* Products */}
       <div className="col-lg-6">
-        <h5 className="fw-600 mb-3">{cfg.commerceLabel}</h5>
+        <h2 className="fz-font-lg fw-600 mb-3">{cfg.commerceLabel}</h2>
         <form onSubmit={addProduct} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
           <div className="row g-2 align-items-center">
             <div className="col-auto">
-              <label className="rounded-3 border-100 bg-neutral-50 d-flex align-items-center justify-content-center overflow-hidden mb-0" style={{ width: 56, height: 56, cursor: "pointer" }} title="Add image">
-                {pImg ? <img src={pImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span className="neutral-400" style={{ fontSize: 20 }}>{pUploading ? "…" : "+"}</span>}
-                <input type="file" accept="image/*" hidden onChange={onAddImage} disabled={pUploading} aria-label="Product image" />
-              </label>
+              {/* A real button — the previous <label>-wrapped file input could not be
+                  reached or triggered from the keyboard. */}
+              <button
+                type="button"
+                className="btn p-0 rounded-3 border-100 bg-neutral-50 d-flex align-items-center justify-content-center overflow-hidden"
+                style={{ width: 56, height: 56 }}
+                onClick={() => pImgRef.current?.click()}
+                disabled={pUploading}
+                aria-label={pImg ? `Replace ${cfg.itemNoun} image` : `Add ${cfg.itemNoun} image`}
+              >
+                {pImg ? <img src={pImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span className="neutral-400 fz-20" aria-hidden="true">{pUploading ? "…" : "+"}</span>}
+              </button>
+              <input ref={pImgRef} type="file" accept="image/*" hidden tabIndex={-1} aria-hidden="true" onChange={onAddImage} disabled={pUploading} />
             </div>
+            {/* Six controls on one line clipped every placeholder inside this
+                half-width column — give them room instead. */}
             <div className="col"><input className="form-control rounded-3" placeholder={`${cfg.itemNoun} name`} aria-label={`${cfg.itemNoun} name`} value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} required /></div>
-            <div className="col-12 col-md"><input className="form-control rounded-3" placeholder="Category / section" aria-label="Category / section" value={pForm.category} onChange={(e) => setPForm({ ...pForm, category: e.target.value })} /></div>
-            <div className="col-6 col-md-2"><input type="number" min={0} step={0.01} className="form-control rounded-3" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={pForm.price} onChange={(e) => setPForm({ ...pForm, price: e.target.value })} /></div>
-            <div className="col-6 col-md-2"><input type="number" min={0} step={1} className="form-control rounded-3" placeholder="Stock" aria-label="Stock" value={pForm.stock} onChange={(e) => setPForm({ ...pForm, stock: e.target.value })} /></div>
-            <div className="col-12 col-md-auto"><button type="submit" className="btn btn-dark w-100 rounded-3 px-3" disabled={pUploading}>Add</button></div>
+            <div className="col-12"><input className="form-control rounded-3" placeholder="Category / section" aria-label="Category / section" value={pForm.category} onChange={(e) => setPForm({ ...pForm, category: e.target.value })} /></div>
+            <div className="col-6"><input type="number" min={0} step={0.01} className="form-control rounded-3" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={pForm.price} onChange={(e) => setPForm({ ...pForm, price: e.target.value })} /></div>
+            <div className="col-6"><input type="number" min={0} step={1} className="form-control rounded-3" placeholder="Stock" aria-label="Stock" value={pForm.stock} onChange={(e) => setPForm({ ...pForm, stock: e.target.value })} /></div>
+            <div className="col-12"><button type="submit" className="btn btn-dark w-100 rounded-3 px-3" disabled={pUploading}>Add</button></div>
           </div>
         </form>
 
@@ -316,8 +341,8 @@ export default function CommercePage() {
             {products.length === 0 ? "No products yet." : "Nothing matches that filter."}
           </div>
         ) : (
-          <div className="bg-neutral-0 rounded-4 border-100 overflow-hidden">
-            <table className="table mb-0 align-middle">
+          <div className="bg-neutral-0 rounded-4 border-100 overflow-hidden ops-scroll-x">
+            <table className="table mb-0 align-middle" style={{ minWidth: 520 }}>
               <tbody>
                 {visibleProducts.map((p) => (
                   <Fragment key={p.id}>
@@ -338,15 +363,19 @@ export default function CommercePage() {
                         </div>
                       </td>
                       <td className="py-3 pe-4 text-end">
-                        <button type="button" className="btn btn-link btn-sm p-0 me-3 fw-600 text-decoration-none" onClick={() => setEditingId(editingId === p.id ? null : p.id)}>
-                          {editingId === p.id ? "Close" : "Edit"}
-                        </button>
-                        {cfg.booking === "none" && (
-                          <button type="button" className="btn btn-link btn-sm p-0 me-3 text-decoration-none neutral-500" onClick={() => setVariantsFor(variantsFor === p.id ? null : p.id)}>
-                            {variantsFor === p.id ? "Hide variants" : "Variants"}
+                        <div className="d-flex align-items-center justify-content-end flex-wrap gap-3">
+                          <span className={`badge fw-500 ${p.stock === 0 ? "bg-danger-subtle text-danger" : p.stock <= 5 ? "bg-warning-subtle text-warning" : "bg-neutral-100 neutral-700"}`}>
+                            {p.stock === 0 ? "Out of stock" : `${p.stock} in stock`}
+                          </span>
+                          {cfg.booking === "none" && (
+                            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none neutral-500 ops-tap" onClick={() => setVariantsFor(variantsFor === p.id ? null : p.id)} aria-expanded={variantsFor === p.id} aria-label={`${variantsFor === p.id ? "Hide" : "Show"} variants for ${p.name}`}>
+                              {variantsFor === p.id ? "Hide variants" : "Variants"}
+                            </button>
+                          )}
+                          <button type="button" className="btn btn-link btn-sm p-0 fw-600 text-decoration-none ops-tap" onClick={() => setEditingId(editingId === p.id ? null : p.id)} aria-expanded={editingId === p.id} aria-label={`${editingId === p.id ? "Close editor for" : "Edit"} ${p.name}`}>
+                            {editingId === p.id ? "Close" : "Edit"}
                           </button>
-                        )}
-                        <span className={`badge fw-500 ${p.stock === 0 ? "bg-danger-subtle text-danger" : p.stock <= 5 ? "bg-warning-subtle text-warning" : "bg-neutral-100 neutral-700"}`}>{p.stock} in stock</span>
+                        </div>
                       </td>
                     </tr>
                     {editingId === p.id && (
@@ -373,14 +402,14 @@ export default function CommercePage() {
 
       {/* Orders */}
       <div className="col-lg-6">
-        <h5 className="fw-600 mb-3">Orders</h5>
+        <h2 className="fz-font-lg fw-600 mb-3">Orders</h2>
         <form onSubmit={addOrder} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
           <div className="row g-2">
             <div className="col-md-6"><input className="form-control rounded-3" placeholder="Customer name" aria-label="Customer name" value={oForm.customer} onChange={(e) => setOForm({ ...oForm, customer: e.target.value })} required /></div>
             <div className="col-md-6"><input type="email" className="form-control rounded-3" placeholder="Customer email (optional)" aria-label="Customer email" value={oForm.email} onChange={(e) => setOForm({ ...oForm, email: e.target.value })} /></div>
-            <div className="col-7">
-              <select className="form-select rounded-3" aria-label="Product" value={oForm.productId} onChange={(e) => setOForm({ ...oForm, productId: e.target.value })} required>
-                <option value="">Choose product…</option>
+            <div className="col-12">
+              <select className="form-select rounded-3" aria-label={cfg.itemNoun} value={oForm.productId} onChange={(e) => setOForm({ ...oForm, productId: e.target.value })} required>
+                <option value="">Choose {cfg.itemNoun.toLowerCase()}…</option>
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} — {formatPrice(p.price_cents, p.currency || orgCurrency)}
@@ -388,42 +417,49 @@ export default function CommercePage() {
                 ))}
               </select>
             </div>
-            <div className="col-3"><input type="number" min={1} step={1} className="form-control rounded-3" placeholder="Qty" aria-label="Quantity" value={oForm.qty} onChange={(e) => setOForm({ ...oForm, qty: e.target.value })} /></div>
-            <div className="col-2"><button type="submit" className="btn btn-dark w-100 rounded-3" disabled={placingOrder}>{placingOrder ? "…" : "+"}</button></div>
+            {/* Size / colour belong with the item they qualify, above the quantity. */}
             {orderVariants.length > 0 && (
               <>
                 <div className="col-6">
-                  <select className="form-select form-select-sm rounded-3" aria-label="Size" value={oForm.size} onChange={(e) => setOForm({ ...oForm, size: e.target.value })}>
+                  <select className="form-select rounded-3" aria-label="Size" value={oForm.size} onChange={(e) => setOForm({ ...oForm, size: e.target.value })}>
                     <option value="">Size…</option>
                     {variantSizes.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="col-6">
-                  <select className="form-select form-select-sm rounded-3" aria-label="Colour" value={oForm.color} onChange={(e) => setOForm({ ...oForm, color: e.target.value })}>
+                  <select className="form-select rounded-3" aria-label="Colour" value={oForm.color} onChange={(e) => setOForm({ ...oForm, color: e.target.value })}>
                     <option value="">Colour…</option>
                     {variantColors.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
               </>
             )}
-            <div className="col-12">
-              <label className="fz-font-sm neutral-600 mb-0">
+            <div className="col-4"><input type="number" min={1} step={1} className="form-control rounded-3" placeholder="Qty" aria-label="Quantity" value={oForm.qty} onChange={(e) => setOForm({ ...oForm, qty: e.target.value })} /></div>
+            <div className="col-8 d-flex align-items-center">
+              <label className="fz-font-sm neutral-600 mb-0 ops-tap">
                 <input type="checkbox" className="me-1" checked={oForm.paid} onChange={(e) => setOForm({ ...oForm, paid: e.target.checked })} />
-                Payment collected — otherwise the order is created as <span className="fw-600">pending</span>
+                Payment collected
               </label>
+            </div>
+            <div className="col-12">
+              <button type="submit" className="btn btn-dark w-100 rounded-3" disabled={placingOrder}>{placingOrder ? "Adding…" : "Add order"}</button>
+              <div className="fz-font-sm neutral-500 mt-1">
+                {oForm.paid ? "This order will be saved as paid." : <>Leave “Payment collected” unticked and the order is saved as <span className="fw-600">pending</span>.</>}
+              </div>
             </div>
           </div>
         </form>
 
-        <div className="d-flex flex-wrap gap-1 mb-2">
-          {ORDER_FILTERS.map((s) => (
+        <div className="d-flex flex-wrap gap-1 mb-2" role="group" aria-label="Filter orders by status">
+          {ORDER_FILTERS.map((f) => (
             <button
-              key={s}
+              key={f.v}
               type="button"
-              className={`btn btn-sm rounded-pill px-3 ${oStatusFilter === s ? "btn-dark" : "btn-outline-secondary"}`}
-              onClick={() => setOStatusFilter(s)}
+              className={`btn btn-sm rounded-pill px-3 fz-font-sm ${oStatusFilter === f.v ? "btn-dark" : "btn-outline-secondary"}`}
+              onClick={() => setOStatusFilter(f.v)}
+              aria-pressed={oStatusFilter === f.v}
             >
-              {s === "all" ? "All" : s.replace("_", " ")}
+              {f.label}
             </button>
           ))}
         </div>
@@ -442,26 +478,43 @@ export default function CommercePage() {
           </div>
         ) : (
           <div className="d-flex flex-column gap-2">
-            {visibleOrders.map((o) => (
+            {visibleOrders.map((o) => {
+              const open = openOrderId === o.id;
+              return (
               <Fragment key={o.id}>
+                {/* Two stacked rows: name + money on top, date + status underneath —
+                    so the total can never collide with the badges on a phone. */}
                 <button
                   type="button"
-                  className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2 w-100 text-start btn"
-                  onClick={() => setOpenOrderId(openOrderId === o.id ? null : o.id)}
-                  aria-expanded={openOrderId === o.id}
+                  className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center gap-3 w-100 text-start btn"
+                  onClick={() => setOpenOrderId(open ? null : o.id)}
+                  aria-expanded={open}
+                  aria-controls={`order-detail-${o.id}`}
                 >
-                  <div>
-                    <div className="fw-600">{o.customer_name || "Customer"}</div>
-                    <div className="fz-font-sm neutral-500">{formatPrice(o.total_cents, o.currency || orgCurrency)} · {new Date(o.created_at).toLocaleDateString()}</div>
-                  </div>
-                  <div className="d-flex align-items-center gap-2">
-                    {(o.status === "paid" || o.status === "pending") && o.fulfillment_status === "unfulfilled" && (
-                      <span className="badge fw-500 bg-neutral-100 neutral-500">unfulfilled</span>
-                    )}
-                    <span className={`badge fw-500 text-capitalize ${ORDER_STATUS_STYLE[o.status]}`}>{o.status.replace("_", " ")}</span>
-                  </div>
+                  <span className="flex-grow-1" style={{ minWidth: 0 }}>
+                    <span className="d-flex align-items-baseline justify-content-between gap-2">
+                      <span className="fw-600 text-truncate">{o.customer_name || "Customer"}</span>
+                      <span className="fw-700 text-nowrap">{formatPrice(o.total_cents, o.currency || orgCurrency)}</span>
+                    </span>
+                    <span className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-1">
+                      <span className="fz-font-sm neutral-500">{new Date(o.created_at).toLocaleDateString()}</span>
+                      <span className="d-flex align-items-center gap-1">
+                        {(o.status === "paid" || o.status === "pending") && o.fulfillment_status === "unfulfilled" && (
+                          <span className="badge fw-500 bg-neutral-100 neutral-700">Unfulfilled</span>
+                        )}
+                        <span className={`badge fw-500 ${ORDER_STATUS_STYLE[o.status]}`}>{ORDER_STATUS_LABEL[o.status]}</span>
+                      </span>
+                    </span>
+                  </span>
+                  <span
+                    className="neutral-400 flex-shrink-0"
+                    aria-hidden="true"
+                    style={{ transition: "transform .15s ease", transform: open ? "rotate(90deg)" : "none", lineHeight: 1 }}
+                  >
+                    ›
+                  </span>
                 </button>
-                {openOrderId === o.id && (
+                {open && (
                   <OrderDrawer
                     orgId={orgId}
                     orgName={org.name}
@@ -472,7 +525,8 @@ export default function CommercePage() {
                   />
                 )}
               </Fragment>
-            ))}
+              );
+            })}
             {orderPage?.hasMore && (
               <button type="button" className="btn btn-outline-dark rounded-3 w-100" onClick={() => setOrderLimit((l) => l + ORDERS_PAGE)} disabled={ordersLoading}>
                 {ordersLoading ? "Loading…" : "Load more"}
@@ -486,8 +540,8 @@ export default function CommercePage() {
       <div className="col-12">
         <div className="bg-neutral-0 rounded-4 p-4 border-100">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h6 className="fw-600 mb-0">✨ AI merchandising</h6>
-            <div className="d-flex gap-2">
+            <h2 className="fz-font-md fw-600 mb-0"><span aria-hidden="true">✨ </span>AI merchandising</h2>
+            <div className="d-flex flex-wrap gap-2">
               <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={runRestock} disabled={aiBusy === "restock"}>{aiBusy === "restock" ? "…" : "Restock suggestions"}</button>
               <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={runRecommend} disabled={aiBusy === "recommend"}>{aiBusy === "recommend" ? "…" : "Recommendations"}</button>
             </div>
@@ -515,7 +569,7 @@ export default function CommercePage() {
 
           {restock && (
             <div className="mt-3">
-              <div className="fz-font-sm fw-600 neutral-500 mb-1">Restock</div>
+              <h3 className="fz-font-sm fw-600 neutral-500 mb-1">Restock</h3>
               <div className="fz-font-sm neutral-500 mb-2">{restock.note}</div>
               <ul className="fz-font-md neutral-700 mb-0">
                 {restock.items?.map((it, i) => <li key={i}><span className="fw-600">{it.product}</span> · +{it.suggested_restock} — {it.rationale}</li>)}
@@ -525,7 +579,7 @@ export default function CommercePage() {
 
           {recommend && (
             <div className="mt-3">
-              <div className="fz-font-sm fw-600 neutral-500 mb-1">Recommended bundles</div>
+              <h3 className="fz-font-sm fw-600 neutral-500 mb-1">Recommended bundles</h3>
               <ul className="fz-font-md neutral-700 mb-0">
                 {recommend.recommendations?.map((r, i) => <li key={i}><span className="fw-600">{r.title}</span> ({r.products?.join(", ")}) — {r.rationale}</li>)}
               </ul>

@@ -49,6 +49,9 @@ const FILTERS: Array<{ key: ReservationStatus | "all"; label: string }> = [
 
 const days = (a: string, b: string) => Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
 
+// Theme-aware hairline between stacked rows (main.css owns the neutral scale).
+const DIVIDER = "1px solid var(--at-neutral-100)";
+
 const PaidBadge = () => <span className="badge fw-500 bg-success-subtle text-success">Paid</span>;
 
 export default function ReservationsPage() {
@@ -198,13 +201,13 @@ export default function ReservationsPage() {
     [filtered, today],
   );
 
-  if (loading && !data) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+  if (loading && !data) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">Loading…</div>;
   if (loadError && !data) {
     return (
-      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center">
+      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center" role="alert">
         <div className="text-danger fw-600 mb-2">Couldn't load reservations</div>
         <div className="fz-font-md neutral-500 mb-3">{loadError}</div>
-        <button type="button" className="btn btn-dark btn-sm rounded-pill px-4" onClick={() => reload()}>Retry</button>
+        <button type="button" className="btn btn-dark btn-sm rounded-pill px-4 ops-tap" onClick={() => reload()}>Retry</button>
       </div>
     );
   }
@@ -217,57 +220,78 @@ export default function ReservationsPage() {
   const awaitingSum = awaitingRows.reduce((s, r) => s + (r.total_cents || 0), 0);
   const kpiCurrency = rows[0]?.currency || orgCurrency;
 
-  const KPI = ({ label, value }: { label: string; value: string | number }) => (
+  const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+
+  // Money strings are long: at 32px they overflow a half-width tile on a 390px phone.
+  const KPI = ({ label, value, money = false }: { label: string; value: string | number; money?: boolean }) => (
     <div className="col-6 col-md-3">
       <div className="bg-neutral-0 rounded-4 p-3 border-100 h-100">
         <div className="fz-font-sm neutral-500">{label}</div>
-        <div className="fw-600 fz-4">{value}</div>
+        <div className={`fw-700 lh-1 neutral-900 ${money ? "fz-20" : "fz-32"}`} style={{ overflowWrap: "anywhere" }}>{value}</div>
       </div>
     </div>
   );
 
-  const ManifestRow = ({ r, action }: { r: Reservation; action: "in" | "out" }) => {
+  const ManifestRow = ({ r, action, first }: { r: Reservation; action: "in" | "out"; first: boolean }) => {
     const md = reservationMeta(r);
     return (
-      <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap py-2">
-        <div>
-          <div className="fw-600 fz-font-md">
-            {r.customer_name || "Guest"} <span className="neutral-500 fw-500">· {r.product_name}</span>{" "}
+      <div
+        className="d-flex align-items-center justify-content-between gap-2 flex-wrap py-3"
+        style={first ? undefined : { borderTop: DIVIDER }}
+      >
+        <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+          <div className="fw-600 fz-font-lg neutral-900">
+            {r.customer_name || "Guest"}
+            {/* Table reservations have no product — don't render a bare "· —". */}
+            {!isTableReservation(r) && r.product_name && (
+              <span className="neutral-500 fw-500 fz-font-md"> · {r.product_name}</span>
+            )}{" "}
             {isReservationPaid(r) && <PaidBadge />}
           </div>
           <div className="fz-font-sm neutral-500">
             {isTableReservation(r)
               ? `${md.time || "Time TBC"} · ${r.units} guest${r.units === 1 ? "" : "s"}`
               : `${r.units} ${r.units === 1 ? "unit" : "units"} · ${r.start_date} → ${r.end_date}`}
-            {r.notes ? ` · “${r.notes}”` : ""}
+            {/* The table RPC echoes time + party into notes; don't print it twice. */}
+            {r.notes && !(isTableReservation(r) && md.time && r.notes.includes(md.time)) ? ` · “${r.notes}”` : ""}
           </div>
         </div>
         {action === "in" && r.status === "pending" && (
-          <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" disabled={busyId === r.id} onClick={() => checkIn(r)}>Check in</button>
+          <button type="button" className="btn btn-dark rounded-pill px-4 fw-600 ops-tap" disabled={busyId === r.id} onClick={() => checkIn(r)}>Check in</button>
         )}
         {action === "in" && r.status === "confirmed" && (
           isTableReservation(r) || r.start_date === r.end_date ? (
-            <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" disabled={busyId === r.id} onClick={() => completeReservation(r, "Checked out")}>Check out</button>
+            <button type="button" className="btn btn-outline-dark rounded-pill px-4 fw-600 ops-tap" disabled={busyId === r.id} onClick={() => completeReservation(r, "Checked out")}>Check out</button>
           ) : (
             <span className="badge fw-500 bg-success-subtle text-success">Checked in</span>
           )
         )}
         {action === "out" && (
-          <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" disabled={busyId === r.id} onClick={() => completeReservation(r, "Checked out")}>Check out</button>
+          <button type="button" className="btn btn-dark rounded-pill px-4 fw-600 ops-tap" disabled={busyId === r.id} onClick={() => completeReservation(r, "Checked out")}>Check out</button>
         )}
       </div>
     );
   };
+
+  const ManifestList = ({ items, action, empty }: { items: Reservation[]; action: "in" | "out"; empty: string }) =>
+    items.length === 0 ? (
+      <div className="fz-font-md neutral-500">{empty}</div>
+    ) : (
+      <div className="d-flex flex-column">
+        {items.map((r, i) => <ManifestRow key={r.id} r={r} action={action} first={i === 0} />)}
+      </div>
+    );
 
   const ReservationCard = ({ r }: { r: Reservation }) => {
     const md = reservationMeta(r);
     const table = isTableReservation(r);
     return (
       <div className="bg-neutral-0 rounded-4 p-3 border-100">
-        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-          <div>
-            <div className="fw-600">
-              {r.customer_name || "Customer"} · {r.product_name}
+        <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+          <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+            <div className="fw-600 fz-font-md">
+              {r.customer_name || "Customer"}
+              {!table && r.product_name && ` · ${r.product_name}`}
               {!table && r.units > 1 && <span className="neutral-500 fw-500"> × {r.units}</span>}{" "}
               {isReservationPaid(r) && <PaidBadge />}
             </div>
@@ -284,7 +308,7 @@ export default function ReservationsPage() {
                 extras.length ? `Extras: ${extras.join(", ")}` : "",
                 md.driver?.license ? `Licence ${md.driver.license}` : "",
                 md.driver?.age ? `Age ${md.driver.age}` : "",
-                r.notes ? `“${r.notes}”` : "",
+                r.notes && !(table && md.time && r.notes.includes(md.time)) ? `“${r.notes}”` : "",
               ].filter(Boolean);
               return bits.length ? <div className="fz-font-sm neutral-600 mt-1">{bits.join(" · ")}</div> : null;
             })()}
@@ -301,13 +325,13 @@ export default function ReservationsPage() {
           <div className="d-flex align-items-center gap-2 flex-wrap justify-content-end">
             <span className={`badge fw-500 text-capitalize ${STYLE[r.status]}`}>{r.status}</span>
             {r.status === "pending" && (
-              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" disabled={busyId === r.id} onClick={() => confirmReservation(r)}>Confirm</button>
+              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" disabled={busyId === r.id} onClick={() => confirmReservation(r)}>Confirm</button>
             )}
             {r.status === "confirmed" && (
-              <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" disabled={busyId === r.id} onClick={() => completeReservation(r)}>Complete</button>
+              <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap" disabled={busyId === r.id} onClick={() => completeReservation(r)}>Complete</button>
             )}
             {isActive(r) && (
-              <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" disabled={busyId === r.id} onClick={() => cancelReservation(r)}>Cancel</button>
+              <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" disabled={busyId === r.id} onClick={() => cancelReservation(r)}>Cancel</button>
             )}
           </div>
         </div>
@@ -317,130 +341,73 @@ export default function ReservationsPage() {
 
   return (
     <div>
-      {loadError && <div className="alert alert-danger py-2 px-3 fz-font-md">{loadError}</div>}
+      {loadError && <div className="alert alert-danger py-2 px-3 fz-font-md" role="alert">{loadError}</div>}
 
-      <div className="row g-3 mb-4">
-        <KPI label="Upcoming" value={upcoming} />
-        <KPI label="Awaiting confirmation" value={pending} />
-        <KPI label="Paid" value={formatPrice(paidSum, paidRows[0]?.currency || kpiCurrency)} />
-        <KPI label="Awaiting payment" value={formatPrice(awaitingSum, awaitingRows[0]?.currency || kpiCurrency)} />
-      </div>
-
-      {/* Today manifest */}
-      <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-4">
+      {/* 1 — Today's manifest. The daily surface, so it leads the page and gets the
+          biggest card, the largest names and full-size check-in/out buttons. */}
+      <section className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 mb-4" aria-labelledby="today-heading">
+        <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2">
+          <h2 id="today-heading" className="fw-700 fz-font-xl mb-0">{isRestaurant ? "Tonight's tables" : "Today"}</h2>
+          <span className="fz-font-sm neutral-500">{todayLabel}</span>
+        </div>
         {isRestaurant ? (
-          <>
-            <h5 className="fw-600 mb-2">Tonight's tables</h5>
-            {arrivals.length === 0 ? (
-              <div className="fz-font-md neutral-500">No tables reserved for today.</div>
-            ) : (
-              <div className="d-flex flex-column">{arrivals.map((r) => <ManifestRow key={r.id} r={r} action="in" />)}</div>
-            )}
-          </>
+          <ManifestList items={arrivals} action="in" empty="No tables reserved for today." />
         ) : (
-          <div className="row g-4">
+          <div className="row g-3 g-md-4">
             <div className="col-md-6">
-              <h5 className="fw-600 mb-2">Arrivals today</h5>
-              {arrivals.length === 0 ? (
-                <div className="fz-font-md neutral-500">No arrivals today.</div>
-              ) : (
-                <div className="d-flex flex-column">{arrivals.map((r) => <ManifestRow key={r.id} r={r} action="in" />)}</div>
-              )}
+              <h3 className="fw-600 fz-font-md neutral-500 text-uppercase mb-1">Arriving ({arrivals.length})</h3>
+              <ManifestList items={arrivals} action="in" empty="No arrivals today." />
             </div>
             <div className="col-md-6">
-              <h5 className="fw-600 mb-2">Departures today</h5>
-              {departures.length === 0 ? (
-                <div className="fz-font-md neutral-500">No departures today.</div>
-              ) : (
-                <div className="d-flex flex-column">{departures.map((r) => <ManifestRow key={r.id} r={r} action="out" />)}</div>
-              )}
+              <h3 className="fw-600 fz-font-md neutral-500 text-uppercase mb-1">Leaving ({departures.length})</h3>
+              <ManifestList items={departures} action="out" empty="No departures today." />
             </div>
           </div>
         )}
+      </section>
+
+      {/* 2 — At-a-glance numbers */}
+      <h2 className="visually-hidden">Summary</h2>
+      <div className="row g-2 g-md-3 mb-4">
+        <KPI label="Upcoming" value={upcoming} />
+        <KPI label="Awaiting confirmation" value={pending} />
+        <KPI label="Paid" value={formatPrice(paidSum, paidRows[0]?.currency || kpiCurrency)} money />
+        <KPI label="Awaiting payment" value={formatPrice(awaitingSum, awaitingRows[0]?.currency || kpiCurrency)} money />
       </div>
 
-      {/* Availability calendar — not for restaurants (tables don't use date-range stock) */}
-      {!isRestaurant && (
-        <div className="mb-4">
-          <AvailabilityCalendar products={products} blackouts={blackouts} reservations={rows} onBlockDate={prefillBlackout} />
-        </div>
-      )}
-
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <h5 className="fw-600 mb-0">Reservations</h5>
-        <div className="d-flex flex-wrap align-items-center gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 ${statusFilter === f.key ? "btn-dark" : "btn-outline-secondary"}`}
-              onClick={() => setStatusFilter(f.key)}
-            >
-              {f.label}
-            </button>
-          ))}
-          <input
-            type="search"
-            className="form-control form-control-sm rounded-3"
-            style={{ width: 180 }}
-            placeholder="Search guests…"
-            aria-label="Search guests"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">
-          No reservations yet. They'll appear here when customers book your {cfg.commerceLabel.toLowerCase()}.
-        </div>
-      ) : upcomingRows.length === 0 && pastRows.length === 0 ? (
-        <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No reservations match this filter.</div>
-      ) : (
-        <>
-          {upcomingRows.length === 0 ? (
-            <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No upcoming reservations match this filter.</div>
-          ) : (
-            <div className="d-flex flex-column gap-2">{upcomingRows.map((r) => <ReservationCard key={r.id} r={r} />)}</div>
-          )}
-          {pastRows.length > 0 && (
-            <div className="mt-3">
-              <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setShowPast(!showPast)}>
-                {showPast ? "Hide" : "Show"} {pastRows.length} past reservation{pastRows.length === 1 ? "" : "s"}
-              </button>
-              {showPast && <div className="d-flex flex-column gap-2 mt-2">{pastRows.map((r) => <ReservationCard key={r.id} r={r} />)}</div>}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Blocked dates — not for restaurants (blackouts act on date-range resources) */}
+      {/* 3 — Availability: the calendar and the blocked-dates form are two halves of
+          one job, so they sit together (the calendar's "Block this date" fills the
+          form just below it). Not for restaurants — tables don't use date-range stock. */}
       {!isRestaurant && (
         <>
-          <h5 className="fw-600 mt-5 mb-2">Blocked dates</h5>
+          <div className="mb-4">
+            <AvailabilityCalendar products={products} blackouts={blackouts} reservations={rows} onBlockDate={prefillBlackout} />
+          </div>
+
+          <h2 className="fw-600 fz-font-lg mb-1">Blocked dates</h2>
           <p className="fz-font-sm neutral-500 mb-3">Mark a {cfg.itemNoun.toLowerCase()} unavailable (maintenance, owner hold) — customers can't book these dates.</p>
           <form ref={blackoutFormRef} onSubmit={addBlackout} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
             <div className="row g-2 align-items-end">
-              <div className="col-md-4">
+              <div className="col-12 col-md-4">
                 <label className="fz-font-sm neutral-500" htmlFor="blk-product">{cfg.itemNoun}</label>
                 <select id="blk-product" className="form-select rounded-3" value={bForm.product_id} onChange={(e) => setBForm({ ...bForm, product_id: e.target.value })}>
                   <option value="">Select…</option>
                   {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
-              <div className="col-md-3">
+              <div className="col-6 col-md-4">
                 <label className="fz-font-sm neutral-500" htmlFor="blk-from">From</label>
                 <input id="blk-from" type="date" className="form-control rounded-3" value={bForm.start_date} min={todayPlus(0)} onChange={(e) => setBForm({ ...bForm, start_date: e.target.value })} />
               </div>
-              <div className="col-md-3">
+              <div className="col-6 col-md-4">
                 <label className="fz-font-sm neutral-500" htmlFor="blk-to">To</label>
                 <input id="blk-to" type="date" className="form-control rounded-3" value={bForm.end_date} min={bForm.start_date} onChange={(e) => setBForm({ ...bForm, end_date: e.target.value })} />
               </div>
-              <div className="col-md-2"><button type="submit" className="btn btn-dark w-100 rounded-3">Block</button></div>
-              <div className="col-12">
-                <input className="form-control rounded-3" placeholder="Reason (optional)" aria-label="Reason (optional)" value={bForm.reason} onChange={(e) => setBForm({ ...bForm, reason: e.target.value })} />
+              <div className="col-12 col-md-8">
+                <label className="fz-font-sm neutral-500" htmlFor="blk-reason">Reason (optional)</label>
+                <input id="blk-reason" className="form-control rounded-3" placeholder="e.g. servicing" value={bForm.reason} onChange={(e) => setBForm({ ...bForm, reason: e.target.value })} />
               </div>
+              <div className="col-12 col-md-4"><button type="submit" className="btn btn-dark w-100 rounded-3 ops-tap justify-content-center">Block these dates</button></div>
             </div>
           </form>
           {blackouts.length === 0 ? (
@@ -448,18 +415,83 @@ export default function ReservationsPage() {
           ) : (
             <div className="d-flex flex-column gap-2">
               {blackouts.map((b) => (
-                <div key={b.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2">
-                  <div>
+                <div key={b.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                  <div style={{ minWidth: 0 }}>
                     <span className="fw-600">{b.product_name}</span>
                     <span className="fz-font-sm neutral-500"> · {b.start_date} → {b.end_date}{b.reason ? ` · ${b.reason}` : ""}</span>
                   </div>
-                  <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => unblock(b.id)}>Remove</button>
+                  <button
+                    type="button"
+                    className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap"
+                    aria-label={`Unblock ${b.product_name} from ${b.start_date} to ${b.end_date}`}
+                    onClick={() => unblock(b.id)}
+                  >
+                    Remove
+                  </button>
                 </div>
               ))}
             </div>
           )}
         </>
       )}
+
+      {/* 4 — The full list */}
+      <div className={isRestaurant ? "" : "mt-5"}>
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+          <h2 className="fw-600 fz-font-lg mb-0">All reservations</h2>
+          <input
+            type="search"
+            className="form-control form-control-sm rounded-3"
+            style={{ flex: "1 1 160px", minWidth: 0, maxWidth: 260 }}
+            placeholder="Search guests…"
+            aria-label="Search guests"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Filter reservations by status">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 ops-tap ${statusFilter === f.key ? "btn-dark" : "btn-outline-secondary"}`}
+              aria-pressed={statusFilter === f.key}
+              onClick={() => setStatusFilter(f.key)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">
+            No reservations yet. They'll appear here when customers book your {cfg.commerceLabel.toLowerCase()}.
+          </div>
+        ) : upcomingRows.length === 0 && pastRows.length === 0 ? (
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No reservations match this filter.</div>
+        ) : (
+          <>
+            {upcomingRows.length === 0 ? (
+              <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No upcoming reservations match this filter.</div>
+            ) : (
+              <div className="d-flex flex-column gap-2">{upcomingRows.map((r) => <ReservationCard key={r.id} r={r} />)}</div>
+            )}
+            {pastRows.length > 0 && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap"
+                  aria-expanded={showPast}
+                  onClick={() => setShowPast(!showPast)}
+                >
+                  {showPast ? "Hide" : "Show"} {pastRows.length} past reservation{pastRows.length === 1 ? "" : "s"}
+                </button>
+                {showPast && <div className="d-flex flex-column gap-2 mt-2">{pastRows.map((r) => <ReservationCard key={r.id} r={r} />)}</div>}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
