@@ -52,6 +52,7 @@ The agent brain is provider-agnostic; only the *transport* of voice/SMS/email/so
 Without these, outbound transport records as `simulated` and the agent is fully testable in-app via the **Test the agent** chat and the public web endpoint.
 
 Deploy: `supabase functions deploy ai-agent agent-worker agent-inbound` (plus secrets above as needed).
+Never add `--no-verify-jwt` — `config.toml` sets each function's gate (see [Edge function auth](#edge-function-auth-verify_jwt)).
 
 Deploy (Supabase CLI; keys are **server secrets**, never `VITE_` vars):
 ```
@@ -65,6 +66,48 @@ supabase secrets set RESEND_API_KEY=... RESEND_FROM="Biz <hi@yourdomain>"  # opt
 The app calls these via `supabase.functions.invoke(...)` (`src/lib/db/ai.ts`, `src/lib/db/ops/ai.ts`),
 which attaches the user's session token. **Embedding/workflow workers** are also invoked fire-and-forget
 by the app after writes; in production schedule them with **pg_cron** instead.
+
+### Edge function auth (`verify_jwt`)
+
+**Every function's gate is declared in [`config.toml`](config.toml). Never pass
+`--no-verify-jwt` on the command line.**
+
+`supabase functions deploy` *preserves* whatever `verify_jwt` a function already
+has on the platform — it never resets to a default. That makes the flag a trap:
+
+- `--no-verify-jwt` flips a function to `false` **permanently**. Re-deploying
+  without the flag does **not** restore it (only `config.toml`, or a Management
+  API `PATCH`, will). On 2026-08-19 a blanket flag silently stripped the gateway
+  gate from `place-call`, `ai-agent` and `conversation-suggest`.
+- On a **first** deploy into a fresh project there is no stored value to
+  preserve, so the CLI default (`true`) applies — which would gate every public
+  entrypoint and 401 Twilio, Stripe, Paystack, Chatwoot, cron and the
+  storefronts. The deploy commands above are only safe *because* `config.toml`
+  now supplies the right value.
+
+Which value is right:
+
+| value | when | callers |
+|---|---|---|
+| `true` | caller reaches the function through supabase-js | dashboard and storefront calls. Satisfied by the **anon key** as well as a signed-in user's token, so anonymous marketing-site visitors (e.g. `platform-lead`) still work — it only blocks callers sending no Supabase auth at all. |
+| `false` | caller is an **external system with no Supabase key** | provider webhooks (Stripe/Paystack/Twilio), Chatwoot, cron pings, crawlers/MCP, OAuth callbacks, one-click email links. These **must** carry their own guard: a provider signature, the shared `x-cron-secret`, or an org `public_key`. |
+
+Rule of thumb: a function calling `authorize()`/`requireUser()` from
+`_shared/auth.ts` is `true`. **Dual-mode** functions (member-invoked *and*
+cron-invoked — `automation-run`, `campaign-run`) must be `false`, because the
+cron leg carries no JWT; their member leg is still protected by `authorize()`
+inside the function body.
+
+After any deploy, confirm nothing drifted:
+
+```
+curl -s -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+  https://api.supabase.com/v1/projects/$PROJECT_REF/functions \
+  | jq -r '.[] | "\(.verify_jwt)\t\(.slug)"' | sort | uniq -c -w5
+```
+
+Healthy tally as of 2026-08-19: **false = 21, true = 23**. A drop in the `true`
+count means a deploy stripped a gate.
 
 ## Scope
 - **Platform/account layer:** tenancy + profile, marketplace, purchases, subscriptions, matching, AI assistant + metering, team invitations, notifications.

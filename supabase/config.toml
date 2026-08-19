@@ -1,0 +1,210 @@
+# Phoxta — Supabase CLI config.
+#
+# This file exists for ONE critical reason: to make every edge function's
+# `verify_jwt` declarative and version-controlled.
+#
+# Why it matters. `supabase functions deploy <fn>` *preserves* whatever
+# verify_jwt the function already has on the platform — it does not reset to a
+# default. Two failure modes follow from that:
+#   1. Passing `--no-verify-jwt` flips a function to false PERMANENTLY.
+#      Re-deploying without the flag does NOT put it back; only this file (or a
+#      Management API PATCH) will.
+#   2. On a FIRST deploy into a fresh project there is no stored value to
+#      preserve, so the CLI default (verify_jwt = true) applies — which silently
+#      gates the public/webhook/cron entrypoints below and 401s Twilio, Paystack,
+#      Stripe, Chatwoot, cron and the storefronts.
+# With the table below, `supabase functions deploy <fn>` sets the right value
+# every time, on any project, with no flags to remember.
+#
+# NEVER pass `--no-verify-jwt` on the command line. Change the value here instead.
+#
+# ── Which value is right? ────────────────────────────────────────────────────
+# verify_jwt = true   The Supabase gateway requires a valid JWT before the
+#                     function runs. Note this is satisfied by the ANON key as
+#                     well as a signed-in user's token, so browser callers
+#                     (including anonymous marketing-site visitors, e.g.
+#                     platform-lead) still work — it only blocks callers that
+#                     send no Supabase auth at all. Use for anything the app or
+#                     a storefront calls through supabase-js.
+# verify_jwt = false  Required when the caller is an EXTERNAL system that has no
+#                     Supabase key: Twilio/Stripe/Paystack webhooks, Chatwoot,
+#                     cron pings, crawlers, and one-click email links. These
+#                     MUST carry their own guard instead — a provider signature,
+#                     the shared x-cron-secret, or an org public_key.
+#
+# Rule of thumb: a function that calls `authorize()`/`requireUser()` from
+# _shared/auth.ts and is invoked via supabase.functions.invoke(...) is `true`.
+# Dual-mode functions (member-invoked AND cron-invoked, e.g. automation-run,
+# campaign-run) must be `false`, because the cron leg carries no JWT; their
+# member leg is still protected by authorize() inside the function body.
+#
+# After any deploy, confirm nothing drifted:
+#   GET https://api.supabase.com/v1/projects/{ref}/functions   → group by verify_jwt
+# Healthy tally as of 2026-08-19: false = 21, true = 23.
+
+project_id = "ktgleoqvdikngocygdkn"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PUBLIC / WEBHOOK / CRON ENTRYPOINTS — verify_jwt = false
+# Each of these authenticates by its own means; see the header comment in the
+# function's index.ts for which guard it relies on.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Public — org resolved by agent_config.public_key (web chat widget, Chatwoot).
+[functions.agent-inbound]
+verify_jwt = false
+
+# Cron workers — pinged by the Railway worker-cron service with x-cron-secret.
+[functions.agent-worker]
+verify_jwt = false
+
+[functions.embed-worker]
+verify_jwt = false
+
+[functions.workflow-worker]
+verify_jwt = false
+
+[functions.gmail-sync]
+verify_jwt = false
+
+[functions.ops-maintenance]
+verify_jwt = false
+
+[functions.billing-alerts]
+verify_jwt = false
+
+[functions.qa-scorer]
+verify_jwt = false
+
+# Dual-mode: a member runs one now (guarded by authorize() in-body) OR the
+# scheduler drains every org with x-cron-secret. The cron leg has no JWT.
+[functions.automation-run]
+verify_jwt = false
+
+[functions.campaign-run]
+verify_jwt = false
+
+# Provider webhooks — authenticated by the provider's own signature header.
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.paystack-webhook]
+verify_jwt = false
+
+[functions.twilio-inbound]
+verify_jwt = false
+
+[functions.email-inbound]
+verify_jwt = false
+
+# Twilio fetches this TwiML directly over the public internet.
+[functions.voice-outgoing]
+verify_jwt = false
+
+# One-click links in email/SMS footers — opened by a mail client, no key.
+[functions.unsubscribe]
+verify_jwt = false
+
+[functions.csat]
+verify_jwt = false
+
+# Fetched by crawlers, AI shopping agents and MCP clients — no Supabase key.
+[functions.storefront-feed]
+verify_jwt = false
+
+[functions.mcp-storefront]
+verify_jwt = false
+
+# OAuth callback — Google redirects the browser here without a Supabase key.
+[functions.google-oauth]
+verify_jwt = false
+
+# Anon storefront guest checkout; fulfilment happens only in paystack-webhook.
+[functions.paystack-storefront-checkout]
+verify_jwt = false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTHENTICATED ENDPOINTS — verify_jwt = true
+# Called from the dashboard/storefronts via supabase.functions.invoke(...), which
+# attaches the caller's session token (or the anon key). Declared explicitly so a
+# stray --no-verify-jwt cannot silently strip the gateway gate — that regression
+# happened on 2026-08-19 to place-call, ai-agent and conversation-suggest.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[functions.ai-agent]
+verify_jwt = true
+
+[functions.ai-gateway]
+verify_jwt = true
+
+[functions.ai-helpdesk]
+verify_jwt = true
+
+[functions.ai-actions]
+verify_jwt = true
+
+[functions.agent-operator]
+verify_jwt = true
+
+[functions.agent-approve]
+verify_jwt = true
+
+[functions.place-call]
+verify_jwt = true
+
+[functions.voice-token]
+verify_jwt = true
+
+[functions.conversation-send]
+verify_jwt = true
+
+[functions.conversation-suggest]
+verify_jwt = true
+
+[functions.ticket-reply]
+verify_jwt = true
+
+[functions.commerce-notify]
+verify_jwt = true
+
+[functions.email-send]
+verify_jwt = true
+
+[functions.brand-generate]
+verify_jwt = true
+
+[functions.domain-manager]
+verify_jwt = true
+
+[functions.domain-checkout]
+verify_jwt = true
+
+[functions.verify-domain]
+verify_jwt = true
+
+[functions.paystack-checkout]
+verify_jwt = true
+
+[functions.paystack-refund]
+verify_jwt = true
+
+[functions.google-connect]
+verify_jwt = true
+
+[functions.google-gmail]
+verify_jwt = true
+
+[functions.google-workspace]
+verify_jwt = true
+
+# Marketing-site lead capture (/contact, /startup-school). Anonymous visitors
+# reach it through supabase-js, which sends the anon key — that satisfies the
+# gateway, so `true` costs nothing and blocks keyless spam.
+[functions.platform-lead]
+verify_jwt = true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NOT DEPLOYED
+# brand-migrate — one-shot DDL helper; its header says to delete it after a
+# successful run. Left undeclared deliberately so it is not deployed by accident.
+# ─────────────────────────────────────────────────────────────────────────────
