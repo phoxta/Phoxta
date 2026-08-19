@@ -41,7 +41,7 @@ export default function MarketplacePage() {
   return (
     <div>
       <PageMeta title="Phoxta - Marketplace" />
-      <div className="mb-4">
+      <div className="dash-sticky-head pb-4">
         <h1 className="fw-600 mb-2 lh-1" style={{ fontSize: "clamp(2.5rem, 5vw, 3.75rem)" }}>Marketplace</h1>
         <p className="neutral-500 mb-0 fz-font-lg">Validated, AI-powered businesses — make one your own and launch in minutes.</p>
       </div>

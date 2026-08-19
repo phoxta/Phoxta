@@ -72,28 +72,33 @@ function SectionTabs({ tab, setTab }: { tab: SectionKey; setTab: (k: SectionKey)
     document.getElementById(`mk-tab-${next.key}`)?.focus();
   }
   return (
-    <div className="ops-scroll-x border-bottom mb-4">
-      <div className="d-flex flex-nowrap" role="tablist" aria-label="Marketing sections">
-        {SECTIONS.map((s, i) => {
-          const active = tab === s.key;
-          return (
-            <button
-              key={s.key}
-              id={`mk-tab-${s.key}`}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-controls={`mk-panel-${s.key}`}
-              tabIndex={active ? 0 : -1}
-              onKeyDown={(e) => move(e, i)}
-              onClick={() => setTab(s.key)}
-              className={`btn btn-sm rounded-0 bg-transparent text-nowrap px-3 py-2 ops-tap ${active ? "neutral-900 fw-700" : "neutral-500 fw-500"}`}
-              style={{ border: "none", borderBottom: `2px solid ${active ? "#212529" : "transparent"}`, marginBottom: -1 }}
-            >
-              {s.label}
-            </button>
-          );
-        })}
+    // Wrapper carries the pinning (and the painted gap below the rule) so the
+    // border stays tight under the tabs; the inner div keeps its own overflow-x,
+    // which must not sit on the sticky element's ancestor chain.
+    <div className="dash-sticky-sub pb-4">
+      <div className="ops-scroll-x border-bottom">
+        <div className="d-flex flex-nowrap" role="tablist" aria-label="Marketing sections">
+          {SECTIONS.map((s, i) => {
+            const active = tab === s.key;
+            return (
+              <button
+                key={s.key}
+                id={`mk-tab-${s.key}`}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-controls={`mk-panel-${s.key}`}
+                tabIndex={active ? 0 : -1}
+                onKeyDown={(e) => move(e, i)}
+                onClick={() => setTab(s.key)}
+                className={`btn btn-sm rounded-0 bg-transparent text-nowrap px-3 py-2 ops-tap ${active ? "neutral-900 fw-700" : "neutral-500 fw-500"}`}
+                style={{ border: "none", borderBottom: `2px solid ${active ? "#212529" : "transparent"}`, marginBottom: -1 }}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

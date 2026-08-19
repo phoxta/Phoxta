@@ -121,7 +121,7 @@ export default function AssistantPage() {
   return (
     <div>
       <PageMeta title="Phoxta - Assistant" />
-      <div className="mb-4 d-flex flex-wrap align-items-end justify-content-between gap-3">
+      <div className="dash-sticky-head pb-4 d-flex flex-wrap align-items-end justify-content-between gap-3">
         <div>
           <h2 className="fw-600 mb-1">Assistant</h2>
           <p className="neutral-500 mb-0">

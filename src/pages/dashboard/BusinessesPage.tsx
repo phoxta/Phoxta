@@ -57,7 +57,7 @@ export default function BusinessesPage() {
   return (
     <div>
       <PageMeta title="Phoxta - Your businesses" />
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+      <div className="dash-sticky-head pb-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
         <div>
           <h2 className="fw-600 mb-1">Your businesses</h2>
           <p className="neutral-500 mb-0">Everything you own and operate on Phoxta.</p>

@@ -9,6 +9,7 @@ import { DASHBOARD_TTL, domainsQuery, organizationsQuery, primaryLiveDomain } fr
 import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
 import { OpsToasts } from "@/lib/ops/feedback";
 import { supabase } from "@/lib/supabaseClient";
+import { useStickyHeadHeight } from "@/lib/hooks/useStickyHeadHeight";
 
 export type OpsContext = { orgId: string; org: Organization; console: VerticalConsole };
 
@@ -19,6 +20,9 @@ export default function OperatingLayout() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  // Measured so the sub-navs below (AI Agent, Marketing) can pin beneath this
+  // header — its height moves with the business name, switcher and badges.
+  const headRef = useStickyHeadHeight();
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -139,92 +143,101 @@ export default function OperatingLayout() {
   return (
     <div>
       <PageMeta title={`Phoxta - ${org.name} operations`} />
-      <div className="mb-2 d-flex flex-wrap align-items-center gap-2">
-        <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
-          ← Business details
-        </Link>
-        {liveUrl ? (
-          <a
-            href={liveUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="fz-font-sm fw-600 text-decoration-none"
-          >
-            View live site ↗
-          </a>
-        ) : (
+      {/* Console chrome — breadcrumb, business title and the tab bar. Pinned via
+          .dash-sticky-head so it stays put while only the tab's content scrolls;
+          the tabs used to ride up out of view with the content beneath them. */}
+      <div ref={headRef} className="dash-sticky-head pb-4">
+        <div className="mb-2 d-flex flex-wrap align-items-center gap-2">
           <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
-            Not live yet — set up your domain
+            ← Business details
           </Link>
-        )}
-      </div>
-      {/* The business being operated is the headline — "Operating console" is a
-          constant that carries no information once you are inside it, and on a
-          phone it was costing most of the first screen. */}
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <h1 className="fw-600 mb-0 me-1 fz-font-2xl lh-1 neutral-900">{org.name}</h1>
-        {myOrgs.length > 1 && (
-          <select
-            className="form-select form-select-sm w-auto"
-            value={id}
-            aria-label="Switch business"
-            onChange={(e) => {
-              const next = e.target.value;
-              if (!next || next === id) return;
-              const nextBase = `/dashboard/businesses/${next}/ops`;
-              // Keep the same console tab when hopping businesses — but only if
-              // the target business's console actually has that tab; otherwise
-              // land on its Overview instead of a dead route.
-              const nextOrg = myOrgs.find((m) => m.organization.id === next)?.organization;
-              const nextCfg = resolveConsole(nextOrg?.vertical);
-              const seg = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1).split("/")[0] : "";
-              const hasTab = seg === "" || nextCfg.modules.includes(seg);
-              navigate(hasTab ? pathname.replace(base, nextBase) : nextBase);
-            }}
-          >
-            {myOrgs.map(({ organization: o }) => (
-              <option key={o.id} value={o.id}>{o.name}</option>
+          {liveUrl ? (
+            <a
+              href={liveUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="fz-font-sm fw-600 text-decoration-none"
+            >
+              View live site ↗
+            </a>
+          ) : (
+            <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
+              Not live yet — set up your domain
+            </Link>
+          )}
+        </div>
+        {/* The business being operated is the headline — "Operating console" is a
+            constant that carries no information once you are inside it, and on a
+            phone it was costing most of the first screen. */}
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <h1 className="fw-600 mb-0 me-1 fz-font-2xl lh-1 neutral-900">{org.name}</h1>
+          {myOrgs.length > 1 && (
+            <select
+              className="form-select form-select-sm w-auto"
+              value={id}
+              aria-label="Switch business"
+              onChange={(e) => {
+                const next = e.target.value;
+                if (!next || next === id) return;
+                const nextBase = `/dashboard/businesses/${next}/ops`;
+                // Keep the same console tab when hopping businesses — but only if
+                // the target business's console actually has that tab; otherwise
+                // land on its Overview instead of a dead route.
+                const nextOrg = myOrgs.find((m) => m.organization.id === next)?.organization;
+                const nextCfg = resolveConsole(nextOrg?.vertical);
+                const seg = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1).split("/")[0] : "";
+                const hasTab = seg === "" || nextCfg.modules.includes(seg);
+                navigate(hasTab ? pathname.replace(base, nextBase) : nextBase);
+              }}
+            >
+              {myOrgs.map(({ organization: o }) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          )}
+          {org.vertical && <span className="badge bg-neutral-900 text-white text-capitalize fw-500">{org.vertical}</span>}
+          <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{org.stage}</span>
+        </div>
+
+        {/* One scrollable line rather than four wrapped rows on a phone.
+            mb-0 here (the gap below now comes from the sticky wrapper) so the tab
+            bar's bottom border sits flush against the pinned block's edge. */}
+        <nav className="mb-0 border-bottom ops-tabs" aria-label="Console sections">
+          <ul className="list-unstyled m-0 d-flex gap-1">
+            {tabs.map((t) => (
+              <li key={t.seg}>
+                <NavLink
+                  to={t.seg ? `${base}/${t.seg}` : base}
+                  end={t.end}
+                  onMouseEnter={() => preloadOpsTab(t.seg)}
+                  className={({ isActive }) =>
+                    `d-inline-block px-3 py-2 fz-font-md text-decoration-none border-bottom border-2 ${
+                      isActive ? "neutral-900 fw-600 border-dark" : "neutral-500 border-transparent"
+                    }`
+                  }
+                >
+                  {t.label}
+                  {badgeFor(t.seg) > 0 && (
+                    <span
+                      className={`badge rounded-pill ms-1 fz-font-sm ${
+                        t.seg === "inbox" ? "bg-danger text-white" : "bg-warning text-dark"
+                      }`}
+                    >
+                      {badgeFor(t.seg)}
+                    </span>
+                  )}
+                </NavLink>
+              </li>
             ))}
-          </select>
-        )}
-        {org.vertical && <span className="badge bg-neutral-900 text-white text-capitalize fw-500">{org.vertical}</span>}
-        <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{org.stage}</span>
+          </ul>
+        </nav>
       </div>
 
-      {/* One scrollable line rather than four wrapped rows on a phone. */}
-      <nav className="mb-4 border-bottom ops-tabs" aria-label="Console sections">
-        <ul className="list-unstyled m-0 d-flex gap-1">
-          {tabs.map((t) => (
-            <li key={t.seg}>
-              <NavLink
-                to={t.seg ? `${base}/${t.seg}` : base}
-                end={t.end}
-                onMouseEnter={() => preloadOpsTab(t.seg)}
-                className={({ isActive }) =>
-                  `d-inline-block px-3 py-2 fz-font-md text-decoration-none border-bottom border-2 ${
-                    isActive ? "neutral-900 fw-600 border-dark" : "neutral-500 border-transparent"
-                  }`
-                }
-              >
-                {t.label}
-                {badgeFor(t.seg) > 0 && (
-                  <span
-                    className={`badge rounded-pill ms-1 fz-font-sm ${
-                      t.seg === "inbox" ? "bg-danger text-white" : "bg-warning text-dark"
-                    }`}
-                  >
-                    {badgeFor(t.seg)}
-                  </span>
-                )}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>}>
-        <Outlet context={{ orgId: id, org, console: cfg } satisfies OpsContext} />
-      </Suspense>
+      <div>
+        <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>}>
+          <Outlet context={{ orgId: id, org, console: cfg } satisfies OpsContext} />
+        </Suspense>
+      </div>
       <OpsToasts />
     </div>
   );

@@ -38,7 +38,7 @@ export default function DashboardHomePage() {
   return (
     <div>
       <PageMeta title="Phoxta - Dashboard" />
-      <div className="mb-5">
+      <div className="dash-sticky-head pb-5">
         <span className="fz-font-md neutral-500">Welcome back</span>
         <h2 className="fw-600 mb-1 text-capitalize">{name}</h2>
         <p className="neutral-500 mb-0">Here&apos;s what&apos;s happening across your businesses.</p>

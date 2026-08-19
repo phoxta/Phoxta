@@ -79,7 +79,7 @@ export default function StudioPage() {
     <div>
       <PageMeta title="Phoxta - Studio" />
 
-      <div className="mb-4">
+      <div className="dash-sticky-head pb-4">
         <h2 className="fw-600 mb-1">Studio</h2>
         <p className="neutral-500 mb-0 fz-font-md">
           Design any business you own — set its brand and build pages from {SECTION_MANIFESTS.length} ready-made sections.

@@ -1740,6 +1740,43 @@ input[type=color] {
 
 /* Tab strip: a single horizontally-scrollable line. With 9 tabs this wrapped
    to four rows on a phone and ate the whole first screen. */
+/* Dashboard page chrome that stays put while only the content scrolls.
+   Pins to the top of the dashboard's scroll container (see DashboardLayout —
+   the main column no longer scrolls, its inner region does), so a page header
+   and its tabs never ride up with the content beneath them.
+   The negative margin swallows <main>'s `py-4` top padding and re-adds it
+   inside the sticky box, so no content is visible in the strip above the
+   pinned header. The background must stay opaque for the same reason —
+   --at-neutral-50 is the app card's canvas colour. */
+.dash-sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 50; /* above page content (<=40), below drawers/modals (1040+) */
+  background-color: var(--at-neutral-50);
+  margin-top: -1.5rem;
+  padding-top: 1.5rem;
+}
+
+/* Second-level nav (the AI Agent sub-tabs, Marketing's sub-tabs) — pins directly
+   BENEATH the page header rather than at the top of the container. The offset is
+   the header's measured height, published as --dash-head-h by useStickyHeadHeight:
+   it is not a constant, since the header grows when a long business name wraps or
+   the business switcher / badges appear. Falls back to 0 if nothing published it. */
+.dash-sticky-sub {
+  position: sticky;
+  top: var(--dash-head-h, 0px);
+  z-index: 49; /* just under .dash-sticky-head, so it tucks beneath on overlap */
+  background-color: var(--at-neutral-50);
+}
+
+/* Spacing below pinned chrome must be PADDING, not margin: a margin is outside the
+   painted box, so content scrolling past would flash through the gap before it
+   slid under. Applied by the sticky blocks in place of their old mb-* utility. */
+.dash-sticky-head > :last-child,
+.dash-sticky-sub > :last-child {
+  margin-bottom: 0;
+}
+
 .ops-tabs {
   overflow-x: auto;
   overflow-y: hidden;

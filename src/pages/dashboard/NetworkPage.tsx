@@ -118,7 +118,7 @@ export default function NetworkPage() {
   return (
     <div>
       <PageMeta title="Phoxta - Network" />
-      <div className="mb-4">
+      <div className="dash-sticky-head pb-4">
         <h2 className="fw-600 mb-1">Network</h2>
         <p className="neutral-500 mb-0">Find co-founders, operators and investors — and let them find you.</p>
       </div>

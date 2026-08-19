@@ -98,7 +98,7 @@ export default function BillingPage() {
   return (
     <div>
       <PageMeta title="Phoxta - Billing" />
-      <div className="mb-4">
+      <div className="dash-sticky-head pb-4">
         <h2 className="fw-600 mb-1">Billing</h2>
         <p className="neutral-500 mb-0">Plans and subscriptions across your businesses.</p>
       </div>

@@ -70,7 +70,7 @@ export default function SettingsPage() {
   return (
     <div style={{ maxWidth: 760 }}>
       <PageMeta title="Phoxta - Settings" />
-      <div className="mb-4">
+      <div className="dash-sticky-head pb-4">
         <h2 className="fw-600 mb-1">Settings</h2>
         <p className="neutral-500 mb-0">Your account and company profile.</p>
       </div>

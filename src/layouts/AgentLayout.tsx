@@ -15,28 +15,34 @@ export default function AgentLayout() {
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <h4 className="fw-600 mb-0 me-2">AI Agent</h4>
-      </div>
+      {/* Second-level nav — pins beneath the console header (see .dash-sticky-sub)
+          so the Operator/Inbox/Configure tabs stay reachable while content scrolls.
+          pb-4 rather than mb-4: the gap must be inside the painted box, or content
+          would flash through it on the way under. */}
+      <div className="dash-sticky-sub pb-4">
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <h4 className="fw-600 mb-0 me-2">AI Agent</h4>
+        </div>
 
-      <nav className="mb-4">
-        <ul className="list-unstyled m-0 d-flex flex-wrap gap-1">
-          {SUBTABS.map((t) => (
-            <li key={t.seg}>
-              <NavLink
-                to={t.seg ? `${base}/${t.seg}` : base}
-                end={t.end}
-                onMouseEnter={() => preloadAgentTab(t.seg)}
-                className={({ isActive }) =>
-                  `d-inline-block px-3 py-2 fz-font-md rounded-3 text-decoration-none ${isActive ? "bg-neutral-900 text-white fw-600" : "bg-neutral-0 neutral-500 border-100"}`
-                }
-              >
-                {t.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
+        <nav className="mb-0">
+          <ul className="list-unstyled m-0 d-flex flex-wrap gap-1">
+            {SUBTABS.map((t) => (
+              <li key={t.seg}>
+                <NavLink
+                  to={t.seg ? `${base}/${t.seg}` : base}
+                  end={t.end}
+                  onMouseEnter={() => preloadAgentTab(t.seg)}
+                  className={({ isActive }) =>
+                    `d-inline-block px-3 py-2 fz-font-md rounded-3 text-decoration-none ${isActive ? "bg-neutral-900 text-white fw-600" : "bg-neutral-0 neutral-500 border-100"}`
+                  }
+                >
+                  {t.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
 
       <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>}>
         <Outlet context={ctx} />

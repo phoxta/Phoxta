@@ -318,10 +318,15 @@ export default function DashboardLayout() {
           />
         )}
 
-        {/* Main column (scrolls inside the card) */}
-        <div ref={scrollRef} className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0, overflow: "auto" }}>
-          {/* Mobile-only top bar */}
-          <div className="d-flex d-lg-none align-items-center gap-2 px-3 py-3 border-bottom sticky-top bg-neutral-0">
+        {/* Main column. The column itself does NOT scroll — only the inner region
+            does. That keeps permanent chrome (the mobile bar here, and a page's own
+            `.dash-sticky-head` such as the operating console's tabs) out of the
+            scrolling box, so it can pin to the top on every breakpoint instead of
+            riding up with the content. */}
+        <div className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0, overflow: "hidden" }}>
+          {/* Mobile-only top bar — outside the scroll region, so it never moves.
+              (No `sticky-top` needed now that nothing scrolls past it.) */}
+          <div className="d-flex d-lg-none align-items-center gap-2 px-3 py-3 border-bottom bg-neutral-0 flex-shrink-0">
             <button type="button" className="btn btn-link p-0 neutral-700" aria-label="Open menu" onClick={() => setOpen(true)}>
               {MENU_ICON}
             </button>
@@ -331,9 +336,13 @@ export default function DashboardLayout() {
             </Link>
           </div>
 
-          <main className="px-3 px-lg-4 px-xl-5 py-4 flex-grow-1">
-            <KeepAliveOutlet keepPaths={KEEP_ALIVE_PATHS} scrollContainerRef={scrollRef} />
-          </main>
+          {/* The scroll container. `scrollRef` must stay on the element that actually
+              scrolls — KeepAliveOutlet reads/writes its scrollTop to restore position. */}
+          <div ref={scrollRef} className="flex-grow-1 d-flex flex-column" style={{ overflow: "auto" }}>
+            <main className="px-3 px-lg-4 px-xl-5 py-4 flex-grow-1">
+              <KeepAliveOutlet keepPaths={KEEP_ALIVE_PATHS} scrollContainerRef={scrollRef} />
+            </main>
+          </div>
         </div>
       </div>
     </div>
