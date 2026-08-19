@@ -1757,23 +1757,10 @@ input[type=color] {
   padding-top: 1.5rem;
 }
 
-/* Second-level nav (the AI Agent sub-tabs, Marketing's sub-tabs) — pins directly
-   BENEATH the page header rather than at the top of the container. The offset is
-   the header's measured height, published as --dash-head-h by useStickyHeadHeight:
-   it is not a constant, since the header grows when a long business name wraps or
-   the business switcher / badges appear. Falls back to 0 if nothing published it. */
-.dash-sticky-sub {
-  position: sticky;
-  top: var(--dash-head-h, 0px);
-  z-index: 49; /* just under .dash-sticky-head, so it tucks beneath on overlap */
-  background-color: var(--at-neutral-50);
-}
-
 /* Spacing below pinned chrome must be PADDING, not margin: a margin is outside the
    painted box, so content scrolling past would flash through the gap before it
    slid under. Applied by the sticky blocks in place of their old mb-* utility. */
-.dash-sticky-head > :last-child,
-.dash-sticky-sub > :last-child {
+.dash-sticky-head > :last-child {
   margin-bottom: 0;
 }
 

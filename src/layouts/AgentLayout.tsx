@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { NavLink, Outlet, useOutletContext } from "react-router-dom";
+import { OpsSubNav } from "@/layouts/OpsSubNav";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import { preloadAgentTab } from "@/pages/dashboard/preload";
 
@@ -15,11 +16,9 @@ export default function AgentLayout() {
 
   return (
     <div>
-      {/* Second-level nav — pins beneath the console header (see .dash-sticky-sub)
-          so the Operator/Inbox/Configure tabs stay reachable while content scrolls.
-          pb-4 rather than mb-4: the gap must be inside the painted box, or content
-          would flash through it on the way under. */}
-      <div className="dash-sticky-sub pb-4">
+      {/* Rendered into the console header's pinned block (see OpsSubNav), so the
+          Operator/Inbox/Configure tabs stay reachable while content scrolls. */}
+      <OpsSubNav>
         <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
           <h4 className="fw-600 mb-0 me-2">AI Agent</h4>
         </div>
@@ -42,7 +41,7 @@ export default function AgentLayout() {
             ))}
           </ul>
         </nav>
-      </div>
+      </OpsSubNav>
 
       <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>}>
         <Outlet context={ctx} />

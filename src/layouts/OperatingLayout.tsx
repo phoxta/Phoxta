@@ -9,7 +9,7 @@ import { DASHBOARD_TTL, domainsQuery, organizationsQuery, primaryLiveDomain } fr
 import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
 import { OpsToasts } from "@/lib/ops/feedback";
 import { supabase } from "@/lib/supabaseClient";
-import { useStickyHeadHeight } from "@/lib/hooks/useStickyHeadHeight";
+import { OpsSubNavSlotProvider } from "@/layouts/OpsSubNav";
 
 export type OpsContext = { orgId: string; org: Organization; console: VerticalConsole };
 
@@ -20,9 +20,9 @@ export default function OperatingLayout() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  // Measured so the sub-navs below (AI Agent, Marketing) can pin beneath this
-  // header — its height moves with the business name, switcher and badges.
-  const headRef = useStickyHeadHeight();
+  // A console tab's own sub-nav is portalled into the header block below, so
+  // there is one pinned element and no offset to measure. See OpsSubNav.
+  const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -146,7 +146,7 @@ export default function OperatingLayout() {
       {/* Console chrome — breadcrumb, business title and the tab bar. Pinned via
           .dash-sticky-head so it stays put while only the tab's content scrolls;
           the tabs used to ride up out of view with the content beneath them. */}
-      <div ref={headRef} className="dash-sticky-head pb-4">
+      <div className="dash-sticky-head pb-4">
         <div className="mb-2 d-flex flex-wrap align-items-center gap-2">
           <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
             ← Business details
@@ -231,11 +231,15 @@ export default function OperatingLayout() {
             ))}
           </ul>
         </nav>
+        {/* A tab's second-level nav lands here — inside the pinned block. */}
+        <div ref={setSubSlot} />
       </div>
 
       <div>
         <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>}>
-          <Outlet context={{ orgId: id, org, console: cfg } satisfies OpsContext} />
+          <OpsSubNavSlotProvider value={subSlot}>
+            <Outlet context={{ orgId: id, org, console: cfg } satisfies OpsContext} />
+          </OpsSubNavSlotProvider>
         </Suspense>
       </div>
       <OpsToasts />

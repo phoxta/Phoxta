@@ -45,6 +45,7 @@ import {
 import { invokeAction } from "@/lib/db/ops/ai";
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
 import type { OpsContext } from "@/layouts/OperatingLayout";
+import { OpsSubNav } from "@/layouts/OpsSubNav";
 import PromoCodes from "./PromoCodes";
 
 // ---------------------------------------------------------------------------
@@ -72,10 +73,8 @@ function SectionTabs({ tab, setTab }: { tab: SectionKey; setTab: (k: SectionKey)
     document.getElementById(`mk-tab-${next.key}`)?.focus();
   }
   return (
-    // Wrapper carries the pinning (and the painted gap below the rule) so the
-    // border stays tight under the tabs; the inner div keeps its own overflow-x,
-    // which must not sit on the sticky element's ancestor chain.
-    <div className="dash-sticky-sub pb-4">
+    // Rendered into the console header's pinned block (see OpsSubNav).
+    <OpsSubNav>
       <div className="ops-scroll-x border-bottom">
         <div className="d-flex flex-nowrap" role="tablist" aria-label="Marketing sections">
           {SECTIONS.map((s, i) => {
@@ -100,7 +99,7 @@ function SectionTabs({ tab, setTab }: { tab: SectionKey; setTab: (k: SectionKey)
           })}
         </div>
       </div>
-    </div>
+    </OpsSubNav>
   );
 }
 
