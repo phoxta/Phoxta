@@ -138,7 +138,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -178,7 +178,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -218,7 +218,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -258,7 +258,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -298,7 +298,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -338,7 +338,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -378,7 +378,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -418,7 +418,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -458,7 +458,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -498,7 +498,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -538,7 +538,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>
@@ -578,7 +578,7 @@ export default function ShopList() {
 																<div className="card-price">
 																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
 																</div>
-																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">Book Now</Link></div>
+																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
 														</div>
 													</div>

@@ -33,7 +33,7 @@ export default function CarCard1({ car }: any) {
 									<h6 className="text-lg-bold neutral-1000">${car.price}</h6>
 									<p className="text-md-medium neutral-500">/ day</p>
 								</div>
-								<div className="card-button"><Link className="btn btn-gray" href={href}>Book Now</Link></div>
+								<div className="card-button"><Link className="btn btn-gray" href={href}>View details</Link></div>
 							</div>
 						</div>
 					</div>
