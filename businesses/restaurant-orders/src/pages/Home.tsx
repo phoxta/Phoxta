@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import DishCard from "@/components/DishCard";
-import ReservationWidget from "@/components/ReservationWidget";
+import OrderWidget from "@/components/OrderWidget";
 import Testimonials from "@/components/Testimonials";
 import { useMenu } from "@/util/menu";
 
@@ -83,7 +83,7 @@ export default function Home() {
                 </div>
             </section>
 
-            <ReservationWidget />
+            <OrderWidget />
 
             {/* EXPERIENCE */}
             <section className="experience">

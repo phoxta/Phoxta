@@ -9,7 +9,18 @@ import { money } from "@/data/menu";
 export default function Checkout() {
     const { lines, subtotal, clear } = useCart();
     const { orgId, live } = useMenu();
-    const [mode, setMode] = useState<"pickup" | "delivery">("pickup");
+    // Default from the home-page choice so the visitor is not asked twice.
+    const [mode, setMode] = useState<"pickup" | "delivery">(() => {
+        try {
+            return localStorage.getItem("saveur:fulfilment") === "pickup" ? "pickup" : "delivery";
+        } catch {
+            return "delivery";
+        }
+    });
+    const [address, setAddress] = useState("");
+    const [phone, setPhone] = useState("");
+    // Empty = as soon as possible; otherwise a requested time for later today.
+    const [when, setWhen] = useState("");
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [orderNote, setOrderNote] = useState("");
@@ -45,7 +56,12 @@ export default function Checkout() {
             // operating console). Demo/dev falls back to a local confirmation id.
             if (live && orgId) {
                 const items = lines.map((l) => ({ product_id: l.dish.id, quantity: l.qty, options: l.options.map((o) => ({ group: o.group, label: o.label })), notes: l.note }));
-                const oid = await placeOrder(orgId, name || "Guest", email, items, orderNote.trim(), promo?.code);
+                const oid = await placeOrder(orgId, name || "Guest", email, items, orderNote.trim(), promo?.code, {
+                    type: mode,
+                    address: mode === "delivery" ? address.trim() : undefined,
+                    when: when || undefined,
+                    phone: phone.trim() || undefined,
+                });
                 if (oid) {
                     id = oid;
                     // Pay now (best-effort): ask the platform for a Paystack
@@ -91,8 +107,29 @@ export default function Checkout() {
                                     <div className="field"><label>Name</label><input required value={name} onChange={(e) => setName(e.target.value)} /></div>
                                     <div className="field"><label>Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></div>
                                 </div>
-                                {mode === "delivery" && <div className="field"><label>Delivery address</label><input required /></div>}
-                                {mode === "pickup" && <div className="field"><label>Pickup time</label><select><option>As soon as possible</option><option>In 30 minutes</option><option>In 1 hour</option><option>Tonight, 7:00 PM</option></select></div>}
+                                {/* These were uncontrolled: the address and the requested time were
+                                    typed and then thrown away. Bound now, and sent with the order so
+                                    the kitchen sees them in the console. */}
+                                <div className="field">
+                                    <label>Phone <span style={{ opacity: 0.6 }}>(so we can reach you about the order)</span></label>
+                                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
+                                </div>
+                                {mode === "delivery" && (
+                                    <div className="field">
+                                        <label>Delivery address</label>
+                                        <input required value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" placeholder="Street, city, postcode" />
+                                    </div>
+                                )}
+                                <div className="field">
+                                    <label>{mode === "pickup" ? "Collection time" : "Delivery time"}</label>
+                                    <select value={when} onChange={(e) => setWhen(e.target.value)}>
+                                        <option value="">As soon as possible</option>
+                                        <option value="30m">In 30 minutes</option>
+                                        <option value="1h">In 1 hour</option>
+                                        <option value="2h">In 2 hours</option>
+                                        <option value="tonight">Later tonight</option>
+                                    </select>
+                                </div>
                                 <div className="field"><label>Order notes <span style={{ opacity: 0.6 }}>(optional)</span></label><input value={orderNote} onChange={(e) => setOrderNote(e.target.value)} placeholder="Allergies, kitchen or driver instructions…" /></div>
                                 <h3 className="serif" style={{ fontSize: 20, margin: "12px 0" }}>Payment</h3>
                                 <div className="field"><label>Card number</label><input placeholder="1234 5678 9012 3456" required /></div>

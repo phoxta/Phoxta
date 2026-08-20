@@ -3,17 +3,20 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import { CartProvider } from "@/util/cart";
 import { MenuProvider } from "@/util/menu";
+import { AccountProvider } from "@/util/account";
 import { router } from "@/router";
 import { initLiveEdit } from "@/lib/liveEdit";
 import "@/index.css";
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
-        <MenuProvider>
-            <CartProvider>
-                <RouterProvider router={router} />
-            </CartProvider>
-        </MenuProvider>
+        <AccountProvider>
+            <MenuProvider>
+                <CartProvider>
+                    <RouterProvider router={router} />
+                </CartProvider>
+            </MenuProvider>
+        </AccountProvider>
     </StrictMode>,
 );
 

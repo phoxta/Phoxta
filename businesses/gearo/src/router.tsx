@@ -9,13 +9,15 @@ import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import Blog from "@/pages/Blog";
 import BlogDetails from "@/pages/BlogDetails";
-import Login from "@/pages/Login";
-import MyAccount from "@/pages/MyAccount";
+// The template shipped inert Login/MyAccount shells (onSubmit preventDefault,
+// no data). Every account route now renders the working page, which handles
+// sign in, register, reset, order history and profile.
 import Faqs from "@/pages/Faqs";
 import Wishlist from "@/pages/Wishlist";
 import OrderTracking from "@/pages/OrderTracking";
-import Placeholder from "@/pages/Placeholder";
+import Terms from "@/pages/Terms";
 import NotFound from "@/pages/NotFound";
+import Account from "@/pages/Account";
 
 // Long-tail template variants reuse the converted pages above; only a few rarely
 // linked layouts remain as styled placeholders.
@@ -25,11 +27,6 @@ const SHOP_VARIANTS = [
     "shop-filter-canvas", "shop-filter-dropdown", "shop-pagination",
     "shop-load-button", "shop-infinite-scrolling", "search-result",
 ];
-const PLACEHOLDERS: [string, string][] = [
-    ["store-list", "Our Stores"],
-    ["term-of-use", "Terms of Use"],
-];
-
 export const router = createBrowserRouter([
     {
         element: (<><ScrollToTop /><Outlet /></>),
@@ -47,15 +44,16 @@ export const router = createBrowserRouter([
             { path: "/blog-grid", element: <Blog /> },
             { path: "/blog-list", element: <Blog /> },
             { path: "/blog-details", element: <BlogDetails /> },
-            { path: "/login", element: <Login mode="login" /> },
-            { path: "/register", element: <Login mode="register" /> },
-            { path: "/my-account", element: <MyAccount /> },
-            { path: "/my-account-orders", element: <MyAccount /> },
-            { path: "/my-account-address", element: <MyAccount /> },
+            { path: "/login", element: <Account /> },
+            { path: "/register", element: <Account /> },
+            { path: "/my-account", element: <Account /> },
+            { path: "/my-account-orders", element: <Account /> },
+            { path: "/my-account-address", element: <Account /> },
             { path: "/faqs", element: <Faqs /> },
             { path: "/wish-list", element: <Wishlist /> },
             { path: "/order", element: <OrderTracking /> },
-            ...PLACEHOLDERS.map(([p, t]) => ({ path: `/${p}`, element: <Placeholder title={t} /> })),
+            { path: "/term-of-use", element: <Terms /> },
+            { path: "/account", element: <Account /> },
             { path: "*", element: <NotFound /> },
         ],
     },

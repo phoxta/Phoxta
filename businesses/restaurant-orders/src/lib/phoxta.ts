@@ -140,6 +140,9 @@ export async function placeOrder(
   items: { product_id: string; quantity: number; options?: { group: string; label: string }[]; notes?: string }[],
   orderNotes?: string,
   promo?: string,
+  /** Delivery vs collection, the address, and when it is wanted. Stored on the
+   *  order's shipping payload, which the operating console shows to the kitchen. */
+  fulfilment?: { type: "delivery" | "pickup"; address?: string; when?: string; phone?: string },
 ): Promise<string | null> {
   const { data, error } = await supabase.rpc("app_place_order", {
     p_org: orgId,
@@ -148,6 +151,7 @@ export async function placeOrder(
     p_items: items,
     p_notes: orderNotes ?? "",
     p_promo: promo ?? "",
+    p_shipping: fulfilment ?? { type: "delivery" },
   });
   if (error) throw new Error(error.message);
   return (data as string | null) ?? null;
@@ -252,4 +256,103 @@ export async function submitReview(orgId: string, r: { author: string; rating: n
     p_org: orgId, p_subject_type: "business", p_subject_ref: "", p_author: r.author, p_rating: r.rating, p_title: r.title, p_body: r.body,
   });
   return !error;
+}
+
+// ---------------------------------------------------------------------------
+// Customer accounts
+//
+// A storefront customer is an ordinary Supabase auth user. Their orders are
+// matched on the VERIFIED email in their JWT (see migration 0077), so nothing
+// here can be spoofed by the client and no customer can read another's history.
+// ---------------------------------------------------------------------------
+
+export type CustomerOrder = {
+  id: string;
+  reference: string;
+  status: string;
+  fulfilment: string | null;
+  total_cents: number;
+  refunded_cents: number;
+  currency: string;
+  placed_at: string;
+  paid_at: string | null;
+  tracking: string | null;
+  notes: string | null;
+  items: { name: string; quantity: number; unit_price_cents: number; notes: string | null }[];
+};
+
+export type CustomerProfile = { name: string | null; email: string; phone: string | null; company: string | null };
+
+export async function signUp(email: string, password: string, name?: string) {
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: name ? { full_name: name } : undefined },
+  });
+  return { error: error?.message ?? null };
+}
+
+export async function signIn(email: string, password: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  return { error: error?.message ?? null };
+}
+
+export async function signOut() {
+  await supabase.auth.signOut();
+}
+
+export async function sendReset(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/account`,
+  });
+  return { error: error?.message ?? null };
+}
+
+export async function fetchMyOrders(orgId: string): Promise<CustomerOrder[]> {
+  const { data, error } = await supabase.rpc("app_customer_orders", { p_org: orgId });
+  if (error) return [];
+  return (data as CustomerOrder[] | null) ?? [];
+}
+
+export async function fetchMyProfile(orgId: string): Promise<CustomerProfile | null> {
+  const { data, error } = await supabase.rpc("app_customer_profile", { p_org: orgId });
+  if (error) return null;
+  return (data as CustomerProfile | null) ?? null;
+}
+
+export async function saveMyProfile(orgId: string, name: string, phone: string) {
+  const { data, error } = await supabase.rpc("app_customer_save_profile", {
+    p_org: orgId, p_name: name, p_phone: phone,
+  });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; error?: string };
+  return { ok: Boolean(r.ok), error: r.error ?? null };
+}
+
+// ---------------------------------------------------------------------------
+// Special orders — catering, bulk, custom. A conversation before it is a sale,
+// so it becomes a ticket in the business's console Inbox rather than a cart
+// checkout. See migration 0078.
+// ---------------------------------------------------------------------------
+
+export type SpecialOrderKind = "catering" | "bulk" | "custom" | "event";
+
+export async function submitSpecialOrder(orgId: string, input: {
+  name: string; email: string; phone?: string;
+  kind: SpecialOrderKind; when?: string; headcount?: number; budget?: number; details: string;
+}): Promise<{ ok: boolean; reference?: string; error?: string }> {
+  const { data, error } = await supabase.rpc("app_submit_special_order", {
+    p_org: orgId,
+    p_name: input.name,
+    p_email: input.email,
+    p_phone: input.phone ?? "",
+    p_kind: input.kind,
+    p_when: input.when || null,
+    p_headcount: input.headcount ?? null,
+    p_budget_cents: input.budget != null ? Math.round(input.budget * 100) : null,
+    p_details: input.details,
+  });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; reference?: string; error?: string };
+  return { ok: Boolean(r.ok), reference: r.reference, error: r.error };
 }

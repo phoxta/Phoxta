@@ -2,7 +2,6 @@ import RLink from "@/components/common/RLink";
 
 const INFO = [
     ["about.html", "About Us"],
-    ["store-list.html", "Our Stories"],
     ["#", "Size Guide"],
     ["contact.html", "Contact us"],
 ];

@@ -249,3 +249,74 @@ export function isReservationPaid(r: ReservationLookup | null): boolean {
   const status = (r.status || "").toLowerCase();
   return status === "confirmed" || status === "completed" || r.metadata?.paid === true;
 }
+
+
+// ---------------------------------------------------------------------------
+// Customer accounts
+//
+// A storefront customer is an ordinary Supabase auth user. Their orders and
+// bookings are matched on the VERIFIED email in their JWT (migration 0077), so
+// nothing here can be spoofed and no customer can read another's history.
+// ---------------------------------------------------------------------------
+
+export type CustomerOrder = {
+  id: string; reference: string; status: string; fulfilment: string | null;
+  total_cents: number; refunded_cents: number; currency: string;
+  placed_at: string; paid_at: string | null; tracking: string | null; notes: string | null;
+  items: { name: string; quantity: number; unit_price_cents: number; notes: string | null }[];
+};
+
+export type CustomerBooking = {
+  kind: "appointment" | "reservation"; id: string; reference: string;
+  when: string; until?: string; status: string; units?: number;
+  total_cents?: number; currency?: string; notes?: string | null;
+};
+
+export type CustomerProfile = { name: string | null; email: string; phone: string | null; company: string | null };
+
+export async function signUp(email: string, password: string, name?: string) {
+  const { error } = await supabase.auth.signUp({
+    email, password, options: { data: name ? { full_name: name } : undefined },
+  });
+  return { error: error?.message ?? null };
+}
+export async function signIn(email: string, password: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  return { error: error?.message ?? null };
+}
+export async function signOut() {
+  await supabase.auth.signOut();
+}
+export async function sendReset(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/account`,
+  });
+  return { error: error?.message ?? null };
+}
+export async function fetchMyOrders(orgId: string): Promise<CustomerOrder[]> {
+  const { data, error } = await supabase.rpc("app_customer_orders", { p_org: orgId });
+  if (error) return [];
+  return (data as CustomerOrder[] | null) ?? [];
+}
+export async function fetchMyBookings(orgId: string): Promise<CustomerBooking[]> {
+  const { data, error } = await supabase.rpc("app_customer_bookings", { p_org: orgId });
+  if (error) return [];
+  return (data as CustomerBooking[] | null) ?? [];
+}
+export async function cancelMyBooking(orgId: string, id: string) {
+  const { data, error } = await supabase.rpc("app_customer_cancel_booking", { p_org: orgId, p_id: id });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; error?: string };
+  return { ok: Boolean(r.ok), error: r.error ?? null };
+}
+export async function fetchMyProfile(orgId: string): Promise<CustomerProfile | null> {
+  const { data, error } = await supabase.rpc("app_customer_profile", { p_org: orgId });
+  if (error) return null;
+  return (data as CustomerProfile | null) ?? null;
+}
+export async function saveMyProfile(orgId: string, name: string, phone: string) {
+  const { data, error } = await supabase.rpc("app_customer_save_profile", { p_org: orgId, p_name: name, p_phone: phone });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; error?: string };
+  return { ok: Boolean(r.ok), error: r.error ?? null };
+}

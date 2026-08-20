@@ -1,11 +1,14 @@
 import { useRef, useState } from "react";
 import { dishes, money } from "@/data/menu";
+import { useMenu } from "@/util/menu";
 
-// AI Concierge — connects to the Phoxta unified agent (agent-inbound) when the
-// business is configured with its public key. Falls back to an on-device menu
-// assistant so the demo is always useful. The same brain powers phone/SMS/chat.
+// AI Concierge — connects to the Phoxta unified agent (agent-inbound) addressed
+// by THIS tenant's agent public_key, resolved at runtime from the menu context
+// (every buyer's storefront runs from the same deployment, so a build-time key
+// would send every store's chats into whichever business owned that key).
+// Falls back to an on-device menu assistant so the demo is always useful.
 const AGENT_URL = (import.meta.env.VITE_AGENT_URL as string | undefined) ?? "";
-const AGENT_KEY = (import.meta.env.VITE_AGENT_PUBLIC_KEY as string | undefined) ?? "";
+const ENV_AGENT_KEY = (import.meta.env.VITE_AGENT_PUBLIC_KEY as string | undefined) ?? "";
 const ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
 type Msg = { role: "bot" | "user"; text: string };
@@ -38,6 +41,10 @@ function localReply(q: string): string {
 }
 
 export default function AIChat() {
+    // Per-tenant: the storefront resolves its own business from the hostname, so
+    // the chat must address that business's agent, not the build's default.
+    const { agentKey } = useMenu();
+    const AGENT_KEY = agentKey || ENV_AGENT_KEY;
     const [open, setOpen] = useState(false);
     const [msgs, setMsgs] = useState<Msg[]>([
         { role: "bot", text: "Bonsoir! I'm the Saveur concierge. Ask me for a recommendation, a wine pairing, or to book a table." },

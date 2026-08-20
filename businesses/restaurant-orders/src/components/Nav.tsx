@@ -6,7 +6,8 @@ const LINKS: [string, string][] = [
     ["/", "Home"],
     ["/about", "About"],
     ["/menu", "Menu"],
-    ["/reservations", "Reservations"],
+    ["/special-orders", "Special orders"],
+    ["/track", "Track order"],
     ["/contact", "Contact"],
 ];
 
@@ -34,7 +35,10 @@ export default function Nav() {
                                     {label}
                                 </NavLink>
                             ))}
-                            <Link to="/reservations" className="nav-cta">Reserve a Table</Link>
+                            <Link to="/account" className="nav-account" aria-label="Your account" title="Your account">
+                                <i className="fas fa-user" />
+                            </Link>
+                            <Link to="/menu" className="nav-cta">Order now</Link>
                             <button className="nav-cart" onClick={() => setOpen(true)} aria-label="Cart">
                                 <i className="fas fa-shopping-bag" />
                                 {count > 0 && <span className="nav-cart-count">{count}</span>}

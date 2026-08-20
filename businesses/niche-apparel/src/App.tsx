@@ -9,12 +9,17 @@ import ContactPage from "@/pages/ContactPage";
 import OrderTrackingPage from "@/pages/OrderTrackingPage";
 import CartDrawer from "@/components/CartDrawer";
 import AIStylist from "@/components/AIStylist";
+import AccountButton from "@/components/AccountButton";
+import AccountPage from "@/pages/Account";
+import { AccountProvider } from "@/util/account";
 
 // Aurelia fashion store — built on the real Phoxta design layer (MainLayout +
 // GSAP effects + design system), with fashion routes and a custom menu.
 export default function App() {
     return (
-        <>
+        // Session provider wraps the routes so the account page (and anything
+        // else that needs to know who is signed in) can read it.
+        <AccountProvider>
             <Routes>
                 <Route element={<MainLayout headerStyle={2} footerStyle={2} />}>
                     <Route path="/" element={<HomePage />} />
@@ -26,11 +31,13 @@ export default function App() {
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/track-order" element={<OrderTrackingPage />} />
+                    <Route path="/account" element={<AccountPage />} />
                     <Route path="*" element={<HomePage />} />
                 </Route>
             </Routes>
             <CartDrawer />
             <AIStylist />
-        </>
+            <AccountButton />
+        </AccountProvider>
     );
 }

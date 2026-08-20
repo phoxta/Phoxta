@@ -30,14 +30,12 @@ import PayDone from "@/app/(app)/(other-pages)/pay-done/page";
 import Subscription from "@/app/(app)/(other-pages)/subscription/page";
 import ManageBooking from "@/app/(app)/(other-pages)/manage-booking/page";
 // Account
-import Account from "@/app/(account)/account/page";
-import AccountBilling from "@/app/(account)/account-billing/page";
-import AccountPassword from "@/app/(account)/account-password/page";
-import AccountSavelists from "@/app/(account)/account-savelists/page";
+import Account from "@/pages/Account";
 // Auth
-import Login from "@/app/(auth)/login/page";
-import Signup from "@/app/(auth)/signup/page";
-import ForgotPassword from "@/app/(auth)/forgot-password/page";
+// One component covers sign in, register and password reset.
+import Login from "@/pages/Account";
+import Signup from "@/pages/Account";
+import ForgotPassword from "@/pages/Account";
 
 const r = (path: string, Comp: ComponentType) => ({ path, element: createElement(Comp) });
 
@@ -66,9 +64,9 @@ export const router = createBrowserRouter([
             r("/manage-booking", page(ManageBooking, [OtherPagesLayout])),
             // Account
             r("/account", page(Account, [AccountLayout])),
-            r("/account-billing", page(AccountBilling, [AccountLayout])),
-            r("/account-password", page(AccountPassword, [AccountLayout])),
-            r("/account-savelists", page(AccountSavelists, [AccountLayout])),
+            r("/account-billing", page(Account, [AccountLayout])),
+            r("/account-password", page(Account, [AccountLayout])),
+            r("/account-savelists", page(Account, [AccountLayout])),
             // Auth
             r("/login", page(Login, [AuthLayout])),
             r("/signup", page(Signup, [AuthLayout])),

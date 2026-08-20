@@ -27,7 +27,6 @@ export default function Topbar() {
                         <div className="topbar-right justify-content-end d-none d-xl-flex">
                             <RLink to="about.html" className="text_white text-caption-1 link">About</RLink>
                             <RLink to="contact.html" className="text_white text-caption-1 link">Contact</RLink>
-                            <RLink to="store-list.html" className="text_white text-caption-1 link">Location</RLink>
                         </div>
                     </div>
                 </div>

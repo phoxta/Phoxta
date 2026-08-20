@@ -16,7 +16,6 @@ const SHOP_LINKS = [
 const PAGE_LINKS = [
     ["about.html", "About Us"],
     ["contact.html", "Contact"],
-    ["store-list.html", "Store List"],
     ["faqs.html", "FAQs"],
     ["my-account.html", "My Account"],
     ["term-of-use.html", "Terms of Use"],
