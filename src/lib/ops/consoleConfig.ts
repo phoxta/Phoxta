@@ -41,6 +41,16 @@ const RENTAL: VerticalConsole = {
   booking: "reservations",
   modules: ["overview", "inbox", "commerce", "reservations", "crm", "marketing", "invoicing", "agent", "settings"],
 };
+// Car SALES (a dealership or marketplace) is a different business from rental:
+// the vehicle is sold once, not booked by the day. So there is no reservations
+// surface — but there IS an appointments one, because the thing a buyer books
+// is a TEST DRIVE. Enquiries and part-exchange valuations arrive in the Inbox.
+const SALES: VerticalConsole = {
+  commerceLabel: "Inventory",
+  itemNoun: "Vehicle",
+  booking: "appointments",
+  modules: ["overview", "inbox", "commerce", "bookings", "crm", "marketing", "invoicing", "agent", "settings"],
+};
 const EXPERIENCES: VerticalConsole = {
   commerceLabel: "Experiences",
   itemNoun: "Experience",
@@ -59,11 +69,15 @@ const SERVICES: VerticalConsole = {
   booking: "appointments",
   modules: ["overview", "inbox", "bookings", "crm", "marketing", "invoicing", "agent", "settings"],
 };
+// Digital-first kitchen: the business is online ordering (delivery/collection)
+// plus special orders — catering, bulk and custom bakes. There is no dining
+// room, so the Reservations module is deliberately absent; a special order
+// arrives as a ticket in the Inbox, where it is answered and quoted.
 const RESTAURANT: VerticalConsole = {
   commerceLabel: "Menu",
   itemNoun: "Menu item",
-  booking: "reservations", // table reservations
-  modules: ["overview", "inbox", "commerce", "reservations", "crm", "marketing", "invoicing", "agent", "settings"],
+  booking: "none",
+  modules: ["overview", "inbox", "commerce", "crm", "marketing", "invoicing", "agent", "settings"],
 };
 // Default: generic / unknown vertical. One booking surface only (reservations).
 const DEFAULT: VerticalConsole = {
@@ -77,7 +91,11 @@ const DEFAULT: VerticalConsole = {
 const BY_VERTICAL: Record<string, VerticalConsole> = {
   retail: RETAIL, fashion: RETAIL, apparel: RETAIL, ecommerce: RETAIL, shop: RETAIL,
   furniture: RETAIL, store: RETAIL, goods: RETAIL, homeware: RETAIL,
-  automotive: RENTAL, car: RENTAL, cars: RENTAL, "car-rental": RENTAL, rental: RENTAL, rentals: RENTAL,
+  // "automotive"/"car" on its own means selling cars far more often than renting
+  // them, so those map to SALES; only the explicitly-rental words stay on RENTAL.
+  automotive: SALES, car: SALES, cars: SALES, dealership: SALES, dealer: SALES,
+  "car-sales": SALES, "car-dealership": SALES, motors: SALES, vehicles: SALES,
+  "car-rental": RENTAL, rental: RENTAL, rentals: RENTAL, hire: RENTAL, "car-hire": RENTAL,
   experience: EXPERIENCES, experiences: EXPERIENCES, tours: EXPERIENCES, activities: EXPERIENCES,
   travel: STAYS, stays: STAYS, stay: STAYS, hotel: STAYS, hospitality: STAYS, lodging: STAYS,
   services: SERVICES, service: SERVICES, salon: SERVICES, cleaning: SERVICES, appointments: SERVICES,
@@ -95,6 +113,10 @@ const PHRASE_RULES: Array<{ needles: string[]; console: VerticalConsole }> = [
     ],
     console: SERVICES,
   },
+  // Must beat the token pass: "Car Rental" tokenises to ["car","rental"] and
+  // "car" now means SALES, so without this a rental business would be handed a
+  // sales console.
+  { needles: ["rental", "rent-a", "rent a", "hire", "leasing"], console: RENTAL },
   { needles: ["bakery", "boutique", "jewel", "grocer"], console: RETAIL },
   { needles: ["coffee", "cafe", "bistro", "diner"], console: RESTAURANT },
 ];

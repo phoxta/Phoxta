@@ -60,22 +60,7 @@ import type { Call, Device } from "@twilio/voice-sdk";
 // Badge colours use the -emphasis text tokens: Bootstrap's plain .text-warning /
 // .text-danger / .text-success on their -subtle backgrounds fall below the 4.5:1
 // contrast these small badges need.
-const STATUS_STYLE: Record<ConvStatus, string> = {
-  open: "bg-warning-subtle text-warning-emphasis",
-  handled: "bg-success-subtle text-success-emphasis",
-  escalated: "bg-danger-subtle text-danger-emphasis",
-  // Snoozed is a live state, not a finished one — it must not look like closed.
-  snoozed: "bg-info-subtle text-info-emphasis",
-  closed: "bg-neutral-100 neutral-500",
-};
 /** Owner-facing wording for the raw enum (the button says "Take over", not "escalate"). */
-const STATUS_LABEL: Record<ConvStatus, string> = {
-  open: "Open",
-  handled: "Handled",
-  escalated: "Taken over",
-  snoozed: "⏰ Snoozed",
-  closed: "Closed",
-};
 /** Confirmation wording, so a click on "Take over" never toasts "Marked escalated." */
 const CONV_STATUS_TOAST: Record<ConvStatus, string> = {
   open: "Reopened",
@@ -147,6 +132,125 @@ const relTime = (iso: string) => {
 };
 const sentAt = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+/** Two-letter avatar initials: "Jenny Wilson" -> JW, "Vercel" -> VE. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+const ICON_SEARCH = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+  </svg>
+);
+const ICON_SEND = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+  </svg>
+);
+const ICON_MIC = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"
+       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="9" y="2" width="6" height="12" rx="3" />
+    <path d="M5 11a7 7 0 0014 0M12 18v4M8 22h8" />
+  </svg>
+);
+
+/** Delivery tick beside an outgoing bubble — blue when sent, red when it failed. */
+const TICK = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"
+       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 6L9 17l-5-5" />
+  </svg>
+);
+
+/**
+ * Inbox styling, kept local to the page (the global stylesheet stays untouched,
+ * as on the Overview). Colours are the messaging design's: a violet outgoing
+ * bubble, plain bordered incoming bubbles, blue delivery ticks, and a tinted row
+ * for whichever conversation is open.
+ */
+const INBOX_CSS = `
+/* Top bar: who has written in lately, search, start a new thread. */
+.ibx-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.ibx-avs{display:flex;align-items:center;flex:0 0 auto}
+.ibx-avs .a{width:38px;height:38px;flex:0 0 38px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:700;color:#fff;background:var(--at-neutral-700);
+  margin-left:-9px;box-shadow:0 0 0 3px var(--at-neutral-50)}
+.ibx-avs .a:first-child{margin-left:0}
+.ibx-avs .a.on{box-shadow:0 0 0 2px var(--at-neutral-50),0 0 0 4px #7C3AED}
+.ibx-avs .a.unread{box-shadow:0 0 0 2px var(--at-neutral-50),0 0 0 4px #22A45D}
+.ibx-search{flex:1 1 220px;min-width:0;display:flex;align-items:center;gap:8px;background:var(--at-neutral-0);
+  border:1px solid var(--at-neutral-200);border-radius:999px;padding:8px 14px}
+.ibx-search input{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;font-size:12.5px}
+.ibx-search input::placeholder{color:var(--at-neutral-400)}
+.ibx-search svg{color:var(--at-neutral-400);flex:0 0 auto}
+.ibx-new{display:inline-flex;align-items:center;gap:10px;background:var(--at-neutral-0);
+  border:1px solid var(--at-neutral-200);border-radius:999px;padding:5px 5px 5px 16px;font-size:12.5px;
+  font-weight:600;color:var(--at-neutral-900);cursor:pointer;flex:0 0 auto}
+.ibx-new i{width:32px;height:32px;border-radius:50%;background:var(--at-neutral-900);color:#fff;font-style:normal;
+  display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1}
+.ibx-new:hover i{background:#7C3AED}
+
+.ibx-thav{width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:var(--at-neutral-700);color:#fff;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.ibx-day{display:flex;justify-content:center;margin:14px 0 12px}
+.ibx-day span{font-size:11px;color:var(--at-neutral-400)}
+.ibx-row{display:flex;align-items:flex-end;gap:7px;margin-bottom:6px}
+.ibx-row.mine{justify-content:flex-end}
+.ibx-bubble{max-width:78%;padding:10px 13px;border-radius:14px;font-size:12.5px;line-height:1.55;
+  white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.ibx-row.theirs .ibx-bubble{background:var(--at-neutral-0);border:1px solid var(--at-neutral-200);
+  color:var(--at-neutral-900);border-bottom-left-radius:5px}
+.ibx-row.mine .ibx-bubble{background:#7C3AED;color:#fff;border-bottom-right-radius:5px}
+.ibx-row.mine.agent .ibx-bubble{background:#EDE9FE;color:#4C1D95}
+.ibx-tick{color:#2563EB;flex:0 0 auto;margin-bottom:3px}
+.ibx-tick.bad{color:#DC3545}
+.ibx-sender{display:flex;align-items:center;gap:7px;margin:0 0 14px 2px}
+.ibx-sender.mine{flex-direction:row-reverse;margin-left:0;margin-right:2px}
+.ibx-sender .av{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--at-neutral-700);color:#fff;
+  font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.ibx-sender b{font-size:11px;font-weight:600;color:var(--at-neutral-900)}
+.ibx-sender i{font-size:10px;font-style:normal;color:var(--at-neutral-400)}
+.ibx-note{align-self:center;max-width:92%;background:#FEF3C7;color:#92400E;border-radius:10px;
+  padding:8px 12px;font-size:11.5px;margin-bottom:10px}
+
+/* Composer: rounded field with attach + send inside, violet mic alongside. */
+.ibx-comp{display:flex;align-items:center;gap:9px}
+.ibx-comp .box{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:7px;background:var(--at-neutral-0);
+  border:1px solid var(--at-neutral-200);border-radius:22px;padding:5px 7px 5px 13px}
+.ibx-comp .box textarea{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;font-size:12.5px;
+  resize:none;padding:7px 0;max-height:110px}
+.ibx-icobtn{border:0;background:transparent;color:var(--at-neutral-500);width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 30px}
+.ibx-icobtn:hover{background:var(--at-neutral-100);color:var(--at-neutral-900)}
+.ibx-icobtn:disabled{opacity:.4;cursor:default}
+.ibx-mic{flex:0 0 40px;width:40px;height:40px;border:0;border-radius:50%;background:#7C3AED;color:#fff;
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ibx-mic:hover{background:#6D28D9}
+.ibx-mic.on{background:#DC3545}
+
+/* Chats rail */
+.ibx-chat{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;
+  border-radius:10px;padding:9px 10px;cursor:pointer}
+.ibx-chat:hover{background:var(--at-neutral-50)}
+.ibx-chat.sel{background:#E7F3FC}
+.ibx-chat .av{position:relative;flex:0 0 34px;width:34px;height:34px;border-radius:50%;background:var(--at-neutral-700);
+  color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.ibx-chat .av .dot{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;
+  background:#DC3545;box-shadow:0 0 0 2px var(--at-neutral-0)}
+.ibx-chat .txt{min-width:0;flex:1 1 auto}
+.ibx-chat .txt b{display:block;font-size:12.5px;font-weight:600;color:var(--at-neutral-900);line-height:1.25;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibx-chat .txt span{display:block;font-size:11px;color:var(--at-neutral-500);line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibx-chat .tm{flex:0 0 auto;font-size:10.5px;color:var(--at-neutral-400);align-self:flex-start;padding-top:2px}
+`;
+
 /** Long URLs, order ids and tracking numbers must wrap instead of stretching the bubble. */
 const BUBBLE_STYLE: React.CSSProperties = { maxWidth: "85%", whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" };
 const BUBBLE_META = "d-flex flex-wrap align-items-center gap-1 text-uppercase opacity-75 mb-1";
@@ -279,10 +383,8 @@ function MessageBubble({ m }: { m: ConversationMessage }) {
   const [expanded, setExpanded] = useState(false);
   if (m.role === "note") {
     return (
-      <div className="align-self-center text-center" style={{ maxWidth: "92%" }}>
-        <div className="bg-warning-subtle text-warning-emphasis rounded-3 px-3 py-2 fz-font-sm" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" }}>
-          <span className="text-uppercase opacity-75 me-1" style={{ fontSize: 10 }}>Internal note</span>{m.body}
-        </div>
+      <div className="ibx-note" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+        <span className="text-uppercase opacity-75 me-1" style={{ fontSize: 9 }}>Internal note</span>{m.body}
       </div>
     );
   }
@@ -292,19 +394,13 @@ function MessageBubble({ m }: { m: ConversationMessage }) {
   const subject = typeof meta.subject === "string" && meta.subject.trim() ? meta.subject : null;
   const failed = m.delivery_status === "failed";
   const delivery = m.delivery_status ? DELIVERY_LABEL[m.delivery_status] : undefined;
+  const label = AUTHOR_LABEL[m.role] ?? m.role;
   return (
-    <div className={`d-flex ${mine ? "justify-content-end" : "justify-content-start"}`}>
-      <div
-        className={`px-3 py-2 rounded-4 fz-font-md ${m.role === "customer" ? "bg-neutral-100 neutral-900" : m.role === "agent" ? "bg-primary-subtle text-primary-emphasis" : "bg-neutral-900 text-white"}`}
-        style={{ ...BUBBLE_STYLE, ...(html ? { width: "85%" } : {}) }}
-      >
-        <div className={BUBBLE_META} style={{ fontSize: 10 }}>
-          <span>{AUTHOR_LABEL[m.role] ?? m.role}</span>
-          <span>· {sentAt(m.created_at)}</span>
-          {mine && delivery && (
-            <span className={failed ? "text-danger fw-600" : ""}>· {delivery}</span>
-          )}
-        </div>
+    <>
+      {/* mine = anything the business sent. The AI agent keeps its own lilac so a
+          reply the agent wrote is never mistaken for one a person wrote. */}
+      <div className={`ibx-row ${mine ? (m.role === "agent" ? "mine agent" : "mine") : "theirs"}`}>
+        <div className="ibx-bubble" style={html ? { width: "85%", maxWidth: "85%" } : undefined}>
         {subject && <div className="fw-600 mb-1">{subject}</div>}
         {html ? (
           // sandbox="" blocks scripts/navigation; content scrolls inside a fixed max height.
@@ -317,8 +413,22 @@ function MessageBubble({ m }: { m: ConversationMessage }) {
         ) : (
           m.body
         )}
+        </div>
+        {mine && (
+          <span className={`ibx-tick${failed ? " bad" : ""}`} title={delivery ?? undefined} aria-hidden="true">
+            {TICK}
+          </span>
+        )}
       </div>
-    </div>
+
+      {/* Sender strip under the bubble, as in the design: avatar, name, time. */}
+      <div className={`ibx-sender${mine ? " mine" : ""}`}>
+        <span className="av" aria-hidden="true">{label.slice(0, 2).toUpperCase()}</span>
+        <b>{label}</b>
+        <i>{sentAt(m.created_at)}</i>
+        {mine && delivery && <i className={failed ? "text-danger fw-600" : ""}>· {delivery}</i>}
+      </div>
+    </>
   );
 }
 
@@ -449,6 +559,9 @@ export default function InboxPage() {
 
   // Composer
   const [draft, setDraft] = useState("");
+  // Dictation for the composer, via the browser's own speech API — free, keyless,
+  // and it fills the field so the text is reviewable before it is sent.
+  const [dictating, setDictating] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [busy, setBusy] = useState(false);
@@ -1183,6 +1296,25 @@ export default function InboxPage() {
 
   const isVoice = selConv?.channel_type === "voice";
   const voiceCollapsed = isVoice && calls.length > 0 && !showTranscript;
+  function dictate() {
+    type SR = { start: () => void; lang: string; interimResults: boolean;
+                onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+                onend: (() => void) | null };
+    const w = window as unknown as { SpeechRecognition?: new () => SR; webkitSpeechRecognition?: new () => SR };
+    const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!Ctor) { toastError("Voice input isn't supported in this browser — type your message instead."); return; }
+    const rec = new Ctor();
+    rec.lang = navigator.language || "en-US";
+    rec.interimResults = false;
+    rec.onresult = (e) => {
+      const said = Array.from(e.results).map((r) => r[0]?.transcript ?? "").join(" ").trim();
+      if (said) setDraft((d) => (d ? `${d} ${said}` : said));
+    };
+    rec.onend = () => setDictating(false);
+    setDictating(true);
+    rec.start();
+  }
+
   const transcriptLines = messages.filter((m) => m.role !== "note").length;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1190,6 +1322,53 @@ export default function InboxPage() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="row g-4">
+      <style>{INBOX_CSS}</style>
+
+      {/* ── Top bar ───────────────────────────────────────────────────────────
+          Recent writers, search, and start-a-thread — spanning both panes as in
+          the design. The avatars are real conversations: clicking one opens it,
+          a green ring means unread and the violet ring is the open thread. */}
+      <div className="col-12">
+        <div className="ibx-top">
+          <div className="ibx-avs" aria-label="Recent conversations">
+            {items.slice(0, 6).map((it) => {
+              const nm = it.kind === "conversation"
+                ? (it.conv.customer_name || it.conv.customer_phone || "Customer")
+                : (it.ticket.customer_name || "Customer");
+              const unread = it.kind === "conversation" && it.conv.unread;
+              const open = selected != null && itemKey(it) === itemKey(selected);
+              return (
+                <button
+                  key={`av-${itemKey(it)}`}
+                  type="button"
+                  className={`a${open ? " on" : unread ? " unread" : ""}`}
+                  title={nm}
+                  aria-label={`Open conversation with ${nm}`}
+                  onClick={() => openItem(it)}
+                >
+                  {initialsOf(nm)}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="ibx-search">
+            <input
+              ref={searchRef}
+              placeholder="Search"
+              aria-label="Search conversations and tickets"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            {ICON_SEARCH}
+          </div>
+
+          <button type="button" className="ibx-new" onClick={() => setComposer({ to: "", subject: "" })}>
+            New Chats
+            <i aria-hidden="true">+</i>
+          </button>
+        </div>
+      </div>
       {error && <div className="col-12"><div className="alert alert-danger py-2 px-3 fz-font-md mb-0" role="alert">{error}</div></div>}
       {composer && (
         <EmailComposer
@@ -1212,13 +1391,14 @@ export default function InboxPage() {
         />
       )}
 
-      {/* ── Unified queue ─────────────────────────────────────────────────── */}
-      <div className={`col-lg-4 ${selected ? "d-none d-lg-block" : ""}`}>
-        <h2 className="visually-hidden">Conversations and tickets</h2>
+      {/* ── Chats rail (right in the design; renders after the thread) ────── */}
+      <div className={`col-lg-4 order-lg-2 ${selected ? "d-none d-lg-block" : ""}`}>
         <div className="d-flex align-items-center gap-2 mb-2">
-          <button type="button" className="btn btn-dark btn-sm rounded-3 flex-grow-1 py-2" onClick={() => setComposer({ to: "", subject: "" })}><span aria-hidden="true">✉ </span>New email</button>
-          <button type="button" className={`btn btn-sm rounded-3 py-2 px-3 text-nowrap ${newTicketOpen ? "btn-secondary" : "btn-outline-dark"}`} aria-expanded={newTicketOpen} onClick={() => setNewTicketOpen((o) => !o)}>+ Ticket</button>
-          <div className="d-none d-lg-block"><ShortcutsHint open={shortcutsOpen} setOpen={setShortcutsOpen} /></div>
+          <h2 className="fz-font-md fw-600 neutral-900 m-0">Chats</h2>
+          <div className="ms-auto d-flex align-items-center gap-2">
+            <button type="button" className={`btn btn-sm rounded-3 py-1 px-2 text-nowrap fz-font-sm ${newTicketOpen ? "btn-secondary" : "btn-outline-dark"}`} aria-expanded={newTicketOpen} onClick={() => setNewTicketOpen((o) => !o)}>+ Ticket</button>
+            <div className="d-none d-lg-block"><ShortcutsHint open={shortcutsOpen} setOpen={setShortcutsOpen} /></div>
+          </div>
         </div>
         {newTicketOpen && (
           <form onSubmit={submitTicket} className="bg-neutral-0 rounded-4 p-3 border-100 mb-2">
@@ -1238,13 +1418,12 @@ export default function InboxPage() {
           </form>
         )}
 
-        {/* Search + channel share one line; the status chips scroll on one more.
-            Two rows of chrome instead of four keeps the first conversation on screen at 390px. */}
+        {/* Search moved to the top bar with the design; the channel picker stays
+            here beside the status chips. */}
         <div className="d-flex align-items-center gap-2 mb-2">
-          <input ref={searchRef} className="form-control form-control-sm rounded-3" placeholder="Search name, phone, email…" aria-label="Search conversations and tickets" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
           <select
             className="form-select form-select-sm rounded-3 flex-shrink-0"
-            style={{ width: "auto", maxWidth: 140 }}
+            style={{ width: "auto", maxWidth: 160 }}
             aria-label="Filter by channel"
             value={fChannel}
             onChange={(e) => setFChannel(e.target.value)}
@@ -1298,9 +1477,11 @@ export default function InboxPage() {
               // The ring is a keyboard affordance — it stayed on row 1 on every
               // load before, competing with the row that was actually open.
               const isCursor = keyboardActive && cursor === i;
-              const rowClass = `text-start w-100 bg-neutral-0 rounded-4 p-3 border-100 ${isSel ? "bg-neutral-100" : ""}`;
+              // The design's chat row: avatar, name, one-line preview, time —
+              // with the open conversation tinted rather than outlined.
+              const rowClass = `ibx-chat${isSel ? " sel" : ""}`;
               const rowStyle: React.CSSProperties | undefined =
-                isCursor ? { boxShadow: "inset 0 0 0 2px #111" } : isSel ? { borderLeft: "3px solid #111" } : undefined;
+                isCursor ? { boxShadow: "inset 0 0 0 2px #111" } : undefined;
               if (it.kind === "ticket") {
                 const t = it.ticket;
                 return (
@@ -1322,28 +1503,20 @@ export default function InboxPage() {
               const c = it.conv;
               return (
                 <button key={`c-${it.id}`} data-idx={i} type="button" onClick={() => openItem(it)} onFocus={() => setCursorKey(itemKey(it))} className={rowClass} style={rowStyle} aria-current={isSel}>
-                  <div className="d-flex align-items-center justify-content-between gap-2">
-                    <span className={`text-truncate ${c.unread ? "fw-700" : "fw-600"}`} style={{ minWidth: 0 }}>
-                      {/* A bare <span aria-label> is a generic role — screen readers drop the name. */}
-                      {c.unread && (
-                        <>
-                          <span className="visually-hidden">Unread. </span>
-                          <span className="text-primary me-1" aria-hidden="true">●</span>
-                        </>
-                      )}
+                  <span className="av" aria-hidden="true">
+                    {initialsOf(c.customer_name || c.customer_phone || "Customer")}
+                    {/* Unread shows as the dot on the avatar, as in the design. */}
+                    {c.unread && <span className="dot" />}
+                  </span>
+                  <span className="txt">
+                    {/* A bare colour cue is invisible to a screen reader. */}
+                    {c.unread && <span className="visually-hidden">Unread. </span>}
+                    <b style={c.unread ? { fontWeight: 700 } : undefined}>
                       {c.customer_name || c.customer_phone || "Customer"}
-                    </span>
-                    <span className={`badge fw-500 flex-shrink-0 ${STATUS_STYLE[c.status]}`}>{STATUS_LABEL[c.status]}</span>
-                  </div>
-                  <div className="fz-font-sm neutral-500 d-flex flex-wrap align-items-center gap-1 mt-1">
-                    <span className={`badge fw-500 ${CHANNEL_STYLE[c.channel_type] ?? "bg-neutral-100 neutral-700"}`}>{channelLabel(c.channel_type)}</span>
-                    {c.intent && <span className="badge bg-neutral-100 neutral-700 fw-500">{c.intent}</span>}
-                    {c.sentiment && <span className={`badge fw-500 text-capitalize ${SENTIMENT_STYLE[c.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{c.sentiment}</span>}
-                    {c.assigned_to && <span className="badge bg-neutral-100 neutral-700 fw-500">@{memberName(c.assigned_to)}</span>}
-                    {c.tags?.map((t) => <span key={t} className="badge bg-neutral-100 neutral-700 fw-500">#{t}</span>)}
-                    <span className="ms-auto text-nowrap neutral-400">{relTime(it.at)}</span>
-                  </div>
-                  {c.summary && <div className={`fz-font-sm text-truncate mt-1 ${c.unread ? "neutral-800 fw-600" : "neutral-500"}`}>{c.summary}</div>}
+                    </b>
+                    <span>{c.summary || channelLabel(c.channel_type)}</span>
+                  </span>
+                  <span className="tm">{relTime(it.at)}</span>
                 </button>
               );
             })}
@@ -1356,8 +1529,8 @@ export default function InboxPage() {
         )}
       </div>
 
-      {/* ── Thread ────────────────────────────────────────────────────────── */}
-      <div className={`col-lg-5 ${selected ? "" : "d-none d-lg-block"}`}>
+      {/* ── Thread (widest pane, first on the left) ───────────────────────── */}
+      <div className={`col-lg-8 order-lg-1 ${selected ? "" : "d-none d-lg-block"}`}>
         {!selected ? (
           <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center" style={{ minHeight: 200 }}>
             <div className="fz-font-md fw-600 neutral-700">Pick a message to read it</div>
@@ -1438,15 +1611,28 @@ export default function InboxPage() {
           /* ---- Conversation thread ---- */
           <div className="bg-neutral-0 rounded-4 border-100 p-3 p-lg-4 d-flex flex-column" style={{ minHeight: 480 }}>
             <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none d-lg-none text-start mb-2 ops-tap" onClick={closeSelected}>← Inbox</button>
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-              <div style={{ minWidth: 0 }}>
-                <h2 className="fw-600 fz-font-lg mb-0 d-flex align-items-center flex-wrap gap-2">
-                  {selConv.customer_name || selConv.customer_phone || "Customer"}
-                  <span className={`badge fw-500 fz-font-sm ${CHANNEL_STYLE[selConv.channel_type] ?? "bg-neutral-100 neutral-700"}`}>{channelLabel(selConv.channel_type)}</span>
-                  {selConv.intent && <span className="badge bg-neutral-100 neutral-700 fw-500 fz-font-sm">{selConv.intent}</span>}
-                  {selConv.sentiment && <span className={`badge fw-500 fz-font-sm text-capitalize ${SENTIMENT_STYLE[selConv.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{selConv.sentiment}</span>}
-                </h2>
-                <div className="fz-font-sm neutral-500" style={{ overflowWrap: "anywhere" }}>{[displayPhone(selConv.customer_phone), selConv.customer_email].filter(Boolean).join(" · ") || "—"}</div>
+            {/* Thread header, per the design: avatar · name · last-activity, with
+                the actions grouped on the right. Channel/intent/sentiment stay —
+                they say which surface this arrived on and how it is going. */}
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
+              <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+                <span className="ibx-thav" aria-hidden="true">
+                  {initialsOf(selConv.customer_name || selConv.customer_phone || "Customer")}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <h2 className="fw-600 fz-font-lg mb-0 d-flex align-items-center flex-wrap gap-2 lh-1">
+                    {selConv.customer_name || selConv.customer_phone || "Customer"}
+                    <span className={`badge fw-500 fz-font-sm ${CHANNEL_STYLE[selConv.channel_type] ?? "bg-neutral-100 neutral-700"}`}>{channelLabel(selConv.channel_type)}</span>
+                    {selConv.intent && <span className="badge bg-neutral-100 neutral-700 fw-500 fz-font-sm">{selConv.intent}</span>}
+                    {selConv.sentiment && <span className={`badge fw-500 fz-font-sm text-capitalize ${SENTIMENT_STYLE[selConv.sentiment] ?? "bg-neutral-100 neutral-700"}`}>{selConv.sentiment}</span>}
+                  </h2>
+                  <div className="fz-font-sm neutral-400 mt-1">
+                    {selConv.last_message_at ? relTime(selConv.last_message_at) : "—"}
+                    {[displayPhone(selConv.customer_phone), selConv.customer_email].filter(Boolean).length > 0 && (
+                      <span className="neutral-500"> · {[displayPhone(selConv.customer_phone), selConv.customer_email].filter(Boolean).join(" · ")}</span>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="d-flex flex-wrap gap-2 align-items-center">
                 {callTo && <button type="button" className={`btn btn-sm rounded-pill px-3 ops-tap ${callOpen ? "btn-dark" : "btn-outline-dark"}`} aria-expanded={callOpen} onClick={() => setCallOpen((o) => !o)} disabled={calling}><span aria-hidden="true">📞 </span>Call</button>}
@@ -1629,21 +1815,42 @@ export default function InboxPage() {
                 <input id="conv-subject" className="form-control form-control-sm rounded-3 mb-2" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
               </>
             )}
-            <form className="d-flex flex-column flex-sm-row gap-2" onSubmit={(e) => { e.preventDefault(); send(false); }}>
-              <textarea ref={composerRef} className="form-control rounded-3" rows={2} aria-label={mode === "note" ? "Internal note" : "Reply"} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={mode === "note" ? "Private note for your team (not sent)…" : `Reply over ${channelLabel(selConv.channel_type)}…`} />
-              <div className="d-flex flex-row flex-sm-column gap-2 align-self-stretch align-self-sm-end">
-                <button type="submit" className="btn btn-dark rounded-3 px-3 text-nowrap flex-grow-1" disabled={busy || !draft.trim()}>{busy ? "…" : mode === "note" ? "Save" : "Send"}</button>
-                {mode === "reply" && (
-                  <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 text-nowrap flex-grow-1" disabled={busy || !draft.trim()} onClick={() => send(true)} title="Send the reply and close the conversation (⇧⌘/Ctrl+Enter)">Send &amp; close</button>
-                )}
+            {/* Composer, per the design: one rounded field with send inside it and
+                the violet mic alongside. "Send & close" stays as a separate
+                action rather than being hidden behind an icon. */}
+            <form className="ibx-comp" onSubmit={(e) => { e.preventDefault(); send(false); }}>
+              <div className="box">
+                <textarea
+                  ref={composerRef}
+                  rows={1}
+                  aria-label={mode === "note" ? "Internal note" : "Reply"}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder={mode === "note" ? "Private note for your team (not sent)…" : "Type a message"}
+                />
+                <button type="submit" className="ibx-icobtn" disabled={busy || !draft.trim()} aria-label={mode === "note" ? "Save note" : "Send"}>
+                  {busy ? "…" : ICON_SEND}
+                </button>
               </div>
+              <button
+                type="button"
+                className={`ibx-mic${dictating ? " on" : ""}`}
+                onClick={dictate}
+                aria-label={dictating ? "Listening…" : "Dictate a message"}
+                aria-pressed={dictating}
+              >
+                {ICON_MIC}
+              </button>
             </form>
+            {mode === "reply" && (
+              <button type="button" className="btn btn-link btn-sm p-0 mt-2 text-decoration-none fz-font-sm" disabled={busy || !draft.trim()} onClick={() => send(true)} title="Send the reply and close the conversation (⇧⌘/Ctrl+Enter)">Send &amp; close</button>
+            )}
           </div>
         ) : null}
       </div>
 
-      {/* ── Context rail ──────────────────────────────────────────────────── */}
-      <div className={`col-lg-3 ${selected ? "" : "d-none d-lg-block"}`}>
+      {/* ── Conversation settings (under the chats list, per the design) ──── */}
+      <div className={`col-lg-4 order-lg-3 ${selected ? "" : "d-none d-lg-block"}`}>
         {selected && (
           <div className="d-flex flex-column gap-3">
             {/* What this customer has bought or booked comes first — it is what

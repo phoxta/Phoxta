@@ -114,6 +114,73 @@ export async function getOpsWindow(orgId: string, days = 30): Promise<OpsWindow>
   return { ...EMPTY_OPS_WINDOW, ...((data as Partial<OpsWindow> | null) ?? {}) };
 }
 
+// ---------- Work board (Overview) ----------
+
+/** The four board columns, in display order. */
+export const WORK_COLUMNS = [
+  { key: "todo", label: "To do" },
+  { key: "doing", label: "In Progress" },
+  { key: "review", label: "Under Review" },
+  { key: "ready", label: "Ready" },
+] as const;
+export type WorkColumn = (typeof WORK_COLUMNS)[number]["key"];
+
+/** A preview attachment on a work card. */
+export type WorkMedia = { kind: "image" | "video" | "audio"; url: string };
+
+/** One piece of outstanding work, derived from a real row somewhere in the app
+ *  (a conversation, order, invoice, reservation, agent action …). */
+export type WorkCard = {
+  id: string;
+  col: WorkColumn;
+  /** Console module key — the client hides cards for modules this vertical
+   *  doesn't enable. */
+  module: string;
+  /** Two chips: the module, then this record's own status/type. */
+  tags: string[];
+  title: string;
+  detail: string;
+  /** Preview media from the underlying record: product shots, a call recording,
+   *  or video. `kind` is derived from the URL server-side, so a video dropped
+   *  into a product gallery renders as one without a schema change. */
+  media: WorkMedia[];
+  who: string;
+  who_role: string;
+  occurred_at: string | null;
+  amount_cents: number | null;
+  /** Real message count (conversation/ticket threads). */
+  comments: number;
+  /** Real attached records (order or invoice line items, reserved units). */
+  links: number;
+  /** 0-100, only where a genuine ratio exists (a campaign's sent-vs-audience, a
+   *  stay that is part-way through). null everywhere else — the meter is not
+   *  drawn rather than invented. */
+  progress: number | null;
+  /** Console-relative route to the underlying record. */
+  to_path: string;
+  urgent: boolean;
+};
+
+export type WorkBoard = {
+  /** True totals per column — a column can show "17" while listing 8 cards. */
+  counts: Record<WorkColumn, number>;
+  cards: WorkCard[];
+};
+
+const EMPTY_COUNTS: Record<WorkColumn, number> = { todo: 0, doing: 0, review: 0, ready: 0 };
+
+/** Fetch the console work board. The RPC omits columns with no items, so counts
+ *  are merged onto a zeroed base rather than trusted to be complete. */
+export async function getWorkBoard(orgId: string, limit = 8): Promise<WorkBoard> {
+  const { data, error } = await supabase.rpc("app_org_work_board", { p_org: orgId, p_limit: limit });
+  if (error) throw new Error(error.message);
+  const raw = (data ?? {}) as Partial<WorkBoard>;
+  return {
+    counts: { ...EMPTY_COUNTS, ...(raw.counts ?? {}) },
+    cards: Array.isArray(raw.cards) ? raw.cards : [],
+  };
+}
+
 /** Domains for one business — the Phoxta subdomain plus any linked/bought ones.
  *  Read by Business details ("Site & domains") and by the operating console's
  *  "View live site" link, so both share one cache entry under this key. */
