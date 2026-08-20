@@ -7,7 +7,7 @@ import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { modelFor } from "../_shared/models.ts";
 import { runAgent } from "../_shared/anthropic.ts";
-import { READ_TOOLS, toolRunner } from "../_shared/tools.ts";
+import { READ_TOOLS, OWNER_READ_TOOLS, toolRunner } from "../_shared/tools.ts";
 import { meter, MONTHLY_TOKEN_CAP, tokensUsedThisMonth } from "../_shared/meter.ts";
 
 Deno.serve(async (req) => {
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       system,
       userMessage: message,
       history,
-      tools: READ_TOOLS,
+      tools: [...READ_TOOLS, ...OWNER_READ_TOOLS],
       toolRunner: toolRunner(admin, organizationId),
       maxTokens: 1024,
     });

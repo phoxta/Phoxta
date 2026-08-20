@@ -82,3 +82,80 @@ export async function embed(texts: string[]): Promise<number[][]> {
 export async function embedOne(text: string): Promise<number[]> {
   return (await embed([text]))[0];
 }
+
+// ---------------------------------------------------------------------------
+// Text to speech.
+//
+// Cartesia first, because that is the SAME engine and voice the AI uses on real
+// calls (the Pipecat bridge speaks through it) — so a voice note is genuinely
+// "what the customer would hear", not an approximation in a stranger's voice.
+// OpenAI is the fallback for projects with no Cartesia key.
+export type SpeechVoice = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
+export const SPEECH_VOICES: SpeechVoice[] = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+
+async function speakCartesia(text: string, voiceId: string): Promise<Uint8Array> {
+  const key = Deno.env.get("CARTESIA_API_KEY");
+  if (!key) throw new Error("no cartesia key");
+  const res = await fetch("https://api.cartesia.ai/tts/bytes", {
+    method: "POST",
+    headers: {
+      "X-API-Key": key,
+      // Pinned: the response shape is versioned, and an unpinned call can change
+      // under us. sonic-english was sunsetted — sonic-2 is the current model.
+      "Cartesia-Version": "2024-06-10",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model_id: Deno.env.get("CARTESIA_MODEL") || "sonic-2",
+      transcript: text.slice(0, 4000),
+      voice: { mode: "id", id: voiceId },
+      output_format: { container: "mp3", encoding: "mp3", sample_rate: 44100, bit_rate: 128000 },
+    }),
+  });
+  if (!res.ok) throw new Error(`cartesia speech ${res.status} ${await res.text().catch(() => "")}`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+async function speakOpenAI(text: string, voice: SpeechVoice, instructions?: string): Promise<Uint8Array> {
+  const key = Deno.env.get("OPENAI_API_KEY");
+  if (!key) throw new Error("no openai key");
+  const res = await fetch("https://api.openai.com/v1/audio/speech", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini-tts",
+      voice,
+      input: text.slice(0, 4000),
+      response_format: "mp3",
+      ...(instructions ? { instructions } : {}),
+    }),
+  });
+  if (!res.ok) throw new Error(`openai speech ${res.status} ${await res.text().catch(() => "")}`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+/** Render `text` to MP3 bytes. `voiceId` is the business's own Cartesia voice
+ *  when it has one configured. Throws with BOTH providers' reasons if neither
+ *  worked, so the caller can tell the owner what to fix rather than guess. */
+export async function speak(
+  text: string,
+  voice: SpeechVoice = "alloy",
+  instructions?: string,
+  voiceId?: string,
+): Promise<Uint8Array> {
+  const id = voiceId || Deno.env.get("CARTESIA_VOICE_ID") || "";
+  const problems: string[] = [];
+  if (id) {
+    try {
+      return await speakCartesia(text, id);
+    } catch (e) {
+      problems.push(`cartesia: ${(e as Error).message}`);
+    }
+  }
+  try {
+    return await speakOpenAI(text, voice, instructions);
+  } catch (e) {
+    problems.push(`openai: ${(e as Error).message}`);
+  }
+  throw new Error(problems.join(" | ") || "No text-to-speech provider is configured.");
+}

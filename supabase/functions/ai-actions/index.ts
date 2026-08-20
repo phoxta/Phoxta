@@ -5,7 +5,7 @@ import { preflight, json } from "../_shared/cors.ts";
 import { authorize, type AuthOk } from "../_shared/auth.ts";
 import { modelFor, type Tier } from "../_shared/models.ts";
 import { callJson, runAgent } from "../_shared/anthropic.ts";
-import { READ_TOOLS, toolRunner } from "../_shared/tools.ts";
+import { READ_TOOLS, OWNER_READ_TOOLS, toolRunner } from "../_shared/tools.ts";
 import { embedOne } from "../_shared/openai.ts";
 import { meter } from "../_shared/meter.ts";
 
@@ -282,7 +282,7 @@ Return JSON { "reply": a short, friendly 1-2 sentence summary of what you change
           "Be brief. Respond only with the answer.";
         const t0 = Date.now();
         const model = modelFor("complex");
-        const r = await runAgent({ model, system, userMessage: String(input.question ?? ""), tools: READ_TOOLS, toolRunner: toolRunner(ctx.admin, orgId), maxTokens: 900 });
+        const r = await runAgent({ model, system, userMessage: String(input.question ?? ""), tools: [...READ_TOOLS, ...OWNER_READ_TOOLS], toolRunner: toolRunner(ctx.admin, orgId), maxTokens: 900 });
         await meter(ctx.admin, { organizationId: orgId, userId: ctx.userId, model: r.model, feature: "ask_data", tier: "complex", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
         return json({ result: { answer: r.text, tools: r.toolCalls } });
       }

@@ -26,13 +26,26 @@ export const READ_TOOLS: Tool[] = [
     },
   },
   {
-    name: "get_metrics",
-    description: "Get current operating metrics for the business (revenue, orders, customers, tickets, bookings, subscriptions, stock).",
-    input_schema: { type: "object", properties: {} },
-  },
-  {
     name: "list_products",
     description: "List the business's products with price, stock and status.",
+    input_schema: { type: "object", properties: {} },
+  },
+];
+
+/**
+ * Reads that must NEVER reach the public storefront agent.
+ *
+ * agent-inbound is unauthenticated — anyone on a buyer's website is talking to
+ * it. list_orders returns other customers' names and order totals,
+ * search_contacts searches the CRM, and get_metrics returns the business's own
+ * revenue. These belong to the owner's operator only; a shopper asking about
+ * THEIR order uses lookup_order, which requires the reference AND the matching
+ * email before it returns anything.
+ */
+export const OWNER_READ_TOOLS: Tool[] = [
+  {
+    name: "get_metrics",
+    description: "Get current operating metrics for the business (revenue, orders, customers, tickets, bookings, subscriptions, stock).",
     input_schema: { type: "object", properties: {} },
   },
   {
@@ -55,6 +68,8 @@ export const READ_TOOLS: Tool[] = [
 export const OPERATOR_READ_TOOLS: Tool[] = [
   { name: "list_contacts", description: "List CRM contacts with stage, email, phone, company and value.", input_schema: { type: "object", properties: {} } },
   { name: "list_invoices", description: "List invoices with number, customer, status, total and due date.", input_schema: { type: "object", properties: {} } },
+  { name: "list_conversations", description: "List Inbox conversations across every channel (chat, email, SMS, WhatsApp, voice) with the customer, channel, status, whether unread, the AI summary and the last message time. Use for questions about the inbox, what needs replying to, or what a customer has been saying. Returns the conversation id, which reply_conversation / set_conversation_status / assign_conversation need.", input_schema: { type: "object", properties: { status: { type: "string", description: "Filter: open, handled, escalated or closed." }, unread_only: { type: "boolean" } } } },
+  { name: "read_conversation", description: "Read the full message thread of one conversation, oldest first. Use before replying so the reply fits what was already said.", input_schema: { type: "object", properties: { conversation_id: { type: "string" } }, required: ["conversation_id"] } },
   { name: "list_tickets", description: "List support tickets with subject, customer, status and priority.", input_schema: { type: "object", properties: {} } },
   { name: "list_bookings", description: "List appointments/bookings with customer (name, email, phone), time, status and service.", input_schema: { type: "object", properties: {} } },
   { name: "list_reservations", description: "List reservations (rentals/stays) with customer, dates, status, resource, total, currency, whether paid and the payment reference — use this to answer payment questions like 'which upcoming rentals are unpaid?'.", input_schema: { type: "object", properties: {} } },
@@ -123,6 +138,30 @@ export function toolRunner(admin: SupabaseClient, orgId: string) {
     if (name === "list_invoices") {
       const { data } = await admin.from("invoices").select("number, customer_name, status, total_cents, due_date").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(60);
       return JSON.stringify(data ?? []);
+    }
+    if (name === "list_conversations") {
+      // is_test threads are the sandbox — they never represent real work.
+      let q = admin.from("conversations")
+        .select("id, channel_type, customer_name, customer_email, customer_phone, status, unread, summary, intent, last_message_at, assigned_to")
+        .eq("organization_id", orgId).eq("is_test", false);
+      const status = String((input as Json)?.status ?? "").trim();
+      if (status) q = q.eq("status", status);
+      if ((input as Json)?.unread_only === true) q = q.eq("unread", true);
+      const { data } = await q.order("last_message_at", { ascending: false }).limit(60);
+      return JSON.stringify(data ?? []);
+    }
+    if (name === "read_conversation") {
+      const id = String((input as Json)?.conversation_id ?? "").trim();
+      if (!id) return "No conversation_id given.";
+      // Scoped by organization_id as well as id: the id arrives from the model.
+      const { data: conv } = await admin.from("conversations")
+        .select("id, customer_name, channel_type, status, summary")
+        .eq("id", id).eq("organization_id", orgId).maybeSingle();
+      if (!conv) return "No such conversation in this business.";
+      const { data: msgs } = await admin.from("conversation_messages")
+        .select("role, body, created_at").eq("conversation_id", id)
+        .order("created_at", { ascending: true }).limit(80);
+      return JSON.stringify({ conversation: conv, messages: msgs ?? [] });
     }
     if (name === "list_tickets") {
       const { data } = await admin.from("tickets").select("subject, customer_name, status, priority").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(60);

@@ -47,6 +47,9 @@ export const WRITE_TOOLS: Tool[] = [
   // --- Helpdesk ---
   { name: "create_ticket", description: "Open a support ticket. Give a subject and customer name; optional email, priority and first message.", input_schema: { type: "object", properties: { subject: { type: "string" }, customer_name: { type: "string" }, customer_email: { type: "string" }, priority: { type: "string", enum: ["low", "normal", "high"] }, message: { type: "string" } }, required: ["subject", "customer_name"] } },
   { name: "reply_ticket", description: "Post an agent reply on a support ticket. Reference the ticket by subject or id.", input_schema: { type: "object", properties: { ticket: { type: "string" }, body: { type: "string" } }, required: ["ticket", "body"] } },
+  { name: "reply_conversation", description: "Reply inside an existing Inbox conversation, on the channel it came in on (SMS, WhatsApp or email). Use this to answer a customer who already wrote in — send_message is for starting a NEW thread. Identify the conversation by its id from list_conversations, or by the customer name.", input_schema: { type: "object", properties: { conversation: { type: "string" }, body: { type: "string" } }, required: ["conversation", "body"] } },
+  { name: "set_conversation_status", description: "Change an Inbox conversation's status: open, handled, escalated or closed.", input_schema: { type: "object", properties: { conversation: { type: "string" }, status: { type: "string" } }, required: ["conversation", "status"] } },
+  { name: "assign_conversation", description: "Assign an Inbox conversation to a teammate by name or email, or pass unassign to clear it.", input_schema: { type: "object", properties: { conversation: { type: "string" }, assignee: { type: "string" } }, required: ["conversation", "assignee"] } },
   { name: "set_ticket_status", description: "Update a ticket's status. Reference it by subject or id.", input_schema: { type: "object", properties: { ticket: { type: "string" }, status: { type: "string", enum: ["open", "pending", "resolved", "closed"] } }, required: ["ticket", "status"] } },
 
   // --- Marketing ---
@@ -360,6 +363,64 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     return `Calling ${dest}${r.status === "simulated" ? " (simulated — no telephony configured)" : "…"}`;
   }
 
+  // ── Inbox ────────────────────────────────────────────────────────────────
+  if (tool === "reply_conversation") {
+    const c = await resolveRow(admin, orgId, "conversations",
+      "id, customer_name, customer_phone, customer_email, channel_type", String(a.conversation),
+      ["customer_name", "customer_email", "customer_phone"]);
+    if (!c) throw new Error(`No conversation matching "${a.conversation}".`);
+    const channel = ["sms", "whatsapp", "email"].includes(String((c as Json).channel_type))
+      ? String((c as Json).channel_type) : "email";
+    const dest = channel === "email" ? (c as Json).customer_email : (c as Json).customer_phone;
+    if (!dest) throw new Error(`That conversation has no ${channel === "email" ? "email address" : "phone number"} to reply to.`);
+    const r = await dispatch(channel, String(dest), "Re: your message", String(a.body));
+    if (r.status === "failed") throw new Error("The reply could not be delivered.");
+    // Recorded on the thread either way, so the Inbox shows what the agent said.
+    await admin.from("conversation_messages").insert({
+      organization_id: orgId, conversation_id: (c as Json).id, role: "assistant",
+      channel_type: channel, body: String(a.body), delivery_status: r.status,
+    });
+    await admin.from("conversations").update({ last_message_at: new Date().toISOString(), unread: false })
+      .eq("id", (c as Json).id);
+    return `Replied to ${(c as Json).customer_name || "the customer"} over ${channel}${r.status === "simulated" ? " (simulated — no provider configured)" : ""}.`;
+  }
+  if (tool === "set_conversation_status") {
+    const allowed = ["open", "handled", "escalated", "closed"];
+    const status = String(a.status ?? "").toLowerCase();
+    if (!allowed.includes(status)) throw new Error(`Status must be one of ${allowed.join(", ")}.`);
+    const c = await resolveRow(admin, orgId, "conversations", "id, customer_name", String(a.conversation),
+      ["customer_name", "customer_email", "customer_phone"]);
+    if (!c) throw new Error(`No conversation matching "${a.conversation}".`);
+    const { error } = await admin.from("conversations").update({ status }).eq("id", (c as Json).id);
+    if (error) throw new Error(error.message);
+    return `Conversation with ${(c as Json).customer_name || "the customer"} set to ${status}.`;
+  }
+  if (tool === "assign_conversation") {
+    const c = await resolveRow(admin, orgId, "conversations", "id, customer_name", String(a.conversation),
+      ["customer_name", "customer_email", "customer_phone"]);
+    if (!c) throw new Error(`No conversation matching "${a.conversation}".`);
+    const who = String(a.assignee ?? "").trim();
+    if (!who || who.toLowerCase() === "unassign" || who.toLowerCase() === "nobody") {
+      const { error } = await admin.from("conversations").update({ assigned_to: null }).eq("id", (c as Json).id);
+      if (error) throw new Error(error.message);
+      return `Unassigned the conversation with ${(c as Json).customer_name || "the customer"}.`;
+    }
+    // Only members of THIS business can be assigned work in it.
+    const { data: members } = await admin
+      .from("organization_memberships")
+      .select("user_id, user_profiles(full_name, email)")
+      .eq("organization_id", orgId);
+    const hit = (members ?? []).find((m: Json) => {
+      const p = m.user_profiles ?? {};
+      return [p.full_name, p.email].filter(Boolean)
+        .some((v: string) => v.toLowerCase().includes(who.toLowerCase()));
+    }) as Json | undefined;
+    if (!hit) throw new Error(`No teammate in this business matching "${who}".`);
+    const { error } = await admin.from("conversations").update({ assigned_to: hit.user_id }).eq("id", (c as Json).id);
+    if (error) throw new Error(error.message);
+    return `Assigned the conversation to ${hit.user_profiles?.full_name || who}.`;
+  }
+
   throw new Error(`Unknown action ${tool}.`);
 }
 
@@ -390,6 +451,9 @@ export function actionTitle(tool: string, a: Json): string {
     case "block_availability": return `Block ${a.product}: ${a.start_date}–${a.end_date}`;
     case "create_ticket": return `Open ticket "${a.subject}"`;
     case "reply_ticket": return `Reply on ticket ${a.ticket}`;
+    case "reply_conversation": return `Reply to ${a.conversation}`;
+    case "set_conversation_status": return `Set conversation ${a.conversation} to ${a.status}`;
+    case "assign_conversation": return `Assign ${a.conversation} to ${a.assignee}`;
     case "set_ticket_status": return `Set ticket ${a.ticket} to ${a.status}`;
     case "create_campaign": return `Create campaign "${a.name}"`;
     case "send_campaign": return `Send campaign ${a.campaign}`;
@@ -500,14 +564,17 @@ export async function executeAction(
   // Deterministic spend budget (audit 2026-08-18): outbound customer contact is
   // hard-capped per org per day, in code — no prompt can override it. Guards
   // runaway automations and compliance exposure (A2P/WhatsApp volume).
-  if (tool === "send_message" || tool === "place_call") {
+  // reply_conversation belongs here too: it delivers a real SMS/WhatsApp/email
+  // to a customer, so excluding it would let the agent walk around the cap by
+  // replying in a thread instead of starting one.
+  if (tool === "send_message" || tool === "place_call" || tool === "reply_conversation") {
     const cap = Number(Deno.env.get("OUTBOUND_DAILY_CAP") ?? "200");
     const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
     const { count } = await admin
       .from("agent_audit_log")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
-      .in("tool", ["send_message", "place_call"])
+      .in("tool", ["send_message", "place_call", "reply_conversation"])
       .eq("status", "ok")
       .gte("created_at", dayAgo);
     if ((count ?? 0) >= cap) {

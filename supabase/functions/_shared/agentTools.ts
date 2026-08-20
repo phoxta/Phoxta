@@ -123,6 +123,47 @@ const TABLE_TOOLS: Tool[] = [
   },
 ];
 
+/**
+ * Customer self-service lookups.
+ *
+ * These are the only way the public agent can reach an existing order or
+ * booking, and they are deliberately narrow: the caller must supply BOTH a
+ * reference AND the email on the record. Knowing only an email returns nothing,
+ * and knowing only a reference returns nothing — so guessing one does not leak
+ * the other, and nothing can be enumerated.
+ */
+const LOOKUP_TOOLS: Tool[] = [
+  {
+    name: "lookup_order",
+    description:
+      "Look up ONE order for the customer you are talking to — status, whether it is paid, whether it has shipped, and tracking. " +
+      "Requires BOTH the order reference and the email address on the order; ask for whichever you are missing. " +
+      "Never claim you cannot check an order without trying this first.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reference: { type: "string", description: "Order reference or the short id the customer was given." },
+        email: { type: "string", description: "The email address on the order." },
+      },
+      required: ["reference", "email"],
+    },
+  },
+  {
+    name: "lookup_booking",
+    description:
+      "Look up ONE existing booking or reservation — when it is, its status, and what it is for. " +
+      "Requires BOTH a reference (or the date) and the email on the booking. Ask for whichever is missing.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reference: { type: "string", description: "Booking reference, short id, or the date (YYYY-MM-DD)." },
+        email: { type: "string", description: "The email address on the booking." },
+      },
+      required: ["reference", "email"],
+    },
+  },
+];
+
 const COMMON_WRITE_TOOLS: Tool[] = [
   {
     name: "capture_lead",
@@ -178,7 +219,7 @@ const isWrite = new Set([...BOOKING_TOOL_NAMES, ...COMMON_WRITE_TOOLS.map((t) =>
 export function buildAgentTools(mode: BookingMode, capabilities?: Record<string, boolean> | null): Tool[] {
   const on = (key: string) => capabilities?.[key] !== false;
   const booking = mode === "reservations" ? RESERVATION_TOOLS : mode === "table" ? TABLE_TOOLS : APPOINTMENT_TOOLS;
-  let tools: Tool[] = [...READ_TOOLS, ...(on("bookings") ? booking : []), ...COMMON_WRITE_TOOLS];
+  let tools: Tool[] = [...READ_TOOLS, ...LOOKUP_TOOLS, ...(on("bookings") ? booking : []), ...COMMON_WRITE_TOOLS];
   if (!on("leads")) tools = tools.filter((t) => !LEAD_TOOL_NAMES.has(t.name));
   if (!on("tickets")) tools = tools.filter((t) => t.name !== "create_ticket");
   return tools;
@@ -319,6 +360,59 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
     if (!isWrite.has(name)) return readRun(name, input);
 
     // ---------------- check_availability (vertical-aware) ----------------
+    // ── Customer self-service ────────────────────────────────────────────
+    // Both factors are required and matched together: we fetch by email, then
+    // require the reference to match too. One without the other yields nothing,
+    // so neither can be used to enumerate the other.
+    if (name === "lookup_order") {
+      const ref = String(input.reference ?? "").trim().toLowerCase();
+      const email = String(input.email ?? "").trim().toLowerCase();
+      if (!ref || !email) return "I need both the order reference and the email address on the order before I can look it up.";
+      const { data } = await admin
+        .from("orders")
+        .select("id, payment_reference, status, fulfillment_status, total_cents, currency, created_at, paid_at, tracking, customer_email")
+        .eq("organization_id", orgId)
+        .ilike("customer_email", email)
+        .order("created_at", { ascending: false })
+        .limit(25);
+      const hit = (data ?? []).find((o: Json) => {
+        const short = String(o.id ?? "").slice(0, 8).toLowerCase();
+        const pref = String(o.payment_reference ?? "").toLowerCase();
+        return ref === short || (pref && ref === pref) || ref === String(o.id ?? "").toLowerCase();
+      });
+      if (!hit) return "I couldn't find an order with that reference and email together. Ask the customer to double-check both — I won't show an order unless they match.";
+      return JSON.stringify({
+        reference: hit.payment_reference || String(hit.id).slice(0, 8),
+        status: hit.status,
+        fulfilment: hit.fulfillment_status,
+        total_cents: hit.total_cents,
+        currency: hit.currency,
+        placed: hit.created_at,
+        paid: hit.paid_at,
+        tracking: hit.tracking ?? null,
+      });
+    }
+    if (name === "lookup_booking") {
+      const ref = String(input.reference ?? "").trim().toLowerCase();
+      const email = String(input.email ?? "").trim().toLowerCase();
+      if (!ref || !email) return "I need both a reference (or the date) and the email on the booking before I can look it up.";
+      const [bk, rs] = await Promise.all([
+        admin.from("bookings").select("id, start_at, status, customer_email, notes")
+          .eq("organization_id", orgId).ilike("customer_email", email).limit(25),
+        admin.from("reservations").select("id, start_date, end_date, status, units, total_cents, currency, customer_email")
+          .eq("organization_id", orgId).ilike("customer_email", email).limit(25),
+      ]);
+      const matches = (id: unknown, day?: unknown) =>
+        ref === String(id ?? "").slice(0, 8).toLowerCase() ||
+        ref === String(id ?? "").toLowerCase() ||
+        (day != null && ref === String(day).slice(0, 10));
+      const b = (bk.data ?? []).find((r: Json) => matches(r.id, r.start_at));
+      if (b) return JSON.stringify({ kind: "appointment", reference: String(b.id).slice(0, 8), when: b.start_at, status: b.status });
+      const r = (rs.data ?? []).find((x: Json) => matches(x.id, x.start_date));
+      if (r) return JSON.stringify({ kind: "reservation", reference: String(r.id).slice(0, 8), from: r.start_date, to: r.end_date, status: r.status, units: r.units, total_cents: r.total_cents, currency: r.currency });
+      return "I couldn't find a booking with that reference and email together. Ask the customer to double-check both.";
+    }
+
     if (name === "check_availability") {
       if (mode === "reservations") {
         const today = new Date().toISOString().slice(0, 10);

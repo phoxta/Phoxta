@@ -8,7 +8,7 @@ import { authorize, requireUser } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { modelFor } from "../_shared/models.ts";
 import { runAgent } from "../_shared/anthropic.ts";
-import { READ_TOOLS, OPERATOR_READ_TOOLS, MEMORY_TOOLS, toolRunner, memoryContext } from "../_shared/tools.ts";
+import { READ_TOOLS, OWNER_READ_TOOLS, OPERATOR_READ_TOOLS, MEMORY_TOOLS, toolRunner, memoryContext } from "../_shared/tools.ts";
 import { WRITE_TOOLS, isWriteTool, executeAction } from "../_shared/actions.ts";
 import { meter } from "../_shared/meter.ts";
 import { dispatch } from "../_shared/dispatch.ts";
@@ -72,7 +72,9 @@ async function runOne(admin: SupabaseClient, automation: Json): Promise<string> 
   const model = modelFor("balanced");
   const r = await runAgent({
     model, system, userMessage: instruction,
-    tools: isTask ? [...READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS, ...WRITE_TOOLS] : [...READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS],
+    tools: isTask
+      ? [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS, ...WRITE_TOOLS]
+      : [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS],
     toolRunner: runner, maxTurns: 6, maxTokens: 1200,
   });
   await meter(admin, { organizationId: orgId, userId: "automation", model: r.model, feature: "automation", tier: "balanced", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
