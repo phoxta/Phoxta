@@ -28,7 +28,7 @@ export default function Hero2() {
 								<SwiperSlide>
 									<div className="item-banner-slide banner-2">
 										<div className="container">
-											<span className="btn background-brand-2 px-3 py-3 rounded-12 text-sm-bold text-dark">Best car rental system</span>
+											<span className="btn background-brand-2 px-3 py-3 rounded-12 text-sm-bold text-dark">Best car sales system</span>
 											<h1 className="mt-20 mb-20 color-white">Discover your next ride today</h1>
 											<h6 className="color-white heading-6-medium">
 												Explore our wide selection and enjoy a smooth purchasing journey, <br />

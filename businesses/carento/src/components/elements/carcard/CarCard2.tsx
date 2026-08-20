@@ -5,7 +5,7 @@ export default function CarCard2({ car }: any) {
 		<>
 			<div className="card-flight card-hotel card-property background-card border">
 				<div className="card-image">
-					<Link href={`/cars-details-3?id=${car.id}`}><img src={`/assets/imgs/cars-listing/cars-listing-6/${car.image}`} alt="Carento" /></Link>
+					<Link href={`/vehicle/${car.id}`}><img src={`/assets/imgs/cars-listing/cars-listing-6/${car.image}`} alt="Carento" /></Link>
 				</div>
 				<div className="card-info p-md-40 p-3">
 					<label className="sale-lbl">-25%</label>
@@ -14,7 +14,7 @@ export default function CarCard2({ car }: any) {
 							<span className="rating">{car.rating} <span className="text-sm-medium neutral-500">(reviews)</span></span>
 						</div>
 					</div>
-					<div className="card-title"><Link className="heading-6 neutral-1000" href={`/cars-details-3?id=${car.id}`}>{car.name}</Link></div>
+					<div className="card-title"><Link className="heading-6 neutral-1000" href={`/vehicle/${car.id}`}>{car.name}</Link></div>
 					<div className="card-program">
 						<div className="card-location mb-25">
 							<p className="text-location text-md-medium neutral-500">{car.location}</p>
@@ -45,7 +45,7 @@ export default function CarCard2({ car }: any) {
 								<h6 className="heading-6 neutral-1000">${car.price}</h6>
 								<p className="text-md-medium neutral-500">/ night</p>
 							</div>
-							<div className="card-button"><Link className="btn btn-gray" href={`/cars-details-3?id=${car.id}`}>Book Now</Link></div>
+							<div className="card-button"><Link className="btn btn-gray" href={`/vehicle/${car.id}`}>View details</Link></div>
 						</div>
 					</div>
 				</div>

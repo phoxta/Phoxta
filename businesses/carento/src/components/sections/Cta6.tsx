@@ -10,13 +10,13 @@ export default function Cta6() {
 					<div className="container">
 						<div className="row align-items-center">
 							<div className="col-lg-5">
-								<span className="btn btn-signin bg-2 text-dark mb-4 wow fadeInUp">Best Car Rental System</span>
+								<span className="btn btn-signin bg-2 text-dark mb-4 wow fadeInUp">Best Car Dealership System</span>
 								<h4 className="mb-4 neutral-1000 wow fadeInUp">Sell your car at a fair price. <br />Get started with us today.</h4>
 								<p className="text-lg-medium neutral-500 mb-4 wow fadeInUp">We are committed to delivering exceptional service, competitive pricing, and a diverse selection of options for our customers.</p>
 								<div className="row">
 									<div className="col">
 										<ul className="list-ticks-green list-ticks-green-2 wow fadeInUp">
-											<li className="neutral-1000 pe-0">Explore a wide range of flexible rental options to suit your needs</li>
+											<li className="neutral-1000 pe-0">Explore a wide range of flexible sales options to suit your needs</li>
 											<li className="neutral-1000 pe-0">Comprehensive insurance coverage for complete peace of mind</li>
 											<li className="neutral-1000 pe-0">24/7 customer support for assistance anytime, anywhere</li>
 										</ul>

@@ -5,7 +5,7 @@ import { fetchBlog, type BlogPost } from "@/lib/phoxta";
 
 const FALLBACK: BlogPost[] = [
     { id: "1", slug: "top-road-trips-2026", title: "Top Road Trips for 2026", excerpt: "Routes worth renting a car for this year.", body: "", cover_url: "/assets/imgs/cars-listing/cars-listing-6/car-1.png", author: "The Team", published_at: new Date().toISOString() },
-    { id: "2", slug: "ev-vs-petrol-rental", title: "EV vs Petrol: Which to Rent?", excerpt: "What to weigh when choosing your rental.", body: "", cover_url: "/assets/imgs/cars-listing/cars-listing-6/car-3.png", author: "The Team", published_at: new Date().toISOString() },
+    { id: "2", slug: "ev-vs-petrol-sales", title: "EV vs Petrol: Which to Rent?", excerpt: "What to weigh when choosing your sales.", body: "", cover_url: "/assets/imgs/cars-listing/cars-listing-6/car-3.png", author: "The Team", published_at: new Date().toISOString() },
 ];
 
 export default function BlogList() {

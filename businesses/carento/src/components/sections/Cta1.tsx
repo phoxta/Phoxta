@@ -18,7 +18,7 @@ export default function Cta1() {
                             </div>
                         </div>
                         <div className="col-lg-6 mt-lg-0 mt-4">
-                            <span className="btn btn-signin bg-white text-dark mb-4 wow fadeInUp">Best Car Rental System</span>
+                            <span className="btn btn-signin bg-white text-dark mb-4 wow fadeInUp">Best Car Dealership System</span>
                             <h4 className="mb-4 neutral-1000 wow fadeInUp">Receive a Competitive Offer Sell Your Car to Us Today.</h4>
                             <p className="text-lg-medium neutral-500 mb-4 wow fadeInUp">We are committed to delivering exceptional service, competitive pricing, and a diverse selection of options for our customers.</p>
                             <div className="row">
@@ -44,7 +44,7 @@ export default function Cta1() {
                                             24/7 road assistance
                                         </li>
                                         <li className="neutral-1000 wow fadeInUp" data-wow-delay="0.3s">
-                                            Free Pick-Up &amp; Drop-Offs
+                                            Home Delivery &amp; Part-Exchange
                                         </li>
                                     </ul>
                                 </div>

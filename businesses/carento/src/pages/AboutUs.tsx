@@ -2,7 +2,7 @@ import Layout from "@/components/layout/Layout";
 import { useOrgContent } from "@/util/content";
 import { fetchCms } from "@/lib/phoxta";
 
-const FALLBACK = { title: "About us", body: "We're on a mission to make car rental effortless. Every vehicle, booking and message here is real and managed in one place." };
+const FALLBACK = { title: "About us", body: "We're on a mission to make car sales effortless. Every vehicle, booking and message here is real and managed in one place." };
 
 export default function AboutUs() {
     const page = useOrgContent((o) => fetchCms(o, "about"), FALLBACK);

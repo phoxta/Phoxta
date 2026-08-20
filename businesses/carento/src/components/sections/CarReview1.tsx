@@ -15,7 +15,7 @@ export default function CarReview1() {
                         </div>
                         <div className="col-md-3 mb-30 wow fadeInUp">
                             <div className="d-flex justify-content-center justify-content-md-end">
-                                <Link className="btn btn-primary" href="/cars-list-1">
+                                <Link className="btn btn-primary" href="/inventory">
                                     View More
                                     <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M8 15L15 8L8 1M15 8L1 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -51,7 +51,7 @@ export default function CarReview1() {
                                             <img className="mr-10" src="/assets/imgs/car-review/car-review-1/img-video-2.png" alt="Carento" />
                                         </div>
                                         <div className="item-info">
-                                            <Link className="heading-6" href="/cars-details-1">
+                                            <Link className="heading-6" href="/vehicle">
                                                 Best Midsize 3-row SUVs 2024
                                             </Link>
                                             <p className="text-md-medium neutral-500">18 August 2024</p>
@@ -65,7 +65,7 @@ export default function CarReview1() {
                                             <img className="mr-10" src="/assets/imgs/car-review/car-review-1/img-video-3.png" alt="Carento" />
                                         </div>
                                         <div className="item-info">
-                                            <Link className="heading-6" href="/cars-details-1">
+                                            <Link className="heading-6" href="/vehicle">
                                                 5 Best Luxury sport coupes 2024
                                             </Link>
                                             <p className="text-md-medium neutral-500">18 August 2024</p>
@@ -79,7 +79,7 @@ export default function CarReview1() {
                                             <img className="mr-10" src="/assets/imgs/car-review/car-review-1/img-video-4.png" alt="Carento" />
                                         </div>
                                         <div className="item-info">
-                                            <Link className="heading-6" href="/cars-details-1">
+                                            <Link className="heading-6" href="/vehicle">
                                                 Best Small hatchbacks 2024 and 2025
                                             </Link>
                                             <p className="text-md-medium neutral-500">18 August 2024</p>

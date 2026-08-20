@@ -27,7 +27,7 @@ export default function Header1({ scroll, isMobileMenu, handleMobileMenu, handle
 						<div className="text-header">
 							<div className="text-unlock text-sm-medium text-white">More than <span className="text-primary">800+</span>
 								special collection cars in this summer</div>
-							<Link className="btn btn-brand-2 btn-small text-dark px-3 py-2 text-xs-medium " href="/cars-list-1">
+							<Link className="btn btn-brand-2 btn-small text-dark px-3 py-2 text-xs-medium " href="/inventory">
 								Access Now
 								<svg className="ms-1" xmlns="http://www.w3.org/2000/svg" width={16} height={16} viewBox="0 0 16 16" fill="none">
 									<path fillRule="evenodd" clipRule="evenodd" d="M1 7.99965C1 7.86705 1.05268 7.73987 1.14645 7.6461C1.24021 7.55233 1.36739 7.49965 1.5 7.49965H13.293L10.146 4.35366C10.0521 4.25977 9.99937 4.13243 9.99937 3.99966C9.99937 3.86688 10.0521 3.73954 10.146 3.64565C10.2399 3.55177 10.3672 3.49902 10.5 3.49902C10.6328 3.49902 10.7601 3.55177 10.854 3.64565L14.854 7.64565C14.9006 7.6921 14.9375 7.74728 14.9627 7.80802C14.9879 7.86877 15.0009 7.93389 15.0009 7.99965C15.0009 8.06542 14.9879 8.13054 14.9627 8.19129C14.9375 8.25203 14.9006 8.30721 14.854 8.35365L10.854 12.3537C10.7601 12.4475 10.6328 12.5003 10.5 12.5003C10.3672 12.5003 10.2399 12.4475 10.146 12.3537C10.0521 12.2598 9.99937 12.1324 9.99937 11.9997C9.99937 11.8669 10.0521 11.7395 10.146 11.6457L13.293 8.49965H1.5C1.36739 8.49965 1.24021 8.44698 1.14645 8.35321C1.05268 8.25944 1 8.13226 1 7.99965Z" fill="#101010" />
@@ -81,8 +81,8 @@ export default function Header1({ scroll, isMobileMenu, handleMobileMenu, handle
 											<Link className="color-white" href="#">Home</Link>
 											<ul className="sub-menu">
 												<li><Link href="/">Home page v1</Link></li>
-												<li><Link href="/index-2">Home page v2</Link></li>
-												<li><Link href="/index-3">Home page v3</Link></li>
+												<li><Link href="/">Home page v2</Link></li>
+												<li><Link href="/">Home page v3</Link></li>
 											</ul>
 										</li>
 										<li className="mega-li-small has-children arrow-white">
@@ -93,19 +93,19 @@ export default function Header1({ scroll, isMobileMenu, handleMobileMenu, handle
 														<div className="col-lg-6">
 															<h6 className="text-lg-bold neutral-1000">Cars List</h6>
 															<ul className="sub-menu">
-																<li><Link href="/cars-list-1">Cars List v1</Link></li>
-																<li><Link href="/cars-list-2">Cars List v2</Link></li>
-																<li><Link href="/cars-list-3">Cars List v3</Link></li>
-																<li><Link href="/cars-list-4">Cars List v4</Link></li>
+																<li><Link href="/inventory">Cars List v1</Link></li>
+																<li><Link href="/inventory">Cars List v2</Link></li>
+																<li><Link href="/inventory">Cars List v3</Link></li>
+																<li><Link href="/inventory">Cars List v4</Link></li>
 															</ul>
 														</div>
 														<div className="col-lg-6">
 															<h6 className="text-lg-bold neutral-1000">Car Details</h6>
 															<ul className="sub-menu">
-																<li><Link href="/cars-details-1">Car Details v1</Link></li>
-																<li><Link href="/cars-details-2">Car Details v2</Link></li>
-																<li><Link href="/cars-details-3">Car Details v3</Link></li>
-																<li><Link href="/cars-details-4">Car Details v4</Link></li>
+																<li><Link href="/vehicle">Car Details v1</Link></li>
+																<li><Link href="/vehicle">Car Details v2</Link></li>
+																<li><Link href="/vehicle">Car Details v3</Link></li>
+																<li><Link href="/vehicle">Car Details v4</Link></li>
 															</ul>
 														</div>
 													</div>
@@ -131,7 +131,7 @@ export default function Header1({ scroll, isMobileMenu, handleMobileMenu, handle
 											<ul className="sub-menu">
 												<li><Link href="/about-us">About Us</Link></li>
 												<li><Link href="/services">Our Services</Link></li>
-												<li><Link href="/pricing">Pricing</Link></li>
+												<li><Link href="/services">Pricing</Link></li>
 												<li><Link href="/calculator">Loan Calculator</Link></li>
 												<li><Link href="/faqs">FAQs</Link></li>
 												<li><Link href="/term">Term</Link></li>
@@ -147,7 +147,7 @@ export default function Header1({ scroll, isMobileMenu, handleMobileMenu, handle
 												<div className="mega-menu-inner mega-menu-inner-small mega-menu-inner-destinations">
 													<div className="row">
 														<div className="col-lg-12">
-															<h6 className="text-lg-bold neutral-1000">Cars Rental</h6>
+															<h6 className="text-lg-bold neutral-1000">Cars Sales</h6>
 															<ul className="sub-menu">
 																<li><Link href="/blog-grid">News Grid</Link></li>
 																<li><Link href="/blog-list">News List</Link></li>
@@ -170,7 +170,7 @@ export default function Header1({ scroll, isMobileMenu, handleMobileMenu, handle
 										</svg>
 										Sign in
 									</Link>
-									<Link className="btn btn-signin bg-white text-dark" href="/pricing">Add Listing</Link>
+									<Link className="btn btn-signin bg-white text-dark" href="/services">Add Listing</Link>
 								</div>
 								<div className="burger-icon-2 burger-icon-white" onClick={handleOffcanvas}>
 									<img src="/assets/imgs/template/icons/menu.svg" alt="Carento" />

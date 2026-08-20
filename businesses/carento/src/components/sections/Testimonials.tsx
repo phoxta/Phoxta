@@ -28,7 +28,7 @@ export default function Testimonials() {
                                             <div className="card-testimonial background-card">
                                                 <div className="card-info">
                                                     <p className="text-xl-bold card-title neutral-1000">Fast and Easy to Use</p>
-                                                    <p className="text-md-regular neutral-500">I’ve used many car rental platforms before, but Carento’s booking system is hands down the best! The process is so smooth and straightforward.</p>
+                                                    <p className="text-md-regular neutral-500">I’ve used many car sales platforms before, but Carento’s booking system is hands down the best! The process is so smooth and straightforward.</p>
                                                 </div>
                                                 <div className="card-top pt-40 border-0 mb-0">
                                                     <div className="card-author">
@@ -132,7 +132,7 @@ export default function Testimonials() {
                                             <div className="card-testimonial background-card">
                                                 <div className="card-info">
                                                     <p className="text-xl-bold card-title neutral-1000">Fast and Easy to Use</p>
-                                                    <p className="text-md-regular neutral-500">I’ve used many car rental platforms before, but Carento’s booking system is hands down the best! The process is so smooth and straightforward.</p>
+                                                    <p className="text-md-regular neutral-500">I’ve used many car sales platforms before, but Carento’s booking system is hands down the best! The process is so smooth and straightforward.</p>
                                                 </div>
                                                 <div className="card-top pt-40 border-0 mb-0">
                                                     <div className="card-author">

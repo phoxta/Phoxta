@@ -15,14 +15,14 @@ export default function Banners() {
 								</div>
 								<div className="banner-info">
 									<div className="banner-title wow fadeInDown">
-										<h5>Loking for a rental car?</h5>
+										<h5>Loking for your next car?</h5>
 									</div>
 									<p className="banner-text text-md-regular py-3 wow fadeInUp">
-										Discover your ideal rental car for every adventure, <br />
+										Discover your ideal car for every journey, <br />
 										whether it's a road trip or business travel
 									</p>
 									<div className="banner-button pb-70 pt-3">
-										<Link className="btn btn-primary background-brand-2 wow fadeInUp" href="/cars-list-1">
+										<Link className="btn btn-primary background-brand-2 wow fadeInUp" href="/inventory">
 											Get Started Now
 											<svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 												<path d="M8 15L15 8L8 1M15 8L1 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -39,14 +39,14 @@ export default function Banners() {
 								</div>
 								<div className="banner-info">
 									<div className="banner-title wow fadeInDown">
-										<h5>Loking for a rental car?</h5>
+										<h5>Loking for your next car?</h5>
 									</div>
 									<p className="banner-text text-md-regular py-3 wow fadeInUp">
 										Maximize your vehicle's potential: seamlessly <br />
-										rent or sell with confidence
+										buy or sell with confidence
 									</p>
 									<div className="banner-button pb-70 pt-3">
-										<Link className="btn btn-primary bg-white wow fadeInUp" href="/cars-list-1">
+										<Link className="btn btn-primary bg-white wow fadeInUp" href="/inventory">
 											Get Started Now
 											<svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 												<path d="M8 15L15 8L8 1M15 8L1 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

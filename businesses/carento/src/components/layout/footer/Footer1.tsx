@@ -55,11 +55,11 @@ export default function Footer1() {
 						<div className="col-md-2 col-xs-6 footer-2">
 							<h6 className="text-linear-3">Our Services</h6>
 							<ul className="menu-footer">
-								<li><Link href="#">Car Rental Services</Link></li>
+								<li><Link href="#">Car Sales Services</Link></li>
 								<li><Link href="#">Vehicle Leasing Options</Link></li>
-								<li><Link href="#">Long-Term Car Rentals</Link></li>
+								<li><Link href="#">Long-Term Car Saless</Link></li>
 								<li><Link href="#">Car Sales and Trade-Ins</Link></li>
-								<li><Link href="#">Luxury Car Rentals</Link></li>
+								<li><Link href="#">Luxury Car Saless</Link></li>
 								<li><Link href="#">Rent-to-Own Programs</Link></li>
 								<li><Link href="#">Fleet Management Solutions</Link></li>
 							</ul>

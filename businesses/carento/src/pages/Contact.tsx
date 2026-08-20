@@ -59,7 +59,7 @@ export default function Contact() {
                 <div className="container">
                     <div className="text-center mb-40">
                         <h3 className="neutral-1000">Get in touch</h3>
-                        <p className="text-xl-medium neutral-500">Questions about a rental? Send us a message.</p>
+                        <p className="text-xl-medium neutral-500">Questions about a sales? Send us a message.</p>
                     </div>
 
                     <div className="row g-4">

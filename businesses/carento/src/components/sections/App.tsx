@@ -10,7 +10,7 @@ export default function App() {
 					<div className="row align-items-center py-5">
 						<div className="col-lg-5">
 							<h4 className=" wow fadeInDown">Carento App is Available</h4>
-							<p className="text-md-medium pb-3 wow fadeInUp">Manage all your car rentals on the go with the
+							<p className="text-md-medium pb-3 wow fadeInUp">Manage all your car saless on the go with the
 								Carento app</p>
 							<div className="download-apps mt-0">
 								<Link className=" wow fadeInUp" href="#"><img src="/assets/imgs/template/googleplay.png" alt="Carento" /></Link>

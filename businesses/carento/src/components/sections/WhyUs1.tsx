@@ -10,7 +10,7 @@ export default function WhyUs1({cls}:any) {
 						<p className="text-xl-medium neutral-500 wow fadeInUp">HOW IT WORKS</p>
 						<h3 className="neutral-1000 wow fadeInUp">
 							Presenting Your New Go-To Car <br className="d-none d-lg-block" />
-							Rental Experience
+							Sales Experience
 						</h3>
 					</div>
 					<div className="row mt-40">

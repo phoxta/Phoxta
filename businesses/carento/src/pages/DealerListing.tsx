@@ -6,7 +6,7 @@ import { fetchPartners, type Partner } from "@/lib/phoxta";
 const FALLBACK: Partner[] = [
     { id: "1", name: "City Auto Group", role: "Premium dealer", location: "Manchester, UK", rating: 4.8, image_url: null, handle: "city-auto-group" },
     { id: "2", name: "Coastline Motors", role: "Dealer", location: "Sydney, AU", rating: 4.7, image_url: null, handle: "coastline-motors" },
-    { id: "3", name: "Alpine Rentals", role: "Partner fleet", location: "Zurich, CH", rating: 4.9, image_url: null, handle: "alpine-rentals" },
+    { id: "3", name: "Alpine Saless", role: "Partner fleet", location: "Zurich, CH", rating: 4.9, image_url: null, handle: "alpine-saless" },
 ];
 
 export default function DealerListing() {

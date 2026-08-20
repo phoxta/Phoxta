@@ -1,9 +1,9 @@
 import Layout from "@/components/layout/Layout";
 import Link from "@/components/common/Link";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useCar, useFleet } from "@/util/fleet";
-import BookingWidget from "@/components/elements/BookingWidget";
+import EnquiryWidget from "@/components/elements/EnquiryWidget";
 import Marquee from "react-fast-marquee";
 import ModalVideo from "react-modal-video";
 import Slider from "react-slick";
@@ -30,8 +30,11 @@ const SlickArrowRight = ({ currentSlide, slideCount, ...props }: any) => {
     );
 };
 export default function CarsDetails1() {
+    // /vehicle/:id is the real address. ?id= is still read so any link made
+    // before the rename (an email, a bookmark) keeps working.
+    const { id: routeId } = useParams();
     const [searchParams] = useSearchParams();
-    const car = useCar(searchParams.get("id")); // live vehicle by id, falls back to first
+    const car = useCar(routeId ?? searchParams.get("id")); // live vehicle by id, falls back to first
     const { orgId } = useFleet();
     const [isOpen, setOpen] = useState(false);
     const [nav1, setNav1] = useState(null);
@@ -88,7 +91,7 @@ export default function CarsDetails1() {
                                     </span>
                                 </li>
                                 <li>
-                                    <Link href="/cars-list-1">Cars Rental</Link>
+                                    <Link href="/inventory">Cars Sales</Link>
                                     <span className="arrow-right">
                                         <svg width={7} height={12} viewBox="0 0 7 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M1 11L6 6L1 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -767,7 +770,7 @@ export default function CarsDetails1() {
                                             </Link>
                                         </div>
                                     </div>
-                                    <BookingWidget car={car} orgId={orgId} />
+                                    <EnquiryWidget vehicle={car?.name} />
                                     <div className="sidebar-left border-1 background-card">
                                         <h6 className="text-xl-bold neutral-1000">Listed by</h6>
                                         <div className="box-sidebar-content">

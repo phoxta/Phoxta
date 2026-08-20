@@ -29,7 +29,7 @@ export default function CarsList1() {
                             <div className="container position-absolute z-1 top-50 start-50 pb-70 translate-middle text-center">
                                 <span className="text-sm-bold bg-2 px-4 py-3 rounded-12">Find cars for sale and for rent near you</span>
                                 <h2 className="text-white mt-4">Find Your Perfect Car</h2>
-                                <span className="text-white text-lg-medium">Search and find your best car rental with easy way</span>
+                                <span className="text-white text-lg-medium">Search and find your best car sales with easy way</span>
                             </div>
                         </div>
                     </div>

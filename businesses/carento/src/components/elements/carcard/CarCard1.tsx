@@ -1,7 +1,7 @@
 import Link from "@/components/common/Link"
 
 export default function CarCard1({ car }: any) {
-	const href = `/cars-details-1?id=${car.id}`
+	const href = `/vehicle/${car.id}`
 	return (
 		<>
 			<div className="card-journey-small background-card hover-up">

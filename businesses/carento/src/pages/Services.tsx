@@ -33,10 +33,10 @@ export default function Services() {
 						<div className="container">
 							<div className="row align-items-end">
 								<div className="col-lg-7">
-									<h3 className="neutral-1000">Comprehensive <span className="text-primary">Car Rental</span> Services to Meet All Your Needs</h3>
+									<h3 className="neutral-1000">Comprehensive <span className="text-primary">Car Sales</span> Services to Meet All Your Needs</h3>
 								</div>
 								<div className="col-lg-5">
-									<p className="text-lg-medium neutral-500">From daily rentals to long-term solutions, we offer a comprehensive range of vehicles and services to suit every need and budget.</p>
+									<p className="text-lg-medium neutral-500">From daily saless to long-term solutions, we offer a comprehensive range of vehicles and services to suit every need and budget.</p>
 								</div>
 							</div>
 							<div className="row mt-50">
@@ -47,8 +47,8 @@ export default function Services() {
 										</div>
 										<div className="card-info">
 											<div className="card-title mb-3">
-												<Link className="text-xl-bold neutral-1000" href="/blog-details">Daily and Weekly Car Rentals</Link>
-												<p className="text-md-medium neutral-500 mt-2">Flexible rental options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
+												<Link className="text-xl-bold neutral-1000" href="/blog-details">Daily and Weekly Car Saless</Link>
+												<p className="text-md-medium neutral-500 mt-2">Flexible sales options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
 											</div>
 											<div className="card-program">
 												<div className="endtime">
@@ -65,7 +65,7 @@ export default function Services() {
 										</div>
 										<div className="card-info">
 											<div className="card-title mb-3">
-												<Link className="text-xl-bold neutral-1000" href="/blog-details">Long-Term Rentals</Link>
+												<Link className="text-xl-bold neutral-1000" href="/blog-details">Long-Term Saless</Link>
 												<p className="text-md-medium neutral-500 mt-2">Convenient and cost-effective solutions for those needing a vehicle for an extended period, with discounted rates.</p>
 											</div>
 											<div className="card-program">
@@ -83,7 +83,7 @@ export default function Services() {
 										</div>
 										<div className="card-info">
 											<div className="card-title mb-3">
-												<Link className="text-xl-bold neutral-1000" href="/blog-details">Luxury Car Rentals</Link>
+												<Link className="text-xl-bold neutral-1000" href="/blog-details">Luxury Car Saless</Link>
 												<p className="text-md-medium neutral-500 mt-2">Drive in style with our selection of high-end vehicles, perfect for special occasions or executive travel.</p>
 											</div>
 											<div className="card-program">
@@ -102,7 +102,7 @@ export default function Services() {
 										<div className="card-info">
 											<div className="card-title mb-3">
 												<Link className="text-xl-bold neutral-1000" href="/blog-details">VIP Transfer Services</Link>
-												<p className="text-md-medium neutral-500 mt-2">Flexible rental options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
+												<p className="text-md-medium neutral-500 mt-2">Flexible sales options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
 											</div>
 											<div className="card-program">
 												<div className="endtime">
@@ -120,7 +120,7 @@ export default function Services() {
 										<div className="card-info">
 											<div className="card-title mb-3">
 												<Link className="text-xl-bold neutral-1000" href="/blog-details">Chauffeur Services</Link>
-												<p className="text-md-medium neutral-500 mt-2">Flexible rental options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
+												<p className="text-md-medium neutral-500 mt-2">Flexible sales options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
 											</div>
 											<div className="card-program">
 												<div className="endtime">
@@ -138,7 +138,7 @@ export default function Services() {
 										<div className="card-info">
 											<div className="card-title mb-3">
 												<Link className="text-xl-bold neutral-1000" href="/blog-details">Airport Meet and Greet</Link>
-												<p className="text-md-medium neutral-500 mt-2">Flexible rental options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
+												<p className="text-md-medium neutral-500 mt-2">Flexible sales options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
 											</div>
 											<div className="card-program">
 												<div className="endtime">
@@ -156,7 +156,7 @@ export default function Services() {
 										<div className="card-info">
 											<div className="card-title mb-3">
 												<Link className="text-xl-bold neutral-1000" href="/blog-details">Concierge Services</Link>
-												<p className="text-md-medium neutral-500 mt-2">Flexible rental options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
+												<p className="text-md-medium neutral-500 mt-2">Flexible sales options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
 											</div>
 											<div className="card-program">
 												<div className="endtime">
@@ -174,7 +174,7 @@ export default function Services() {
 										<div className="card-info">
 											<div className="card-title mb-3">
 												<Link className="text-xl-bold neutral-1000" href="/blog-details">Roadside Assistance</Link>
-												<p className="text-md-medium neutral-500 mt-2">Flexible rental options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
+												<p className="text-md-medium neutral-500 mt-2">Flexible sales options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
 											</div>
 											<div className="card-program">
 												<div className="endtime">
@@ -191,8 +191,8 @@ export default function Services() {
 										</div>
 										<div className="card-info">
 											<div className="card-title mb-3">
-												<Link className="text-xl-bold neutral-1000" href="/blog-details">Customizable Rental Packages</Link>
-												<p className="text-md-medium neutral-500 mt-2">Flexible rental options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
+												<Link className="text-xl-bold neutral-1000" href="/blog-details">Customizable Sales Packages</Link>
+												<p className="text-md-medium neutral-500 mt-2">Flexible sales options available for both short-term and weekly needs, ideal for vacations or business trips.</p>
 											</div>
 											<div className="card-program">
 												<div className="endtime">

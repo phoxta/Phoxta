@@ -9,7 +9,7 @@ export default function Cta4() {
 				<div className="bg-shape" />
 				<div className="container position-relative z-1">
 					<div className="text-center">
-						<span className="text-sm-bold bg-white p-3 rounded-12 wow fadeInDown">Best Car Rental System</span>
+						<span className="text-sm-bold bg-white p-3 rounded-12 wow fadeInDown">Best Car Dealership System</span>
 						<h4 className="mt-4 wow fadeInUp">
 							Receive a Competitive Offer <br />
 							Sell Your Car to Us Today.
@@ -21,9 +21,9 @@ export default function Cta4() {
 								<span className="icon-shape icon_70 background-2 rounded-circle wow fadeIn">
 									<img className="dark-invert" src="/assets/imgs/cta/cta-4/icon-1.svg" alt="Carento" />
 								</span>
-								<h6 className=" wow fadeInUp">Loking for a rental car?</h6>
-								<p className="text-md-regular wow fadeInUp">Find your perfect rental car for any journey, from road trips to business travel.</p>
-								<Link className="btn btn-primary wow fadeInUp" href="/cars-list-1">
+								<h6 className=" wow fadeInUp">Loking for your next car?</h6>
+								<p className="text-md-regular wow fadeInUp">Find your perfect car for any journey, from the daily commute to the weekend away travel.</p>
+								<Link className="btn btn-primary wow fadeInUp" href="/inventory">
 									Get Started Now
 									<svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none">
 										<path d="M12 19L19 12L12 5M19 12L5 12" stroke="#101010" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -39,9 +39,9 @@ export default function Cta4() {
 								<span className="icon-shape icon_70 background-2 rounded-circle wow fadeIn">
 									<img className="dark-invert" src="/assets/imgs/cta/cta-4/icon-2.svg" alt="Carento" />
 								</span>
-								<h6 className=" wow fadeInUp">Loking for a rental car?</h6>
-								<p className="text-md-regular wow fadeInUp">Find your perfect rental car for any journey, from road trips to business travel.</p>
-								<Link className="btn btn-primary wow fadeInUp" href="/cars-list-1">
+								<h6 className=" wow fadeInUp">Loking for your next car?</h6>
+								<p className="text-md-regular wow fadeInUp">Find your perfect car for any journey, from the daily commute to the weekend away travel.</p>
+								<Link className="btn btn-primary wow fadeInUp" href="/inventory">
 									Get Started Now
 									<svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 24 24" fill="none">
 										<path d="M12 19L19 12L12 5M19 12L5 12" stroke="#101010" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

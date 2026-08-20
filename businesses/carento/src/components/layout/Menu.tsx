@@ -9,7 +9,7 @@ export default function Menu() {
 
 			<ul className="sub-menu">
 				<Link href="#" className={location.pathname == "/" ? "active" : ""}>Home Default</Link>
-				<Link href="#" className={location.pathname == "/index-2" ? "active" : ""}>Home Interior</Link>
+				<Link href="#" className={location.pathname == "/" ? "active" : ""}>Home Interior</Link>
 			</ul>
 		</>
 	)

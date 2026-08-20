@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import rawCars from "@/util/cars.json";
 import { resolveTenant, fetchFleet, type Car, type BusinessProfile } from "@/lib/phoxta";
 
-// Live, per-tenant fleet. On load it resolves which car-rental business this
+// Live, per-tenant fleet. On load it resolves which car-sales business this
 // storefront serves (by hostname) and fetches that org's vehicles from the Phoxta
 // backend — the SAME products the owner manages in the operating console. Falls
 // back to the bundled demo fleet when unconfigured (local dev) or empty, so the
