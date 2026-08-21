@@ -10,7 +10,6 @@ import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
 import { OpsToasts } from "@/lib/ops/feedback";
 import { supabase } from "@/lib/supabaseClient";
 import { OpsSubNavSlotProvider } from "@/layouts/OpsSubNav";
-import { useFillToPane } from "@/lib/hooks/useFillToPane";
 
 export type OpsContext = { orgId: string; org: Organization; console: VerticalConsole };
 
@@ -24,12 +23,6 @@ export default function OperatingLayout() {
   // A console tab's own sub-nav is portalled into the header block below, so
   // there is one pinned element and no offset to measure. See OpsSubNav.
   const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);
-  // The console fills the shell's pane so its chrome can sit still and only the
-  // tab content scrolls. Must be called before the loading/error early returns
-  // below — a hook that runs only on the loaded branch changes the hook count
-  // between renders. Below the thresholds it returns null and the page falls
-  // back to scrolling as a whole, which is right on a phone.
-  const { ref: fillRef, fit } = useFillToPane({ minWidth: 992, minHeight: 480 });
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -148,17 +141,11 @@ export default function OperatingLayout() {
   const liveUrl = liveDomain ? `https://${liveDomain.hostname}` : org.site_url || null;
 
   return (
-    <div ref={fillRef} className={`ops-console${fit ? " pinned" : ""}`} style={fit ?? undefined}>
+    <div>
       <PageMeta title={`Phoxta - ${org.name} operations`} />
-      {/* Console chrome — breadcrumb, business title and the tab bar. It sits
-          OUTSIDE the scrolling region rather than sticking to the top of it, so
-          the header and tabs simply do not move: only the active tab's content
-          scrolls, in its own box below.
-
-          .dash-sticky-head still carries the opaque background and spacing that
-          every pinned block shares; .ops-console.pinned turns off the sticky
-          offsets, which exist to hide content passing underneath and have
-          nothing to hide once nothing passes. */}
+      {/* Console chrome — breadcrumb, business title and the tab bar. Pinned via
+          .dash-sticky-head so it stays put while only the tab's content scrolls;
+          the tabs used to ride up out of view with the content beneath them. */}
       <div className="dash-sticky-head pb-4">
         <div className="mb-2 d-flex flex-wrap align-items-center gap-2">
           <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
@@ -248,8 +235,7 @@ export default function OperatingLayout() {
         <div ref={setSubSlot} />
       </div>
 
-      {/* The only scrolling region on the console. */}
-      <div className="ops-content">
+      <div>
         <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>}>
           <OpsSubNavSlotProvider value={subSlot}>
             <Outlet context={{ orgId: id, org, console: cfg } satisfies OpsContext} />
