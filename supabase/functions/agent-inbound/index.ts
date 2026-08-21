@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
       isTest: body?.test === true,
     });
     await classifyLater(classifyInbound(admin, org, result.conversationId, message));
-    return json({ conversationId: result.conversationId, reply: result.reply });
+    return json({ conversationId: result.conversationId, reply: result.reply, cards: result.cards ?? [] });
   } catch (err) {
     console.error("agent-inbound error", err);
     return json({ error: "Something went wrong. Please try again." }, 500);

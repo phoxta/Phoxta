@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { RichText, ProductCards, type ChatCard } from "@/lib/chatRich";
 import { dishes, money } from "@/data/menu";
 import { useMenu } from "@/util/menu";
 
@@ -25,8 +26,10 @@ if (!AGENT_URL && typeof console !== "undefined") {
 const ENV_AGENT_KEY = (import.meta.env.VITE_AGENT_PUBLIC_KEY as string | undefined) ?? "";
 const ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
-type Msg = { role: "bot" | "user"; text: string };
-const CHIPS = ["Recommend a dish", "What's vegetarian?", "Wine pairing for salmon", "Book a table"];
+type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[] };
+// No "Book a table": this is a delivery and collection kitchen with no dining
+// room, so suggesting it invites a request nobody can honour.
+const CHIPS = ["Recommend a dish", "What's vegetarian?", "Track my order", "Catering for an event"];
 
 function localReply(q: string): string {
     const s = q.toLowerCase();
@@ -75,6 +78,7 @@ export default function AIChat() {
         setDraft("");
         setBusy(true);
         let reply = "";
+        let cards: ChatCard[] = [];
         if (AGENT_URL && AGENT_KEY) {
             try {
                 const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -87,12 +91,13 @@ export default function AIChat() {
                 const data = await res.json();
                 convRef.current = data.conversationId ?? convRef.current;
                 reply = data.reply ?? "";
+                cards = Array.isArray(data.cards) ? data.cards : [];
             } catch {
                 reply = "";
             }
         }
         if (!reply) reply = localReply(q);
-        setMsgs((m) => [...m, { role: "bot", text: reply }]);
+        setMsgs((m) => [...m, { role: "bot", text: reply, cards }]);
         setBusy(false);
         setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 50);
     }
@@ -110,7 +115,7 @@ export default function AIChat() {
                     </div>
                     <div className="ai-body" ref={bodyRef}>
                         {msgs.map((m, i) => (
-                            <div key={i} className={`ai-msg ${m.role}`}>{m.text}</div>
+                            <div key={i} className={`ai-msg ${m.role}`}><RichText text={m.text} /><ProductCards cards={m.cards} /></div>
                         ))}
                         {busy && <div className="ai-msg bot">…</div>}
                     </div>

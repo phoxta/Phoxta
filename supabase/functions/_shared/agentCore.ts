@@ -3,7 +3,7 @@
 // loads unified cross-channel memory, runs the tool-using agent, persists, meters.
 import { runAgent, callMessages } from "./anthropic.ts";
 import { modelFor, type Tier } from "./models.ts";
-import { buildAgentTools, agentToolRunner, resolveBookingMode, type AgentCtx } from "./agentTools.ts";
+import { buildAgentTools, agentToolRunner, resolveBookingMode, type AgentCtx, type ProductCard } from "./agentTools.ts";
 import { meter, tokensUsedThisMonth, MONTHLY_TOKEN_CAP } from "./meter.ts";
 import { guardInput, guardOutput, INJECTION_GUARD_NOTE } from "./guardrails.ts";
 import { loadCustomerMemory, extractCustomerMemory } from "./memory.ts";
@@ -138,7 +138,7 @@ export async function respondCore(
   org: Org,
   config: AgentConfig,
   params: { channel: string; conversationId?: string; customer: AgentCtx["customer"]; message: string; userId?: string | null; isTest?: boolean },
-): Promise<{ conversationId: string; reply: string; actions: string[]; escalated: boolean }> {
+): Promise<{ conversationId: string; reply: string; actions: string[]; escalated: boolean; cards: ProductCard[] }> {
   const { id: conversationId, contactId } = await resolveConversation(admin, org.id, params.channel, params.conversationId, params.customer, params.isTest === true);
 
   // Input guardrail: bound length + flag prompt-injection attempts. Use the
@@ -173,7 +173,7 @@ export async function respondCore(
       { organization_id: org.id, conversation_id: conversationId, role: "agent", channel_type: params.channel, body: capped, meta: { capped: true } },
     ]);
     await admin.from("conversations").update({ last_message_at: new Date().toISOString(), status: "escalated" }).eq("id", conversationId);
-    return { conversationId, reply: capped, actions: ["Usage cap reached — flagged for follow-up"], escalated: true };
+    return { conversationId, reply: capped, actions: ["Usage cap reached — flagged for follow-up"], escalated: true, cards: [] };
   }
 
   // Unified memory: summaries of this customer's other conversations.
@@ -289,7 +289,9 @@ export async function respondCore(
 
   await meter(admin, { organizationId: org.id, userId: params.userId, conversationId, model: run.model, feature: "agent", tier: config.model_tier ?? "balanced", inTok: run.inTok, outTok: run.outTok, cacheWriteTok: run.cacheWriteTok, cacheReadTok: run.cacheReadTok, latencyMs: latency });
 
-  return { conversationId, reply, actions: ctx.actions, escalated };
+  // cards: products the agent surfaced this turn, so a chat UI can render them
+  // as real cards. Text-only channels simply ignore the field.
+  return { conversationId, reply, actions: ctx.actions, escalated, cards: ctx.cards ?? [] };
 }
 
 /** Refresh a conversation's rolling summary (memory + reporting). */

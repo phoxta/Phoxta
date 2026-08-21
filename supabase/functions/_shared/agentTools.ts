@@ -17,6 +17,18 @@ import { READ_TOOLS, toolRunner } from "./tools.ts";
 // deno-lint-ignore no-explicit-any
 type Json = any;
 
+/** A product the agent referenced this turn, returned to the caller so a chat
+ *  surface can render a real card — image, price, link — instead of the model
+ *  describing a photo it cannot show. */
+export type ProductCard = {
+  id: string;
+  name: string;
+  description: string;
+  price_cents: number;
+  currency: string;
+  image_url: string | null;
+};
+
 export type AgentCtx = {
   conversationId: string | null;
   /** `handle`/`handleKind` carry the identity for channels that have neither an
@@ -36,6 +48,9 @@ export type AgentCtx = {
   /** Channel the customer reached us on (web/sms/whatsapp/voice/email…). */
   channel?: string;
   actions: string[];
+  /** Rich results produced this turn. Text channels (SMS, voice) ignore these;
+   *  web chat renders them. */
+  cards?: ProductCard[];
 };
 
 // ---------------------------------------------------------------------------
@@ -668,8 +683,20 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
     }
 
     if (name === "recommend_products") {
-      const { data } = await admin.from("products").select("name, description, price_cents").eq("organization_id", orgId).eq("status", "active").limit(40);
-      return JSON.stringify(data ?? []);
+      // Selects the media columns too: without image_url the agent can only ever
+      // describe a product, never show it. The rows are also stashed on ctx so
+      // the caller can render real cards alongside the reply.
+      const { data } = await admin
+        .from("products")
+        .select("id, name, description, price_cents, currency, image_url")
+        .eq("organization_id", orgId)
+        .eq("status", "active")
+        .limit(40);
+      const rows = (data ?? []) as ProductCard[];
+      ctx.cards = rows.slice(0, 6);
+      // The model gets no image URLs — it should reference products by name and
+      // let the card carry the picture, rather than pasting links into prose.
+      return JSON.stringify(rows.map(({ name: n, description, price_cents, currency }) => ({ name: n, description, price_cents, currency })));
     }
 
     if (name === "route_location") {

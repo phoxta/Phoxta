@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { RichText, ProductCards, type ChatCard } from "@/lib/chatRich";
 import { supabase, resolveTenant } from "@/lib/phoxta";
 
 /**
@@ -41,7 +42,7 @@ const FALLBACK = "I can help with products, stock and delivery. What are you loo
 const PLACEHOLDER = "Ask about a product…";
 const CHIPS = ["What is in stock?", "Help me choose a desk", "Delivery times", "Where is my order?"];
 
-type Msg = { role: "bot" | "user"; text: string };
+type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[] };
 
 export default function AIAssistant() {
   const [open, setOpen] = useState(false);
@@ -80,6 +81,7 @@ export default function AIAssistant() {
     setBusy(true);
     const key = agentKey || ENV_AGENT_KEY;
     let reply = "";
+    let cards: ChatCard[] = [];
     if (AGENT_URL && key) {
       try {
         const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -95,12 +97,13 @@ export default function AIAssistant() {
         const d = await r.json();
         conv.current = d.conversationId ?? conv.current;
         reply = d.reply ?? "";
+        cards = Array.isArray(d.cards) ? d.cards : [];
       } catch {
         reply = "";
       }
     }
     if (!reply) reply = FALLBACK;
-    setMsgs((m) => [...m, { role: "bot", text: reply }]);
+    setMsgs((m) => [...m, { role: "bot", text: reply, cards }]);
     setBusy(false);
     setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 50);
   }
@@ -135,7 +138,8 @@ export default function AIAssistant() {
                 className={m.role === "user" ? "align-self-end bg-dark text-white" : "align-self-start"}
                 style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, lineHeight: 1.5, fontSize: 14, background: m.role === "user" ? undefined : "#F1F2F4" }}
               >
-                {m.text}
+                <RichText text={m.text} />
+                <ProductCards cards={m.cards} />
               </div>
             ))}
             {busy && <div className="align-self-start" style={{ padding: "10px 14px", borderRadius: 12, background: "#F1F2F4", fontSize: 14 }}>…</div>}

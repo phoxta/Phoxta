@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { RichText, ProductCards, type ChatCard } from "@/lib/chatRich";
 import { useCatalog } from "@/util/catalog";
 
 // AI Stylist — connects to the Phoxta unified agent (agent-inbound) addressed by
@@ -23,7 +24,7 @@ if (!AGENT_URL && typeof console !== "undefined") {
 const ENV_AGENT_KEY = (import.meta.env.VITE_AGENT_PUBLIC_KEY as string | undefined) ?? "";
 const ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
-type Msg = { role: "bot" | "user"; text: string };
+type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[] };
 const CHIPS = ["What's new in?", "Style a wool coat", "Gift under $150", "Size advice"];
 
 function localReply(q: string): string {
@@ -52,6 +53,7 @@ export default function AIStylist() {
         setDraft("");
         setBusy(true);
         let reply = "";
+        let cards: ChatCard[] = [];
         if (AGENT_URL && AGENT_KEY) {
             try {
                 const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -60,10 +62,11 @@ export default function AIStylist() {
                 const d = await r.json();
                 conv.current = d.conversationId ?? conv.current;
                 reply = d.reply ?? "";
+        cards = Array.isArray(d.cards) ? d.cards : [];
             } catch { reply = ""; }
         }
         if (!reply) reply = localReply(q);
-        setMsgs((m) => [...m, { role: "bot", text: reply }]);
+        setMsgs((m) => [...m, { role: "bot", text: reply, cards }]);
         setBusy(false);
         setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 50);
     }
@@ -81,7 +84,7 @@ export default function AIStylist() {
                     </div>
                     <div className="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-2" ref={bodyRef}>
                         {msgs.map((m, i) => (
-                            <div key={i} className={`fz-14 ${m.role === "user" ? "align-self-end bg-dark text-white" : "align-self-start bg-neutral-100"}`} style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, lineHeight: 1.5 }}>{m.text}</div>
+                            <div key={i} className={`fz-14 ${m.role === "user" ? "align-self-end bg-dark text-white" : "align-self-start bg-neutral-100"}`} style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, lineHeight: 1.5 }}><RichText text={m.text} /><ProductCards cards={m.cards} /></div>
                         ))}
                         {busy && <div className="align-self-start bg-neutral-100 fz-14" style={{ padding: "10px 14px", borderRadius: 12 }}>…</div>}
                     </div>
