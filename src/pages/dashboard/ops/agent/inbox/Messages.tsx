@@ -1,5 +1,6 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useState } from "react";
 import { StickyNote } from "lucide-react";
+import { Letter } from "react-letter";
 import type { TimelineMessage } from "@/lib/db/ops/agent";
 import type { TicketMessage } from "@/lib/db/ops/helpdesk";
 import { Avatar, AuthorIcon, DeliveryTick } from "@/pages/dashboard/ops/ui/primitives";
@@ -32,52 +33,38 @@ const DELIVERY_LABEL: Record<string, string> = {
 };
 
 /**
- * Base styles injected into every HTML email, the way a mail client does.
+ * An HTML email, rendered by react-letter.
  *
- * Mail arrives with no assumption about the reader's defaults, so an email with
- * no styles of its own would otherwise render in the iframe's — Times New Roman
- * at 16px against a transparent page. These are FALLBACKS: they sit in the head
- * before the message, so anything the email declares for itself still wins.
- */
-const EMAIL_BASE_CSS = `
-  html, body { margin: 0; padding: 0; background: #fff; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    font-size: 14px; line-height: 1.5; color: #202124;
-    overflow-wrap: anywhere; word-wrap: break-word; padding: 4px 2px;
-  }
-  img { max-width: 100%; height: auto; border: 0; }
-  table { max-width: 100%; }
-  a { color: #1a73e8; }
-  blockquote { margin: 0 0 0 0.8ex; padding-left: 1ex; border-left: 2px solid #dadce0; color: #5f6368; }
-  pre { white-space: pre-wrap; word-wrap: break-word; }
-`;
-
-/** Bare URLs in plain text. Stops at whitespace and at the brackets senders
- *  wrap links in, so "Docs ( https://x/y )" links the URL and not the bracket. */
-const URL_RE = /(https?:\/\/[^\s<>()[\]]+)/g;
-
-/**
- * A plain-text message body.
+ * This was hand-rolled twice — a sandboxed iframe with a measured height, then
+ * an injected base stylesheet — and both were re-implementing a solved problem
+ * badly. react-letter (mat-sz/react-letter, MIT) exists precisely for this and
+ * states its target as Gmail's rendering. Its sanitizer, lettersanitizer, works
+ * over DOMParser and prefixes the message's classes, IDs and CSS selectors so
+ * an email cannot reach the console's own styles.
  *
- * Mail with no HTML part arrives as the sender's flattened alternative, where
- * every link has been rewritten as "Label ( https://... )". Rendered as raw text
- * that is a wall of unclickable URLs. Linkifying is all a mail client does here
- * — the URL stays visible rather than being hidden behind its label, because a
- * link whose destination you cannot see is worse than an ugly one.
+ * Rendering inline rather than in an iframe is what finally kills the letterbox:
+ * the message is part of the document, so it is simply as tall as it is. There
+ * is no height to measure, nothing to re-measure when an image loads, and no
+ * scrollbar inside a scrollbar.
+ *
+ * Links still have to leave: an email opening in place would replace the
+ * console. Intercepting the click is more reliable than hoping every anchor was
+ * rewritten with a target.
  */
-function PlainBody({ text }: { text: string }) {
-  const parts = text.split(URL_RE);
+function EmailBody({ html }: { html: string }) {
   return (
-    <>
-      {parts.map((part, i) =>
-        i % 2 === 1 ? (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
+    <div
+      className="ibx-letter"
+      onClick={(e) => {
+        const a = (e.target as HTMLElement).closest("a");
+        const href = a?.getAttribute("href");
+        if (!href) return;
+        e.preventDefault();
+        window.open(href, "_blank", "noopener,noreferrer");
+      }}
+    >
+      <Letter html={html} />
+    </div>
   );
 }
 
@@ -101,65 +88,31 @@ function looksLikeHtml(text: string | null | undefined): boolean {
   return (text.match(HTML_TAGS)?.length ?? 0) >= 2;
 }
 
-/** Wrap the message in a real document so it renders like mail, not markup. */
-function emailDocument(html: string): string {
-  return [
-    "<!doctype html><html><head><meta charset=\"utf-8\">",
-    '<meta name="viewport" content="width=device-width,initial-scale=1">',
-    // Tracking pixels and remote images should not carry the console's URL.
-    '<meta name="referrer" content="no-referrer">',
-    // Mail links open outside the console; sandbox keeps them out of this frame.
-    '<base target="_blank" rel="noopener noreferrer">',
-    `<style>${EMAIL_BASE_CSS}</style></head><body>`,
-    html,
-    "</body></html>",
-  ].join("");
-}
+/** Bare URLs in plain text. Stops at whitespace and at the brackets senders
+ *  wrap links in, so "Docs ( https://x/y )" links the URL and not the bracket. */
+const URL_RE = /(https?:\/\/[^\s<>()[\]]+)/g;
 
 /**
- * An HTML email, rendered the way a mail client renders one.
+ * A plain-text message body.
  *
- * It was a fixed 240px window inside a chat bubble, with a "Show full email"
- * button that took it to another fixed height — so every email was read through
- * a letterbox with its own scrollbar, nested inside the thread's scrollbar.
- * A mail client gives the message its full width and its full height, and lets
- * the thread do the scrolling.
- *
- * The iframe stays sandboxed. `allow-same-origin` is what lets this side read
- * the rendered height — and it grants the email nothing, because without
- * `allow-scripts` no code in it can run. Popups are allowed so a link actually
- * opens; `base target=_blank` sends it to a new tab rather than replacing the
- * console.
+ * Mail with no HTML part arrives as the sender's flattened alternative, where
+ * every link has been rewritten as "Label ( https://... )". Rendered raw that is
+ * a wall of unclickable URLs. Linkifying is all a mail client does here — and
+ * the URL stays visible rather than hidden behind its label, because a link
+ * whose destination you cannot see is worse than an ugly one.
  */
-function EmailFrame({ html }: { html: string }) {
-  const ref = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(320);
-
-  const measure = useCallback(() => {
-    const doc = ref.current?.contentDocument;
-    if (!doc) return;
-    const h = Math.max(doc.documentElement?.scrollHeight ?? 0, doc.body?.scrollHeight ?? 0);
-    // Capped so a runaway document cannot produce a scroll bar kilometres long.
-    if (h > 0) setHeight(Math.min(h + 8, 12000));
-  }, []);
-
-  useEffect(() => {
-    // Images and web fonts land after the load event on some engines, and a
-    // late image is exactly what leaves an email clipped.
-    const t = window.setTimeout(measure, 400);
-    return () => window.clearTimeout(t);
-  }, [measure, html]);
-
+function PlainBody({ text }: { text: string }) {
+  const parts = text.split(URL_RE);
   return (
-    <iframe
-      ref={ref}
-      className="ibx-email"
-      sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-      srcDoc={emailDocument(html)}
-      title="Email"
-      style={{ height }}
-      onLoad={measure}
-    />
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
   );
 }
 
@@ -249,7 +202,7 @@ function MessageBubble({
       <span className="ibx-msg__stack">
         <span className={`ibx-bubble${html ? " ibx-bubble--html" : ""}`}>
           {subject && <span className="ibx-bubble__subject">{subject}</span>}
-          {html ? <EmailFrame html={html} /> : <PlainBody text={m.body} />}
+          {html ? <EmailBody html={html} /> : <PlainBody text={m.body} />}
         </span>
 
         {endsGroup && (
@@ -297,7 +250,7 @@ export function TicketMessages({ messages, customerName }: { messages: TicketMes
               <span className="ibx-msg__stack">
                 {looksLikeHtml(m.body) ? (
                   <span className="ibx-bubble ibx-bubble--html">
-                    <EmailFrame html={m.body} />
+                    <EmailBody html={m.body} />
                   </span>
                 ) : (
                   <span className="ibx-bubble"><PlainBody text={m.body} /></span>
