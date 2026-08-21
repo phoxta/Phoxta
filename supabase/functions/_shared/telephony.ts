@@ -60,9 +60,36 @@ export function phoneForStorage(raw: unknown): string {
   return /\d/.test(s) ? s : "";
 }
 
+/** E.164 for a number that may have been typed in *national* form.
+ *
+ *  phoneForStorage deliberately keeps a lead's number as typed when it has no
+ *  country code ("0803 123 4567"), because losing the number would be worse
+ *  than storing an undiallable one. That value then flows straight to Twilio,
+ *  which rejects it with error 21211 — so every transport normalises here
+ *  first, using DEFAULT_COUNTRY_CODE for the missing prefix.
+ *
+ *  Returns null when the number still cannot be resolved: sending to a guessed
+ *  wrong number is worse than failing loudly. */
+export function toE164(raw: unknown, defaultCc?: string | null): string | null {
+  const already = normalizeE164(raw);
+  if (already) return already;
+
+  const cc = String(defaultCc ?? "").trim().replace(/[\s()\-.]/g, "");
+  if (!/^\+[1-9]\d{0,3}$/.test(cc)) return null;
+
+  // National form: a trunk prefix ("0") is dropped, everything else keeps its
+  // digits. Anything with a "+" already failed normalizeE164, so it is broken
+  // rather than merely country-less — don't paper over it with a country code.
+  const s = String(raw ?? "").trim();
+  if (s.includes("+")) return null;
+  const digits = s.replace(/\D/g, "");
+  if (!digits) return null;
+  return normalizeE164(cc + digits.replace(/^0+/, ""));
+}
+
 /** Validate and normalise a destination number before it reaches Twilio. */
 export function checkDestination(raw: string): CallCheck {
-  const normalized = normalizeE164(raw);
+  const normalized = toE164(raw, Deno.env.get("DEFAULT_COUNTRY_CODE"));
   if (!normalized) {
     return { ok: false, error: "Enter the number in international format, e.g. +14155550123." };
   }

@@ -6,9 +6,17 @@
 //   sms   : Twilio (TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM)
 //   call  : Vapi (VAPI_API_KEY + VAPI_PHONE_NUMBER_ID) or Retell (RETELL_API_KEY + RETELL_FROM)
 //           — managed voice AI; self-host alternative is LiveKit Agents / Pipecat.
+import { toE164 } from "./telephony.ts";
+
 export type DispatchResult = { status: "sent" | "dialing" | "simulated" | "failed"; provider: string };
 
 const env = (k: string) => Deno.env.get(k);
+
+/** Every Twilio destination passes through here. Callers hand us whatever is on
+ *  file — including the national-format numbers phoneForStorage keeps verbatim
+ *  — and Twilio rejects those with 21211, so normalise at the boundary rather
+ *  than trusting each of the five call sites to have done it. */
+const dialable = (to: string) => toE164(to, env("DEFAULT_COUNTRY_CODE"));
 
 async function dispatchEmail(to: string, subject: string, message: string): Promise<DispatchResult> {
   if (env("RESEND_API_KEY") && env("RESEND_FROM")) {
@@ -57,9 +65,17 @@ export async function twilioSend(
   const authPass = env("TWILIO_API_KEY_SECRET") || env("TWILIO_AUTH_TOKEN");
   const fromRaw = channel === "whatsapp" ? (env("TWILIO_WHATSAPP_FROM") || env("TWILIO_FROM")) : env("TWILIO_FROM");
   if (!accountSid || !fromRaw || !authUser || !authPass) return { ok: false, status: "simulated" };
+  const dest = dialable(to);
+  if (!dest) {
+    return {
+      ok: false,
+      status: "failed",
+      errorMessage: `"${to}" isn't a usable phone number. Save it in international format, e.g. +447350172153.`,
+    };
+  }
   const wa = (n: string) => (n.startsWith("whatsapp:") ? n : `whatsapp:${n}`);
   const From = channel === "whatsapp" ? wa(fromRaw) : fromRaw;
-  const To = channel === "whatsapp" ? wa(to) : to;
+  const To = channel === "whatsapp" ? wa(dest) : dest;
   // A pre-approved template is sent via ContentSid (+ variables) — required to
   // message outside WhatsApp's 24h window; otherwise send a free-form Body.
   const params = opts?.contentSid
@@ -143,11 +159,15 @@ async function twilioCall(to: string, twiml: string): Promise<CallResult> {
   const authPass = env("TWILIO_API_KEY_SECRET") || env("TWILIO_AUTH_TOKEN");
   const from = env("TWILIO_FROM");
   if (!accountSid || !from || !authUser || !authPass || !to) return { ok: false, status: "simulated" };
+  const dest = dialable(to);
+  if (!dest) {
+    return { ok: false, status: "failed", error: `"${to}" isn't a usable phone number. Save it in international format, e.g. +447350172153.` };
+  }
   try {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
       method: "POST",
       headers: { Authorization: `Basic ${btoa(`${authUser}:${authPass}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ From: from, To: to, Twiml: twiml }),
+      body: new URLSearchParams({ From: from, To: dest, Twiml: twiml }),
     });
     // deno-lint-ignore no-explicit-any
     const data: any = await res.json().catch(() => ({}));
@@ -158,9 +178,35 @@ async function twilioCall(to: string, twiml: string): Promise<CallResult> {
   }
 }
 
+/** Is the Pipecat voice server actually serving? Twilio only reports a dead
+ *  <Stream> endpoint *after* the call connects (error 31920, WebSocket upgrade
+ *  answered with something other than 101), so without this preflight a call to
+ *  a down server bills a leg, shows "dialing" in the console, and leaves the
+ *  customer listening to silence. Failing before we dial is the honest outcome. */
+async function voiceServerUp(host: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://${host}/health`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function placeAiCall(agentKey: string, to: string, opening = ""): Promise<CallResult> {
   if (!agentKey || !to) return { ok: false, status: "simulated" };
-  const host = env("VOICE_WS_HOST") || "phoxta-voice-production.up.railway.app";
+  // Fallback only matters if VOICE_WS_HOST is ever unset — it previously named
+  // a Railway host that no longer exists, which meant a missing secret failed
+  // silently into a dead endpoint (Twilio 31920) instead of anywhere useful.
+  const host = env("VOICE_WS_HOST") || "voice.phoxta.com";
+  if (!(await voiceServerUp(host))) {
+    return {
+      ok: false,
+      status: "failed",
+      error: `The AI voice server (${host}) isn't responding, so the call would connect to silence. Check the deployment, then try again.`,
+    };
+  }
   const openParam = opening ? `<Parameter name="opening" value="${xmlEsc(opening)}"/>` : "";
   const twiml =
     `<?xml version="1.0" encoding="UTF-8"?><Response><Connect>` +
@@ -174,10 +220,16 @@ export async function placeAiCall(agentKey: string, to: string, opening = ""): P
 export async function placeBridgeCall(customerTo: string, agentPhone: string): Promise<CallResult> {
   const from = env("TWILIO_FROM");
   if (!agentPhone || !customerTo || !from) return { ok: false, status: "simulated" };
+  // The customer leg rides inside the TwiML, so twilioCall's normalisation (which
+  // only covers the outer `To`) never sees it — normalise it here.
+  const customer = dialable(customerTo);
+  if (!customer) {
+    return { ok: false, status: "failed", error: `"${customerTo}" isn't a usable phone number. Save it in international format, e.g. +447350172153.` };
+  }
   const twiml =
     `<?xml version="1.0" encoding="UTF-8"?><Response>` +
     `<Say>Connecting you to your customer now.</Say>` +
-    `<Dial callerId="${xmlEsc(from)}"><Number>${xmlEsc(customerTo)}</Number></Dial></Response>`;
+    `<Dial callerId="${xmlEsc(from)}"><Number>${xmlEsc(customer)}</Number></Dial></Response>`;
   return twilioCall(agentPhone, twiml);
 }
 
