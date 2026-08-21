@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { StickyNote } from "lucide-react";
 import type { TimelineMessage } from "@/lib/db/ops/agent";
 import type { TicketMessage } from "@/lib/db/ops/helpdesk";
@@ -30,6 +30,90 @@ const DELIVERY_LABEL: Record<string, string> = {
   failed: "Failed",
   simulated: "Not delivered",
 };
+
+/**
+ * Base styles injected into every HTML email, the way a mail client does.
+ *
+ * Mail arrives with no assumption about the reader's defaults, so an email with
+ * no styles of its own would otherwise render in the iframe's — Times New Roman
+ * at 16px against a transparent page. These are FALLBACKS: they sit in the head
+ * before the message, so anything the email declares for itself still wins.
+ */
+const EMAIL_BASE_CSS = `
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; line-height: 1.5; color: #202124;
+    overflow-wrap: anywhere; word-wrap: break-word; padding: 4px 2px;
+  }
+  img { max-width: 100%; height: auto; border: 0; }
+  table { max-width: 100%; }
+  a { color: #1a73e8; }
+  blockquote { margin: 0 0 0 0.8ex; padding-left: 1ex; border-left: 2px solid #dadce0; color: #5f6368; }
+  pre { white-space: pre-wrap; word-wrap: break-word; }
+`;
+
+/** Wrap the message in a real document so it renders like mail, not markup. */
+function emailDocument(html: string): string {
+  return [
+    "<!doctype html><html><head><meta charset=\"utf-8\">",
+    '<meta name="viewport" content="width=device-width,initial-scale=1">',
+    // Tracking pixels and remote images should not carry the console's URL.
+    '<meta name="referrer" content="no-referrer">',
+    // Mail links open outside the console; sandbox keeps them out of this frame.
+    '<base target="_blank" rel="noopener noreferrer">',
+    `<style>${EMAIL_BASE_CSS}</style></head><body>`,
+    html,
+    "</body></html>",
+  ].join("");
+}
+
+/**
+ * An HTML email, rendered the way a mail client renders one.
+ *
+ * It was a fixed 240px window inside a chat bubble, with a "Show full email"
+ * button that took it to another fixed height — so every email was read through
+ * a letterbox with its own scrollbar, nested inside the thread's scrollbar.
+ * A mail client gives the message its full width and its full height, and lets
+ * the thread do the scrolling.
+ *
+ * The iframe stays sandboxed. `allow-same-origin` is what lets this side read
+ * the rendered height — and it grants the email nothing, because without
+ * `allow-scripts` no code in it can run. Popups are allowed so a link actually
+ * opens; `base target=_blank` sends it to a new tab rather than replacing the
+ * console.
+ */
+function EmailFrame({ html }: { html: string }) {
+  const ref = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(320);
+
+  const measure = useCallback(() => {
+    const doc = ref.current?.contentDocument;
+    if (!doc) return;
+    const h = Math.max(doc.documentElement?.scrollHeight ?? 0, doc.body?.scrollHeight ?? 0);
+    // Capped so a runaway document cannot produce a scroll bar kilometres long.
+    if (h > 0) setHeight(Math.min(h + 8, 12000));
+  }, []);
+
+  useEffect(() => {
+    // Images and web fonts land after the load event on some engines, and a
+    // late image is exactly what leaves an email clipped.
+    const t = window.setTimeout(measure, 400);
+    return () => window.clearTimeout(t);
+  }, [measure, html]);
+
+  return (
+    <iframe
+      ref={ref}
+      className="ibx-email"
+      sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+      srcDoc={emailDocument(html)}
+      title="Email"
+      style={{ height }}
+      onLoad={measure}
+    />
+  );
+}
 
 /** Two messages group when the same author sent them within five minutes. */
 const GROUP_MS = 5 * 60 * 1000;
@@ -85,8 +169,6 @@ function MessageBubble({
   endsGroup: boolean;
   customerName: string;
 }) {
-  const [expanded, setExpanded] = useState(false);
-
   if (m.role === "note") {
     return (
       <div className="ibx-note">
@@ -108,7 +190,7 @@ function MessageBubble({
   const tone = m.role === "agent" ? " is-ai" : m.role === "system" ? " is-system" : "";
 
   return (
-    <div className={`ibx-msg ${mine ? "is-mine" : "is-theirs"}${tone}`}>
+    <div className={`ibx-msg ${mine ? "is-mine" : "is-theirs"}${tone}${html ? " has-email" : ""}`}>
       {/* Only the customer gets a face. Initials of "You" / "AI agent" spell
           nothing, and no mail client shows your own avatar back to you — the
           meta line's glyph and label already name the author. The slot stays
@@ -118,28 +200,7 @@ function MessageBubble({
       <span className="ibx-msg__stack">
         <span className={`ibx-bubble${html ? " ibx-bubble--html" : ""}`}>
           {subject && <span className="ibx-bubble__subject">{subject}</span>}
-          {html ? (
-            /* sandbox="" blocks scripts and navigation; the content scrolls
-               inside a fixed height until it is expanded. */
-            <>
-              <iframe
-                sandbox=""
-                srcDoc={html}
-                title="Email content"
-                style={{ height: expanded ? 620 : 240, maxHeight: expanded ? "70vh" : 240 }}
-              />
-              <button
-                type="button"
-                className="oc-btn oc-btn--sm mt-2"
-                aria-expanded={expanded}
-                onClick={() => setExpanded((v) => !v)}
-              >
-                {expanded ? "Show less" : "Show full email"}
-              </button>
-            </>
-          ) : (
-            m.body
-          )}
+          {html ? <EmailFrame html={html} /> : m.body}
         </span>
 
         {endsGroup && (

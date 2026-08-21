@@ -12,11 +12,13 @@
 .ibx {
   /* Pane widths, narrowed by the breakpoints at the foot of this file. */
   --ibx-queue-w: 336px;
-  --ibx-rail-w: 320px;
   --ibx-gap: 12px;
 
   display: grid;
-  grid-template-columns: var(--ibx-queue-w) minmax(0, 1fr) var(--ibx-rail-w);
+  /* Two panes: the queue and the thread. The customer rail used to hold a third
+     column permanently, which cost the reading pane a third of its width for
+     information you want occasionally — it opens from the thread header now. */
+  grid-template-columns: var(--ibx-queue-w) minmax(0, 1fr);
   gap: var(--ibx-gap);
   /* Real available height, measured by the page (see useFillHeight) so no magic
      number has to track the sticky console chrome above us. */
@@ -403,15 +405,47 @@
   margin-bottom: 4px;
 }
 
-.ibx-bubble--html {
-  width: min(560px, 100%);
-  padding: 10px;
+/* An email is a document, not a chat bubble. It takes the whole reading pane —
+   the same shape a mail client gives it — instead of 560px of a 76% column with
+   its own scrollbar inside the thread's. */
+.ibx-msg.has-email {
+  display: block;
 }
 
-.ibx-bubble--html iframe {
+.ibx-msg.has-email .ibx-msg__slot {
+  display: none;
+}
+
+.ibx-msg.has-email .ibx-msg__stack {
+  max-width: 100%;
+  width: 100%;
+}
+
+.ibx-bubble--html {
+  width: 100%;
+  padding: 0;
+  background: var(--at-neutral-0);
+  border: 1px solid var(--oc-line, rgba(0, 0, 0, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+  white-space: normal;
+}
+
+/* The header band above the message, as in a mail client. */
+.ibx-bubble--html .ibx-bubble__subject {
+  display: block;
+  margin: 0;
+  padding: 11px 14px;
+  font-size: 15px;
+  border-bottom: 1px solid var(--oc-line, rgba(0, 0, 0, 0.08));
+  color: var(--at-neutral-900);
+}
+
+/* Height is set inline from the rendered document — see EmailFrame. Nothing
+   here may cap it, or the email is letterboxed again. */
+.ibx-email {
   width: 100%;
   border: 0;
-  border-radius: 8px;
   background: #fff;
   display: block;
 }
@@ -740,17 +774,12 @@ a.ibx-rail__row:hover .ibx-rail__go {
 @media (max-width: 1399.98px) {
   .ibx {
     --ibx-queue-w: 300px;
-    --ibx-rail-w: 286px;
   }
 }
 
 @media (max-width: 1199.98px) {
   .ibx {
-    grid-template-columns: 280px minmax(0, 1fr);
-  }
-
-  .oc-pane--rail {
-    display: none;
+    --ibx-queue-w: 280px;
   }
 }
 
@@ -789,7 +818,28 @@ a.ibx-rail__row:hover .ibx-rail__go {
   }
 }
 
-/* The rail opens as a full-height sheet below 1200px. */
+/* The identity block in the thread header is the control that opens the
+   customer rail — it is what names the customer, so it is where you reach for
+   more about them. Strip the button chrome; keep the affordance. */
+.ibx-thread__who--btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.ibx-thread__who--btn:hover,
+.ibx-thread__who--btn:focus-visible {
+  background: var(--at-neutral-50);
+}
+
+/* The rail opens as a full-height sheet. */
 .ibx-rail-sheet .oc-pane {
   border: 0;
   border-radius: 0;

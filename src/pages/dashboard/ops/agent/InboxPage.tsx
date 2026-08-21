@@ -1412,7 +1412,14 @@ export default function InboxPage() {
 
               <Avatar name={customerName} channel={threadChannel} size="md" />
 
-              <div className="ibx-thread__who">
+              <button
+                type="button"
+                className="ibx-thread__who ibx-thread__who--btn"
+                onClick={() => setRailOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={railOpen}
+                title="Customer details"
+              >
                 <h2 className="ibx-thread__name">
                   <span>{selTicket ? selTicket.subject : customerName}</span>
                   {selConv?.intent && <Tag>{selConv.intent}</Tag>}
@@ -1438,7 +1445,7 @@ export default function InboxPage() {
                     </>
                   )}
                 </div>
-              </div>
+              </button>
 
               {/* Someone else is in here too — a real risk of double-replying. */}
               {viewers.length > 0 && (
@@ -1987,9 +1994,9 @@ export default function InboxPage() {
       </section>
 
       {/* ══ Context rail ════════════════════════════════════════════════════ */}
-      <ContextRail {...railProps} />
-
-      {/* Below 1200px the same rail opens as a sheet. */}
+      {/* Opened from the thread header, at every width. It used to hold a third
+          column permanently, which cost the reading pane a third of its width
+          for information you only want occasionally. */}
       {railOpen && (
         <div className="oc-sheet__scrim ibx-rail-sheet" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && setRailOpen(false)}>
           <div className="oc-sheet" role="dialog" aria-label="Customer details">
