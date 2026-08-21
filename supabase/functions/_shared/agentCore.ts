@@ -77,15 +77,45 @@ async function resolveConversation(
       .maybeSingle();
     if (data) return { id: (data as Json).id, contactId: (data as Json).contact_id };
   }
-  // Link to an existing contact (unified memory) by email then phone.
+  // Link to an existing contact (unified memory). app_resolve_contact matches on
+  // the contact_identities handle table, falls back to the legacy email/phone
+  // columns, and records the handle — so a channel with neither an email nor a
+  // phone (a social DM's scoped sender id) resolves to the same person as their
+  // calls and emails instead of minting an orphan.
+  //
+  // A handle we received a message ON is verified: it demonstrably reaches them.
   let contactId: string | null = null;
-  if (customer.email) {
-    const { data } = await admin.from("crm_contacts").select("id").eq("organization_id", orgId).eq("email", customer.email).maybeSingle();
-    contactId = (data as Json)?.id ?? null;
+  const identity: { kind: string; value: string } | null =
+    customer.email ? { kind: "email", value: customer.email }
+      : customer.phone ? { kind: channel === "whatsapp" ? "whatsapp" : "phone", value: customer.phone }
+        : (customer.handle && customer.handleKind) ? { kind: customer.handleKind, value: customer.handle }
+          : null;
+  if (identity) {
+    const { data, error } = await admin.rpc("app_resolve_contact", {
+      p_org: orgId,
+      p_kind: identity.kind,
+      p_value: identity.value,
+      p_name: customer.name ?? "",
+      p_verified: true,
+    });
+    if (error) {
+      // Never fail an inbound message over identity bookkeeping — the
+      // conversation still gets created, just without the cross-channel link.
+      console.error("[phoxta] app_resolve_contact failed:", error.message);
+    } else {
+      contactId = (data as string | null) ?? null;
+    }
   }
-  if (!contactId && customer.phone) {
-    const { data } = await admin.from("crm_contacts").select("id").eq("organization_id", orgId).eq("phone", customer.phone).maybeSingle();
-    contactId = (data as Json)?.id ?? null;
+  // A second handle on the same message (someone who gives both an email and a
+  // phone) is attached to the resolved person, so either one finds them later.
+  if (contactId && customer.email && customer.phone) {
+    await admin.rpc("app_resolve_contact", {
+      p_org: orgId,
+      p_kind: channel === "whatsapp" ? "whatsapp" : "phone",
+      p_value: customer.phone,
+      p_name: customer.name ?? "",
+      p_verified: channel !== "email",
+    }).then(undefined, () => { /* best effort */ });
   }
   const { data: conv } = await admin
     .from("conversations")

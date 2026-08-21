@@ -19,7 +19,18 @@ type Json = any;
 
 export type AgentCtx = {
   conversationId: string | null;
-  customer: { name?: string; phone?: string; email?: string; zip?: string };
+  /** `handle`/`handleKind` carry the identity for channels that have neither an
+   *  email nor a phone — a social DM's platform-scoped sender id. They feed
+   *  app_resolve_contact so those senders link to the same person as their
+   *  calls and emails rather than becoming orphan contacts. */
+  customer: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    zip?: string;
+    handle?: string;
+    handleKind?: "instagram" | "messenger" | "telegram" | "rcs" | "apple" | "web";
+  };
   contactId: string | null;
   locationId: string | null;
   /** Channel the customer reached us on (web/sms/whatsapp/voice/email…). */

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext, useSearchParams } from "react-router-dom";
 import {
   listConversations,
-  listConversationMessages,
+  listContactTimeline,
   sendConversationReply,
   sendConversationTemplate,
   addInternalNote,
@@ -20,6 +20,7 @@ import {
   currentUserId,
   type Conversation,
   type ConversationMessage,
+  type TimelineMessage,
   type ConvStatus,
   type CannedResponse,
   type OrgMember,
@@ -379,7 +380,10 @@ function ShortcutsHint({ open, setOpen }: { open: boolean; setOpen: (v: boolean)
 }
 
 /** Conversation message bubble. Emails whose meta carries an html body render in a sandboxed iframe. */
-function MessageBubble({ m }: { m: ConversationMessage }) {
+/** `showChannel` marks which channel a message arrived on. Only set when the
+ *  customer has actually used more than one — a badge on every bubble of a
+ *  single-channel thread is noise. */
+function MessageBubble({ m, showChannel = false }: { m: TimelineMessage; showChannel?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   if (m.role === "note") {
     return (
@@ -392,6 +396,7 @@ function MessageBubble({ m }: { m: ConversationMessage }) {
   const meta = (m.meta ?? {}) as Record<string, unknown>;
   const html = typeof meta.html === "string" && meta.html.trim() ? meta.html : null;
   const subject = typeof meta.subject === "string" && meta.subject.trim() ? meta.subject : null;
+  const chanBadge = showChannel && m.channel_type ? channelLabel(m.channel_type) : null;
   const failed = m.delivery_status === "failed";
   const delivery = m.delivery_status ? DELIVERY_LABEL[m.delivery_status] : undefined;
   const label = AUTHOR_LABEL[m.role] ?? m.role;
@@ -426,6 +431,7 @@ function MessageBubble({ m }: { m: ConversationMessage }) {
         <span className="av" aria-hidden="true">{label.slice(0, 2).toUpperCase()}</span>
         <b>{label}</b>
         <i>{sentAt(m.created_at)}</i>
+        {chanBadge && <i>· {chanBadge}</i>}
         {mine && delivery && <i className={failed ? "text-danger fw-600" : ""}>· {delivery}</i>}
       </div>
     </>
@@ -547,7 +553,7 @@ export default function InboxPage() {
 
   // Selection + thread
   const [selected, setSelected] = useState<QueueItem | null>(null);
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [messages, setMessages] = useState<TimelineMessage[]>([]);
   const [ticketMsgs, setTicketMsgs] = useState<TicketMessage[]>([]);
   const [calls, setCalls] = useState<ConversationCall[]>([]);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -683,12 +689,24 @@ export default function InboxPage() {
         async (payload) => {
           const m = payload.new as ConversationMessage & { conversation_id: string };
           const sel = selectedRef.current;
-          if (sel?.kind === "conversation" && m.conversation_id === sel.id) {
-            setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
-            setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 60);
-            // The thread is on screen, so an inbound landing here is already read —
-            // clear the flag the DB trigger just set before the list refresh below.
-            if (m.role === "customer") await reportMutation(markConversationRead(sel.id));
+          if (sel?.kind === "conversation") {
+            // The timeline spans every channel this customer uses, so a message
+            // arriving on one of their *other* threads belongs on screen too —
+            // matching only the selected conversation would drop it.
+            let onScreen = m.conversation_id === sel.id;
+            setMessages((prev) => {
+              if (prev.some((x) => x.id === m.id)) return prev;
+              const known = prev.find((x) => x.conversation_id === m.conversation_id);
+              if (!onScreen && !known) return prev;
+              onScreen = true;
+              return [...prev, { ...m, channel_type: known?.channel_type ?? sel.conv.channel_type }];
+            });
+            if (onScreen) {
+              setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 60);
+              // The thread is on screen, so an inbound landing here is already read —
+              // clear the flag the DB trigger just set before the list refresh below.
+              if (m.role === "customer") await reportMutation(markConversationRead(m.conversation_id));
+            }
           }
           loadRef.current();
         },
@@ -824,7 +842,8 @@ export default function InboxPage() {
     setCallOpen(false);
     if (it.kind === "conversation") {
       setTicketMsgs([]);
-      const { data } = await listConversationMessages(it.id);
+      // One customer, one timeline: every channel they've used, in order.
+      const { data } = await listContactTimeline(orgId, it.conv.contact_id, it.id);
       setMessages(data);
       if (it.conv.channel_type === "voice") {
         const r = await listCallsForConversation(it.id);
@@ -884,7 +903,7 @@ export default function InboxPage() {
   async function refreshThread() {
     const sel = selectedRef.current;
     if (!sel || sel.kind !== "conversation") return;
-    const { data } = await listConversationMessages(sel.id);
+    const { data } = await listContactTimeline(orgId, sel.conv.contact_id, sel.id);
     setMessages(data);
     load();
     scrollThread();
@@ -1315,6 +1334,10 @@ export default function InboxPage() {
     rec.start();
   }
 
+  // How many distinct channels this customer's timeline spans. Drives the
+  // per-message channel badge — shown only when there is more than one, so a
+  // single-channel conversation looks exactly as it did before.
+  const timelineChannels = new Set(messages.map((m) => m.channel_type).filter(Boolean)).size;
   const transcriptLines = messages.filter((m) => m.role !== "note").length;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1756,7 +1779,9 @@ export default function InboxPage() {
               {!voiceCollapsed && messages.length === 0 && <div className="neutral-500 fz-font-md">No messages yet.</div>}
               {/* Internal notes are the team's own writing — collapsing the call
                   transcript must never hide them. */}
-              {(voiceCollapsed ? messages.filter((m) => m.role === "note") : messages).map((m) => <MessageBubble key={m.id} m={m} />)}
+              {(voiceCollapsed ? messages.filter((m) => m.role === "note") : messages).map((m) => (
+                <MessageBubble key={m.id} m={m} showChannel={timelineChannels > 1} />
+              ))}
             </div>
 
             {waWindowClosed && (

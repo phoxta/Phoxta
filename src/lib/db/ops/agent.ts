@@ -141,6 +141,56 @@ export async function listConversations(
   const { data, error } = await q.order("last_message_at", { ascending: false }).limit(opts.limit ?? 500);
   return { data: (data as Conversation[] | null) ?? [], error: friendlyError(error?.message) };
 }
+/** A message in the unified customer timeline — the same shape the Inbox already
+ *  renders, plus which conversation and channel it arrived on. */
+export type TimelineMessage = ConversationMessage & { conversation_id: string; channel_type: string };
+
+/** Every message this customer has exchanged, across every channel, in one
+ *  chronological timeline.
+ *
+ *  Conversations stay per-channel underneath — WhatsApp's 24-hour window, SMS
+ *  threading and email subjects are all channel-level concepts, and collapsing
+ *  them in the database would break replying. What's unified is the *view*: the
+ *  agent sees one continuous history so the customer never re-explains, which is
+ *  the part of "omnichannel" that actually matters to them.
+ *
+ *  Falls back to the single conversation when the contact isn't resolved yet. */
+export async function listContactTimeline(
+  orgId: string,
+  contactId: string | null,
+  fallbackConvId: string,
+): Promise<{ data: TimelineMessage[]; error: string | null }> {
+  if (!contactId) {
+    const { data, error } = await listConversationMessages(fallbackConvId);
+    return { data: data.map((m) => ({ ...m, conversation_id: fallbackConvId, channel_type: "" })), error };
+  }
+  const { data: convs, error: cErr } = await supabase
+    .from("conversations")
+    .select("id, channel_type")
+    .eq("organization_id", orgId)
+    .eq("contact_id", contactId)
+    .eq("is_test", false);
+  if (cErr) return { data: [], error: friendlyError(cErr.message) };
+
+  const rows = (convs as { id: string; channel_type: string }[] | null) ?? [];
+  // The selected thread is always included, even if the contact link is stale.
+  const byId = new Map(rows.map((c) => [c.id, c.channel_type]));
+  if (!byId.has(fallbackConvId)) byId.set(fallbackConvId, "");
+  const ids = [...byId.keys()];
+
+  const { data, error } = await supabase
+    .from("conversation_messages")
+    .select("id, role, body, meta, created_at, delivery_status, provider_sid, author_id, conversation_id")
+    .in("conversation_id", ids)
+    .order("created_at", { ascending: true })
+    .limit(500);
+  if (error) return { data: [], error: friendlyError(error.message) };
+
+  const msgs = ((data as (ConversationMessage & { conversation_id: string })[] | null) ?? [])
+    .map((m) => ({ ...m, channel_type: byId.get(m.conversation_id) ?? "" }));
+  return { data: msgs, error: null };
+}
+
 export async function listConversationMessages(convId: string): Promise<{ data: ConversationMessage[]; error: string | null }> {
   const { data, error } = await supabase
     .from("conversation_messages")
