@@ -15,7 +15,21 @@ import { supabase, resolveTenant } from "@/lib/phoxta";
  * Falls back to a short local reply when the backend is unreachable, so the
  * store always answers.
  */
-const AGENT_URL = (import.meta.env.VITE_AGENT_URL as string | undefined) ?? "";
+// The agent endpoint. VITE_AGENT_URL was set on exactly one of the five
+// storefronts, and the send path is gated on it — so the other four never
+// called the agent at all and answered every question with the canned
+// fallback below, forever, with nothing reaching the owner's Inbox.
+//
+// Derived from VITE_SUPABASE_URL when unset: the storefront cannot function
+// without that variable anyway, so the chat can no longer be silently
+// disabled by a missing one.
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
+const AGENT_URL =
+  (import.meta.env.VITE_AGENT_URL as string | undefined) ||
+  (SUPABASE_URL ? `${SUPABASE_URL.replace(/\/+$/, "")}/functions/v1/agent-inbound` : "");
+if (!AGENT_URL && typeof console !== "undefined") {
+  console.warn("[phoxta] chat has no agent endpoint (VITE_AGENT_URL / VITE_SUPABASE_URL unset) — replies are canned.");
+}
 const ENV_AGENT_KEY = (import.meta.env.VITE_AGENT_PUBLIC_KEY as string | undefined) ?? "";
 const ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
