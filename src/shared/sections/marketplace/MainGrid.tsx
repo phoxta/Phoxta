@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { listBlueprints, formatPrice, type Blueprint } from "@/lib/db/marketplace";
 import { PROMO, promoPriceCents } from "@/lib/promo";
+import { blueprintCover } from "@/lib/blueprintCover";
 
 // The marketplace's main UI — the "Selected work" grid design from the
 // brand-design page (sec-4-home-9), populated with the REAL businesses for sale
@@ -20,7 +21,6 @@ const ArrowIcon = () => (
   </svg>
 );
 
-const FALLBACK_IMG = "/assets/imgs/pages/home-9/sec-4-img-1.webp";
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 function Card({ b }: { b: Blueprint }) {
@@ -32,7 +32,7 @@ function Card({ b }: { b: Blueprint }) {
       <div className="sec-4-home-9__visual">
         <a {...linkProps} className="sec-4-home-9__visual-link cursor-hide">
           <div className="fix anim-zoomin">
-            <img src={b.cover_url || FALLBACK_IMG} alt={b.name} width={600} height={450} loading="lazy" />
+            <img src={blueprintCover(b.slug, b.cover_url)} alt={b.name} width={600} height={450} loading="lazy" />
           </div>
           <div className="sec-4-home-9__overlay">
             <span className="sec-4-home-9__tag text-capitalize">{b.vertical}</span>

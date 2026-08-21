@@ -4,18 +4,15 @@ import PortfolioCard2 from "@/shared/cards/PortfolioCard2";
 import RevealText from "@/shared/effects/RevealText";
 import { PROMO, promoPriceDollars } from "@/lib/promo";
 import { listBlueprints } from "@/lib/db/marketplace";
+import { blueprintCover } from "@/lib/blueprintCover";
 
 // The DB (blueprints table) is the price/demo source of truth — the same data
 // /marketplace renders — so homepage cards can never drift from it again. The
 // static CASE_STUDIES below are the instant-paint fallback (and stay if the
-// fetch fails). Cover images stay local (curated screenshots) keyed by slug.
-const SLUG_IMAGES: Record<string, string> = {
-    carento: "/assets/imgs/pages/FS1.webp",
-    "niche-apparel": "/assets/imgs/pages/FS.webp",
-    travel: "/assets/imgs/pages/FS2.webp",
-    "restaurant-orders": "/assets/imgs/pages/FS3.webp",
-    gearo: "/assets/imgs/pages/FS4.webp",
-};
+// fetch fails). Cover images come from @/lib/blueprintCover, which every
+// marketplace surface now shares; they used to live here alone, which is how
+// the same business ended up with a screenshot on this page and stock art in
+// the dashboard.
 
 // Home 1 Business Listing - Available businesses for sale
 
@@ -132,7 +129,7 @@ export default function BusinessListing() {
                 classList: "col-lg-6",
                 link: b.demo_url || "/marketplace",
                 linkCase: "/auth?mode=signup",
-                img: SLUG_IMAGES[b.slug] ?? CASE_STUDIES[i]?.img ?? "/assets/imgs/pages/FS.webp",
+                img: blueprintCover(b.slug, b.cover_url),
                 category: b.vertical || "Business",
                 headline: b.name,
                 description: b.tagline || "",

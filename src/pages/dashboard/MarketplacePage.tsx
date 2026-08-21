@@ -6,6 +6,7 @@ import { useCachedData } from "@/lib/hooks/useCachedData";
 import { marketplaceBlueprintsQuery } from "@/lib/cache/dashboardQueries";
 import { formatPrice, type Blueprint } from "@/lib/db/marketplace";
 import { PROMO, promoPriceCents } from "@/lib/promo";
+import { blueprintCover } from "@/lib/blueprintCover";
 import { startBlueprintCheckout } from "@/lib/db/payments";
 
 export default function MarketplacePage() {
@@ -83,14 +84,12 @@ export default function MarketplacePage() {
                   className="d-block"
                   style={{ aspectRatio: "16 / 9", overflow: "hidden", background: "#f1efea" }}
                 >
-                  {bp.cover_url && (
-                    <img
-                      src={bp.cover_url}
-                      alt={bp.name}
-                      loading="lazy"
-                      style={{ width: "100%", aspectRatio: "16 / 9", height: "auto", objectFit: "cover", display: "block" }}
-                    />
-                  )}
+                  <img
+                    src={blueprintCover(bp.slug, bp.cover_url)}
+                    alt={bp.name}
+                    loading="lazy"
+                    style={{ width: "100%", aspectRatio: "16 / 9", height: "auto", objectFit: "cover", display: "block" }}
+                  />
                 </Link>
                 <div className="p-3 d-flex flex-column flex-grow-1">
                 <div className="d-flex align-items-center gap-1 mb-2 flex-wrap">

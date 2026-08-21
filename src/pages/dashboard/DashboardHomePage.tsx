@@ -9,6 +9,7 @@ import {
 import { type UserProfile } from "@/lib/db/profile";
 import { type Organization } from "@/lib/db/organizations";
 import { type Blueprint } from "@/lib/db/marketplace";
+import { blueprintCover } from "@/lib/blueprintCover";
 import OperatorChat from "@/pages/dashboard/ops/OperatorChat";
 import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
 
@@ -61,8 +62,8 @@ const money = (cents: number) => {
  * bought through the marketplace — which is why the preview came up blank.
  * Migration 0090 backfills app_path from the org slug precisely because such
  * orgs exist, so slug and app_path both point at the same listing and are the
- * dependable fallbacks. The cover returned is the same cover_url the marketplace
- * cards render.
+ * dependable fallbacks. The image itself comes from blueprintCover, the single
+ * source every marketplace surface shares.
  */
 function blueprintFor(org: Organization | null, blueprints: Blueprint[]): Blueprint | null {
   if (!org || blueprints.length === 0) return null;
@@ -357,14 +358,12 @@ export default function DashboardHomePage() {
 
                 <div className="rounded-4 overflow-hidden position-relative bg-neutral-50"
                      style={{ flex: "1 1 0", minWidth: 0, minHeight: 0 }}>
-                  {selectedBlueprint?.cover_url ? (
-                    <img src={selectedBlueprint.cover_url} alt={`${selected.name} storefront preview`} loading="lazy"
-                         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    <div className="h-100 d-flex align-items-center justify-content-center p-3 text-center">
-                      <p className="neutral-500 mb-0" style={{ fontSize: 12 }}>No preview image on this listing yet.</p>
-                    </div>
-                  )}
+                  <img
+                    src={blueprintCover(selectedBlueprint?.slug ?? selected.slug, selectedBlueprint?.cover_url)}
+                    alt={`${selected.name} storefront preview`}
+                    loading="lazy"
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                  />
                   <div className="position-absolute bottom-0 start-0 w-100 p-3"
                        style={{ background: "linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,0))", color: "#fff" }}>
                     <span className="d-inline-block text-uppercase fw-600 mb-1"
