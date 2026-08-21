@@ -74,39 +74,108 @@ export const revenue30Query = query("revenue.30d", async () => {
  *  gaps the eye fills in. */
 export type DayRevenue = { label: string; iso: string; cents: number };
 
-export const revenue7DailyQuery = query("revenue.7d.daily", async (): Promise<DayRevenue[]> => {
-  const days: DayRevenue[] = [];
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - 6);
+/** The periods the Sales card can be switched between. */
+export type SalesRange = "day" | "week" | "month" | "year";
 
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    days.push({
-      label: d.toLocaleDateString(undefined, { weekday: "short" }),
-      iso: d.toISOString().slice(0, 10),
-      cents: 0,
-    });
+export const SALES_RANGES: { id: SalesRange; label: string }[] = [
+  { id: "day", label: "Day" },
+  { id: "week", label: "Last 7 days" },
+  { id: "month", label: "Months" },
+  { id: "year", label: "Year" },
+];
+
+/** YYYY-MM-DD in LOCAL time — sv-SE formats exactly that way. */
+const localDay = (d: Date) => d.toLocaleDateString("sv-SE");
+const localMonth = (d: Date) => localDay(d).slice(0, 7);
+
+type Shape = { buckets: DayRevenue[]; start: Date; keyOf: (d: Date) => string };
+
+/**
+ * The buckets for one period, plus how to file a timestamp into them.
+ *
+ * Everything buckets in LOCAL time, so "today" means the owner's today rather
+ * than UTC's — a sale at 9pm in Lagos belongs to that day, not tomorrow.
+ */
+function seriesShape(range: SalesRange): Shape {
+  const now = new Date();
+
+  if (range === "day") {
+    // Six four-hour slots reads at this card size; 24 hourly bars does not.
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const buckets: DayRevenue[] = [];
+    for (let h = 0; h < 24; h += 4) {
+      const d = new Date(start);
+      d.setHours(h);
+      buckets.push({ label: String(h).padStart(2, "0"), iso: `${localDay(d)}T${String(h).padStart(2, "0")}`, cents: 0 });
+    }
+    return {
+      buckets,
+      start,
+      keyOf: (d) => `${localDay(d)}T${String(Math.floor(d.getHours() / 4) * 4).padStart(2, "0")}`,
+    };
   }
 
+  if (range === "week") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - 6);
+    const buckets: DayRevenue[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      buckets.push({ label: d.toLocaleDateString(undefined, { weekday: "short" }), iso: localDay(d), cents: 0 });
+    }
+    return { buckets, start, keyOf: localDay };
+  }
+
+  if (range === "month") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 11, 1, 0, 0, 0, 0);
+    const buckets: DayRevenue[] = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+      buckets.push({ label: d.toLocaleDateString(undefined, { month: "short" }), iso: localMonth(d), cents: 0 });
+    }
+    return { buckets, start, keyOf: localMonth };
+  }
+
+  const start = new Date(now.getFullYear() - 4, 0, 1, 0, 0, 0, 0);
+  const buckets: DayRevenue[] = [];
+  for (let i = 0; i < 5; i++) {
+    const y = start.getFullYear() + i;
+    buckets.push({ label: String(y), iso: String(y), cents: 0 });
+  }
+  return { buckets, start, keyOf: (d) => String(d.getFullYear()) };
+}
+
+async function fetchSeries(range: SalesRange): Promise<DayRevenue[]> {
+  const { buckets, start, keyOf } = seriesShape(range);
   const since = start.toISOString();
+
+  // Same sources and status filters as revenue30Query, so the Sales card and the
+  // 30-day figure can never tell different stories about the same money.
   const [orders, reservations] = await Promise.all([
     supabase.from("orders").select("total_cents, created_at").in("status", ["paid", "fulfilled"]).gte("created_at", since),
     supabase.from("reservations").select("total_cents, created_at").in("status", ["confirmed", "completed"]).gte("created_at", since),
   ]);
 
-  const byDay = new Map(days.map((d) => [d.iso, d]));
+  const byKey = new Map(buckets.map((b) => [b.iso, b]));
   for (const rows of [orders.data, reservations.data]) {
     for (const r of (rows ?? []) as { total_cents: number; created_at: string }[]) {
-      // Bucket in local time so "today" means the user's today, not UTC's.
-      const key = new Date(r.created_at).toLocaleDateString("sv-SE");
-      const bucket = byDay.get(key);
+      const bucket = byKey.get(keyOf(new Date(r.created_at)));
       if (bucket) bucket.cents += r.total_cents || 0;
     }
   }
-  return days;
-});
+  return buckets;
+}
+
+/** Revenue split into buckets for one period. Cached per range. */
+export function revenueSeriesQuery(range: SalesRange): CacheQuery<DayRevenue[]> {
+  return query(`revenue.series.${range}`, () => fetchSeries(range));
+}
+
+/** The Sales card's default period — also what the idle warmer pre-loads. */
+export const revenue7DailyQuery = revenueSeriesQuery("week");
 
 /** Windowed operating metrics for one business — rpc app_org_ops_window (0073).
  *  Money fields are cents in the org's currency (also returned). `_prev` fields

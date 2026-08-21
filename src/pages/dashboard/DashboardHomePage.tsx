@@ -4,7 +4,8 @@ import PageMeta from "@/seo/PageMeta";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import {
   profileQuery, organizationsQuery, aiUsageMonthQuery,
-  revenue30Query, revenue7DailyQuery, invitationsQuery, marketplaceBlueprintsQuery,
+  revenue30Query, revenueSeriesQuery, invitationsQuery, marketplaceBlueprintsQuery,
+  SALES_RANGES, type SalesRange,
 } from "@/lib/cache/dashboardQueries";
 import { type UserProfile } from "@/lib/db/profile";
 import { type Organization } from "@/lib/db/organizations";
@@ -101,6 +102,9 @@ const I_PROGRESS = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" s
 const I_DONE = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12l5 5L14 7M12 17l5-5" /></svg>;
 const I_SOON = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 11h18" /></svg>;
 
+const I_CAL = <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M8 3v4M16 3v4M3 11h18" /></svg>;
+const I_CARET = <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>;
+
 /** The width at which the pinned one-screen layout turns on. */
 const PIN_AT = 1200;
 
@@ -144,6 +148,36 @@ const CSS = `
 .dash-counter-l { font-size: 11px; color: var(--at-neutral-500, #6b7280); }
 .dash-sep { width: 1px; background: rgba(0,0,0,.07); }
 
+/* The comp's period chip: calendar glyph, label, caret — one pill. The <select>
+   sits transparent on top so the native dropdown (and its keyboard handling)
+   still does the work. */
+.dash-range { position: relative; display: inline-flex; align-items: center; gap: 6px;
+  background: var(--at-neutral-100, #f1f2f4); color: var(--at-neutral-700, #374151);
+  border-radius: 999px; padding: 7px 24px 7px 12px; }
+.dash-range select { appearance: none; -webkit-appearance: none; border: 0; background: transparent;
+  font-size: 11px; font-weight: 500; color: inherit; padding: 0; margin: 0; cursor: pointer;
+  outline: none; line-height: 1.2; }
+.dash-range .dash-caret { position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; opacity: .55; display: flex; }
+
+/* Bars. Rounded on every corner, as in the comp, and the peak picked out in
+   solid blue against the muted rest. */
+.dash-bars { display: flex; align-items: flex-end; gap: 6px; flex: 1 1 auto; min-height: 0; }
+.dash-bar-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center;
+  gap: 6px; height: 100%; }
+.dash-bar-slot { position: relative; width: 100%; flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.dash-bar-wrap { position: relative; width: 100%; }
+.dash-bar { width: 100%; height: 100%; border-radius: 8px; background: #C3D7FB; }
+.dash-bar.peak { background: #1668FF; }
+.dash-bars.dense { gap: 3px; }
+.dash-bars.dense .dash-bar { border-radius: 5px; }
+.dash-bars.dense .dash-bar-l { font-size: 9px; }
+.dash-bar-l { font-size: 11px; color: var(--at-neutral-500, #6b7280); white-space: nowrap; }
+.dash-peak-tag { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  background: var(--at-neutral-100, #f1f2f4); color: var(--at-neutral-700, #374151);
+  font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px; white-space: nowrap; z-index: 1; }
+
 /* The comp's "View": a white pill with purple type, not a dark button. */
 .dash-view { background: #fff; color: #7c3aed; box-shadow: 0 1px 3px rgba(0,0,0,.10); }
 .dash-view:hover { background: #fff; color: #5b21b6; }
@@ -154,7 +188,9 @@ export default function DashboardHomePage() {
   const { data: orgs = [], loading: oLoading } = useCachedData(organizationsQuery.key, organizationsQuery.fetch);
   const { data: aiUsage = [], loading: aLoading } = useCachedData(aiUsageMonthQuery.key, aiUsageMonthQuery.fetch);
   const { data: revenue30 = 0 } = useCachedData(revenue30Query.key, revenue30Query.fetch);
-  const { data: daily = [] } = useCachedData(revenue7DailyQuery.key, revenue7DailyQuery.fetch);
+  const [range, setRange] = useState<SalesRange>("week");
+  const series = revenueSeriesQuery(range);
+  const { data: daily = [] } = useCachedData(series.key, series.fetch);
   const { data: invites = [] } = useCachedData(invitationsQuery.key, invitationsQuery.fetch);
   const { data: blueprints = [] } = useCachedData(marketplaceBlueprintsQuery.key, marketplaceBlueprintsQuery.fetch);
 
@@ -177,6 +213,7 @@ export default function DashboardHomePage() {
   const peak = Math.max(...week7.map((d) => d.cents), 1);
   const bestIdx = week7.reduce((b, d, i) => (d.cents > (week7[b]?.cents ?? -1) ? i : b), 0);
   const week7Total = week7.reduce((s, d) => s + d.cents, 0);
+  const rangeLabel = SALES_RANGES.find((r) => r.id === range)?.label ?? "Last 7 days";
 
   const [orgId, setOrgId] = useState<string>("");
   const selected = orgs.find((o) => o.organization.id === orgId)?.organization ?? orgs[0]?.organization ?? null;
@@ -273,40 +310,38 @@ export default function DashboardHomePage() {
             <section className="dash-card">
               <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
                 <h2 className="dash-title">Sales</h2>
-                <span className="badge bg-neutral-100 neutral-700 fw-500 rounded-pill px-3 py-2 flex-shrink-0" style={{ fontSize: 11 }}>
-                  last 7 days
+                <span className="dash-range flex-shrink-0">
+                  {I_CAL}
+                  <label className="visually-hidden" htmlFor="dash-range">Sales period</label>
+                  <select id="dash-range" value={range} onChange={(e) => setRange(e.target.value as SalesRange)}>
+                    {SALES_RANGES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                  </select>
+                  <span className="dash-caret">{I_CARET}</span>
                 </span>
               </div>
 
               <div className="dash-figure mb-2">{money(week7Total)}</div>
 
-              {week7Total === 0 ? (
-                <p className="neutral-500 mb-0" style={{ fontSize: 12 }}>
-                  No paid orders or confirmed reservations in the last 7 days.
-                  {revenue30 > 0 && <> Last 30 days: <b>{money(revenue30)}</b>.</>}
-                </p>
-              ) : (
-                <div className="d-flex align-items-end gap-2 flex-grow-1" style={{ minHeight: 0 }}
-                     role="img" aria-label={`Revenue by day, last 7 days. Total ${money(week7Total)}.`}>
-                  {week7.map((d, i) => (
-                    <div key={d.iso} className="flex-fill d-flex flex-column align-items-center gap-1 h-100" style={{ minWidth: 0 }}>
-                      <div className="w-100 d-flex flex-column justify-content-end align-items-center" style={{ flex: 1, minHeight: 0 }}>
-                        {i === bestIdx && d.cents > 0 && (
-                          <span className="badge bg-neutral-100 neutral-700 fw-500 rounded-pill mb-1" style={{ fontSize: 10 }}>
-                            {money(d.cents)}
-                          </span>
-                        )}
-                        <div className="w-100" style={{
-                          height: `${Math.max((d.cents / peak) * 100, 3)}%`,
-                          borderRadius: 8,
-                          background: i === bestIdx ? "#1d4ed8" : "#c7d7fb",
-                        }} />
+              {/* The chart renders at every value, including all-zero — the comp has
+                  a chart here, and a flat baseline under a $0 figure says "nothing
+                  sold" perfectly well without swapping the layout for a sentence. */}
+              <div className={`dash-bars${week7.length > 8 ? " dense" : ""}`} role="img"
+                   aria-label={`Revenue by ${rangeLabel.toLowerCase()}. Total ${money(week7Total)}.`}>
+                {week7.map((d, i) => {
+                  const isPeak = i === bestIdx && d.cents > 0;
+                  return (
+                    <div key={d.iso} className="dash-bar-col">
+                      <div className="dash-bar-slot">
+                        <div className="dash-bar-wrap" style={{ height: `${Math.max((d.cents / peak) * 86, 2)}%` }}>
+                          {isPeak && <span className="dash-peak-tag">{money(d.cents)}</span>}
+                          <div className={`dash-bar${isPeak ? " peak" : ""}`} />
+                        </div>
                       </div>
-                      <span className="neutral-500" style={{ fontSize: 11 }}>{d.label}</span>
+                      <span className="dash-bar-l">{d.label}</span>
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </section>
           </div>
 
