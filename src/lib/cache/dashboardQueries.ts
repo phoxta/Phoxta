@@ -65,6 +65,49 @@ export const revenue30Query = query("revenue.30d", async () => {
   return sum(orders.data) + sum(reservations.data);
 });
 
+/** Revenue bucketed by day for the last 7 days, oldest first.
+ *
+ *  The home page charts this. Same sources and same status filters as
+ *  revenue30Query so the bars and the headline can never disagree — a chart that
+ *  sums to a different number than the figure above it is worse than no chart.
+ *  Buckets are built locally so empty days appear as real zeroes rather than
+ *  gaps the eye fills in. */
+export type DayRevenue = { label: string; iso: string; cents: number };
+
+export const revenue7DailyQuery = query("revenue.7d.daily", async (): Promise<DayRevenue[]> => {
+  const days: DayRevenue[] = [];
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - 6);
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    days.push({
+      label: d.toLocaleDateString(undefined, { weekday: "short" }),
+      iso: d.toISOString().slice(0, 10),
+      cents: 0,
+    });
+  }
+
+  const since = start.toISOString();
+  const [orders, reservations] = await Promise.all([
+    supabase.from("orders").select("total_cents, created_at").in("status", ["paid", "fulfilled"]).gte("created_at", since),
+    supabase.from("reservations").select("total_cents, created_at").in("status", ["confirmed", "completed"]).gte("created_at", since),
+  ]);
+
+  const byDay = new Map(days.map((d) => [d.iso, d]));
+  for (const rows of [orders.data, reservations.data]) {
+    for (const r of (rows ?? []) as { total_cents: number; created_at: string }[]) {
+      // Bucket in local time so "today" means the user's today, not UTC's.
+      const key = new Date(r.created_at).toLocaleDateString("sv-SE");
+      const bucket = byDay.get(key);
+      if (bucket) bucket.cents += r.total_cents || 0;
+    }
+  }
+  return days;
+});
+
 /** Windowed operating metrics for one business — rpc app_org_ops_window (0073).
  *  Money fields are cents in the org's currency (also returned). `_prev` fields
  *  are the immediately preceding window of the same length, for delta arrows. */
