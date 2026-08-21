@@ -243,7 +243,10 @@
 .opc-say.on { color: #142a5f; background: #fff; }
 
 .opc-day span { color: rgba(255, 255, 255, 0.80); }
-.opc-empty { color: rgba(255, 255, 255, 0.88); }
+/* main.css styles bare <p> and sets a colour on it. A directly-matching rule
+   beats an inherited value whatever the specificity, so colouring .opc-empty
+   alone never reached the paragraph inside it. */
+.opc-empty, .opc-empty p { color: #fff; }
 .opc-starters button {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.28);
