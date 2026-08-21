@@ -232,7 +232,7 @@ export default function DashboardHomePage() {
   // null means "don't pin": narrow or short screens flow normally, rather than
   // having overflow:hidden quietly eat the bottom of a card.
   const rootRef = useRef<HTMLDivElement>(null);
-  const [fitH, setFitH] = useState<number | null>(null);
+  const [fit, setFit] = useState<{ h: number; pullUp: number } | null>(null);
   useEffect(() => {
     const scrollParent = (node: HTMLElement | null): HTMLElement | null => {
       for (let n = node?.parentElement ?? null; n; n = n.parentElement) {
@@ -245,19 +245,25 @@ export default function DashboardHomePage() {
     const measure = () => {
       const el = rootRef.current;
       if (!el) return;
-      if (window.innerWidth < PIN_AT) { setFitH(null); return; }
+      if (window.innerWidth < PIN_AT) { setFit(null); return; }
 
       const top = el.getBoundingClientRect().top;
       const pane = scrollParent(el);
-      let bottom = window.innerHeight;
-      if (pane) {
-        bottom = pane.getBoundingClientRect().bottom;
-        for (let n = el.parentElement; n && n !== pane; n = n.parentElement) {
-          bottom -= parseFloat(getComputedStyle(n).paddingBottom) || 0;
-        }
+      if (!pane) { setFit(null); return; }
+
+      // Run all the way down to the pane's edge, which is where the sidebar
+      // ends — the two are siblings in the shell's flex row.
+      const h = Math.floor(pane.getBoundingClientRect().bottom - top);
+
+      // <main> pads py-4 below us, which would push the pane into scrolling by
+      // exactly that much. A matching negative margin absorbs it, so the cards
+      // finish level with the sidebar and nothing scrolls.
+      let pullUp = 0;
+      for (let n = el.parentElement; n && n !== pane; n = n.parentElement) {
+        pullUp += parseFloat(getComputedStyle(n).paddingBottom) || 0;
       }
-      const h = Math.floor(bottom - top);
-      setFitH(h > 520 ? h : null);
+
+      setFit(h > 520 ? { h, pullUp: Math.round(pullUp) } : null);
     };
 
     measure();
@@ -266,10 +272,12 @@ export default function DashboardHomePage() {
     return () => { window.removeEventListener("resize", measure); clearTimeout(settle); };
   }, []);
 
-  const pinned = fitH !== null;
-
   return (
-    <div ref={rootRef} className="dash-home" style={pinned ? { height: fitH, overflow: "hidden" } : undefined}>
+    <div
+      ref={rootRef}
+      className="dash-home"
+      style={fit ? { height: fit.h, marginBottom: -fit.pullUp, overflow: "hidden" } : undefined}
+    >
       <PageMeta title="Phoxta - Dashboard" />
       <style>{CSS}</style>
 
