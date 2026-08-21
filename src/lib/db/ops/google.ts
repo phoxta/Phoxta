@@ -68,6 +68,27 @@ export async function gmailSync(orgId: string): Promise<{ imported: number; erro
   return { imported: (data as { imported?: number })?.imported ?? 0, error: null };
 }
 
+/**
+ * Recover the HTML for mail imported before the sync kept it.
+ *
+ * Until recently the sync preferred an email's text/plain part and dropped the
+ * markup, so older messages in the Inbox hold only the sender's flattened
+ * alternative — the "Docs ( https://... )" version. Nothing on this side can
+ * restore that; the markup was never stored. It is still in Gmail though, and
+ * the Gmail message id was kept, so it can be fetched again.
+ */
+export async function gmailBackfillHtml(orgId: string, limit = 100): Promise<{ filled: number; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("gmail-sync", {
+    body: { organizationId: orgId, mode: "backfill", limit },
+  });
+  if (error) {
+    let msg = error.message;
+    try { const ctx = await (error as { context?: Response }).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* keep */ }
+    return { filled: 0, error: friendlyError(msg) };
+  }
+  return { filled: (data as { filled?: number })?.filled ?? 0, error: null };
+}
+
 // --- Workspace: email provisioning (Groups) + Drive + Calendar -------------
 export type WsGroup = { email: string; name: string; members: number };
 export type ProvisionResult = { email: string; created: boolean; forwarded: boolean; note: string };

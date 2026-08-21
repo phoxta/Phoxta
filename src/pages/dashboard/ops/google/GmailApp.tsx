@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { toast, toastError } from "@/lib/ops/feedback";
-import { gmailList, gmailGet, gmailSend, gmailImport, gmailSync, type GmailMsg, type GmailFull } from "@/lib/db/ops/google";
+import { gmailList, gmailGet, gmailSend, gmailImport, gmailSync, gmailBackfillHtml, type GmailMsg, type GmailFull } from "@/lib/db/ops/google";
 
 const emailOf = (raw: string) => (raw.match(/<([^>]+)>/)?.[1] ?? raw).trim();
 const nameOf = (raw: string) => raw.replace(/<[^>]+>/, "").replace(/"/g, "").trim() || raw;
@@ -24,6 +24,7 @@ export default function GmailApp({ orgId }: { orgId: string }) {
   const [composing, setComposing] = useState(false);
   const [compose, setCompose] = useState({ to: "", subject: "", body: "" });
   const [syncing, setSyncing] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
 
   const folderQ = FOLDERS.find((x) => x.key === folder)!.q;
   const query = applied.trim() ? `${folderQ} ${applied.trim()}` : folderQ;
@@ -96,6 +97,25 @@ export default function GmailApp({ orgId }: { orgId: string }) {
             }}
           >
             {syncing ? "…" : "↻ Sync to Inbox"}
+          </button>
+          {/* Mail imported before the sync kept HTML shows only the sender's
+              flattened text version. The markup is still in Gmail, so it can be
+              fetched again for messages already in the Inbox. */}
+          <button
+            type="button"
+            className="btn btn-outline-dark rounded-3 px-3 text-nowrap"
+            disabled={backfilling}
+            title="Re-fetch the formatting for mail imported before it was kept"
+            onClick={async () => {
+              setBackfilling(true);
+              const { filled, error } = await gmailBackfillHtml(orgId, 150);
+              setBackfilling(false);
+              if (error) toastError(error);
+              else if (filled === 0) toast("Every synced message already has its formatting.", "info");
+              else toast(`Restored formatting on ${filled} message(s). Reopen the Inbox to see them.`);
+            }}
+          >
+            {backfilling ? "…" : "Restore formatting"}
           </button>
         </div>
         <div className="d-flex gap-1 mb-2">

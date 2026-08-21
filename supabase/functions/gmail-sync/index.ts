@@ -104,11 +104,61 @@ async function syncOrg(admin: SupabaseClient, orgId: string): Promise<SyncResult
   return { imported };
 }
 
+/**
+ * Recover the HTML for mail that was imported before it was kept.
+ *
+ * The old extractBody preferred text/plain and dropped the markup, so every
+ * message synced before that fix holds a sender's plain-text alternative — the
+ * flattened "Docs ( https://... )" version — and nothing else. No amount of
+ * client-side rendering can fix that: the HTML was never stored.
+ *
+ * It is still in Gmail though, and provider_sid holds the message id, so it can
+ * be fetched again and filed into meta.html where the console looks for it.
+ * Bounded per call, so a large mailbox is several passes rather than a timeout.
+ */
+async function backfillOrg(admin: SupabaseClient, orgId: string, limit: number): Promise<SyncResult> {
+  const token = await getAccessToken(admin, orgId);
+  if (!token) return { imported: 0, error: "google not connected or token expired — reconnect in Settings" };
+  const gf = (p: string) => fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` } });
+
+  const { data: rows } = await admin
+    .from("conversation_messages")
+    .select("id, provider_sid, meta")
+    .eq("organization_id", orgId)
+    .eq("channel_type", "email")
+    .eq("meta->>source", "gmail-sync")
+    .not("provider_sid", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  let filled = 0;
+  for (const m of ((rows ?? []) as Json[])) {
+    if (m.meta?.html) continue; // already carries its markup
+    const res = await gf(`/messages/${m.provider_sid}?format=full`);
+    if (!res.ok) continue; // deleted in Gmail, or not ours — skip, do not fail the run
+    const md = (await res.json()) as Json;
+    const { html } = extractBody(md.payload);
+    if (!html) continue; // genuinely a plain-text mail; nothing to recover
+    await admin
+      .from("conversation_messages")
+      .update({ meta: { ...(m.meta ?? {}), html } })
+      .eq("id", m.id);
+    filled++;
+  }
+  return { imported: filled };
+}
+
 Deno.serve(async (req) => {
   const pf = preflight(req);
   if (pf) return pf;
   try {
     const admin = adminClient();
+    // Parsed up front so the cron path can ask for a backfill too — it is the
+    // only caller that can reach every org in one pass.
+    const body = (await req.json().catch(() => ({}))) as { organizationId?: string; mode?: string; limit?: number };
+    const backfill = body?.mode === "backfill";
+    const limit = Math.max(1, Math.min(Number(body?.limit ?? 50), 200));
+
     const cronSecret = Deno.env.get("CRON_SECRET");
     if (cronSecret && req.headers.get("x-cron-secret") === cronSecret) {
       const { data: conns } = await admin.from("google_connections").select("organization_id");
@@ -119,7 +169,9 @@ Deno.serve(async (req) => {
       const problems: { org: string; error: string }[] = [];
       for (const c of list) {
         try {
-          const r = await syncOrg(admin, c.organization_id);
+          const r = backfill
+            ? await backfillOrg(admin, c.organization_id, limit)
+            : await syncOrg(admin, c.organization_id);
           total += r.imported;
           if (r.error) problems.push({ org: c.organization_id, error: r.error });
         } catch (e) {
@@ -131,14 +183,18 @@ Deno.serve(async (req) => {
       // not arriving where you expect.
       return json({
         ok: problems.length === 0,
+        mode: backfill ? "backfill" : "sync",
         orgs: list.map((c) => c.organization_id),
-        imported: total,
+        [backfill ? "filled" : "imported"]: total,
         problems,
       });
     }
-    const body = await req.json().catch(() => ({}));
-    const a = await authorize(req, (body as { organizationId?: string })?.organizationId);
+    const a = await authorize(req, body?.organizationId);
     if (a.error) return a.error;
+    if (backfill) {
+      const r = await backfillOrg(a.ok.admin, a.ok.org.id, limit);
+      return json({ ok: !r.error, filled: r.imported, error: r.error ?? null });
+    }
     const r = await syncOrg(a.ok.admin, a.ok.org.id);
     return json({ ok: !r.error, imported: r.imported, error: r.error ?? null });
   } catch (err) {

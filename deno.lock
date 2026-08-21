@@ -1,0 +1,51 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.112.3"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.112.3": "f6b9130984301066587e8917dfab3b3d60be47dc966bd3d04c733bc9423c1cf9"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@eslint/js@^9.27.0",
+        "npm:@floating-ui/react@~0.27.20",
+        "npm:@measured/puck@~0.20.2",
+        "npm:@pipecat-ai/client-js@^1.11.0",
+        "npm:@pipecat-ai/client-react@^1.6.0",
+        "npm:@pipecat-ai/small-webrtc-transport@^1.10.4",
+        "npm:@sparticuz/chromium@149",
+        "npm:@supabase/supabase-js@^2.108.2",
+        "npm:@tanstack/react-virtual@^3.14.10",
+        "npm:@twilio/voice-sdk@^2.18.3",
+        "npm:@types/isotope-layout@^3.0.14",
+        "npm:@types/node@26",
+        "npm:@types/react-dom@19",
+        "npm:@types/react@19",
+        "npm:@vercel/analytics@^2.0.1",
+        "npm:@vitejs/plugin-react@^4.4.1",
+        "npm:bootstrap@^5.3.3",
+        "npm:eslint-plugin-react-hooks@^5.2.0",
+        "npm:eslint-plugin-react-refresh@~0.4.20",
+        "npm:eslint@^9.27.0",
+        "npm:globals@16",
+        "npm:gsap@^3.12.7",
+        "npm:isotope-layout@^3.0.6",
+        "npm:lucide-react@^1.33.0",
+        "npm:puppeteer-core@^25.1.0",
+        "npm:puppeteer@^25.1.0",
+        "npm:react-dom@19",
+        "npm:react-fast-marquee@^1.6.5",
+        "npm:react-router-dom@^6.30.1",
+        "npm:react@19",
+        "npm:split-text@1",
+        "npm:swiper@^14.1.0",
+        "npm:typescript-eslint@^8.59.3",
+        "npm:typescript@^5.8.3",
+        "npm:vite@^6.3.5",
+        "npm:wowjs@^1.1.3"
+      ]
+    }
+  }
+}

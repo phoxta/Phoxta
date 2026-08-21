@@ -53,6 +53,34 @@ const EMAIL_BASE_CSS = `
   pre { white-space: pre-wrap; word-wrap: break-word; }
 `;
 
+/** Bare URLs in plain text. Stops at whitespace and at the brackets senders
+ *  wrap links in, so "Docs ( https://x/y )" links the URL and not the bracket. */
+const URL_RE = /(https?:\/\/[^\s<>()[\]]+)/g;
+
+/**
+ * A plain-text message body.
+ *
+ * Mail with no HTML part arrives as the sender's flattened alternative, where
+ * every link has been rewritten as "Label ( https://... )". Rendered as raw text
+ * that is a wall of unclickable URLs. Linkifying is all a mail client does here
+ * — the URL stays visible rather than being hidden behind its label, because a
+ * link whose destination you cannot see is worse than an ugly one.
+ */
+function PlainBody({ text }: { text: string }) {
+  const parts = text.split(URL_RE);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 /**
  * Markup that arrived in a plain-text field.
  *
@@ -221,7 +249,7 @@ function MessageBubble({
       <span className="ibx-msg__stack">
         <span className={`ibx-bubble${html ? " ibx-bubble--html" : ""}`}>
           {subject && <span className="ibx-bubble__subject">{subject}</span>}
-          {html ? <EmailFrame html={html} /> : m.body}
+          {html ? <EmailFrame html={html} /> : <PlainBody text={m.body} />}
         </span>
 
         {endsGroup && (
@@ -272,7 +300,7 @@ export function TicketMessages({ messages, customerName }: { messages: TicketMes
                     <EmailFrame html={m.body} />
                   </span>
                 ) : (
-                  <span className="ibx-bubble">{m.body}</span>
+                  <span className="ibx-bubble"><PlainBody text={m.body} /></span>
                 )}
                 {endsGroup && (
                   <span className="ibx-msg__meta">
