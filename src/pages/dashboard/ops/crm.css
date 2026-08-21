@@ -1,0 +1,487 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   CRM page  (.crm-*)
+   ───────────────────────────────────────────────────────────────────────
+   Built to the supplied design: a stat strip (new customers, activity, two
+   figures) sitting over a pipeline board.
+
+   The LAYOUT follows the comp. The CONTENT does not invent. The comp is a
+   template mock — "Prepayments $12,076", "Tasks in progress 76", people named
+   Scarlett Floyd — and a console showing an owner a confident figure that is
+   not theirs is worse than one showing a plain zero. Every number here is read
+   from crm_contacts, and where the design implies a field this CRM does not
+   have, the slot is dropped rather than filled with something plausible.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.crm {
+  --crm-line: rgba(15, 23, 42, 0.08);
+  --crm-card: var(--at-neutral-0, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────── */
+.crm-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.crm-bar__spacer {
+  flex: 1 1 auto;
+}
+
+.crm-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--at-neutral-700, #374151);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.crm-tool:hover {
+  background: var(--at-neutral-50);
+}
+
+.crm-tool[aria-pressed="true"] {
+  background: var(--at-neutral-100);
+  color: var(--at-neutral-900);
+}
+
+.crm-tool:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.crm-tool--dark {
+  background: var(--at-neutral-900, #14161f);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0 16px;
+}
+
+.crm-tool--dark:hover {
+  background: #000;
+  color: #fff;
+}
+
+.crm-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 11px;
+  background: var(--at-neutral-50);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  min-width: 200px;
+}
+
+.crm-search:focus-within {
+  background: var(--crm-card);
+  border-color: var(--at-neutral-300, #cbd5e1);
+}
+
+.crm-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+}
+
+/* ── Stat strip ───────────────────────────────────────────────────────── */
+.crm-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.crm-panel {
+  background: var(--crm-card);
+  border: 1px solid var(--crm-line);
+  border-radius: 16px;
+  padding: 16px 18px;
+  min-width: 0;
+}
+
+.crm-panel__h {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--at-neutral-900);
+}
+
+.crm-minis {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  min-width: 0;
+}
+
+.crm-tile {
+  background: var(--crm-card);
+  border: 1px solid var(--crm-line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.crm-tile__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--at-neutral-700);
+}
+
+.crm-tile__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.crm-tile__n {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--at-neutral-900);
+}
+
+.crm-delta {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #d9f7e7;
+  color: #08704a;
+  white-space: nowrap;
+}
+
+.crm-delta.is-down {
+  background: #fde7e7;
+  color: #9b1c1c;
+}
+
+.crm-delta.is-flat {
+  background: var(--at-neutral-100);
+  color: var(--at-neutral-500);
+}
+
+/* ── Area chart ───────────────────────────────────────────────────────── */
+.crm-chart {
+  display: block;
+  width: 100%;
+  height: 150px;
+}
+
+.crm-chart__grid {
+  stroke: var(--crm-line);
+  stroke-width: 1;
+}
+
+.crm-axis {
+  font-size: 10.5px;
+  fill: var(--at-neutral-500);
+}
+
+.crm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.crm-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--at-neutral-500);
+}
+
+.crm-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* ── Activity heatmap ─────────────────────────────────────────────────── */
+.crm-heat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.crm-heat__row {
+  display: grid;
+  gap: 3px;
+  align-items: center;
+}
+
+.crm-heat__lab {
+  font-size: 10.5px;
+  color: var(--at-neutral-500);
+  white-space: nowrap;
+}
+
+.crm-heat__cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--at-neutral-100);
+}
+
+.crm-heat__foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--at-neutral-500);
+  margin-top: 7px;
+}
+
+/* ── Pipeline board ───────────────────────────────────────────────────── */
+.crm-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(232px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  align-items: start;
+}
+
+.crm-col {
+  min-width: 0;
+}
+
+.crm-col__h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 10px;
+}
+
+.crm-col__h b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--at-neutral-900);
+}
+
+.crm-col__n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--at-neutral-900);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.crm-col.dropping {
+  outline: 2px dashed var(--at-neutral-400);
+  outline-offset: 3px;
+  border-radius: 14px;
+}
+
+.crm-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.crm-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--crm-card);
+  border: 1px solid var(--crm-line);
+  border-radius: 14px;
+  padding: 13px 14px;
+  cursor: grab;
+  color: inherit;
+}
+
+.crm-card:hover {
+  border-color: var(--at-neutral-300, #cbd5e1);
+}
+
+.crm-card.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+/* The comp tints one card "Priority". This ties that emphasis to a real signal
+   — the AI lead score — rather than decorating a card at random. */
+.crm-card.is-hot {
+  background: #eeebfe;
+  border-color: #d7cffa;
+}
+
+.crm-card__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.crm-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.crm-card__menu {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--at-neutral-400);
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.crm-card__menu:hover {
+  background: var(--at-neutral-100);
+  color: var(--at-neutral-900);
+}
+
+.crm-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--at-neutral-900);
+  margin: 0 0 5px;
+  overflow-wrap: anywhere;
+}
+
+.crm-card__desc {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--at-neutral-500);
+  margin: 0 0 11px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.crm-card__who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+
+.crm-card__who > div {
+  min-width: 0;
+}
+
+.crm-card__who b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--at-neutral-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-card__who span {
+  display: block;
+  font-size: 11px;
+  color: var(--at-neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-avatar {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.crm-card__foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--at-neutral-500);
+  border-top: 1px solid var(--crm-line);
+  padding-top: 9px;
+  flex-wrap: wrap;
+}
+
+.crm-card__foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.crm-card__foot svg {
+  width: 13px;
+  height: 13px;
+}
+
+.crm-empty {
+  border: 1px dashed var(--crm-line);
+  border-radius: 12px;
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--at-neutral-400);
+}
+
+@media (max-width: 1199.98px) {
+  .crm-stats {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .crm-minis {
+    grid-column: 1 / -1;
+    grid-template-rows: none;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .crm-stats,
+  .crm-minis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

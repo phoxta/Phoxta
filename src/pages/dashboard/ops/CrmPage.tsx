@@ -14,6 +14,8 @@ import { semanticSearch, drainEmbeddings } from "@/lib/db/ops/ai";
 import { invokeAction } from "@/lib/db/ops/ai";
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
 import ContactDrawer, { type ScoreMeta } from "./ContactDrawer";
+import { CrmStats, StageBoard, type CrmSort } from "./crm/CrmBoard";
+import "./crm.css";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 const STAGES: ContactStage[] = ["lead", "prospect", "customer", "churned"];
@@ -25,6 +27,13 @@ const STAGE_STYLE: Record<ContactStage, string> = {
 };
 
 const SCORE_CAP = 25;
+
+const SORT_LABEL: Record<CrmSort, string> = { recent: "Sort by", value: "Value", score: "Score" };
+
+const ico = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+const SearchIcon = () => <svg {...ico}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.2-3.2" /></svg>;
+const SortIcon = () => <svg {...ico}><path d="M4 6h16M7 12h10M10 18h4" /></svg>;
+const FilterIcon = () => <svg {...ico}><path d="M3 5h18l-7 8v5l-4 2v-7z" /></svg>;
 
 type ScoreResult = {
   lead_score: number;
@@ -79,6 +88,12 @@ export default function CrmPage() {
   // Secondary: semantic ("✨") search results override the substring filter.
   const [matchIds, setMatchIds] = useState<string[] | null>(null);
   const [searching, setSearching] = useState(false);
+  // Board view controls. The comp shows "Sort by" and "Filters" as menus; these
+  // cycle instead, because two states each is the whole useful range here and a
+  // menu for two options is furniture.
+  const [sort, setSort] = useState<CrmSort>("recent");
+  const [hotOnly, setHotOnly] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -227,208 +242,135 @@ export default function CrmPage() {
   const open = openId == null ? null : display.find((c) => c.id === openId) ?? rows.find((c) => c.id === openId) ?? null;
 
   return (
-    <div>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
-        <div>
-          <h2 className="fz-font-lg fw-600 mb-1">Contacts</h2>
-          <p className="fz-font-sm neutral-500 mb-0">
-            {loading
-              ? "Loading…"
-              : display.length === rows.length
-                ? `${rows.length} contact${rows.length === 1 ? "" : "s"}`
-                : `Showing ${display.length} of ${rows.length}`}
-          </p>
-        </div>
-        <div className="d-flex flex-wrap align-items-center gap-2">
-          <div className="d-flex align-items-center gap-2 flex-grow-1">
-            <input
-              className="form-control form-control-sm rounded-3 flex-grow-1"
-              style={{ minWidth: 180 }}
-              type="search"
-              aria-label="Search contacts by name, email or company"
-              placeholder="Search name, email, company…"
-              value={filter}
-              onChange={(e) => {
-                setFilter(e.target.value);
-                setMatchIds(null);
-              }}
-            />
-            <button
-              type="button"
-              className="btn btn-outline-dark btn-sm rounded-3 px-3 ops-tap flex-shrink-0"
-              aria-label="Smart search — find contacts by meaning, not just matching text"
-              title="Smart search — finds contacts by meaning, not just text"
-              onClick={onSemanticSearch}
-              disabled={searching}
-            >
-              {searching ? "…" : "✨"}
-            </button>
-          </div>
-          {matchIds != null && (
-            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={() => setMatchIds(null)}>
-              Clear smart search
-            </button>
-          )}
-          <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3 ops-tap" onClick={exportCsv}>
-            Export CSV
+    <div className="crm">
+      <div className="crm-bar">
+        <h2 className="fz-font-lg fw-600 mb-0 me-2">Contacts</h2>
+        <span className="fz-font-sm neutral-500">
+          {loading
+            ? "Loading…"
+            : display.length === rows.length
+              ? `${rows.length} contact${rows.length === 1 ? "" : "s"}`
+              : `Showing ${display.length} of ${rows.length}`}
+        </span>
+
+        <span className="crm-bar__spacer" />
+
+        <label className="crm-search">
+          <SearchIcon />
+          <input
+            type="search"
+            aria-label="Search contacts by name, email or company"
+            placeholder="Search name, email, company…"
+            value={filter}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setMatchIds(null);
+            }}
+          />
+        </label>
+
+        <button
+          type="button"
+          className="crm-tool"
+          title="Smart search — finds contacts by meaning, not just matching text"
+          onClick={onSemanticSearch}
+          disabled={searching}
+        >
+          {searching ? "…" : "✨"} Smart
+        </button>
+
+        {matchIds != null && (
+          <button type="button" className="crm-tool" onClick={() => setMatchIds(null)}>
+            Clear
           </button>
-          <button
-            type="button"
-            className="btn btn-dark btn-sm rounded-3 px-3 ops-tap"
-            title={`Scores up to ${SCORE_CAP} unscored contacts per run`}
-            onClick={scoreAll}
-            disabled={scoreProgress != null}
-          >
-            {scoreProgress ? `Scoring ${scoreProgress.done}/${scoreProgress.total}…` : "✨ Score all"}
-          </button>
-        </div>
+        )}
+
+        <button
+          type="button"
+          className="crm-tool"
+          aria-pressed={sort === "value"}
+          onClick={() => setSort((v) => (v === "recent" ? "value" : v === "value" ? "score" : "recent"))}
+          title="Change the order cards appear in"
+        >
+          <SortIcon /> {SORT_LABEL[sort]}
+        </button>
+
+        <button
+          type="button"
+          className="crm-tool"
+          aria-pressed={hotOnly}
+          onClick={() => setHotOnly((v) => !v)}
+          title="Show only contacts the lead score has flagged"
+        >
+          <FilterIcon /> {hotOnly ? "High score" : "Filters"}
+        </button>
+
+        <button type="button" className="crm-tool" onClick={exportCsv}>
+          Export
+        </button>
+
+        <button
+          type="button"
+          className="crm-tool"
+          onClick={scoreAll}
+          disabled={scoreProgress != null}
+          title={`Scores up to ${SCORE_CAP} unscored contacts per run`}
+        >
+          {scoreProgress ? `Scoring ${scoreProgress.done}/${scoreProgress.total}…` : "✨ Score all"}
+        </button>
+
+        <button type="button" className="crm-tool crm-tool--dark" onClick={() => setAdding((v) => !v)}>
+          + Add customer
+        </button>
       </div>
 
       {loadError && (
-        <div className="alert alert-warning py-2 px-3 fz-font-md" role="alert">
+        <div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">
           {loadError}
         </div>
       )}
 
-      <form onSubmit={onAdd} className="bg-neutral-0 rounded-4 p-3 border-100 mb-4">
-        <h3 className="fz-font-md fw-600 mb-2">Add a contact</h3>
-        <div className="row g-2">
-          <div className="col-md-3">
-            <label htmlFor="crm-add-name" className="form-label fz-font-sm neutral-500 mb-1">Name</label>
-            <input id="crm-add-name" className="form-control rounded-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      {adding && (
+        <form onSubmit={onAdd} className="crm-panel">
+          <h3 className="crm-panel__h">Add a contact</h3>
+          <div className="row g-2">
+            <div className="col-md-3">
+              <label htmlFor="crm-add-name" className="form-label fz-font-sm neutral-500 mb-1">Name</label>
+              <input id="crm-add-name" className="form-control rounded-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </div>
+            <div className="col-md-3">
+              <label htmlFor="crm-add-email" className="form-label fz-font-sm neutral-500 mb-1">Email</label>
+              <input id="crm-add-email" type="email" className="form-control rounded-3" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </div>
+            <div className="col-md-2">
+              <label htmlFor="crm-add-phone" className="form-label fz-font-sm neutral-500 mb-1">Phone</label>
+              <input id="crm-add-phone" className="form-control rounded-3" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+            <div className="col-md-2">
+              <label htmlFor="crm-add-company" className="form-label fz-font-sm neutral-500 mb-1">Company</label>
+              <input id="crm-add-company" className="form-control rounded-3" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+            </div>
+            <div className="col-md-2 d-flex align-items-end">
+              <button className="btn btn-dark btn-sm rounded-3 w-100 ops-tap" disabled={saving}>
+                {saving ? "Adding…" : "Add"}
+              </button>
+            </div>
           </div>
-          <div className="col-md-3">
-            <label htmlFor="crm-add-email" className="form-label fz-font-sm neutral-500 mb-1">Email</label>
-            <input id="crm-add-email" type="email" className="form-control rounded-3" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </div>
-          <div className="col-md-2">
-            <label htmlFor="crm-add-phone" className="form-label fz-font-sm neutral-500 mb-1">Phone</label>
-            <input id="crm-add-phone" type="tel" className="form-control rounded-3" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          </div>
-          <div className="col-md-2">
-            <label htmlFor="crm-add-company" className="form-label fz-font-sm neutral-500 mb-1">Company</label>
-            <input id="crm-add-company" className="form-control rounded-3" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
-          </div>
-          <div className="col-md-1">
-            <label htmlFor="crm-add-stage" className="form-label fz-font-sm neutral-500 mb-1">Stage</label>
-            <select id="crm-add-stage" className="form-select rounded-3 text-capitalize" value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as ContactStage })}>
-              {STAGES.map((s) => <option key={s} value={s} className="text-capitalize">{s}</option>)}
-            </select>
-          </div>
-          <div className="col-md-1 d-flex align-items-end">
-            <button type="submit" className="btn btn-dark w-100 rounded-3" disabled={saving}>Add</button>
-          </div>
-        </div>
-      </form>
-
-      {loading ? (
-        <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>
-      ) : display.length === 0 ? (
-        <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">
-          {matchIds != null
-            ? "No contacts match that smart search."
-            : filter.trim()
-              ? "No contacts match your search."
-              : "No contacts yet — add your first one above."}
-        </div>
-      ) : (
-        <div className="bg-neutral-0 rounded-4 border-100 overflow-hidden">
-          {/* Wide table scrolls inside its own container so the page never does. */}
-          <div className="ops-scroll-x">
-            <table className="table table-hover mb-0 align-middle" style={{ minWidth: 820 }}>
-              <caption className="visually-hidden">Contacts — select a name to open the full record</caption>
-              <thead>
-                <tr className="fz-font-sm neutral-500">
-                  <th scope="col" className="fw-500 py-3 ps-4">Name</th>
-                  <th scope="col" className="fw-500 py-3">Stage</th>
-                  <th scope="col" className="fw-500 py-3">Email</th>
-                  <th scope="col" className="fw-500 py-3">Phone</th>
-                  <th scope="col" className="fw-500 py-3 text-center">Lead score</th>
-                  <th scope="col" className="fw-500 py-3 text-center">Churn risk</th>
-                  <th scope="col" className="fw-500 py-3 pe-4 text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {display.map((c) => (
-                  <tr key={c.id}>
-                    <td className="py-3 ps-4">
-                      {/* Real button: the record must be openable from the keyboard. */}
-                      <button
-                        type="button"
-                        className="btn btn-link px-0 py-2 text-start text-decoration-none w-100"
-                        aria-label={`Open ${c.name || "contact"}`}
-                        onClick={() => setOpenId(c.id)}
-                      >
-                        <span className="d-block fw-600 neutral-900">{c.name || "Unnamed contact"}</span>
-                        {c.ai_summary ? (
-                          <span className="d-block fz-font-sm neutral-500">{c.ai_summary}</span>
-                        ) : (
-                          c.company && <span className="d-block fz-font-sm neutral-500">{c.company}</span>
-                        )}
-                      </button>
-                    </td>
-                    <td className="py-3">
-                      <select
-                        aria-label={`Stage for ${c.name || "contact"}`}
-                        className={`badge border-0 fw-500 text-capitalize ops-tap ${STAGE_STYLE[c.stage]}`}
-                        value={c.stage}
-                        onChange={(e) => onStage(c, e.target.value as ContactStage)}
-                      >
-                        {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-                    <td className="py-3 fz-font-sm neutral-700">
-                      {c.email || <span className="neutral-500">—</span>}
-                      {c.email_opt_out && <span className="badge fz-font-sm bg-danger-subtle text-danger fw-500 ms-2">Unsubscribed</span>}
-                    </td>
-                    <td className="py-3 fz-font-sm neutral-700">
-                      {c.phone || <span className="neutral-500">—</span>}
-                      {c.sms_opt_out && <span className="badge fz-font-sm bg-danger-subtle text-danger fw-500 ms-2">Unsubscribed</span>}
-                    </td>
-                    <td className="py-3 text-center">
-                      {c.lead_score != null ? (
-                        <span className={`badge fw-600 fz-font-sm ${scoreColor(c.lead_score)}`}>{c.lead_score}</span>
-                      ) : (
-                        <span className="neutral-500 fz-font-sm">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 text-center">
-                      {c.churn_risk != null ? (
-                        <span className={`badge fw-500 fz-font-sm ${c.churn_risk >= 0.6 ? "bg-warning-subtle text-warning" : "bg-neutral-100 neutral-700"}`}>
-                          {Math.round(c.churn_risk * 100)}%
-                        </span>
-                      ) : (
-                        <span className="neutral-500 fz-font-sm">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 pe-4 text-end">
-                      <div className="d-inline-flex align-items-center gap-3">
-                        <button
-                          type="button"
-                          className="btn btn-link btn-sm p-0 text-decoration-none ops-tap"
-                          aria-label={`${c.scored_at ? "Re-score" : "Score"} ${c.name || "contact"} with AI`}
-                          onClick={() => scoreOne(c.id)}
-                          disabled={scoring[c.id]}
-                        >
-                          {scoring[c.id] ? "…" : c.scored_at ? "Re-score" : "✨ Score"}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap"
-                          aria-label={`Delete ${c.name || "contact"}`}
-                          onClick={() => onDelete(c)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        </form>
       )}
+
+      <CrmStats rows={rows} currency={org.currency || "USD"} />
+
+      <StageBoard
+        stages={STAGES}
+        rows={display}
+        sort={sort}
+        hotOnly={hotOnly}
+        currency={org.currency || "USD"}
+        onOpen={(c) => setOpenId(c.id)}
+        onStage={onStage}
+        onDelete={onDelete}
+      />
 
       {open && (
         <ContactDrawer

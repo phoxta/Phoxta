@@ -13,6 +13,10 @@ export type Contact = {
   notes: string;
   value_cents: number;
   created_at: string;
+  /** Touched by the app_touch_updated_at trigger, so it tracks real activity —
+   *  which is what a board wants to sort and date cards by, not the day the row
+   *  was first created. */
+  updated_at: string;
   lead_score: number | null;
   churn_risk: number | null;
   ai_summary: string | null;
@@ -23,7 +27,7 @@ export type Contact = {
 };
 
 const SELECT =
-  "id, name, email, phone, company, stage, tags, notes, value_cents, created_at, lead_score, churn_risk, ai_summary, scored_at, email_opt_out, sms_opt_out, source";
+  "id, name, email, phone, company, stage, tags, notes, value_cents, created_at, updated_at, lead_score, churn_risk, ai_summary, scored_at, email_opt_out, sms_opt_out, source";
 
 export async function listContacts(orgId: string): Promise<{ data: Contact[]; error: string | null }> {
   const { data, error } = await supabase
