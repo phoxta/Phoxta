@@ -1,0 +1,738 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Operating console — shared UI layer  (.oc-*)
+   ───────────────────────────────────────────────────────────────────────
+   The console has no component library, so this is the smallest set that keeps
+   its pages consistent: a scrolling pane, a portalled menu, a tag, a button, a
+   field, an avatar, an empty state and a sheet. It began life inside the Inbox
+   redesign and moved here once the Overview needed the same parts.
+
+   Everything is built on the app's own --at-neutral-* tokens, so the
+   [data-bs-theme=dark] swap in main.css carries the whole console with it. The
+   only new colours are the accents below, which get their own dark values.
+
+   Pair it with a page-level layer (inbox.css, overview.css) for anything that
+   is genuinely specific to one screen.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Tokens live on :root, not on a wrapper class — menus, palettes and sheets
+   are portalled to <body>, outside any page's subtree, and would otherwise lose
+   every colour. They are namespaced, so nothing collides. */
+:root {
+  /* The violet the messaging design already used, promoted to tokens.
+     Two accents, not one: --oc-accent is the accent used as INK (text,
+     borders, focus rings) against the page, so in dark it has to go light;
+     --oc-accent-fill is the accent used as a FILLED SURFACE under white
+     text, so it has to stay saturated in both themes. Collapsing them left
+     white-on-accent at 2.7:1 in dark mode. Same split for danger. */
+  --oc-accent: #7c3aed;
+  --oc-accent-hover: #6d28d9;
+  --oc-accent-fill: #7c3aed;
+  --oc-accent-fill-hover: #6d28d9;
+  --oc-on-fill: #fff;
+  --oc-accent-soft: #ede9fe;
+  --oc-accent-ink: #4c1d95;
+  --oc-ok: #15803d;
+  --oc-warn: #b45309;
+  --oc-warn-soft: #fef3c7;
+  --oc-danger: #b91c1c;
+  --oc-danger-fill: #b91c1c;
+  --oc-sel: #f4f0ff;
+
+  /* Shared geometry. --oc-h is the measured fill height a full-bleed page sets
+     inline (see useFillHeight); the default only matters before it measures. */
+  --oc-radius: 16px;
+  --oc-h: 640px;
+}
+
+[data-bs-theme="dark"] {
+  --oc-accent: #a78bfa;
+  --oc-accent-hover: #c4b5fd;
+  /* Deliberately NOT the light violet above: white sits on this one. */
+  --oc-accent-fill: #6d28d9;
+  --oc-accent-fill-hover: #7c3aed;
+  --oc-on-fill: #fff;
+  --oc-accent-soft: #2e2547;
+  --oc-accent-ink: #ddd6fe;
+  --oc-ok: #4ade80;
+  --oc-warn: #fbbf24;
+  --oc-warn-soft: #3a2f14;
+  --oc-danger: #f87171;
+  --oc-danger-fill: #b91c1c;
+  --oc-sel: #241f33;
+}
+
+/* Native form controls and scrollbars follow the app theme — without this
+   the <select>s render with the UA's light chrome on dark panes. `.oc-scope`
+   goes on a page root; the rest are the portalled surfaces. */
+.oc-scope,
+.oc-sheet__scrim,
+.oc-menu {
+  color-scheme: light;
+}
+
+[data-bs-theme="dark"] .oc-scope,
+[data-bs-theme="dark"] .oc-sheet__scrim,
+[data-bs-theme="dark"] .oc-menu {
+  color-scheme: dark;
+}
+
+/* ── Pane ─────────────────────────────────────────────────────────────────
+   Card surface with a fixed head, a scrolling body and an optional docked
+   foot. `min-height:0` on both pane and body is what actually lets the body
+   scroll instead of the whole grid stretching. */
+.oc-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--at-neutral-0);
+  border: 1px solid var(--at-neutral-100);
+  border-radius: var(--oc-radius);
+  overflow: hidden;
+}
+
+.oc-pane__head {
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--at-neutral-100);
+  background: var(--at-neutral-0);
+}
+
+.oc-pane__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.oc-pane__body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.oc-pane__body::-webkit-scrollbar-thumb {
+  background: var(--at-neutral-200);
+  border: 3px solid var(--at-neutral-0);
+  border-radius: 8px;
+}
+
+.oc-pane__body::-webkit-scrollbar-thumb:hover {
+  background: var(--at-neutral-300);
+}
+
+.oc-pane__foot {
+  flex: 0 0 auto;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--at-neutral-100);
+  background: var(--at-neutral-0);
+}
+
+/* ── Form controls, matched to the rail's density ─────────────────────── */
+.oc-field {
+  width: 100%;
+  border: 1px solid var(--at-neutral-200);
+  border-radius: 9px;
+  background: var(--at-neutral-0);
+  color: var(--at-neutral-900);
+  font-size: 12.5px;
+  padding: 7px 10px;
+  outline: 0;
+}
+
+.oc-field:focus {
+  border-color: var(--oc-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--oc-accent) 14%, transparent);
+}
+
+.oc-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--at-neutral-500);
+  margin-bottom: 4px;
+}
+
+.oc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--at-neutral-200);
+  background: var(--at-neutral-0);
+  color: var(--at-neutral-900);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 9px;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.oc-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.oc-btn:hover:not(:disabled) {
+  background: var(--at-neutral-50);
+}
+
+.oc-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.oc-btn--primary {
+  background: var(--at-neutral-900);
+  border-color: var(--at-neutral-900);
+  color: var(--at-neutral-0);
+}
+
+.oc-btn--primary:hover:not(:disabled) {
+  background: var(--at-neutral-800);
+}
+
+.oc-btn--accent {
+  background: var(--oc-accent-fill);
+  border-color: var(--oc-accent-fill);
+  color: var(--oc-on-fill);
+}
+
+.oc-btn--accent:hover:not(:disabled) {
+  background: var(--oc-accent-fill-hover);
+}
+
+.oc-btn--danger {
+  background: var(--oc-danger-fill);
+  border-color: var(--oc-danger-fill);
+  color: var(--oc-on-fill);
+}
+
+.oc-btn--sm {
+  padding: 4px 9px;
+  font-size: 11.5px;
+  border-radius: 7px;
+}
+
+/* ── Icon button ──────────────────────────────────────────────────────── */
+.oc-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--at-neutral-500);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.oc-ico:hover:not(:disabled) {
+  background: var(--at-neutral-50);
+  color: var(--at-neutral-900);
+}
+
+.oc-ico[aria-expanded="true"],
+.oc-ico.is-on {
+  background: var(--at-neutral-900);
+  color: var(--at-neutral-0);
+}
+
+.oc-ico:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.oc-ico--wide {
+  width: auto;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.oc-ico--rec {
+  background: var(--oc-danger-fill);
+  color: var(--oc-on-fill);
+  animation: oc-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes oc-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* ── Segmented control ────────────────────────────────────────────────── */
+.oc-seg {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--at-neutral-50);
+  border-radius: 9px;
+}
+
+.oc-seg button {
+  border: 0;
+  background: transparent;
+  color: var(--at-neutral-500);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.oc-seg button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.oc-seg button:hover:not([aria-pressed="true"]) {
+  color: var(--at-neutral-900);
+}
+
+.oc-seg button[aria-pressed="true"] {
+  background: var(--at-neutral-0);
+  color: var(--at-neutral-900);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.oc-seg.is-note button[aria-pressed="true"] {
+  background: var(--oc-warn-soft);
+  color: var(--oc-warn);
+}
+
+/* ── Tags ─────────────────────────────────────────────────────────────── */
+.oc-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: var(--at-neutral-50);
+  color: var(--at-neutral-600);
+  border: 1px solid var(--at-neutral-100);
+  white-space: nowrap;
+}
+
+.oc-tag svg {
+  width: 10px;
+  height: 10px;
+}
+
+.oc-tag--accent {
+  background: var(--oc-accent-soft);
+  color: var(--oc-accent-ink);
+  border-color: transparent;
+}
+
+.oc-tag--ok {
+  background: color-mix(in srgb, var(--oc-ok) 14%, transparent);
+  color: var(--oc-ok);
+  border-color: transparent;
+}
+
+.oc-tag--warn {
+  background: color-mix(in srgb, var(--oc-warn) 16%, transparent);
+  color: var(--oc-warn);
+  border-color: transparent;
+}
+
+.oc-tag--danger {
+  background: color-mix(in srgb, var(--oc-danger) 14%, transparent);
+  color: var(--oc-danger);
+  border-color: transparent;
+}
+
+.oc-tag--solid {
+  background: var(--at-neutral-900);
+  color: var(--at-neutral-0);
+  border-color: transparent;
+}
+
+/* ── Avatar + channel glyph ───────────────────────────────────────────── */
+.oc-av {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--at-neutral-600);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.oc-av--sm {
+  width: 22px;
+  height: 22px;
+  font-size: 8.5px;
+}
+
+.oc-av--md {
+  width: 34px;
+  height: 34px;
+  font-size: 11.5px;
+}
+
+.oc-av--lg {
+  width: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+
+/* Channel/kind glyph pinned to the avatar, replacing the old emoji badges. */
+.oc-av__ch {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--at-neutral-0);
+  border: 1px solid var(--at-neutral-100);
+  color: var(--at-neutral-600);
+}
+
+.oc-av__ch svg {
+  width: 9px;
+  height: 9px;
+}
+
+.oc-av__dot {
+  position: absolute;
+  right: -1px;
+  top: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--oc-accent);
+  box-shadow: 0 0 0 2px var(--at-neutral-0);
+}
+
+/* ── Floating menus (floating-ui portals these to <body>) ─────────────── */
+.oc-menu {
+  z-index: 1060;
+  min-width: 200px;
+  max-height: min(60vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--at-neutral-0);
+  border: 1px solid var(--at-neutral-100);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.24);
+  padding: 5px;
+  outline: 0;
+}
+
+.oc-menu__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--at-neutral-500);
+  padding: 7px 9px 4px;
+}
+
+.oc-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--at-neutral-800);
+  font-size: 13px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.oc-menu__item:hover:not(:disabled),
+.oc-menu__item:focus-visible {
+  background: var(--at-neutral-50);
+  outline: 0;
+}
+
+.oc-menu__item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.oc-menu__item svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: var(--at-neutral-500);
+}
+
+.oc-menu__item.is-danger,
+.oc-menu__item.is-danger svg {
+  color: var(--oc-danger);
+}
+
+.oc-menu__item .ms-auto {
+  color: var(--at-neutral-500);
+  font-size: 11px;
+}
+
+.oc-menu__sep {
+  height: 1px;
+  background: var(--at-neutral-100);
+  margin: 5px 4px;
+}
+
+/* ── Inline panels above the composer (template, AI draft, warnings) ───── */
+.oc-panel {
+  border: 1px solid var(--at-neutral-100);
+  border-radius: 12px;
+  padding: 11px 13px;
+  background: var(--at-neutral-50);
+  font-size: 12.5px;
+}
+
+.oc-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--at-neutral-500);
+  margin-bottom: 6px;
+}
+
+.oc-panel__head svg {
+  width: 13px;
+  height: 13px;
+}
+
+.oc-panel--ai {
+  background: var(--oc-accent-soft);
+  border-color: transparent;
+}
+
+.oc-panel--ai .oc-panel__head {
+  color: var(--oc-accent-ink);
+}
+
+.oc-panel--warn {
+  background: var(--oc-warn-soft);
+  border-color: transparent;
+  color: var(--oc-warn);
+}
+
+.oc-panel--warn .oc-panel__head {
+  color: var(--oc-warn);
+}
+
+.oc-panel--danger {
+  background: color-mix(in srgb, var(--oc-danger) 12%, transparent);
+  border-color: transparent;
+  color: var(--oc-danger);
+}
+
+.oc-panel--danger .oc-panel__head {
+  color: var(--oc-danger);
+}
+
+/* ── Empty / loading states ───────────────────────────────────────────── */
+.oc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 200px;
+  padding: 32px 24px;
+  gap: 4px;
+}
+
+.oc-empty__ico {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--at-neutral-50);
+  color: var(--at-neutral-400);
+  margin-bottom: 8px;
+}
+
+.oc-empty__ico svg {
+  width: 21px;
+  height: 21px;
+}
+
+.oc-empty h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--at-neutral-800);
+  margin: 0;
+}
+
+.oc-empty p {
+  font-size: 12.5px;
+  color: var(--at-neutral-500);
+  margin: 0;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+/* Skeleton rows — a shaped placeholder beats the word "Loading…". */
+.oc-skel {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  align-items: flex-start;
+}
+
+.oc-skel i {
+  display: block;
+  background: var(--at-neutral-50);
+  border-radius: 6px;
+  animation: oc-shimmer 1.3s ease-in-out infinite;
+}
+
+.oc-skel i:first-child {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
+@keyframes oc-shimmer {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ── Drawer / sheet (saved replies, rich email, mobile context) ────────── */
+.oc-sheet__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1055;
+  background: rgba(15, 15, 15, 0.4);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.oc-sheet {
+  width: min(560px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--at-neutral-0);
+  border-left: 1px solid var(--at-neutral-100);
+  box-shadow: -18px 0 48px -16px rgba(0, 0, 0, 0.32);
+  animation: oc-slide-in 0.18s ease-out;
+}
+
+@keyframes oc-slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+.oc-sheet__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--at-neutral-100);
+}
+
+.oc-sheet__head h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--at-neutral-900);
+}
+
+.oc-sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.oc-sheet__foot {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--at-neutral-100);
+}
+
+/* ── Keycap ─ a rendered keyboard shortcut hint ──────────────────────── */
+/* A ⌘K hint that doubles as the palette trigger. */
+.oc-kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--at-neutral-500);
+  background: var(--at-neutral-0);
+  border: 1px solid var(--at-neutral-200);
+  border-radius: 5px;
+  padding: 3px 5px;
+}
+
+/* ── Shared responsive ──────────────────────────────────────────────────── */
+@media (max-width: 991.98px) {
+  /* Comfortable touch targets, matching .ops-tap elsewhere in the console. */
+  .oc-ico {
+    width: 38px;
+    height: 38px;
+  }
+
+  .oc-sheet {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oc-sheet,
+  .oc-ico--rec,
+  .oc-skel i {
+    animation: none;
+  }
+}

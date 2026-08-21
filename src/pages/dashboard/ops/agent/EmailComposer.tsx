@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { Bold, Italic, Link2, List, Paperclip, Underline, X } from "lucide-react";
 import { composeEmail } from "@/lib/db/ops/agent";
 import { confirmDanger, toast } from "@/lib/ops/feedback";
 import { useDialog } from "@/lib/ops/useDialog";
+import { Tag } from "@/pages/dashboard/ops/ui/primitives";
+import "@/pages/dashboard/ops/ui/console.css";
+import "./inbox/inbox.css";
 
 type Attachment = { filename: string; content: string; size: number };
 const MAX_TOTAL = 5 * 1024 * 1024; // 5 MB total (base64 inflates ~33%)
@@ -19,12 +23,14 @@ const splitAddresses = (s: string): string[] =>
       return (m ? m[1] : p).trim();
     });
 
-const TOOLBAR: { cmd: string; label: string; arg?: never }[] = [
-  { cmd: "bold", label: "B" },
-  { cmd: "italic", label: "i" },
-  { cmd: "underline", label: "U" },
-  { cmd: "insertUnorderedList", label: "• List" },
+const TOOLBAR: { cmd: string; label: string; icon: React.ReactNode }[] = [
+  { cmd: "bold", label: "Bold", icon: <Bold width={14} height={14} /> },
+  { cmd: "italic", label: "Italic", icon: <Italic width={14} height={14} /> },
+  { cmd: "underline", label: "Underline", icon: <Underline width={14} height={14} /> },
+  { cmd: "insertUnorderedList", label: "Bulleted list", icon: <List width={14} height={14} /> },
 ];
+
+const kb = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
 export default function EmailComposer({
   orgId, initialTo = "", initialSubject = "", initialBody = "", conversationId, onClose, onSent,
@@ -119,75 +125,150 @@ export default function EmailComposer({
   // Shared dialog contract (focus trap, Escape, focus restore). Escape routes
   // through requestClose so a half-written email still asks before it's lost.
   const dialogRef = useDialog<HTMLDivElement>(requestClose);
+  const used = attachments.reduce((s, a) => s + a.size, 0);
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 1055 }} className="d-flex align-items-center justify-content-center p-2 p-sm-3" onMouseDown={requestClose}>
+    <div className="oc-sheet__scrim" role="presentation" onMouseDown={requestClose}>
       {/* The body is a contentEditable, so the focus ring has to live on its frame. */}
-      <style>{".ec-body-frame:focus-within{outline:2px solid #111;outline-offset:-2px;}"}</style>
+      <style>{".ec-frame:focus-within{border-color:var(--oc-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--oc-accent) 14%,transparent);}"}</style>
       <div
         ref={dialogRef}
-        className="bg-neutral-0 rounded-4 border-100 p-3 p-sm-4 w-100"
-        style={{ maxWidth: 640, maxHeight: "92vh", overflow: "auto" }}
+        className="oc-sheet"
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={conversationId ? "Reply by email" : "New email"}
+        aria-labelledby="ec-title-h"
       >
-        <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
-          <h2 className="fw-600 fz-font-lg mb-0">{conversationId ? "Reply by email" : "New email"}</h2>
-          <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" aria-label="Close composer" onClick={requestClose}>✕</button>
+        <div className="oc-sheet__head">
+          <h2 id="ec-title-h">{conversationId ? "Reply by email" : "New email"}</h2>
+          <button type="button" className="oc-ico" aria-label="Close composer" onClick={requestClose}>
+            <X width={16} height={16} />
+          </button>
         </div>
-        {error && <div className="alert alert-danger py-2 px-3 fz-font-sm mb-2" role="alert">{error}</div>}
 
-        <div className="d-flex align-items-center justify-content-between gap-2">
-          <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="ec-to">To <span className="neutral-400 fw-400">— separate addresses with commas</span></label>
-          <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none text-nowrap ops-tap" aria-expanded={showCcBcc} onClick={() => setShowCcBcc((v) => !v)}>Cc/Bcc</button>
-        </div>
-        <input id="ec-to" className="form-control rounded-3 mb-2" inputMode="email" autoComplete="off" value={to} onChange={(e) => setTo(e.target.value)} />
-        {showCcBcc && (
-          <>
-            <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="ec-cc">Cc</label>
-            <input id="ec-cc" className="form-control rounded-3 mb-2" value={cc} onChange={(e) => setCc(e.target.value)} />
-            <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="ec-bcc">Bcc</label>
-            <input id="ec-bcc" className="form-control rounded-3 mb-2" value={bcc} onChange={(e) => setBcc(e.target.value)} />
-          </>
-        )}
-        <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="ec-subject">Subject</label>
-        <input id="ec-subject" className="form-control rounded-3 mb-2" value={subject} onChange={(e) => setSubject(e.target.value)} />
+        <div className="oc-sheet__body">
+          {error && (
+            <div className="oc-panel oc-panel--danger mb-3" role="alert">
+              {error}
+            </div>
+          )}
 
-        <div className="fz-font-sm fw-500 neutral-700 mb-1" id="ec-body-label">Message</div>
-        <div className="ec-body-frame border-100 rounded-3 mb-2">
-          <div className="ops-scroll-x d-flex flex-nowrap gap-1 p-2 border-bottom border-100" role="group" aria-label="Formatting">
-            {TOOLBAR.map((t) => (
-              <button key={t.cmd} type="button" className="btn btn-sm btn-outline-secondary rounded-2 px-2 py-1 flex-shrink-0 text-nowrap" style={{ minWidth: 36 }} aria-label={t.cmd === "insertUnorderedList" ? "Bulleted list" : t.cmd} onMouseDown={(e) => { e.preventDefault(); exec(t.cmd); }}>{t.label}</button>
-            ))}
-            <button type="button" className="btn btn-sm btn-outline-secondary rounded-2 px-2 py-1 flex-shrink-0" onMouseDown={(e) => { e.preventDefault(); link(); }}>Link</button>
+          <div className="d-flex align-items-center justify-content-between gap-2">
+            <label className="oc-label" htmlFor="ec-to">
+              To — separate addresses with commas
+            </label>
+            <button
+              type="button"
+              className="oc-btn oc-btn--sm mb-1"
+              aria-expanded={showCcBcc}
+              onClick={() => setShowCcBcc((v) => !v)}
+            >
+              Cc/Bcc
+            </button>
           </div>
-          <div ref={bodyRef} contentEditable suppressContentEditableWarning role="textbox" aria-labelledby="ec-body-label" aria-multiline="true" className="p-3 fz-font-md" style={{ minHeight: 160, maxHeight: "40vh", overflowY: "auto", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }} />
+          <input id="ec-to" className="oc-field mb-3" inputMode="email" autoComplete="off" value={to} onChange={(e) => setTo(e.target.value)} />
+
+          {showCcBcc && (
+            <>
+              <label className="oc-label" htmlFor="ec-cc">Cc</label>
+              <input id="ec-cc" className="oc-field mb-3" value={cc} onChange={(e) => setCc(e.target.value)} />
+              <label className="oc-label" htmlFor="ec-bcc">Bcc</label>
+              <input id="ec-bcc" className="oc-field mb-3" value={bcc} onChange={(e) => setBcc(e.target.value)} />
+            </>
+          )}
+
+          <label className="oc-label" htmlFor="ec-subject">Subject</label>
+          <input id="ec-subject" className="oc-field mb-3" value={subject} onChange={(e) => setSubject(e.target.value)} />
+
+          <div className="oc-label" id="ec-body-label">Message</div>
+          <div
+            className="ec-frame"
+            style={{ border: "1px solid var(--at-neutral-200)", borderRadius: 12, overflow: "hidden", transition: "border-color .15s ease, box-shadow .15s ease" }}
+          >
+            <div
+              className="d-flex flex-nowrap gap-1 p-2"
+              role="group"
+              aria-label="Formatting"
+              style={{ borderBottom: "1px solid var(--at-neutral-100)", background: "var(--at-neutral-50)" }}
+            >
+              {TOOLBAR.map((t) => (
+                <button
+                  key={t.cmd}
+                  type="button"
+                  className="oc-ico"
+                  style={{ width: 30, height: 30 }}
+                  aria-label={t.label}
+                  title={t.label}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    exec(t.cmd);
+                  }}
+                >
+                  {t.icon}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="oc-ico"
+                style={{ width: 30, height: 30 }}
+                aria-label="Insert link"
+                title="Insert link"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  link();
+                }}
+              >
+                <Link2 width={14} height={14} />
+              </button>
+            </div>
+            <div
+              ref={bodyRef}
+              contentEditable
+              suppressContentEditableWarning
+              role="textbox"
+              aria-labelledby="ec-body-label"
+              aria-multiline="true"
+              className="p-3"
+              style={{ minHeight: 220, maxHeight: "46vh", overflowY: "auto", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13.5, lineHeight: 1.6, outline: 0 }}
+            />
+          </div>
+
+          {attachments.length > 0 && (
+            <div className="d-flex flex-wrap gap-1 mt-3">
+              {attachments.map((a, i) => (
+                <span key={i} className="oc-tag" style={{ maxWidth: "100%", overflowWrap: "anywhere" }}>
+                  <Paperclip width={10} height={10} />
+                  {a.filename}
+                  <span style={{ opacity: 0.6 }}>· {kb(a.size)}</span>
+                  <button
+                    type="button"
+                    className="border-0 bg-transparent p-0 ms-1 lh-1"
+                    style={{ color: "inherit", cursor: "pointer" }}
+                    aria-label={`Remove attachment ${a.filename}`}
+                    onClick={() => setAttachments(attachments.filter((_, j) => j !== i))}
+                  >
+                    <X width={10} height={10} />
+                  </button>
+                </span>
+              ))}
+              <Tag tone={used > MAX_TOTAL * 0.8 ? "warn" : "plain"}>{kb(used)} of 5 MB</Tag>
+            </div>
+          )}
         </div>
 
-        {attachments.length > 0 && (
-          <div className="d-flex flex-wrap gap-1 mb-2">
-            {attachments.map((a, i) => (
-              <span key={i} className="badge bg-neutral-100 neutral-700 fw-500 d-inline-flex align-items-center gap-1" style={{ maxWidth: "100%", overflowWrap: "anywhere" }}>
-                <span aria-hidden="true">📎 </span>{a.filename}
-                <button type="button" className="btn btn-link btn-sm p-0 px-1 neutral-500 text-decoration-none ops-tap" aria-label={`Remove attachment ${a.filename}`} onClick={() => setAttachments(attachments.filter((_, j) => j !== i))}>×</button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div className="oc-sheet__foot align-items-center">
           {/* A real button, not a <label> wrapping a display:none input — the
               wrapper isn't focusable, which made attaching mouse-only. */}
-          <div>
-            <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => fileRef.current?.click()}>Attach a file</button>
-            <input ref={fileRef} type="file" multiple hidden tabIndex={-1} aria-hidden="true" onChange={onFiles} />
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none px-2 ops-tap" onClick={requestClose}>Cancel</button>
-            <button type="button" className="btn btn-dark rounded-pill px-4" onClick={send} disabled={sending}>{sending ? "Sending…" : "Send"}</button>
-          </div>
+          <button type="button" className="oc-btn" onClick={() => fileRef.current?.click()}>
+            <Paperclip /> Attach a file
+          </button>
+          <input ref={fileRef} type="file" multiple hidden tabIndex={-1} aria-hidden="true" onChange={onFiles} />
+          <button type="button" className="oc-btn ms-auto" onClick={requestClose}>
+            Cancel
+          </button>
+          <button type="button" className="oc-btn oc-btn--accent" onClick={send} disabled={sending}>
+            {sending ? "Sending…" : "Send email"}
+          </button>
         </div>
       </div>
     </div>

@@ -7,6 +7,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Canonical shared chat code. The storefronts vendor this file (they deploy
+      // from their own folder and cannot see the repo root); the platform SPA
+      // builds FROM the root, so it imports the original instead of a copy.
+      "@shared-chat": path.resolve(__dirname, "./packages/shared-chat/src"),
     },
   },
   server: {

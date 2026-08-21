@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import {
@@ -19,8 +19,17 @@ const OVERVIEW_CSS = `
    Note if anything Bootstrap-gridded is ever put back in the rail: the grid keys
    off the VIEWPORT, not the parent, so col-md/col-xl inside this fixed-width
    pane collapse to a fraction of it on a wide screen. */
+/* The Operator is a fixed-height panel with its own internal scroll, so it has
+   no reason to travel with the page - only the board does. It pins below the
+   console's own sticky header, whose height is measured onto --ops-head-h
+   (OverviewPage) because it changes with the title and tab wrapping. */
 .ops-ov{display:flex;gap:20px;align-items:flex-start}
 .ops-ov-side{width:460px;flex:0 0 460px;min-width:0}
+.ops-pin .ops-ov-side{position:sticky;top:calc(var(--ops-head-h, 0px) + 8px);align-self:flex-start}
+/* Pinned, the panel is sized to the measured gap, and min-height must stand
+   down: a floor taller than the space available is exactly what pushed its
+   bottom below the fold. */
+.ops-pin .opc{height:var(--ops-op-h);min-height:0}
 .ops-ov-board{flex:1 1 auto;min-width:0;display:flex;gap:13px;overflow-x:auto;padding-bottom:4px;align-items:flex-start}
 .ops-ov-board::-webkit-scrollbar{height:8px}
 .ops-ov-board::-webkit-scrollbar-thumb{background:var(--at-neutral-200);border-radius:8px}
@@ -126,40 +135,67 @@ const OVERVIEW_CSS = `
    composer stays pinned instead of the page growing. */
 .opc{display:flex;flex-direction:column;background:var(--at-neutral-0);border:1px solid rgba(0,0,0,.07);
   border-radius:14px;overflow:hidden;height:calc(100vh - 300px);min-height:460px}
-.opc-head{background:#4B4557;padding:22px 20px;display:flex;align-items:center;gap:10px}
+/* Header art under a black 55% wash. The flat colour stays as background-color
+   so the header still looks right while the image loads and if it ever 404s.
+   img-87-header is a re-encoded copy of img-87 (690 KB -> 66 KB, same pixels);
+   the original stays put because the Studio asset picker offers it.
+   (No backticks in here - this block lives in a template literal.) */
+.opc-head{background-color:#4B4557;
+  background-image:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),url(/assets/imgs/pages/img-87-header.webp);
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  padding:22px 20px;display:flex;align-items:center;gap:10px}
 .opc-head h2{margin:0;font-size:30px;font-weight:700;line-height:1.1;color:#fff;letter-spacing:-.01em}
-.opc-head a{margin-left:auto;font-size:11px;color:rgba(255,255,255,.72);text-decoration:none;white-space:nowrap}
+.opc-head a{margin-left:auto;font-size:11.5px;color:#fff;text-decoration:none;white-space:nowrap}
 .opc-head a:hover{color:#fff}
 
 .opc-body{flex:1 1 auto;overflow-y:auto;padding:16px 15px;display:flex;flex-direction:column;gap:4px;
   background:var(--at-neutral-0)}
 .opc-day{display:flex;align-items:center;justify-content:center;margin:12px 0 14px}
-.opc-day span{font-size:10.5px;color:var(--at-neutral-400)}
+.opc-day span{font-size:11.5px;color:var(--at-neutral-500)}
 
 .opc-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .opc-group.mine{align-items:flex-end}
 .opc-group.theirs{align-items:flex-start}
 .opc-row{display:flex;align-items:flex-end;gap:6px;max-width:86%}
 .opc-group.mine .opc-row{flex-direction:row}
-.opc-bubble{padding:9px 12px;border-radius:12px;font-size:11.5px;line-height:1.55;white-space:pre-wrap;
+.opc-bubble{padding:10px 13px;border-radius:12px;font-size:13px;line-height:1.6;white-space:pre-wrap;
   word-break:break-word}
 .opc-group.theirs .opc-bubble{background:var(--at-neutral-0);border:1px solid var(--at-neutral-200);
   color:var(--at-neutral-900);border-bottom-left-radius:4px}
-.opc-group.mine .opc-bubble{background:#B9AEE0;color:#241F33;border-bottom-right-radius:4px}
+.opc-group.mine .opc-bubble{background:#232327;color:#fff;border-bottom-right-radius:4px}
+/* Markdown from the agent, rendered as real nodes by shared-chat's RichText.
+   .rich drops pre-wrap: RichText already turns newlines into <p> blocks, and
+   keeping pre-wrap on top of them double-spaced every line.
+   The reset matters: main.css styles bare p at 16px/500/-2% and colours code
+   pink, so a paragraph rendered twice the size of the list item beside it in
+   the same bubble. font:inherit puts every block back on the bubble's own type.
+   (No backticks in here — this block lives inside a JS template literal.) */
+.opc-bubble.rich{white-space:normal}
+.opc-bubble.rich p,.opc-bubble.rich li,.opc-bubble.rich ul{font:inherit;color:inherit;letter-spacing:normal}
+.opc-bubble.rich p{margin:4px 0}
+.opc-bubble.rich p:first-child{margin-top:0}
+.opc-bubble.rich p:last-child{margin-bottom:0}
+.opc-bubble.rich strong{font-weight:700}
+.opc-bubble.rich em{font-style:italic}
+.opc-bubble.rich code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;
+  letter-spacing:normal;color:inherit;background:rgba(127,127,127,.20);border-radius:4px;padding:1px 4px}
+.opc-bubble.rich a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.opc-bubble.rich ul{margin:6px 0;padding-left:18px;list-style:disc}
+.opc-bubble.rich li{margin:2px 0}
 .opc-tick{color:#22A45D;flex:0 0 auto;margin-bottom:2px}
 /* Read-aloud, on the agent's messages. Uses the browser's own speech synthesis,
    so it costs nothing and works with no provider configured. */
 .opc-say{flex:0 0 auto;border:0;background:transparent;padding:2px;margin-bottom:2px;cursor:pointer;
-  color:var(--at-neutral-400);display:flex;align-items:center;justify-content:center;border-radius:5px}
+  color:var(--at-neutral-500);display:flex;align-items:center;justify-content:center;border-radius:5px}
 .opc-say:hover{color:var(--at-neutral-900);background:var(--at-neutral-100)}
-.opc-say.on{color:#7C5CD6}
+.opc-say.on{color:#fff;background:#232327}
 
 .opc-meta{display:flex;align-items:center;gap:6px;padding:0 2px}
 .opc-group.mine .opc-meta{flex-direction:row-reverse}
-.opc-av{width:19px;height:19px;flex:0 0 19px;border-radius:50%;background:var(--at-neutral-900);color:#fff;
-  font-size:7.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.opc-meta b{font-size:10.5px;font-weight:600;color:var(--at-neutral-900)}
-.opc-meta i{font-size:9.5px;font-style:normal;color:var(--at-neutral-400)}
+.opc-av{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:#232327;color:#fff;
+  font-size:8.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.opc-meta b{font-size:11.5px;font-weight:600;color:var(--at-neutral-900)}
+.opc-meta i{font-size:10.5px;font-style:normal;color:var(--at-neutral-500)}
 
 /* Attachments: images tile, video/audio get real controls, everything else is a
    download row. Signed URLs, so these are live objects not public links. */
@@ -172,8 +208,8 @@ const OVERVIEW_CSS = `
 .opc-file{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;text-decoration:none;
   background:rgba(0,0,0,.05);color:inherit}
 .opc-file-ic{flex:0 0 auto;opacity:.7}
-.opc-file-meta b{display:block;font-size:11px;font-weight:600}
-.opc-file-meta i{display:block;font-size:9.5px;font-style:normal;opacity:.65}
+.opc-file-meta b{display:block;font-size:12px;font-weight:600}
+.opc-file-meta i{display:block;font-size:10.5px;font-style:normal;opacity:.8}
 
 .opc-typing{display:flex;gap:4px;align-items:center}
 .opc-typing i{width:5px;height:5px;border-radius:50%;background:var(--at-neutral-400);
@@ -183,19 +219,19 @@ const OVERVIEW_CSS = `
 @keyframes opcBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.opc-typing i{animation:none;opacity:.6}}
 
-.opc-empty{margin:auto 0;text-align:center;color:var(--at-neutral-500);font-size:12px}
+.opc-empty{margin:auto 0;text-align:center;color:var(--at-neutral-500);font-size:13px}
 .opc-empty p{margin:0 0 12px}
 .opc-starters{display:flex;flex-direction:column;gap:7px}
 .opc-starters button{background:transparent;border:1px solid var(--at-neutral-200);border-radius:999px;
-  padding:7px 12px;font-size:11px;color:var(--at-neutral-700);cursor:pointer;text-align:left}
+  padding:8px 13px;font-size:12.5px;color:var(--at-neutral-800);cursor:pointer;text-align:left}
 .opc-starters button:hover{border-color:var(--at-neutral-400);color:var(--at-neutral-900)}
 .opc-tools{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
-.opc-tools span{font-size:10px;background:#E2E5FB;color:#2F3337;border-radius:5px;padding:3px 7px}
-.opc-err{font-size:11px;color:#B02A37;background:#FBE3E5;border-radius:8px;padding:8px 10px}
+.opc-tools span{font-size:11px;background:var(--at-neutral-100);color:var(--at-neutral-800);border-radius:5px;padding:4px 8px}
+.opc-err{font-size:12px;color:#B02A37;background:#FBE3E5;border-radius:8px;padding:8px 10px}
 
 .opc-pending{display:flex;flex-wrap:wrap;gap:6px;padding:9px 12px 0}
-.opc-pending span{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;background:var(--at-neutral-100);
-  border-radius:6px;padding:4px 6px 4px 8px;color:var(--at-neutral-700)}
+.opc-pending span{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;background:var(--at-neutral-100);
+  border-radius:6px;padding:5px 7px 5px 9px;color:var(--at-neutral-800)}
 .opc-pending button{border:0;background:transparent;cursor:pointer;font-size:13px;line-height:1;
   color:var(--at-neutral-500);padding:0 2px}
 
@@ -206,12 +242,12 @@ const OVERVIEW_CSS = `
   display:flex;align-items:center;justify-content:center;padding:3px}
 .opc-clip:hover,.opc-send:hover{color:var(--at-neutral-900)}
 .opc-clip:disabled,.opc-send:disabled{opacity:.35;cursor:default}
-.opc-text{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;font-size:11.5px;padding:5px 0;
+.opc-text{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;font-size:13px;padding:6px 0;
   color:var(--at-neutral-900)}
 .opc-text::placeholder{color:var(--at-neutral-400)}
-.opc-mic{flex:0 0 38px;width:38px;height:38px;border:0;border-radius:50%;background:#7C5CD6;color:#fff;
+.opc-mic{flex:0 0 38px;width:38px;height:38px;border:0;border-radius:50%;background:#232327;color:#fff;
   display:flex;align-items:center;justify-content:center;cursor:pointer}
-.opc-mic:hover{background:#6B4CC4}
+.opc-mic:hover{background:#000}
 .opc-mic.on{background:#D64550}
 
 @media (max-width:991.98px){.opc{height:auto;min-height:0;max-height:72vh}.opc-head h2{font-size:24px}}
@@ -220,7 +256,9 @@ const OVERVIEW_CSS = `
    its own horizontal scroll rather than squeezing the columns. */
 @media (max-width:991.98px){
   .ops-ov{flex-direction:column;gap:28px}
-  .ops-ov-side{width:100%;flex:1 1 auto}
+  /* Stacked, the Operator sits ABOVE the board, so pinning it would park it on
+     top of the thing you scrolled down to read. */
+  .ops-ov-side{width:100%;flex:1 1 auto;position:static}
   .ops-ov-board{width:100%}
 }
 @media (max-width:575.98px){
@@ -392,8 +430,58 @@ export default function OverviewPage() {
   // in the console — drop those rather than render dead links.
   const visibleCards = (board?.cards ?? []).filter((c) => cfg.modules.includes(c.module));
 
+  // The Operator pins below the console's own sticky header (breadcrumb, title,
+  // tab bar). Two numbers drive it, and BOTH are measured rather than guessed:
+  //
+  //   --ops-head-h  how far down the scroll container the panel pins.
+  //   --ops-op-h    how tall it may be. This is the one that matters: subtract
+  //                 too little chrome and the panel runs past the fold, so its
+  //                 lower half stays hidden until sticky releases at the very
+  //                 bottom of the board. Measuring the scroll container's own
+  //                 box leaves nothing to get wrong.
+  //
+  // Below `MIN_PINNED` there isn't enough room to pin anything usefully, so the
+  // panel goes back to scrolling with the page.
+  const shellRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    const head = document.querySelector<HTMLElement>(".dash-sticky-head");
+    if (!shell || !head) return;
+
+    /** The element that actually scrolls — sticky positions against this. */
+    const scroller = (() => {
+      for (let n = shell.parentElement; n; n = n.parentElement) {
+        if (/(auto|scroll)/.test(getComputedStyle(n).overflowY)) return n;
+      }
+      return null;
+    })();
+
+    const MIN_PINNED = 380;
+    const GAP = 8;
+
+    const measure = () => {
+      const headH = Math.round(head.offsetHeight);
+      const box = (scroller ?? document.documentElement).getBoundingClientRect();
+      const avail = Math.round(box.height - headH - GAP * 2);
+      const canPin = scroller != null && avail >= MIN_PINNED && window.innerWidth >= 992;
+      shell.style.setProperty("--ops-head-h", `${headH}px`);
+      shell.style.setProperty("--ops-op-h", `${avail}px`);
+      shell.classList.toggle("ops-pin", canPin);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(head);
+    if (scroller) ro.observe(scroller);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
   return (
-    <div>
+    <div ref={shellRef}>
       <style>{OVERVIEW_CSS}</style>
 
       <div className="ops-ov">

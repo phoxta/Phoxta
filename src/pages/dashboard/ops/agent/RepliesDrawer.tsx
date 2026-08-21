@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
+import { CornerDownLeft, Pencil, Plus, Trash2, X } from "lucide-react";
 import { createCanned, updateCanned, deleteCanned, type CannedResponse } from "@/lib/db/ops/agent";
 import { confirmDanger, reportMutation, toastError } from "@/lib/ops/feedback";
 import { useDialog } from "@/lib/ops/useDialog";
+import { Tag } from "@/pages/dashboard/ops/ui/primitives";
+import "@/pages/dashboard/ops/ui/console.css";
+import "./inbox/inbox.css";
 
 /**
  * "Saved replies" drawer — the saved replies + WhatsApp templates CRUD that
@@ -69,6 +73,12 @@ export default function RepliesDrawer({
     setSeed(next);
   }
 
+  function cancelEdit() {
+    setEditingId(null);
+    setForm({ ...BLANK });
+    setSeed({ ...BLANK });
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -93,11 +103,7 @@ export default function RepliesDrawer({
   async function remove(c: CannedResponse) {
     if (!confirmDanger(`Delete "${c.title || c.shortcut || "this reply"}"? This can't be undone.`)) return;
     if (await reportMutation(deleteCanned(c.id), "Reply deleted")) {
-      if (editingId === c.id) {
-        setEditingId(null);
-        setForm({ ...BLANK });
-        setSeed({ ...BLANK });
-      }
+      if (editingId === c.id) cancelEdit();
       onChanged();
     }
   }
@@ -106,27 +112,35 @@ export default function RepliesDrawer({
   const templates = items.filter((i) => i.is_whatsapp_template);
 
   const renderItem = (c: CannedResponse, isTemplate: boolean) => (
-    <div key={c.id} className="bg-neutral-0 rounded-3 p-3 border-100">
+    <div key={c.id} className="oc-panel" style={{ background: "var(--at-neutral-0)" }}>
       <div className="d-flex align-items-start justify-content-between gap-2">
-        <div className="fw-600 fz-font-md">
+        <div className="fw-600 d-flex align-items-center gap-2 flex-wrap" style={{ fontSize: 13 }}>
           {c.title || c.shortcut || (isTemplate ? "Template" : "Saved reply")}
-          {isTemplate ? (
-            <span className="badge bg-success-subtle text-success-emphasis fw-500 ms-1">WhatsApp</span>
-          ) : (
-            <span className="badge bg-neutral-100 neutral-700 fw-500 text-capitalize ms-1">{c.channel}</span>
-          )}
+          {isTemplate ? <Tag tone="ok">WhatsApp</Tag> : <Tag>{CHANNEL_LABEL[c.channel] ?? c.channel}</Tag>}
+          {c.shortcut && c.title && <Tag>{c.shortcut}</Tag>}
         </div>
-        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+        <div className="d-flex align-items-center gap-1 flex-shrink-0">
           {onInsert && !isTemplate && (
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-2 py-1 fz-font-sm ops-tap" onClick={() => onInsert(c)}>Insert</button>
+            <button type="button" className="oc-btn oc-btn--sm" onClick={() => onInsert(c)}>
+              <CornerDownLeft /> Insert
+            </button>
           )}
-          <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => startEdit(c)}>Edit</button>
-          <button type="button" className="btn btn-link btn-sm p-0 px-2 text-danger text-decoration-none ops-tap" onClick={() => remove(c)}>Delete</button>
+          <button type="button" className="oc-ico" aria-label={`Edit ${c.title || c.shortcut}`} onClick={() => startEdit(c)}>
+            <Pencil width={15} height={15} />
+          </button>
+          <button type="button" className="oc-ico" aria-label={`Delete ${c.title || c.shortcut}`} onClick={() => remove(c)}>
+            <Trash2 width={15} height={15} />
+          </button>
         </div>
       </div>
-      <div className="fz-font-sm neutral-500 mt-1" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{c.body}</div>
+      <div className="mt-2" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", color: "var(--at-neutral-500)" }}>
+        {c.body}
+      </div>
       {isTemplate && (
-        <div className={`fz-font-sm mt-1 ${c.whatsapp_template_sid ? "neutral-400" : "text-danger"}`} style={{ overflowWrap: "anywhere" }}>
+        <div
+          className="mt-2"
+          style={{ overflowWrap: "anywhere", fontSize: 11.5, color: c.whatsapp_template_sid ? "var(--at-neutral-400)" : "var(--oc-danger, #dc2626)" }}
+        >
           {c.whatsapp_template_sid
             ? `Approval code: ${c.whatsapp_template_sid}`
             : "No approval code yet — this can't be sent outside the 24-hour window until you add one."}
@@ -136,82 +150,137 @@ export default function RepliesDrawer({
   );
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 1055 }} onMouseDown={requestClose}>
+    <div className="oc-sheet__scrim" role="presentation" onMouseDown={requestClose}>
       <div
         ref={dialogRef}
-        className="bg-neutral-0 border-100 p-3 p-lg-4 d-flex flex-column"
-        style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "min(540px, 100%)", maxWidth: "100%", overflowY: "auto", boxShadow: "-8px 0 24px rgba(0,0,0,.12)" }}
+        className="oc-sheet"
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Saved replies"
+        aria-labelledby="rd-title-h"
       >
-        <div className="d-flex align-items-center justify-content-between mb-3">
-          <h2 className="fw-600 fz-font-lg mb-0">Saved replies</h2>
-          <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" aria-label="Close saved replies" onClick={requestClose}>✕</button>
+        <div className="oc-sheet__head">
+          <h2 id="rd-title-h">Saved replies</h2>
+          <button type="button" className="oc-ico" aria-label="Close saved replies" onClick={requestClose}>
+            <X width={16} height={16} />
+          </button>
         </div>
 
-        <form onSubmit={save} className="bg-neutral-50 rounded-3 p-3 border-100 mb-3">
-          <h3 className="fz-font-sm fw-600 neutral-500 mb-2">{editingId ? "Edit reply" : "New saved reply / WhatsApp template"}</h3>
-          <div className="row g-2">
-            <div className="col-7">
-              <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-title">Title</label>
-              <input id="rd-title" className="form-control form-control-sm rounded-3" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+        <div className="oc-sheet__body">
+          <form onSubmit={save} className="oc-panel mb-4">
+            <div className="oc-panel__head">
+              {editingId ? <Pencil /> : <Plus />}
+              {editingId ? "Edit reply" : "New saved reply / WhatsApp template"}
             </div>
-            <div className="col-5">
-              <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-shortcut">Shortcut</label>
-              <input id="rd-shortcut" className="form-control form-control-sm rounded-3" placeholder="/thanks" value={form.shortcut} onChange={(e) => setForm({ ...form, shortcut: e.target.value })} />
-            </div>
-            <div className="col-12">
-              <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-body">Message</label>
-              <textarea id="rd-body" className="form-control form-control-sm rounded-3" rows={4} required value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
-              <div className="fz-font-sm neutral-400 mt-1">
-                Variables: <code>{"{{name}}"}</code> → customer's name, <code>{"{{business}}"}</code> → your business name (filled in when inserted). WhatsApp templates also use numbered <code>{"{{1}}"}</code>, <code>{"{{2}}"}</code>…
+
+            <div className="d-flex gap-2 mb-2">
+              <div className="flex-grow-1">
+                <label className="oc-label" htmlFor="rd-title">
+                  Title
+                </label>
+                <input id="rd-title" className="oc-field" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              </div>
+              <div style={{ width: 130 }}>
+                <label className="oc-label" htmlFor="rd-shortcut">
+                  Shortcut
+                </label>
+                <input
+                  id="rd-shortcut"
+                  className="oc-field"
+                  placeholder="/thanks"
+                  value={form.shortcut}
+                  onChange={(e) => setForm({ ...form, shortcut: e.target.value })}
+                />
               </div>
             </div>
-            <div className="col-12 col-sm-6">
-              <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-channel">Channel</label>
-              <select id="rd-channel" className="form-select form-select-sm rounded-3" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
-                {CHANNELS.map((c) => (
-                  <option key={c} value={c}>{c === "any" ? "Any channel" : CHANNEL_LABEL[c] ?? c}</option>
-                ))}
-              </select>
+
+            <label className="oc-label" htmlFor="rd-body">
+              Message
+            </label>
+            <textarea
+              id="rd-body"
+              className="oc-field"
+              rows={4}
+              required
+              value={form.body}
+              onChange={(e) => setForm({ ...form, body: e.target.value })}
+            />
+            <div className="mt-1 mb-3" style={{ fontSize: 11, color: "var(--at-neutral-400)", lineHeight: 1.5 }}>
+              Variables: <code>{"{{name}}"}</code> → customer's name, <code>{"{{business}}"}</code> → your business name (filled in
+              when inserted). WhatsApp templates also use numbered <code>{"{{1}}"}</code>, <code>{"{{2}}"}</code>…
             </div>
-            <div className="col-12 col-sm-6 d-flex align-items-end">
-              <div className="form-check mb-1">
-                <input className="form-check-input" type="checkbox" id="rd-watpl" checked={form.is_whatsapp_template} onChange={(e) => setForm({ ...form, is_whatsapp_template: e.target.checked, channel: e.target.checked ? "whatsapp" : form.channel })} />
-                <label className="form-check-label fz-font-md" htmlFor="rd-watpl">WhatsApp template</label>
+
+            <div className="d-flex gap-3 align-items-end mb-2 flex-wrap">
+              <div style={{ minWidth: 160 }}>
+                <label className="oc-label" htmlFor="rd-channel">
+                  Channel
+                </label>
+                <select id="rd-channel" className="oc-field" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
+                  {CHANNELS.map((c) => (
+                    <option key={c} value={c}>
+                      {c === "any" ? "Any channel" : CHANNEL_LABEL[c] ?? c}
+                    </option>
+                  ))}
+                </select>
               </div>
+              <label className="d-flex align-items-center gap-2 mb-2" style={{ fontSize: 12.5, cursor: "pointer" }} htmlFor="rd-watpl">
+                <input
+                  type="checkbox"
+                  id="rd-watpl"
+                  checked={form.is_whatsapp_template}
+                  onChange={(e) => setForm({ ...form, is_whatsapp_template: e.target.checked, channel: e.target.checked ? "whatsapp" : form.channel })}
+                />
+                WhatsApp template
+              </label>
             </div>
+
             {form.is_whatsapp_template && (
-              <div className="col-12">
-                <label className="fz-font-sm fw-500 neutral-700 mb-1" htmlFor="rd-sid">WhatsApp approval code <span className="neutral-400 fw-400">(SID)</span></label>
-                <input id="rd-sid" className="form-control form-control-sm rounded-3" placeholder="HX…" value={form.whatsapp_template_sid} onChange={(e) => setForm({ ...form, whatsapp_template_sid: e.target.value })} />
-                <div className="fz-font-sm neutral-400 mt-1">WhatsApp only allows pre-approved messages after 24 hours of silence. Get this message approved in your WhatsApp Business account, then paste the code it gives you here.</div>
+              <div className="mb-2">
+                <label className="oc-label" htmlFor="rd-sid">
+                  WhatsApp approval code (SID)
+                </label>
+                <input
+                  id="rd-sid"
+                  className="oc-field"
+                  placeholder="HX…"
+                  value={form.whatsapp_template_sid}
+                  onChange={(e) => setForm({ ...form, whatsapp_template_sid: e.target.value })}
+                />
+                <div className="mt-1" style={{ fontSize: 11, color: "var(--at-neutral-400)", lineHeight: 1.5 }}>
+                  WhatsApp only allows pre-approved messages after 24 hours of silence. Get this message approved in your WhatsApp
+                  Business account, then paste the code it gives you here.
+                </div>
               </div>
             )}
-            <div className="col-12 d-flex align-items-center gap-2">
-              <button type="submit" className="btn btn-dark btn-sm rounded-3 px-4" disabled={busy}>{busy ? "…" : editingId ? "Save changes" : "Save"}</button>
+
+            <div className="d-flex align-items-center gap-2 mt-3">
+              <button type="submit" className="oc-btn oc-btn--primary" disabled={busy}>
+                {busy ? "…" : editingId ? "Save changes" : "Save"}
+              </button>
               {editingId && (
-                <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => { setEditingId(null); setForm({ ...BLANK }); setSeed({ ...BLANK }); }}>Cancel edit</button>
+                <button type="button" className="oc-btn" onClick={cancelEdit}>
+                  Cancel edit
+                </button>
               )}
             </div>
-          </div>
-        </form>
+          </form>
 
-        <h3 className="fz-font-sm fw-600 neutral-500 mb-2">Saved replies</h3>
-        {snippets.length === 0 ? (
-          <div className="fz-font-sm neutral-400 mb-3">No saved replies yet.</div>
-        ) : (
-          <div className="d-flex flex-column gap-2 mb-3">{snippets.map((c) => renderItem(c, false))}</div>
-        )}
+          <h3 className="oc-label">Saved replies</h3>
+          {snippets.length === 0 ? (
+            <div className="mb-4" style={{ fontSize: 12, color: "var(--at-neutral-400)" }}>
+              No saved replies yet.
+            </div>
+          ) : (
+            <div className="d-flex flex-column gap-2 mb-4">{snippets.map((c) => renderItem(c, false))}</div>
+          )}
 
-        <h3 className="fz-font-sm fw-600 neutral-500 mb-2">WhatsApp templates</h3>
-        {templates.length === 0 ? (
-          <div className="fz-font-sm neutral-400">No templates yet.</div>
-        ) : (
-          <div className="d-flex flex-column gap-2">{templates.map((c) => renderItem(c, true))}</div>
-        )}
+          <h3 className="oc-label">WhatsApp templates</h3>
+          {templates.length === 0 ? (
+            <div style={{ fontSize: 12, color: "var(--at-neutral-400)" }}>No templates yet.</div>
+          ) : (
+            <div className="d-flex flex-column gap-2">{templates.map((c) => renderItem(c, true))}</div>
+          )}
+        </div>
       </div>
     </div>
   );

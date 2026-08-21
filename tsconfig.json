@@ -13,10 +13,11 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@shared-chat/*": ["packages/shared-chat/src/*"]
     },
     "types": ["vite/client"]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "packages/shared-chat/src", "vite.config.ts"]
 }
 

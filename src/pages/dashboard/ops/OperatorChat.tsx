@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { RichText } from "@shared-chat/chatRich";
 import {
   runOperator,
   listOperatorMessages,
@@ -218,11 +219,22 @@ export default function OperatorChat({ orgId, opsBase }: { orgId: string; opsBas
     else setSpeakingIdx(key);
   }
 
+  /** The first scroll is a jump, not a journey. The thread loads async, so
+   *  msgs.length goes 0 -> N after mount and this effect fires; animating that
+   *  meant watching the panel travel the height of the whole history every time
+   *  the page opened. Only messages that arrive while you are watching animate. */
+  const settled = useRef(false);
   useEffect(() => {
-    const t = setTimeout(
-      () => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }),
-      60,
-    );
+    const t = setTimeout(() => {
+      const el = bodyRef.current;
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior: settled.current ? "smooth" : "auto" });
+      // Only count as settled once there was a thread to land in. The effect
+      // also runs on mount with msgs still empty; marking it settled there
+      // would make the real history animate the moment the fetch resolved,
+      // which is the exact behaviour this is removing.
+      if (msgs.length > 0) settled.current = true;
+    }, 60);
     return () => clearTimeout(t);
   }, [msgs.length, busy]);
 
@@ -351,8 +363,8 @@ export default function OperatorChat({ orgId, opsBase }: { orgId: string; opsBas
                   const key = `${gi}-${i}`;
                   return (
                     <div key={i} className="opc-row">
-                      <div className="opc-bubble">
-                        {m.content && <span>{m.content}</span>}
+                      <div className="opc-bubble rich">
+                        {m.content && <RichText text={m.content} />}
                         <Attachments items={m.attachments ?? []} urls={urls} />
                       </div>
                       {mine ? (
