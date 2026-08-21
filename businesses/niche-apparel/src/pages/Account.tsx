@@ -125,7 +125,9 @@ export default function Account() {
   // ── Signed out ───────────────────────────────────────────────────────────
   if (!session) {
     return (
-      <div style={{ maxWidth: 460, margin: "0 auto", padding: "60px 20px" }}>
+      <section className="bg-neutral-50 py-60">
+        <div className="container">
+          <div className="mx-auto" style={{ maxWidth: 460 }}>
         <h1 style={{ marginBottom: 8 }}>{mode === "in" ? "Sign in" : "Create an account"}</h1>
         <p style={{ opacity: 0.7 }}>
           {mode === "in"
@@ -153,7 +155,7 @@ export default function Account() {
           {err && <p style={{ color: "#b02a37", margin: 0 }}>{err}</p>}
           {msg && <p style={{ color: "#1b6e45", margin: 0 }}>{msg}</p>}
 
-          <button className="btn btn-dark" disabled={busy}>
+          <button className="at-btn bg-dark text-white" disabled={busy}>
             {busy ? "…" : mode === "in" ? "Sign in" : "Create account"}
           </button>
         </form>
@@ -169,19 +171,23 @@ export default function Account() {
         <p style={{ opacity: 0.6, fontSize: 13, marginTop: 28 }}>
           You can also continue without an account — <Link to="/">keep browsing</Link>.
         </p>
-      </div>
+          </div>
+        </div>
+      </section>
     );
   }
 
   // ── Signed in ────────────────────────────────────────────────────────────
   return (
-    <div style={{ maxWidth: 820, margin: "0 auto", padding: "60px 20px" }}>
+    <section className="bg-neutral-50 py-60">
+      <div className="container">
+        <div className="mx-auto" style={{ maxWidth: 820 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
         <div>
           <h1 style={{ marginBottom: 4 }}>Your account</h1>
           <p style={{ opacity: 0.7, margin: 0 }}>{email}</p>
         </div>
-        <button className="btn btn-outline-dark" style={{ marginLeft: "auto" }} onClick={() => signOut()}>Sign out</button>
+        <button className="at-btn at-btn-border-white" style={{ marginLeft: "auto" }} onClick={() => signOut()}>Sign out</button>
       </div>
 
       <h2 style={{ fontSize: 18, marginBottom: 12 }}>Your details</h2>
@@ -193,7 +199,7 @@ export default function Account() {
           <input className="form-control" value={pForm.phone} onChange={(e) => setPForm({ ...pForm, phone: e.target.value })} />
         </label>
         <div style={{ flex: "1 1 100%", display: "flex", alignItems: "center", gap: 14 }}>
-          <button className="btn btn-dark" disabled={busy}>{busy ? "…" : "Save"}</button>
+          <button className="at-btn bg-dark text-white" disabled={busy}>{busy ? "…" : "Save"}</button>
           {msg && <span style={{ color: "#1b6e45", fontSize: 14 }}>{msg}</span>}
           {err && <span style={{ color: "#b02a37", fontSize: 14 }}>{err}</span>}
         </div>
@@ -216,7 +222,7 @@ export default function Account() {
                 </div>
                 {b.total_cents != null && <div style={{ marginTop: 6 }}><b>{money(b.total_cents, b.currency)}</b></div>}
                 {["pending", "confirmed"].includes(b.status) && (
-                  <button className="btn btn-sm btn-outline-dark" style={{ marginTop: 10 }} onClick={() => cancel(b.id)}>
+                  <button className="at-btn at-btn-border-white" style={{ marginTop: 10 }} onClick={() => cancel(b.id)}>
                     Cancel booking
                   </button>
                 )}
@@ -230,7 +236,7 @@ export default function Account() {
       {!loading && orders.length === 0 ? (
         <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: 12, padding: 20, textAlign: "center" }}>
           <p style={{ marginBottom: 10 }}>No orders yet.</p>
-          <Link className="btn btn-dark" to="/">Start browsing</Link>
+          <Link className="at-btn bg-dark text-white" to="/">Start browsing</Link>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -256,6 +262,8 @@ export default function Account() {
           ))}
         </div>
       )}
-    </div>
+        </div>
+      </div>
+    </section>
   );
 }

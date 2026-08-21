@@ -64,7 +64,7 @@ const SectionHost = ({
       <div className="flex flex-wrap gap-4">
         <div className="flex items-center gap-x-1.5">
           <HugeiconsIcon icon={Medal01Icon} size={20} color="currentColor" strokeWidth={1.5} />
-          Supperhost
+          Expert guide
         </div>
         <div className="w-px bg-gray-200 dark:bg-gray-700"></div>
         <div className="flex items-center gap-x-1.5">
@@ -95,7 +95,7 @@ const SectionHost = ({
 
       {/* == */}
       <div className="flex gap-2">
-        <ButtonSecondary href={'/authors/' + handle}>See host profile</ButtonSecondary>
+        <ButtonSecondary href={'/authors/' + handle}>Meet your guide</ButtonSecondary>
         <Popover className="relative">
           <PopoverButton as={ButtonSecondary} outline>
             Share
@@ -115,7 +115,7 @@ const SectionHost = ({
       <Divider />
       <div className="flex items-center gap-x-2 text-sm text-gray-700 dark:text-gray-300">
         <HugeiconsIcon icon={Flag03Icon} size={16} color="currentColor" strokeWidth={1.5} />
-        <span>Report this host</span>
+        <span>Ask about this guide</span>
       </div>
     </div>
   )

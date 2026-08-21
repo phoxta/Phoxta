@@ -1,5 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import ButtonPrimary from "@/components/button-primary";
+import ButtonSecondary from "@/components/button-secondary";
+import { Field, Label } from "@/components/fieldset";
+import Input from "@/components/input";
 import { useAccount } from "@/util/account";
 import {
   resolveTenant,
@@ -135,35 +139,38 @@ export default function Account() {
 
         <form onSubmit={submitAuth} style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 24 }}>
           {mode === "up" && (
-            <label>Name
-              <input className="form-control" value={form.name} autoComplete="name"
+            <Field className="block">
+              <Label>Name</Label>
+              <Input className="mt-1" value={form.name} autoComplete="name"
                      onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </label>
+            </Field>
           )}
-          <label>Email
-            <input className="form-control" type="email" required value={form.email} autoComplete="email"
+          <Field className="block">
+            <Label>Email</Label>
+            <Input className="mt-1" type="email" required value={form.email} autoComplete="email"
                    onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </label>
-          <label>Password
-            <input className="form-control" type="password" required minLength={8} value={form.password}
+          </Field>
+          <Field className="block">
+            <Label>Password</Label>
+            <Input className="mt-1" type="password" required minLength={8} value={form.password}
                    autoComplete={mode === "in" ? "current-password" : "new-password"}
                    onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          </label>
+          </Field>
 
           {err && <p style={{ color: "#b02a37", margin: 0 }}>{err}</p>}
           {msg && <p style={{ color: "#1b6e45", margin: 0 }}>{msg}</p>}
 
-          <button className="btn btn-dark" disabled={busy}>
+          <ButtonPrimary type="submit" disabled={busy} className="w-full">
             {busy ? "…" : mode === "in" ? "Sign in" : "Create account"}
-          </button>
+          </ButtonPrimary>
         </form>
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
-          <button type="button" className="btn btn-link p-0"
+          <button type="button" className="text-sm text-primary underline-offset-2 hover:underline"
                   onClick={() => { setMode(mode === "in" ? "up" : "in"); setErr(null); setMsg(null); }}>
             {mode === "in" ? "Create an account" : "I already have an account"}
           </button>
-          {mode === "in" && <button type="button" className="btn btn-link p-0" onClick={reset}>Forgot password</button>}
+          {mode === "in" && <button type="button" className="text-sm text-primary underline-offset-2 hover:underline" onClick={reset}>Forgot password</button>}
         </div>
 
         <p style={{ opacity: 0.6, fontSize: 13, marginTop: 28 }}>
@@ -181,19 +188,21 @@ export default function Account() {
           <h1 style={{ marginBottom: 4 }}>Your account</h1>
           <p style={{ opacity: 0.7, margin: 0 }}>{email}</p>
         </div>
-        <button className="btn btn-outline-dark" style={{ marginLeft: "auto" }} onClick={() => signOut()}>Sign out</button>
+        <ButtonSecondary className="ml-auto" onClick={() => signOut()}>Sign out</ButtonSecondary>
       </div>
 
       <h2 style={{ fontSize: 18, marginBottom: 12 }}>Your details</h2>
       <form onSubmit={saveProfile} style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 36 }}>
-        <label style={{ flex: "1 1 220px" }}>Name
-          <input className="form-control" value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} />
-        </label>
-        <label style={{ flex: "1 1 220px" }}>Phone
-          <input className="form-control" value={pForm.phone} onChange={(e) => setPForm({ ...pForm, phone: e.target.value })} />
-        </label>
+        <Field className="block flex-1 min-w-[220px]">
+          <Label>Name</Label>
+          <Input className="mt-1" value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} />
+        </Field>
+        <Field className="block flex-1 min-w-[220px]">
+          <Label>Phone</Label>
+          <Input className="mt-1" value={pForm.phone} onChange={(e) => setPForm({ ...pForm, phone: e.target.value })} />
+        </Field>
         <div style={{ flex: "1 1 100%", display: "flex", alignItems: "center", gap: 14 }}>
-          <button className="btn btn-dark" disabled={busy}>{busy ? "…" : "Save"}</button>
+          <ButtonPrimary type="submit" disabled={busy}>{busy ? "…" : "Save"}</ButtonPrimary>
           {msg && <span style={{ color: "#1b6e45", fontSize: 14 }}>{msg}</span>}
           {err && <span style={{ color: "#b02a37", fontSize: 14 }}>{err}</span>}
         </div>
@@ -216,9 +225,9 @@ export default function Account() {
                 </div>
                 {b.total_cents != null && <div style={{ marginTop: 6 }}><b>{money(b.total_cents, b.currency)}</b></div>}
                 {["pending", "confirmed"].includes(b.status) && (
-                  <button className="btn btn-sm btn-outline-dark" style={{ marginTop: 10 }} onClick={() => cancel(b.id)}>
+                  <ButtonSecondary className="mt-3" onClick={() => cancel(b.id)}>
                     Cancel booking
-                  </button>
+                  </ButtonSecondary>
                 )}
               </div>
             ))}
@@ -230,7 +239,7 @@ export default function Account() {
       {!loading && orders.length === 0 ? (
         <div style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: 12, padding: 20, textAlign: "center" }}>
           <p style={{ marginBottom: 10 }}>No orders yet.</p>
-          <Link className="btn btn-dark" to="/">Start browsing</Link>
+          <ButtonPrimary href="/">Start browsing</ButtonPrimary>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

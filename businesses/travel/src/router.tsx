@@ -34,7 +34,6 @@ const Authors = lazy(() => import("@/app/(app)/(other-pages)/authors/page"));
 const AuthorDetail = lazy(() => import("@/app/(app)/(other-pages)/authors/[handle]/page"));
 const Checkout = lazy(() => import("@/app/(app)/(other-pages)/checkout/page"));
 const PayDone = lazy(() => import("@/app/(app)/(other-pages)/pay-done/page"));
-const Subscription = lazy(() => import("@/app/(app)/(other-pages)/subscription/page"));
 const ManageBooking = lazy(() => import("@/app/(app)/(other-pages)/manage-booking/page"));
 const Account = lazy(() => import("@/pages/Account"));
 const Login = lazy(() => import("@/pages/Account"));
@@ -64,7 +63,6 @@ export const router = createBrowserRouter([
             r("/authors/:handle", page(AuthorDetail, [OtherPagesLayout])),
             r("/checkout", page(Checkout, [OtherPagesLayout])),
             r("/pay-done", page(PayDone, [OtherPagesLayout])),
-            r("/subscription", page(Subscription, [OtherPagesLayout])),
             r("/manage-booking", page(ManageBooking, [OtherPagesLayout])),
             // Account
             r("/account", page(Account, [AccountLayout])),

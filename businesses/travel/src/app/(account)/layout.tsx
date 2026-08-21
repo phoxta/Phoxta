@@ -9,7 +9,9 @@ interface Props {
 
 const Layout: FC<Props> = ({ children }) => {
   return (
-    <ApplicationLayout header={<Header2 initSearchFormTab="Stays" />}>
+    <ApplicationLayout header={{/* Wander sells experiences only — a "Stays" search tab offers something
+          this business does not do. */}
+      <Header2 initSearchFormTab="Experiences" />}>
       <div className="bg-neutral-50 dark:bg-neutral-900">
         <div className="border-b border-border bg-background pt-12">
           <PageNavigation />

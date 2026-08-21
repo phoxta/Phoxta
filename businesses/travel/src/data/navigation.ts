@@ -29,7 +29,6 @@ export function getMegaMenuItems() {
       children: [
         { title: 'Sign in', href: '/login' },
         { title: 'Sign up', href: '/signup' },
-        { title: 'Host profile', href: '/authors/host-name' },
         { title: 'Account settings', href: '/account' },
       ],
     },

@@ -22,7 +22,6 @@ const staticRoutes = [
   '/authors',
   '/about',
   '/contact',
-  '/subscription',
   '/add-listing/1',
   '/login',
   '/signup',
