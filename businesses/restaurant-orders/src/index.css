@@ -287,6 +287,15 @@ img, video, svg { max-width: 100%; height: auto; }
 .ai-input button { background: var(--accent); color: #fff; border: none; border-radius: 10px; width: 44px; cursor: pointer; }
 
 /* ── RESPONSIVE ── */
+/* ── ACCOUNT / CONTACT ── */
+/* .nav-account and .contact-grid were used in markup but never defined here, so
+   the account icon rendered unstyled and the contact/checkout grid kept its
+   1.4fr/1fr split on phones instead of stacking. */
+.nav-account { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); color: rgba(255, 255, 255, 0.75); font-size: 13px; transition: all 0.3s; }
+.nav-account:hover { border-color: var(--accent-light); color: var(--accent-light); }
+.nav.scrolled .nav-account { border-color: rgba(28, 25, 23, 0.2); color: var(--text); }
+.nav.scrolled .nav-account:hover { border-color: var(--accent); color: var(--accent); }
+
 @media (max-width: 1024px) {
     .intro-inner { grid-template-columns: 1fr; gap: 48px; }
     .dishes-grid { grid-template-columns: repeat(2, 1fr); }
@@ -299,6 +308,7 @@ img, video, svg { max-width: 100%; height: auto; }
     .dash-cols { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
+    .contact-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
     .nav-links { display: none; }
     .nav-hamburger { display: block; }
     .hero h1 { font-size: 44px; }

@@ -7,6 +7,10 @@ import { useNavigate } from "react-router-dom";
  * Replaces the dine-in reservation widget: this kitchen is digital-first, so
  * the two things a visitor wants from the home page are "start an order" and
  * "where is the one I already placed". Both are one field away.
+ *
+ * Styled from index.css rather than Bootstrap — .card-box surfaces, the
+ * .menu-cat pill pair for fulfilment (the same control the menu uses for
+ * categories) and .field inputs, so it reads as part of the restaurant.
  */
 export default function OrderWidget() {
   const navigate = useNavigate();
@@ -31,34 +35,60 @@ export default function OrderWidget() {
 
   return (
     <div className="container">
-      <div className="row g-3 justify-content-center">
-        <div className="col-lg-6">
-          <form onSubmit={start} className="p-4 border rounded-4 h-100" style={{ background: "#fff" }}>
-            <h3 className="h5 mb-1">Order now</h3>
-            <p className="text-muted" style={{ fontSize: 14 }}>Freshly made, delivered or ready to collect.</p>
+      <div
+        className="contact-grid"
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch" }}
+      >
+        <form onSubmit={start} className="card-box">
+          <h3 className="serif" style={{ fontSize: 26, marginBottom: 6 }}>Order now</h3>
+          <p style={{ fontSize: 14, color: "var(--text-light)", marginBottom: 20 }}>
+            Freshly made, delivered or ready to collect.
+          </p>
 
-            <div className="btn-group w-100 mb-3" role="group" aria-label="Fulfilment">
-              <button type="button" onClick={() => setMode("delivery")} aria-pressed={mode === "delivery"}
-                      className={`btn ${mode === "delivery" ? "btn-dark" : "btn-outline-dark"}`}>Delivery</button>
-              <button type="button" onClick={() => setMode("pickup")} aria-pressed={mode === "pickup"}
-                      className={`btn ${mode === "pickup" ? "btn-dark" : "btn-outline-dark"}`}>Collection</button>
-            </div>
+          <div className="menu-cats" style={{ justifyContent: "flex-start", marginBottom: 20 }} role="group" aria-label="Fulfilment">
+            <button
+              type="button"
+              onClick={() => setMode("delivery")}
+              aria-pressed={mode === "delivery"}
+              className={`menu-cat${mode === "delivery" ? " active" : ""}`}
+            >
+              Delivery
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("pickup")}
+              aria-pressed={mode === "pickup"}
+              className={`menu-cat${mode === "pickup" ? " active" : ""}`}
+            >
+              Collection
+            </button>
+          </div>
 
-            <button className="btn btn-dark w-100">Browse the menu</button>
-          </form>
-        </div>
+          <button className="btn-accent" style={{ width: "100%", justifyContent: "center" }}>
+            Browse the menu
+          </button>
+        </form>
 
-        <div className="col-lg-6">
-          <form onSubmit={track} className="p-4 border rounded-4 h-100" style={{ background: "#fff" }}>
-            <h3 className="h5 mb-1">Track an order</h3>
-            <p className="text-muted" style={{ fontSize: 14 }}>Enter the reference from your confirmation email.</p>
-            <div className="d-flex gap-2">
-              <input className="form-control" value={ref} onChange={(e) => setRef(e.target.value)}
-                     placeholder="Order reference" aria-label="Order reference" />
-              <button className="btn btn-outline-dark px-4">Track</button>
-            </div>
-          </form>
-        </div>
+        <form onSubmit={track} className="card-box">
+          <h3 className="serif" style={{ fontSize: 26, marginBottom: 6 }}>Track an order</h3>
+          <p style={{ fontSize: 14, color: "var(--text-light)", marginBottom: 20 }}>
+            Enter the reference from your confirmation email.
+          </p>
+
+          <div className="field">
+            <label htmlFor="ow-ref">Order reference</label>
+            <input
+              id="ow-ref"
+              value={ref}
+              onChange={(e) => setRef(e.target.value)}
+              placeholder="SVR-0000"
+            />
+          </div>
+
+          <button className="btn-dark-outline" style={{ width: "100%", justifyContent: "center" }}>
+            Track
+          </button>
+        </form>
       </div>
     </div>
   );

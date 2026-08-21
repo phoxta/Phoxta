@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import Layout from "@/components/Layout";
 import { useAccount } from "@/util/account";
 import { useMenu } from "@/util/menu";
 import {
@@ -14,6 +15,11 @@ import {
  * One page rather than three, because a customer's whole relationship with a
  * takeaway is "what did I order, and can I get it again". Everything shown is
  * scoped server-side to the caller's verified email.
+ *
+ * Presentation uses the restaurant's own theme (index.css): the .page-header
+ * hero, .menu-section rhythm, .card-box surfaces, .field form rows and the
+ * .btn-accent / .btn-dark-outline pair. It previously rendered raw Bootstrap
+ * with no <Layout>, so it had no nav or footer and none of the site's type.
  */
 
 /** Orders carry their own currency, so format per row rather than assuming one. */
@@ -33,6 +39,36 @@ const STATUS_COPY: Record<string, string> = {
   refunded: "Refunded",
   cancelled: "Cancelled",
 };
+
+/** Maps an order status onto the theme's existing .status-tag colours. */
+const STATUS_TONE: Record<string, string> = {
+  pending: "preparing",
+  paid: "preparing",
+  fulfilled: "ready",
+  refunded: "new",
+  partially_refunded: "new",
+  cancelled: "new",
+};
+
+/** Inline notices in the theme's palette — Bootstrap alerts look foreign here. */
+function Notice({ tone, children }: { tone: "error" | "ok"; children: ReactNode }) {
+  const err = tone === "error";
+  return (
+    <div
+      role={err ? "alert" : "status"}
+      style={{
+        padding: "12px 16px",
+        borderRadius: 8,
+        fontSize: 14,
+        border: `1px solid ${err ? "rgba(180,83,9,.35)" : "rgba(22,163,74,.35)"}`,
+        background: err ? "var(--accent-glow)" : "rgba(22,163,74,.10)",
+        color: err ? "var(--accent)" : "var(--success)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function Account() {
   const { session, email, ready } = useAccount();
@@ -95,138 +131,180 @@ export default function Account() {
   }
 
   if (!ready) {
-    return <section className="section"><div className="container"><p>Loading…</p></div></section>;
+    return (
+      <Layout>
+        <header className="page-header">
+          <div className="container inner"><h1>Your account</h1></div>
+        </header>
+        <section className="menu-section">
+          <div className="container" style={{ textAlign: "center", color: "var(--text-light)" }}>Loading…</div>
+        </section>
+      </Layout>
+    );
   }
 
   // ── Signed out ───────────────────────────────────────────────────────────
   if (!session) {
     return (
-      <section className="section">
-        <div className="container" style={{ maxWidth: 460 }}>
-          <h1 className="section-title">{mode === "in" ? "Sign in" : "Create an account"}</h1>
-          <p className="text-muted">
-            {mode === "in"
-              ? "Sign in to see your orders and reorder in a tap."
-              : "Save your details, track orders and reorder your favourites."}
-          </p>
-
-          <form onSubmit={submitAuth} className="d-flex flex-column gap-3 mt-4">
-            {mode === "up" && (
-              <div>
-                <label className="form-label" htmlFor="ac-name">Name</label>
-                <input id="ac-name" className="form-control" value={form.name}
-                       onChange={(e) => setForm({ ...form, name: e.target.value })} autoComplete="name" />
-              </div>
-            )}
-            <div>
-              <label className="form-label" htmlFor="ac-email">Email</label>
-              <input id="ac-email" type="email" required className="form-control" value={form.email}
-                     onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="email" />
-            </div>
-            <div>
-              <label className="form-label" htmlFor="ac-pw">Password</label>
-              <input id="ac-pw" type="password" required minLength={8} className="form-control" value={form.password}
-                     onChange={(e) => setForm({ ...form, password: e.target.value })}
-                     autoComplete={mode === "in" ? "current-password" : "new-password"} />
-            </div>
-
-            {err && <div className="alert alert-danger py-2 px-3 mb-0">{err}</div>}
-            {msg && <div className="alert alert-success py-2 px-3 mb-0">{msg}</div>}
-
-            <button className="btn btn-dark w-100" disabled={busy}>
-              {busy ? "…" : mode === "in" ? "Sign in" : "Create account"}
-            </button>
-          </form>
-
-          <div className="d-flex justify-content-between mt-3">
-            <button type="button" className="btn btn-link p-0" onClick={() => { setMode(mode === "in" ? "up" : "in"); setErr(null); setMsg(null); }}>
-              {mode === "in" ? "Create an account" : "I already have an account"}
-            </button>
-            {mode === "in" && <button type="button" className="btn btn-link p-0" onClick={reset}>Forgot password</button>}
+      <Layout>
+        <header className="page-header">
+          <div className="container inner">
+            <h1>{mode === "in" ? "Welcome back" : "Create an account"}</h1>
+            <p>
+              {mode === "in"
+                ? "Sign in to see your orders and reorder in a tap."
+                : "Save your details, track orders and reorder your favourites."}
+            </p>
           </div>
+        </header>
 
-          <p className="text-muted mt-4 mb-0" style={{ fontSize: 13 }}>
-            You can also order without an account — <Link to="/menu">browse the menu</Link>.
-          </p>
-        </div>
-      </section>
+        <section className="menu-section">
+          <div className="container" style={{ maxWidth: 480 }}>
+            <div className="card-box">
+              <form onSubmit={submitAuth}>
+                {mode === "up" && (
+                  <div className="field">
+                    <label htmlFor="ac-name">Name</label>
+                    <input id="ac-name" value={form.name}
+                           onChange={(e) => setForm({ ...form, name: e.target.value })} autoComplete="name" />
+                  </div>
+                )}
+                <div className="field">
+                  <label htmlFor="ac-email">Email</label>
+                  <input id="ac-email" type="email" required value={form.email}
+                         onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="email" />
+                </div>
+                <div className="field">
+                  <label htmlFor="ac-pw">Password</label>
+                  <input id="ac-pw" type="password" required minLength={8} value={form.password}
+                         onChange={(e) => setForm({ ...form, password: e.target.value })}
+                         autoComplete={mode === "in" ? "current-password" : "new-password"} />
+                </div>
+
+                {err && <div style={{ marginBottom: 16 }}><Notice tone="error">{err}</Notice></div>}
+                {msg && <div style={{ marginBottom: 16 }}><Notice tone="ok">{msg}</Notice></div>}
+
+                <button className="btn-accent" style={{ width: "100%", justifyContent: "center" }} disabled={busy}>
+                  {busy ? "…" : mode === "in" ? "Sign in" : "Create account"}
+                </button>
+              </form>
+
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => { setMode(mode === "in" ? "up" : "in"); setErr(null); setMsg(null); }}
+                  style={{ background: "none", border: 0, padding: 0, cursor: "pointer", font: "inherit", fontSize: 13, color: "var(--accent)" }}
+                >
+                  {mode === "in" ? "Create an account" : "I already have an account"}
+                </button>
+                {mode === "in" && (
+                  <button
+                    type="button"
+                    onClick={reset}
+                    style={{ background: "none", border: 0, padding: 0, cursor: "pointer", font: "inherit", fontSize: 13, color: "var(--text-light)" }}
+                  >
+                    Forgot password
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <p style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "var(--text-light)" }}>
+              You can also order without an account — <Link to="/menu" style={{ color: "var(--accent)" }}>browse the menu</Link>.
+            </p>
+          </div>
+        </section>
+      </Layout>
     );
   }
 
   // ── Signed in ────────────────────────────────────────────────────────────
   return (
-    <section className="section">
-      <div className="container" style={{ maxWidth: 820 }}>
-        <div className="d-flex align-items-center flex-wrap gap-2 mb-4">
-          <div>
-            <h1 className="section-title mb-1">Your account</h1>
-            <p className="text-muted mb-0">{email}</p>
-          </div>
-          <button className="btn btn-outline-dark ms-auto" onClick={() => signOut()}>Sign out</button>
+    <Layout>
+      <header className="page-header">
+        <div className="container inner">
+          <h1>Your account</h1>
+          <p>{email}</p>
         </div>
+      </header>
 
-        <h2 className="h5 mb-3">Your details</h2>
-        <form onSubmit={saveProfile} className="row g-3 mb-5">
-          <div className="col-sm-6">
-            <label className="form-label" htmlFor="p-name">Name</label>
-            <input id="p-name" className="form-control" value={pForm.name}
-                   onChange={(e) => setPForm({ ...pForm, name: e.target.value })} />
+      <section className="menu-section">
+        <div className="container" style={{ maxWidth: 860 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 28 }}>
+            <button className="btn-dark-outline" onClick={() => signOut()}>Sign out</button>
           </div>
-          <div className="col-sm-6">
-            <label className="form-label" htmlFor="p-phone">Phone</label>
-            <input id="p-phone" className="form-control" value={pForm.phone}
-                   onChange={(e) => setPForm({ ...pForm, phone: e.target.value })} />
-          </div>
-          <div className="col-12 d-flex align-items-center gap-3">
-            <button className="btn btn-dark" disabled={busy}>{busy ? "…" : "Save"}</button>
-            {msg && <span className="text-success" style={{ fontSize: 14 }}>{msg}</span>}
-            {err && <span className="text-danger" style={{ fontSize: 14 }}>{err}</span>}
-          </div>
-        </form>
 
-        <h2 className="h5 mb-3">Order history</h2>
-        {loading ? (
-          <p className="text-muted">Loading your orders…</p>
-        ) : orders.length === 0 ? (
-          <div className="p-4 border rounded-3 text-center">
-            <p className="mb-2">No orders yet.</p>
-            <Link className="btn btn-dark" to="/menu">Browse the menu</Link>
-          </div>
-        ) : (
-          <div className="d-flex flex-column gap-3">
-            {orders.map((o) => (
-              <div key={o.id} className="p-3 border rounded-3">
-                <div className="d-flex flex-wrap align-items-center gap-2">
-                  <b>#{o.reference}</b>
-                  <span className="badge bg-light text-dark">{STATUS_COPY[o.status] ?? o.status}</span>
-                  {o.fulfilment === "fulfilled" && <span className="badge bg-success-subtle text-success">Delivered</span>}
-                  <span className="ms-auto text-muted" style={{ fontSize: 13 }}>
-                    {new Date(o.placed_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
-                  </span>
+          <div className="card-box" style={{ marginBottom: 32 }}>
+            <h2 className="serif" style={{ fontSize: 28, marginBottom: 20 }}>Your details</h2>
+            <form onSubmit={saveProfile}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+                <div className="field">
+                  <label htmlFor="p-name">Name</label>
+                  <input id="p-name" value={pForm.name}
+                         onChange={(e) => setPForm({ ...pForm, name: e.target.value })} />
                 </div>
-                <ul className="list-unstyled mt-2 mb-2" style={{ fontSize: 14 }}>
-                  {o.items.map((it, i) => (
-                    <li key={i} className="text-muted">
-                      {it.quantity} × {it.name}
-                      {it.notes ? <span className="fst-italic"> — {it.notes}</span> : null}
-                    </li>
-                  ))}
-                </ul>
-                <div className="d-flex align-items-center gap-3">
-                  <b>{money(o.total_cents, o.currency)}</b>
-                  {o.refunded_cents > 0 && (
-                    <span className="text-muted" style={{ fontSize: 13 }}>
-                      {money(o.refunded_cents, o.currency)} refunded
-                    </span>
-                  )}
-                  <Link className="btn btn-sm btn-outline-dark ms-auto" to={`/track?ref=${o.reference}`}>Track</Link>
-                  <Link className="btn btn-sm btn-dark" to="/menu">Order again</Link>
+                <div className="field">
+                  <label htmlFor="p-phone">Phone</label>
+                  <input id="p-phone" value={pForm.phone}
+                         onChange={(e) => setPForm({ ...pForm, phone: e.target.value })} />
                 </div>
               </div>
-            ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                <button className="btn-accent" disabled={busy}>{busy ? "…" : "Save"}</button>
+                {msg && <Notice tone="ok">{msg}</Notice>}
+                {err && <Notice tone="error">{err}</Notice>}
+              </div>
+            </form>
           </div>
-        )}
-      </div>
-    </section>
+
+          <h2 className="serif" style={{ fontSize: 28, marginBottom: 20 }}>Order history</h2>
+          {loading ? (
+            <p style={{ color: "var(--text-light)" }}>Loading your orders…</p>
+          ) : orders.length === 0 ? (
+            <div className="card-box" style={{ textAlign: "center" }}>
+              <p style={{ marginBottom: 20, color: "var(--text-light)" }}>No orders yet.</p>
+              <Link className="btn-accent" to="/menu">Browse the menu</Link>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {orders.map((o) => (
+                <div key={o.id} className="card-box">
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                    <b>#{o.reference}</b>
+                    <span className={`status-tag ${STATUS_TONE[o.status] ?? "new"}`}>
+                      {STATUS_COPY[o.status] ?? o.status}
+                    </span>
+                    {o.fulfilment === "fulfilled" && <span className="badge-pill">Delivered</span>}
+                    <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--text-light)" }}>
+                      {new Date(o.placed_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+
+                  <ul style={{ listStyle: "none", margin: "14px 0", fontSize: 14, color: "var(--text-light)" }}>
+                    {o.items.map((it, i) => (
+                      <li key={i}>
+                        {it.quantity} × {it.name}
+                        {it.notes ? <span style={{ fontStyle: "italic" }}> — {it.notes}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+                    <b>{money(o.total_cents, o.currency)}</b>
+                    {o.refunded_cents > 0 && (
+                      <span style={{ fontSize: 13, color: "var(--text-light)" }}>
+                        {money(o.refunded_cents, o.currency)} refunded
+                      </span>
+                    )}
+                    <Link className="btn-dark-outline" style={{ marginLeft: "auto", padding: "10px 22px", fontSize: 11 }} to={`/track?ref=${o.reference}`}>Track</Link>
+                    <Link className="btn-accent" style={{ padding: "11px 22px", fontSize: 11 }} to="/menu">Order again</Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    </Layout>
   );
 }

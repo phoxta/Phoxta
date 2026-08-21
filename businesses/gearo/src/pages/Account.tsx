@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import Layout from "@/components/layout/Layout";
 import { useAccount } from "@/util/account";
 import {
   resolveTenant,
@@ -125,7 +126,9 @@ export default function Account() {
   // ── Signed out ───────────────────────────────────────────────────────────
   if (!session) {
     return (
-      <div style={{ maxWidth: 460, margin: "0 auto", padding: "60px 20px" }}>
+      <Layout>
+        <section className="flat-spacing-4">
+          <div className="container" style={{ maxWidth: 460 }}>
         <h1 style={{ marginBottom: 8 }}>{mode === "in" ? "Sign in" : "Create an account"}</h1>
         <p style={{ opacity: 0.7 }}>
           {mode === "in"
@@ -169,13 +172,17 @@ export default function Account() {
         <p style={{ opacity: 0.6, fontSize: 13, marginTop: 28 }}>
           You can also continue without an account — <Link to="/">keep browsing</Link>.
         </p>
-      </div>
+          </div>
+        </section>
+      </Layout>
     );
   }
 
   // ── Signed in ────────────────────────────────────────────────────────────
   return (
-    <div style={{ maxWidth: 820, margin: "0 auto", padding: "60px 20px" }}>
+    <Layout>
+      <section className="flat-spacing-4">
+        <div className="container" style={{ maxWidth: 820 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
         <div>
           <h1 style={{ marginBottom: 4 }}>Your account</h1>
@@ -256,6 +263,8 @@ export default function Account() {
           ))}
         </div>
       )}
-    </div>
+        </div>
+      </section>
+    </Layout>
   );
 }
