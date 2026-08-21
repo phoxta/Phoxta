@@ -108,11 +108,25 @@ export default function GmailApp({ orgId }: { orgId: string }) {
             title="Re-fetch the formatting for mail imported before it was kept"
             onClick={async () => {
               setBackfilling(true);
-              const { filled, error } = await gmailBackfillHtml(orgId, 150);
+              const r = await gmailBackfillHtml(orgId, 150);
               setBackfilling(false);
-              if (error) toastError(error);
-              else if (filled === 0) toast("Every synced message already has its formatting.", "info");
-              else toast(`Restored formatting on ${filled} message(s). Reopen the Inbox to see them.`);
+              // Say which of the several reasons produced a zero. "Nothing to do"
+              // and "your Google token is dead" look identical otherwise, which
+              // is what made the first run impossible to diagnose.
+              if (r.error) {
+                toastError(`${r.error} — checked ${r.checked}, restored ${r.filled}`);
+              } else if (r.filled > 0) {
+                toast(`Restored formatting on ${r.filled} of ${r.checked} message(s). Reopen the Inbox to see them.`);
+              } else if (r.checked === 0) {
+                toast("No email messages carry a Gmail id, so there is nothing to fetch back.", "info");
+              } else if (r.alreadyHad === r.checked) {
+                toast(`All ${r.checked} already have their formatting — the renderer is what to look at next.`, "info");
+              } else {
+                toast(
+                  `Checked ${r.checked}: ${r.alreadyHad} already had it, ${r.noHtmlInGmail} are plain-text only, ${r.fetchFailed} could not be fetched.`,
+                  "info",
+                );
+              }
             }}
           >
             {backfilling ? "…" : "Restore formatting"}

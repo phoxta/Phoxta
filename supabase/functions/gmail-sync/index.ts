@@ -116,36 +116,71 @@ async function syncOrg(admin: SupabaseClient, orgId: string): Promise<SyncResult
  * be fetched again and filed into meta.html where the console looks for it.
  * Bounded per call, so a large mailbox is several passes rather than a timeout.
  */
-async function backfillOrg(admin: SupabaseClient, orgId: string, limit: number): Promise<SyncResult> {
+type BackfillResult = {
+  filled: number;
+  checked: number;
+  alreadyHad: number;
+  noHtmlInGmail: number;
+  fetchFailed: number;
+  lastError?: string;
+  error?: string;
+};
+
+async function backfillOrg(admin: SupabaseClient, orgId: string, limit: number): Promise<BackfillResult> {
+  const out: BackfillResult = { filled: 0, checked: 0, alreadyHad: 0, noHtmlInGmail: 0, fetchFailed: 0 };
+
   const token = await getAccessToken(admin, orgId);
-  if (!token) return { imported: 0, error: "google not connected or token expired — reconnect in Settings" };
+  if (!token) {
+    out.error = "google not connected or token expired — reconnect in Settings";
+    return out;
+  }
   const gf = (p: string) => fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` } });
 
-  const { data: rows } = await admin
+  // Any email message carrying a provider id is a candidate. Filtering on
+  // meta->>source = 'gmail-sync' missed everything the Gmail app imported,
+  // which writes source 'gmail' — a fetch that 404s costs one call and is
+  // counted, which is cheaper than being wrong about who owns a row.
+  const { data: rows, error } = await admin
     .from("conversation_messages")
     .select("id, provider_sid, meta")
     .eq("organization_id", orgId)
     .eq("channel_type", "email")
-    .eq("meta->>source", "gmail-sync")
     .not("provider_sid", "is", null)
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  let filled = 0;
+  if (error) {
+    out.error = `read failed: ${error.message}`;
+    return out;
+  }
+
   for (const m of ((rows ?? []) as Json[])) {
-    if (m.meta?.html) continue; // already carries its markup
+    out.checked++;
+    if (m.meta?.html) { out.alreadyHad++; continue; }
+
     const res = await gf(`/messages/${m.provider_sid}?format=full`);
-    if (!res.ok) continue; // deleted in Gmail, or not ours — skip, do not fail the run
+    if (!res.ok) {
+      // Counted and reported. Swallowing this is what made the first attempt
+      // return "0 filled, all good" when the token was the problem.
+      out.fetchFailed++;
+      out.lastError = `gmail api ${res.status}`;
+      continue;
+    }
     const md = (await res.json()) as Json;
     const { html } = extractBody(md.payload);
-    if (!html) continue; // genuinely a plain-text mail; nothing to recover
-    await admin
+    if (!html) { out.noHtmlInGmail++; continue; }
+
+    const { error: upErr } = await admin
       .from("conversation_messages")
       .update({ meta: { ...(m.meta ?? {}), html } })
       .eq("id", m.id);
-    filled++;
+    if (upErr) {
+      out.lastError = `write failed: ${upErr.message}`;
+      continue;
+    }
+    out.filled++;
   }
-  return { imported: filled };
+  return out;
 }
 
 Deno.serve(async (req) => {
@@ -172,7 +207,7 @@ Deno.serve(async (req) => {
           const r = backfill
             ? await backfillOrg(admin, c.organization_id, limit)
             : await syncOrg(admin, c.organization_id);
-          total += r.imported;
+          total += backfill ? (r as BackfillResult).filled : (r as SyncResult).imported;
           if (r.error) problems.push({ org: c.organization_id, error: r.error });
         } catch (e) {
           problems.push({ org: c.organization_id, error: String((e as Error)?.message || e) });
@@ -193,7 +228,7 @@ Deno.serve(async (req) => {
     if (a.error) return a.error;
     if (backfill) {
       const r = await backfillOrg(a.ok.admin, a.ok.org.id, limit);
-      return json({ ok: !r.error, filled: r.imported, error: r.error ?? null });
+      return json({ ok: !r.error, ...r, error: r.error ?? r.lastError ?? null });
     }
     const r = await syncOrg(a.ok.admin, a.ok.org.id);
     return json({ ok: !r.error, imported: r.imported, error: r.error ?? null });

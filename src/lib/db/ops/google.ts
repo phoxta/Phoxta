@@ -77,16 +77,27 @@ export async function gmailSync(orgId: string): Promise<{ imported: number; erro
  * restore that; the markup was never stored. It is still in Gmail though, and
  * the Gmail message id was kept, so it can be fetched again.
  */
-export async function gmailBackfillHtml(orgId: string, limit = 100): Promise<{ filled: number; error: string | null }> {
+export type BackfillReport = {
+  filled: number;
+  checked: number;
+  alreadyHad: number;
+  noHtmlInGmail: number;
+  fetchFailed: number;
+  error: string | null;
+};
+
+export async function gmailBackfillHtml(orgId: string, limit = 100): Promise<BackfillReport> {
+  const empty = { filled: 0, checked: 0, alreadyHad: 0, noHtmlInGmail: 0, fetchFailed: 0 };
   const { data, error } = await supabase.functions.invoke("gmail-sync", {
     body: { organizationId: orgId, mode: "backfill", limit },
   });
   if (error) {
     let msg = error.message;
     try { const ctx = await (error as { context?: Response }).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* keep */ }
-    return { filled: 0, error: friendlyError(msg) };
+    return { ...empty, error: friendlyError(msg) };
   }
-  return { filled: (data as { filled?: number })?.filled ?? 0, error: null };
+  const d = (data ?? {}) as Partial<BackfillReport>;
+  return { ...empty, ...d, error: d.error ?? null };
 }
 
 // --- Workspace: email provisioning (Groups) + Drive + Calendar -------------
