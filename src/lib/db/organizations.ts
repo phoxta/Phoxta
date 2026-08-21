@@ -133,7 +133,7 @@ export async function listMyOrganizations(): Promise<{
 
   const { data, error } = await supabase
     .from("organization_memberships")
-    .select("role, organizations(id, name, slug, stage, vertical, blueprint_id, primary_region, created_at)")
+    .select("role, organizations(id, name, slug, stage, vertical, blueprint_id, app_path, site_url, primary_region, created_at)")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
