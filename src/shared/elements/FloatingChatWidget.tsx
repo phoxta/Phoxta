@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { RichText, ProductCards, type ChatCard } from "@/lib/chatRich";
+import { RichText, ProductCards, type ChatCard } from "@shared-chat/chatRich";
 
 /**
  * Text chat for phoxta.com.

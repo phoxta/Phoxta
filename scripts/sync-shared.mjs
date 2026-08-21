@@ -24,10 +24,11 @@ const FILES = [{ from: "packages/shared-chat/src/chatRich.tsx", to: "src/lib/cha
 
 const APPS = ["carento", "gearo", "travel", "niche-apparel", "restaurant-orders"];
 
-/** The platform SPA lives at the repo root, not under businesses/, so it needs
- *  its own target. It is a consumer like any other: phoxta.com now has the same
- *  chat rendering its tenants do. */
-const ROOT_TARGETS = [{ from: "packages/shared-chat/src/chatRich.tsx", to: "src/lib/chatRich.tsx" }];
+/** Only the storefronts are vendored. They deploy from their own folder and
+ *  cannot see the repo root, so the file has to travel with them. The platform
+ *  SPA builds FROM the root and imports packages/shared-chat directly via the
+ *  @shared-chat alias — a copy there would be one more thing to drift. */
+const ROOT_TARGETS = [];
 
 const BANNER = (src) =>
   `// GENERATED FILE — do not edit.\n` +
