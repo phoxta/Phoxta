@@ -37,6 +37,7 @@ import ThemeRouteSync from "@/shared/effects/ThemeRouteSync";
 import BackToTop from "@/shared/elements/BackToTop";
 import PromoBanner from "@/shared/elements/PromoBanner";
 import FloatingVoiceWidget from "@/shared/elements/FloatingVoiceWidget";
+import FloatingChatWidget from "@/shared/elements/FloatingChatWidget";
 import SmoothScrollEffect from "@/shared/effects/SmoothScrollEffect";
 import SiteJsonLd from "@/seo/SiteJsonLd";
 import NoIndex from "@/seo/NoIndex";
@@ -227,6 +228,9 @@ export default function MainLayout({
 
       <BackToTop />
       <FloatingVoiceWidget />
+      {/* Text alongside voice: every storefront Phoxta sells had a text
+          assistant while phoxta.com itself had only the mic. */}
+      <FloatingChatWidget />
     </MobileMenuCloneProvider>
   );
 }

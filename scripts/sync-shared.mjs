@@ -24,6 +24,11 @@ const FILES = [{ from: "packages/shared-chat/src/chatRich.tsx", to: "src/lib/cha
 
 const APPS = ["carento", "gearo", "travel", "niche-apparel", "restaurant-orders"];
 
+/** The platform SPA lives at the repo root, not under businesses/, so it needs
+ *  its own target. It is a consumer like any other: phoxta.com now has the same
+ *  chat rendering its tenants do. */
+const ROOT_TARGETS = [{ from: "packages/shared-chat/src/chatRich.tsx", to: "src/lib/chatRich.tsx" }];
+
 const BANNER = (src) =>
   `// GENERATED FILE — do not edit.\n` +
   `// Source: ${src}\n` +
@@ -40,20 +45,23 @@ for (const { from, to } of FILES) {
   }
   const body = BANNER(from) + readFileSync(srcPath, "utf8");
 
-  for (const app of APPS) {
-    const dest = join(root, "businesses", app, to);
+  const targets = APPS.map((app) => join(root, "businesses", app, to));
+  for (const rt of ROOT_TARGETS) if (rt.from === from) targets.push(join(root, rt.to));
+
+  for (const dest of targets) {
+    const label = dest.slice(root.length + 1).split("\\").join("/");
     const current = existsSync(dest) ? readFileSync(dest, "utf8") : null;
     if (current === body) continue;
 
     if (check) {
       drifted++;
-      console.error(`DRIFT  businesses/${app}/${to}`);
+      console.error(`DRIFT  ${label}`);
       continue;
     }
     mkdirSync(dirname(dest), { recursive: true });
     writeFileSync(dest, body, "utf8");
     written++;
-    console.log(`  wrote businesses/${app}/${to}`);
+    console.log(`  wrote ${label}`);
   }
 }
 
