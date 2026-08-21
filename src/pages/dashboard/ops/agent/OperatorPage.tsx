@@ -19,6 +19,8 @@ import {
     removeMemory,
     WRITE_TOOL_LABELS,
     WRITE_TOOL_GROUPS,
+    signOperatorFiles,
+    type OperatorAttachment,
     type OperatorMsg,
     type AgentAction,
     type AuditEntry,
@@ -33,6 +35,32 @@ const short = (s: unknown, n = 140): string => {
     const t = String(s ?? "");
     return t.length > n ? `${t.slice(0, n - 1)}…` : t;
 };
+
+const prettySize = (n?: number) =>
+    n == null ? "" : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`;
+
+/** Files produced by a turn — today the speak tool's voice notes. `urls` holds
+ *  the signed URL per storage path; until it arrives the player is left out
+ *  rather than rendered with an empty src. */
+function MsgAttachments({ items, urls }: { items: OperatorAttachment[]; urls: Record<string, string> }) {
+    if (!items?.length) return null;
+    return (
+        <div className="d-flex flex-column gap-2 mt-2">
+            {items.map((a) => {
+                const src = urls[a.path];
+                if (!src) return <div key={a.path} className="fz-font-sm text-neutral-500">Loading {a.name}…</div>;
+                if (a.kind === "image") return <img key={a.path} src={src} alt={a.name} loading="lazy" width={240} height={160} className="rounded-3" style={{ objectFit: "cover", maxWidth: "100%", height: "auto" }} />;
+                if (a.kind === "video") return <video key={a.path} src={src} controls preload="metadata" className="rounded-3" style={{ maxWidth: "100%" }} />;
+                if (a.kind === "audio") return <audio key={a.path} src={src} controls preload="metadata" style={{ maxWidth: "100%" }} />;
+                return (
+                    <a key={a.path} href={src} target="_blank" rel="noreferrer" className="fz-font-sm">
+                        {a.name} {prettySize(a.size) && <span className="text-neutral-500">({prettySize(a.size)})</span>}
+                    </a>
+                );
+            })}
+        </div>
+    );
+}
 
 // Message-ish tools the owner can edit before approving: tool → the arg field
 // that holds the outgoing text. The edited text is written back onto the
@@ -160,6 +188,9 @@ export default function OperatorPage() {
     ]);
     const [draft, setDraft] = useState("");
     const [busy, setBusy] = useState(false);
+    // Signed URLs for message attachments, keyed by storage path. The
+    // operator-files bucket is private, so a path renders nothing on its own.
+    const [urls, setUrls] = useState<Record<string, string>>({});
     const [actions, setActions] = useState<AgentAction[]>([]);
     const [audit, setAudit] = useState<AuditEntry[]>([]);
     const [auditAll, setAuditAll] = useState<AuditEntry[] | null>(null);
@@ -216,6 +247,18 @@ export default function OperatorPage() {
         };
     }, [orgId]);
 
+    // The bucket is private, so paths need signing before anything can render.
+    // One batched call per change rather than one per attachment.
+    useEffect(() => {
+        const paths = msgs.flatMap((m) => m.attachments ?? []).map((a) => a.path).filter((p) => !urls[p]);
+        if (paths.length === 0) return;
+        let active = true;
+        signOperatorFiles([...new Set(paths)]).then((signed) => {
+            if (active && Object.keys(signed).length) setUrls((u) => ({ ...u, ...signed }));
+        });
+        return () => { active = false; };
+    }, [msgs, urls]);
+
     async function send(text: string) {
         const q = text.trim();
         if (!q || busy) return;
@@ -226,14 +269,18 @@ export default function OperatorPage() {
         setDraft("");
         setBusy(true);
         setError(null);
-        const { reply, error } = await runOperator(orgId, q, history);
+        const { reply, attachments, error } = await runOperator(orgId, q, history);
         setBusy(false);
         if (error) {
             setError(error);
             return;
         }
-        setMsgs((m) => [...m, { role: "assistant", content: reply || "Done." }]);
-        saveOperatorMessages(orgId, [{ role: "user", content: q }, { role: "assistant", content: reply || "Done." }]);
+        // Voice notes (the speak tool) come back as attachments. Dropping them
+        // here is why the operator could say "play it back right here" and leave
+        // nothing to play.
+        const answer: OperatorMsg = { role: "assistant", content: reply || "Done.", attachments };
+        setMsgs((m) => [...m, answer]);
+        saveOperatorMessages(orgId, [{ role: "user", content: q }, answer]);
         refresh();
         setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 50);
     }
@@ -379,6 +426,7 @@ export default function OperatorPage() {
                         {msgs.map((m, i) => (
                             <div key={i} className={`fz-font-md ${m.role === "user" ? "align-self-end bg-neutral-900 text-white" : "align-self-start bg-neutral-100"}`} style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, whiteSpace: "pre-wrap" }}>
                                 {m.content}
+                                <MsgAttachments items={m.attachments ?? []} urls={urls} />
                             </div>
                         ))}
                         {busy && <div className="align-self-start bg-neutral-100 fz-font-md" style={{ padding: "10px 14px", borderRadius: 12 }}>…</div>}
