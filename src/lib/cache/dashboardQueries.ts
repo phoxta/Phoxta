@@ -282,6 +282,39 @@ export type WorkBoard = {
 const EMPTY_COUNTS: Record<WorkColumn, number> = { todo: 0, doing: 0, review: 0, ready: 0 };
 
 /**
+ * Which columns each kind of work card can actually reach.
+ *
+ * Mirrors app_org_work_move, and exists so the board never offers a drag that
+ * is guaranteed to fail: a card whose kind is absent here is not draggable at
+ * all, and a column the kind cannot reach is not a drop target. The RPC stays
+ * the authority — a booking can only be Ready once it has started, which is a
+ * per-row fact the client does not hold — but the obvious refusals never get
+ * far enough to become a message.
+ *
+ * Absent on purpose: invoices and campaigns (sending mails a customer, paid is
+ * money), agent actions (approvals are governed and audited), and products,
+ * domains, contacts, automation runs and outbound, which the board reports on
+ * but which have no stage to move through.
+ */
+export const WORK_MOVES: Record<string, WorkColumn[]> = {
+  conversation: ["todo", "doing", "review", "ready"],
+  ticket: ["todo", "review", "ready"],
+  order: ["todo", "ready"],
+  reservation: ["todo", "doing"],
+  booking: ["todo", "doing", "ready"],
+};
+
+/** Card ids are "kind:uuid" — the kind is what decides how a move is applied. */
+export function workCardKind(cardId: string): string {
+  return cardId.split(":")[0] ?? "";
+}
+
+/** The columns this card may be dropped into. Empty means "not draggable". */
+export function movableColumns(cardId: string): WorkColumn[] {
+  return WORK_MOVES[workCardKind(cardId)] ?? [];
+}
+
+/**
  * Move one work card to another column.
  *
  * The board's column is derived from each record's real status, so this changes

@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import {
-  DASHBOARD_TTL, getWorkBoard, moveWorkCard, WORK_COLUMNS,
+  DASHBOARD_TTL, getWorkBoard, moveWorkCard, movableColumns, WORK_COLUMNS,
   type WorkBoard, type WorkCard, type WorkColumn, type WorkMedia,
 } from "@/lib/cache/dashboardQueries";
 import { formatPrice } from "@/lib/db/marketplace";
@@ -258,12 +258,16 @@ function WorkCardView({
 }) {
   const tags = (card.tags ?? []).slice(0, 2);
   const media = card.media ?? [];
+  // A card the board only reports on (a low-stock product, a finished
+  // automation run) has no stage to move through. Offering the drag anyway just
+  // teaches people the board is broken.
+  const canMove = movableColumns(card.id).length > 0;
   return (
     <Link
       to={`${base}/${card.to_path}`}
       className={`ops-ov-card tint-${card.module}${dragging ? " dragging" : ""}`}
       aria-label={`${card.title} — ${card.detail}`}
-      draggable
+      draggable={canMove}
       onDragStart={(e) => {
         // A link drags its href by default, which would hand another app a URL
         // instead of moving the card.
@@ -450,7 +454,12 @@ export default function OverviewPage() {
                 key={key}
                 className={`ops-ov-col col-${key}${overCol === key && dragId ? " dropping" : ""}`}
                 aria-label={label}
-                onDragOver={(e) => { if (dragId) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverCol(key); } }}
+                onDragOver={(e) => {
+                  if (!dragId || !movableColumns(dragId).includes(key)) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setOverCol(key);
+                }}
                 onDragLeave={() => setOverCol((c) => (c === key ? null : c))}
                 onDrop={(e) => { e.preventDefault(); void drop(e.dataTransfer.getData("text/plain") || dragId || "", key); }}
               >
