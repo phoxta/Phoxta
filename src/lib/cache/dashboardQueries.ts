@@ -14,7 +14,6 @@ import { listMyInvitations, listNotifications } from "@/lib/db/collaboration";
 import { listAiUsageThisMonth } from "@/lib/db/ai";
 import { listMySubscriptions, listMyPurchases } from "@/lib/db/billing";
 import { listBlueprints } from "@/lib/db/marketplace";
-import { getMyMatchProfile, listOpenProfiles, listMyMatches, type MatchProfile, type Match } from "@/lib/db/matching";
 import { listDomains, type Domain } from "@/lib/db/domains";
 
 export type CacheQuery<T> = { key: string; fetch: () => Promise<T> };
@@ -372,11 +371,3 @@ export const billingQuery = query("billing", async () => {
   return { subs: s.data, purchases: p.data, aiUsage: a.data };
 });
 
-/** Network / matching page: my match profile + open people + my matches (user-scoped). */
-export type NetworkData = { profile: MatchProfile | null; people: MatchProfile[]; matches: Match[] };
-export const networkQuery = (userId: string): CacheQuery<NetworkData> =>
-  query(`network:${userId}`, async () => {
-    const [mine, open, mm] = await Promise.all([getMyMatchProfile(userId), listOpenProfiles(userId), listMyMatches()]);
-    if (mine.error) throw new Error(mine.error);
-    return { profile: mine.data, people: open.data, matches: mm.data };
-  });

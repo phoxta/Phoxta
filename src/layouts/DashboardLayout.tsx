@@ -29,13 +29,11 @@ const CUBE_LOGO = (
 
 const NAV: NavItem[] = [
   { to: "/dashboard", end: true, label: "Home", icon: <Icon d="M3 11l9-8 9 8M5 10v10h14V10" /> },
-  { to: "/dashboard/assistant", label: "Assistant", icon: <Icon d="M12 3a4 4 0 014 4v1a4 4 0 01-4 4 4 4 0 01-4-4V7a4 4 0 014-4zM5 21v-1a7 7 0 0114 0v1M9 8h.01M15 8h.01" /> },
   { to: "/dashboard/console", label: "Console", icon: <Icon d="M4 5h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM7 9l3 3-3 3M12 15h5M8 21h8" /> },
   { to: "/dashboard/studio", label: "Studio", icon: <Icon d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5zM2 2l7.586 7.586M11 13a2 2 0 100-4 2 2 0 000 4z" /> },
   { to: "/dashboard/marketplace", label: "Marketplace", icon: <Icon d="M3 9l1.5-5h15L21 9M4 9h16v11H4zM9 13h6" /> },
   { to: "/dashboard/businesses", label: "Businesses", icon: <Icon d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01" /> },
   { to: "/dashboard/billing", label: "Billing", icon: <Icon d="M2 7h20v10H2zM2 11h20M6 15h4" /> },
-  { to: "/dashboard/network", label: "Network", icon: <Icon d="M16 21v-2a4 4 0 00-8 0v2M12 11a4 4 0 100-8 4 4 0 000 8M3 21v-1a4 4 0 014-4M21 21v-1a4 4 0 00-4-4" /> },
   // Phoxta's own operating console. Hidden unless the signed-in user is on the
   // platform_admins roster — the RPCs behind it enforce that server-side too, so
   // hiding the link is presentation, not the control.

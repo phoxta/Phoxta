@@ -12,12 +12,10 @@ type Loader = () => Promise<unknown>;
 /** Top-level dashboard nav targets, keyed by route path (mirrors DashboardLayout NAV). */
 export const DASHBOARD_PRELOADERS: Record<string, Loader> = {
   "/dashboard": () => import("@/pages/dashboard/DashboardHomePage"),
-  "/dashboard/assistant": () => import("@/pages/dashboard/AssistantPage"),
   "/dashboard/studio": () => import("@/pages/dashboard/StudioPage"),
   "/dashboard/marketplace": () => import("@/pages/dashboard/MarketplacePage"),
   "/dashboard/businesses": () => import("@/pages/dashboard/BusinessesPage"),
   "/dashboard/billing": () => import("@/pages/dashboard/BillingPage"),
-  "/dashboard/network": () => import("@/pages/dashboard/NetworkPage"),
   "/dashboard/settings": () => import("@/pages/dashboard/SettingsPage"),
 };
 

@@ -14,7 +14,6 @@ import {
   invitationsQuery,
   marketplaceBlueprintsQuery,
   billingQuery,
-  networkQuery,
 } from "@/lib/cache/dashboardQueries";
 
 type Task = () => Promise<unknown>;
@@ -61,10 +60,6 @@ export function warmDashboard(userId: string | null): void {
     () => prefetchCachedData(marketplaceBlueprintsQuery.key, marketplaceBlueprintsQuery.fetch),
     () => prefetchCachedData(billingQuery.key, billingQuery.fetch),
   ];
-  if (userId) {
-    const q = networkQuery(userId);
-    data.push(() => prefetchCachedData(q.key, q.fetch));
-  }
 
   // CHUNKS for every dashboard route (so a first click never hits a Suspense spinner).
   const chunks: Task[] = ALL_PRELOADERS.map((load) => () => load());

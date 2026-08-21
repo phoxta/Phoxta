@@ -41,9 +41,7 @@ const BillingPage = lazy(() => import("@/pages/dashboard/BillingPage"));
 const PaymentCallbackPage = lazy(() => import("@/pages/dashboard/PaymentCallbackPage"));
 const ConsolePage = lazy(() => import("@/pages/dashboard/ConsolePage"));
 const PlatformPage = lazy(() => import("@/pages/dashboard/PlatformPage"));
-const NetworkPage = lazy(() => import("@/pages/dashboard/NetworkPage"));
 const SettingsPage = lazy(() => import("@/pages/dashboard/SettingsPage"));
-const AssistantPage = lazy(() => import("@/pages/dashboard/AssistantPage"));
 const StudioPage = lazy(() => import("@/pages/dashboard/StudioPage"));
 const StudioEditorPage = lazy(() => import("@/pages/dashboard/StudioEditorPage"));
 const StudioPreviewPage = lazy(() => import("@/pages/dashboard/StudioPreviewPage"));
@@ -106,7 +104,6 @@ export default function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardHomePage />} />
           <Route path="/dashboard/studio" element={<StudioPage />} />
-          <Route path="/dashboard/assistant" element={<AssistantPage />} />
           <Route path="/dashboard/console" element={<ConsolePage />} />
           {/* Phoxta's own operating console — cross-tenant, platform-admin only. */}
           <Route path="/dashboard/platform" element={<PlatformPage />} />
@@ -148,7 +145,6 @@ export default function App() {
           </Route>
           <Route path="/dashboard/billing" element={<BillingPage />} />
           <Route path="/dashboard/payment/callback" element={<PaymentCallbackPage />} />
-          <Route path="/dashboard/network" element={<NetworkPage />} />
           <Route path="/dashboard/settings" element={<SettingsPage />} />
         </Route>
       </Route>
