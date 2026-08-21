@@ -182,18 +182,31 @@ const CSS = `
 .dash-right .opc-head h2 { font-size: 28px; }
 .dash-right .opc-head a { font-size: 12.5px; opacity: 0.92; }
 
-.dash-right .opc-body { background: transparent; }
+/* The log still scrolls; the bar just stops being furniture on the glass.
+   Safe here because the thread auto-scrolls to the newest message, so the
+   scrollbar was never the affordance telling you there is more to read. */
+.dash-right .opc-body {
+  background: transparent;
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* old Edge */
+}
+.dash-right .opc-body::-webkit-scrollbar { width: 0; height: 0; }
 
-/* Glass on glass: theirs light, mine darker, white type on both. */
+/* Glass on glass: the operator's replies bright, yours darker. */
 .dash-right .opc-bubble {
   color: #fff;
   border-radius: 16px;
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
+/* The operator's replies are the thing you actually read, so they get a bright
+   surface. Brightening alone would have made it worse — white type on near-white
+   glass — so the type flips to a dark blue with it. Still glass: the mesh reads
+   through at about a third, it just stops competing with the words. */
 .dash-right .opc-group.theirs .opc-bubble {
-  background: rgba(255, 255, 255, 0.17);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  color: #142a5f;
   border-bottom-left-radius: 6px;
 }
 .dash-right .opc-group.mine .opc-bubble {
@@ -240,8 +253,8 @@ const CSS = `
    instead of shipping something unreadable. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .dash-right .opc-head,
-  .dash-right .opc-group.theirs .opc-bubble,
   .dash-right .opc-input { background-color: rgba(18, 20, 40, 0.58); }
+  .dash-right .opc-group.theirs .opc-bubble { background: #fff; color: #142a5f; }
   .dash-right .opc-group.mine .opc-bubble { background: rgba(8, 10, 22, 0.66); }
 }
 
