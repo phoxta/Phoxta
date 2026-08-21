@@ -252,6 +252,15 @@ export default function InboxPage() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   /** Below 1200px the context rail is a sheet rather than a third column. */
   const [railOpen, setRailOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+
+  /** Reply and Note both open the composer — they pick which one it is. */
+  function openComposer(next: "reply" | "note") {
+    setMode(next);
+    setComposerOpen(true);
+    // The dialog mounts this frame; focus once it exists.
+    setTimeout(() => composerRef.current?.focus(), 0);
+  }
 
   // Ticket AI
   const [confidence, setConfidence] = useState<number | null>(null);
@@ -511,6 +520,7 @@ export default function InboxPage() {
     setSuggestion(null);
     setSendNote(null);
     setMode("reply");
+    setComposerOpen(false);
     setDraft(restored.draft);
     setEmailSubject(restored.subject);
     setTpl(null);
@@ -624,6 +634,9 @@ export default function InboxPage() {
         const ok = await reportMutation(addInternalNote(orgId, conv.id, text), "Note saved");
         if (!ok) return;
         setDraft("");
+    setComposerOpen(false);
+      setComposerOpen(false);
+        setComposerOpen(false);
         dropDraft(selected);
         refreshThread();
         return;
@@ -1020,13 +1033,16 @@ export default function InboxPage() {
   }
 
   // ── Keyboard layer ────────────────────────────────────────────────────────
-  const stateRef = useRef({ visible, cursor, moreOpen, shortcutsOpen, modalOpen: false, hasDraft: false });
+  const stateRef = useRef({ visible, cursor, moreOpen, shortcutsOpen, composerOpen: false, modalOpen: false, hasDraft: false });
   stateRef.current = {
     visible,
     cursor,
     moreOpen,
     shortcutsOpen,
-    modalOpen: !!composer || repliesOpen || newTicketOpen || paletteOpen,
+    composerOpen,
+    // The composer is a dialog now, so the single-key queue shortcuts must not
+    // fire while it is open — typing "n" in a reply would jump the queue.
+    modalOpen: !!composer || repliesOpen || newTicketOpen || paletteOpen || composerOpen,
     hasDraft: !!draft.trim(),
   };
   const actionsRef = useRef<{
@@ -1088,6 +1104,10 @@ export default function InboxPage() {
       if (isTyping(e.target)) return;
       // Escape works from anywhere: it dismisses the topmost thing that's open.
       if (e.key === "Escape") {
+        if (st.composerOpen) {
+          setComposerOpen(false);
+          return;
+        }
         if (st.shortcutsOpen) {
           setShortcutsOpen(false);
           return;
@@ -1207,7 +1227,7 @@ export default function InboxPage() {
           run: () => setStatus("escalated"),
         },
         { id: "ai-draft", group: "This conversation", label: "Draft a reply with AI", icon: <Sparkles />, run: runSuggest },
-        { id: "note", group: "This conversation", label: "Write an internal note", icon: <StickyNote />, hint: "n", run: () => { setMode("note"); composerRef.current?.focus(); } },
+        { id: "note", group: "This conversation", label: "Write an internal note", icon: <StickyNote />, hint: "n", run: () => openComposer("note") },
         { id: "rating", group: "This conversation", label: "Request a satisfaction rating", icon: <TagIcon />, disabled: selConv.csat_requested || selConv.csat_score != null, run: requestRating },
       );
       for (const o of SNOOZE_OPTIONS)
@@ -1656,339 +1676,370 @@ export default function InboxPage() {
             </div>
 
             {/* ── Composer ──────────────────────────────────────────────── */}
-            <footer className={`oc-pane__foot ibx-comp${isNote ? " is-note" : ""}`}>
-              <div className="ibx-comp__stack">
-                {/* Calls */}
-                {callOpen && callTo && (
-                  <div className="oc-panel">
-                    {connecting || inCall ? (
-                      <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                        <span className="fw-600 d-inline-flex align-items-center gap-2">
-                          <Phone width={14} height={14} />
-                          {connecting ? "Connecting…" : "On call"} · {callTo}
-                        </span>
-                        <div className="d-flex gap-2">
-                          {inCall && (
-                            <button type="button" className={`oc-btn oc-btn--sm${muted ? " oc-btn--accent" : ""}`} onClick={toggleMute}>
-                              <Mic /> {muted ? "Unmute" : "Mute"}
+            {/* The composer opens as a dialog. Inline, it stood permanently at the
+                foot of the thread taking a fifth of the reading height whether or not
+                you were writing — and every control on it (calls, templates, saved
+                replies, AI) was competing with the message you were reading. */}
+            {!composerOpen ? (
+              <footer className="oc-pane__foot ibx-comp ibx-comp--shut">
+                <button type="button" className="oc-btn" onClick={() => openComposer("reply")}>
+                  <Send /> Reply
+                </button>
+                {selConv && (
+                  <button type="button" className="oc-btn" onClick={() => openComposer("note")}>
+                    <StickyNote /> Note
+                  </button>
+                )}
+              </footer>
+            ) : (
+              <div
+                className="oc-sheet__scrim ibx-comp-scrim"
+                role="presentation"
+                onMouseDown={(e) => e.target === e.currentTarget && setComposerOpen(false)}
+              >
+                <div className="ibx-comp-modal" role="dialog" aria-modal="true" aria-label={isNote ? "Write an internal note" : "Write a reply"}>
+                  <header className="ibx-comp-modal__head">
+                    <b>{isNote ? "Internal note" : `Reply to ${customerName}`}</b>
+                    <button type="button" className="oc-ico ms-auto" aria-label="Close the composer" onClick={() => setComposerOpen(false)}>
+                      ✕
+                    </button>
+                  </header>
+              <footer className={`oc-pane__foot ibx-comp${isNote ? " is-note" : ""}`}>
+                <div className="ibx-comp__stack">
+                  {/* Calls */}
+                  {callOpen && callTo && (
+                    <div className="oc-panel">
+                      {connecting || inCall ? (
+                        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                          <span className="fw-600 d-inline-flex align-items-center gap-2">
+                            <Phone width={14} height={14} />
+                            {connecting ? "Connecting…" : "On call"} · {callTo}
+                          </span>
+                          <div className="d-flex gap-2">
+                            {inCall && (
+                              <button type="button" className={`oc-btn oc-btn--sm${muted ? " oc-btn--accent" : ""}`} onClick={toggleMute}>
+                                <Mic /> {muted ? "Unmute" : "Mute"}
+                              </button>
+                            )}
+                            <button type="button" className="oc-btn oc-btn--sm oc-btn--danger" onClick={endBrowserCall}>
+                              <PhoneOff /> Hang up
                             </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="oc-panel__head">
+                            <Phone /> Call {callTo}
+                          </div>
+                          <div className="mb-2">
+                            <Segmented
+                              label="Call mode"
+                              value={callMode}
+                              onChange={setCallMode}
+                              options={[
+                                { v: "ai" as const, label: "AI agent calls" },
+                                { v: "bridge" as const, label: "Connect me" },
+                                { v: "browser" as const, label: "Talk here" },
+                              ]}
+                            />
+                          </div>
+                          {callMode === "ai" && (
+                            <>
+                              <label className="oc-label" htmlFor="call-opening">
+                                Opening line — optional
+                              </label>
+                              <input
+                                id="call-opening"
+                                className="oc-field mb-2"
+                                placeholder="e.g. Hi, I'm calling about your order…"
+                                value={callOpening}
+                                onChange={(e) => setCallOpening(e.target.value)}
+                              />
+                            </>
                           )}
-                          <button type="button" className="oc-btn oc-btn--sm oc-btn--danger" onClick={endBrowserCall}>
-                            <PhoneOff /> Hang up
+                          {callMode === "bridge" && (
+                            <>
+                              <label className="oc-label" htmlFor="call-phone">
+                                Your number — blank uses your profile phone
+                              </label>
+                              <input
+                                id="call-phone"
+                                type="tel"
+                                className="oc-field mb-2"
+                                placeholder="+1 555 000 1234"
+                                value={callPhone}
+                                onChange={(e) => setCallPhone(e.target.value)}
+                              />
+                            </>
+                          )}
+                          <div className="mb-2" style={{ fontSize: 11.5, color: "var(--at-neutral-500)" }}>
+                            {callMode === "ai" && `The AI agent will call ${callTo} and talk to them.`}
+                            {callMode === "bridge" && `We'll call you first, then connect you to ${callTo}.`}
+                            {callMode === "browser" && `Talk to ${callTo} from this browser — allow microphone access when prompted.`}
+                          </div>
+                          <button
+                            type="button"
+                            className="oc-btn oc-btn--primary"
+                            onClick={callMode === "browser" ? startBrowserCall : call}
+                            disabled={calling || connecting}
+                          >
+                            {calling || connecting ? "…" : callMode === "browser" ? "Start call" : "Place call"}
                           </button>
-                        </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* WhatsApp's 24-hour window */}
+                  {waWindowClosed && (
+                    <div className="oc-panel oc-panel--warn">
+                      <div className="oc-panel__head">
+                        <Clock /> WhatsApp's 24-hour window is closed
                       </div>
-                    ) : (
-                      <>
-                        <div className="oc-panel__head">
-                          <Phone /> Call {callTo}
+                      Free-form replies will be rejected — send an approved template:
+                      {templates.length === 0 ? (
+                        <div className="mt-1">No templates yet — add one under “Saved replies”.</div>
+                      ) : (
+                        <div className="d-flex flex-wrap gap-1 mt-2">
+                          {templates.map((t) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              className={`oc-btn oc-btn--sm${tpl?.id === t.id ? " oc-btn--primary" : ""}`}
+                              onClick={() => {
+                                setTpl(t);
+                                setTplVars({});
+                              }}
+                            >
+                              {t.title || t.shortcut}
+                            </button>
+                          ))}
                         </div>
-                        <div className="mb-2">
-                          <Segmented
-                            label="Call mode"
-                            value={callMode}
-                            onChange={setCallMode}
-                            options={[
-                              { v: "ai" as const, label: "AI agent calls" },
-                              { v: "bridge" as const, label: "Connect me" },
-                              { v: "browser" as const, label: "Talk here" },
-                            ]}
+                      )}
+                    </div>
+                  )}
+
+                  {/* Template preview + variables */}
+                  {tpl && (
+                    <div className="oc-panel">
+                      <div className="oc-panel__head">
+                        <StickyNote /> Template · {tpl.title || tpl.shortcut}
+                      </div>
+                      <div className="mb-2" style={{ whiteSpace: "pre-wrap" }}>
+                        {renderTpl(tpl.body, tplVars)}
+                      </div>
+                      {!tpl.whatsapp_template_sid && (
+                        <div className="oc-panel oc-panel--warn mb-2">
+                          No approval code on this saved reply — add it under “Saved replies” so it can be sent.
+                        </div>
+                      )}
+                      {tplKeys(tpl.body).map((k) => (
+                        <div key={k} className="mb-2">
+                          <label className="oc-label" htmlFor={`tplvar-${k}`}>{`Value for {{${k}}}`}</label>
+                          <input
+                            id={`tplvar-${k}`}
+                            className="oc-field"
+                            value={tplVars[k] ?? ""}
+                            onChange={(e) => setTplVars((v) => ({ ...v, [k]: e.target.value }))}
                           />
                         </div>
-                        {callMode === "ai" && (
-                          <>
-                            <label className="oc-label" htmlFor="call-opening">
-                              Opening line — optional
-                            </label>
-                            <input
-                              id="call-opening"
-                              className="oc-field mb-2"
-                              placeholder="e.g. Hi, I'm calling about your order…"
-                              value={callOpening}
-                              onChange={(e) => setCallOpening(e.target.value)}
-                            />
-                          </>
-                        )}
-                        {callMode === "bridge" && (
-                          <>
-                            <label className="oc-label" htmlFor="call-phone">
-                              Your number — blank uses your profile phone
-                            </label>
-                            <input
-                              id="call-phone"
-                              type="tel"
-                              className="oc-field mb-2"
-                              placeholder="+1 555 000 1234"
-                              value={callPhone}
-                              onChange={(e) => setCallPhone(e.target.value)}
-                            />
-                          </>
-                        )}
-                        <div className="mb-2" style={{ fontSize: 11.5, color: "var(--at-neutral-500)" }}>
-                          {callMode === "ai" && `The AI agent will call ${callTo} and talk to them.`}
-                          {callMode === "bridge" && `We'll call you first, then connect you to ${callTo}.`}
-                          {callMode === "browser" && `Talk to ${callTo} from this browser — allow microphone access when prompted.`}
-                        </div>
+                      ))}
+                      <div className="d-flex gap-2">
                         <button
                           type="button"
                           className="oc-btn oc-btn--primary"
-                          onClick={callMode === "browser" ? startBrowserCall : call}
-                          disabled={calling || connecting}
+                          disabled={busy || !tpl.whatsapp_template_sid || tplKeys(tpl.body).some((k) => !tplVars[k]?.trim())}
+                          onClick={sendTemplate}
                         >
-                          {calling || connecting ? "…" : callMode === "browser" ? "Start call" : "Place call"}
+                          Send template
                         </button>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* WhatsApp's 24-hour window */}
-                {waWindowClosed && (
-                  <div className="oc-panel oc-panel--warn">
-                    <div className="oc-panel__head">
-                      <Clock /> WhatsApp's 24-hour window is closed
+                        <button type="button" className="oc-btn" onClick={() => setTpl(null)}>
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    Free-form replies will be rejected — send an approved template:
-                    {templates.length === 0 ? (
-                      <div className="mt-1">No templates yet — add one under “Saved replies”.</div>
-                    ) : (
-                      <div className="d-flex flex-wrap gap-1 mt-2">
-                        {templates.map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            className={`oc-btn oc-btn--sm${tpl?.id === t.id ? " oc-btn--primary" : ""}`}
-                            onClick={() => {
-                              setTpl(t);
-                              setTplVars({});
-                            }}
-                          >
-                            {t.title || t.shortcut}
+                  )}
+
+                  {/* AI draft — previewed before it goes anywhere */}
+                  {suggestion && (
+                    <div className="oc-panel oc-panel--ai">
+                      <div className="oc-panel__head">
+                        <Sparkles /> AI draft
+                      </div>
+                      {suggestion.summary && (
+                        <div className="mb-1" style={{ fontSize: 11.5, opacity: 0.85 }}>
+                          <strong>Summary:</strong> {suggestion.summary}
+                        </div>
+                      )}
+                      {confidence != null && confidence < 0.7 && (
+                        <div className="mb-1 fw-600" style={{ fontSize: 11.5 }}>
+                          The AI is unsure — read this before sending.
+                        </div>
+                      )}
+                      <div style={{ whiteSpace: "pre-wrap" }}>{suggestion.suggestion}</div>
+                      <div className="d-flex gap-2 mt-2">
+                        <button
+                          type="button"
+                          className="oc-btn oc-btn--accent"
+                          onClick={() => {
+                            setMode("reply");
+                            setDraft(suggestion.suggestion);
+                            setSuggestion(null);
+                            composerRef.current?.focus();
+                          }}
+                        >
+                          Use this reply
+                        </button>
+                        <button type="button" className="oc-btn" onClick={() => setSuggestion(null)}>
+                          Discard
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {sendNote && (
+                    <div className="oc-panel oc-panel--warn" role="alert">
+                      {sendNote}
+                    </div>
+                  )}
+                </div>
+
+                {/* Composer bar: mode, snippets, AI — then the field itself. */}
+                <div className="ibx-comp__bar">
+                  {selConv && (
+                    <Segmented
+                      label="Composer mode"
+                      noteMode={isNote}
+                      value={mode}
+                      onChange={setMode}
+                      options={[
+                        { v: "reply" as const, label: "Reply", icon: <Send /> },
+                        { v: "note" as const, label: "Note", icon: <StickyNote /> },
+                      ]}
+                    />
+                  )}
+
+                  <div className="ms-auto d-flex align-items-center gap-1">
+                    {(!selConv || mode === "reply") && (
+                      <Menu
+                        label="Saved replies"
+                        trigger={
+                          <button type="button" className="oc-ico" title="Saved replies">
+                            <StickyNote width={16} height={16} />
                           </button>
+                        }
+                      >
+                        <MenuLabel>Saved replies</MenuLabel>
+                        {snippets.length === 0 && <MenuItem disabled>None for this channel yet</MenuItem>}
+                        {snippets.map((c) => (
+                          <MenuItem key={c.id} icon={<StickyNote />} hint={c.shortcut} onSelect={() => insertSnippet(c)}>
+                            {c.title || c.shortcut}
+                          </MenuItem>
                         ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Template preview + variables */}
-                {tpl && (
-                  <div className="oc-panel">
-                    <div className="oc-panel__head">
-                      <StickyNote /> Template · {tpl.title || tpl.shortcut}
-                    </div>
-                    <div className="mb-2" style={{ whiteSpace: "pre-wrap" }}>
-                      {renderTpl(tpl.body, tplVars)}
-                    </div>
-                    {!tpl.whatsapp_template_sid && (
-                      <div className="oc-panel oc-panel--warn mb-2">
-                        No approval code on this saved reply — add it under “Saved replies” so it can be sent.
-                      </div>
-                    )}
-                    {tplKeys(tpl.body).map((k) => (
-                      <div key={k} className="mb-2">
-                        <label className="oc-label" htmlFor={`tplvar-${k}`}>{`Value for {{${k}}}`}</label>
-                        <input
-                          id={`tplvar-${k}`}
-                          className="oc-field"
-                          value={tplVars[k] ?? ""}
-                          onChange={(e) => setTplVars((v) => ({ ...v, [k]: e.target.value }))}
-                        />
-                      </div>
-                    ))}
-                    <div className="d-flex gap-2">
-                      <button
-                        type="button"
-                        className="oc-btn oc-btn--primary"
-                        disabled={busy || !tpl.whatsapp_template_sid || tplKeys(tpl.body).some((k) => !tplVars[k]?.trim())}
-                        onClick={sendTemplate}
-                      >
-                        Send template
-                      </button>
-                      <button type="button" className="oc-btn" onClick={() => setTpl(null)}>
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* AI draft — previewed before it goes anywhere */}
-                {suggestion && (
-                  <div className="oc-panel oc-panel--ai">
-                    <div className="oc-panel__head">
-                      <Sparkles /> AI draft
-                    </div>
-                    {suggestion.summary && (
-                      <div className="mb-1" style={{ fontSize: 11.5, opacity: 0.85 }}>
-                        <strong>Summary:</strong> {suggestion.summary}
-                      </div>
-                    )}
-                    {confidence != null && confidence < 0.7 && (
-                      <div className="mb-1 fw-600" style={{ fontSize: 11.5 }}>
-                        The AI is unsure — read this before sending.
-                      </div>
-                    )}
-                    <div style={{ whiteSpace: "pre-wrap" }}>{suggestion.suggestion}</div>
-                    <div className="d-flex gap-2 mt-2">
-                      <button
-                        type="button"
-                        className="oc-btn oc-btn--accent"
-                        onClick={() => {
-                          setMode("reply");
-                          setDraft(suggestion.suggestion);
-                          setSuggestion(null);
-                          composerRef.current?.focus();
-                        }}
-                      >
-                        Use this reply
-                      </button>
-                      <button type="button" className="oc-btn" onClick={() => setSuggestion(null)}>
-                        Discard
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {sendNote && (
-                  <div className="oc-panel oc-panel--warn" role="alert">
-                    {sendNote}
-                  </div>
-                )}
-              </div>
-
-              {/* Composer bar: mode, snippets, AI — then the field itself. */}
-              <div className="ibx-comp__bar">
-                {selConv && (
-                  <Segmented
-                    label="Composer mode"
-                    noteMode={isNote}
-                    value={mode}
-                    onChange={setMode}
-                    options={[
-                      { v: "reply" as const, label: "Reply", icon: <Send /> },
-                      { v: "note" as const, label: "Note", icon: <StickyNote /> },
-                    ]}
-                  />
-                )}
-
-                <div className="ms-auto d-flex align-items-center gap-1">
-                  {(!selConv || mode === "reply") && (
-                    <Menu
-                      label="Saved replies"
-                      trigger={
-                        <button type="button" className="oc-ico" title="Saved replies">
-                          <StickyNote width={16} height={16} />
-                        </button>
-                      }
-                    >
-                      <MenuLabel>Saved replies</MenuLabel>
-                      {snippets.length === 0 && <MenuItem disabled>None for this channel yet</MenuItem>}
-                      {snippets.map((c) => (
-                        <MenuItem key={c.id} icon={<StickyNote />} hint={c.shortcut} onSelect={() => insertSnippet(c)}>
-                          {c.title || c.shortcut}
+                        <MenuSep />
+                        <MenuItem icon={<Plus />} onSelect={() => setRepliesOpen(true)}>
+                          Manage saved replies
                         </MenuItem>
-                      ))}
-                      <MenuSep />
-                      <MenuItem icon={<Plus />} onSelect={() => setRepliesOpen(true)}>
-                        Manage saved replies
-                      </MenuItem>
-                    </Menu>
-                  )}
+                      </Menu>
+                    )}
 
-                  <IconButton
-                    icon={<Sparkles width={16} height={16} />}
-                    label={selTicket ? "Draft with AI" : "Draft a reply with AI"}
-                    disabled={selTicket ? aiDrafting : suggesting}
-                    onClick={selTicket ? aiDraftTicket : runSuggest}
-                  />
+                    <IconButton
+                      icon={<Sparkles width={16} height={16} />}
+                      label={selTicket ? "Draft with AI" : "Draft a reply with AI"}
+                      disabled={selTicket ? aiDrafting : suggesting}
+                      onClick={selTicket ? aiDraftTicket : runSuggest}
+                    />
 
-                  <IconButton
-                    icon={<Mic width={16} height={16} />}
-                    label={dictating ? "Listening…" : "Dictate a message"}
-                    tone={dictating ? "rec" : undefined}
-                    onClick={dictate}
-                    aria-pressed={dictating}
-                  />
+                    <IconButton
+                      icon={<Mic width={16} height={16} />}
+                      label={dictating ? "Listening…" : "Dictate a message"}
+                      tone={dictating ? "rec" : undefined}
+                      onClick={dictate}
+                      aria-pressed={dictating}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {(!selConv || mode === "reply") && selConv?.channel_type === "email" && (
-                <div className="mb-2">
-                  <label className="oc-label" htmlFor="conv-subject">
-                    Subject — optional
-                  </label>
-                  <input
-                    id="conv-subject"
-                    className="oc-field"
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
-                  />
-                </div>
-              )}
-
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  send(false);
-                }}
-              >
-                <div className="ibx-comp__box">
-                  <textarea
-                    ref={composerRef}
-                    rows={1}
-                    aria-label={isNote ? "Internal note" : "Reply"}
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder={
-                      isNote
-                        ? "Private note for your team — the customer never sees this…"
-                        : selTicket
-                          ? "Type a reply — it will be emailed to the customer…"
-                          : `Message ${customerName}…`
-                    }
-                  />
-                  <button
-                    type="submit"
-                    className="ibx-send"
-                    disabled={busy || !draft.trim()}
-                    aria-label={isNote ? "Save note" : "Send"}
-                  >
-                    {isNote ? <StickyNote width={16} height={16} /> : <Send width={16} height={16} />}
-                  </button>
-                </div>
-              </form>
-
-              <div className="ibx-comp__hint">
-                <span>
-                  <Kbd>
-                    {MOD} {ENTER}
-                  </Kbd>{" "}
-                  send
-                  {/* The second hint is the same thing the button next to it
-                      says, so on a narrow pane the button alone is enough. */}
-                  {!isNote && (
-                    <span className="d-none d-sm-inline">
-                      {" · "}
-                      <Kbd>
-                        {SHIFT} {MOD} {ENTER}
-                      </Kbd>{" "}
-                      send &amp; {selTicket ? "resolve" : "close"}
-                    </span>
-                  )}
-                </span>
-                {!isNote && (
-                  <button
-                    type="button"
-                    className="oc-btn oc-btn--sm"
-                    disabled={busy || !draft.trim()}
-                    onClick={() => send(true)}
-                    title={`Send the reply and ${selTicket ? "resolve the ticket" : "close the conversation"}`}
-                  >
-                    <CircleCheck /> Send &amp; {selTicket ? "resolve" : "close"}
-                  </button>
+                {(!selConv || mode === "reply") && selConv?.channel_type === "email" && (
+                  <div className="mb-2">
+                    <label className="oc-label" htmlFor="conv-subject">
+                      Subject — optional
+                    </label>
+                    <input
+                      id="conv-subject"
+                      className="oc-field"
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
+                    />
+                  </div>
                 )}
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    send(false);
+                  }}
+                >
+                  <div className="ibx-comp__box">
+                    <textarea
+                      ref={composerRef}
+                      rows={1}
+                      aria-label={isNote ? "Internal note" : "Reply"}
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      placeholder={
+                        isNote
+                          ? "Private note for your team — the customer never sees this…"
+                          : selTicket
+                            ? "Type a reply — it will be emailed to the customer…"
+                            : `Message ${customerName}…`
+                      }
+                    />
+                    <button
+                      type="submit"
+                      className="ibx-send"
+                      disabled={busy || !draft.trim()}
+                      aria-label={isNote ? "Save note" : "Send"}
+                    >
+                      {isNote ? <StickyNote width={16} height={16} /> : <Send width={16} height={16} />}
+                    </button>
+                  </div>
+                </form>
+
+                <div className="ibx-comp__hint">
+                  <span>
+                    <Kbd>
+                      {MOD} {ENTER}
+                    </Kbd>{" "}
+                    send
+                    {/* The second hint is the same thing the button next to it
+                        says, so on a narrow pane the button alone is enough. */}
+                    {!isNote && (
+                      <span className="d-none d-sm-inline">
+                        {" · "}
+                        <Kbd>
+                          {SHIFT} {MOD} {ENTER}
+                        </Kbd>{" "}
+                        send &amp; {selTicket ? "resolve" : "close"}
+                      </span>
+                    )}
+                  </span>
+                  {!isNote && (
+                    <button
+                      type="button"
+                      className="oc-btn oc-btn--sm"
+                      disabled={busy || !draft.trim()}
+                      onClick={() => send(true)}
+                      title={`Send the reply and ${selTicket ? "resolve the ticket" : "close the conversation"}`}
+                    >
+                      <CircleCheck /> Send &amp; {selTicket ? "resolve" : "close"}
+                    </button>
+                  )}
+                </div>
+              </footer>
+                </div>
               </div>
-            </footer>
+            )}
           </>
         )}
       </section>

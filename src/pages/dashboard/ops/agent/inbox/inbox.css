@@ -870,6 +870,55 @@ a.ibx-rail__row:hover .ibx-rail__go {
   background: var(--at-neutral-50);
 }
 
+/* ── Composer dialog ──────────────────────────────────────────────────────
+   Reply and Note open the composer rather than it standing permanently at the
+   foot of the thread. Inline it took a fifth of the reading height whether or
+   not you were writing, and its controls — calls, templates, saved replies, AI
+   — competed with the message above them. */
+.ibx-comp--shut {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.ibx-comp-scrim {
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.ibx-comp-modal {
+  width: min(760px, 100%);
+  max-height: min(86vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: var(--at-neutral-0);
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+  box-shadow: 0 -10px 40px rgba(12, 20, 40, 0.22);
+}
+
+.ibx-comp-modal__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--oc-line, rgba(0, 0, 0, 0.08));
+  font-size: 14px;
+}
+
+/* Inside the dialog the composer is the whole content, so it scrolls on its own
+   and loses the top border it wore as a pane footer. */
+.ibx-comp-modal .ibx-comp {
+  border-top: 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+@media (min-width: 768px) {
+  .ibx-comp-scrim { align-items: center; }
+  .ibx-comp-modal { border-radius: 16px; }
+}
+
 /* The rail opens as a full-height sheet. */
 .ibx-rail-sheet .oc-pane {
   border: 0;
