@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { isPlatformAdmin } from "@/lib/db/platform";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import NoIndex from "@/seo/NoIndex";
 import { useAuth } from "@/auth/AuthProvider";
 import KeepAliveOutlet from "@/layouts/KeepAliveOutlet";
@@ -13,7 +13,32 @@ import {
   type Notification,
 } from "@/lib/db/collaboration";
 
-type NavItem = { to: string; label: string; icon: React.ReactNode; end?: boolean; platformOnly?: boolean };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: React.ReactNode;
+  end?: boolean;
+  platformOnly?: boolean;
+  /** Overrides prefix matching where a page lives under someone else's path. */
+  activeWhen?: (pathname: string) => boolean;
+};
+
+/** The operating console: /dashboard/businesses/:id/ops and anything beneath. */
+const isOpsConsole = (p: string) => /^\/dashboard\/businesses\/[^/]+\/ops(\/|$)/.test(p);
+
+/**
+ * Which nav item a path belongs to.
+ *
+ * The operating console lives under /dashboard/businesses/:id/ops, so plain
+ * prefix matching lit up Businesses while you were sitting in the Console —
+ * and /dashboard/console is only a redirect into it, so Console never lit up at
+ * all. The two items say where they actually apply instead.
+ */
+function navActive(item: NavItem, pathname: string): boolean {
+  if (item.activeWhen) return item.activeWhen(pathname);
+  if (item.end) return pathname === item.to;
+  return pathname === item.to || pathname.startsWith(`${item.to}/`);
+}
 
 const HERO_BG = "/assets/imgs/pages/bg-img-4.webp";
 
@@ -29,10 +54,18 @@ const CUBE_LOGO = (
 
 const NAV: NavItem[] = [
   { to: "/dashboard", end: true, label: "Home", icon: <Icon d="M3 11l9-8 9 8M5 10v10h14V10" /> },
-  { to: "/dashboard/console", label: "Console", icon: <Icon d="M4 5h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM7 9l3 3-3 3M12 15h5M8 21h8" /> },
+  {
+    to: "/dashboard/console", label: "Console",
+    activeWhen: (p) => p === "/dashboard/console" || isOpsConsole(p),
+    icon: <Icon d="M4 5h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM7 9l3 3-3 3M12 15h5M8 21h8" />,
+  },
   { to: "/dashboard/studio", label: "Studio", icon: <Icon d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5zM2 2l7.586 7.586M11 13a2 2 0 100-4 2 2 0 000 4z" /> },
   { to: "/dashboard/marketplace", label: "Marketplace", icon: <Icon d="M3 9l1.5-5h15L21 9M4 9h16v11H4zM9 13h6" /> },
-  { to: "/dashboard/businesses", label: "Businesses", icon: <Icon d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01" /> },
+  {
+    to: "/dashboard/businesses", label: "Businesses",
+    activeWhen: (p) => p.startsWith("/dashboard/businesses") && !isOpsConsole(p),
+    icon: <Icon d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01" />,
+  },
   { to: "/dashboard/billing", label: "Billing", icon: <Icon d="M2 7h20v10H2zM2 11h20M6 15h4" /> },
   // Phoxta's own operating console. Hidden unless the signed-in user is on the
   // platform_admins roster — the RPCs behind it enforce that server-side too, so
@@ -75,6 +108,7 @@ export default function DashboardLayout() {
     isPlatformAdmin().then((ok) => { if (active) setPlatformAdmin(ok); }).catch(() => { /* not an admin */ });
     return () => { active = false; };
   }, []);
+  const { pathname } = useLocation();
   const navItems = NAV.filter((i) => !i.platformOnly || platformAdmin);
   const unread = notes.filter((n) => !n.read).length;
 
@@ -207,20 +241,18 @@ export default function DashboardLayout() {
             <ul className="list-unstyled m-0 d-flex flex-column gap-1">
               {navItems.map((item) => (
                 <li key={item.to}>
-                  <NavLink
+                  <Link
                     to={item.to}
-                    end={item.end}
                     onMouseEnter={() => preloadRoute(item.to)}
                     onClick={() => setOpen(false)}
-                    className={({ isActive }) =>
-                      `d-flex align-items-center gap-3 px-3 py-2 rounded-3 text-decoration-none fz-font-md fw-500 ${
-                        isActive ? "bg-neutral-100 neutral-900" : "neutral-500 phoxta-dash-link"
-                      }`
-                    }
+                    aria-current={navActive(item, pathname) ? "page" : undefined}
+                    className={`d-flex align-items-center gap-3 px-3 py-2 rounded-3 text-decoration-none fz-font-md fw-500 ${
+                      navActive(item, pathname) ? "bg-neutral-100 neutral-900" : "neutral-500 phoxta-dash-link"
+                    }`}
                   >
                     {item.icon}
                     <span>{item.label}</span>
-                  </NavLink>
+                  </Link>
                 </li>
               ))}
             </ul>
