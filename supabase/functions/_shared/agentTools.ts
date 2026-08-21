@@ -12,7 +12,7 @@
 // what it truly knows; when config is missing it says so instead of inventing.
 import type { SupabaseClient } from "./supabaseAdmin.ts";
 import type { Tool } from "./anthropic.ts";
-import { READ_TOOLS, toolRunner } from "./tools.ts";
+import { READ_TOOLS, MARKETPLACE_TOOLS, toolRunner } from "./tools.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -245,7 +245,16 @@ const isWrite = new Set([...BOOKING_TOOL_NAMES, ...COMMON_WRITE_TOOLS.map((t) =>
 export function buildAgentTools(mode: BookingMode, capabilities?: Record<string, boolean> | null): Tool[] {
   const on = (key: string) => capabilities?.[key] !== false;
   const booking = mode === "reservations" ? RESERVATION_TOOLS : mode === "table" ? TABLE_TOOLS : APPOINTMENT_TOOLS;
-  let tools: Tool[] = [...READ_TOOLS, ...LOOKUP_TOOLS, ...(on("bookings") ? booking : []), ...COMMON_WRITE_TOOLS];
+  // marketplace defaults OFF — `on()` treats an absent key as true, so this one
+  // is checked explicitly. Only the Phoxta platform org sells blueprints.
+  const marketplace = capabilities?.marketplace === true;
+  let tools: Tool[] = [
+    ...READ_TOOLS,
+    ...LOOKUP_TOOLS,
+    ...(marketplace ? MARKETPLACE_TOOLS : []),
+    ...(on("bookings") ? booking : []),
+    ...COMMON_WRITE_TOOLS,
+  ];
   if (!on("leads")) tools = tools.filter((t) => !LEAD_TOOL_NAMES.has(t.name));
   if (!on("tickets")) tools = tools.filter((t) => t.name !== "create_ticket");
   return tools;
@@ -313,7 +322,9 @@ function parseDay(v: unknown): string | null {
 // Runner
 // ---------------------------------------------------------------------------
 export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: AgentCtx, mode: BookingMode = "appointments") {
-  const readRun = toolRunner(admin, orgId);
+  // This runner backs the PUBLIC storefront/phone agent — anyone on the internet.
+  // Retrieval is therefore restricted to published content; see PUBLIC_SOURCE_TYPES.
+  const readRun = toolRunner(admin, orgId, { audience: "public" });
 
   async function findService(name?: string): Promise<{ id: string; name: string; duration_min: number } | null> {
     if (!name) return null;

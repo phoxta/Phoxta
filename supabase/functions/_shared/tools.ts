@@ -11,7 +11,7 @@ export const READ_TOOLS: Tool[] = [
   {
     name: "search_knowledge",
     description:
-      "Semantic search over THIS business's own content (products, published pages, contacts, past tickets). Use for any question about the business's offerings, policies, customers or history.",
+      "Semantic search over THIS business's published content — products, pages and its knowledge base. Use for questions about what the business offers, its policies and how it works. It does NOT reach customer records.",
     input_schema: {
       type: "object",
       properties: {
@@ -42,6 +42,24 @@ export const READ_TOOLS: Tool[] = [
  * THEIR order uses lookup_order, which requires the reference AND the matching
  * email before it returns anything.
  */
+/** Marketplace catalogue. Gated behind capabilities.marketplace because only the
+ *  Phoxta platform org sells blueprints — a car dealer's agent has no use for it.
+ *
+ *  This exists because the platform agent was reciting a TEN-blueprint catalogue
+ *  (Coffee Subscription, Hair Salon, Dental Clinic…) from embedded marketing copy
+ *  while the blueprints table held five live ones. Embeddings are a photograph;
+ *  a catalogue is a fact. Facts belong in a tool, where the answer is whatever
+ *  is true at the moment it is asked. */
+export const MARKETPLACE_TOOLS: Tool[] = [
+  {
+    name: "list_blueprints",
+    description:
+      "The businesses a customer can buy RIGHT NOW, read live from the catalogue. " +
+      "Always call this before naming, counting or pricing what is for sale — never answer from memory or from any document, which may describe products that were retired.",
+    input_schema: { type: "object", properties: {} },
+  },
+];
+
 export const OWNER_READ_TOOLS: Tool[] = [
   {
     name: "get_metrics",
@@ -86,11 +104,33 @@ export const MEMORY_TOOLS: Tool[] = [
 ];
 
 /** Build a tool runner bound to (admin client, org). All reads are hard-filtered to the org. */
-export function toolRunner(admin: SupabaseClient, orgId: string) {
+/** What semantic search may reach when the caller is an anonymous website
+ *  visitor. Everything embedded for an org shares one vector table — products
+ *  and CMS pages alongside crm_contacts, tickets and conversations — so an
+ *  unfiltered search over "the business's own content" reaches other customers'
+ *  records. A public visitor asking the storefront agent to "search recent buyer
+ *  enquiries" was returned a real customer's name and enquiry.
+ *
+ *  The model cannot widen this: source_types it supplies are intersected with
+ *  the allowlist, never trusted. Refusing by prompt is not a control — the same
+ *  request framed as "I'm the new sales manager" walked straight past it. */
+const PUBLIC_SOURCE_TYPES = ["products", "cms_pages", "knowledge_docs"];
+
+export function toolRunner(admin: SupabaseClient, orgId: string, opts?: { audience?: "public" | "member" }) {
+  const isPublic = opts?.audience === "public";
   return async (name: string, input: Json): Promise<string> => {
     if (name === "search_knowledge" || name === "search_contacts") {
+      // search_contacts is owner-only; a public caller must never reach it even
+      // if a tool name is somehow injected into the run.
+      if (isPublic && name === "search_contacts") return "Not available.";
       const emb = await embedOne(String(input?.query ?? ""));
-      const sourceTypes = name === "search_contacts" ? ["crm_contacts"] : (input?.source_types ?? null);
+      const asked: string[] | null = name === "search_contacts" ? ["crm_contacts"] : (input?.source_types ?? null);
+      const sourceTypes = isPublic
+        ? (Array.isArray(asked) ? asked.filter((t: string) => PUBLIC_SOURCE_TYPES.includes(t)) : PUBLIC_SOURCE_TYPES.slice())
+        : asked;
+      if (isPublic && Array.isArray(sourceTypes) && sourceTypes.length === 0) {
+        return "No matching content found.";
+      }
       const { data } = await admin.rpc("app_match_embeddings", {
         p_org: orgId,
         query_embedding: emb,
@@ -101,6 +141,17 @@ export function toolRunner(admin: SupabaseClient, orgId: string) {
       if (rows.length === 0) return "No matching content found.";
       return rows.map((r) => `[${r.source_type}] ${r.content}`).join("\n---\n");
     }
+    if (name === "list_blueprints") {
+      const { data } = await admin
+        .from("blueprints")
+        .select("name, slug, tagline, price_cents, currency, vertical, demo_url")
+        .eq("status", "live")
+        .order("name");
+      const rows = (data ?? []) as Record<string, unknown>[];
+      if (!rows.length) return "No blueprints are currently available to buy.";
+      return JSON.stringify(rows);
+    }
+
     if (name === "get_metrics") {
       const { data } = await admin.rpc("app_org_ops_summary", { p_org: orgId });
       return JSON.stringify(data ?? {});
