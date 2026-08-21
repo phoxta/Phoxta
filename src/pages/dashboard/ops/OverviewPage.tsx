@@ -13,8 +13,7 @@ import OperatorChat from "@/pages/dashboard/ops/OperatorChat";
  * Overview styles, kept local so the global stylesheet stays untouched: the
  * two-pane shell (data rail + work board) and the work card itself.
  */
-const OVERVIEW_CSS = `
-/* ---- Overview shell: console data rail + task board ----------------------
+const OVERVIEW_CSS = `/* ---- Overview shell: console data rail + task board ----------------------
    Two panes side by side: the AI Operator on the left, the work board right.
    Note if anything Bootstrap-gridded is ever put back in the rail: the grid keys
    off the VIEWPORT, not the parent, so col-md/col-xl inside this fixed-width
@@ -53,11 +52,9 @@ const OVERVIEW_CSS = `
 .ops-ov-colhead .n{font-size:12px;color:var(--at-neutral-400);margin-right:auto}
 .ops-ov-colhead .chev{color:var(--at-neutral-400);font-size:11px}
 .ops-ov-colhead .dots{color:var(--at-neutral-400);font-size:13px;letter-spacing:1px}
-
 .ops-ov-empty{border:1px dashed rgba(0,0,0,.13);border-radius:10px;background:transparent;
   min-height:240px;display:flex;align-items:center;justify-content:center;
   padding:22px 14px;text-align:center;font-size:12.5px;color:var(--at-neutral-400)}
-
 /* ---- Work card ----------------------------------------------------------
    Anatomy from the design: #hashtag chips + overflow glyph · coloured title ·
    note line · optional media · optional progress · avatar · count pills. */
@@ -89,7 +86,6 @@ const OVERVIEW_CSS = `
   background:rgba(255,255,255,.6);font-size:10.5px;color:rgba(0,0,0,.66)}
 .ops-ov-audio b{flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;
   display:flex;align-items:center;justify-content:center}
-
 /* Progress: the dotted meter from the design. Only rendered where there is a
    real ratio behind it (a campaign's sent-vs-recipients), never as decoration. */
 .ops-ov-prog{margin:0 0 10px}
@@ -98,7 +94,6 @@ const OVERVIEW_CSS = `
 .ops-ov-prog-dots{display:flex;gap:3px}
 .ops-ov-prog-dots i{flex:1 1 auto;height:7px;border-radius:99px;background:rgba(255,255,255,.75)}
 .ops-ov-prog-dots i.on{background:currentColor}
-
 .ops-ov-who{display:flex;align-items:center;gap:7px;margin-bottom:10px}
 .ops-ov-av{width:24px;height:24px;flex:0 0 24px;border-radius:50%;display:flex;align-items:center;
   justify-content:center;font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);
@@ -107,13 +102,11 @@ const OVERVIEW_CSS = `
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
 .ops-ov-who i{display:block;font-style:normal;font-size:9.5px;color:rgba(0,0,0,.45);line-height:1.2;
   text-transform:capitalize}
-
 .ops-ov-foot{display:flex;align-items:center;gap:6px;font-size:10px;color:rgba(0,0,0,.55)}
 .ops-ov-foot .m{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.72);
   border-radius:6px;padding:4px 7px}
 .ops-ov-foot .r{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
 .ops-ov-foot svg{flex:0 0 auto;opacity:.6}
-
 /* Card tints, keyed to the module. The CSS color property carries the deep
    shade, so the title and the filled progress dots inherit it via currentColor.
    (No backticks in here — this block lives inside a JS template literal.) */
@@ -126,132 +119,20 @@ const OVERVIEW_CSS = `
 .tint-reservations,.tint-bookings{background:#FBF3DC;color:#8A6A11}
 .tint-settings   {background:#EEF0F3;color:#4A5460}
 .ops-ov-card h3{color:currentColor}
-
 /* ---- AI Operator chat ----------------------------------------------------
    Built to the chat design: a dark title band, day separators, grouped bubbles
    (mine lavender on the right, the agent's light on the left) with one
    avatar/name/time footer per group, and a composer carrying attach, send and
    a mic. Fills the rail's height so the thread scrolls inside it and the
    composer stays pinned instead of the page growing. */
-.opc{display:flex;flex-direction:column;background:var(--at-neutral-0);border:1px solid rgba(0,0,0,.07);
-  border-radius:14px;overflow:hidden;height:calc(100vh - 300px);min-height:460px}
-/* Header art under a black 55% wash. The flat colour stays as background-color
-   so the header still looks right while the image loads and if it ever 404s.
-   img-87-header is a re-encoded copy of img-87 (690 KB -> 66 KB, same pixels);
-   the original stays put because the Studio asset picker offers it.
-   (No backticks in here - this block lives in a template literal.) */
-.opc-head{background-color:#4B4557;
-  background-image:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),url(/assets/imgs/pages/img-87-header.webp);
-  background-size:cover;background-position:center;background-repeat:no-repeat;
-  padding:22px 20px;display:flex;align-items:center;gap:10px}
-.opc-head h2{margin:0;font-size:30px;font-weight:700;line-height:1.1;color:#fff;letter-spacing:-.01em}
-.opc-head a{margin-left:auto;font-size:11.5px;color:#fff;text-decoration:none;white-space:nowrap}
-.opc-head a:hover{color:#fff}
-
-.opc-body{flex:1 1 auto;overflow-y:auto;padding:16px 15px;display:flex;flex-direction:column;gap:4px;
-  background:var(--at-neutral-0)}
-.opc-day{display:flex;align-items:center;justify-content:center;margin:12px 0 14px}
-.opc-day span{font-size:11.5px;color:var(--at-neutral-500)}
-
-.opc-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
-.opc-group.mine{align-items:flex-end}
-.opc-group.theirs{align-items:flex-start}
-.opc-row{display:flex;align-items:flex-end;gap:6px;max-width:86%}
-.opc-group.mine .opc-row{flex-direction:row}
-.opc-bubble{padding:10px 13px;border-radius:12px;font-size:13px;line-height:1.6;white-space:pre-wrap;
-  word-break:break-word}
-.opc-group.theirs .opc-bubble{background:var(--at-neutral-0);border:1px solid var(--at-neutral-200);
-  color:var(--at-neutral-900);border-bottom-left-radius:4px}
-.opc-group.mine .opc-bubble{background:#232327;color:#fff;border-bottom-right-radius:4px}
-/* Markdown from the agent, rendered as real nodes by shared-chat's RichText.
-   .rich drops pre-wrap: RichText already turns newlines into <p> blocks, and
-   keeping pre-wrap on top of them double-spaced every line.
-   The reset matters: main.css styles bare p at 16px/500/-2% and colours code
-   pink, so a paragraph rendered twice the size of the list item beside it in
-   the same bubble. font:inherit puts every block back on the bubble's own type.
-   (No backticks in here — this block lives inside a JS template literal.) */
-.opc-bubble.rich{white-space:normal}
-.opc-bubble.rich p,.opc-bubble.rich li,.opc-bubble.rich ul{font:inherit;color:inherit;letter-spacing:normal}
-.opc-bubble.rich p{margin:4px 0}
-.opc-bubble.rich p:first-child{margin-top:0}
-.opc-bubble.rich p:last-child{margin-bottom:0}
-.opc-bubble.rich strong{font-weight:700}
-.opc-bubble.rich em{font-style:italic}
-.opc-bubble.rich code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;
-  letter-spacing:normal;color:inherit;background:rgba(127,127,127,.20);border-radius:4px;padding:1px 4px}
-.opc-bubble.rich a{color:inherit;text-decoration:underline;text-underline-offset:2px}
-.opc-bubble.rich ul{margin:6px 0;padding-left:18px;list-style:disc}
-.opc-bubble.rich li{margin:2px 0}
-.opc-tick{color:#22A45D;flex:0 0 auto;margin-bottom:2px}
-/* Read-aloud, on the agent's messages. Uses the browser's own speech synthesis,
-   so it costs nothing and works with no provider configured. */
-.opc-say{flex:0 0 auto;border:0;background:transparent;padding:2px;margin-bottom:2px;cursor:pointer;
-  color:var(--at-neutral-500);display:flex;align-items:center;justify-content:center;border-radius:5px}
-.opc-say:hover{color:var(--at-neutral-900);background:var(--at-neutral-100)}
-.opc-say.on{color:#fff;background:#232327}
-
-.opc-meta{display:flex;align-items:center;gap:6px;padding:0 2px}
-.opc-group.mine .opc-meta{flex-direction:row-reverse}
-.opc-av{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:#232327;color:#fff;
-  font-size:8.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.opc-meta b{font-size:11.5px;font-weight:600;color:var(--at-neutral-900)}
-.opc-meta i{font-size:10.5px;font-style:normal;color:var(--at-neutral-500)}
-
-/* Attachments: images tile, video/audio get real controls, everything else is a
-   download row. Signed URLs, so these are live objects not public links. */
-.opc-att{display:flex;flex-direction:column;gap:6px;margin-top:6px}
-.opc-grid{display:grid;grid-template-columns:1fr;gap:6px}
-.opc-grid.multi{grid-template-columns:1fr 1fr}
-.opc-grid img{width:100%;height:110px;object-fit:cover;border-radius:8px;display:block;background:var(--at-neutral-100)}
-.opc-video{width:100%;max-height:170px;border-radius:8px;display:block;background:#000}
-.opc-audio{width:100%;height:34px}
-.opc-file{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;text-decoration:none;
-  background:rgba(0,0,0,.05);color:inherit}
-.opc-file-ic{flex:0 0 auto;opacity:.7}
-.opc-file-meta b{display:block;font-size:12px;font-weight:600}
-.opc-file-meta i{display:block;font-size:10.5px;font-style:normal;opacity:.8}
-
-.opc-typing{display:flex;gap:4px;align-items:center}
-.opc-typing i{width:5px;height:5px;border-radius:50%;background:var(--at-neutral-400);
-  animation:opcBlink 1.2s infinite ease-in-out}
-.opc-typing i:nth-child(2){animation-delay:.18s}
-.opc-typing i:nth-child(3){animation-delay:.36s}
-@keyframes opcBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.opc-typing i{animation:none;opacity:.6}}
-
-.opc-empty{margin:auto 0;text-align:center;color:var(--at-neutral-500);font-size:13px}
-.opc-empty p{margin:0 0 12px}
-.opc-starters{display:flex;flex-direction:column;gap:7px}
-.opc-starters button{background:transparent;border:1px solid var(--at-neutral-200);border-radius:999px;
-  padding:8px 13px;font-size:12.5px;color:var(--at-neutral-800);cursor:pointer;text-align:left}
-.opc-starters button:hover{border-color:var(--at-neutral-400);color:var(--at-neutral-900)}
-.opc-tools{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
-.opc-tools span{font-size:11px;background:var(--at-neutral-100);color:var(--at-neutral-800);border-radius:5px;padding:4px 8px}
-.opc-err{font-size:12px;color:#B02A37;background:#FBE3E5;border-radius:8px;padding:8px 10px}
-
-.opc-pending{display:flex;flex-wrap:wrap;gap:6px;padding:9px 12px 0}
-.opc-pending span{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;background:var(--at-neutral-100);
-  border-radius:6px;padding:5px 7px 5px 9px;color:var(--at-neutral-800)}
-.opc-pending button{border:0;background:transparent;cursor:pointer;font-size:13px;line-height:1;
-  color:var(--at-neutral-500);padding:0 2px}
-
-.opc-form{display:flex;align-items:center;gap:9px;padding:11px 12px 13px}
-.opc-input{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;background:var(--at-neutral-0);
-  border:1px solid var(--at-neutral-200);border-radius:999px;padding:5px 6px 5px 11px}
-.opc-clip,.opc-send{border:0;background:transparent;cursor:pointer;color:var(--at-neutral-500);
-  display:flex;align-items:center;justify-content:center;padding:3px}
-.opc-clip:hover,.opc-send:hover{color:var(--at-neutral-900)}
-.opc-clip:disabled,.opc-send:disabled{opacity:.35;cursor:default}
-.opc-text{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;font-size:13px;padding:6px 0;
-  color:var(--at-neutral-900)}
-.opc-text::placeholder{color:var(--at-neutral-400)}
-.opc-mic{flex:0 0 38px;width:38px;height:38px;border:0;border-radius:50%;background:#232327;color:#fff;
-  display:flex;align-items:center;justify-content:center;cursor:pointer}
-.opc-mic:hover{background:#000}
-.opc-mic.on{background:#D64550}
-
-@media (max-width:991.98px){.opc{height:auto;min-height:0;max-height:72vh}.opc-head h2{font-size:24px}}
-
+/* Appearance lives in operator-chat.css so the panel looks the same wherever it
+   is mounted. Only its HEIGHT is set here, because that is genuinely this
+   console's business: the rail is a fixed column and the thread scrolls inside
+   it. The dashboard home sets its own height the same way. */
+.opc{height:calc(100vh - 300px);min-height:460px}
+@media (max-width:991.98px){
+.opc{height:auto;min-height:0;max-height:72vh}
+}
 /* Below lg the two panes stack: the rail goes full width and the board keeps
    its own horizontal scroll rather than squeezing the columns. */
 @media (max-width:991.98px){
@@ -262,7 +143,7 @@ const OVERVIEW_CSS = `
   .ops-ov-board{width:100%}
 }
 @media (max-width:575.98px){
-  .ops-ov-col{flex:0 0 82%;width:82%}
+.ops-ov-col{flex:0 0 82%;width:82%}
 }
 `;
 

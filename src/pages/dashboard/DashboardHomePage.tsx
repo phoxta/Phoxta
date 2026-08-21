@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import {
   profileQuery, organizationsQuery, aiUsageMonthQuery,
-  revenue30Query, revenue7DailyQuery, invitationsQuery,
+  revenue30Query, revenue7DailyQuery, invitationsQuery, marketplaceBlueprintsQuery,
 } from "@/lib/cache/dashboardQueries";
 import { type UserProfile } from "@/lib/db/profile";
 import OperatorChat from "@/pages/dashboard/ops/OperatorChat";
@@ -76,6 +76,7 @@ export default function DashboardHomePage() {
   const { data: revenue30 = 0 } = useCachedData(revenue30Query.key, revenue30Query.fetch);
   const { data: daily = [] } = useCachedData(revenue7DailyQuery.key, revenue7DailyQuery.fetch);
   const { data: invites = [] } = useCachedData(invitationsQuery.key, invitationsQuery.fetch);
+  const { data: blueprints = [] } = useCachedData(marketplaceBlueprintsQuery.key, marketplaceBlueprintsQuery.fetch);
 
   const loading = pLoading || oLoading || aLoading;
   const pct = completion(profile);
@@ -105,6 +106,28 @@ export default function DashboardHomePage() {
 
   const [reportIdx, setReportIdx] = useState(0);
   const report = orgs[reportIdx]?.organization ?? null;
+  // The marketplace listing this business came from carries the storefront
+  // artwork; demo_url is the live store, cover_url the listing image.
+  const reportBlueprint = report ? blueprints.find((b) => b.id === report.blueprint_id) ?? null : null;
+  const reportCover = reportBlueprint?.cover_url ?? null;
+
+  // The panel should finish where the sidebar does. The dashboard is a fixed
+  // 100vh stage, so the honest way to get that is to measure where the column
+  // actually starts and fill the rest of the viewport — no magic numbers to
+  // drift when the shell padding changes.
+  const opRef = useRef<HTMLDivElement>(null);
+  const [opH, setOpH] = useState<number>(560);
+  useEffect(() => {
+    const measure = () => {
+      const el = opRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      setOpH(Math.max(420, window.innerHeight - top - 24));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   // The Operator answers for ONE business, so the home page has to choose. It
   // uses the same last-worked-in business the Console shortcut remembers, so the
@@ -117,6 +140,10 @@ export default function DashboardHomePage() {
   return (
     <div>
       <PageMeta title="Phoxta - Dashboard" />
+      {/* The panel ships its appearance in operator-chat.css and takes its height
+          from whoever mounts it. Here that is the measured gap to the bottom of
+          the viewport, so it ends level with the sidebar. */}
+      <style>{`.dash-op .opc{height:var(--dash-op-h);min-height:0}`}</style>
 
       <div className="dash-sticky-head pb-4">
         <h1 className="fw-700 mb-0" style={{ fontSize: "clamp(30px, 4vw, 44px)", letterSpacing: "-0.02em" }}>
@@ -252,16 +279,34 @@ export default function DashboardHomePage() {
                 </div>
 
                 <div className="col-lg-8">
-                  <div className="rounded-4 overflow-hidden h-100 bg-neutral-50 d-flex align-items-center justify-content-center"
-                       style={{ minHeight: 240 }}>
-                    <div className="text-center p-4">
-                      <div className="fw-600 mb-1" style={{ fontSize: 18 }}>
-                        {aiTokens > 0 ? `${new Intl.NumberFormat().format(aiTokens)} AI tokens this month` : "No AI activity yet this month"}
+                  {/* The storefront preview from the marketplace listing this
+                      business was built from — the same cover the buyer saw. */}
+                  <div className="rounded-4 overflow-hidden h-100 position-relative bg-neutral-50"
+                       style={{ minHeight: 260 }}>
+                    {reportCover ? (
+                      <img
+                        src={reportCover}
+                        alt={`${report.name} storefront preview`}
+                        loading="lazy"
+                        width={960}
+                        height={540}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    ) : (
+                      <div className="h-100 d-flex align-items-center justify-content-center p-4 text-center">
+                        <p className="neutral-500 fz-font-md mb-0">No preview image on this blueprint yet.</p>
                       </div>
-                      <p className="neutral-500 fz-font-md mb-3">
-                        {live > 0 ? `${live} business${live === 1 ? "" : "es"} live · ${money(revenue30)} in the last 30 days` : "Finish setup to go live."}
-                      </p>
-                      <Link className="btn btn-sm rounded-pill px-3 border" to="/dashboard/businesses">All businesses</Link>
+                    )}
+                    <div className="position-absolute bottom-0 start-0 w-100 p-4"
+                         style={{ background: "linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,0))", color: "#fff" }}>
+                      <div className="text-uppercase fw-600 mb-1" style={{ fontSize: 11, letterSpacing: ".08em", opacity: .85 }}>
+                        {reportBlueprint?.name ?? report.vertical ?? "Business"}
+                      </div>
+                      <div className="fw-700" style={{ fontSize: 26, lineHeight: 1.15 }}>{report.name}</div>
+                      <div className="d-flex align-items-center gap-3 mt-2" style={{ fontSize: 13, opacity: .9 }}>
+                        <span>{live > 0 ? `${money(revenue30)} · last 30 days` : "Not live yet"}</span>
+                        {aiTokens > 0 && <span>{new Intl.NumberFormat().format(aiTokens)} AI tokens this month</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -275,7 +320,7 @@ export default function DashboardHomePage() {
         {/* ── AI Operator ───────────────────────────────────────────────── */}
         <div className="col-xxl-4">
           {operatorOrg ? (
-            <div className="h-100" style={{ minHeight: 520 }}>
+            <div ref={opRef} className="dash-op" style={{ position: "sticky", top: 0, ["--dash-op-h" as string]: `${opH}px` }}>
               <OperatorChat orgId={operatorOrg.id} opsBase={`/dashboard/businesses/${operatorOrg.id}/ops`} />
             </div>
           ) : (

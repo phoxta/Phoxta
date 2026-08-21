@@ -9,6 +9,9 @@ export type Organization = {
   slug: string | null;
   stage: string;
   vertical: string | null;
+  /** The marketplace blueprint this business was built from — carries the
+   *  storefront artwork the dashboard shows in the business report. */
+  blueprint_id?: string | null;
   primary_region: string | null;
   created_at: string;
   /** The KB "four moves" lifecycle of the business as a tenant. */
@@ -130,7 +133,7 @@ export async function listMyOrganizations(): Promise<{
 
   const { data, error } = await supabase
     .from("organization_memberships")
-    .select("role, organizations(id, name, slug, stage, vertical, primary_region, created_at)")
+    .select("role, organizations(id, name, slug, stage, vertical, blueprint_id, primary_region, created_at)")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 

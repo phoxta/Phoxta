@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { RichText } from "@shared-chat/chatRich";
+// The panel ships its own styles so it looks the same on every surface.
+import "@/pages/dashboard/ops/operator-chat.css";
 import {
   runOperator,
   listOperatorMessages,
