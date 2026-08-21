@@ -159,7 +159,7 @@ export function CrmStats({ rows, currency }: { rows: Contact[]; currency: string
 
   return (
     <div className="crm-stats">
-      <section className="crm-panel crm-panel--tint">
+      <section className="crm-panel">
         <h3 className="crm-panel__h">New customers</h3>
         {rows.length === 0 ? (
           <p className="fz-font-sm neutral-500 mb-0">No contacts yet — added ones appear here by the day and source they arrived from.</p>
