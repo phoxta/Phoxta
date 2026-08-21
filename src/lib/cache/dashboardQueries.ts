@@ -281,6 +281,28 @@ export type WorkBoard = {
 
 const EMPTY_COUNTS: Record<WorkColumn, number> = { todo: 0, doing: 0, review: 0, ready: 0 };
 
+/**
+ * Move one work card to another column.
+ *
+ * The board's column is derived from each record's real status, so this changes
+ * the underlying record — there is no stored kanban state to write. Plenty of
+ * moves are not expressible that way (a ticket has no In Progress; a reservation
+ * reaches Ready when its dates pass; invoices, campaigns and agent approvals are
+ * deliberately out of reach of a drag). The RPC returns `ok: false` with a
+ * reason for those rather than pretending, so the caller can put the card back
+ * and say why.
+ */
+export async function moveWorkCard(
+  orgId: string, cardId: string, col: WorkColumn,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase.rpc("app_org_work_move", {
+    p_org: orgId, p_card: cardId, p_col: col,
+  });
+  if (error) return { ok: false, reason: error.message };
+  const r = (data ?? {}) as { ok?: boolean; reason?: string };
+  return { ok: r.ok === true, reason: r.reason };
+}
+
 /** Fetch the console work board. The RPC omits columns with no items, so counts
  *  are merged onto a zeroed base rather than trusted to be complete. */
 export async function getWorkBoard(orgId: string, limit = 8): Promise<WorkBoard> {

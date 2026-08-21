@@ -127,3 +127,149 @@
 .opc{display:flex;flex-direction:column;background:var(--at-neutral-0);border:1px solid rgba(0,0,0,.07);
   border-radius:14px;overflow:hidden}
 @keyframes opcBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+
+/* ---- Glass panel ---------------------------------------------------------
+   The operator's appearance, shared by every surface that renders it: the
+   dashboard home and the operating console alike. It started scoped to the home
+   page; keeping two treatments meant the same component looked like two
+   different products, so it lives here now — which is what this file is for.
+
+   The avatar is a ::before rather than markup, so OperatorChat stays a plain
+   component and the whole look is swappable from one stylesheet.
+
+   The mesh sits on .opc itself, so the header, bubbles and composer each blur
+   the colour behind them instead of all blurring one flat parent. The first
+   layer is a dark veil over the lower third: the mesh ends in pale blue exactly
+   where the composer sits, and white placeholder text on pale blue is not
+   readable. */
+.opc {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(6, 10, 30, 0) 52%, rgba(6, 10, 30, 0.34) 100%),
+    radial-gradient(72% 55% at 10% 6%,  #14173a 0%, rgba(20, 23, 58, 0) 68%),
+    radial-gradient(58% 42% at 60% 4%,  #2b5fc4 0%, rgba(43, 95, 196, 0) 66%),
+    radial-gradient(52% 40% at 98% 26%, #e2632f 0%, rgba(226, 99, 47, 0) 64%),
+    radial-gradient(48% 36% at 28% 40%, #b8386f 0%, rgba(184, 56, 111, 0) 64%),
+    radial-gradient(58% 44% at 4%  74%, #2f6fd0 0%, rgba(47, 111, 208, 0) 66%),
+    radial-gradient(68% 52% at 74% 96%, #8ccdec 0%, rgba(140, 205, 236, 0) 70%),
+    linear-gradient(152deg, #1b1f42 0%, #7a3d86 34%, #2f6fd0 68%, #93cbe8 100%);
+}
+
+/* The header becomes an inset glass bar carrying the operator's face, on the
+   same dark surface your own messages use — one dark tone in the panel rather
+   than two. */
+.opc-head {
+  margin: 14px 14px 2px;
+  padding: 13px 16px;
+  border-radius: 16px;
+  background-color: rgba(12, 14, 28, 0.36);
+  background-image: none;
+  border: 0;
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  gap: 12px;
+}
+.opc-head::before {
+  content: "";
+  flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(12, 14, 28, 0.36) url(/assets/imgs/pages/home-12/sec-7-avatar-2.webp) center/cover no-repeat;
+}
+.opc-head h2 { font-size: 28px; }
+.opc-head a { font-size: 12.5px; opacity: 0.92; }
+
+/* The log still scrolls; the bar just stops being furniture on the glass.
+   Safe here because the thread auto-scrolls to the newest message, so the
+   scrollbar was never the affordance telling you there is more to read. */
+/* Messages blur as they pass under the header, so attention sits on the live
+   part of the thread rather than the half-message clipped at the top. The veil
+   is a real sibling of the scroller (see .opc-veil) rather than a mask on it:
+   a mask only fades the type out, and you asked for it blurred. */
+.opc-scroll { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+.opc-veil {
+  position: absolute; inset: 0 0 auto 0; height: 48px; pointer-events: none; z-index: 2;
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  /* Full strength at the top, gone by the bottom — so the blur ramps off
+     instead of ending on a visible seam. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 38%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 38%, transparent 100%);
+}
+
+.opc-body {
+  background: transparent;
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* old Edge */
+}
+.opc-body::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Glass on glass: the operator's replies bright, yours darker. */
+.opc-bubble {
+  color: #fff;
+  border-radius: 16px;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+/* The operator's replies are the thing you actually read, so they get a bright
+   surface. Brightening alone would have made it worse — white type on near-white
+   glass — so the type flips to a dark blue with it. Still glass: the mesh reads
+   through at about a third, it just stops competing with the words. */
+.opc-group.theirs .opc-bubble {
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  color: #142a5f;
+  border-bottom-left-radius: 6px;
+}
+.opc-group.mine .opc-bubble {
+  background: rgba(12, 14, 28, 0.36);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-bottom-right-radius: 6px;
+}
+
+/* The comp shows a photo beside the operator and nothing beside YOU. */
+.opc-meta b { color: #fff; }
+.opc-meta i { color: rgba(255, 255, 255, 0.72); }
+.opc-group.mine .opc-av { display: none; }
+.opc-group.theirs .opc-av {
+  font-size: 0;
+  width: 18px; height: 18px; flex-basis: 18px;
+  background: url(/assets/imgs/pages/home-12/sec-7-avatar-2.webp) center/cover no-repeat;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.40);
+}
+
+.opc-tick { color: #fff; }
+.opc-say { color: rgba(255, 255, 255, 0.88); }
+.opc-say:hover { color: #fff; background: rgba(255, 255, 255, 0.18); }
+.opc-say.on { color: #142a5f; background: #fff; }
+
+.opc-day span { color: rgba(255, 255, 255, 0.80); }
+.opc-empty { color: rgba(255, 255, 255, 0.88); }
+.opc-starters button {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+.opc-starters button:hover { border-color: rgba(255, 255, 255, 0.70); color: #fff; }
+
+.opc-form { background: transparent; }
+.opc-input {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+.opc-text { color: #fff; }
+.opc-text::placeholder { color: rgba(255, 255, 255, 0.75); }
+.opc-clip, .opc-send { color: rgba(255, 255, 255, 0.90); }
+.opc-clip:hover, .opc-send:hover { color: #fff; }
+.opc-mic { background: rgba(14, 15, 26, 0.88); }
+
+/* Without backdrop-filter (Firefox with the flag off, older iOS) the glass is
+   just thin white over a bright mesh, which strands the type. Go opaque-dark
+   instead of shipping something unreadable. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .opc-head { background-color: rgba(12, 14, 28, 0.72); }
+  .opc-input { background-color: rgba(18, 20, 40, 0.58); }
+  .opc-group.theirs .opc-bubble { background: #fff; color: #142a5f; }
+  .opc-group.mine .opc-bubble { background: rgba(8, 10, 22, 0.66); }
+}

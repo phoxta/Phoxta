@@ -341,72 +341,78 @@ export default function OperatorChat({ orgId, opsBase }: { orgId: string; opsBas
         <Link to={`${opsBase}/agent/operator`}>Approvals &amp; audit →</Link>
       </header>
 
-      <div className="opc-body" ref={bodyRef} aria-live="polite">
-        {groups.length === 0 && !busy && (
-          <div className="opc-empty">
-            <p>Ask for anything across this business — or tell me to do it.</p>
-            <div className="opc-starters">
-              {STARTERS.map((s) => (
-                <button key={s} type="button" onClick={() => send(s)}>{s}</button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {groups.map((g, gi) => {
-          const newDay = gi === 0 || groups[gi - 1].day !== g.day;
-          const mine = g.role === "user";
-          const last = g.items[g.items.length - 1];
-          return (
-            <div key={`${g.day}-${gi}`}>
-              {newDay && <div className="opc-day"><span>{dayLabel(last.created_at)}</span></div>}
-              <div className={`opc-group ${mine ? "mine" : "theirs"}`}>
-                {g.items.map((m, i) => {
-                  const key = `${gi}-${i}`;
-                  return (
-                    <div key={i} className="opc-row">
-                      <div className="opc-bubble rich">
-                        {m.content && <RichText text={m.content} />}
-                        <Attachments items={m.attachments ?? []} urls={urls} />
-                      </div>
-                      {mine ? (
-                        <span className="opc-tick" aria-hidden="true">{ICON_CHECK}</span>
-                      ) : (
-                        m.content && (
-                          <button
-                            type="button"
-                            className={`opc-say${speakingIdx === key ? " on" : ""}`}
-                            onClick={() => togglePlayback(key, m.content)}
-                            aria-label={speakingIdx === key ? "Stop reading" : "Read this aloud"}
-                          >
-                            {speakingIdx === key ? ICON_STOP : ICON_SPEAK}
-                          </button>
-                        )
-                      )}
-                    </div>
-                  );
-                })}
-                <div className="opc-meta">
-                  <span className="opc-av" aria-hidden="true">{mine ? "You" : "AI"}</span>
-                  <b>{mine ? "You" : "AI Operator"}</b>
-                  <i>{timeLabel(last.created_at)}</i>
-                </div>
+      {/* The scroller is wrapped so the blur veil has something to anchor to.
+          A sticky pseudo-element inside .opc-body would work too, but it has to
+          fight that element's own padding and gap; a sibling just sits there. */}
+      <div className="opc-scroll">
+        <div className="opc-body" ref={bodyRef} aria-live="polite">
+          {groups.length === 0 && !busy && (
+            <div className="opc-empty">
+              <p>Ask for anything across this business — or tell me to do it.</p>
+              <div className="opc-starters">
+                {STARTERS.map((s) => (
+                  <button key={s} type="button" onClick={() => send(s)}>{s}</button>
+                ))}
               </div>
             </div>
-          );
-        })}
+          )}
 
-        {busy && (
-          <div className="opc-group theirs">
-            <div className="opc-row"><div className="opc-bubble opc-typing"><i /><i /><i /></div></div>
-          </div>
-        )}
-        {tools.length > 0 && !busy && (
-          <div className="opc-tools">
-            {tools.map((t, i) => <span key={`${t}-${i}`}>{WRITE_TOOL_LABELS[t] ?? t.replace(/_/g, " ")}</span>)}
-          </div>
-        )}
-        {error && <div className="opc-err" role="alert">{error}</div>}
+          {groups.map((g, gi) => {
+            const newDay = gi === 0 || groups[gi - 1].day !== g.day;
+            const mine = g.role === "user";
+            const last = g.items[g.items.length - 1];
+            return (
+              <div key={`${g.day}-${gi}`}>
+                {newDay && <div className="opc-day"><span>{dayLabel(last.created_at)}</span></div>}
+                <div className={`opc-group ${mine ? "mine" : "theirs"}`}>
+                  {g.items.map((m, i) => {
+                    const key = `${gi}-${i}`;
+                    return (
+                      <div key={i} className="opc-row">
+                        <div className="opc-bubble rich">
+                          {m.content && <RichText text={m.content} />}
+                          <Attachments items={m.attachments ?? []} urls={urls} />
+                        </div>
+                        {mine ? (
+                          <span className="opc-tick" aria-hidden="true">{ICON_CHECK}</span>
+                        ) : (
+                          m.content && (
+                            <button
+                              type="button"
+                              className={`opc-say${speakingIdx === key ? " on" : ""}`}
+                              onClick={() => togglePlayback(key, m.content)}
+                              aria-label={speakingIdx === key ? "Stop reading" : "Read this aloud"}
+                            >
+                              {speakingIdx === key ? ICON_STOP : ICON_SPEAK}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div className="opc-meta">
+                    <span className="opc-av" aria-hidden="true">{mine ? "You" : "AI"}</span>
+                    <b>{mine ? "You" : "AI Operator"}</b>
+                    <i>{timeLabel(last.created_at)}</i>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {busy && (
+            <div className="opc-group theirs">
+              <div className="opc-row"><div className="opc-bubble opc-typing"><i /><i /><i /></div></div>
+            </div>
+          )}
+          {tools.length > 0 && !busy && (
+            <div className="opc-tools">
+              {tools.map((t, i) => <span key={`${t}-${i}`}>{WRITE_TOOL_LABELS[t] ?? t.replace(/_/g, " ")}</span>)}
+            </div>
+          )}
+          {error && <div className="opc-err" role="alert">{error}</div>}
+        </div>
+        <div className="opc-veil" aria-hidden="true" />
       </div>
 
       {pending.length > 0 && (

@@ -2,8 +2,8 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import {
-  DASHBOARD_TTL, getWorkBoard, WORK_COLUMNS,
-  type WorkBoard, type WorkCard, type WorkMedia,
+  DASHBOARD_TTL, getWorkBoard, moveWorkCard, WORK_COLUMNS,
+  type WorkBoard, type WorkCard, type WorkColumn, type WorkMedia,
 } from "@/lib/cache/dashboardQueries";
 import { formatPrice } from "@/lib/db/marketplace";
 import type { OpsContext } from "@/layouts/OperatingLayout";
@@ -23,13 +23,22 @@ const OVERVIEW_CSS = `/* ---- Overview shell: console data rail + task board ---
    console's own sticky header, whose height is measured onto --ops-head-h
    (OverviewPage) because it changes with the title and tab wrapping. */
 .ops-ov{display:flex;gap:20px;align-items:flex-start}
-.ops-ov-side{width:460px;flex:0 0 460px;min-width:0}
+.ops-ov-side{width:420px;flex:0 0 420px;min-width:0}
 .ops-pin .ops-ov-side{position:sticky;top:calc(var(--ops-head-h, 0px) + 8px);align-self:flex-start}
 /* Pinned, the panel is sized to the measured gap, and min-height must stand
    down: a floor taller than the space available is exactly what pushed its
    bottom below the fold. */
 .ops-pin .opc{height:var(--ops-op-h);min-height:0}
 .ops-ov-board{flex:1 1 auto;min-width:0;display:flex;gap:13px;overflow-x:auto;padding-bottom:4px;align-items:flex-start}
+/* Drag to move a card between stages. The lifted card stays visible at low
+   opacity rather than disappearing, so you can still see what you are holding. */
+.ops-ov-card[draggable="true"]{cursor:grab}
+.ops-ov-card.dragging{opacity:.4;cursor:grabbing}
+.ops-ov-col.dropping{outline:2px dashed var(--at-neutral-400);outline-offset:2px;background:var(--at-neutral-50)}
+.ops-ov-notice{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:9px 12px;border-radius:10px;
+  background:#FFF4E5;color:#7A4B00;font-size:13px;line-height:1.45}
+.ops-ov-notice button{margin-left:auto;border:0;background:transparent;color:inherit;cursor:pointer;
+  font-size:16px;line-height:1;padding:0 2px}
 .ops-ov-board::-webkit-scrollbar{height:8px}
 .ops-ov-board::-webkit-scrollbar-thumb{background:var(--at-neutral-200);border-radius:8px}
 .ops-ov-col{flex:0 0 229px;width:229px;min-width:0}
@@ -241,14 +250,28 @@ const hashTag = (t: string) => `#${t.toLowerCase().replace(/\s+/g, "-")}`;
 /** One work item. The whole card links to the record it was derived from.
  *  The card is tinted by module, so colour tells you which part of the business
  *  a card belongs to before you read it. */
-function WorkCardView({ card, base, currency }: { card: WorkCard; base: string; currency: string }) {
+function WorkCardView({
+  card, base, currency, dragging, onDragStart, onDragEnd,
+}: {
+  card: WorkCard; base: string; currency: string; dragging: boolean;
+  onDragStart: () => void; onDragEnd: () => void;
+}) {
   const tags = (card.tags ?? []).slice(0, 2);
   const media = card.media ?? [];
   return (
     <Link
       to={`${base}/${card.to_path}`}
-      className={`ops-ov-card tint-${card.module}`}
+      className={`ops-ov-card tint-${card.module}${dragging ? " dragging" : ""}`}
       aria-label={`${card.title} — ${card.detail}`}
+      draggable
+      onDragStart={(e) => {
+        // A link drags its href by default, which would hand another app a URL
+        // instead of moving the card.
+        e.dataTransfer.setData("text/plain", card.id);
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
     >
       <div className="ops-ov-card-top">
         {tags.map((t) => <span key={t} className="ops-ov-chip">{hashTag(t)}</span>)}
@@ -297,11 +320,48 @@ export default function OverviewPage() {
   const { orgId, org, console: cfg } = useOutletContext<OpsContext>();
   // The board is its own cache entry: it is a different shape, a different RPC,
   // and it refreshes on a different rhythm from the 30-day summary.
-  const { data: board } = useCachedData<WorkBoard>(
+  const { data: board, setData: setBoard, reload: reloadBoard } = useCachedData<WorkBoard>(
     `ops:board:${orgId}`,
     () => getWorkBoard(orgId),
     { ttl: DASHBOARD_TTL },
   );
+
+  // Drag state. `notice` carries the RPC's reason when a move is refused —
+  // a card that silently springs back teaches nothing.
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overCol, setOverCol] = useState<WorkColumn | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function drop(cardId: string, col: WorkColumn) {
+    setDragId(null);
+    setOverCol(null);
+    const card = (board?.cards ?? []).find((c) => c.id === cardId);
+    if (!card || card.col === col) return;
+
+    const from = card.col;
+    setNotice(null);
+    // Move it now so the board feels direct, then put it back if the server
+    // says the move is not expressible for this kind of record.
+    setBoard((prev) => prev && ({
+      ...prev,
+      cards: prev.cards.map((c) => (c.id === cardId ? { ...c, col } : c)),
+      counts: { ...prev.counts, [from]: Math.max((prev.counts[from] ?? 1) - 1, 0), [col]: (prev.counts[col] ?? 0) + 1 },
+    }));
+
+    const res = await moveWorkCard(orgId, cardId, col);
+    if (res.ok) {
+      // The column is derived, so only a refetch shows where the record truly
+      // landed — the optimistic guess is not the source of truth.
+      void reloadBoard();
+      return;
+    }
+    setBoard((prev) => prev && ({
+      ...prev,
+      cards: prev.cards.map((c) => (c.id === cardId ? { ...c, col: from } : c)),
+      counts: { ...prev.counts, [col]: Math.max((prev.counts[col] ?? 1) - 1, 0), [from]: (prev.counts[from] ?? 0) + 1 },
+    }));
+    setNotice(res.reason ?? "That card could not be moved.");
+  }
 
   // Currency comes straight off the org record now that the windowed RPC (which
   // also returned it) is gone — same source, one fewer round trip.
@@ -375,11 +435,25 @@ export default function OverviewPage() {
             anywhere in this business becomes a card, and its column comes from
             that row's real status. Cards for modules this vertical doesn't run
             are dropped here — the console config owns that decision, not SQL. */}
+        {notice && (
+          <div className="ops-ov-notice" role="status">
+            <span>{notice}</span>
+            <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button>
+          </div>
+        )}
+
         <div className="ops-ov-board" aria-label="Work board">
           {WORK_COLUMNS.map(({ key, label }) => {
             const cards = visibleCards.filter((c) => c.col === key);
             return (
-              <section key={key} className={`ops-ov-col col-${key}`} aria-label={label}>
+              <section
+                key={key}
+                className={`ops-ov-col col-${key}${overCol === key && dragId ? " dropping" : ""}`}
+                aria-label={label}
+                onDragOver={(e) => { if (dragId) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setOverCol(key); } }}
+                onDragLeave={() => setOverCol((c) => (c === key ? null : c))}
+                onDrop={(e) => { e.preventDefault(); void drop(e.dataTransfer.getData("text/plain") || dragId || "", key); }}
+              >
                 <header className="ops-ov-colhead">
                   <span className="chev" aria-hidden="true">›</span>
                   <b>{label}</b>
@@ -391,7 +465,12 @@ export default function OverviewPage() {
                 ) : (
                   <div className="ops-ov-cards">
                     {cards.map((c) => (
-                      <WorkCardView key={c.id} card={c} base={opsBase} currency={currency} />
+                      <WorkCardView
+                        key={c.id} card={c} base={opsBase} currency={currency}
+                        dragging={dragId === c.id}
+                        onDragStart={() => setDragId(c.id)}
+                        onDragEnd={() => { setDragId(null); setOverCol(null); }}
+                      />
                     ))}
                   </div>
                 )}
