@@ -136,6 +136,80 @@ const CSS = `
    under keep-alive, so it would otherwise size the operator here too. */
 .dash-right .opc { width: 100%; height: auto; min-height: 0; align-self: stretch; }
 
+/* ---- Glass operator (dashboard home only) --------------------------------
+   The colour field lives on the column and the panel floats on top of it.
+   Everything below is scoped to .dash-right so the console operator, which
+   shares operator-chat.css, keeps its solid treatment. */
+.dash-right {
+  border-radius: 20px;
+  background:
+    radial-gradient(58% 52% at 16% 20%, #1e3a8a 0%, rgba(30,58,138,0) 62%),
+    radial-gradient(52% 44% at 74% 16%, #3b82f6 0%, rgba(59,130,246,0) 64%),
+    radial-gradient(48% 40% at 32% 52%, #f97316 0%, rgba(249,115,22,0) 60%),
+    radial-gradient(54% 46% at 80% 58%, #60a5fa 0%, rgba(96,165,250,0) 62%),
+    radial-gradient(58% 48% at 22% 86%, #7c3aed 0%, rgba(124,58,237,0) 64%),
+    radial-gradient(52% 44% at 82% 90%, #38bdf8 0%, rgba(56,189,248,0) 62%),
+    linear-gradient(155deg, #1e40af 0%, #0ea5e9 48%, #6366f1 100%);
+}
+
+.dash-right .opc {
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 20px;
+  box-shadow: 0 18px 46px rgba(12, 20, 40, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+/* The header ships a dark photo; a translucent wash keeps its white type
+   readable over whatever colour happens to sit behind it. */
+.dash-right .opc-head {
+  background-image: linear-gradient(rgba(9, 12, 32, 0.46), rgba(9, 12, 32, 0.24));
+  background-color: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.20);
+}
+
+/* The body paints solid white in the shared stylesheet, which would seal the
+   glass shut. */
+.dash-right .opc-body { background: transparent; }
+
+/* Bubbles stay more opaque than the panel. Chat is the one thing here that has
+   to be legible at a glance, and 42% glass under body copy is not. */
+.dash-right .opc-group.theirs .opc-bubble {
+  background: rgba(255, 255, 255, 0.76);
+  border-color: rgba(255, 255, 255, 0.60);
+  color: #14141a;
+}
+.dash-right .opc-group.mine .opc-bubble { background: rgba(20, 20, 26, 0.84); }
+
+.dash-right .opc-form { background: transparent; }
+.dash-right .opc-input {
+  background: rgba(255, 255, 255, 0.68);
+  border-color: rgba(255, 255, 255, 0.58);
+}
+.dash-right .opc-starters button {
+  background: rgba(255, 255, 255, 0.42);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+.dash-right .opc-starters button:hover { border-color: rgba(255, 255, 255, 0.85); }
+.dash-right .opc-day span, .dash-right .opc-meta i { color: #2b2f45; }
+
+/* The no-business placeholder sits in the same column, so it gets the same
+   treatment rather than a solid white card floating on the colour field. */
+.dash-right .dash-card {
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+}
+
+/* Safari on older iOS and Firefox with the flag off get no blur at all, which
+   would leave type sitting on raw gradient. Fall back to near-opaque. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .dash-right .opc, .dash-right .dash-card { background: rgba(255, 255, 255, 0.90); }
+  .dash-right .opc-group.theirs .opc-bubble { background: #fff; }
+}
+
 .dash-figure { font-size: clamp(24px, 2.2vw, 38px); font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
 .dash-title { font-size: 17px; font-weight: 600; margin: 0; }
 
