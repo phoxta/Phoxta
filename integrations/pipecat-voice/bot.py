@@ -398,6 +398,25 @@ async def run_bot(websocket, stream_sid: str, call_sid: str, caller: str, public
             enable_usage_metrics=True,    # STT/TTS usage for cost visibility
         ),
     )
+    # End the pipeline the moment Twilio closes the media stream. Without this
+    # nothing notices the hang-up, and the task lingers until Pipecat's idle
+    # timeout (~5 min) — holding the Deepgram STT *and* TTS websockets open,
+    # occupying a concurrency slot, and delaying the recording write/upload by
+    # the same five minutes. on_session_timeout is the same story for a call
+    # that stalls rather than disconnects cleanly.
+    try:
+        @transport.event_handler("on_client_disconnected")
+        async def _on_disconnect(_transport, _client):  # noqa: ANN001
+            logger.info(f"[phoxta] call {call_sid} disconnected — ending pipeline")
+            await task.cancel()
+
+        @transport.event_handler("on_session_timeout")
+        async def _on_session_timeout(_transport, _client):  # noqa: ANN001
+            logger.info(f"[phoxta] call {call_sid} session timeout — ending pipeline")
+            await task.cancel()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[phoxta] could not attach transport lifecycle handlers: {exc}")
+
     runner = PipelineRunner(handle_sigint=False)
     logger.info(f"[phoxta] call {call_sid} from {caller} started")
     if audio_buffer is not None:

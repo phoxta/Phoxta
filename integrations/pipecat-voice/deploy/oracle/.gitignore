@@ -1,0 +1,4 @@
+# The filled-in copies hold live API keys and the Twilio auth token. Only
+# voice.env.example belongs in git. (Root .gitignore already covers `.env`,
+# but not `voice.env`.)
+voice.env

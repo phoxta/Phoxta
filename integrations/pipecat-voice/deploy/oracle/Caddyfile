@@ -1,0 +1,39 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$VOICE_DOMAIN} {
+	# Caddy v2 proxies WebSocket upgrades transparently — no special directive
+	# is needed for Twilio's /ws Media Stream. What matters is that the upgrade
+	# answers 101; anything else surfaces as Twilio error 31920 mid-call.
+	reverse_proxy voice:8765 {
+		# A redeploy reloads config, which would otherwise hang up on everyone
+		# mid-sentence. Let calls in progress finish instead.
+		stream_close_delay 5m
+
+		# A call holds one connection open for its whole duration, so the proxy
+		# must not time out a stream that is simply quiet while the caller talks.
+		# Both default to 0 already; stated explicitly so a future edit doesn't
+		# quietly introduce a timeout that truncates calls.
+		transport http {
+			read_timeout 0
+			write_timeout 0
+		}
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 10mb
+			roll_keep 3
+		}
+	}
+}
+
+{$STATUS_DOMAIN} {
+	# Uptime Kuma. Its own login guards the dashboard; status pages it publishes
+	# are public by design. WebSocket upgrade is how its live UI updates, which
+	# reverse_proxy handles natively.
+	reverse_proxy uptime:3001 {
+		stream_close_delay 5m
+	}
+}

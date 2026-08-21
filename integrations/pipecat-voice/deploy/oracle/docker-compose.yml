@@ -1,0 +1,89 @@
+# Phoxta voice server on an Oracle Cloud Always Free VM.
+#
+# Two containers: the Pipecat bridge (never exposed directly) and Caddy, which
+# terminates TLS and reverse-proxies to it. Twilio Media Streams require wss://
+# with a valid certificate — Caddy obtains and renews one from Let's Encrypt
+# automatically, which is the whole reason it is here rather than publishing
+# port 8765 straight to the internet.
+services:
+  voice:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ./voice.env
+    # Deliberately no `ports:` — only Caddy can reach the bridge, so the bare
+    # HTTP port is never exposed and every connection arrives over TLS.
+    expose:
+      - "8765"
+    volumes:
+      # RECORD_CALLS=1 writes a WAV per call here. Without this mount it lands
+      # inside the container and dies with it — and bot.py only uploads to
+      # Supabase Storage when the call carries a conversation_id, which direct
+      # outbound calls do not.
+      - ./recordings:/app/recordings
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8765/health').read()\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # Self-hosted TURN relay for the browser voice widget.
+  # network_mode: host because a TURN relay needs a wide UDP port range, and
+  # publishing ~400 ports through Docker's userland proxy would spawn a process
+  # per port. Host networking also lets coturn see the real source addresses it
+  # needs for candidate selection.
+  coturn:
+    image: coturn/coturn:4
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # Uptime monitoring. Two services in the old Railway project sat with zero
+  # deployments — a dead voice server and a dead cron — and nothing reported it.
+  # This box already exists and is 99% idle, so watching the estate from here
+  # costs nothing and closes that blind spot.
+  uptime:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    expose:
+      - "3001"
+    volumes:
+      - uptime_data:/app/data
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"     # required: Let's Encrypt HTTP-01 challenge + redirect to 443
+      - "443:443"
+    environment:
+      VOICE_DOMAIN: ${VOICE_DOMAIN:?set VOICE_DOMAIN in .env, e.g. voice.phoxta.com}
+      STATUS_DOMAIN: ${STATUS_DOMAIN:?set STATUS_DOMAIN in .env, e.g. status.phoxta.com}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env — Let's Encrypt expiry notices}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # certificates live here — keep this volume
+      - caddy_config:/config
+    depends_on:
+      - voice
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  caddy_data:
+  caddy_config:
+  uptime_data:

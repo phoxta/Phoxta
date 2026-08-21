@@ -11,8 +11,11 @@ many Twilio numbers, map the called number ("To") to a key — see resolve_key()
 """
 
 import base64
+import hashlib
+import hmac
 import json
 import os
+import time
 
 import httpx
 from dotenv import load_dotenv
@@ -61,9 +64,44 @@ async def health():
     return {"ok": True}
 
 
+def _public_url(request: Request) -> str:
+    """The URL Twilio actually signed. Behind Caddy the request arrives as plain
+    http on an internal hostname, so rebuilding from request.url would never
+    match — use the forwarded headers, preferring the configured PUBLIC_HOST."""
+    scheme = request.headers.get("x-forwarded-proto", "https")
+    host = PUBLIC_HOST or request.headers.get("x-forwarded-host") or request.url.hostname or ""
+    url = f"{scheme}://{host}{request.url.path}"
+    return f"{url}?{request.url.query}" if request.url.query else url
+
+
+def _valid_twilio_signature(request: Request, form) -> bool:  # noqa: ANN001
+    """Twilio's X-Twilio-Signature: base64 HMAC-SHA1 over the full URL followed
+    by each POST param name+value in alphabetical order.
+
+    Without this, anyone who POSTs here is handed the business's agent key in the
+    TwiML response — the same disclosure voice-outgoing already guards against.
+    Fails OPEN when no auth token is configured, so a misconfigured deployment
+    degrades instead of refusing every inbound call."""
+    token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    if not token:
+        logger.warning("[phoxta] TWILIO_AUTH_TOKEN unset — inbound signature check skipped")
+        return True
+    sent = request.headers.get("X-Twilio-Signature", "")
+    if not sent:
+        return False
+    data = _public_url(request) + "".join(f"{k}{form[k]}" for k in sorted(form.keys()))
+    mine = base64.b64encode(
+        hmac.new(token.encode(), data.encode("utf-8"), hashlib.sha1).digest()
+    ).decode()
+    return hmac.compare_digest(mine, sent)
+
+
 @app.post("/")
 async def incoming_call(request: Request):
     form = await request.form()
+    if not _valid_twilio_signature(request, form):
+        logger.warning("[phoxta] rejected inbound call POST with a bad/missing Twilio signature")
+        return Response(content="Forbidden", status_code=403)
     from_number = form.get("From", "")
     to_number = form.get("To", "")
     host = PUBLIC_HOST or request.url.hostname
@@ -88,6 +126,30 @@ async def _fetch_ice() -> list[dict]:
     or it only offers an unreachable private host candidate. Twilio tokens are
     short-lived, so we mint fresh creds each time. Falls back to STUN-only."""
     servers: list[dict] = [{"urls": "stun:stun.l.google.com:19302"}]
+
+    # Our own coturn first — Twilio TURN bills per relayed GB and this box has
+    # a public IP and spare capacity. Twilio is still appended below as a
+    # fallback, so a coturn failure degrades the call instead of dropping it.
+    turn_secret = os.environ.get("TURN_SECRET")
+    turn_host = os.environ.get("TURN_HOST")
+    if turn_secret and turn_host:
+        try:
+            # RFC 5766 TURN REST API: username is an expiry timestamp, password
+            # is the HMAC of it. Short-lived, so a leaked credential is worthless
+            # within the hour.
+            expiry = int(time.time()) + 3600
+            user = str(expiry)
+            cred = base64.b64encode(
+                hmac.new(turn_secret.encode(), user.encode(), hashlib.sha1).digest()
+            ).decode()
+            servers.append({
+                "urls": [f"turn:{turn_host}:3478?transport=udp", f"turn:{turn_host}:3478?transport=tcp"],
+                "username": user,
+                "credential": cred,
+            })
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"[phoxta] could not mint coturn credentials: {exc}")
+
     sid = os.environ.get("TWILIO_ACCOUNT_SID")
     tok = os.environ.get("TWILIO_AUTH_TOKEN")
     if sid and tok:
