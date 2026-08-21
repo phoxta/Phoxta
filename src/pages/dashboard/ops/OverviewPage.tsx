@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import {
@@ -18,18 +18,14 @@ const OVERVIEW_CSS = `/* ---- Overview shell: console data rail + task board ---
    Note if anything Bootstrap-gridded is ever put back in the rail: the grid keys
    off the VIEWPORT, not the parent, so col-md/col-xl inside this fixed-width
    pane collapse to a fraction of it on a wide screen. */
-/* The Operator is a fixed-height panel with its own internal scroll, so it has
-   no reason to travel with the page - only the board does. It pins below the
-   console's own sticky header, whose height is measured onto --ops-head-h
-   (OverviewPage) because it changes with the title and tab wrapping. */
-.ops-ov{display:flex;gap:20px;align-items:flex-start}
-.ops-ov-side{width:420px;flex:0 0 420px;min-width:0}
-.ops-pin .ops-ov-side{position:sticky;top:calc(var(--ops-head-h, 0px) + 8px);align-self:flex-start}
-/* Pinned, the panel is sized to the measured gap, and min-height must stand
-   down: a floor taller than the space available is exactly what pushed its
-   bottom below the fold. */
-.ops-pin .opc{height:var(--ops-op-h);min-height:0}
-.ops-ov-board{flex:1 1 auto;min-width:0;display:flex;gap:13px;overflow-x:auto;padding-bottom:4px;align-items:flex-start}
+/* Inside the console's fixed content box, the two panes fill the height: the
+   Operator stays put and the board scrolls on its own. This replaced a sticky
+   rail whose height had to be measured against a moving top — the structure now
+   states the intent, so there is nothing left to compute. */
+.ops-ov{display:flex;gap:20px;align-items:stretch;height:100%;min-height:0}
+.ops-ov-side{width:420px;flex:0 0 420px;min-width:0;min-height:0}
+.ops-ov-board{flex:1 1 auto;min-width:0;min-height:0;display:flex;gap:13px;
+  overflow:auto;padding-bottom:4px;align-items:flex-start}
 /* Drag to move a card between stages. The lifted card stays visible at low
    opacity rather than disappearing, so you can still see what you are holding. */
 .ops-ov-card[draggable="true"]{cursor:grab}
@@ -135,10 +131,11 @@ const OVERVIEW_CSS = `/* ---- Overview shell: console data rail + task board ---
    a mic. Fills the rail's height so the thread scrolls inside it and the
    composer stays pinned instead of the page growing. */
 /* Appearance lives in operator-chat.css so the panel looks the same wherever it
-   is mounted. Only its HEIGHT is set here, because that is genuinely this
-   console's business: the rail is a fixed column and the thread scrolls inside
-   it. The dashboard home sets its own height the same way. */
-.opc{height:calc(100vh - 300px);min-height:460px}
+   is mounted. Only its HEIGHT is this console's business, and it is now simply
+   the rail's — the console box has a real height, so nothing is guessed from
+   the viewport. Stacked on small screens the rail has no height of its own, so
+   the panel is capped instead. */
+.opc{height:100%;min-height:0}
 @media (max-width:991.98px){
 .opc{height:auto;min-height:0;max-height:72vh}
 }
@@ -375,84 +372,8 @@ export default function OverviewPage() {
   // in the console — drop those rather than render dead links.
   const visibleCards = (board?.cards ?? []).filter((c) => cfg.modules.includes(c.module));
 
-  // The Operator pins below the console's own sticky header (breadcrumb, title,
-  // tab bar). Two numbers drive it, and BOTH are measured rather than guessed:
-  //
-  //   --ops-head-h  how far down the scroll container the panel pins.
-  //   --ops-op-h    how tall it may be. This is the one that matters: subtract
-  //                 too little chrome and the panel runs past the fold, so its
-  //                 lower half stays hidden until sticky releases at the very
-  //                 bottom of the board. Measuring the scroll container's own
-  //                 box leaves nothing to get wrong.
-  //
-  // Below `MIN_PINNED` there isn't enough room to pin anything usefully, so the
-  // panel goes back to scrolling with the page.
-  const shellRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const shell = shellRef.current;
-    const head = document.querySelector<HTMLElement>(".dash-sticky-head");
-    if (!shell || !head) return;
-
-    /** The element that actually scrolls — sticky positions against this. */
-    const scroller = (() => {
-      for (let n = shell.parentElement; n; n = n.parentElement) {
-        if (/(auto|scroll)/.test(getComputedStyle(n).overflowY)) return n;
-      }
-      return null;
-    })();
-
-    const MIN_PINNED = 380;
-    const GAP = 8;
-
-    const measure = () => {
-      const headH = Math.round(head.offsetHeight);
-      const box = (scroller ?? document.documentElement).getBoundingClientRect();
-      const canPin =
-        scroller != null && box.height - headH - GAP >= MIN_PINNED && window.innerWidth >= 992;
-      shell.style.setProperty("--ops-head-h", `${headH}px`);
-      shell.classList.toggle("ops-pin", canPin);
-
-      // Height is measured from the rail's CURRENT top down to the pane's
-      // bottom edge — which is where the sidebar ends, the two being siblings in
-      // the shell's flex row.
-      //
-      // Deriving it from the header height instead does not hold, because the
-      // rail is sticky: before it sticks it sits below the page padding, after
-      // it sticks it jumps up to the header. One subtraction cannot be right in
-      // both positions, which is why the panel finished short of the sidebar.
-      // Reading the live top is right in both, so this also runs on scroll.
-      const rail = shell.querySelector<HTMLElement>(".ops-ov-side");
-      if (!rail || !canPin) {
-        shell.style.removeProperty("--ops-op-h");
-        return;
-      }
-      const avail = Math.round(box.bottom - rail.getBoundingClientRect().top);
-      shell.style.setProperty("--ops-op-h", `${Math.max(avail, MIN_PINNED)}px`);
-    };
-
-    measure();
-
-    let frame = 0;
-    const onScroll = () => {
-      if (frame) return;
-      frame = requestAnimationFrame(() => { frame = 0; measure(); });
-    };
-    scroller?.addEventListener("scroll", onScroll, { passive: true });
-
-    const ro = new ResizeObserver(measure);
-    ro.observe(head);
-    if (scroller) ro.observe(scroller);
-    window.addEventListener("resize", measure);
-    return () => {
-      ro.disconnect();
-      scroller?.removeEventListener("scroll", onScroll);
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
-
   return (
-    <div ref={shellRef}>
+    <div>
       <style>{OVERVIEW_CSS}</style>
 
       <div className="ops-ov">

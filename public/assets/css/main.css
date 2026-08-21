@@ -1764,6 +1764,34 @@ input[type=color] {
   margin-bottom: 0;
 }
 
+/* The operating console does not scroll as a page. It fills the shell's pane
+   (height measured by useFillToPane) and only the active tab's content scrolls,
+   so the breadcrumb, title and tab bar never move.
+   The sticky offsets on .dash-sticky-head exist to hide content passing beneath
+   a pinned header; here nothing passes beneath it, so they are switched off. */
+.ops-console.pinned {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ops-console.pinned > .dash-sticky-head {
+  position: static;
+  margin-top: 0;
+  padding-top: 0;
+  flex: 0 0 auto;
+}
+
+.ops-console.pinned > .ops-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* The pane's own bottom padding is absorbed by the console's negative margin,
+     so re-add it here — inside the scroller, where it belongs. */
+  padding-bottom: 1.5rem;
+}
+
 .ops-tabs {
   overflow-x: auto;
   overflow-y: hidden;

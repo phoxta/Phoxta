@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useCachedData } from "@/lib/hooks/useCachedData";
+import { useFillToPane } from "@/lib/hooks/useFillToPane";
 import {
   profileQuery, organizationsQuery, aiUsageMonthQuery,
   revenue30Query, revenueSeriesQuery, invitationsQuery, marketplaceBlueprintsQuery,
@@ -219,64 +220,21 @@ export default function DashboardHomePage() {
   const selected = orgs.find((o) => o.organization.id === orgId)?.organization ?? orgs[0]?.organization ?? null;
   const selectedBlueprint = blueprintFor(selected, blueprints);
 
+  // Same measurement the operating console uses: fill down to the pane's bottom,
+  // which is where the sidebar ends. Null below the thresholds, and the page
+  // flows normally rather than clipping.
+  const { ref: rootRef, fit } = useFillToPane({ minWidth: PIN_AT, minHeight: 520 });
+
   let lastOrg: string | null = null;
   try { lastOrg = localStorage.getItem(LAST_ORG_KEY); } catch { /* storage unavailable */ }
   const operatorOrg =
     (lastOrg && orgs.find((o) => o.organization.id === lastOrg)?.organization) ?? orgs[0]?.organization ?? null;
 
-  // Measure the real gap between where this content starts and the bottom of the
-  // shell's scroll pane, minus the padding of everything in between. Subtracting
-  // a guessed offset from innerHeight leaves a stub scrollbar, because the shell
-  // pads with clamp() and <main> adds py-4 — both move with the window.
-  //
-  // null means "don't pin": narrow or short screens flow normally, rather than
-  // having overflow:hidden quietly eat the bottom of a card.
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState<{ h: number; pullUp: number } | null>(null);
-  useEffect(() => {
-    const scrollParent = (node: HTMLElement | null): HTMLElement | null => {
-      for (let n = node?.parentElement ?? null; n; n = n.parentElement) {
-        const oy = getComputedStyle(n).overflowY;
-        if (oy === "auto" || oy === "scroll") return n;
-      }
-      return null;
-    };
-
-    const measure = () => {
-      const el = rootRef.current;
-      if (!el) return;
-      if (window.innerWidth < PIN_AT) { setFit(null); return; }
-
-      const top = el.getBoundingClientRect().top;
-      const pane = scrollParent(el);
-      if (!pane) { setFit(null); return; }
-
-      // Run all the way down to the pane's edge, which is where the sidebar
-      // ends — the two are siblings in the shell's flex row.
-      const h = Math.floor(pane.getBoundingClientRect().bottom - top);
-
-      // <main> pads py-4 below us, which would push the pane into scrolling by
-      // exactly that much. A matching negative margin absorbs it, so the cards
-      // finish level with the sidebar and nothing scrolls.
-      let pullUp = 0;
-      for (let n = el.parentElement; n && n !== pane; n = n.parentElement) {
-        pullUp += parseFloat(getComputedStyle(n).paddingBottom) || 0;
-      }
-
-      setFit(h > 520 ? { h, pullUp: Math.round(pullUp) } : null);
-    };
-
-    measure();
-    window.addEventListener("resize", measure);
-    const settle = setTimeout(measure, 150); // after webfonts and the shell settle
-    return () => { window.removeEventListener("resize", measure); clearTimeout(settle); };
-  }, []);
-
   return (
     <div
       ref={rootRef}
       className="dash-home"
-      style={fit ? { height: fit.h, marginBottom: -fit.pullUp, overflow: "hidden" } : undefined}
+      style={fit ? { ...fit, overflow: "hidden" } : undefined}
     >
       <PageMeta title="Phoxta - Dashboard" />
       <style>{CSS}</style>
