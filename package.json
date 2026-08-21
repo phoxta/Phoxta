@@ -13,19 +13,24 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "sitemap": "node ./scripts/generate-sitemap.mjs"
+    "sitemap": "node ./scripts/generate-sitemap.mjs",
+    "shared:sync": "node scripts/sync-shared.mjs",
+    "shared:check": "node scripts/sync-shared.mjs --check"
   },
   "dependencies": {
+    "@floating-ui/react": "^0.27.20",
     "@measured/puck": "^0.20.2",
     "@pipecat-ai/client-js": "^1.11.0",
     "@pipecat-ai/client-react": "^1.6.0",
     "@pipecat-ai/small-webrtc-transport": "^1.10.4",
     "@supabase/supabase-js": "^2.108.2",
+    "@tanstack/react-virtual": "^3.14.10",
     "@twilio/voice-sdk": "^2.18.3",
     "@vercel/analytics": "^2.0.1",
     "bootstrap": "^5.3.3",
     "gsap": "^3.12.7",
     "isotope-layout": "^3.0.6",
+    "lucide-react": "^1.33.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-fast-marquee": "^1.6.5",
@@ -51,5 +56,8 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.59.3",
     "vite": "^6.3.5"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

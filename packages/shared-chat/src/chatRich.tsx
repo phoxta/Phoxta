@@ -1,6 +1,3 @@
-// GENERATED FILE — do not edit.
-// Source: packages/shared-chat/src/chatRich.tsx
-// Update that file, then run: npm run shared:sync
 import type { ReactNode } from "react";
 
 /**

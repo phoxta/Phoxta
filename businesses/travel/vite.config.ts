@@ -30,5 +30,24 @@ export default defineConfig({
             { find: "@", replacement: r("./src") },
         ],
     },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id: string) {
+                    // Only large, React-FREE vendor libs. The root app learned the
+                    // hard way that grouping app/React code produces a circular
+                    // chunk graph and an undefined JSX runtime (blank page), so
+                    // react/react-dom are deliberately left in the entry.
+                    if (!id.includes("node_modules")) return undefined;
+                    if (id.includes("maplibre-gl")) return "vendor-maplibre";
+                    if (id.includes("@supabase")) return "vendor-supabase";
+                    if (id.includes("lodash")) return "vendor-lodash";
+                    if (id.includes("date-fns")) return "vendor-datefns";
+                    if (id.includes("@hugeicons")) return "vendor-icons";
+                    return undefined;
+                },
+            },
+        },
+    },
     server: { port: 3011, open: true },
 });

@@ -1,0 +1,8 @@
+{
+  "name": "@phoxta/shared-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Canonical source for storefront chat rendering. Vendored into each business by scripts/sync-shared.mjs — see README.",
+  "type": "module",
+  "main": "src/chatRich.tsx"
+}

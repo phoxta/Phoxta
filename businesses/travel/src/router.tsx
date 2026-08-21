@@ -1,5 +1,5 @@
 import { createBrowserRouter, Outlet } from "react-router-dom";
-import { createElement, type ComponentType } from "react";
+import { createElement, lazy, type ComponentType } from "react";
 import RootProviders from "@/app-react/RootProviders";
 import ErrorBoundary from "@/app-react/ErrorBoundary";
 import { page } from "@/app-react/AsyncRoute";
@@ -14,28 +14,32 @@ import ExperienceSearchLayout from "@/app/(app)/(search-pages)/experience-search
 import ExperienceCategoriesLayout from "@/app/(app)/(categories)/experience-categories/layout";
 
 // Experiences (the single service this business offers)
-import HomeExperience from "@/app/(app)/(home-pages)/(listing-type)/experience/page";
-import ExperienceListing from "@/app/(app)/(listings)/experience-listings/[handle]/page";
-import ExperienceSearch from "@/app/(app)/(search-pages)/experience-search/page";
-import ExperienceCategories from "@/app/(app)/(categories)/experience-categories/[[...handle]]/page";
 // Other pages
-import About from "@/app/(app)/(other-pages)/about/page";
-import Contact from "@/app/(app)/(other-pages)/contact/page";
-import Blog from "@/app/(app)/(other-pages)/blog/page";
-import BlogDetail from "@/app/(app)/(other-pages)/blog/[handle]/page";
-import Authors from "@/app/(app)/(other-pages)/authors/page";
-import AuthorDetail from "@/app/(app)/(other-pages)/authors/[handle]/page";
-import Checkout from "@/app/(app)/(other-pages)/checkout/page";
-import PayDone from "@/app/(app)/(other-pages)/pay-done/page";
-import Subscription from "@/app/(app)/(other-pages)/subscription/page";
-import ManageBooking from "@/app/(app)/(other-pages)/manage-booking/page";
 // Account
-import Account from "@/pages/Account";
 // Auth
 // One component covers sign in, register and password reset.
-import Login from "@/pages/Account";
-import Signup from "@/pages/Account";
-import ForgotPassword from "@/pages/Account";
+
+// Pages are code-split: the whole app was one 2.6 MB chunk that had to parse
+// before anything rendered. Layouts above stay eager so the header and footer
+// paint immediately; AsyncRoute holds a Suspense boundary inside the layout.
+const HomeExperience = lazy(() => import("@/app/(app)/(home-pages)/(listing-type)/experience/page"));
+const ExperienceListing = lazy(() => import("@/app/(app)/(listings)/experience-listings/[handle]/page"));
+const ExperienceSearch = lazy(() => import("@/app/(app)/(search-pages)/experience-search/page"));
+const ExperienceCategories = lazy(() => import("@/app/(app)/(categories)/experience-categories/[[...handle]]/page"));
+const About = lazy(() => import("@/app/(app)/(other-pages)/about/page"));
+const Contact = lazy(() => import("@/app/(app)/(other-pages)/contact/page"));
+const Blog = lazy(() => import("@/app/(app)/(other-pages)/blog/page"));
+const BlogDetail = lazy(() => import("@/app/(app)/(other-pages)/blog/[handle]/page"));
+const Authors = lazy(() => import("@/app/(app)/(other-pages)/authors/page"));
+const AuthorDetail = lazy(() => import("@/app/(app)/(other-pages)/authors/[handle]/page"));
+const Checkout = lazy(() => import("@/app/(app)/(other-pages)/checkout/page"));
+const PayDone = lazy(() => import("@/app/(app)/(other-pages)/pay-done/page"));
+const Subscription = lazy(() => import("@/app/(app)/(other-pages)/subscription/page"));
+const ManageBooking = lazy(() => import("@/app/(app)/(other-pages)/manage-booking/page"));
+const Account = lazy(() => import("@/pages/Account"));
+const Login = lazy(() => import("@/pages/Account"));
+const Signup = lazy(() => import("@/pages/Account"));
+const ForgotPassword = lazy(() => import("@/pages/Account"));
 
 const r = (path: string, Comp: ComponentType) => ({ path, element: createElement(Comp) });
 
