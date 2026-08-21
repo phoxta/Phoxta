@@ -407,20 +407,46 @@ export default function OverviewPage() {
     const measure = () => {
       const headH = Math.round(head.offsetHeight);
       const box = (scroller ?? document.documentElement).getBoundingClientRect();
-      const avail = Math.round(box.height - headH - GAP * 2);
-      const canPin = scroller != null && avail >= MIN_PINNED && window.innerWidth >= 992;
+      const canPin =
+        scroller != null && box.height - headH - GAP >= MIN_PINNED && window.innerWidth >= 992;
       shell.style.setProperty("--ops-head-h", `${headH}px`);
-      shell.style.setProperty("--ops-op-h", `${avail}px`);
       shell.classList.toggle("ops-pin", canPin);
+
+      // Height is measured from the rail's CURRENT top down to the pane's
+      // bottom edge — which is where the sidebar ends, the two being siblings in
+      // the shell's flex row.
+      //
+      // Deriving it from the header height instead does not hold, because the
+      // rail is sticky: before it sticks it sits below the page padding, after
+      // it sticks it jumps up to the header. One subtraction cannot be right in
+      // both positions, which is why the panel finished short of the sidebar.
+      // Reading the live top is right in both, so this also runs on scroll.
+      const rail = shell.querySelector<HTMLElement>(".ops-ov-side");
+      if (!rail || !canPin) {
+        shell.style.removeProperty("--ops-op-h");
+        return;
+      }
+      const avail = Math.round(box.bottom - rail.getBoundingClientRect().top);
+      shell.style.setProperty("--ops-op-h", `${Math.max(avail, MIN_PINNED)}px`);
     };
 
     measure();
+
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => { frame = 0; measure(); });
+    };
+    scroller?.addEventListener("scroll", onScroll, { passive: true });
+
     const ro = new ResizeObserver(measure);
     ro.observe(head);
     if (scroller) ro.observe(scroller);
     window.addEventListener("resize", measure);
     return () => {
       ro.disconnect();
+      scroller?.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
       window.removeEventListener("resize", measure);
     };
   }, []);
