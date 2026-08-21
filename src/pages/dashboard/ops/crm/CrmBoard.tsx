@@ -25,6 +25,21 @@ export const STAGE_LABEL: Record<ContactStage, string> = {
   churned: "Churned",
 };
 
+/**
+ * The four column palettes, taken from the design in column order: the pale blue
+ * of "New lead", the solid indigo of "Returning", the near-black violet of
+ * "Priority" with its tinted card, and the mint of "Follow-up".
+ *
+ * Each stage owns one, so a column reads as itself at a glance instead of every
+ * card being the same white rectangle.
+ */
+const STAGE_THEME: Record<ContactStage, { pill: string; ink: string; card: string; edge: string }> = {
+  lead: { pill: "#D5E8FC", ink: "#17457F", card: "#F6FAFE", edge: "#DCEAFA" },
+  prospect: { pill: "#4353D8", ink: "#FFFFFF", card: "#F4F5FE", edge: "#DFE2FA" },
+  customer: { pill: "#2A2550", ink: "#FFFFFF", card: "#EFECFD", edge: "#DCD5F8" },
+  churned: { pill: "#7DF0A5", ink: "#07542F", card: "#F1FCF5", edge: "#D5F3E1" },
+};
+
 /** Above this the lead score is treated as a flag worth showing. */
 const HOT_SCORE = 70;
 
@@ -144,7 +159,7 @@ export function CrmStats({ rows, currency }: { rows: Contact[]; currency: string
 
   return (
     <div className="crm-stats">
-      <section className="crm-panel">
+      <section className="crm-panel crm-panel--tint">
         <h3 className="crm-panel__h">New customers</h3>
         {rows.length === 0 ? (
           <p className="fz-font-sm neutral-500 mb-0">No contacts yet — added ones appear here by the day and source they arrived from.</p>
@@ -245,6 +260,7 @@ function Card({
   onDragEnd: () => void;
 }) {
   const tag = (c.tags ?? [])[0] ?? "";
+  const theme = STAGE_THEME[c.stage];
   const hot = (c.lead_score ?? 0) >= HOT_SCORE;
   const desc = (c.ai_summary || c.notes || "").trim();
   const title = c.company.trim() || c.name.trim() || "Contact";
@@ -256,6 +272,7 @@ function Card({
   return (
     <div
       className={`crm-card${hot ? " is-hot" : ""}${dragging ? " dragging" : ""}`}
+      style={{ background: theme.card, borderColor: theme.edge }}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", c.id);
@@ -265,15 +282,9 @@ function Card({
       onDragEnd={onDragEnd}
     >
       <div className="crm-card__top">
-        {tag ? (
-          <span className="crm-tag" style={{ background: `hsl(${hueOf(tag)} 82% 92%)`, color: `hsl(${hueOf(tag)} 60% 28%)` }}>
-            {tag}
-          </span>
-        ) : hot ? (
-          <span className="crm-tag" style={{ background: "#DED8FD", color: "#3B2E8F" }}>Priority</span>
-        ) : (
-          <span />
-        )}
+        <span className="crm-tag" style={{ background: theme.pill, color: theme.ink }}>
+          {tag || STAGE_LABEL[c.stage]}
+        </span>
         <button
           type="button"
           className="crm-card__menu"

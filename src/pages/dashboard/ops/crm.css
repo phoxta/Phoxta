@@ -18,6 +18,20 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* The comp sits the whole page on a soft wash — mint at the left, cool blue
+     to the right — which is what keeps the white cards from floating on grey. */
+  background:
+    radial-gradient(60% 70% at 2% 0%, rgba(126, 227, 214, 0.16) 0%, rgba(126, 227, 214, 0) 60%),
+    radial-gradient(70% 80% at 98% 30%, rgba(124, 123, 245, 0.14) 0%, rgba(124, 123, 245, 0) 62%);
+  border-radius: 18px;
+  padding: 2px;
+  margin: -2px;
+}
+
+/* The design's first panel carries a mint cast; the others stay white. */
+.crm-panel--tint {
+  background: linear-gradient(180deg, #f2fbf8 0%, #fbfefd 70%);
+  border-color: rgba(126, 227, 214, 0.3);
 }
 
 /* ── Toolbar ──────────────────────────────────────────────────────────── */
@@ -330,11 +344,11 @@
   cursor: grabbing;
 }
 
-/* The comp tints one card "Priority". This ties that emphasis to a real signal
-   — the AI lead score — rather than decorating a card at random. */
+/* Each stage colours its own cards (STAGE_THEME, applied inline), so a flagged
+   card cannot take the background over — it would stop reading as part of its
+   column. It gets a ring instead, which reads on any of the four tints. */
 .crm-card.is-hot {
-  background: #eeebfe;
-  border-color: #d7cffa;
+  box-shadow: 0 0 0 2px rgba(67, 83, 216, 0.35);
 }
 
 .crm-card__top {
