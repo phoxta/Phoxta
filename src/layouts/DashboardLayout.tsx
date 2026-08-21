@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isPlatformAdmin } from "@/lib/db/platform";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import NoIndex from "@/seo/NoIndex";
 import { useAuth } from "@/auth/AuthProvider";
@@ -12,7 +13,7 @@ import {
   type Notification,
 } from "@/lib/db/collaboration";
 
-type NavItem = { to: string; label: string; icon: React.ReactNode; end?: boolean };
+type NavItem = { to: string; label: string; icon: React.ReactNode; end?: boolean; platformOnly?: boolean };
 
 const HERO_BG = "/assets/imgs/pages/bg-img-4.webp";
 
@@ -35,12 +36,16 @@ const NAV: NavItem[] = [
   { to: "/dashboard/businesses", label: "Businesses", icon: <Icon d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01" /> },
   { to: "/dashboard/billing", label: "Billing", icon: <Icon d="M2 7h20v10H2zM2 11h20M6 15h4" /> },
   { to: "/dashboard/network", label: "Network", icon: <Icon d="M16 21v-2a4 4 0 00-8 0v2M12 11a4 4 0 100-8 4 4 0 000 8M3 21v-1a4 4 0 014-4M21 21v-1a4 4 0 00-4-4" /> },
+  // Phoxta's own operating console. Hidden unless the signed-in user is on the
+  // platform_admins roster — the RPCs behind it enforce that server-side too, so
+  // hiding the link is presentation, not the control.
+  { to: "/dashboard/platform", label: "Platform", platformOnly: true, icon: <Icon d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /> },
   { to: "/dashboard/settings", label: "Settings", icon: <Icon d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 13a7.9 7.9 0 000-2l2-1.5-2-3.5-2.4 1a8 8 0 00-1.7-1l-.4-2.5H10.1l-.4 2.5a8 8 0 00-1.7 1l-2.4-1-2 3.5L3.6 11a7.9 7.9 0 000 2l-2 1.5 2 3.5 2.4-1a8 8 0 001.7 1l.4 2.5h3.8l.4-2.5a8 8 0 001.7-1l2.4 1 2-3.5z" /> },
 ];
 
 // The top-level nav pages are all param-free, so they're kept mounted (via <Activity>)
 // after their first visit — instant revisits with preserved scroll + in-page state.
-const KEEP_ALIVE_PATHS = NAV.map((item) => item.to);
+const KEEP_ALIVE_PATHS = NAV.filter((i) => !i.platformOnly).map((item) => item.to);
 
 const MENU_ICON = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -64,6 +69,15 @@ export default function DashboardLayout() {
   const [ready] = useState(true);
   const [notes, setNotes] = useState<Notification[]>([]);
   const [bellOpen, setBellOpen] = useState(false);
+  // Platform console is admin-only. This hides the link; app_is_platform_admin()
+  // guards the data, so a hand-typed URL still gets nothing.
+  const [platformAdmin, setPlatformAdmin] = useState(false);
+  useEffect(() => {
+    let active = true;
+    isPlatformAdmin().then((ok) => { if (active) setPlatformAdmin(ok); }).catch(() => { /* not an admin */ });
+    return () => { active = false; };
+  }, []);
+  const navItems = NAV.filter((i) => !i.platformOnly || platformAdmin);
   const unread = notes.filter((n) => !n.read).length;
 
   useEffect(() => {
@@ -193,7 +207,7 @@ export default function DashboardLayout() {
 
           <nav className="px-4 flex-grow-1 overflow-auto">
             <ul className="list-unstyled m-0 d-flex flex-column gap-1">
-              {NAV.map((item) => (
+              {navItems.map((item) => (
                 <li key={item.to}>
                   <NavLink
                     to={item.to}

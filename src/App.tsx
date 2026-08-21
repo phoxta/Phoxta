@@ -40,6 +40,7 @@ const BusinessDetailPage = lazy(() => import("@/pages/dashboard/BusinessDetailPa
 const BillingPage = lazy(() => import("@/pages/dashboard/BillingPage"));
 const PaymentCallbackPage = lazy(() => import("@/pages/dashboard/PaymentCallbackPage"));
 const ConsolePage = lazy(() => import("@/pages/dashboard/ConsolePage"));
+const PlatformPage = lazy(() => import("@/pages/dashboard/PlatformPage"));
 const NetworkPage = lazy(() => import("@/pages/dashboard/NetworkPage"));
 const SettingsPage = lazy(() => import("@/pages/dashboard/SettingsPage"));
 const AssistantPage = lazy(() => import("@/pages/dashboard/AssistantPage"));
@@ -106,6 +107,8 @@ export default function App() {
           <Route path="/dashboard/studio" element={<StudioPage />} />
           <Route path="/dashboard/assistant" element={<AssistantPage />} />
           <Route path="/dashboard/console" element={<ConsolePage />} />
+          {/* Phoxta's own operating console — cross-tenant, platform-admin only. */}
+          <Route path="/dashboard/platform" element={<PlatformPage />} />
           <Route path="/dashboard/marketplace" element={<MarketplacePage />} />
           <Route path="/dashboard/marketplace/:slug" element={<MarketplaceDetailPage />} />
           <Route path="/dashboard/businesses" element={<BusinessesPage />} />
