@@ -16,12 +16,37 @@ const b64urlDecode = (s: string): string => {
   try { return new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0))); } catch { return ""; }
 };
 const headerMap = (p: Json): Record<string, string> => Object.fromEntries((p?.headers ?? []).map((h: Json) => [String(h.name).toLowerCase(), h.value]));
-function extractBody(p: Json): string {
-  if (!p) return "";
-  if (p.mimeType === "text/plain" && p.body?.data) return b64urlDecode(p.body.data);
-  for (const part of p.parts ?? []) { const t = extractBody(part); if (t) return t; }
-  if (p.mimeType === "text/html" && p.body?.data) return b64urlDecode(p.body.data).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  return "";
+/** Readable text from a markup body — for previews, search and the agent. */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<(script|style|head)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;/gi, "'")
+    .replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * Both halves of a mail body, kept separate.
+ *
+ * This used to return one string and throw the markup away — text/html was
+ * flattened with a tag strip, so every synced email arrived in the console as
+ * one grey paragraph with its layout, headings, links and images gone. The HTML
+ * is what a mail client renders; the text is what a preview and the agent read.
+ */
+function extractBody(p: Json): { text: string; html: string } {
+  const out = { text: "", html: "" };
+  const walk = (n: Json) => {
+    if (!n) return;
+    if (n.mimeType === "text/plain" && n.body?.data && !out.text) out.text = b64urlDecode(n.body.data);
+    if (n.mimeType === "text/html" && n.body?.data && !out.html) out.html = b64urlDecode(n.body.data);
+    for (const part of n.parts ?? []) walk(part);
+  };
+  walk(p);
+  if (!out.text && out.html) out.text = htmlToText(out.html);
+  return out;
 }
 
 /** Why a sync produced nothing. "no new mail" and "the connection is dead" both
@@ -51,7 +76,9 @@ async function syncOrg(admin: SupabaseClient, orgId: string): Promise<SyncResult
     const h = headerMap(md.payload);
     const from = h.from ?? "";
     const subject = h.subject ?? "(no subject)";
-    const text = extractBody(md.payload) || md.snippet || "";
+    const parsed = extractBody(md.payload);
+    const text = parsed.text || md.snippet || "";
+    const html = parsed.html;
     const fromEmail = (from.match(/<([^>]+)>/)?.[1] ?? from).trim().toLowerCase();
     let convId: string;
     const { data: existing } = await admin.from("conversations").select("id")
@@ -64,7 +91,13 @@ async function syncOrg(admin: SupabaseClient, orgId: string): Promise<SyncResult
         .select("id").single();
       convId = (conv as Json).id;
     }
-    await admin.from("conversation_messages").insert({ organization_id: orgId, conversation_id: convId, role: "customer", channel_type: "email", body: text, provider_sid: id, meta: { subject, source: "gmail-sync" } });
+    // html goes in meta so the console renders the real message; body stays the
+    // readable text that previews, search and the agent work from.
+    await admin.from("conversation_messages").insert({
+      organization_id: orgId, conversation_id: convId, role: "customer", channel_type: "email",
+      body: text, provider_sid: id,
+      meta: { subject, source: "gmail-sync", ...(html ? { html } : {}) },
+    });
     await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", convId);
     imported++;
   }

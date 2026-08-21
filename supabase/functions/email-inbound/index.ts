@@ -30,6 +30,18 @@ const emailOf = (raw: string) => {
 };
 
 /** Normalise the many provider payload shapes into { from, subject, text }. */
+/** Readable text from a markup body, for the plain-text message field. */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<(script|style|head)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;/gi, "'")
+    .replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function parseInbound(payload: Json, form: FormData | null): { from: string; subject: string; text: string } {
   const g = (k: string) => (form ? (form.get(k)?.toString() ?? "") : "");
   if (payload) {
@@ -43,7 +55,11 @@ function parseInbound(payload: Json, form: FormData | null): { from: string; sub
     return { from: emailOf(String(fromRaw || "")), subject: String(subject || ""), text: String(text || "").trim() };
   }
   // SendGrid Inbound Parse (multipart form): from, subject, text
-  return { from: emailOf(g("from")), subject: g("subject"), text: (g("text") || g("html")).trim() };
+  // Falling back to g("html") RAW put markup into a plain-text field: the console
+  // then rendered it escaped, so the reader saw <table> and <div> instead of the
+  // message, and the agent replied to tag soup. Flatten it to text instead.
+  const plain = g("text").trim();
+  return { from: emailOf(g("from")), subject: g("subject"), text: plain || htmlToText(g("html")) };
 }
 
 async function authenticate(req: Request, rawBody: string): Promise<boolean> {

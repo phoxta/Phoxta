@@ -53,6 +53,26 @@ const EMAIL_BASE_CSS = `
   pre { white-space: pre-wrap; word-wrap: break-word; }
 `;
 
+/**
+ * Markup that arrived in a plain-text field.
+ *
+ * Ingest used to put an email's HTML straight into `body` when the mail carried
+ * no text/plain part, so the console rendered it escaped and the reader saw
+ * <table> and <div> instead of the message. Both ingest paths are fixed, but
+ * everything already stored still has markup sitting in body — this detects it
+ * so those messages render as mail rather than needing a backfill.
+ *
+ * Two tags minimum: someone typing "a < b" or "<3" trips a one-tag test, and a
+ * real email never has fewer than two.
+ */
+const HTML_TAGS =
+  /<\/?(?:html|body|head|div|table|tbody|tr|td|th|p|br|hr|span|a|img|ul|ol|li|h[1-6]|strong|em|b|i|center|font|style|blockquote)\b[^>]*>/gi;
+
+function looksLikeHtml(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return (text.match(HTML_TAGS)?.length ?? 0) >= 2;
+}
+
 /** Wrap the message in a real document so it renders like mail, not markup. */
 function emailDocument(html: string): string {
   return [
@@ -182,7 +202,8 @@ function MessageBubble({
 
   const mine = m.role !== "customer";
   const meta = (m.meta ?? {}) as Record<string, unknown>;
-  const html = typeof meta.html === "string" && meta.html.trim() ? meta.html : null;
+  const metaHtml = typeof meta.html === "string" && meta.html.trim() ? meta.html : null;
+  const html = metaHtml ?? (looksLikeHtml(m.body) ? m.body : null);
   const subject = typeof meta.subject === "string" && meta.subject.trim() ? meta.subject : null;
   const failed = m.delivery_status === "failed";
   const delivery = m.delivery_status ? DELIVERY_LABEL[m.delivery_status] : undefined;
@@ -246,7 +267,13 @@ export function TicketMessages({ messages, customerName }: { messages: TicketMes
             <div className={`ibx-msg ${mine ? "is-mine" : "is-theirs"}${m.author === "ai" ? " is-ai" : ""}`}>
               <span className="ibx-msg__slot">{!mine && endsGroup && <Avatar name={label} size="sm" />}</span>
               <span className="ibx-msg__stack">
-                <span className="ibx-bubble">{m.body}</span>
+                {looksLikeHtml(m.body) ? (
+                  <span className="ibx-bubble ibx-bubble--html">
+                    <EmailFrame html={m.body} />
+                  </span>
+                ) : (
+                  <span className="ibx-bubble">{m.body}</span>
+                )}
                 {endsGroup && (
                   <span className="ibx-msg__meta">
                     <AuthorIcon role={m.author} />
