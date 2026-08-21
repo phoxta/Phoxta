@@ -61,6 +61,9 @@ verify_jwt = false
 [functions.embed-worker]
 verify_jwt = false
 
+[functions.knowledge-build]
+verify_jwt = false
+
 [functions.workflow-worker]
 verify_jwt = false
 
