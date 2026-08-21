@@ -24,7 +24,7 @@ import { ArrowRightIcon } from '@heroicons/react/24/outline'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  description: 'Soar by Phoxta — find and book stays around the world.',
+  description: 'Find and book unique, guide-led experiences around the world.',
 }
 
 function Page() {

@@ -27,24 +27,24 @@ interface FeatureSection2Props {
 
 const faqs_demo = [
   {
-    question: 'Is my place right for Soar?',
+    question: 'How do I book an experience?',
     answer:
-      'Many travelers choose accommodations near downtown West Palm Beach, in the historic districts, or around Northwood Village for a local experience.',
+      'Pick a date and party size on any experience page and confirm. You will get an email with your reference straight away, and your guide will be in touch before the day.',
   },
   {
-    question: 'What are Soar’s fees?',
+    question: 'Can I change or cancel a booking?',
     answer:
-      'Many travelers choose accommodations near downtown West Palm Beach, in the historic districts, or around Northwood Village for a local experience.',
+      'Yes. Use the reference in your confirmation email on the Manage booking page, or reply to that email. Free changes up to 48 hours before your experience starts.',
   },
   {
-    question: 'Baggage delay or loss?',
+    question: 'Who leads the experiences?',
     answer:
-      'Many travelers choose accommodations near downtown West Palm Beach, in the historic districts, or around Northwood Village for a local experience.',
+      'Every experience is run by a local guide who lives and works where it takes place, so you get the version a resident would show a friend.',
   },
   {
-    question: 'How do I get started?',
+    question: 'What if the weather turns?',
     answer:
-      'Many travelers choose accommodations near downtown West Palm Beach, in the historic districts, or around Northwood Village for a local experience.',
+      'Outdoor experiences run in most conditions, but if a guide judges it unsafe we move you to another date or refund you in full. You will hear from us the day before.',
   },
 ]
 

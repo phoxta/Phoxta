@@ -8,7 +8,9 @@ export default function ErrorBoundary() {
 
     return (
         <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
-            <p className="text-sm font-semibold tracking-wide text-primary/80 uppercase">Soar</p>
+            {/* Tenant-neutral: this storefront is white-labelled per business, so a
+                hardcoded brand name is wrong for every tenant but one. */}
+            <p className="text-sm font-semibold tracking-wide text-primary/80 uppercase">Experiences</p>
             <h1 className="mt-3 text-3xl font-semibold text-neutral-900 dark:text-neutral-100">
                 This page hit a snag
             </h1>

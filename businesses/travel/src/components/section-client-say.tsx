@@ -51,7 +51,7 @@ const SectionClientSay: FC<SectionClientSayProps> = ({
     loop: true,
   },
   heading = 'Good news from far away 🥇',
-  subHeading = "Let's see what people think of Soar",
+  subHeading = "What travellers say about their experience",
 }) => {
   const [emblaRef, emblaApi] = useEmblaCarousel(
     {

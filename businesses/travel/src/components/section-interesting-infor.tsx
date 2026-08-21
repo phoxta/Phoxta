@@ -29,7 +29,7 @@ const STATS = [
   },
   {
     value: '2B+',
-    label: 'Soar guest arrivals all-time',
+    label: 'Guests hosted all-time',
   },
 ]
 
@@ -57,7 +57,7 @@ export default function SectionInterestingInfor({
   className,
   heading = (
     <>
-      Some interesting information <span data-slot="italic">about the Soar!</span>
+      Some interesting information <span data-slot="italic">about our experiences!</span>
     </>
   ),
   description = (

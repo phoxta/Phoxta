@@ -29,11 +29,11 @@ const playfair_display = Playfair_Display({
 export const metadata: Metadata = {
   metadataBase: new URL('https://travel.phoxta.com'),
   title: {
-    template: '%s - Soar',
-    default: 'Soar - Book stays, flights, cars & experiences',
+    template: '%s - Experiences',
+    default: 'Experiences - find and book unique things to do',
   },
-  description: 'Soar by Phoxta — book stays, flights, car rentals and experiences around the world.',
-  keywords: ['Soar', 'Phoxta', 'travel booking', 'stays', 'flights', 'car rental', 'experiences'],
+  description: 'Book unique, guide-led experiences around the world.',
+  keywords: ['experiences', 'things to do', 'tours', 'guided experiences', 'travel booking'],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

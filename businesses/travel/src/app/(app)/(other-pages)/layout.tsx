@@ -4,8 +4,8 @@ import { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Home',
-  description: 'Soar by Phoxta — book stays, flights, car rentals and experiences around the world.',
-  keywords: ['Soar', 'Phoxta', 'travel booking', 'stays', 'flights', 'car rental', 'experiences'],
+  description: 'Book unique, guide-led experiences around the world.',
+  keywords: ['experiences', 'things to do', 'tours', 'guided experiences', 'travel booking'],
 }
 
 export default function Layout({ children, params }: { children: React.ReactNode; params: any }) {
