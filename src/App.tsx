@@ -58,6 +58,7 @@ const ReservationsPage = lazy(() => import("@/pages/dashboard/ops/ReservationsPa
 const MarketingPage = lazy(() => import("@/pages/dashboard/ops/MarketingPage"));
 const OpsInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
 const OpsSettingsPage = lazy(() => import("@/pages/dashboard/ops/SettingsPage"));
+const OpsPlatformPage = lazy(() => import("@/pages/dashboard/ops/PlatformPage"));
 const AgentOverviewPage = lazy(() => import("@/pages/dashboard/ops/agent/AgentOverviewPage"));
 const AgentOperatorPage = lazy(() => import("@/pages/dashboard/ops/agent/OperatorPage"));
 const AgentConfigurePage = lazy(() => import("@/pages/dashboard/ops/agent/ConfigurePage"));
@@ -117,6 +118,8 @@ export default function App() {
             <Route index element={<OverviewPage />} />
             <Route path="inbox" element={<OpsInboxPage />} />
             <Route path="crm" element={<CrmPage />} />
+            {/* Phoxta's own cross-tenant module — admin-gated by the RPCs behind it. */}
+            <Route path="platform" element={<OpsPlatformPage />} />
             <Route path="commerce" element={<CommercePage />} />
             <Route path="invoicing" element={<InvoicingPage />} />
             <Route path="bookings" element={<BookingsPage />} />

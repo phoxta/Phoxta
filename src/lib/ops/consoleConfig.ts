@@ -26,6 +26,7 @@ export const MODULES: Record<string, OpsModuleDef> = {
   invoicing: { seg: "invoicing", label: "Invoicing" },
   marketing: { seg: "marketing", label: "Marketing" },
   agent: { seg: "agent", label: "AI Agent" },
+  platform: { seg: "platform", label: "Platform" },
   settings: { seg: "settings", label: "Settings" },
 };
 
@@ -80,6 +81,20 @@ const RESTAURANT: VerticalConsole = {
   modules: ["overview", "inbox", "commerce", "crm", "marketing", "invoicing", "agent", "settings"],
 };
 // Default: generic / unknown vertical. One booking surface only (reservations).
+// Phoxta itself. It runs on the same console as any tenant — Inbox for
+// prospects, CRM for customers, Marketing, Invoicing, its own AI agent — plus a
+// Platform module for the cross-tenant questions no tenant console can answer.
+//
+// No commerce module: what Phoxta sells lives in `blueprints`, not `products`,
+// so a Catalog tab would render an empty product list. Blueprints are managed
+// in the Platform module instead.
+const PLATFORM: VerticalConsole = {
+  commerceLabel: "Blueprints",
+  itemNoun: "Blueprint",
+  booking: "none",
+  modules: ["overview", "platform", "inbox", "crm", "marketing", "invoicing", "agent", "settings"],
+};
+
 const DEFAULT: VerticalConsole = {
   commerceLabel: "Commerce",
   itemNoun: "Product",
@@ -89,6 +104,7 @@ const DEFAULT: VerticalConsole = {
 
 // Map vertical synonyms → a console config.
 const BY_VERTICAL: Record<string, VerticalConsole> = {
+  platform: PLATFORM, phoxta: PLATFORM,
   retail: RETAIL, fashion: RETAIL, apparel: RETAIL, ecommerce: RETAIL, shop: RETAIL,
   furniture: RETAIL, store: RETAIL, goods: RETAIL, homeware: RETAIL,
   // "automotive"/"car" on its own means selling cars far more often than renting

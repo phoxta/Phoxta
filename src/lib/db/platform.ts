@@ -77,3 +77,27 @@ export async function fetchPlatformRevenue(limit = 200): Promise<{ data: Platfor
   const { data, error } = await supabase.rpc("app_platform_revenue", { p_limit: limit });
   return { data: (data as PlatformPurchase[] | null) ?? [], error: friendlyError(error?.message) };
 }
+
+/** Who can open the platform console. Membership is granted only by an existing
+ *  admin — 0090 originally seeded every business owner, which would have handed
+ *  cross-tenant reads to customers; 0091 cut that back to the owner. */
+export type PlatformAdmin = { user_id: string; email: string; note: string; created_at: string };
+
+export async function fetchPlatformAdmins(): Promise<{ data: PlatformAdmin[]; error: string | null }> {
+  const { data, error } = await supabase.rpc("app_platform_admins");
+  return { data: (data as PlatformAdmin[] | null) ?? [], error: friendlyError(error?.message) };
+}
+
+export async function addPlatformAdmin(email: string): Promise<{ ok: boolean; error: string | null }> {
+  const { data, error } = await supabase.rpc("app_platform_admin_add", { p_email: email });
+  if (error) return { ok: false, error: friendlyError(error.message) };
+  const r = (data ?? {}) as { ok?: boolean; error?: string };
+  return { ok: !!r.ok, error: r.ok ? null : (r.error ?? "Could not add that admin.") };
+}
+
+export async function removePlatformAdmin(userId: string): Promise<{ ok: boolean; error: string | null }> {
+  const { data, error } = await supabase.rpc("app_platform_admin_remove", { p_user: userId });
+  if (error) return { ok: false, error: friendlyError(error.message) };
+  const r = (data ?? {}) as { ok?: boolean; error?: string };
+  return { ok: !!r.ok, error: r.ok ? null : (r.error ?? "Could not remove that admin.") };
+}
