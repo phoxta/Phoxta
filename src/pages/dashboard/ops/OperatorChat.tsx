@@ -348,7 +348,6 @@ export default function OperatorChat({ orgId, opsBase }: { orgId: string; opsBas
         <div className="opc-body" ref={bodyRef} aria-live="polite">
           {groups.length === 0 && !busy && (
             <div className="opc-empty">
-              <p>Ask for anything across this business — or tell me to do it.</p>
               <div className="opc-starters">
                 {STARTERS.map((s) => (
                   <button key={s} type="button" onClick={() => send(s)}>{s}</button>

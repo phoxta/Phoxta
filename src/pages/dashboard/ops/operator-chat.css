@@ -90,7 +90,6 @@
 .opc-typing i{animation:none;opacity:.6}
 }
 .opc-empty{margin:auto 0;text-align:center;color:var(--at-neutral-500);font-size:13px}
-.opc-empty p{margin:0 0 12px}
 .opc-starters{display:flex;flex-direction:column;gap:7px}
 .opc-starters button{background:transparent;border:1px solid var(--at-neutral-200);border-radius:999px;
   padding:8px 13px;font-size:12.5px;color:var(--at-neutral-800);cursor:pointer;text-align:left}
@@ -243,10 +242,7 @@
 .opc-say.on { color: #142a5f; background: #fff; }
 
 .opc-day span { color: rgba(255, 255, 255, 0.80); }
-/* main.css styles bare <p> and sets a colour on it. A directly-matching rule
-   beats an inherited value whatever the specificity, so colouring .opc-empty
-   alone never reached the paragraph inside it. */
-.opc-empty, .opc-empty p { color: #fff; }
+.opc-empty { color: #fff; }
 .opc-starters button {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.28);
