@@ -101,3 +101,72 @@ export async function removePlatformAdmin(userId: string): Promise<{ ok: boolean
   const r = (data ?? {}) as { ok?: boolean; error?: string };
   return { ok: !!r.ok, error: r.ok ? null : (r.error ?? "Could not remove that admin.") };
 }
+
+// ── Operations ─────────────────────────────────────────────────────────────
+// Everything below is a WRITE across tenants. Each RPC re-checks admin
+// membership server-side and appends to platform_audit, so the console never
+// needs table permissions and every action has an owner.
+
+const call = async (fn: string, args: Record<string, unknown>): Promise<{ ok: boolean; error: string | null }> => {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) return { ok: false, error: friendlyError(error.message) };
+  const r = (data ?? {}) as { ok?: boolean; error?: string };
+  return { ok: !!r.ok, error: r.ok ? null : (r.error ?? "That didn't work.") };
+};
+
+export type PlatformLead = {
+  id: string; source: string; name: string; email: string; phone: string;
+  message: string; status: string; notes: string; created_at: string;
+};
+export const LEAD_STATUSES = ["new", "contacted", "qualified", "won", "lost"] as const;
+
+export async function fetchPlatformLeads(limit = 200): Promise<{ data: PlatformLead[]; error: string | null }> {
+  const { data, error } = await supabase.rpc("app_platform_leads", { p_limit: limit });
+  return { data: (data as PlatformLead[] | null) ?? [], error: friendlyError(error?.message) };
+}
+export const savePlatformLead = (id: string, status: string | null, notes: string | null) =>
+  call("app_platform_lead_save", { p_id: id, p_status: status, p_notes: notes });
+
+export type PlatformBlueprint = {
+  id: string; slug: string; name: string; tagline: string; vertical: string;
+  price_cents: number; currency: string; status: string; demo_url: string | null;
+};
+
+export async function fetchPlatformBlueprints(): Promise<{ data: PlatformBlueprint[]; error: string | null }> {
+  const { data, error } = await supabase.rpc("app_platform_blueprints");
+  return { data: (data as PlatformBlueprint[] | null) ?? [], error: friendlyError(error?.message) };
+}
+export const savePlatformBlueprint = (
+  id: string, name: string | null, tagline: string | null, priceCents: number | null, status: string | null,
+) => call("app_platform_blueprint_save", { p_id: id, p_name: name, p_tagline: tagline, p_price_cents: priceCents, p_status: status });
+
+export const setTenantStage = (orgId: string, stage: string) =>
+  call("app_platform_tenant_stage", { p_org: orgId, p_stage: stage });
+
+export const setTenantSubscription = (orgId: string, plan: string | null, status: string | null) =>
+  call("app_platform_subscription_set", { p_org: orgId, p_plan: plan, p_status: status });
+
+/** Grants the admin a real, revocable membership rather than impersonating —
+ *  the customer's team can see it and the audit log records who granted it. */
+export const setSupportAccess = (orgId: string, grant: boolean) =>
+  call("app_platform_support_access", { p_org: orgId, p_grant: grant });
+
+export type PlatformMargin = {
+  organization_id: string; name: string;
+  revenue_cents: number; ai_cost_cents: number; tokens: number;
+};
+
+export async function fetchPlatformMargin(days = 30): Promise<{ data: PlatformMargin[]; error: string | null }> {
+  const { data, error } = await supabase.rpc("app_platform_margin", { p_days: days });
+  return { data: (data as PlatformMargin[] | null) ?? [], error: friendlyError(error?.message) };
+}
+
+export type PlatformAuditRow = {
+  id: string; actor_email: string | null; action: string; target: string;
+  detail: Record<string, unknown>; created_at: string;
+};
+
+export async function fetchPlatformAudit(limit = 100): Promise<{ data: PlatformAuditRow[]; error: string | null }> {
+  const { data, error } = await supabase.rpc("app_platform_audit", { p_limit: limit });
+  return { data: (data as PlatformAuditRow[] | null) ?? [], error: friendlyError(error?.message) };
+}
