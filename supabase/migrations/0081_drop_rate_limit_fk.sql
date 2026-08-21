@@ -1,0 +1,23 @@
+-- Phoxta — 0081: land the half of 0068 that was never applied.
+--
+-- 0068_fix_rate_limit_fk shipped two changes: drop a foreign key from the
+-- ephemeral rate-limit counter, and add an unknown-org guard to
+-- app_validate_promo. It was never recorded as applied, and a later migration
+-- independently replaced app_validate_promo with a better version (it answers
+-- "Unknown or expired code", not 0068's "Invalid code").
+--
+-- Re-running 0068 wholesale would therefore `create or replace` the live
+-- function back to the older body — a regression. This migration takes only the
+-- part that is still needed and cannot regress anything.
+--
+-- Why it matters: anon_rate_limit.organization_id referencing organizations(id)
+-- means any anon RPC calling app_rate_limited with an unknown org raises a
+-- 23503 foreign-key violation instead of failing gracefully. app_validate_promo
+-- now guards the org first so it is safe, but every other anon caller of the
+-- counter is one unknown org away from leaking a raw Postgres error.
+--
+-- The table holds ephemeral counters, not referential data, and rows are reaped
+-- by the time-based cleanup inside app_rate_limited, so a dangling org id is
+-- harmless.
+
+alter table anon_rate_limit drop constraint if exists anon_rate_limit_organization_id_fkey;
