@@ -67,6 +67,21 @@ Deno.serve(async (req) => {
         await admin.from("domains").update({ status: "error" }).eq("hostname", m.hostname);
       }
     }
+    // ── A payment test ──────────────────────────────────────────────────────
+    // Stamped here and nowhere else: the whole point is to show that THIS code
+    // ran, which is what a charged card does not prove on its own.
+    if (m.kind === "test" && m.test_id) {
+      const admin = adminClient();
+      await admin
+        .from("payment_tests")
+        .update({
+          status: "paid",
+          stripe_payment_intent: s.payment_intent ?? null,
+          webhook_seen_at: new Date().toISOString(),
+        })
+        .eq("id", m.test_id);
+    }
+
     // ── A business bought from the marketplace ──────────────────────────────
     if (m.kind === "blueprint" && m.purchase_id) {
       const admin = adminClient();

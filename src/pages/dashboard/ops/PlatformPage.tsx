@@ -9,7 +9,9 @@ import {
   setTenantStage, setTenantSubscription, setSupportAccess,
   fetchPlatformMargin, fetchPlatformAudit,
   type PlatformOverview, type PlatformTenant, type PlatformPurchase, type PlatformAdmin,
+  listPaymentTests, startPaymentTest,
   type PlatformLead, type PlatformBlueprint, type PlatformMargin, type PlatformAuditRow,
+  type PaymentTest,
 } from "@/lib/db/platform";
 
 /**
@@ -34,7 +36,7 @@ const money = (cents: number, ccy = "GBP") => {
 const num = (n: number) => new Intl.NumberFormat().format(n);
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
-const SECTIONS = ["Overview", "Customers", "Blueprints", "Leads", "Margin", "Access"] as const;
+const SECTIONS = ["Overview", "Customers", "Blueprints", "Leads", "Margin", "Payments", "Access"] as const;
 type Section = (typeof SECTIONS)[number];
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -62,7 +64,14 @@ function Card({ title, count, children }: { title: string; count?: number; child
 }
 
 export default function OpsPlatformPage() {
-  const [section, setSection] = useState<Section>("Overview");
+  const [section, setSection] = useState<Section>(
+    // Stripe returns here after a test, so land on the section that shows it.
+    () => (new URLSearchParams(window.location.search).get("section") as Section) || "Overview",
+  );
+  const [tests, setTests] = useState<PaymentTest[]>([]);
+  const [testAmount, setTestAmount] = useState("1.00");
+  const [testNote, setTestNote] = useState("");
+  const [testing, setTesting] = useState(false);
   const [ov, setOv] = useState<PlatformOverview | null>(null);
   const [tenants, setTenants] = useState<PlatformTenant[]>([]);
   const [revenue, setRevenue] = useState<PlatformPurchase[]>([]);
@@ -78,12 +87,14 @@ export default function OpsPlatformPage() {
   const [edit, setEdit] = useState<Record<string, Partial<PlatformBlueprint>>>({});
 
   const reload = useCallback(async () => {
-    const [t, r, a, l, b, m, au] = await Promise.all([
+    const [t, r, a, l, b, m, au, pt] = await Promise.all([
       fetchPlatformTenants(), fetchPlatformRevenue(), fetchPlatformAdmins(),
       fetchPlatformLeads(), fetchPlatformBlueprints(), fetchPlatformMargin(), fetchPlatformAudit(),
+      listPaymentTests(),
     ]);
     setTenants(t.data); setRevenue(r.data); setAdmins(a.data);
     setLeads(l.data); setBlueprints(b.data); setMargin(m.data); setAudit(au.data);
+    setTests(pt.data);
   }, []);
 
   useEffect(() => {
@@ -367,6 +378,113 @@ export default function OpsPlatformPage() {
       )}
 
       {/* ── Access ───────────────────────────────────────────────────────── */}
+      {section === "Payments" && (
+        <>
+          <div className="bg-neutral-0 rounded-4 p-4 border-100 mb-3">
+            <h3 className="fz-font-md fw-600 mb-1">Test a payment</h3>
+            <p className="fz-font-sm neutral-500 mb-3">
+              Puts a real charge through Stripe and then waits to see whether{" "}
+              <b>stripe-webhook</b> ran. Those are different things: a card can be charged while the
+              webhook never fires — which is what a live key wired to a test-mode signing secret
+              looks like — and the webhook is the half that provisions businesses.
+            </p>
+            <form
+              className="row g-2 align-items-end"
+              onSubmit={async (e: FormEvent) => {
+                e.preventDefault();
+                const pence = Math.round(parseFloat(testAmount || "0") * 100);
+                if (!Number.isFinite(pence) || pence < 50) {
+                  toastError("Enter at least £0.50 — Stripe refuses anything smaller.");
+                  return;
+                }
+                setTesting(true);
+                const { url, error } = await startPaymentTest(pence, testNote.trim());
+                setTesting(false);
+                if (error || !url) {
+                  toastError(error ?? "Could not start the test.");
+                  return;
+                }
+                window.location.assign(url);
+              }}
+            >
+              <div className="col-sm-3">
+                <label htmlFor="pt-amount" className="form-label fz-font-sm neutral-500 mb-1">Amount (£)</label>
+                <input
+                  id="pt-amount" className="form-control rounded-3" inputMode="decimal"
+                  value={testAmount} onChange={(e) => setTestAmount(e.target.value)}
+                />
+              </div>
+              <div className="col-sm-6">
+                <label htmlFor="pt-note" className="form-label fz-font-sm neutral-500 mb-1">Note (optional)</label>
+                <input
+                  id="pt-note" className="form-control rounded-3" placeholder="What are you checking?"
+                  value={testNote} onChange={(e) => setTestNote(e.target.value)}
+                />
+              </div>
+              <div className="col-sm-3">
+                <button className="btn btn-dark rounded-3 w-100 ops-tap" disabled={testing}>
+                  {testing ? "Starting…" : "Pay with Stripe"}
+                </button>
+              </div>
+            </form>
+            <p className="fz-font-sm neutral-500 mb-0 mt-2">
+              Capped at £100. With a live key this charges a real card — use test card
+              <code className="ms-1">4242 4242 4242 4242</code> while your key is <code>sk_test_…</code>.
+            </p>
+          </div>
+
+          <div className="bg-neutral-0 rounded-4 p-4 border-100">
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <h3 className="fz-font-md fw-600 mb-0">Recent tests</h3>
+              <button type="button" className="btn btn-outline-dark btn-sm rounded-3 ops-tap"
+                      onClick={async () => { const { data } = await listPaymentTests(); setTests(data); toast("Refreshed."); }}>
+                Refresh
+              </button>
+            </div>
+            {tests.length === 0 ? (
+              <p className="fz-font-sm neutral-500 mb-0">No tests yet.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-sm align-middle mb-0">
+                  <thead>
+                    <tr className="fz-font-sm neutral-500">
+                      <th>When</th><th>Amount</th><th>Note</th><th>Charged</th><th>Webhook ran</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tests.map((t) => (
+                      <tr key={t.id} className="fz-font-md">
+                        <td className="neutral-500">{new Date(t.created_at).toLocaleString()}</td>
+                        <td>{money(t.amount_cents, t.currency)}</td>
+                        <td className="neutral-500">{t.note || "—"}</td>
+                        <td>
+                          <span className={`badge fw-500 ${t.status === "paid" ? "bg-success-subtle text-success" : "bg-neutral-100 neutral-700"}`}>
+                            {t.status}
+                          </span>
+                        </td>
+                        <td>
+                          {t.webhook_seen_at ? (
+                            <span className="badge bg-success-subtle text-success fw-500">
+                              {new Date(t.webhook_seen_at).toLocaleTimeString()}
+                            </span>
+                          ) : t.status === "paid" ? (
+                            // Paid but never stamped: the money moved and the code
+                            // that fulfils orders did not run.
+                            <span className="badge bg-danger-subtle text-danger fw-500">never arrived</span>
+                          ) : (
+                            <span className="neutral-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {section === "Access" && (
         <>
           <Card title="Platform access" count={admins.length}>

@@ -6,6 +6,7 @@
 //   { kind: "change_plan", orgId, plan, returnUrl }       — move between plans.
 //   { kind: "cancel", orgId }                             — self-serve cancel.
 //   { kind: "verify", reference }                         — callback-page check.
+//   { kind: "test", amountPence, note? }                  — platform-admin probe.
 //
 // Fulfilment NEVER happens here. This returns a hosted checkout URL; the
 // business is provisioned and the subscription row written only by
@@ -71,6 +72,53 @@ Deno.serve(async (req) => {
         fulfilled = ["active", "trialing"].includes(String((s as Json)?.status ?? ""));
       }
       return json({ status: paid ? "success" : String(session.status ?? "pending"), kind: meta.kind ?? null, fulfilled });
+    }
+
+    // ── test: prove a payment can actually be taken ─────────────────────────
+    if (kind === "test") {
+      const who = await requireUser(req);
+      if ("error" in who) return who.error;
+
+      // Enforced server-side. With a live key this spends real money, so the
+      // rule cannot live in whether a button is rendered.
+      const { data: isAdmin } = await admin.rpc("app_is_platform_admin_for", { p_user: who.userId });
+      if (isAdmin !== true) return json({ error: "Platform admins only." }, 403);
+
+      const pence = Math.round(Number(body?.amountPence ?? 0));
+      if (!Number.isFinite(pence) || pence < 50) {
+        return json({ error: "Enter at least £0.50 — Stripe refuses anything smaller." }, 400);
+      }
+      // A cap, because this is a probe and a stray zero on a live key is a real
+      // charge. Raise it deliberately if a bigger test is ever needed.
+      if (pence > 100_00) return json({ error: "Test payments are capped at £100." }, 400);
+
+      const email = await emailOf(admin, who.userId);
+      const note = String(body?.note ?? "").slice(0, 120);
+
+      const { data: row, error: rErr } = await admin
+        .from("payment_tests")
+        .insert({ created_by: who.userId, amount_cents: pence, currency: "GBP", note, status: "pending" })
+        .select("id").single();
+      if (rErr) return json({ error: rErr.message }, 500);
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer_email: email ?? undefined,
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: CURRENCY,
+            unit_amount: pence,
+            product_data: { name: note || "Phoxta payment test" },
+          },
+        }],
+        metadata: { kind: "test", test_id: (row as Json).id },
+        success_url: success,
+        cancel_url: returnUrl,
+      });
+
+      await admin.from("payment_tests").update({ stripe_session_id: session.id }).eq("id", (row as Json).id);
+      return json({ url: session.url, testId: (row as Json).id });
     }
 
     // ── blueprint: one-time purchase of a business ──────────────────────────

@@ -170,3 +170,56 @@ export async function fetchPlatformAudit(limit = 100): Promise<{ data: PlatformA
   const { data, error } = await supabase.rpc("app_platform_audit", { p_limit: limit });
   return { data: (data as PlatformAuditRow[] | null) ?? [], error: friendlyError(error?.message) };
 }
+
+// ── Payment tests ───────────────────────────────────────────────────────────
+
+/**
+ * One probe of the payment path.
+ *
+ * `webhook_seen_at` is the field that matters. A charged card proves Stripe
+ * took the money; only this proves stripe-webhook ran — and that is the half
+ * that provisions businesses. A test that is `paid` with no webhook timestamp
+ * is the exact shape of a live key wired to a test-mode webhook secret.
+ */
+export type PaymentTest = {
+  id: string;
+  amount_cents: number;
+  currency: string;
+  note: string;
+  status: "pending" | "paid" | "failed";
+  stripe_session_id: string | null;
+  webhook_seen_at: string | null;
+  created_at: string;
+};
+
+export async function listPaymentTests(limit = 10): Promise<{ data: PaymentTest[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("payment_tests")
+    .select("id, amount_cents, currency, note, status, stripe_session_id, webhook_seen_at, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return { data: (data as PaymentTest[] | null) ?? [], error: friendlyError(error?.message) };
+}
+
+/** Start a test payment. Returns the Stripe Checkout URL to send the browser to. */
+export async function startPaymentTest(
+  amountPence: number,
+  note: string,
+): Promise<{ url: string | null; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("stripe-checkout", {
+    body: {
+      kind: "test",
+      amountPence,
+      note,
+      returnUrl: `${window.location.origin}/dashboard/platform?section=Payments`,
+    },
+  });
+  if (error) {
+    let msg = error.message;
+    try { const ctx = await (error as { context?: Response }).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* keep */ }
+    return { url: null, error: friendlyError(msg) };
+  }
+  const d = (data ?? {}) as { url?: string; error?: string };
+  if (d.error) return { url: null, error: d.error };
+  return { url: d.url ?? null, error: null };
+}
