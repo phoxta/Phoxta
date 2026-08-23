@@ -79,7 +79,7 @@ export default function HomePage() {
                                 <img className="img-cover w-100 h-100" src="/assets/imgs/pages/product/img-shop-1.webp" alt="New season" style={{ minHeight: 420, objectFit: "cover" }} loading="lazy" />
                                 <div className="p-absolute bottom-0 start-0 m-lg-5 m-4">
                                     <h3 className="fw-600 text-white mb-2">The New Season<br />Edit</h3>
-                                    <h6 className="fw-500 text-white opacity-75 mb-4">Free shipping on orders over $100</h6>
+                                    <h6 className="fw-500 text-white opacity-75 mb-4">Free shipping on orders over £100</h6>
                                     <Link to="/shop?c=new" className="at-btn bg-white text-dark"><span><span className="text-1">Explore</span><span className="text-2">Explore</span></span></Link>
                                 </div>
                             </div>

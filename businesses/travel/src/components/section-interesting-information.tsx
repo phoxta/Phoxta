@@ -27,7 +27,7 @@ const STATS = [
     label: 'Hosts on Airbnb',
   },
   {
-    value: '$3B+',
+    value: '£3B+',
     label: 'Earned by hosts, all-time',
   },
 ]

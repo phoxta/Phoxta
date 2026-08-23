@@ -10,7 +10,7 @@ const VALUES = [
 
 const FALLBACK = {
     title: "The brand behind the clothes",
-    body: "Aurelia began with a simple idea: a wardrobe should feel effortless. We design modern essentials with honest materials and a quiet confidence — pieces that work as hard as you do, season after season.\nToday that philosophy extends online — shop the full collection, get styled by our AI, and have it delivered with free shipping over $100.",
+    body: "Aurelia began with a simple idea: a wardrobe should feel effortless. We design modern essentials with honest materials and a quiet confidence — pieces that work as hard as you do, season after season.\nToday that philosophy extends online — shop the full collection, get styled by our AI, and have it delivered with free shipping over £100.",
 };
 
 export default function AboutPage() {

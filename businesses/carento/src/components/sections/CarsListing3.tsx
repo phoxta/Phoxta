@@ -53,9 +53,9 @@ export default function CarsListing3() {
 								<div className="dropdown dropdown-filter">
 									<button className="btn btn-dropdown dropdown-toggle m-0" id="dropdownCategory" type="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Price range</span></button>
 									<ul className="dropdown-menu dropdown-menu-light" aria-labelledby="dropdownCategory">
-										<li><Link className="dropdown-item active" href="#">$10 - $100</Link></li>
-										<li><Link className="dropdown-item" href="#">$100 - $1.000</Link></li>
-										<li><Link className="dropdown-item" href="#">$1.000 - $10.000</Link></li>
+										<li><Link className="dropdown-item active" href="#">£10 - £100</Link></li>
+										<li><Link className="dropdown-item" href="#">£100 - £1.000</Link></li>
+										<li><Link className="dropdown-item" href="#">£1.000 - £10.000</Link></li>
 									</ul>
 								</div>
 							</div>

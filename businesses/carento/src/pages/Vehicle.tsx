@@ -346,7 +346,7 @@ export default function CarsDetails1() {
                                                 <div className="card card-body">
                                                     <ul className="list-checked-green">
                                                         <li>Free cancellation up to 48 hours before pick-up</li>
-                                                        <li>Collision Damage Waiver with $700 deductible</li>
+                                                        <li>Collision Damage Waiver with £700 deductible</li>
                                                         <li>Theft Protection with ₫66,926,626 excess</li>
                                                         <li>Unlimited mileage</li>
                                                     </ul>

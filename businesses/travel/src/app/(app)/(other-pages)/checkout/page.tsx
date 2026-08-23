@@ -60,16 +60,16 @@ const Page = () => {
         <Divider className="block lg:hidden" />
 
         <DescriptionList>
-          <DescriptionTerm>$19.00 x 3 day</DescriptionTerm>
-          <DescriptionDetails className="sm:text-right">$57.00</DescriptionDetails>
+          <DescriptionTerm>£19.00 x 3 day</DescriptionTerm>
+          <DescriptionDetails className="sm:text-right">£57.00</DescriptionDetails>
           <DescriptionTerm>Service charge</DescriptionTerm>
-          <DescriptionDetails className="sm:text-right">$0.00</DescriptionDetails>
+          <DescriptionDetails className="sm:text-right">£0.00</DescriptionDetails>
           <DescriptionTerm>Fee</DescriptionTerm>
-          <DescriptionDetails className="sm:text-right">$0.00</DescriptionDetails>
+          <DescriptionDetails className="sm:text-right">£0.00</DescriptionDetails>
           <DescriptionTerm>Tax</DescriptionTerm>
-          <DescriptionDetails className="sm:text-right">$0.00</DescriptionDetails>
+          <DescriptionDetails className="sm:text-right">£0.00</DescriptionDetails>
           <DescriptionTerm className="font-semibold text-neutral-900">Total</DescriptionTerm>
-          <DescriptionDetails className="font-semibold sm:text-right">$57.00</DescriptionDetails>
+          <DescriptionDetails className="font-semibold sm:text-right">£57.00</DescriptionDetails>
         </DescriptionList>
       </div>
     )

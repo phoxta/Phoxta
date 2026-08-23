@@ -25,12 +25,12 @@ const ENV_AGENT_KEY = (import.meta.env.VITE_AGENT_PUBLIC_KEY as string | undefin
 const ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
 type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[] };
-const CHIPS = ["What's new in?", "Style a wool coat", "Gift under $150", "Size advice"];
+const CHIPS = ["What's new in?", "Style a wool coat", "Gift under £150", "Size advice"];
 
 function localReply(q: string): string {
     const s = q.toLowerCase();
     if (/new|arriv|trend/.test(s)) return "Just landed: the Tailored Wool Coat, Silk Slip Dress and Cashmere Knit. Want me to pull up the New Arrivals edit?";
-    if (/gift|under|budget/.test(s)) return "Lovely gifts under $150: the Relaxed Linen Shirt, Pleated Midi Skirt and Merino Roll-Neck — all ship in recyclable packaging.";
+    if (/gift|under|budget/.test(s)) return "Lovely gifts under £150: the Relaxed Linen Shirt, Pleated Midi Skirt and Merino Roll-Neck — all ship in recyclable packaging.";
     if (/coat|style|outfit|wear|pair/.test(s)) return "The Tailored Wool Coat looks beautiful over the Cashmere Knit with Wide-Leg Trousers — an easy, elevated everyday look.";
     if (/size|fit|measure/.test(s)) return "Our pieces run true to size. Between sizes? Size up for a relaxed drape — tell me your usual size and I'll confirm.";
     return "I'm your Aurelia stylist — I can suggest pieces, build outfits, advise on fit and find the perfect gift. What are you shopping for?";

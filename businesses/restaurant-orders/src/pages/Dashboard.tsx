@@ -3,16 +3,16 @@ import Layout from "@/components/Layout";
 const STATS = [
     ["Today's Orders", "47", "+12% vs yesterday"],
     ["Covers Tonight", "118", "92% of capacity"],
-    ["Revenue (Today)", "$6,240", "+8% vs avg"],
-    ["Avg. Order", "$54", "+$3 vs last week"],
+    ["Revenue (Today)", "£6,240", "+8% vs avg"],
+    ["Avg. Order", "£54", "+£3 vs last week"],
 ];
 
 const ORDERS = [
-    ["#SVR-4821", "Online · Pickup", "Duck Breast +2", "$96", "new"],
-    ["#SVR-4820", "Online · Delivery", "Truffle Risotto +1", "$58", "preparing"],
-    ["#SVR-4819", "Dine-in · Table 7", "Tasting Menu ×2", "$184", "preparing"],
-    ["#SVR-4818", "Online · Pickup", "Salmon, Brûlée", "$54", "ready"],
-    ["#SVR-4817", "Dine-in · Table 3", "Bisque, Scallops", "$62", "ready"],
+    ["#SVR-4821", "Online · Pickup", "Duck Breast +2", "£96", "new"],
+    ["#SVR-4820", "Online · Delivery", "Truffle Risotto +1", "£58", "preparing"],
+    ["#SVR-4819", "Dine-in · Table 7", "Tasting Menu ×2", "£184", "preparing"],
+    ["#SVR-4818", "Online · Pickup", "Salmon, Brûlée", "£54", "ready"],
+    ["#SVR-4817", "Dine-in · Table 3", "Bisque, Scallops", "£62", "ready"],
 ];
 
 const RES = [

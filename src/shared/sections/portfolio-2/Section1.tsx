@@ -80,7 +80,7 @@ const PORTFOLIO_DATA: PortfolioItem[] = [
         link: "/portfolio-details-2",
         linkCase: "#",
         img: "/assets/imgs/pages/img-68.webp",
-        headline: "$1.4M revenue in 6 months",
+        headline: "£1.4M revenue in 6 months",
         description:
             "We restructured paid campaigns, refined audience targeting, and optimized creatives to drive higher returns while reducing wasted ad spend.",
         title: "Global Brand",

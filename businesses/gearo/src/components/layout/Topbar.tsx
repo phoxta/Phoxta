@@ -19,7 +19,7 @@ export default function Topbar() {
                     <div className="col-xl-4">
                         <div className="text-center">
                             <p className="text-caption-1 text_white">
-                                Free shipping on all orders over <span className="text_primary">$20.00</span>
+                                Free shipping on all orders over <span className="text_primary">£20.00</span>
                             </p>
                         </div>
                     </div>

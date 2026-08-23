@@ -26,7 +26,7 @@ const PORTFOLIO_ITEMS = [
         description: "A recurring coffee brand with an AI support assistant and automatic cart recovery",
         tags: [
             { label: "E-commerce", href: "/product-archive" },
-            { label: "From $1,200", href: "/product-archive" },
+            { label: "From £1,200", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
@@ -38,7 +38,7 @@ const PORTFOLIO_ITEMS = [
         description: "An audience-ready apparel storefront with AI product copy and built-in SEO",
         tags: [
             { label: "DTC", href: "/product-archive" },
-            { label: "From $1,500", href: "/product-archive" },
+            { label: "From £1,500", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
@@ -50,7 +50,7 @@ const PORTFOLIO_ITEMS = [
         description: "A local services business with an AI receptionist and automated SMS rebooking",
         tags: [
             { label: "Local services", href: "/product-archive" },
-            { label: "From $900", href: "/product-archive" },
+            { label: "From £900", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
@@ -62,7 +62,7 @@ const PORTFOLIO_ITEMS = [
         description: "A multi-vendor marketplace with split payouts, ratings and real numbers you can check",
         tags: [
             { label: "Marketplace", href: "/product-archive" },
-            { label: "From $3,100", href: "/product-archive" },
+            { label: "From £3,100", href: "/product-archive" },
             { label: "Multi-vendor", href: "/product-archive" },
             { label: "Verified numbers", href: "/product-archive" },
         ],

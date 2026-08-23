@@ -6,7 +6,7 @@ const PAD = "clamp(72px, 8vw, 120px) clamp(20px, 6vw, 96px)";
 const Q_STYLE = { fontFamily: "var(--at-ff-heading)", fontWeight: 600, fontSize: "clamp(19px, 1.7vw, 26px)", lineHeight: 1.15, letterSpacing: "-0.03em", color: "var(--at-neutral-900)" } as const;
 
 const TERMS = [
-    { label: "MINIMUM", value: "$500", note: "Across Growth Notes or Credit Invest." },
+    { label: "MINIMUM", value: "£500", note: "Across Growth Notes or Credit Invest." },
     { label: "FEES", value: "~1%/yr", note: "Servicing fee on Credit Invest. Growth Notes are fee-free — your rate is net." },
     { label: "PAYOUTS", value: "Monthly", note: "Interest accrues daily, paid monthly. Reinvest to compound." },
     { label: "LIQUIDITY", value: "Flexible", note: "Notes pay out at term; early exit best-efforts. Credit Invest withdraws monthly." },

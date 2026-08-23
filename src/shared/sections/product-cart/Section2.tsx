@@ -61,7 +61,7 @@ export default function Section2() {
                                     {ICON_GIFT}
                                     <div>
                                         <h6 className="fw-600 fz-18 mb-0">Gift Package</h6>
-                                        <p className="mb-0">Free packaging over $100</p>
+                                        <p className="mb-0">Free packaging over £100</p>
                                     </div>
                                 </div>
                                 <div className="d-flex gap-4">

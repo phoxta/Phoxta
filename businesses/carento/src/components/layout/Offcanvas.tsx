@@ -95,7 +95,7 @@ export default function Offcanvas({ isOffcanvas, handleOffcanvas }: any) {
                                         <Link href="#" className="text-md-bold neutral-1000">
                                             R1 Concepts® – eLINE Series Plain Brake Rotors
                                         </Link>
-                                        <p className="text-md-bold text-success">$20.00</p>
+                                        <p className="text-md-bold text-success">£20.00</p>
                                     </div>
                                 </div>
                                 <div className="d-flex align-items-center mb-3">
@@ -108,7 +108,7 @@ export default function Offcanvas({ isOffcanvas, handleOffcanvas }: any) {
                                         <Link href="#" className="text-md-bold neutral-1000">
                                             PIRELLI TIRES® – P4 FOUR SEASONS PLUS
                                         </Link>
-                                        <p className="text-md-bold text-success">$160.00</p>
+                                        <p className="text-md-bold text-success">£160.00</p>
                                     </div>
                                 </div>
                                 <div className="d-flex align-items-center mb-3">
@@ -121,7 +121,7 @@ export default function Offcanvas({ isOffcanvas, handleOffcanvas }: any) {
                                         <Link href="#" className="text-md-bold neutral-1000">
                                             Mobil 1 Extended Performance Full Synthetic Motor Oil
                                         </Link>
-                                        <p className="text-md-bold text-success">$33.00</p>
+                                        <p className="text-md-bold text-success">£33.00</p>
                                     </div>
                                 </div>
                                 <div className="d-flex align-items-center mb-3">
@@ -134,7 +134,7 @@ export default function Offcanvas({ isOffcanvas, handleOffcanvas }: any) {
                                         <Link href="#" className="text-md-bold neutral-1000">
                                             HRE FlowForm® – FT01 Tarma Honda 2024
                                         </Link>
-                                        <p className="text-md-bold text-success">$250.00</p>
+                                        <p className="text-md-bold text-success">£250.00</p>
                                     </div>
                                 </div>
                                 <div className="d-flex align-items-center mb-3">
@@ -147,7 +147,7 @@ export default function Offcanvas({ isOffcanvas, handleOffcanvas }: any) {
                                         <Link href="#" className="text-md-bold neutral-1000">
                                             Mobil Delvac 1300 Super Heavy Duty Synthetic
                                         </Link>
-                                        <p className="text-md-bold text-success">$44.00</p>
+                                        <p className="text-md-bold text-success">£44.00</p>
                                     </div>
                                 </div>
                             </div>

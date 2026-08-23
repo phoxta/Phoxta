@@ -26,7 +26,7 @@ export function promoPriceCents(cents: number): number {
   return Math.round(cents * (1 - PROMO.percentOff / 100));
 }
 
-/** Discount a whole-dollar amount and format it, e.g. 4500 → "$2,925". */
-export function promoPriceDollars(dollars: number): string {
-  return `$${Math.round(dollars * (1 - PROMO.percentOff / 100)).toLocaleString("en-US")}`;
+/** Discount a whole-pound amount and format it, e.g. 4500 → "£2,925". */
+export function promoPriceDollars(pounds: number): string {
+  return `£${Math.round(pounds * (1 - PROMO.percentOff / 100)).toLocaleString()}`;
 }

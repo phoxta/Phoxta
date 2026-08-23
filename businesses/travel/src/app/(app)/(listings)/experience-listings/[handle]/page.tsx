@@ -164,7 +164,7 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
       <div className="listingSection__wrap rounded-2xl shadow-lg-for-card bg-card p-4 sm:p-6 2xl:p-7">
         {/* PRICE */}
         <div className="flex items-end text-2xl font-[540]">
-          <span className="font-normal text-muted-foreground-lighter line-through">$611</span>
+          <span className="font-normal text-muted-foreground-lighter line-through">£611</span>
           <span className="mx-2">{price}</span>
           <span className="text-base font-normal text-muted-foreground"> / guest</span>
         </div>
@@ -178,9 +178,9 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
 
         <DescriptionList>
           <DescriptionTerm>Fee & Taxes</DescriptionTerm>
-          <DescriptionDetails className="sm:text-right">$1.00</DescriptionDetails>
+          <DescriptionDetails className="sm:text-right">£1.00</DescriptionDetails>
           <DescriptionTerm className="font-medium sm:text-gray-900">Total</DescriptionTerm>
-          <DescriptionDetails className="font-medium sm:text-right">$261.00</DescriptionDetails>
+          <DescriptionDetails className="font-medium sm:text-right">£261.00</DescriptionDetails>
         </DescriptionList>
 
         {/* SUBMIT */}

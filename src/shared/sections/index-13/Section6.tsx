@@ -31,7 +31,7 @@ export default function Section6() {
                         </p>
                         <ul className="sec-6-home-13__metrics list-unstyled mb-0">
                             <li className="sec-6-home-13__metric at_fade_anim">
-                                <span className="sec-6-home-13__metric-num">$500</span>
+                                <span className="sec-6-home-13__metric-num">£500</span>
                                 <span className="sec-6-home-13__metric-label">MINIMUM</span>
                             </li>
                             <li className="sec-6-home-13__metric at_fade_anim">

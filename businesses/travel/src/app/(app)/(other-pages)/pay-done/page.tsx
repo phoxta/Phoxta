@@ -87,7 +87,7 @@ const Page = () => {
             <DescriptionTerm>Date</DescriptionTerm>
             <DescriptionDetails>12 Aug, 2021</DescriptionDetails>
             <DescriptionTerm>Total</DescriptionTerm>
-            <DescriptionDetails>$199</DescriptionDetails>
+            <DescriptionDetails>£199</DescriptionDetails>
             <DescriptionTerm>Payment method</DescriptionTerm>
             <DescriptionDetails>Credit card</DescriptionDetails>
           </DescriptionList>

@@ -33,7 +33,7 @@ export default function Section4() {
                         </p>
                         <ul className="sec-4-home-13__chips list-unstyled mb-0">
                             <li><Link className="sec-4-home-13__chip at_fade_anim text-white" data-fade-from="left" data-delay=".1" to="/auth"><span aria-hidden="true">&rarr;</span> Open an account</Link></li>
-                            <li><Link className="sec-4-home-13__chip at_fade_anim text-white" data-fade-from="left" data-delay=".2" to="/auth">Start with $500</Link></li>
+                            <li><Link className="sec-4-home-13__chip at_fade_anim text-white" data-fade-from="left" data-delay=".2" to="/auth">Start with £500</Link></li>
                             <li><Link className="sec-4-home-13__chip at_fade_anim text-white" data-fade-from="left" data-delay=".3" to="/pricing">Talk to our team</Link></li>
                         </ul>
                     </div>

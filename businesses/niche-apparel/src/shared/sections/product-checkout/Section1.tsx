@@ -189,19 +189,19 @@ export default function Section1() {
                                 <div className="cart-summary__rows">
                                     <div className="cart-summary__row d-flex justify-content-between align-items-center">
                                         <span className="cart-summary__label">Sub total</span>
-                                        <span className="cart-summary__value cart-summary__subtotal">$239.45</span>
+                                        <span className="cart-summary__value cart-summary__subtotal">£239.45</span>
                                     </div>
                                     <div className="cart-summary__row d-flex justify-content-between align-items-center">
                                         <span className="cart-summary__label">Discount</span>
-                                        <span className="cart-summary__value cart-summary__discount">$39.00</span>
+                                        <span className="cart-summary__value cart-summary__discount">£39.00</span>
                                     </div>
                                     <div className="cart-summary__row d-flex justify-content-between align-items-center">
                                         <span className="cart-summary__label">Tax</span>
-                                        <span className="cart-summary__value cart-summary__tax">$0.00</span>
+                                        <span className="cart-summary__value cart-summary__tax">£0.00</span>
                                     </div>
                                     <div className="cart-summary__row d-flex justify-content-between align-items-center">
                                         <span className="cart-summary__label">Sub total</span>
-                                        <span className="cart-summary__value cart-summary__subtotal-after">$200.45</span>
+                                        <span className="cart-summary__value cart-summary__subtotal-after">£200.45</span>
                                     </div>
                                     <div className="cart-summary__row d-flex justify-content-between align-items-center">
                                         <span className="cart-summary__label">Shipping</span>
@@ -209,7 +209,7 @@ export default function Section1() {
                                     </div>
                                     <div className="cart-summary__row d-flex justify-content-between align-items-center">
                                         <span className="cart-summary__label">Total</span>
-                                        <span className="cart-summary__value cart-summary__total">$200.45</span>
+                                        <span className="cart-summary__value cart-summary__total">£200.45</span>
                                     </div>
                                 </div>
                                 <button type="submit" className="at-btn cart-summary__checkout-btn w-100">

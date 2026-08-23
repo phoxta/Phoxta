@@ -130,13 +130,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -170,13 +170,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -210,13 +210,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -250,13 +250,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -290,13 +290,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -330,13 +330,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -370,13 +370,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -410,13 +410,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -450,13 +450,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -490,13 +490,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -530,13 +530,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -570,13 +570,13 @@ export default function ShopList() {
 															</ul>
 															<div className="endtime pt-3 mt-3 border-top">
 																<div className="card-price">
-																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">$68.53</h6>
+																	<h6 className="text-md-medium neutral-500 text-decoration-line-through">£68.53</h6>
 																</div>
 																<Link href="#" className="card-button pe-3"><img src="/assets/imgs/shop/shop-list/stock.png" alt="Carento" /></Link>
 															</div>
 															<div className="endtime">
 																<div className="card-price">
-																	<h6 className="text-lg-bold neutral-1000">$98.67</h6>
+																	<h6 className="text-lg-bold neutral-1000">£98.67</h6>
 																</div>
 																<div className="card-button"><Link className="btn btn-gray" href="/shop-details">View part</Link></div>
 															</div>
@@ -624,7 +624,7 @@ export default function ShopList() {
 													<div className="pt-20">
 														<div className="box-slider-range">
 															<div id="slider-range" />
-															<div className="box-value-price"><span className="text-md-medium neutral-1000">$0</span><span className="text-md-medium neutral-1000">$500</span></div>
+															<div className="box-value-price"><span className="text-md-medium neutral-1000">£0</span><span className="text-md-medium neutral-1000">£500</span></div>
 															<input className="value-money" type="hidden" />
 														</div>
 													</div>

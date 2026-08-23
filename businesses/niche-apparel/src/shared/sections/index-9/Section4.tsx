@@ -82,7 +82,7 @@ const col2Cards = [
         img: "/assets/imgs/pages/home-9/sec-4-img-6.webp",
         category: "marketing",
         tag: "Performance",
-        metric: "$1.4M revenue in 6 months",
+        metric: "£1.4M revenue in 6 months",
         excerpt: "",
         project: "Global Brand",
         badge: "",

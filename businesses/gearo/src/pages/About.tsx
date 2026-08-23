@@ -4,7 +4,7 @@ import Breadcrumb from "@/components/layout/Breadcrumb";
 const VALUES = [
     ["Ergonomic by design", "Every product is built to support better posture and longer focus."],
     ["Sustainably sourced", "Responsibly made materials with a lower footprint."],
-    ["Free delivery", "On all orders over $20, shipped fast and tracked."],
+    ["Free delivery", "On all orders over £20, shipped fast and tracked."],
 ];
 
 export default function About() {

@@ -186,7 +186,7 @@ export default function Section1Interactive({ product }: { product: Product }) {
                 </div>
                 <div className="col-md-6">
                     <ul className="content-product-right__benefits">
-                        <li>Free shipping over $100</li>
+                        <li>Free shipping over £100</li>
                         <li>60-day easy returns</li>
                         <li>Secure checkout</li>
                         <li>Ask the AI Stylist</li>

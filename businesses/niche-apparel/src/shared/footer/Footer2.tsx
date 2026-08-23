@@ -19,7 +19,7 @@ const SOCIAL_ARROW = (
   </svg>
 );
 
-const FOOTER_SERVICES = ["Free Shipping over $100", "60-Day Returns", "Gift Cards", "AI Stylist"];
+const FOOTER_SERVICES = ["Free Shipping over £100", "60-Day Returns", "Gift Cards", "AI Stylist"];
 
 function FooterServiceTag({ label }: { label: string }) {
   return (

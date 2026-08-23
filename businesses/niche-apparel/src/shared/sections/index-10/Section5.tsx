@@ -62,7 +62,7 @@ export default function Section5() {
                 <div className="sec-5-home-10__stats row g-4 g-lg-5 pb-4">
                     <div className="col-md-4">
                         <div className="sec-5-home-10__stat sec-5-home-10__stat--1 at_fade_anim" data-delay="0.14">
-                            <p className="sec-5-home-10__stat-value mb-0">$28M+</p>
+                            <p className="sec-5-home-10__stat-value mb-0">£28M+</p>
                             <p className="sec-5-home-10__stat-label mb-0">Revenue driven through digital strategy</p>
                         </div>
                     </div>

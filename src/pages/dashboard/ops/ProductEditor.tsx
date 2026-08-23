@@ -184,7 +184,7 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
                 <span id={fid("mods")} className="fz-font-sm neutral-500">Options / modifiers</span>
                 <button type="button" className="btn btn-link btn-sm p-0 fw-600 text-decoration-none ops-tap" onClick={addGrp}>+ Add option group</button>
               </div>
-              {mods.length === 0 && <div className="fz-font-sm neutral-400 mb-1">None — e.g. a “Size” group with Regular / Large (+$3), or “Add-ons”.</div>}
+              {mods.length === 0 && <div className="fz-font-sm neutral-400 mb-1">None — e.g. a “Size” group with Regular / Large (+£3), or “Add-ons”.</div>}
               <div role="group" aria-labelledby={fid("mods")}>
                 {mods.map((g, gi) => (
                   <div key={gi} className="border-100 rounded-3 p-2 mb-2">

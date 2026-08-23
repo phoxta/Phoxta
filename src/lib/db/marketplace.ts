@@ -53,5 +53,5 @@ export async function getBlueprintScorecards(): Promise<{ data: BlueprintScoreca
 }
 
 export function formatPrice(cents: number, currency = "GBP"): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(cents / 100);
+  return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(cents / 100);
 }

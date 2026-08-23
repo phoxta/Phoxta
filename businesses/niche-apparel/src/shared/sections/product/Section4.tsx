@@ -81,7 +81,7 @@ export default function Section4() {
                                         Collections
                                     </Link>
                                 </h4>
-                                <h6 className="fw-600 text-white mb-4">On all orders over $100</h6>
+                                <h6 className="fw-600 text-white mb-4">On all orders over £100</h6>
                                 <ExploreBtn />
                             </div>
                         </div>
@@ -129,7 +129,7 @@ export default function Section4() {
                                     {ICON_GIFT}
                                     <div>
                                         <h6 className="fw-600 fz-18 mb-0">Gift Package</h6>
-                                        <p className="mb-0">Free packaging over $100</p>
+                                        <p className="mb-0">Free packaging over £100</p>
                                     </div>
                                 </div>
                                 <div className="d-flex gap-4">

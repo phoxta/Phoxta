@@ -95,7 +95,7 @@ export default function Section1Interactive() {
                 <span className="content-product-right__brand">HALSTON &amp; CO.</span>
             </div>
             <h5 className="content-product-right__title">Minimal crewneck sweatshirt</h5>
-            <h6 className="content-product-right__price">$195.00</h6>
+            <h6 className="content-product-right__price">£195.00</h6>
             <p className="content-product-right__shipping">Shipping calculated at checkout.</p>
             <div className="content-product-right__excerpt mb-4 w-50">
                 <p className="content-product-right__excerpt-text">

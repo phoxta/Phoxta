@@ -99,7 +99,7 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
       {
         name: 'Deposit payment',
         description:
-          'A deposit of $1,000 is required at pick-up. This will be refunded within 5–10 business days after the car is returned undamaged.',
+          'A deposit of £1,000 is required at pick-up. This will be refunded within 5–10 business days after the car is returned undamaged.',
         icon: DollarCircleIcon,
       },
       {
@@ -132,8 +132,8 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
     // TODO: fetch from api or from listing data
     const includes_demo = [
       { name: 'Free cancellation up to 48 hours' },
-      { name: 'Collision Damage Waiver with $214 deductible' },
-      { name: 'Theft Protection with $19,999 excess' },
+      { name: 'Collision Damage Waiver with £214 deductible' },
+      { name: 'Theft Protection with £19,999 excess' },
       { name: 'Unlimited mileage' },
       { name: 'Car interiors and exteriors cleaned with disinfectant before pick-up' },
       { name: 'Masks are required at the pick-up location' },
@@ -195,16 +195,16 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
           </DescriptionDetails>
 
           <DescriptionTerm>Age surcharge</DescriptionTerm>
-          <DescriptionDetails>Drivers under 25 will be charged an additional $15.00 per day.</DescriptionDetails>
+          <DescriptionDetails>Drivers under 25 will be charged an additional £15.00 per day.</DescriptionDetails>
 
           <DescriptionTerm>Deposit after exchange rate</DescriptionTerm>
-          <DescriptionDetails>US$1,000.00 &rarr; CA$1,331.93</DescriptionDetails>
+          <DescriptionDetails>US£1,000.00 &rarr; CA£1,331.93</DescriptionDetails>
 
           <DescriptionTerm>Fee</DescriptionTerm>
-          <DescriptionDetails>$4.79 USD</DescriptionDetails>
+          <DescriptionDetails>£4.79 USD</DescriptionDetails>
 
           <DescriptionTerm>Net</DescriptionTerm>
-          <DescriptionDetails>$1,955.00</DescriptionDetails>
+          <DescriptionDetails>£1,955.00</DescriptionDetails>
         </DescriptionList>
       </div>
     )
@@ -215,7 +215,7 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
       <div className="listingSection__wrap rounded-2xl shadow-lg-for-card bg-card p-4 sm:p-6 2xl:p-7">
         {/* PRICE */}
         <div className="flex items-end text-2xl font-[540]">
-          <span className="font-normal text-muted-foreground-lighter line-through">$599</span>
+          <span className="font-normal text-muted-foreground-lighter line-through">£599</span>
           <span className="mx-2">{price}</span>
           <span className="text-base font-normal text-muted-foreground"> / day</span>
         </div>
@@ -233,7 +233,7 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
               max={10}
               min={1}
               label={'Child seat'}
-              description={'$21.00 / day'}
+              description={'£21.00 / day'}
             />
             <NcInputNumber
               className="mt-6 w-full"
@@ -241,7 +241,7 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
               inputName="gps"
               max={4}
               label={'GPS'}
-              description={'$10.00 / day'}
+              description={'£10.00 / day'}
             />
 
             <NcInputNumber
@@ -250,7 +250,7 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
               inputName="additionalDriver"
               max={4}
               label={'Additional driver'}
-              description={'$10.00 / day'}
+              description={'£10.00 / day'}
             />
           </div>
         </Form>
@@ -261,7 +261,7 @@ const Page = ({ params }: { params: Promise<{ handle: string }> }) => {
         <div>
           <DescriptionList>
             <DescriptionTerm className="font-medium sm:text-gray-900">Total</DescriptionTerm>
-            <DescriptionDetails className="font-medium sm:text-right">$261.00</DescriptionDetails>
+            <DescriptionDetails className="font-medium sm:text-right">£261.00</DescriptionDetails>
           </DescriptionList>
           <ButtonPrimary form="booking-form" type="submit" className="mt-5 w-full sm:h-12">
             Reserve

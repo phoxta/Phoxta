@@ -18,7 +18,7 @@ const RELATED_PRODUCTS = [
         img: "/assets/imgs/pages/product/product-5.webp",
         brand: "ETIQUE",
         title: "Belted Trench Jacket",
-        price: "$156",
+        price: "£156",
     },
     {
         category: "man",
@@ -28,7 +28,7 @@ const RELATED_PRODUCTS = [
         img: "/assets/imgs/pages/product/product-6.webp",
         brand: "MIRETTI",
         title: "Olive Sweatshirt",
-        price: "$65",
+        price: "£65",
     },
     {
         category: "woman",
@@ -38,7 +38,7 @@ const RELATED_PRODUCTS = [
         img: "/assets/imgs/pages/product/product-7.webp",
         brand: "SOLENE",
         title: "Pocket Overshirt",
-        price: "$98",
+        price: "£98",
     },
     {
         category: "man",
@@ -48,7 +48,7 @@ const RELATED_PRODUCTS = [
         img: "/assets/imgs/pages/product/product-8.webp",
         brand: "RIDGEWAY",
         title: "Wool Blend Blazer",
-        price: "$175",
+        price: "£175",
     },
 ];
 

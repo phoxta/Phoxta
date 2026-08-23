@@ -180,8 +180,8 @@ export default function ShopDetails() {
                                             </h5>
                                         </div>
                                         <div className="d-flex align-items-center gap-3 border-bottom pb-4 mb-4">
-                                            <span className="text-24-medium neutral-500 text-decoration-line-through"> $68.53 </span>
-                                            <h4 className="neutral-1000">$48.25</h4>
+                                            <span className="text-24-medium neutral-500 text-decoration-line-through"> £68.53 </span>
+                                            <h4 className="neutral-1000">£48.25</h4>
                                         </div>
                                         <ul className="list-style-disc ps-3 pe-4">
                                             <li className="text-md-medium neutral-1000">Mobil Delvac 1300 Super Heavy Duty Synthetic Blend</li>
@@ -681,7 +681,7 @@ export default function ShopDetails() {
                                                     <Link href="#" className="text-md-bold neutral-1000">
                                                         R1 Concepts® – eLINE Series Plain Brake Rotors
                                                     </Link>
-                                                    <p className="text-md-bold text-success">$20.00</p>
+                                                    <p className="text-md-bold text-success">£20.00</p>
                                                 </div>
                                             </div>
                                             <div className="d-flex align-items-center mb-3">
@@ -694,7 +694,7 @@ export default function ShopDetails() {
                                                     <Link href="#" className="text-md-bold neutral-1000">
                                                         PIRELLI TIRES® – P4 FOUR SEASONS PLUS
                                                     </Link>
-                                                    <p className="text-md-bold text-success">$160.00</p>
+                                                    <p className="text-md-bold text-success">£160.00</p>
                                                 </div>
                                             </div>
                                             <div className="d-flex align-items-center mb-3">
@@ -707,7 +707,7 @@ export default function ShopDetails() {
                                                     <Link href="#" className="text-md-bold neutral-1000">
                                                         Mobil 1 Extended Performance Full Synthetic Motor Oil
                                                     </Link>
-                                                    <p className="text-md-bold text-success">$33.00</p>
+                                                    <p className="text-md-bold text-success">£33.00</p>
                                                 </div>
                                             </div>
                                             <div className="d-flex align-items-center mb-3">
@@ -720,7 +720,7 @@ export default function ShopDetails() {
                                                     <Link href="#" className="text-md-bold neutral-1000">
                                                         HRE FlowForm® – FT01 Tarma Honda 2024
                                                     </Link>
-                                                    <p className="text-md-bold text-success">$250.00</p>
+                                                    <p className="text-md-bold text-success">£250.00</p>
                                                 </div>
                                             </div>
                                             <div className="d-flex align-items-center mb-3">
@@ -733,7 +733,7 @@ export default function ShopDetails() {
                                                     <Link href="#" className="text-md-bold neutral-1000">
                                                         Mobil Delvac 1300 Super Heavy Duty Synthetic
                                                     </Link>
-                                                    <p className="text-md-bold text-success">$44.00</p>
+                                                    <p className="text-md-bold text-success">£44.00</p>
                                                 </div>
                                             </div>
                                         </div>

@@ -40,7 +40,7 @@ const users = [
 const facts = [
   {
     icon: DollarSquareIcon,
-    title: '$1.5B+ earned',
+    title: '£1.5B+ earned',
     description: 'Earned by hosts, all-time',
     mlClass: 'ml-0',
   },

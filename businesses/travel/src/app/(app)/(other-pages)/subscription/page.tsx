@@ -8,7 +8,7 @@ const pricings = [
   {
     isPopular: false,
     name: 'Starter',
-    pricing: '$5',
+    pricing: '£5',
     per: '/mo',
     features: ['Automated Reporting', 'Faster Processing', 'Customizations'],
     description: `Literally you probably haven't heard of them jean shorts.`,
@@ -16,7 +16,7 @@ const pricings = [
   {
     isPopular: true,
     name: 'Basic',
-    pricing: '$15',
+    pricing: '£15',
     per: '/mo',
     features: ['Everything in Starter', '100 Builds', 'Progress Reports', 'Premium Support'],
     description: `Literally you probably haven't heard of them jean shorts.`,
@@ -24,7 +24,7 @@ const pricings = [
   {
     isPopular: false,
     name: 'Plus',
-    pricing: '$25',
+    pricing: '£25',
     per: '/mo',
     features: ['Everything in Basic', 'Unlimited Builds', 'Advanced Analytics', 'Company Evaluations'],
     description: `Literally you probably haven't heard of them jean shorts.`,

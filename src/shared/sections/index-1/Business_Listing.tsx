@@ -186,8 +186,8 @@ export default function BusinessListing() {
                             category={item.category}
                             link={item.link}
                             img={item.img}
-                            title={PROMO.active ? promoPriceDollars(item.price) : `$${item.price.toLocaleString("en-US")}`}
-                            compareAt={PROMO.active ? `$${item.price.toLocaleString("en-US")}` : undefined}
+                            title={PROMO.active ? promoPriceDollars(item.price) : `£${item.price.toLocaleString()}`}
+                            compareAt={PROMO.active ? `£${item.price.toLocaleString()}` : undefined}
                             dealLabel={PROMO.active ? PROMO.label : undefined}
                             headline={item.headline}
                             description={item.description}

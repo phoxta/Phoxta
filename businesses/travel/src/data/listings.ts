@@ -25,7 +25,7 @@ export function getStayListings() {
       address: '1 Anzinger Court',
       reviewStart: 4.8,
       reviewCount: 28,
-      price: '$260',
+      price: '£260',
       map: { lat: 43.0405, lng: -89.395 },
       nameLocalized: 'Charming cottage in the Silicon',
       amenities: [
@@ -53,7 +53,7 @@ export function getStayListings() {
       address: '32923 Judy Hill',
       reviewStart: 4.4,
       reviewCount: 198,
-      price: '$250',
+      price: '£250',
       map: { lat: 43.065, lng: -89.31 },
       nameLocalized: 'Beautiful One Bedroom Near Skytrain',
       amenities: [
@@ -81,7 +81,7 @@ export function getStayListings() {
       address: '6731 Killdeer Park',
       reviewStart: 3.6,
       reviewCount: 16,
-      price: '$278',
+      price: '£278',
       map: { lat: 43.09, lng: -89.48 },
       nameLocalized: 'Place to stay in San Mateo',
       amenities: [
@@ -109,7 +109,7 @@ export function getStayListings() {
       address: '35 Sherman Park',
       reviewStart: 4.8,
       reviewCount: 34,
-      price: '$240',
+      price: '£240',
       map: { lat: 43.06, lng: -89.43 },
       nameLocalized: 'Guest suite in Belmont',
       amenities: [
@@ -137,7 +137,7 @@ export function getStayListings() {
       address: '3 Crest Line Park',
       reviewStart: 4.4,
       reviewCount: 340,
-      price: '$147',
+      price: '£147',
       map: { lat: 43.0405, lng: -89.355 },
       nameLocalized: 'Private room in a quiet neighborhood',
       amenities: [
@@ -165,7 +165,7 @@ export function getStayListings() {
       address: '55974 Waxwing Junction',
       reviewStart: 4.8,
       reviewCount: 508,
-      price: '$190',
+      price: '£190',
       map: { lat: 43.07, lng: -89.37 },
       nameLocalized: 'Room in San Mateo',
       amenities: [
@@ -193,7 +193,7 @@ export function getStayListings() {
       address: '79361 Chinook Place',
       reviewStart: 3.0,
       reviewCount: 481,
-      price: '$282',
+      price: '£282',
       map: { lat: 43.082, lng: -89.425 },
       nameLocalized: 'Cozy Private BR in apt.',
       amenities: [
@@ -221,7 +221,7 @@ export function getStayListings() {
       address: '6 Chive Avenue',
       reviewStart: 4.9,
       reviewCount: 188,
-      price: '$279',
+      price: '£279',
       map: { lat: 43.0405, lng: -89.445 },
       nameLocalized: 'Charming cottage in the Valley',
       amenities: [
@@ -249,7 +249,7 @@ export function getStayListings() {
       address: '6 Chive Avenue',
       reviewStart: 4.9,
       reviewCount: 188,
-      price: '$119',
+      price: '£119',
       map: { lat: 43.0305, lng: -89.415 },
       nameLocalized: 'Charming cottage in the Valley',
       amenities: [
@@ -277,7 +277,7 @@ export function getStayListings() {
       address: '6 Chive Avenue',
       reviewStart: 4.9,
       reviewCount: 188,
-      price: '$339',
+      price: '£339',
       map: { lat: 43.0305, lng: -89.445 },
       nameLocalized: 'Charming cottage in the Valley',
       amenities: [
@@ -305,7 +305,7 @@ export function getStayListings() {
       address: '6 Chive Avenue',
       reviewStart: 4.9,
       reviewCount: 188,
-      price: '$559',
+      price: '£559',
       map: { lat: 43.0405, lng: -89.285 },
       nameLocalized: 'Charming cottage in the Valley',
       amenities: [
@@ -333,7 +333,7 @@ export function getStayListings() {
       address: '6 Chive Avenue',
       reviewStart: 4.9,
       reviewCount: 188,
-      price: '$259',
+      price: '£259',
       map: { lat: 43.0705, lng: -89.445 },
       nameLocalized: 'Charming cottage in the Valley',
       amenities: [
@@ -444,7 +444,7 @@ export function getCarListings() {
       address: '8953 Golf Course Terrace',
       reviewStart: 5.0,
       reviewCount: 126,
-      price: '$124',
+      price: '£124',
       amenities: [
         { icon: 'AirplaneSeatIcon', text: '5 seats' },
         { icon: 'SteeringIcon', text: 'Automatic' },
@@ -464,7 +464,7 @@ export function getCarListings() {
       address: '2606 Straubel Crossing',
       reviewStart: 4.6,
       reviewCount: 217,
-      price: '$382',
+      price: '£382',
       amenities: [
         { icon: 'AirplaneSeatIcon', text: '5 seats' },
         { icon: 'AutomotiveBattery01Icon', text: 'Electric' },
@@ -484,7 +484,7 @@ export function getCarListings() {
       address: '14 Petterle Trail',
       reviewStart: 4.8,
       reviewCount: 534,
-      price: '$105',
+      price: '£105',
       amenities: [
         { icon: 'AutomotiveBattery01Icon', text: 'Electric' },
         { icon: 'AutomotiveBattery02Icon', text: '311 mi' },
@@ -504,7 +504,7 @@ export function getCarListings() {
       address: '34591 Dawn Park',
       reviewStart: 4.1,
       reviewCount: 527,
-      price: '$266',
+      price: '£266',
       amenities: [
         { icon: 'AirplaneSeatIcon', text: '9 seats' },
         { icon: 'SteeringIcon', text: 'Automatic' },
@@ -525,7 +525,7 @@ export function getCarListings() {
       address: '5970 Manley Terrace',
       reviewStart: 4.6,
       reviewCount: 169,
-      price: '$268',
+      price: '£268',
       amenities: [
         { icon: 'AirplaneSeatIcon', text: '4 seats' },
         { icon: 'SteeringIcon', text: 'Automatic' },
@@ -545,7 +545,7 @@ export function getCarListings() {
       address: '3 Buhler Point',
       reviewStart: 4.5,
       reviewCount: 33,
-      price: '$321',
+      price: '£321',
       amenities: [
         { icon: 'AirplaneSeatIcon', text: '9 seats' },
         { icon: 'AutomotiveBattery01Icon', text: 'Electric' },
@@ -565,7 +565,7 @@ export function getCarListings() {
       address: '35 Kedzie Parkway',
       reviewStart: 4.2,
       reviewCount: 468,
-      price: '$127',
+      price: '£127',
       amenities: [
         { icon: 'AirplaneSeatIcon', text: '5 seats' },
         { icon: 'SteeringIcon', text: 'Automatic' },
@@ -585,7 +585,7 @@ export function getCarListings() {
       address: '466 Glendale Place',
       reviewStart: 4.5,
       reviewCount: 524,
-      price: '$146',
+      price: '£146',
       amenities: [
         { icon: 'AirplaneSeatIcon', text: '7 seats' },
         { icon: 'AutomotiveBattery02Icon', text: '577 mi' },
@@ -664,7 +664,7 @@ export function getExperienceListings() {
       address: '2 Warner Alley, Neverland',
       reviewStart: 4.4,
       reviewCount: 478,
-      price: '$200',
+      price: '£200',
       amenities: [
         { icon: 'ChefHatIcon', text: 'Chefs' },
         { icon: 'Clock01Icon', text: '3 hours' },
@@ -681,7 +681,7 @@ export function getExperienceListings() {
       address: '620 Clove Park, Toronto',
       reviewStart: 4.2,
       reviewCount: 566,
-      price: '$249',
+      price: '£249',
       amenities: [
         { icon: 'EquipmentGym03Icon', text: 'Workout' },
         { icon: 'Clock01Icon', text: '4.5 hours' },
@@ -697,7 +697,7 @@ export function getExperienceListings() {
       address: '5 Butterfield Avenue, Chicago',
       reviewStart: 4.5,
       reviewCount: 147,
-      price: '$288',
+      price: '£288',
       amenities: [
         { icon: 'ChefHatIcon', text: 'Chefs' },
         { icon: 'Clock01Icon', text: '3 hours' },
@@ -714,7 +714,7 @@ export function getExperienceListings() {
       address: '11204 Lawn Court, Springfield',
       reviewStart: 5.0,
       reviewCount: 257,
-      price: '$347',
+      price: '£347',
       amenities: [
         { icon: 'ShoppingBag02Icon', text: 'Shopping' },
         { icon: 'Clock01Icon', text: '1.5 hours' },
@@ -731,7 +731,7 @@ export function getExperienceListings() {
       address: '39 Del Sol Lane, Springfield',
       reviewStart: 4.4,
       reviewCount: 132,
-      price: '$387',
+      price: '£387',
       amenities: [
         { icon: 'ShoppingBag02Icon', text: 'Shopping' },
         { icon: 'Clock01Icon', text: '3 hours' },
@@ -748,7 +748,7 @@ export function getExperienceListings() {
       address: '45539 Kensington Drive, Springfield',
       reviewStart: 4.6,
       reviewCount: 275,
-      price: '$579',
+      price: '£579',
       amenities: [
         { icon: 'GolfCartIcon', text: 'Food tour' },
         { icon: 'Clock01Icon', text: '1.5 hours' },
@@ -765,7 +765,7 @@ export function getExperienceListings() {
       address: '9 Jenifer Way, Spanish Fork',
       reviewStart: 4.4,
       reviewCount: 20,
-      price: '$275',
+      price: '£275',
       amenities: [
         { icon: 'ChefHatIcon', text: 'Chefs' },
         { icon: 'Clock01Icon', text: '2.5 hours' },
@@ -782,7 +782,7 @@ export function getExperienceListings() {
       address: '5 Aberg Place, New York',
       reviewStart: 4.9,
       reviewCount: 268,
-      price: '$770',
+      price: '£770',
       amenities: [
         { icon: 'ChefHatIcon', text: 'Chefs' },
         { icon: 'Clock01Icon', text: '2.5 hours' },
@@ -861,7 +861,7 @@ export function getFlightListings() {
       layover: '2h 30m',
       // This is a placeholder link, replace with actual flight details
       href: '#',
-      price: '$4,100',
+      price: '£4,100',
       airlines: {
         logo: airlineLogo1.src,
         name: 'Korean Air',
@@ -878,7 +878,7 @@ export function getFlightListings() {
       stopNumber: 1,
       stopAirport: 'Ho Chi Minh City (SGN)',
       layover: '2h 30m',
-      price: '$3,380',
+      price: '£3,380',
       // This is a placeholder link, replace with actual flight details
       href: '#',
       airlines: {
@@ -897,7 +897,7 @@ export function getFlightListings() {
       stopNumber: 1,
       stopAirport: 'Sydney (SYD)',
       layover: '2h 30m',
-      price: '$2,380',
+      price: '£2,380',
       // This is a placeholder link, replace with actual flight details
       href: '#',
       airlines: {
@@ -917,7 +917,7 @@ export function getFlightListings() {
       stopAirport: 'Sydney (SYD)',
       layover: '2h 30m',
       // This is a placeholder link, replace with actual flight details
-      price: '$4,100',
+      price: '£4,100',
       href: '#',
       airlines: {
         logo: airlineLogo4.src,
@@ -935,7 +935,7 @@ export function getFlightListings() {
       stopNumber: 1,
       stopAirport: 'Singapore (SIN)',
       layover: '2h 30m',
-      price: '$2,380',
+      price: '£2,380',
       // This is a placeholder link, replace with actual flight details
       href: '#',
       airlines: {
@@ -956,7 +956,7 @@ export function getFlightListings() {
       layover: '2h 30m',
       // This is a placeholder link, replace with actual flight details
       href: '#',
-      price: '$4,100',
+      price: '£4,100',
       airlines: {
         logo: airlineLogo3.src,
         name: 'Korean Air',

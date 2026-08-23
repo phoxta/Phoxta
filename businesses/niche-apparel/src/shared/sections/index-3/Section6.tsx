@@ -89,7 +89,7 @@ const CASE_STUDIES = [
         linkCase: "#",
         img: "/assets/imgs/pages/img-68.webp",
         category: "Performance",
-        headline: "$1.4M revenue in 6 months",
+        headline: "£1.4M revenue in 6 months",
         description:
             "We restructured paid campaigns, refined audience targeting, and optimized creatives to drive higher returns while reducing wasted ad spend.",
         title: "Global Brand",

@@ -54,7 +54,7 @@ const STATS = [
     { value: "12 wk", label: "Cohort program, end to end" },
     { value: "~90%", label: "Finish the cohort" },
     { value: "50k+", label: "Learners in the community" },
-    { value: "$0", label: "To get started" },
+    { value: "£0", label: "To get started" },
 ];
 
 export default function Section16() {

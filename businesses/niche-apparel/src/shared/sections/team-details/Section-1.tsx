@@ -32,7 +32,7 @@ const KEY_ACHIEVEMENTS: { bold?: string; text?: string; textBefore?: string }[] 
     { bold: "120+ projects", text: " delivered across branding, web, and marketing" },
     { bold: "30+ cross-functional teams", text: " led and coordinated" },
     { bold: "98% on-time", text: " delivery rate" },
-    { textBefore: "Managed projects with budgets ", bold: "up to $2M+" },
+    { textBefore: "Managed projects with budgets ", bold: "up to £2M+" },
 ];
 
 const RESPONSIBILITIES = [

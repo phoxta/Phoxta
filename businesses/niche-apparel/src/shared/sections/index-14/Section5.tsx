@@ -14,11 +14,11 @@ const RowArrow = (
 );
 
 const SERVICES = [
-    { num: "01", title: "Editorial & Magazine", desc: "Cover stories, fashion features, and long-form features for publications.", price: "From $4,800 / day", icon: "sec-5-icon-1.webp", rotate: "9deg", delay: ".1" },
-    { num: "02", title: "Portraits & Headshots", desc: "Studio and on-location portraits for press kits, profiles, and personal archive.", price: "From $1,200 / session", icon: "sec-5-icon-2.webp", rotate: "positive-9deg", delay: ".2" },
-    { num: "03", title: "Weddings & Events", desc: "Documentary coverage of intimate gatherings — minimal direction, maximum presence.", price: "From $3,400 / day", icon: "sec-5-icon-3.webp", rotate: "9deg", delay: ".3" },
-    { num: "04", title: "Brand & Commercial", desc: "Campaigns, lookbooks, and product stories — with a creative team you can borrow.", price: "From $6,000 / project", icon: "sec-5-icon-4.webp", rotate: "positive-9deg", delay: ".4" },
-    { num: "05", title: "Travel & Documentary", desc: "Multi-day shoots, residencies, and visual fieldwork — for brands and publications.", price: "From $2,400 / day", icon: "sec-5-icon-5.webp", rotate: "9deg", delay: ".5" },
+    { num: "01", title: "Editorial & Magazine", desc: "Cover stories, fashion features, and long-form features for publications.", price: "From £4,800 / day", icon: "sec-5-icon-1.webp", rotate: "9deg", delay: ".1" },
+    { num: "02", title: "Portraits & Headshots", desc: "Studio and on-location portraits for press kits, profiles, and personal archive.", price: "From £1,200 / session", icon: "sec-5-icon-2.webp", rotate: "positive-9deg", delay: ".2" },
+    { num: "03", title: "Weddings & Events", desc: "Documentary coverage of intimate gatherings — minimal direction, maximum presence.", price: "From £3,400 / day", icon: "sec-5-icon-3.webp", rotate: "9deg", delay: ".3" },
+    { num: "04", title: "Brand & Commercial", desc: "Campaigns, lookbooks, and product stories — with a creative team you can borrow.", price: "From £6,000 / project", icon: "sec-5-icon-4.webp", rotate: "positive-9deg", delay: ".4" },
+    { num: "05", title: "Travel & Documentary", desc: "Multi-day shoots, residencies, and visual fieldwork — for brands and publications.", price: "From £2,400 / day", icon: "sec-5-icon-5.webp", rotate: "9deg", delay: ".5" },
 ];
 
 export default function Section5() {
@@ -30,7 +30,7 @@ export default function Section5() {
                         <div className="sec-5-home-14__eyebrow at_fade_anim" data-fade-from="bottom" data-delay=".1">
                             <span className="sec-5-home-14__eyebrow-dot" aria-hidden="true"></span>
                             <span className="sec-5-home-14__eyebrow-key">SERVICES</span>
-                            <span className="sec-5-home-14__eyebrow-meta">&mdash; 5 OFFERINGS &middot; STARTING FROM $2,400</span>
+                            <span className="sec-5-home-14__eyebrow-meta">&mdash; 5 OFFERINGS &middot; STARTING FROM £2,400</span>
                         </div>
                         <h2 className="sec-5-home-14__title reveal-text mb-0"><RevealText>How we work<br />with you.</RevealText></h2>
                     </div>
