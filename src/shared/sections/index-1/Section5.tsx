@@ -28,7 +28,7 @@ const PORTFOLIO_ITEMS = [
         description: "A full car buying & selling marketplace with listings, financing tools and an AI assistant",
         tags: [
             { label: "Automotive", href: "/product-archive" },
-            { label: "From $3,900", href: "/product-archive" },
+            { label: "From £3,900", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
@@ -40,7 +40,7 @@ const PORTFOLIO_ITEMS = [
         description: "A modern fashion store with product archive, online ordering, cart/checkout and an AI stylist",
         tags: [
             { label: "eCommerce", href: "/product-archive" },
-            { label: "From $1,500", href: "/product-archive" },
+            { label: "From £1,500", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
@@ -52,7 +52,7 @@ const PORTFOLIO_ITEMS = [
         description: "A fine-dining restaurant with online ordering, reservations, order tracking and an AI concierge",
         tags: [
             { label: "Hospitality", href: "/product-archive" },
-            { label: "From $1,500", href: "/product-archive" },
+            { label: "From £1,500", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
@@ -64,7 +64,7 @@ const PORTFOLIO_ITEMS = [
         description: "A travel booking site for stays, flights and experiences, with an AI trip planner",
         tags: [
             { label: "Travel", href: "/product-archive" },
-            { label: "From $3,600", href: "/product-archive" },
+            { label: "From £3,600", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },
@@ -76,7 +76,7 @@ const PORTFOLIO_ITEMS = [
         description: "A modern furniture & workspace eCommerce store with cart, checkout and an AI shopping assistant",
         tags: [
             { label: "eCommerce", href: "/product-archive" },
-            { label: "From $1,400", href: "/product-archive" },
+            { label: "From £1,400", href: "/product-archive" },
             { label: "AI inside", href: "/product-archive" },
         ],
     },

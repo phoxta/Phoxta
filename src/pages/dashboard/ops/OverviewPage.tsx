@@ -369,7 +369,7 @@ export default function OverviewPage() {
 
   // Currency comes straight off the org record now that the windowed RPC (which
   // also returned it) is gone — same source, one fewer round trip.
-  const currency = org.currency || "USD";
+  const currency = org.currency || "GBP";
   const opsBase = `/dashboard/businesses/${orgId}/ops`;
   // A card for a module this vertical doesn't run would link to a tab that isn't
   // in the console — drop those rather than render dead links.

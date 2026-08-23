@@ -58,7 +58,7 @@ const lateLabel = (n: number) => (n === 1 ? "1 day late" : `${n} days late`);
 
 export default function InvoicingPage() {
   const { orgId, org } = useOutletContext<OpsContext>();
-  const orgCurrency = org.currency || "USD";
+  const orgCurrency = org.currency || "GBP";
   const { data, loading, error: loadError, reload } = useCachedData(
     `ops:invoicing:${orgId}`,
     async () => {
@@ -146,7 +146,7 @@ export default function InvoicingPage() {
     const total = items.reduce((s, i) => s + i.quantity * i.unit_price_cents, 0);
     if (items.length === 0 || total <= 0) {
       setNlLoading(false);
-      toastError("Couldn't read an amount from that — include a price (e.g. \"$500 for consulting\").");
+      toastError("Couldn't read an amount from that — include a price (e.g. \"£500 for consulting\").");
       return;
     }
     const ok = await reportMutation(

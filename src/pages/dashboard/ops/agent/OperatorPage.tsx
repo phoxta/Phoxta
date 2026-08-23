@@ -363,7 +363,7 @@ export default function OperatorPage() {
                         <p className="fz-font-sm neutral-500 mb-3">Nothing here happens until you approve it.</p>
                         <ul className="list-unstyled m-0 d-flex flex-column gap-2">
                             {pending.map((a) => {
-                                const sentence = humanSentence(a, org.currency || "USD");
+                                const sentence = humanSentence(a, org.currency || "GBP");
                                 const editable = EDITABLE_FIELD[a.tool];
                                 const editing = editDrafts[a.id] !== undefined;
                                 return (

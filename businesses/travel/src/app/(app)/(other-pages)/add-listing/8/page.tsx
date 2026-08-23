@@ -42,7 +42,7 @@ const Page = () => {
         {/* ITEM */}
         <FormItem label="Currency">
           <Select name="currency">
-            <option value="USD">USD</option>
+            <option value="GBP">USD</option>
             <option value="VND">VND</option>
             <option value="EURRO">EURRO</option>
           </Select>

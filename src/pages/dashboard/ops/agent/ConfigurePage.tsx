@@ -304,7 +304,7 @@ export default function ConfigurePage() {
         const lines = products.slice(0, 200).map((p) => {
           const desc = (p.description || "").replace(/\s+/g, " ").trim().slice(0, 200);
           const stock = p.stock > 0 ? `in stock: ${p.stock}` : "out of stock";
-          return `- ${p.name} — ${formatPrice(p.price_cents, p.currency || org?.currency || "USD")} (${stock})${desc ? `: ${desc}` : ""}`;
+          return `- ${p.name} — ${formatPrice(p.price_cents, p.currency || org?.currency || "GBP")} (${stock})${desc ? `: ${desc}` : ""}`;
         });
         composed.push({ title: SYNC_TITLES.catalog, content: `Our current catalog (prices and stock as of ${new Date().toLocaleDateString()}):\n${lines.join("\n")}` });
       }

@@ -17,14 +17,14 @@ const STATUS_STYLE: Record<Subscription["status"], string> = {
 };
 
 const PLANS: Array<{ key: "starter" | "growth" | "scale"; plan: string; price: string; note: string }> = [
-  { key: "starter", plan: "Starter", price: "$75/mo", note: "New businesses, small operators" },
-  { key: "growth", plan: "Growth", price: "$250/mo", note: "Established small businesses" },
-  { key: "scale", plan: "Scale", price: "$1,500/mo", note: "Growth-stage businesses" },
+  { key: "starter", plan: "Starter", price: "£75/mo", note: "New businesses, small operators" },
+  { key: "growth", plan: "Growth", price: "£250/mo", note: "Established small businesses" },
+  { key: "scale", plan: "Scale", price: "£1,500/mo", note: "Growth-stage businesses" },
 ];
 
-// Assistant cost is small per call — show cents precision (not rounded to $0).
+// Assistant cost is small per call — show cents precision (not rounded to £0).
 function formatPriceCents(cents: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(
     cents / 100,
   );
 }

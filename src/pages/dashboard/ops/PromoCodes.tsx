@@ -16,7 +16,7 @@ const showDay = (iso: string) => new Date(`${dayOf(iso)}T12:00:00`).toLocaleDate
 // Console manager for a business's promo / discount codes.
 export default function PromoCodes({ orgId }: { orgId: string }) {
   const { org } = useOutletContext<OpsContext>();
-  const currency = org.currency || "USD";
+  const currency = org.currency || "GBP";
   const { data: promos = [], loading, error: loadError, reload } = useCachedData(
     `ops:promos:${orgId}`,
     async () => {

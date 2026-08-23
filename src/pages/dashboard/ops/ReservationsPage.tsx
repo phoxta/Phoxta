@@ -81,7 +81,7 @@ export default function ReservationsPage() {
   const today = todayPlus(0);
   const isRestaurant =
     cfg.commerceLabel === "Menu" || /restaurant|food|cafe|dining|kitchen/.test((org.vertical ?? "").toLowerCase());
-  const orgCurrency = org.currency || "USD";
+  const orgCurrency = org.currency || "GBP";
   const cur = (r: Reservation) => r.currency || orgCurrency;
   const unitWord = cfg.itemNoun === "Vehicle" ? "day" : "night";
 

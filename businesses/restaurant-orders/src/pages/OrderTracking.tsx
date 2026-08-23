@@ -23,7 +23,7 @@ const isPaidStatus = (s: string | undefined) => s === "paid" || s === "fulfilled
 
 function fmtCents(cents: number, currency: string): string {
     try {
-        return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD" }).format(cents / 100);
+        return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "GBP" }).format(cents / 100);
     } catch {
         return `${(cents / 100).toFixed(2)} ${currency}`.trim();
     }

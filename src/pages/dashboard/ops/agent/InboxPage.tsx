@@ -188,7 +188,7 @@ function useAutoGrow(ref: React.RefObject<HTMLTextAreaElement | null>, value: st
 
 export default function InboxPage() {
   const { orgId, org, console: consoleCfg } = useOutletContext<OpsContext>();
-  const orgCurrency = org.currency || "USD";
+  const orgCurrency = org.currency || "GBP";
   // ?c=<conversation id> / ?t=<ticket id> — makes an open thread linkable and
   // survives a refresh (the AI Agent overview links straight to a conversation).
   const [params, setParams] = useSearchParams();

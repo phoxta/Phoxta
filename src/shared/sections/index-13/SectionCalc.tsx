@@ -23,7 +23,7 @@ const PORTFOLIOS: Portfolio[] = [
     { id: "growthp", label: "Growth · A–D · up to 15%", yld: 0.15 },
 ];
 
-const usd = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Math.round(n));
+const usd = (n: number) => new Intl.NumberFormat(undefined, { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(Math.round(n));
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
 const FF = "var(--at-ff-heading)";
@@ -103,7 +103,7 @@ export default function SectionCalc() {
                             <input type="range" min={500} max={250000} step={500} value={Math.min(amount, 250000)}
                                 onChange={(e) => setAmount(Number(e.target.value))} aria-label="Amount slider"
                                 className="form-range" style={{ accentColor: "var(--at-theme-primary)" }} />
-                            <div className="d-flex justify-content-between sec-2-home-13__stat-cap mb-4"><span>$500</span><span>$250,000+</span></div>
+                            <div className="d-flex justify-content-between sec-2-home-13__stat-cap mb-4"><span>£500</span><span>£250,000+</span></div>
 
                             {product === "notes" ? (
                                 <>

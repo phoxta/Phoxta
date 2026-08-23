@@ -52,7 +52,7 @@ function greeting(d = new Date()): string {
 
 const money = (cents: number) => {
   try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(cents / 100);
   } catch { return `$${Math.round(cents / 100)}`; }
 };
 

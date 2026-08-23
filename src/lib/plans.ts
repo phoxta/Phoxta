@@ -5,7 +5,7 @@
 export type PlatformPlan = {
   key: "starter" | "growth" | "scale";
   name: string;
-  priceMonthly: number; // USD / month, billed monthly
+  priceMonthly: number; // GBP / month, billed monthly
   blurb: string;
   features: string[];
   popular?: boolean;
@@ -36,13 +36,11 @@ export const PLATFORM_PLANS: PlatformPlan[] = [
   },
 ];
 
-/** Lowest monthly plan price — for "from $X/mo" copy. */
+/** Lowest monthly plan price — for "from £X/mo" copy. */
 export const PLAN_STARTING_PRICE = Math.min(...PLATFORM_PLANS.map((p) => p.priceMonthly));
 
-/** Display-only NGN presentment rate — mirrors the PAYSTACK_RATE_PER_USD secret
- *  (charging authority stays server-side). Update both together. */
-export const NGN_PER_USD = 1600;
-
-export function approxNgn(usd: number): string {
-  return `₦${(usd * NGN_PER_USD).toLocaleString("en-US")}`;
+/** The one place the pound sign is written, so a plan price cannot be shown in
+ *  one currency on the pricing page and another on the billing page. */
+export function planPrice(monthly: number): string {
+  return `£${monthly.toLocaleString()}`;
 }

@@ -12,17 +12,17 @@ const FeatureIcon = (
 
 const PLANS = [
     {
-        delay: "0.05", modifier: "", popular: false, plan: "Starter", price: "$1,200", ctaLabel: "Get Started",
+        delay: "0.05", modifier: "", popular: false, plan: "Starter", price: "£1,200", ctaLabel: "Get Started",
         desc: "A solid digital foundation focused on clarity, usability, and performance essentials.",
         features: ["Digital strategy setup", "Digital audit & Insights", "Positioning & Messaging", "SEO & Technical setup", "Analytics tracking"],
     },
     {
-        delay: "0.15", modifier: "is-popular", popular: true, plan: "Growth", price: "$2,800", ctaLabel: "Choose Growth",
+        delay: "0.15", modifier: "is-popular", popular: true, plan: "Growth", price: "£2,800", ctaLabel: "Choose Growth",
         desc: "A performance-driven plan to accelerate acquisition and conversion.",
         features: ["Growth strategy", "Conversion optimization", "SEO & Content performance", "Campaign setup & Reporting", "Advance analytics tracking"],
     },
     {
-        delay: "0.25", modifier: "", popular: false, plan: "Scale", price: "$3,600", ctaLabel: "Scale Your Business",
+        delay: "0.25", modifier: "", popular: false, plan: "Scale", price: "£3,600", ctaLabel: "Scale Your Business",
         desc: "A long-term digital partnership for sustainable growth at scale.",
         features: ["Digital roadmap", "Multi-channel strategy", "Advance analytics tracking", "Premium technical support", "Continuous optimization"],
     },

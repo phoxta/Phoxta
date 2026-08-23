@@ -52,6 +52,6 @@ export async function getBlueprintScorecards(): Promise<{ data: BlueprintScoreca
   return { data: (data as BlueprintScorecard[] | null) ?? [], error: friendlyError(error?.message) };
 }
 
-export function formatPrice(cents: number, currency = "USD"): string {
+export function formatPrice(cents: number, currency = "GBP"): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(cents / 100);
 }

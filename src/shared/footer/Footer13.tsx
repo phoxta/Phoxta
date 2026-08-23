@@ -14,7 +14,7 @@ export default function Footer13() {
                 </div>
                 <div className="footer-13__meta-item at_fade_anim" data-fade-from="bottom" data-delay=".3">
                     <span className="footer-13__meta-key">MINIMUM</span>
-                    <span className="footer-13__meta-val">$500</span>
+                    <span className="footer-13__meta-val">£500</span>
                 </div>
                 <div className="footer-13__meta-item at_fade_anim" data-fade-from="bottom" data-delay=".4">
                     <span className="footer-13__meta-key">STATUS</span>

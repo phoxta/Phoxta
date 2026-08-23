@@ -11,7 +11,7 @@ import type { OpsContext } from "@/layouts/OperatingLayout";
 /** Major ISO currencies, African markets first (Phoxta's home turf). */
 const CURRENCIES: { code: string; label: string }[] = [
   { code: "NGN", label: "NGN — Nigerian naira" },
-  { code: "USD", label: "USD — US dollar" },
+  { code: "GBP", label: "USD — US dollar" },
   { code: "GBP", label: "GBP — British pound" },
   { code: "EUR", label: "EUR — Euro" },
   { code: "GHS", label: "GHS — Ghanaian cedi" },
@@ -43,16 +43,16 @@ export default function SettingsPage() {
 
   // ── Business ──────────────────────────────────────────────────────────────
   const [name, setName] = useState(org.name);
-  const [currency, setCurrency] = useState(org.currency || "USD");
+  const [currency, setCurrency] = useState(org.currency || "GBP");
   const [bizBusy, setBizBusy] = useState(false);
-  useEffect(() => { setName(org.name); setCurrency(org.currency || "USD"); }, [org.name, org.currency]);
+  useEffect(() => { setName(org.name); setCurrency(org.currency || "GBP"); }, [org.name, org.currency]);
 
   async function saveBusiness(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) { toastError("The business name can't be empty."); return; }
     const nameChanged = trimmed !== org.name;
-    const currencyChanged = currency !== (org.currency || "USD");
+    const currencyChanged = currency !== (org.currency || "GBP");
     if (!nameChanged && !currencyChanged) { toast("Nothing to save — details are up to date.", "info"); return; }
     setBizBusy(true);
     let ok = true;

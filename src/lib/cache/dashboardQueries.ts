@@ -199,7 +199,7 @@ export type OpsWindow = {
 };
 
 const EMPTY_OPS_WINDOW: OpsWindow = {
-  currency: "USD",
+  currency: "GBP",
   revenue: 0,
   revenue_prev: 0,
   orders: 0,

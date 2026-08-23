@@ -81,7 +81,7 @@ function OrdersFrame({ show, children }: { show: boolean; children: React.ReactN
 
 export default function CommercePage() {
   const { orgId, org, console: cfg } = useOutletContext<OpsContext>();
-  const orgCurrency = org.currency || "USD";
+  const orgCurrency = org.currency || "GBP";
   // Reservation verticals (fleet, stays, experiences) take money through
   // reservations, not orders — so the Orders panel is demoted to a collapsed
   // "Manual orders" block there instead of owning half the tab. A restaurant

@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { approxNgn } from "@/lib/plans";
 const ARROW_SVG = (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path
@@ -19,8 +18,8 @@ const FEATURE_ICON_SVG = (
     </svg>
 );
 
-const MONTHLY_PRICES = { starter: "$75", growth: "$250", scale: "$1,500" };
-const ANNUAL_PRICES = { starter: "$60", growth: "$200", scale: "$1,200" };
+const MONTHLY_PRICES = { starter: "£75", growth: "£250", scale: "£1,500" };
+const ANNUAL_PRICES = { starter: "£60", growth: "£200", scale: "£1,200" };
 
 const PLANS = [
     {
@@ -142,9 +141,6 @@ export default function Section12Pricing({ titleSlot, footerSlot }: Section12Pri
                                         {isAnnual ? "/mo, billed yearly" : "/monthly"}
                                     </span>
                                 </div>
-                                <p className="fz-font-sm neutral-500 mb-2">
-                                    ≈ {approxNgn(parseInt(prices[plan.key].replace(/[^0-9]/g, ""), 10))}/mo charged in NGN
-                                </p>
                                 <p className="home-2-pricing-card__desc">{plan.desc}</p>
                                 <Link className="at-btn px-5" to="/auth?mode=signup&redirect=/dashboard/billing">
                                     <span>

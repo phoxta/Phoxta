@@ -164,7 +164,7 @@ export default function MarketplaceMainGrid() {
                   offers: {
                     "@type": "Offer",
                     price: (b.price_cents / 100).toFixed(0),
-                    priceCurrency: b.currency || "USD",
+                    priceCurrency: b.currency || "GBP",
                     availability: "https://schema.org/InStock",
                   },
                 },

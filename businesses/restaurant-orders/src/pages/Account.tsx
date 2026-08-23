@@ -25,7 +25,7 @@ import {
 /** Orders carry their own currency, so format per row rather than assuming one. */
 const money = (cents: number, ccy: string) => {
   try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: ccy || "USD" }).format(cents / 100);
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: ccy || "GBP" }).format(cents / 100);
   } catch {
     return `${(cents / 100).toFixed(2)}`;
   }

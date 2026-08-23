@@ -21,7 +21,7 @@ import {
 const money = (cents?: number, ccy?: string) => {
   if (cents == null) return "";
   try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: ccy || "USD" }).format(cents / 100);
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: ccy || "GBP" }).format(cents / 100);
   } catch {
     return (cents / 100).toFixed(2);
   }

@@ -218,7 +218,7 @@ export default function CrmPage() {
           (c.tags ?? []).join("; "),
           c.notes,
           ((c.value_cents ?? 0) / 100).toFixed(2),
-          org.currency || "USD",
+          org.currency || "GBP",
           c.lead_score ?? "",
           c.churn_risk ?? "",
           c.created_at,
@@ -359,14 +359,14 @@ export default function CrmPage() {
         </form>
       )}
 
-      <CrmStats rows={rows} currency={org.currency || "USD"} />
+      <CrmStats rows={rows} currency={org.currency || "GBP"} />
 
       <StageBoard
         stages={STAGES}
         rows={display}
         sort={sort}
         hotOnly={hotOnly}
-        currency={org.currency || "USD"}
+        currency={org.currency || "GBP"}
         onOpen={(c) => setOpenId(c.id)}
         onStage={onStage}
         onDelete={onDelete}
@@ -375,7 +375,7 @@ export default function CrmPage() {
       {open && (
         <ContactDrawer
           orgId={orgId}
-          orgCurrency={org.currency || "USD"}
+          orgCurrency={org.currency || "GBP"}
           contact={open}
           scoreMeta={scoreMeta[open.id] ?? null}
           scoring={!!scoring[open.id]}
