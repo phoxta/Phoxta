@@ -185,6 +185,11 @@ verify_jwt = true
 [functions.verify-domain]
 verify_jwt = true
 
+# Stripe is the billing provider. Signed-in callers only — this creates
+# purchases rows and hands back checkout URLs.
+[functions.stripe-checkout]
+verify_jwt = true
+
 [functions.paystack-checkout]
 verify_jwt = true
 

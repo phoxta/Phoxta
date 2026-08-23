@@ -1,9 +1,11 @@
 import { supabase } from "@/lib/supabaseClient";
 import { trackEvent } from "@/lib/analytics";
 
-// Client side of the Paystack flows. Both money surfaces go through the
-// paystack-checkout edge function, which returns a hosted-payment URL we
-// redirect the browser to; fulfilment happens in paystack-webhook, never here.
+// Client side of the Stripe flows. Both money surfaces go through the
+// stripe-checkout edge function, which returns a hosted-payment URL we redirect
+// the browser to; fulfilment happens in stripe-webhook, never here — a client
+// that can tell the server "I paid" is a client that can provision itself a
+// free business.
 
 const CALLBACK_PATH = "/dashboard/payment/callback";
 
@@ -12,7 +14,7 @@ function callbackUrl(): string {
 }
 
 async function invokeCheckout<T>(body: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
-  const { data, error } = await supabase.functions.invoke("paystack-checkout", { body });
+  const { data, error } = await supabase.functions.invoke("stripe-checkout", { body });
   if (error) {
     let msg = error.message;
     try {
@@ -27,7 +29,7 @@ async function invokeCheckout<T>(body: Record<string, unknown>): Promise<{ data:
   return { data: data as T, error: null };
 }
 
-/** Buy a business: returns the Paystack payment URL to redirect to. */
+/** Buy a business: returns the Stripe Checkout URL to redirect to. */
 export async function startBlueprintCheckout(
   blueprintId: string,
   name?: string,
@@ -64,19 +66,21 @@ export async function cancelSubscription(orgId: string): Promise<{ ok: boolean; 
   return { ok: data?.ok === true, error };
 }
 
-/** Switch plans: cancels the current Paystack subscription, returns a checkout URL for the new one. */
+/** Switch plans. A live subscription is amended in place — Stripe prorates the
+ *  difference — so this returns { url: null } and the change is already done.
+ *  With nothing to amend it hands back a checkout URL instead. */
 export async function changePlan(
   orgId: string,
   plan: "starter" | "growth" | "scale",
-): Promise<{ url: string | null; error: string | null }> {
+): Promise<{ url: string | null; changed: boolean; error: string | null }> {
   trackEvent("subscription_started", { plan, change: "true" });
-  const { data, error } = await invokeCheckout<{ url: string }>({
+  const { data, error } = await invokeCheckout<{ url?: string; ok?: boolean }>({
     kind: "change_plan",
     orgId,
     plan,
     returnUrl: callbackUrl(),
   });
-  return { url: data?.url ?? null, error };
+  return { url: data?.url ?? null, changed: (data as { ok?: boolean } | null)?.ok === true, error };
 }
 
 export type PaymentVerification = {

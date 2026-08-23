@@ -65,12 +65,34 @@ export default function BillingPage() {
     if (!selectedOrg) return;
     setSubscribeError(null);
     setSubscribing(plan);
-    // If the business already runs on a live plan, this is a plan CHANGE —
-    // the old Paystack subscription is disabled before the new checkout.
+    // A business already on a live plan is CHANGING plan. Stripe amends the
+    // subscription in place and prorates, so there is nothing to pay now and no
+    // checkout to send anyone to — treat "no URL" as success, not failure.
     const existing = subs.find((s) => s.organization_id === selectedOrg && s.status !== "canceled");
-    const { url, error } = existing
-      ? await changePlan(selectedOrg, plan)
-      : await startSubscriptionCheckout(selectedOrg, plan);
+    if (existing) {
+      const { url, changed, error } = await changePlan(selectedOrg, plan);
+      if (error) {
+        setSubscribing(null);
+        setSubscribeError(error);
+        return;
+      }
+      if (changed) {
+        setSubscribing(null);
+        // Stripe's webhook writes the new plan, so re-read rather than guess at
+        // it — the same refresh cancelling already does.
+        clearCachedData();
+        window.location.reload();
+        return;
+      }
+      if (url) window.location.assign(url);
+      else {
+        setSubscribing(null);
+        setSubscribeError("Could not start the checkout.");
+      }
+      return;
+    }
+
+    const { url, error } = await startSubscriptionCheckout(selectedOrg, plan);
     if (error || !url) {
       setSubscribing(null);
       setSubscribeError(error ?? "Could not start the checkout.");
