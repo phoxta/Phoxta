@@ -405,26 +405,28 @@ export default function DashboardHomePage() {
               <h2 className="t">Revenue</h2>
               <span className="v">{money(revTotal)}</span>
             </div>
-            {revSegs.length > 0 ? (
-              <>
-                <div className="hrx-ex-labels">
-                  {revSegs.map((s) => (
-                    <span key={s.id}>{s.label} {money(s.cents)}</span>
-                  ))}
-                </div>
-                <div className="hrx-segbar" role="img" aria-label={`Orders making up the last 30 days of revenue. Total ${money(revTotal)}.`}>
-                  {revSegs.map((s, i) => (
-                    <div
-                      key={s.id}
-                      className={`hrx-seg${i > 0 ? " hatch" : ""}`}
-                      style={{ flexGrow: Math.max(s.cents, 1), background: SEG_COLORS[i % SEG_COLORS.length] }}
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="neutral-500 mb-0" style={{ fontSize: 13 }}>No sales in the last 30 days — revenue appears here as orders come in.</p>
-            )}
+            <div className="hrx-ex-labels">
+              {revSegs.length > 0 ? (
+                revSegs.map((s) => <span key={s.id}>{s.label} {money(s.cents)}</span>)
+              ) : (
+                <span style={{ color: "var(--hrx-muted)" }}>No orders in the last 30 days</span>
+              )}
+            </div>
+            {/* The bar always shows — with no orders it holds one quiet
+                placeholder segment, so the card keeps the comp's shape. */}
+            <div className="hrx-segbar" role="img" aria-label={`Orders making up the last 30 days of revenue. Total ${money(revTotal)}.`}>
+              {revSegs.length > 0 ? (
+                revSegs.map((s, i) => (
+                  <div
+                    key={s.id}
+                    className={`hrx-seg${i > 0 ? " hatch" : ""}`}
+                    style={{ flexGrow: Math.max(s.cents, 1), background: SEG_COLORS[i % SEG_COLORS.length] }}
+                  />
+                ))
+              ) : (
+                <div className="hrx-seg" style={{ flexGrow: 1, background: "#f0f0f0" }} />
+              )}
+            </div>
 
             <div className="hrx-requests">
               {allDone ? (
