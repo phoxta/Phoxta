@@ -1,4 +1,6 @@
 import { createBrowserRouter, Outlet } from "react-router-dom";
+import AIAssistant from "@/components/AIAssistant";
+import AccountButton from "@/components/AccountButton";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import Home from "@/pages/Home";
 import Shop from "@/pages/Shop";
@@ -29,7 +31,10 @@ const SHOP_VARIANTS = [
 ];
 export const router = createBrowserRouter([
     {
-        element: (<><ScrollToTop /><Outlet /></>),
+        // AccountButton renders a <Link>, so it needs router context. Mounted
+        // beside RouterProvider in main.tsx it read a null context and threw on
+        // first render, which left #root empty and the whole site blank.
+        element: (<><ScrollToTop /><Outlet /><AIAssistant /><AccountButton /></>),
         children: [
             { path: "/", element: <Home /> },
             ...SHOP_VARIANTS.map((p) => ({ path: `/${p}`, element: <Shop title="Shop" /> })),

@@ -1,4 +1,6 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import AIAssistant from "@/components/AIAssistant";
+import AccountButton from "@/components/AccountButton";
 import NotFound from "@/pages/NotFound";
 import Home from "@/pages/Home";
 import AboutUs from "@/pages/AboutUs";
@@ -23,7 +25,27 @@ import Account from "@/pages/Account";
 // Car SALES, not rental: the template's duplicate list/detail variants, its
 // alternate home pages, the rental subscription tiers and the rental booking
 // lookup are all gone. One inventory list, one vehicle page.
+/**
+ * Site-wide chrome that needs router context.
+ *
+ * AccountButton renders a <Link>. Mounted beside RouterProvider in main.tsx it
+ * read a null navigation context and threw on first render — React unmounted
+ * the tree, #root stayed empty, and every page of the site was blank.
+ */
+function SiteChrome() {
+    return (
+        <>
+            <Outlet />
+            <AIAssistant />
+            <AccountButton />
+        </>
+    );
+}
+
 export const router = createBrowserRouter([
+    {
+        element: <SiteChrome />,
+        children: [
     { path: "/", element: <Home /> },
     { path: "/about-us", element: <AboutUs /> },
     { path: "/blog-details", element: <BlogDetails /> },
@@ -53,4 +75,6 @@ export const router = createBrowserRouter([
     // Templates link to /404 explicitly as well as relying on the catch-all.
     { path: "/404", element: <NotFound /> },
     { path: "*", element: <NotFound /> },
+        ],
+    },
 ]);
