@@ -143,7 +143,10 @@ const CSS = `
 
 /* ── The Operator, wearing the old Sales-card frame in black & white ───── */
 .hrx-sales { padding: 20px; }
-.hrx-opchat { flex: 1 1 auto; min-height: 420px; display: flex; margin-top: 14px; }
+/* A bounded chatbox: it fills the card but can never exceed ~540px, so the
+   thread scrolls INSIDE it (.opc-body already hides its scrollbar on every
+   engine) and the conversation never stretches the page. */
+.hrx-opchat { flex: 1 1 auto; height: 480px; min-height: 420px; max-height: 540px; display: flex; margin-top: 14px; }
 .hrx-opchat .opc { width: 100%; height: 100%; min-height: 0;
   background: #fff; border: 1px solid var(--hrx-border-soft); border-radius: 12px; }
 .hrx-opchat .opc-veil { backdrop-filter: none; -webkit-backdrop-filter: none;
