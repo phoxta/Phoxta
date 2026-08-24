@@ -5,9 +5,8 @@ import { useCachedData } from "@/lib/hooks/useCachedData";
 import {
   profileQuery, organizationsQuery, aiUsageMonthQuery,
   marketplaceBlueprintsQuery,
-  orders30Query, unreadConvos30Query, notificationsQuery,
+  notificationsQuery, revenueOrders30Query,
 } from "@/lib/cache/dashboardQueries";
-import { StatTile } from "@/components/dash/Ui";
 import OperatorChat from "@/pages/dashboard/ops/OperatorChat";
 import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
 import { type UserProfile } from "@/lib/db/profile";
@@ -41,6 +40,12 @@ function completion(profile: UserProfile | null): number {
   return Math.round((filled / PROFILE_FIELDS.length) * 100);
 }
 
+const money = (cents: number) => {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(cents / 100);
+  } catch { return `£${Math.round(cents / 100)}`; }
+};
+
 function greeting(d = new Date()): string {
   const h = d.getHours();
   if (h < 12) return "Morning";
@@ -48,7 +53,6 @@ function greeting(d = new Date()): string {
   return "Evening";
 }
 
-const compact = (n: number) => new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
 /**
  * Which marketplace listing a business came from.
@@ -143,10 +147,11 @@ const CSS = `
 
 /* ── The Operator, wearing the old Sales-card frame in black & white ───── */
 .hrx-sales { padding: 20px; }
-/* A bounded chatbox: it fills the card but can never exceed ~540px, so the
-   thread scrolls INSIDE it (.opc-body already hides its scrollbar on every
-   engine) and the conversation never stretches the page. */
-.hrx-opchat { flex: 1 1 auto; height: 480px; min-height: 420px; max-height: 540px; display: flex; margin-top: 14px; }
+/* A viewport-bounded chatbox: sized so the composer is on screen the moment
+   the page loads — no scrolling to type. 330px covers the shell nav, header
+   band and this card's own chrome; the thread scrolls INSIDE (.opc-body
+   already hides its scrollbar on every engine). */
+.hrx-opchat { flex: 0 0 auto; height: clamp(300px, calc(100vh - 330px), 540px); display: flex; margin-top: 14px; }
 .hrx-opchat .opc { width: 100%; height: 100%; min-height: 0;
   background: #fff; border: 1px solid var(--hrx-border-soft); border-radius: 12px; }
 .hrx-opchat .opc-veil { backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -188,9 +193,18 @@ const CSS = `
 /* ── Operator card fills its column so the grid finishes level ──────────── */
 .hrx-sales { display: flex; flex-direction: column; flex: 1 1 auto; }
 
-/* ── Checklist / updates column: the dark panel IS the card ─────────────── */
-.hrx-side { padding: 10px; display: flex; flex-direction: column; flex: 1 1 auto; }
-.hrx-side .hrx-requests { flex: 1 1 auto; }
+/* ── Revenue + checklist column: the comp's Expense card, measure for
+     measure — 28px title, 60px figure, 16px labels, 66px bar. ─────────────── */
+.hrx-expense { padding: 19px 18px 18px; display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; }
+.hrx-ex-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; line-height: 1; white-space: nowrap; text-transform: capitalize; }
+.hrx-ex-head .t { font-size: 28px; font-weight: 500; margin: 0; }
+.hrx-ex-head .v { font-size: 60px; font-weight: 400; letter-spacing: -1.8px; }
+.hrx-ex-labels { display: flex; gap: 14px; flex-wrap: wrap; font-size: 16px; font-weight: 500; letter-spacing: -0.48px; line-height: 1; text-transform: capitalize; }
+.hrx-ex-labels span { white-space: nowrap; }
+.hrx-expense .hrx-segbar { height: 66px; align-items: center; }
+.hrx-expense .hrx-seg { height: 100%; }
+.hrx-expense .hrx-seg.hatch::after { inset: -40px; background: repeating-linear-gradient(120deg, #fff 0 2px, transparent 2px 5.86px); }
+.hrx-expense .hrx-requests { flex: 1 1 auto; }
 
 `;
 
@@ -206,14 +220,16 @@ const HIST_RANGES = [
 type HistRange = (typeof HIST_RANGES)[number]["id"];
 const I_BELL = <svg width="20" height="20" viewBox="0 0 20 20" {...ln} aria-hidden="true"><path d="M5.6 8.3a4.4 4.4 0 0 1 8.8 0v2.6c0 .6.2 1.2.6 1.7l.7 1c.4.6 0 1.4-.7 1.4H5a.9.9 0 0 1-.7-1.4l.7-1c.4-.5.6-1.1.6-1.7V8.3Z" /><path d="M8.2 15.8a1.9 1.9 0 0 0 3.6 0" /></svg>;
 
+/** The comp's Expense segment palette: first solid, the rest hatched. */
+const SEG_COLORS = ["#fe5f2b", "#ff934f", "#facb5c", "#195ce5", "#272727"];
+
 export default function DashboardHomePage() {
   const { data: profile = null, loading: pLoading, error } = useCachedData(profileQuery.key, profileQuery.fetch);
   const { data: orgs = [], loading: oLoading } = useCachedData(organizationsQuery.key, organizationsQuery.fetch);
   const { data: aiUsage = [] } = useCachedData(aiUsageMonthQuery.key, aiUsageMonthQuery.fetch);
   const { data: blueprints = [] } = useCachedData(marketplaceBlueprintsQuery.key, marketplaceBlueprintsQuery.fetch);
-  const { data: orders30 = 0 } = useCachedData(orders30Query.key, orders30Query.fetch);
-  const { data: unread = 0 } = useCachedData(unreadConvos30Query.key, unreadConvos30Query.fetch);
   const { data: notes = [] } = useCachedData(notificationsQuery.key, notificationsQuery.fetch);
+  const { data: revOrders = [] } = useCachedData(revenueOrders30Query.key, revenueOrders30Query.fetch);
 
   const loading = pLoading || oLoading;
   const pct = completion(profile);
@@ -259,6 +275,13 @@ export default function DashboardHomePage() {
   const allDone = pct >= 100 && orgs.length > 0 && live > 0 && aiTokens > 0;
   const latest = notes.slice(0, 5);
 
+  // The comp's Expense bar shows the pieces that make the total — here, the
+  // orders behind the 30-day revenue: the three biggest, the rest as one segment.
+  const revTotal = revOrders.reduce((s, o) => s + o.cents, 0);
+  const topOrders = revOrders.slice(0, 3).map((o) => ({ ...o, label: o.label.split(/\s+/)[0] }));
+  const restCents = revTotal - topOrders.reduce((s, o) => s + o.cents, 0);
+  const revSegs = restCents > 0 ? [...topOrders, { id: "rest", label: "Other", cents: restCents }] : topOrders;
+
   return (
     <div className="hrx-home">
       <PageMeta title="Phoxta - Dashboard" />
@@ -280,14 +303,6 @@ export default function DashboardHomePage() {
       </header>
 
       {error && <div className="alert alert-warning py-2 px-3 fz-font-md" role="alert">{error}</div>}
-
-      {/* ── The four numbers an owner actually checks in on ──────────────── */}
-      <div className="hrx-statrow">
-        <StatTile tone="dark" label="Orders · last 30 days" value={new Intl.NumberFormat().format(orders30)} />
-        <StatTile tone={unread > 0 ? "blue" : undefined} label="Unread messages" value={new Intl.NumberFormat().format(unread)} />
-        <StatTile label="Businesses live" value={orgs.length > 0 ? `${live} of ${orgs.length}` : "—"} />
-        <StatTile label="Operator activity" value={aiTokens > 0 ? `${compact(aiTokens)} tokens` : "Quiet"} />
-      </div>
 
       <div className="hrx-home-grid">
         {/* ── Column 1: business hero + placements ──────────────────────── */}
@@ -383,9 +398,34 @@ export default function DashboardHomePage() {
           </section>
         </div>
 
-        {/* ── Column 3: setup checklist, or the latest updates once done ── */}
+        {/* ── Column 3: revenue (the comp's Expense card) + dark panel ──── */}
         <div className="hrx-hcol c3">
-          <section className="hrx-card hrx-side">
+          <section className="hrx-card hrx-expense">
+            <div className="hrx-ex-head">
+              <h2 className="t">Revenue</h2>
+              <span className="v">{money(revTotal)}</span>
+            </div>
+            {revSegs.length > 0 ? (
+              <>
+                <div className="hrx-ex-labels">
+                  {revSegs.map((s) => (
+                    <span key={s.id}>{s.label} {money(s.cents)}</span>
+                  ))}
+                </div>
+                <div className="hrx-segbar" role="img" aria-label={`Orders making up the last 30 days of revenue. Total ${money(revTotal)}.`}>
+                  {revSegs.map((s, i) => (
+                    <div
+                      key={s.id}
+                      className={`hrx-seg${i > 0 ? " hatch" : ""}`}
+                      style={{ flexGrow: Math.max(s.cents, 1), background: SEG_COLORS[i % SEG_COLORS.length] }}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="neutral-500 mb-0" style={{ fontSize: 13 }}>No sales in the last 30 days — revenue appears here as orders come in.</p>
+            )}
+
             <div className="hrx-requests">
               {allDone ? (
                 <>

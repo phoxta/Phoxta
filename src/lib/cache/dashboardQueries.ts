@@ -64,6 +64,22 @@ export const revenue30Query = query("revenue.30d", async () => {
   return sum(orders.data) + sum(reservations.data);
 });
 
+/** The individual sales that make up those 30 days of revenue, largest first —
+ *  same tables and status filters as revenue30Query, so the segments always
+ *  sum to the same total. Labelled by customer, the way an owner talks about
+ *  an order. */
+export const revenueOrders30Query = query("revenue.30d.orders", async () => {
+  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const [orders, reservations] = await Promise.all([
+    supabase.from("orders").select("id, customer_name, total_cents").in("status", ["paid", "fulfilled"]).gte("created_at", since),
+    supabase.from("reservations").select("id, customer_name, total_cents").in("status", ["confirmed", "completed"]).gte("created_at", since),
+  ]);
+  type Row = { id: string; customer_name: string | null; total_cents: number };
+  return [...((orders.data ?? []) as Row[]), ...((reservations.data ?? []) as Row[])]
+    .map((r) => ({ id: r.id, label: String(r.customer_name ?? "").trim() || "Order", cents: r.total_cents || 0 }))
+    .sort((a, b) => b.cents - a.cents);
+});
+
 /** How many sales those 30 days of revenue came from — same tables, same
  *  status filters as revenue30Query, so the two tiles can never disagree. */
 export const orders30Query = query("orders.30d", async () => {
