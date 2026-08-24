@@ -8,8 +8,46 @@ import { SECTION_MANIFESTS } from "@/builder/registry";
 import { PAGE_TEMPLATES } from "@/builder/templates/generated";
 import type { PageDocument } from "@/builder/types";
 import BusinessBrandCard from "@/pages/dashboard/business/BusinessBrandCard";
+import { PageHeader, Card, Chip, stageTone, Empty, InitialAvatar } from "@/components/dash/Ui";
 
 const LAST_ORG_KEY = "phoxta-studio-last-org";
+
+const CSS = `
+.sdx-role { margin-left: 2px; }
+.hrx-tab .sdx-role { background: #f1f2f4; color: var(--hrx-ink); }
+.hrx-tab.active .sdx-role { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.sdx-stack { display: flex; flex-direction: column; gap: 8px; }
+.sdx-bizrow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.sdx-bizrow .meta { min-width: 0; flex: 1 1 auto; }
+.sdx-bizrow .meta .nm { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+.sdx-bizrow .acts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sdx-newpage { background: var(--hrx-soft); border: 1px solid var(--hrx-border-soft); border-radius: 16px; padding: 14px 16px; margin-bottom: 14px; }
+.sdx-newpage .row-fields { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.sdx-newpage .hrx-field { flex: 1 1 220px; margin-bottom: 0; }
+.sdx-newpage .hrx-field.tpl { flex: 0 1 260px; }
+.sdx-pagerow-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.sdx-hint { font-size: 14px; color: var(--hrx-muted); margin: 0 0 14px; max-width: 78ch; }
+.sdx-live { font-size: 13px; font-weight: 500; color: var(--hrx-blue); text-decoration: none; white-space: nowrap; }
+.sdx-live:hover { color: var(--hrx-blue-deep); text-decoration: underline; }
+`;
+
+const IconPencil = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </svg>
+);
+
+const IconArrow = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+  </svg>
+);
+
+const IconLayout = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect width="18" height="18" x="3" y="3" rx="2" /><path d="M3 9h18" /><path d="M9 21V9" />
+  </svg>
+);
 
 /**
  * Studio — the design home for a business you own. Pick a business (every business
@@ -76,102 +114,124 @@ export default function StudioPage() {
   }
 
   return (
-    <div>
+    <div className="sdx-stack">
       <PageMeta title="Phoxta - Studio" />
+      <style>{CSS}</style>
 
-      <div className="dash-sticky-head pb-4">
-        <h2 className="fw-600 mb-1">Studio</h2>
-        <p className="neutral-500 mb-0 fz-font-md">
-          Design any business you own — set its brand and build pages from {SECTION_MANIFESTS.length} ready-made sections.
-        </p>
-      </div>
+      <PageHeader
+        crumb="Portal"
+        title="Studio"
+        note={`Design any business you own — set its brand and build pages from ${SECTION_MANIFESTS.length} ready-made sections.`}
+        actions={current && (
+          <>
+            {canManage && (
+              <Link to={`/studio/${current.organization.id}/site`} className="hrx-pill primary">
+                {IconPencil} Edit site content
+              </Link>
+            )}
+            <Link to={`/dashboard/businesses/${current.organization.id}`} className="hrx-pill">
+              Site &amp; domains {IconArrow}
+            </Link>
+          </>
+        )}
+        stat={current ? { label: "Pages", value: loadingPages ? "…" : visualPages.length } : undefined}
+      />
 
-      {(error || bizError) && <div className="alert alert-warning py-2 px-3 fz-font-md">{error || bizError}</div>}
+      {(error || bizError) && <div className="alert alert-warning py-2 px-3 mb-0" role="alert">{error || bizError}</div>}
 
       {loadingBiz ? (
-        <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading your businesses…</div>
+        <Card><p className="text-center mb-0" style={{ color: "var(--hrx-muted)" }}>Loading your businesses…</p></Card>
       ) : biz.length === 0 ? (
-        <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center">
-          <h6 className="fw-600 mb-1">No businesses yet</h6>
-          <p className="neutral-500 mb-3 mx-auto" style={{ maxWidth: 420 }}>
-            Buy a business from the marketplace (or create one), then design it here.
-          </p>
-          <Link to="/dashboard/marketplace" className="btn btn-dark rounded-pill px-4">Browse the marketplace →</Link>
-        </div>
+        <Empty
+          icon={IconLayout}
+          title="No businesses yet"
+          action={<Link to="/dashboard/marketplace" className="hrx-pill dark">Browse the marketplace {IconArrow}</Link>}
+        >
+          Buy a business from the marketplace (or create one), then design it here.
+        </Empty>
       ) : (
         <>
           {/* Business switcher — every business you own */}
-          <div className="d-flex align-items-center flex-wrap gap-2 mb-4">
-            <span className="fz-font-sm fw-600 neutral-500 me-1">Business</span>
-            {biz.map(({ role, organization }) => (
-              <button
-                key={organization.id}
-                type="button"
-                onClick={() => setOrgId(organization.id)}
-                className={`btn btn-sm rounded-pill px-3 d-inline-flex align-items-center gap-2 ${orgId === organization.id ? "btn-dark" : "btn-outline-secondary"}`}
-              >
-                {organization.name}
-                <span className={`badge fw-500 text-capitalize ${orgId === organization.id ? "bg-white text-dark" : "bg-neutral-100 neutral-700"}`} style={{ fontSize: 10 }}>{role}</span>
-              </button>
-            ))}
-          </div>
+          <Card title="Business">
+            <div className="hrx-tabbar" role="tablist" aria-label="Choose a business">
+              {biz.map(({ role, organization }) => (
+                <button
+                  key={organization.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={orgId === organization.id}
+                  onClick={() => setOrgId(organization.id)}
+                  className={`hrx-tab${orgId === organization.id ? " active" : ""}`}
+                >
+                  {organization.name}
+                  <span className="hrx-chip sdx-role">{role}</span>
+                </button>
+              ))}
+            </div>
 
-          {current && (
-            <div className="d-flex flex-column gap-4">
-              {/* Live site shortcut */}
-              <div className="bg-neutral-0 rounded-4 p-3 px-4 border-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <div>
-                  <div className="fw-600 neutral-900">{current.organization.name}</div>
-                  <div className="fz-font-sm neutral-500 text-capitalize">{current.organization.vertical ?? "business"} · {current.organization.stage}</div>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                  {canManage && <Link to={`/studio/${current.organization.id}/site`} className="btn btn-dark btn-sm rounded-pill px-3">✎ Edit site content</Link>}
-                  <Link to={`/dashboard/businesses/${current.organization.id}`} className="btn btn-outline-dark btn-sm rounded-pill px-3">Site &amp; domains →</Link>
+            {current && (
+              <div className="sdx-bizrow mt-3">
+                <InitialAvatar name={current.organization.name} size={48} />
+                <div className="meta">
+                  <div className="nm">{current.organization.name}</div>
+                  <div className="mt-1 d-flex align-items-center gap-2 flex-wrap">
+                    <Chip tone="line">{current.organization.vertical ?? "business"}</Chip>
+                    <Chip tone={stageTone(current.organization.stage)}>{current.organization.stage}</Chip>
+                  </div>
                 </div>
               </div>
+            )}
+          </Card>
 
+          {current && (
+            <>
               {/* Brand & theme — edits the live storefront's look (reused editor + AI rebrand) */}
               <BusinessBrandCard org={current.organization} canManage={canManage} />
 
               {/* Pages */}
-              <div className="bg-neutral-0 rounded-4 p-4 border-100">
-                <h6 className="fw-600 mb-3">Pages</h6>
-                <p className="fz-font-sm neutral-500 mb-3">
+              <Card
+                title="Pages"
+                right={!loadingPages && visualPages.length > 0 ? (
+                  <span className="hrx-chip line">{visualPages.length} page{visualPages.length === 1 ? "" : "s"}</span>
+                ) : undefined}
+              >
+                <p className="sdx-hint">
                   Two editors, two jobs: <b>Edit site content</b> (above) changes the text and images
                   of your live storefront in place. <b>Pages</b> (below) builds extra pages — landing
                   pages, promos — published at their own links.
                 </p>
+
                 {canManage && (
-                  <form onSubmit={create} className="bg-neutral-50 rounded-3 p-3 mb-3">
-                    <div className="row g-2 align-items-end">
-                      <div className="col-12 col-md">
-                        <label className="fz-font-sm neutral-500 d-block mb-1">New page title</label>
-                        <input className="form-control rounded-3" placeholder="e.g. Homepage, About, Landing…" value={title} onChange={(e) => setTitle(e.target.value)} required />
-                      </div>
-                      <div className="col-12 col-md-auto">
-                        <label className="fz-font-sm neutral-500 d-block mb-1">Start from</label>
-                        <select className="form-select rounded-3" style={{ minWidth: 200 }} value={templateSlug} onChange={(e) => { setTemplateSlug(e.target.value); const tpl = PAGE_TEMPLATES.find((t) => t.slug === e.target.value); if (tpl && !title.trim()) setTitle(tpl.name); }}>
+                  <form onSubmit={create} className="sdx-newpage">
+                    <div className="row-fields">
+                      <label className="hrx-field">
+                        <span>New page title</span>
+                        <input className="form-control" placeholder="e.g. Homepage, About, Landing…" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                      </label>
+                      <label className="hrx-field tpl">
+                        <span>Start from</span>
+                        <select className="form-select" value={templateSlug} onChange={(e) => { setTemplateSlug(e.target.value); const tpl = PAGE_TEMPLATES.find((t) => t.slug === e.target.value); if (tpl && !title.trim()) setTitle(tpl.name); }}>
                           <option value="">Blank page</option>
                           {PAGE_TEMPLATES.map((t) => (
                             <option key={t.slug} value={t.slug}>{t.name} ({t.document.content?.length ?? 0} sections)</option>
                           ))}
                         </select>
-                      </div>
-                      <div className="col-12 col-md-auto">
-                        <button type="submit" className="btn btn-dark rounded-3 px-4 w-100" disabled={creating || !orgId}>{creating ? "Creating…" : "Create & open editor"}</button>
-                      </div>
+                      </label>
+                      <button type="submit" className="hrx-pill primary" disabled={creating || !orgId}>
+                        {creating ? "Creating…" : "Create & open editor"} {IconArrow}
+                      </button>
                     </div>
                   </form>
                 )}
 
                 {loadingPages ? (
-                  <div className="neutral-500 fz-font-md">Loading pages…</div>
+                  <p className="mb-0" style={{ color: "var(--hrx-muted)", fontSize: 14 }}>Loading pages…</p>
                 ) : visualPages.length === 0 ? (
-                  <div className="text-center neutral-500 fz-font-md py-4">
-                    No pages yet{canManage ? " — create your first one above." : "."}
-                  </div>
+                  <Empty icon={IconLayout} title="No pages yet">
+                    {canManage ? "Create your first page above — start blank or from a template." : "Pages this business publishes will appear here."}
+                  </Empty>
                 ) : (
-                  <div className="d-flex flex-column gap-2">
+                  <div>
                     {visualPages.map((p) => (
                       <div
                         key={p.id}
@@ -179,26 +239,27 @@ export default function StudioPage() {
                         tabIndex={0}
                         onClick={() => navigate(`/studio/${orgId}/${p.id}`)}
                         onKeyDown={(e) => { if (e.key === "Enter") navigate(`/studio/${orgId}/${p.id}`); }}
-                        className="border-100 rounded-3 p-3 d-flex flex-wrap align-items-center justify-content-between gap-2 neutral-900"
+                        className="hrx-listrow"
                         style={{ cursor: "pointer" }}
                       >
-                        <div>
-                          <div className="fw-600">{p.title} <span className="fz-font-sm neutral-500">/{p.slug}</span></div>
-                          <div className="fz-font-sm neutral-500">{(p.document?.content?.length ?? 0)} sections · updated {new Date(p.updated_at).toLocaleDateString()}</div>
+                        <InitialAvatar name={p.title} />
+                        <div className="main">
+                          <p className="t">{p.title} <span style={{ color: "var(--hrx-muted)", fontWeight: 400 }}>/{p.slug}</span></p>
+                          <p className="s">{(p.document?.content?.length ?? 0)} sections · updated {new Date(p.updated_at).toLocaleDateString()}</p>
                         </div>
-                        <div className="d-flex align-items-center gap-2">
-                          <span className={`badge fw-500 text-capitalize ${p.status === "published" ? "bg-success-subtle text-success" : "bg-neutral-100 neutral-700"}`}>{p.status}</span>
+                        <div className="sdx-pagerow-right">
+                          <Chip tone={p.status === "published" ? "ok" : stageTone(p.status)}>{p.status}</Chip>
                           {p.status === "published" && (
-                            <a href={`/site/${orgId}/${p.slug}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="btn btn-link btn-sm p-0 fw-500 text-decoration-none neutral-700">View live ↗</a>
+                            <a href={`/site/${orgId}/${p.slug}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="sdx-live">View live ↗</a>
                           )}
-                          <span className="btn btn-outline-dark btn-sm rounded-pill px-3">Open editor →</span>
+                          <span className="hrx-rbtn dark" aria-hidden="true" title="Open editor">{IconPencil}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
-            </div>
+              </Card>
+            </>
           )}
         </>
       )}

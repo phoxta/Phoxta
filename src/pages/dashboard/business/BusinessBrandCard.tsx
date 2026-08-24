@@ -11,6 +11,7 @@ import {
     type Branding,
 } from "@/lib/db/branding";
 import type { Organization } from "@/lib/db/organizations";
+import { Card } from "@/components/dash/Ui";
 
 // "Brand & theme" — the per-tenant look. Owners set a logo, palette, font pairing
 // and corner radius (or generate the whole thing from a one-line AI prompt), preview
@@ -24,6 +25,25 @@ const fontHref = (families: string[]) =>
         .filter(Boolean)
         .map((f) => `family=${encodeURIComponent(f)}:wght@400;500;600;700`)
         .join("&")}&display=swap`;
+
+const CSS = `
+.bzx-brand-grid { display: grid; gap: 0 14px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.bzx-brand-grid > * { grid-column: span 12; }
+@media (min-width: 576px) {
+  .bzx-brand-grid > .c6 { grid-column: span 6; }
+  .bzx-brand-grid > .c5 { grid-column: span 5; }
+  .bzx-brand-grid > .c3 { grid-column: span 3; }
+  .bzx-brand-grid > .c2 { grid-column: span 2; }
+}
+.bzx-ai { border: 1px solid var(--hrx-border-soft); background: var(--hrx-soft); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+.bzx-ai .t { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.bzx-logo-tile { border: 1px solid var(--hrx-border-soft); border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 6px; height: 56px; }
+.bzx-logo-tile .none { font-size: 13px; color: var(--hrx-muted); }
+.bzx-upload { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 34px; padding: 0 12px; border-radius: 50px; border: 1px solid var(--hrx-ink); background: #fff; color: var(--hrx-ink); font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: 0; white-space: nowrap; }
+.bzx-upload:hover { background: var(--hrx-ink); color: #fff; }
+.bzx-sec { font-size: 13px; font-weight: 600; color: var(--hrx-muted); margin: 4px 0 10px; }
+.bzx-field-note { font-weight: 400; }
+`;
 
 export default function BusinessBrandCard({ org, canManage }: Props) {
     const { data: branding, loading } = useCachedData(
@@ -98,14 +118,19 @@ export default function BusinessBrandCard({ org, canManage }: Props) {
         }
     }
 
-    if (loading) return <div className="bg-neutral-0 rounded-4 p-4 border-100 neutral-500 fz-font-md">Loading brand…</div>;
+    if (loading)
+        return (
+            <Card title="Brand & theme">
+                <p className="mb-0" style={{ color: "var(--hrx-muted)", fontSize: 14 }}>Loading brand…</p>
+            </Card>
+        );
 
     const radius = b.radius || "12px";
     const displayName = b.name?.trim() || org.name;
 
     return (
-        <div className="bg-neutral-0 rounded-4 p-4 border-100">
-            <h6 className="fw-600 mb-3">Brand &amp; theme</h6>
+        <Card title="Brand & theme">
+            <style>{CSS}</style>
 
             {/* Live preview */}
             <div className="mb-4" style={{ background: colors.bg, color: colors.text, borderRadius: radius, padding: "1.5rem", border: "1px solid rgba(0,0,0,.08)" }}>
@@ -128,38 +153,39 @@ export default function BusinessBrandCard({ org, canManage }: Props) {
             </div>
 
             {!canManage ? (
-                <div className="neutral-500 fz-font-md">You don't have permission to edit the brand.</div>
+                <p className="mb-0" style={{ color: "var(--hrx-muted)", fontSize: 14 }}>You don&rsquo;t have permission to edit the brand.</p>
             ) : (
                 <>
                     {/* AI rebrand */}
-                    <div className="border-100 rounded-3 p-3 mb-3">
-                        <div className="fz-font-sm fw-600 neutral-700 mb-2">✨ AI brand &amp; SEO — describe your business and the look you want</div>
+                    <div className="bzx-ai">
+                        <div className="t">✨ AI brand &amp; SEO — describe your business and the look you want</div>
                         <div className="d-flex gap-2">
                             <input
-                                className="form-control form-control-sm rounded-3"
+                                className="form-control"
                                 placeholder="e.g. modern luxury travel, deep navy & warm gold, elegant serif headings"
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") onAi(); }}
+                                aria-label="Describe your business and the look you want"
                             />
-                            <button type="button" className="btn btn-dark btn-sm rounded-3 px-3 flex-shrink-0" onClick={onAi} disabled={aiBusy || !prompt.trim()}>
+                            <button type="button" className="hrx-pill dark flex-shrink-0" onClick={onAi} disabled={aiBusy || !prompt.trim()}>
                                 {aiBusy ? "Generating…" : "Generate"}
                             </button>
                         </div>
                     </div>
 
                     {/* Manual controls */}
-                    <div className="row g-3">
-                        <div className="col-sm-6">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-1">Brand name</label>
-                            <input className="form-control form-control-sm rounded-3" placeholder={org.name} value={b.name ?? ""} onChange={(e) => setB((p) => ({ ...p, name: e.target.value }))} />
-                        </div>
-                        <div className="col-sm-6">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-1">Tagline</label>
-                            <input className="form-control form-control-sm rounded-3" placeholder="Short and memorable" value={b.tagline ?? ""} onChange={(e) => setB((p) => ({ ...p, tagline: e.target.value }))} />
-                        </div>
-                        <div className="col-12">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-2">Logos &amp; favicon</label>
+                    <div className="bzx-brand-grid">
+                        <label className="hrx-field c6">
+                            <span>Brand name</span>
+                            <input className="form-control" placeholder={org.name} value={b.name ?? ""} onChange={(e) => setB((p) => ({ ...p, name: e.target.value }))} />
+                        </label>
+                        <label className="hrx-field c6">
+                            <span>Tagline</span>
+                            <input className="form-control" placeholder="Short and memorable" value={b.tagline ?? ""} onChange={(e) => setB((p) => ({ ...p, tagline: e.target.value }))} />
+                        </label>
+                        <div className="mb-3">
+                            <div className="bzx-sec mb-2">Logos &amp; favicon</div>
                             <div className="d-flex flex-wrap gap-3">
                                 {([
                                     { key: "logo_url" as const, label: "Logo (dark)", w: 120, bg: "#ffffff" },
@@ -167,11 +193,11 @@ export default function BusinessBrandCard({ org, canManage }: Props) {
                                     { key: "favicon_url" as const, label: "Favicon", w: 56, bg: "#ffffff" },
                                 ]).map(({ key, label, w, bg }) => (
                                     <div key={key}>
-                                        <div className="fz-font-sm neutral-500 mb-1">{label}</div>
-                                        <div className="rounded-3 border-100 d-flex align-items-center justify-content-center overflow-hidden mb-1" style={{ width: w, height: 56, background: bg }}>
-                                            {b[key] ? <img src={b[key] as string} alt="" style={{ maxWidth: "90%", maxHeight: "90%", objectFit: "contain" }} /> : <span className="neutral-400 fz-font-sm">none</span>}
+                                        <div style={{ fontSize: 13, color: "var(--hrx-muted)", marginBottom: 4 }}>{label}</div>
+                                        <div className="bzx-logo-tile" style={{ width: w, background: bg }}>
+                                            {b[key] ? <img src={b[key] as string} alt="" style={{ maxWidth: "90%", maxHeight: "90%", objectFit: "contain" }} /> : <span className="none">none</span>}
                                         </div>
-                                        <label className="btn btn-outline-dark btn-sm rounded-3 mb-0 w-100" style={{ cursor: "pointer" }}>
+                                        <label className="bzx-upload">
                                             {up === key ? "Uploading…" : b[key] ? "Replace" : "Upload"}
                                             <input type="file" accept="image/*" hidden onChange={(e) => onUpload(key, e)} disabled={up === key} />
                                         </label>
@@ -181,60 +207,60 @@ export default function BusinessBrandCard({ org, canManage }: Props) {
                         </div>
 
                         {(["primary", "accent", "bg", "text"] as const).map((k) => (
-                            <div className="col-6 col-md-3" key={k}>
-                                <label className="fz-font-sm fw-600 neutral-500 d-block mb-1 text-capitalize">{k === "bg" ? "Background" : k}</label>
-                                <div className="d-flex align-items-center gap-2">
-                                    <input type="color" className="form-control form-control-sm form-control-color rounded-3 p-1" style={{ width: 44 }} value={colors[k]} onChange={(e) => setColor(k, e.target.value)} />
-                                    <input className="form-control form-control-sm rounded-3" value={colors[k]} onChange={(e) => setColor(k, e.target.value)} />
-                                </div>
-                            </div>
+                            <label className="hrx-field c3" key={k}>
+                                <span className="text-capitalize">{k === "bg" ? "Background" : k}</span>
+                                <span className="d-flex align-items-center gap-2">
+                                    <input type="color" className="form-control form-control-color p-1" style={{ width: 44 }} value={colors[k]} onChange={(e) => setColor(k, e.target.value)} aria-label={`${k === "bg" ? "Background" : k} colour picker`} />
+                                    <input className="form-control" value={colors[k]} onChange={(e) => setColor(k, e.target.value)} />
+                                </span>
+                            </label>
                         ))}
 
-                        <div className="col-sm-5">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-1">Heading font</label>
-                            <select className="form-select form-select-sm rounded-3" value={fonts.heading} onChange={(e) => setFont("heading", e.target.value)}>
+                        <label className="hrx-field c5">
+                            <span>Heading font</span>
+                            <select className="form-select" value={fonts.heading} onChange={(e) => setFont("heading", e.target.value)}>
                                 {FONT_CHOICES.map((f) => <option key={f} value={f}>{f}</option>)}
                             </select>
-                        </div>
-                        <div className="col-sm-5">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-1">Body font</label>
-                            <select className="form-select form-select-sm rounded-3" value={fonts.body} onChange={(e) => setFont("body", e.target.value)}>
+                        </label>
+                        <label className="hrx-field c5">
+                            <span>Body font</span>
+                            <select className="form-select" value={fonts.body} onChange={(e) => setFont("body", e.target.value)}>
                                 {FONT_CHOICES.map((f) => <option key={f} value={f}>{f}</option>)}
                             </select>
-                        </div>
-                        <div className="col-sm-2">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-1">Radius</label>
-                            <input className="form-control form-control-sm rounded-3" value={radius} onChange={(e) => setB((p) => ({ ...p, radius: e.target.value }))} />
-                        </div>
+                        </label>
+                        <label className="hrx-field c2">
+                            <span>Radius</span>
+                            <input className="form-control" value={radius} onChange={(e) => setB((p) => ({ ...p, radius: e.target.value }))} />
+                        </label>
 
-                        <div className="col-12">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-1">Business description <span className="fw-400 neutral-400">(shows in the browser)</span></label>
-                            <textarea className="form-control form-control-sm rounded-3" rows={2} placeholder="What your business does, in a sentence or two." value={b.description ?? ""} onChange={(e) => setB((p) => ({ ...p, description: e.target.value }))} />
-                        </div>
+                        <label className="hrx-field">
+                            <span>Business description <span className="bzx-field-note">(shows in the browser)</span></span>
+                            <textarea className="form-control" rows={2} placeholder="What your business does, in a sentence or two." value={b.description ?? ""} onChange={(e) => setB((p) => ({ ...p, description: e.target.value }))} />
+                        </label>
 
-                        <div className="col-12"><div className="fz-font-sm fw-600 neutral-700 mt-1">Search engine (SEO)</div></div>
-                        <div className="col-12">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-1">SEO title <span className="fw-400 neutral-400">(≤ 60 chars)</span></label>
-                            <input className="form-control form-control-sm rounded-3" value={b.seo?.title ?? ""} onChange={(e) => setB((p) => ({ ...p, seo: { ...p.seo, title: e.target.value } }))} />
-                        </div>
-                        <div className="col-12">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-1">Meta description <span className="fw-400 neutral-400">(≤ 155 chars)</span></label>
-                            <textarea className="form-control form-control-sm rounded-3" rows={2} value={b.seo?.description ?? ""} onChange={(e) => setB((p) => ({ ...p, seo: { ...p.seo, description: e.target.value } }))} />
-                        </div>
-                        <div className="col-12">
-                            <label className="fz-font-sm fw-600 neutral-500 d-block mb-1">Keywords</label>
-                            <input className="form-control form-control-sm rounded-3" placeholder="comma, separated, terms" value={b.seo?.keywords ?? ""} onChange={(e) => setB((p) => ({ ...p, seo: { ...p.seo, keywords: e.target.value } }))} />
-                        </div>
+                        <div className="bzx-sec">Search engine (SEO)</div>
+                        <label className="hrx-field">
+                            <span>SEO title <span className="bzx-field-note">(≤ 60 chars)</span></span>
+                            <input className="form-control" value={b.seo?.title ?? ""} onChange={(e) => setB((p) => ({ ...p, seo: { ...p.seo, title: e.target.value } }))} />
+                        </label>
+                        <label className="hrx-field">
+                            <span>Meta description <span className="bzx-field-note">(≤ 155 chars)</span></span>
+                            <textarea className="form-control" rows={2} value={b.seo?.description ?? ""} onChange={(e) => setB((p) => ({ ...p, seo: { ...p.seo, description: e.target.value } }))} />
+                        </label>
+                        <label className="hrx-field">
+                            <span>Keywords</span>
+                            <input className="form-control" placeholder="comma, separated, terms" value={b.seo?.keywords ?? ""} onChange={(e) => setB((p) => ({ ...p, seo: { ...p.seo, keywords: e.target.value } }))} />
+                        </label>
                     </div>
 
-                    <div className="d-flex align-items-center gap-3 mt-3">
-                        <button type="button" className="btn btn-dark btn-sm rounded-3 px-4" onClick={onSave} disabled={busy}>
+                    <div className="d-flex align-items-center gap-3 mt-2">
+                        <button type="button" className="hrx-pill dark" onClick={onSave} disabled={busy}>
                             {busy ? "Saving…" : "Save brand"}
                         </button>
-                        {msg && <span className="fz-font-md neutral-700">{msg}</span>}
+                        {msg && <span style={{ fontSize: 14 }} role="status">{msg}</span>}
                     </div>
                 </>
             )}
-        </div>
+        </Card>
     );
 }

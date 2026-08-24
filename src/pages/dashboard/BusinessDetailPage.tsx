@@ -10,6 +10,7 @@ import BusinessSiteCard from "@/pages/dashboard/business/BusinessSiteCard";
 import BusinessBrandCard from "@/pages/dashboard/business/BusinessBrandCard";
 import BusinessProfileCard from "@/pages/dashboard/business/BusinessProfileCard";
 import { formatPrice } from "@/lib/db/marketplace";
+import { Card, Chip, Empty, InitialAvatar, PageHeader, stageTone } from "@/components/dash/Ui";
 import {
   listInvitations,
   inviteMember,
@@ -22,6 +23,26 @@ const INVITE_ROLES: { value: Invitation["role"]; label: string }[] = [
   { value: "staff", label: "Staff" },
   { value: "viewer", label: "Viewer" },
 ];
+
+/* ── Icons (module-level, per house style) ─────────────────────────────── */
+
+const ln = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+
+const I_CONSOLE = <svg width="18" height="18" viewBox="0 0 24 24" {...ln} aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><path d="m7.5 9.5 3 2.5-3 2.5M12.5 15h4" /></svg>;
+const I_GLOBE = <svg width="18" height="18" viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 3.7 5.6 3.7 9S14.5 18.5 12 21c-2.5-2.5-3.7-5.6-3.7-9S9.5 5.5 12 3Z" /></svg>;
+const I_SEARCH = <svg width="22" height="22" viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>;
+
+const CSS = `
+.bzx-detail-grid { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 768px) { .bzx-detail-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.bzx-detail-grid > .bzx-span { grid-column: 1 / -1; }
+.bzx-plan-amount { font-size: clamp(24px, 2.2vw, 32px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
+.bzx-invite-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.bzx-invite-form .hrx-field { flex: 1 1 220px; margin-bottom: 0; }
+.bzx-invite-form .hrx-field.role { flex: 0 1 160px; }
+.bzx-back { font-size: 14px; color: var(--hrx-muted); text-decoration: none; }
+.bzx-back:hover { color: var(--hrx-ink); }
+`;
 
 export default function BusinessDetailPage() {
   const { id } = useParams();
@@ -84,71 +105,111 @@ export default function BusinessDetailPage() {
 
   const pendingInvites = invites.filter((i) => i.status === "pending");
 
-  if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+  if (loading)
+    return (
+      <Card>
+        <p className="text-center mb-0" style={{ color: "var(--hrx-muted)" }}>Loading…</p>
+      </Card>
+    );
   if (!org)
     return (
-      <div>
-        {error && <div className="alert alert-warning py-2 px-3 fz-font-md">{error}</div>}
-        <p className="neutral-500">Business not found.</p>
-        <Link to="/dashboard/businesses" className="fw-600 text-decoration-none">
-          ← Back to businesses
-        </Link>
+      <div className="d-flex flex-column gap-2">
+        {error && (
+          <div className="alert alert-warning py-2 px-3 mb-0" role="alert">
+            {error}
+          </div>
+        )}
+        <Empty
+          icon={I_SEARCH}
+          title="Business not found"
+          action={
+            <Link to="/dashboard/businesses" className="hrx-pill">
+              Back to businesses
+            </Link>
+          }
+        >
+          It may have been removed, or you may not have access to it.
+        </Empty>
       </div>
     );
 
   return (
-    <div style={{ maxWidth: 880 }}>
+    <div className="d-flex flex-column gap-2">
       <PageMeta title={`Phoxta - ${org.name}`} />
-      <Link to="/dashboard/businesses" className="fz-font-md neutral-500 text-decoration-none">
-        ← Businesses
-      </Link>
+      <style>{CSS}</style>
 
-      <div className="d-flex flex-wrap align-items-center gap-2 mt-2 mb-4">
-        <h2 className="fw-600 mb-0 me-2">{org.name}</h2>
-        {org.lifecycle_stage && <span className="badge bg-neutral-900 text-white text-capitalize fw-500">{org.lifecycle_stage}</span>}
-        <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{org.stage}</span>
-        {org.vertical && <span className="badge bg-neutral-100 neutral-700 fw-500">{org.vertical}</span>}
+      <div>
+        <Link to="/dashboard/businesses" className="bzx-back">
+          ← Businesses
+        </Link>
       </div>
 
-      <div className="row g-3">
-        <div className="col-md-6">
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 h-100">
-            <h6 className="fw-600 mb-3">Plan</h6>
-            {sub ? (
-              <>
-                <div className="d-flex align-items-baseline gap-2 mb-1">
-                  <span className="fz-24 fw-700 text-capitalize">{sub.plan}</span>
-                  <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{sub.status.replace("_", " ")}</span>
-                </div>
-                <div className="fz-font-md neutral-500">
-                  {formatPrice(sub.amount_cents, sub.currency)}/mo
-                  {sub.current_period_end ? ` · renews ${new Date(sub.current_period_end).toLocaleDateString()}` : ""}
-                </div>
-                <Link to="/dashboard/billing" className="fz-font-md fw-600 text-decoration-none d-inline-block mt-3">
-                  Manage billing →
-                </Link>
-              </>
-            ) : (
-              <p className="neutral-500 mb-0">No plan on file yet.</p>
+      <PageHeader
+        crumb="Businesses"
+        title={org.name}
+        note={
+          <span className="d-inline-flex align-items-center flex-wrap gap-1">
+            {org.lifecycle_stage && <Chip tone="solid">{org.lifecycle_stage}</Chip>}
+            <Chip tone={stageTone(org.stage)}>{org.stage}</Chip>
+            {org.vertical && <Chip tone="line">{org.vertical}</Chip>}
+            {org.primary_region && <Chip tone="line">{org.primary_region}</Chip>}
+          </span>
+        }
+        actions={
+          <>
+            {org.site_url && (
+              <a href={org.site_url} target="_blank" rel="noreferrer" className="hrx-pill">
+                {I_GLOBE} View live site
+              </a>
             )}
-          </div>
-        </div>
+            <Link to={`/dashboard/businesses/${org.id}/ops`} className="hrx-pill primary">
+              {I_CONSOLE} Open console
+            </Link>
+          </>
+        }
+        stat={{ label: "Team members", value: members.length }}
+      />
 
-        <div className="col-md-6">
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 h-100">
-            <h6 className="fw-600 mb-3">Team ({members.length})</h6>
-            <ul className="list-unstyled m-0 d-flex flex-column gap-2">
-              {members.map((m) => (
-                <li key={m.user_id} className="d-flex align-items-center justify-content-between">
-                  <span className="fz-font-md neutral-700">{m.user_id === user?.id ? "You" : "Member"}</span>
-                  <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{m.role}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+      <div className="bzx-detail-grid">
+        <Card
+          title="Plan"
+          right={
+            sub ? (
+              <Link to="/dashboard/billing" className="hrx-seeall">
+                Manage billing
+              </Link>
+            ) : undefined
+          }
+        >
+          {sub ? (
+            <>
+              <div className="d-flex align-items-center gap-2 mb-1">
+                <span className="bzx-plan-amount text-capitalize">{sub.plan}</span>
+                <Chip tone={stageTone(sub.status)}>{sub.status.replace("_", " ")}</Chip>
+              </div>
+              <p className="mb-0" style={{ color: "var(--hrx-muted)", fontSize: 14 }}>
+                {formatPrice(sub.amount_cents, sub.currency)}/mo
+                {sub.current_period_end ? ` · renews ${new Date(sub.current_period_end).toLocaleDateString()}` : ""}
+              </p>
+            </>
+          ) : (
+            <p className="mb-0" style={{ color: "var(--hrx-muted)", fontSize: 14 }}>No plan on file yet.</p>
+          )}
+        </Card>
 
-        <div className="col-12">
+        <Card title={`Team (${members.length})`}>
+          {members.map((m) => (
+            <div key={m.user_id} className="hrx-listrow">
+              <InitialAvatar name={m.user_id === user?.id ? "You" : "Member"} />
+              <div className="main">
+                <p className="t">{m.user_id === user?.id ? "You" : "Member"}</p>
+              </div>
+              <Chip tone={m.role === "owner" ? "blue" : "line"}>{m.role}</Chip>
+            </div>
+          ))}
+        </Card>
+
+        <div className="bzx-span">
           <BusinessSiteCard
             org={org}
             canManage={canManage}
@@ -156,84 +217,84 @@ export default function BusinessDetailPage() {
           />
         </div>
 
-        <div className="col-12">
+        <div className="bzx-span">
           <BusinessBrandCard org={org} canManage={canManage} />
         </div>
 
-        <div className="col-12">
+        <div className="bzx-span">
           <BusinessProfileCard org={org} canManage={canManage} />
         </div>
 
         {canManage && (
-          <div className="col-12">
-            <div className="bg-neutral-0 rounded-4 p-4 border-100">
-              <h6 className="fw-600 mb-3">Invite teammates</h6>
-              <form onSubmit={onInvite} className="row g-2 align-items-end">
-                <div className="col-sm-6">
-                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1">Email</label>
+          <div className="bzx-span">
+            <Card title="Invite teammates">
+              <form onSubmit={onInvite} className="bzx-invite-form">
+                <label className="hrx-field">
+                  <span>Email</span>
                   <input
                     type="email"
-                    className="form-control rounded-3"
+                    className="form-control"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="teammate@email.com"
                     required
                   />
-                </div>
-                <div className="col-sm-3">
-                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1">Role</label>
-                  <select className="form-select rounded-3" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as Invitation["role"])}>
+                </label>
+                <label className="hrx-field role">
+                  <span>Role</span>
+                  <select className="form-select" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as Invitation["role"])}>
                     {INVITE_ROLES.map((r) => (
                       <option key={r.value} value={r.value}>
                         {r.label}
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="col-sm-3">
-                  <button type="submit" className="btn btn-dark w-100 rounded-3" disabled={inviting}>
-                    {inviting ? "Sending…" : "Send invite"}
-                  </button>
-                </div>
+                </label>
+                <button type="submit" className="hrx-pill dark" disabled={inviting}>
+                  {inviting ? "Sending…" : "Send invite"}
+                </button>
               </form>
-              {inviteMsg && <div className="fz-font-md neutral-500 mt-2">{inviteMsg}</div>}
+              {inviteMsg && (
+                <p className="mt-2 mb-0" style={{ color: "var(--hrx-muted)", fontSize: 14 }} role="status">
+                  {inviteMsg}
+                </p>
+              )}
 
               {pendingInvites.length > 0 && (
-                <div className="mt-4">
-                  <div className="fz-font-sm fw-600 neutral-500 mb-2">Pending invitations</div>
-                  <ul className="list-unstyled m-0 d-flex flex-column gap-2">
-                    {pendingInvites.map((i) => (
-                      <li key={i.id} className="d-flex align-items-center justify-content-between gap-3">
-                        <span className="fz-font-md neutral-700">
-                          {i.email} <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500 ms-1">{i.role}</span>
-                        </span>
-                        <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => onRevoke(i.id)}>
-                          Revoke
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="mt-3">
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--hrx-muted)" }}>Pending invitations</div>
+                  {pendingInvites.map((i) => (
+                    <div key={i.id} className="hrx-listrow">
+                      <InitialAvatar name={i.email} />
+                      <div className="main">
+                        <p className="t">{i.email}</p>
+                        <p className="s text-capitalize">{i.role}</p>
+                      </div>
+                      <button type="button" className="hrx-seeall" onClick={() => onRevoke(i.id)}>
+                        Revoke
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
-            </div>
+            </Card>
           </div>
         )}
 
-        <div className="col-12">
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div>
-              <h6 className="fw-600 mb-1">Operating console</h6>
-              <p className="neutral-500 mb-0">
-                Run the business day to day — CRM, commerce, invoicing, content, bookings, helpdesk, marketing and analytics.
-              </p>
+        <div className="bzx-span">
+          <Card>
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+              <div style={{ minWidth: 0 }}>
+                <h2 className="hrx-card-title mb-1">Operating console</h2>
+                <p className="mb-0" style={{ color: "var(--hrx-muted)", fontSize: 14 }}>
+                  Run the business day to day — CRM, commerce, invoicing, content, bookings, helpdesk, marketing and analytics.
+                </p>
+              </div>
+              <Link to={`/dashboard/businesses/${org.id}/ops`} className="hrx-pill dark flex-shrink-0">
+                {I_CONSOLE} Open console
+              </Link>
             </div>
-            <Link to={`/dashboard/businesses/${org.id}/ops`} className="at-btn d-inline-block flex-shrink-0">
-              <span>
-                <span className="text-1">Open console</span>
-                <span className="text-2">Open console</span>
-              </span>
-            </Link>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

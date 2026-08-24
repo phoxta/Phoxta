@@ -317,8 +317,46 @@ export default function InboxPage() {
     (id: string | null) => (id ? members.find((m) => m.user_id === id)?.full_name || "Teammate" : ""),
     [members],
   );
-  const scrollThread = (smooth = true) =>
-    setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: smooth ? "smooth" : "auto" }), 60);
+  /**
+   * Open a thread at the TOP of its newest message, not the bottom of the pane.
+   *
+   * Scrolling to scrollHeight was right when an email was a 240px letterbox.
+   * Now that mail renders at its full height, "the bottom" is the footer of a
+   * long newsletter — so selecting a message dropped you at the end of its last
+   * image with the message itself above the fold. A mail client shows you the
+   * start of the latest message, which for a short SMS thread is the same
+   * position anyway, because the browser clamps the scroll.
+   */
+  const lastAlignRef = useRef<number | null>(null);
+  const scrollThread = (smooth = true) => {
+    const align = () => {
+      const pane = bodyRef.current;
+      if (!pane) return;
+      const msgs = pane.querySelectorAll<HTMLElement>(".ibx-msg, .ibx-note");
+      const last = msgs[msgs.length - 1];
+      if (!last) {
+        pane.scrollTo({ top: pane.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+        return;
+      }
+      // Measured rather than read off offsetTop, which is relative to whichever
+      // ancestor happens to be positioned.
+      const delta = last.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+      const top = Math.max(0, pane.scrollTop + delta - 12);
+      pane.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });
+      lastAlignRef.current = Math.round(top);
+    };
+
+    setTimeout(align, 60);
+    // Images in an email land after first paint and shift everything below them,
+    // so re-align once — but only if the reader has not scrolled since, or this
+    // would yank the page out from under them.
+    setTimeout(() => {
+      const pane = bodyRef.current;
+      if (!pane || lastAlignRef.current === null) return;
+      if (Math.abs(pane.scrollTop - lastAlignRef.current) > 4) return;
+      align();
+    }, 450);
+  };
 
   // ── Search debounce (300ms — no query per keystroke) ──────────────────────
   useEffect(() => {

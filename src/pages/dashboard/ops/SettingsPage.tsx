@@ -6,12 +6,12 @@ import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { updateBusiness } from "@/lib/db/organizations";
 import { listLocations, createLocation, deleteLocation, type Location } from "@/lib/db/ops/agent";
 import { confirmDanger, reportMutation, toast, toastError } from "@/lib/ops/feedback";
+import { Card, Chip, Empty, InitialAvatar } from "@/components/dash/Ui";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 /** Major ISO currencies, African markets first (Phoxta's home turf). */
 const CURRENCIES: { code: string; label: string }[] = [
   { code: "NGN", label: "NGN — Nigerian naira" },
-  { code: "GBP", label: "USD — US dollar" },
   { code: "GBP", label: "GBP — British pound" },
   { code: "EUR", label: "EUR — Euro" },
   { code: "GHS", label: "GHS — Ghanaian cedi" },
@@ -36,6 +36,33 @@ const GOOGLE_APPS = [
   { app: "drive", icon: "📁", name: "Drive", desc: "Files & folders" },
   { app: "calendar", icon: "📅", name: "Calendar", desc: "Events & scheduling" },
 ];
+
+/** Page-local styles on top of the shared .hrx kit. */
+const CSS = `
+.osx-hint { font-size: 13px; color: var(--hrx-muted); margin-top: 6px; }
+.osx-note { font-size: 14px; color: var(--hrx-muted); margin: 0 0 14px; }
+.osx-btn:disabled { opacity: 0.55; cursor: default; }
+.osx-grid .hrx-field { margin-bottom: 0; }
+.osx-danger {
+  height: 34px; padding: 0 14px; border-radius: 50px; background: #fff;
+  border: 1px solid #f3c1c1; color: #dc2626; font-size: 13px; font-weight: 500;
+  display: inline-flex; align-items: center; white-space: nowrap; flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.osx-danger:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
+.osx-gtile {
+  background: var(--hrx-soft); border: 1px solid var(--hrx-border-soft); border-radius: 16px;
+  padding: 14px; width: 100%; height: 100%; display: flex; align-items: center; gap: 12px;
+  text-decoration: none; color: var(--hrx-ink); transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.osx-gtile:hover { background: #f1f2f4; border-color: var(--hrx-border); color: var(--hrx-ink); }
+.osx-gtile .n { font-size: 15px; font-weight: 500; display: block; }
+.osx-gtile .d { font-size: 13px; color: var(--hrx-muted); display: block; }
+@media (min-width: 576px) {
+  .osx-gtile { flex-direction: column; text-align: center; gap: 6px; }
+}
+.osx-route { font-size: 14px; margin-top: 8px; }
+`;
 
 export default function SettingsPage() {
   const { orgId, org } = useOutletContext<OpsContext>();
@@ -119,151 +146,167 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="row g-4">
+    <div className="row g-3">
+      <style>{CSS}</style>
+
       {/* ── Business ── */}
-      <div className="col-12 col-lg-6">
-        <h2 className="fz-font-lg fw-600 mb-3">Business</h2>
-        <form onSubmit={saveBusiness} className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-          <div className="mb-3">
-            <label htmlFor="set-biz-name" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Business name</label>
-            <input id="set-biz-name" className="form-control rounded-3" value={name} onChange={(e) => setName(e.target.value)} required />
-          </div>
-          <div className="mb-3">
-            <label htmlFor="set-biz-currency" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Currency</label>
-            <select id="set-biz-currency" className="form-select rounded-3" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-              {!CURRENCIES.some((c) => c.code === currency) && <option value={currency}>{currency}</option>}
-            </select>
-            <div className="fz-font-sm neutral-500 mt-1">Changes the display currency console-wide — orders, invoices, reports and dashboards all show money in this currency.</div>
-          </div>
-          <button type="submit" className="btn btn-dark rounded-3 px-4 ops-tap justify-content-center" disabled={bizBusy}>{bizBusy ? "Saving…" : "Save changes"}</button>
-        </form>
+      <div className="col-12 col-lg-6 d-flex flex-column gap-3">
+        <Card title="Business">
+          <form onSubmit={saveBusiness}>
+            <label className="hrx-field">
+              <span>Business name</span>
+              <input className="form-control" value={name} onChange={(e) => setName(e.target.value)} required />
+            </label>
+            <label className="hrx-field">
+              <span>Currency</span>
+              <select className="form-select" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                {!CURRENCIES.some((c) => c.code === currency) && <option value={currency}>{currency}</option>}
+              </select>
+              <span className="osx-hint">Changes the display currency console-wide — orders, invoices, reports and dashboards all show money in this currency.</span>
+            </label>
+            <button type="submit" className="hrx-pill dark osx-btn" disabled={bizBusy}>{bizBusy ? "Saving…" : "Save changes"}</button>
+          </form>
+        </Card>
 
         {/* ── Agent permissions ── */}
-        <h2 className="fz-font-lg fw-600 mb-3 mt-4">AI agent</h2>
-        <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100 d-flex flex-column gap-3">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <div style={{ minWidth: 0 }}>
-              <h3 className="fz-font-md fw-600 mb-0">What the AI may do on its own</h3>
-              <div className="fz-font-sm neutral-500">Choose what runs automatically and what waits for your approval.</div>
+        <Card title="AI agent">
+          <div className="hrx-listrow">
+            <div className="main">
+              <h3 className="t">What the AI may do on its own</h3>
+              <p className="s">Choose what runs automatically and what waits for your approval.</p>
             </div>
-            <Link to={`${base}/agent/operator`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap ops-tap">Open</Link>
+            <Link to={`${base}/agent/operator`} className="hrx-seeall">Open</Link>
           </div>
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top border-100 pt-3">
-            <div style={{ minWidth: 0 }}>
-              <h3 className="fz-font-md fw-600 mb-0">Train your agent</h3>
-              <div className="fz-font-sm neutral-500">Greeting, tone, procedures, business hours and escalation rules.</div>
+          <div className="hrx-listrow">
+            <div className="main">
+              <h3 className="t">Train your agent</h3>
+              <p className="s">Greeting, tone, procedures, business hours and escalation rules.</p>
             </div>
-            <Link to={`${base}/agent/configure`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap ops-tap">Train</Link>
+            <Link to={`${base}/agent/configure`} className="hrx-seeall">Train</Link>
           </div>
-        </div>
+        </Card>
 
         {/* ── Google Workspace ── */}
-        <h2 className="fz-font-lg fw-600 mb-3 mt-4">Google Workspace</h2>
-        <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
+        <Card title="Google Workspace">
           {/* Full-width rows on a phone, tiles from sm up — never three 72px columns. */}
           <div className="row g-2 mb-3">
             {GOOGLE_APPS.map((a) => (
               <div className="col-12 col-sm-4" key={a.app}>
-                <Link
-                  to={`${base}/google?app=${a.app}`}
-                  className="bg-neutral-50 rounded-4 p-3 border-100 w-100 h-100 d-flex flex-row flex-sm-column align-items-center text-sm-center gap-2 gap-sm-1 text-decoration-none"
-                >
+                <Link to={`${base}/google?app=${a.app}`} className="osx-gtile">
                   <span aria-hidden="true" style={{ fontSize: 26, lineHeight: 1 }}>{a.icon}</span>
-                  <span className="d-flex flex-column">
-                    <span className="fw-600 neutral-900 fz-font-md">{a.name}</span>
-                    <span className="fz-font-sm neutral-500">{a.desc}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span className="n">{a.name}</span>
+                    <span className="d">{a.desc}</span>
                   </span>
                 </Link>
               </div>
             ))}
           </div>
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <div className="fz-font-sm neutral-500" style={{ minWidth: 0 }}>Connect or manage the Google account and team email addresses.</div>
-            <Link to={`${base}/google?tab=configure`} className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap ops-tap">Configure</Link>
+            <p className="osx-note mb-0" style={{ minWidth: 0 }}>Connect or manage the Google account and team email addresses.</p>
+            <Link to={`${base}/google?tab=configure`} className="hrx-seeall">Configure</Link>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* ── Locations & call routing ── */}
-      <div className="col-12 col-lg-6">
-        <h2 className="fz-font-lg fw-600 mb-3">Locations &amp; call routing</h2>
-        <div className="fz-font-sm neutral-500 mb-3">Routing matters mainly for multi-location businesses — the AI call agent uses these branches to send callers to the right place by ZIP and service.</div>
-        <form onSubmit={addLocation} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">Add a branch</h3>
-          <div className="row g-2">
-            <div className="col-12 col-md-6">
-              <label htmlFor="set-loc-name" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Branch name</label>
-              <input id="set-loc-name" className="form-control rounded-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      <div className="col-12 col-lg-6 d-flex flex-column gap-3">
+        <Card title="Locations & call routing">
+          <p className="osx-note">Routing matters mainly for multi-location businesses — the AI call agent uses these branches to send callers to the right place by ZIP and service.</p>
+          <form onSubmit={addLocation}>
+            <div className="row g-2 osx-grid">
+              <div className="col-12 col-md-6">
+                <label className="hrx-field">
+                  <span>Branch name</span>
+                  <input className="form-control" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                </label>
+              </div>
+              <div className="col-6 col-md-3">
+                <label className="hrx-field">
+                  <span>ZIP</span>
+                  <input className="form-control" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-6 col-md-3">
+                <label className="hrx-field">
+                  <span>Phone</span>
+                  <input type="tel" className="form-control" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-12">
+                <label className="hrx-field">
+                  <span>Service types (comma separated)</span>
+                  <input className="form-control" value={form.services} onChange={(e) => setForm({ ...form, services: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-12"><button type="submit" className="hrx-pill dark osx-btn">Add location</button></div>
             </div>
-            <div className="col-6 col-md-3">
-              <label htmlFor="set-loc-zip" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">ZIP</label>
-              <input id="set-loc-zip" className="form-control rounded-3" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} />
-            </div>
-            <div className="col-6 col-md-3">
-              <label htmlFor="set-loc-phone" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Phone</label>
-              <input id="set-loc-phone" type="tel" className="form-control rounded-3" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            </div>
-            <div className="col-12">
-              <label htmlFor="set-loc-services" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Service types <span className="fw-400">(comma separated)</span></label>
-              <input id="set-loc-services" className="form-control rounded-3" value={form.services} onChange={(e) => setForm({ ...form, services: e.target.value })} />
-            </div>
-            <div className="col-12"><button type="submit" className="btn btn-dark rounded-3 px-4 ops-tap justify-content-center">Add location</button></div>
-          </div>
-        </form>
+          </form>
+        </Card>
 
-        {locLoading ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500" role="status">Loading…</div>
-        ) : locError ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center" role="alert">
-            <div className="text-danger fw-600 mb-2">Couldn&rsquo;t load locations</div>
-            <div className="fz-font-md neutral-500 mb-3">{locError}</div>
-            <button type="button" className="btn btn-dark btn-sm rounded-pill px-4 ops-tap" onClick={() => reload()}>Retry</button>
-          </div>
-        ) : locations.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No locations yet. Single-location businesses can skip this — add branches only if calls should route by ZIP.</div>
-        ) : (
-          <ul className="list-unstyled m-0 d-flex flex-column gap-2">
-            {locations.map((l) => (
-              <li key={l.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2">
-                <div style={{ minWidth: 0 }}>
-                  <div className="fw-600">{l.name} {l.zip && <span className="fz-font-sm fw-400 neutral-500">{l.zip}</span>}</div>
-                  <div className="fz-font-sm neutral-500">{l.service_types.join(", ") || "All services"}{l.phone ? ` · ${l.phone}` : ""}</div>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-link btn-sm p-0 px-2 text-danger text-decoration-none ops-tap flex-shrink-0"
-                  aria-label={`Remove ${l.name}`}
-                  onClick={() => removeLocation(l)}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <Card title="Branches" right={!locLoading && !locError ? <Chip tone="line">{locations.length}</Chip> : undefined}>
+          {locLoading ? (
+            <p className="osx-note text-center mb-0" role="status">Loading…</p>
+          ) : locError ? (
+            <div className="text-center" role="alert">
+              <div className="fw-semibold mb-1" style={{ color: "#dc2626" }}>Couldn&rsquo;t load locations</div>
+              <p className="osx-note">{locError}</p>
+              <button type="button" className="hrx-pill dark" onClick={() => reload()}>Retry</button>
+            </div>
+          ) : locations.length === 0 ? (
+            <Empty title="No locations yet">
+              Single-location businesses can skip this — add branches only if calls should route by ZIP.
+            </Empty>
+          ) : (
+            <ul className="list-unstyled m-0">
+              {locations.map((l) => (
+                <li key={l.id} className="hrx-listrow">
+                  <InitialAvatar name={l.name} />
+                  <div className="main">
+                    <p className="t">{l.name} {l.zip && <span className="fw-normal" style={{ color: "var(--hrx-muted)", fontSize: 13 }}>{l.zip}</span>}</p>
+                    <p className="s">{l.service_types.join(", ") || "All services"}{l.phone ? ` · ${l.phone}` : ""}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="osx-danger"
+                    aria-label={`Remove ${l.name}`}
+                    onClick={() => removeLocation(l)}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
-        <form onSubmit={runRoute} className="bg-neutral-0 rounded-4 p-3 border-100 mt-3">
-          <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">Test ZIP routing</h3>
-          <div className="row g-2">
-            <div className="col-6">
-              <label htmlFor="set-route-zip" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Caller ZIP</label>
-              <input id="set-route-zip" className="form-control rounded-3" value={test.zip} onChange={(e) => setTest({ ...test, zip: e.target.value })} />
+        <Card title="Test ZIP routing">
+          <form onSubmit={runRoute}>
+            <div className="row g-2 osx-grid">
+              <div className="col-6">
+                <label className="hrx-field">
+                  <span>Caller ZIP</span>
+                  <input className="form-control" value={test.zip} onChange={(e) => setTest({ ...test, zip: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-6">
+                <label className="hrx-field">
+                  <span>Service</span>
+                  <input className="form-control" value={test.service} onChange={(e) => setTest({ ...test, service: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-12">
+                <button type="submit" className="hrx-pill dark osx-btn" disabled={routing}>{routing ? "Routing…" : "Route this call"}</button>
+              </div>
             </div>
-            <div className="col-6">
-              <label htmlFor="set-route-service" className="fz-font-sm fw-600 neutral-500 mb-1 d-block">Service</label>
-              <input id="set-route-service" className="form-control rounded-3" value={test.service} onChange={(e) => setTest({ ...test, service: e.target.value })} />
+            <p className="osx-note mt-2 mb-0">Runs the same routing decision the live call agent uses.</p>
+            <div role="status" aria-live="polite">
+              {routed === "none" && <div className="osx-route" style={{ color: "var(--hrx-muted)" }}>No matching location.</div>}
+              {routed && routed !== "none" && <div className="osx-route"><span aria-hidden="true">→ </span>Routes to <span className="fw-semibold">{routed.name}</span> ({routed.phone || routed.zip})</div>}
             </div>
-            <div className="col-12">
-              <button type="submit" className="btn btn-dark rounded-3 px-4 ops-tap justify-content-center" disabled={routing}>{routing ? "Routing…" : "Route this call"}</button>
-            </div>
-          </div>
-          <div className="fz-font-sm neutral-500 mt-2">Runs the same routing decision the live call agent uses.</div>
-          <div role="status" aria-live="polite">
-            {routed === "none" && <div className="fz-font-md neutral-500 mt-1">No matching location.</div>}
-            {routed && routed !== "none" && <div className="fz-font-md neutral-700 mt-1"><span aria-hidden="true">→ </span>Routes to <span className="fw-600">{routed.name}</span> ({routed.phone || routed.zip})</div>}
-          </div>
-        </form>
+          </form>
+        </Card>
       </div>
     </div>
   );

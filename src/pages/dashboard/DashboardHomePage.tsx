@@ -1,36 +1,34 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import {
   profileQuery, organizationsQuery, aiUsageMonthQuery,
-  revenue30Query, revenueSeriesQuery, invitationsQuery, marketplaceBlueprintsQuery,
-  SALES_RANGES, type SalesRange,
+  marketplaceBlueprintsQuery,
+  orders30Query, unreadConvos30Query, notificationsQuery,
 } from "@/lib/cache/dashboardQueries";
+import { StatTile } from "@/components/dash/Ui";
+import OperatorChat from "@/pages/dashboard/ops/OperatorChat";
+import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
 import { type UserProfile } from "@/lib/db/profile";
 import { type Organization } from "@/lib/db/organizations";
 import { type Blueprint } from "@/lib/db/marketplace";
 import { blueprintCover } from "@/lib/blueprintCover";
-import OperatorChat from "@/pages/dashboard/ops/OperatorChat";
-import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
 
 /**
- * Dashboard home — one screen on a laptop and on a desktop alike.
+ * Dashboard home — the HR-dashboard comp rebuilt around Phoxta's real data.
  *
- * Laid out with CSS Grid rather than Bootstrap rows. Nested flex kept failing
- * the same way: `flex: 1 1 0` children still floor at min-content wherever a
- * `.row` reintroduces `min-height: auto`, so the top pair ate the whole column,
- * Your Business was pushed off the bottom and the Operator ran past the fold.
- * Grid tracks written as `minmax(0, …)` are genuinely shrinkable, so the two
- * rows always split evenly and both columns end level with the sidebar.
+ * The comp's content is someone else's business (timesheets, leave, "38hrs");
+ * shipping those numbers would mean an owner reading a confident figure that is
+ * not theirs. Every card keeps the comp's look but binds to live data, and
+ * where there is none the card says so:
  *
- * Below 1200px the height cap is dropped and the page flows normally — a phone
- * is not the design being replicated, and pinning it there would only clip.
- *
- * The NUMBERS are real. The comp is a template mock ($27,500 of sales, a Spanish
- * class, a mentor named Kristin); shipping those into a live dashboard would
- * mean an owner reading a confident figure that is not theirs. Every value is
- * bound to data, and where there is none the card says so.
+ *   profile photo card   → the selected business's storefront cover
+ *   "Current Placement"  → the user's businesses with their stage
+ *   Overview chart       → revenue by period (stems + day caps, peak tagged)
+ *   Progress             → profile completion + portfolio counters
+ *   Expense bar          → this month's AI usage split per business
+ *   "My Requests"        → the real setup checklist, ticked off by data
  */
 
 const PROFILE_FIELDS: (keyof UserProfile)[] = [
@@ -50,11 +48,7 @@ function greeting(d = new Date()): string {
   return "Evening";
 }
 
-const money = (cents: number) => {
-  try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(cents / 100);
-  } catch { return `$${Math.round(cents / 100)}`; }
-};
+const compact = (n: number) => new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
 /**
  * Which marketplace listing a business came from.
@@ -87,362 +81,355 @@ function blueprintFor(org: Organization | null, blueprints: Blueprint[]): Bluepr
   return null;
 }
 
-/** One of the three counters under the progress bar. */
-function Counter({ tint, icon, value, label }: { tint: string; icon: React.ReactNode; value: number; label: string }) {
-  return (
-    <div className="dash-counter">
-      <span className="dash-counter-ic" style={{ background: tint }} aria-hidden="true">{icon}</span>
-      <div className="dash-counter-n">{value}</div>
-      <div className="dash-counter-l">{label}</div>
-    </div>
-  );
-}
+/* ── Icons (module-level, per house style) ─────────────────────────────── */
 
-const I_PROGRESS = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h10M4 18h7" /></svg>;
-const I_DONE = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12l5 5L14 7M12 17l5-5" /></svg>;
-const I_SOON = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 11h18" /></svg>;
+const ln = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
-const I_CAL = <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M8 3v4M16 3v4M3 11h18" /></svg>;
-const I_CARET = <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>;
-
-/** The width at which the pinned one-screen layout turns on. */
-const PIN_AT = 1200;
+const I_PLUS = <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M9.2 3.5h1.6v5.7h5.7v1.6h-5.7v5.7H9.2v-5.7H3.5V9.2h5.7z" /></svg>;
+const I_CAL = <svg width="18" height="18" viewBox="0 0 20 20" {...ln} aria-hidden="true"><rect x="3.3" y="4" width="13.4" height="13.3" rx="2" /><path d="M6.7 2.7v2.7M13.3 2.7v2.7M3.8 8.1h12.4" /></svg>;
+const I_DOC = <svg width="18" height="18" viewBox="0 0 20 20" {...ln} aria-hidden="true"><rect x="3.3" y="2.5" width="13.4" height="15" rx="2" /><path d="M6.7 10.4h6.6M6.7 13.3h4.2" /></svg>;
+const I_BOLT = <svg width="22" height="22" viewBox="0 0 24 24" {...ln} aria-hidden="true" color="#f79009"><path d="M13.2 3.6 6.7 12.6h5l-1 7.8 6.6-9H12.3z" /></svg>;
+const I_ARROW = <svg width="18" height="18" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" /></svg>;
+const I_CLOCK = <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1.3a6.7 6.7 0 1 0 0 13.4A6.7 6.7 0 0 0 8 1.3Zm.7 7.2c0 .3-.2.5-.4.6l-2.4 1.4a.7.7 0 0 1-.7-1.2l2.1-1.2V4.7a.7.7 0 0 1 1.4 0v3.8Z" /></svg>;
+const I_GLOBE = <svg width="18" height="18" viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 3.7 5.6 3.7 9S14.5 18.5 12 21c-2.5-2.5-3.7-5.6-3.7-9S9.5 5.5 12 3Z" /></svg>;
+const I_USER = <svg width="22" height="22" viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="12" cy="8" r="3.6" /><path d="M4.8 20c.9-3.4 3.8-5.3 7.2-5.3s6.3 1.9 7.2 5.3" /></svg>;
+const I_BAG = <svg width="22" height="22" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M4.5 8h15l-1.2 12.5H5.7z" /><path d="M8.5 10.5V6.6a3.5 3.5 0 0 1 7 0v3.9" /></svg>;
+const I_ZAP = <svg width="22" height="22" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M13.2 3.6 6.7 12.6h5l-1 7.8 6.6-9H12.3z" /></svg>;
+const I_CHAT = <svg width="22" height="22" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-7l-5 4v-4H6a3 3 0 0 1-3-3z" /><path d="M8 9h8M8 12.5h6" /></svg>;
+const I_PEN = <svg width="22" height="22" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="m14.5 4.5 5 5L8 21H3v-5z" /><path d="m12.5 6.5 5 5" /></svg>;
+const I_CHECK = (
+  <svg width="20" height="20" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path fillRule="evenodd" clipRule="evenodd" d="M9 18A9 9 0 1 0 9 0a9 9 0 0 0 0 18Zm4.3-11.2a.75.75 0 1 0-1.1-1L7.8 10.6 5.8 8.4a.75.75 0 0 0-1.1 1l2.3 2.7c.4.4 1 .4 1.4 0l4.9-5.3Z" fill="#f5b800" />
+  </svg>
+);
 
 const CSS = `
-.dash-home { display: flex; flex-direction: column; min-height: 0; }
-.dash-home .dash-hi { font-size: clamp(24px, 2.7vw, 44px); letter-spacing: -0.02em; font-weight: 700; }
+.hrx-home { display: flex; flex-direction: column; gap: 8px; }
 
-.dash-grid { display: grid; gap: 16px; min-height: 0; flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1fr); }
-.dash-left { display: grid; gap: 16px; min-height: 0; }
-.dash-top  { display: grid; gap: 16px; min-height: 0; grid-template-columns: minmax(0, 1fr); }
-.dash-right { display: flex; min-height: 0; }
-
-.dash-card { background: var(--at-neutral-0, #fff); border-radius: 20px; padding: clamp(16px, 1.4vw, 24px);
-  display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-
-/* The pinned layout. minmax(0, …) on every track is what makes the rows
-   genuinely shrinkable — a bare 1fr is minmax(auto, 1fr) and floors at
-   min-content, which is what pushed Your Business off the bottom. */
-@media (min-width: ${PIN_AT}px) {
-  .dash-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
-  .dash-left { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
-  .dash-top  { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.hrx-home-grid { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+.hrx-hcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@media (min-width: 768px) and (max-width: 1249.98px) {
+  .hrx-home-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .hrx-hcol.c3 { grid-column: 1 / -1; }
+}
+@media (min-width: 1250px) {
+  .hrx-home-grid { grid-template-columns: minmax(280px, 330px) minmax(0, 1fr) minmax(320px, 386px); }
 }
 
-/* The Operator ships appearance only; its height comes from its grid track.
-   height/min-height are reset explicitly because the console page injects a
-   global .opc rule with a fixed height and a 460px floor, and stays mounted
-   under keep-alive, so it would otherwise size the operator here too. */
-.dash-right .opc { width: 100%; height: auto; min-height: 0; align-self: stretch; }
+/* ── Business hero (the comp's profile photo card) ─────────────────────── */
+.hrx-hero { min-height: 352px; border-radius: 16px; background: #afafaf; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.hrx-hero img.cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hrx-hero .stagepill { position: absolute; left: 50%; transform: translateX(-50%); top: 14px; height: 28px; padding: 0 10px;
+  border-radius: 40px; background: rgba(255,255,255,.35); backdrop-filter: blur(22px); display: inline-flex; align-items: center;
+  gap: 5px; color: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; text-transform: capitalize; }
+.hrx-hero .idcard { position: absolute; left: 10px; right: 10px; bottom: 10px; border-radius: 20px; background: rgba(249,251,252,.94);
+  backdrop-filter: blur(22px); padding: 16px 18px; display: flex; align-items: center; gap: 12px; }
+.hrx-hero .idcard .info { min-width: 0; flex: 1 1 auto; }
+.hrx-hero .idcard .name { font-size: 19px; font-weight: 500; letter-spacing: -0.03em; color: #000; margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrx-hero .idcard .sub { font-size: 13px; font-weight: 500; color: var(--hrx-muted); margin: 5px 0 0; text-transform: capitalize;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.dash-figure { font-size: clamp(24px, 2.2vw, 38px); font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
-.dash-title { font-size: 17px; font-weight: 600; margin: 0; }
+/* ── Placements list (the comp's "Current Work Placement") ─────────────── */
+.hrx-place { padding: 18px; display: flex; flex-direction: column; flex: 1 1 auto; }
+.hrx-place .rule { height: 1px; background: var(--hrx-muted); margin: 16px 0 0; opacity: .6; }
+.hrx-place .row1 { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding-top: 18px; min-width: 0; }
+.hrx-place .lbl12 { font-size: 12px; color: var(--hrx-muted); font-weight: 500; margin: 0 0 8px; }
+.hrx-place .biz { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.hrx-place .biz .dot { width: 22px; height: 22px; border-radius: 999px; background: #fff0e9; color: var(--hrx-orange);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;
+  border: 1px solid #ffd9c8; }
+.hrx-place .biz p { font-size: 16px; font-weight: 500; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.dash-counters { display: flex; background: var(--at-neutral-50, #f6f6f7); border-radius: 16px;
-  padding: 10px 0; margin-top: auto; }
-.dash-counter { flex: 1 1 0; min-width: 0; text-align: center; }
-.dash-counter-ic { display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; border-radius: 999px; color: #fff; margin-bottom: 4px; }
-.dash-counter-n { font-size: 22px; font-weight: 700; line-height: 1.1; }
-.dash-counter-l { font-size: 11px; color: var(--at-neutral-500, #6b7280); }
-.dash-sep { width: 1px; background: rgba(0,0,0,.07); }
+/* ── The Operator, wearing the old Sales-card frame in black & white ───── */
+.hrx-sales { padding: 20px; }
+.hrx-opchat { flex: 1 1 auto; min-height: 420px; display: flex; margin-top: 14px; }
+.hrx-opchat .opc { width: 100%; height: 100%; min-height: 0;
+  background: #fff; border: 1px solid var(--hrx-border-soft); border-radius: 12px; }
+.hrx-opchat .opc-veil { backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: linear-gradient(#fff, rgba(255,255,255,0)); mask-image: none; -webkit-mask-image: none; height: 18px; }
+.hrx-opchat .opc-day span { color: var(--hrx-muted); }
+.hrx-opchat .opc-bubble { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hrx-opchat .opc-group.theirs .opc-bubble { background: #f1f2f4; border: 1px solid #e7e7e7; color: var(--hrx-ink); }
+.hrx-opchat .opc-group.mine .opc-bubble { background: var(--hrx-ink); border: 0; color: #fff; }
+.hrx-opchat .opc-meta b { color: var(--hrx-ink); }
+.hrx-opchat .opc-meta i { color: var(--hrx-muted); }
+.hrx-opchat .opc-group.theirs .opc-av { background: var(--hrx-ink); background-image: none; box-shadow: none;
+  font-size: 8.5px; width: 22px; height: 22px; flex-basis: 22px; color: #fff; }
+.hrx-opchat .opc-tick { color: var(--hrx-ink); }
+.hrx-opchat .opc-say { color: var(--hrx-muted); }
+.hrx-opchat .opc-say:hover { color: var(--hrx-ink); background: #f1f2f4; }
+.hrx-opchat .opc-say.on { color: #fff; background: var(--hrx-ink); }
+.hrx-opchat .opc-empty { color: var(--hrx-muted); }
+.hrx-opchat .opc-starters button { background: #fff; border: 1px solid #dcdcdc; color: var(--hrx-ink); }
+.hrx-opchat .opc-starters button:hover { border-color: var(--hrx-ink); color: var(--hrx-ink); }
+.hrx-opchat .opc-tools span { background: #f1f2f4; color: var(--hrx-ink); }
+.hrx-opchat .opc-err { color: var(--hrx-ink); background: #f1f2f4; border: 1px solid #dcdcdc; }
+.hrx-opchat .opc-input { background: #fff; border: 1px solid #dcdcdc; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hrx-opchat .opc-text { color: var(--hrx-ink); }
+.hrx-opchat .opc-text::placeholder { color: var(--hrx-muted); }
+.hrx-opchat .opc-clip, .hrx-opchat .opc-send { color: var(--hrx-muted); }
+.hrx-opchat .opc-clip:hover, .hrx-opchat .opc-send:hover { color: var(--hrx-ink); }
+.hrx-opchat .opc-mic { background: var(--hrx-ink); }
+.hrx-opchat .opc-mic:hover { background: #000; }
+.hrx-opchat .opc-mic.on { background: #6b7280; }
+.hrx-opchat .opc-pending span { background: #f1f2f4; color: var(--hrx-ink); }
 
-/* The comp's period chip: calendar glyph, label, caret — one pill. The <select>
-   sits transparent on top so the native dropdown (and its keyboard handling)
-   still does the work. */
-.dash-range { position: relative; display: inline-flex; align-items: center; gap: 6px;
-  background: var(--at-neutral-100, #f1f2f4); color: var(--at-neutral-700, #374151);
-  border-radius: 999px; padding: 7px 24px 7px 12px; }
-.dash-range select { appearance: none; -webkit-appearance: none; border: 0; background: transparent;
-  font-size: 11px; font-weight: 500; color: inherit; padding: 0; margin: 0; cursor: pointer;
-  outline: none; line-height: 1.2; }
-.dash-range .dash-caret { position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
-  pointer-events: none; opacity: .55; display: flex; }
+/* The comp's period chip: a bordered dropdown with the native <select> doing
+   the real work, transparent on top. */
+.hrx-range { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 40px;
+  padding: 0 30px 0 16px; border: 1px solid #eaecf0; border-radius: 12px; font-size: 14px; font-weight: 500; color: #1f293a; }
+.hrx-range select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.hrx-range .caret { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: .7; display: flex; }
 
-/* Bars. Rounded on every corner, as in the comp, and the peak picked out in
-   solid blue against the muted rest. */
-.dash-bars { display: flex; align-items: flex-end; gap: 6px; flex: 1 1 auto; min-height: 0; }
-.dash-bar-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center;
-  gap: 6px; height: 100%; }
-.dash-bar-slot { position: relative; width: 100%; flex: 1 1 auto; min-height: 0;
-  display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
-.dash-bar-wrap { position: relative; width: 100%; }
-.dash-bar { width: 100%; height: 100%; border-radius: 8px; background: #C3D7FB; }
-.dash-bar.peak { background: #1668FF; }
-.dash-bars.dense { gap: 3px; }
-.dash-bars.dense .dash-bar { border-radius: 5px; }
-.dash-bars.dense .dash-bar-l { font-size: 9px; }
-.dash-bar-l { font-size: 11px; color: var(--at-neutral-500, #6b7280); white-space: nowrap; }
-.dash-peak-tag { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
-  background: var(--at-neutral-100, #f1f2f4); color: var(--at-neutral-700, #374151);
-  font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px; white-space: nowrap; z-index: 1; }
+/* ── Operator card fills its column so the grid finishes level ──────────── */
+.hrx-sales { display: flex; flex-direction: column; flex: 1 1 auto; }
 
-/* The comp's "View": a white pill with purple type, not a dark button. */
-.dash-view { background: #fff; color: #7c3aed; box-shadow: 0 1px 3px rgba(0,0,0,.10); }
-.dash-view:hover { background: #fff; color: #5b21b6; }
+/* ── Checklist / updates column: the dark panel IS the card ─────────────── */
+.hrx-side { padding: 10px; display: flex; flex-direction: column; flex: 1 1 auto; }
+.hrx-side .hrx-requests { flex: 1 1 auto; }
+
 `;
+
+const I_CARET = <svg width="14" height="14" viewBox="0 0 16 16" {...ln} strokeWidth={2} aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>;
+
+/** The chat's history window — the same chip UI the Sales dropdown used. */
+const HIST_RANGES = [
+  { id: "today", label: "Today" },
+  { id: "7d", label: "Last 7 days" },
+  { id: "30d", label: "Last 30 days" },
+  { id: "all", label: "All history" },
+] as const;
+type HistRange = (typeof HIST_RANGES)[number]["id"];
+const I_BELL = <svg width="20" height="20" viewBox="0 0 20 20" {...ln} aria-hidden="true"><path d="M5.6 8.3a4.4 4.4 0 0 1 8.8 0v2.6c0 .6.2 1.2.6 1.7l.7 1c.4.6 0 1.4-.7 1.4H5a.9.9 0 0 1-.7-1.4l.7-1c.4-.5.6-1.1.6-1.7V8.3Z" /><path d="M8.2 15.8a1.9 1.9 0 0 0 3.6 0" /></svg>;
 
 export default function DashboardHomePage() {
   const { data: profile = null, loading: pLoading, error } = useCachedData(profileQuery.key, profileQuery.fetch);
   const { data: orgs = [], loading: oLoading } = useCachedData(organizationsQuery.key, organizationsQuery.fetch);
-  const { data: aiUsage = [], loading: aLoading } = useCachedData(aiUsageMonthQuery.key, aiUsageMonthQuery.fetch);
-  const { data: revenue30 = 0 } = useCachedData(revenue30Query.key, revenue30Query.fetch);
-  const [range, setRange] = useState<SalesRange>("week");
-  const series = revenueSeriesQuery(range);
-  const { data: daily = [] } = useCachedData(series.key, series.fetch);
-  const { data: invites = [] } = useCachedData(invitationsQuery.key, invitationsQuery.fetch);
+  const { data: aiUsage = [] } = useCachedData(aiUsageMonthQuery.key, aiUsageMonthQuery.fetch);
   const { data: blueprints = [] } = useCachedData(marketplaceBlueprintsQuery.key, marketplaceBlueprintsQuery.fetch);
+  const { data: orders30 = 0 } = useCachedData(orders30Query.key, orders30Query.fetch);
+  const { data: unread = 0 } = useCachedData(unreadConvos30Query.key, unreadConvos30Query.fetch);
+  const { data: notes = [] } = useCachedData(notificationsQuery.key, notificationsQuery.fetch);
 
-  const loading = pLoading || oLoading || aLoading;
+  const loading = pLoading || oLoading;
   const pct = completion(profile);
   const aiTokens = aiUsage.reduce((sum, u) => sum + u.tokens, 0);
 
   const live = orgs.filter((o) => o.organization.stage === "active").length;
-  const building = orgs.length - live;
-  const upcoming = invites.length;
-
-  const totalParts = Math.max(live + building + upcoming, 1);
-  const seg = [
-    { pct: Math.round((building / totalParts) * 100), color: "#7c3aed" },
-    { pct: Math.round((live / totalParts) * 100), color: "#2563eb" },
-    { pct: Math.round((upcoming / totalParts) * 100), color: "#f97316" },
-  ];
-
-  const week7 = daily;
-  const peak = Math.max(...week7.map((d) => d.cents), 1);
-  const bestIdx = week7.reduce((b, d, i) => (d.cents > (week7[b]?.cents ?? -1) ? i : b), 0);
-  const week7Total = week7.reduce((s, d) => s + d.cents, 0);
-  const rangeLabel = SALES_RANGES.find((r) => r.id === range)?.label ?? "Last 7 days";
 
   const [orgId, setOrgId] = useState<string>("");
   const selected = orgs.find((o) => o.organization.id === orgId)?.organization ?? orgs[0]?.organization ?? null;
   const selectedBlueprint = blueprintFor(selected, blueprints);
 
+  // The Operator answers for the business you last worked in.
   let lastOrg: string | null = null;
   try { lastOrg = localStorage.getItem(LAST_ORG_KEY); } catch { /* storage unavailable */ }
   const operatorOrg =
     (lastOrg && orgs.find((o) => o.organization.id === lastOrg)?.organization) ?? orgs[0]?.organization ?? null;
 
-  // Measure the real gap between where this content starts and the bottom of the
-  // shell's scroll pane, minus the padding of everything in between. Subtracting
-  // a guessed offset from innerHeight leaves a stub scrollbar, because the shell
-  // pads with clamp() and <main> adds py-4 — both move with the window.
-  //
-  // null means "don't pin": narrow or short screens flow normally, rather than
-  // having overflow:hidden quietly eat the bottom of a card.
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState<{ h: number; pullUp: number } | null>(null);
-  useEffect(() => {
-    const scrollParent = (node: HTMLElement | null): HTMLElement | null => {
-      for (let n = node?.parentElement ?? null; n; n = n.parentElement) {
-        const oy = getComputedStyle(n).overflowY;
-        if (oy === "auto" || oy === "scroll") return n;
-      }
-      return null;
-    };
+  // How far back the visible chat history goes — display only; the agent
+  // always keeps the full thread as context.
+  const [hist, setHist] = useState<HistRange>("7d");
+  const histSince = ((): string | null => {
+    if (hist === "all") return null;
+    if (hist === "today") { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); }
+    const days = hist === "7d" ? 7 : 30;
+    return new Date(Date.now() - days * 86_400_000).toISOString();
+  })();
 
-    const measure = () => {
-      const el = rootRef.current;
-      if (!el) return;
-      if (window.innerWidth < PIN_AT) { setFit(null); return; }
+  const firstName = (profile?.full_name ?? "").trim().split(/\s+/)[0] || "there";
+  const now = new Date();
+  const monthSpan = `01–${String(now.getDate()).padStart(2, "0")} ${now.toLocaleDateString(undefined, { month: "long" })}`;
 
-      const top = el.getBoundingClientRect().top;
-      const pane = scrollParent(el);
-      if (!pane) { setFit(null); return; }
+  // The comp's "My Requests", ticked off by what the account has actually done.
+  const tasks = [
+    { icon: I_USER, a: "Complete your profile", b: `${pct}% complete`, done: pct >= 100, to: "/dashboard/settings" },
+    { icon: I_BAG, a: "Own a business", b: orgs.length > 0 ? `${orgs.length} owned` : "Browse the marketplace", done: orgs.length > 0, to: "/dashboard/marketplace" },
+    { icon: I_ZAP, a: "Go live", b: live > 0 ? `${live} live` : "Launch your storefront", done: live > 0, to: "/dashboard/businesses" },
+    { icon: I_CHAT, a: "Meet your Operator", b: orgs.length > 0 ? "Ready in your console" : "Needs a business first", done: aiTokens > 0, to: "/dashboard/console" },
+    { icon: I_PEN, a: "Build with Studio", b: "Design pages visually", done: false, to: "/dashboard/studio" },
+  ];
 
-      // Run all the way down to the pane's edge, which is where the sidebar
-      // ends — the two are siblings in the shell's flex row.
-      const h = Math.floor(pane.getBoundingClientRect().bottom - top);
-
-      // <main> pads py-4 below us, which would push the pane into scrolling by
-      // exactly that much. A matching negative margin absorbs it, so the cards
-      // finish level with the sidebar and nothing scrolls.
-      let pullUp = 0;
-      for (let n = el.parentElement; n && n !== pane; n = n.parentElement) {
-        pullUp += parseFloat(getComputedStyle(n).paddingBottom) || 0;
-      }
-
-      setFit(h > 520 ? { h, pullUp: Math.round(pullUp) } : null);
-    };
-
-    measure();
-    window.addEventListener("resize", measure);
-    const settle = setTimeout(measure, 150); // after webfonts and the shell settle
-    return () => { window.removeEventListener("resize", measure); clearTimeout(settle); };
-  }, []);
+  // Once the account is genuinely set up, the checklist has done its job — the
+  // panel switches to what actually changed since the owner last looked.
+  const allDone = pct >= 100 && orgs.length > 0 && live > 0 && aiTokens > 0;
+  const latest = notes.slice(0, 5);
 
   return (
-    <div
-      ref={rootRef}
-      className="dash-home"
-      style={fit ? { height: fit.h, marginBottom: -fit.pullUp, overflow: "hidden" } : undefined}
-    >
+    <div className="hrx-home">
       <PageMeta title="Phoxta - Dashboard" />
       <style>{CSS}</style>
 
-      <h1 className="dash-hi mb-3 flex-shrink-0">Good, {greeting()}!</h1>
-
-      {error && <div className="alert alert-warning py-2 px-3 fz-font-md flex-shrink-0" role="alert">{error}</div>}
-
-      <div className="dash-grid">
-        <div className="dash-left">
-
-          <div className="dash-top">
-            <section className="dash-card">
-              <h2 className="dash-title mb-2">Progress statistics</h2>
-
-              <div className="d-flex align-items-end gap-2 mb-2">
-                <span className="dash-figure">{loading ? "—" : `${pct}%`}</span>
-                <span className="neutral-500 pb-1" style={{ fontSize: 11, lineHeight: 1.2 }}>Profile<br />complete</span>
-              </div>
-
-              <div className="d-flex gap-2 mb-1" aria-hidden="true">
-                {seg.map((s, i) => (
-                  <div key={i} style={{ width: `${Math.max(s.pct, 4)}%`, height: 4, borderRadius: 4, background: s.color }} />
-                ))}
-              </div>
-              <div className="d-flex gap-2 neutral-500" style={{ fontSize: 11 }}>
-                {seg.map((s, i) => <div key={i} style={{ width: `${Math.max(s.pct, 4)}%` }}>{s.pct}%</div>)}
-              </div>
-
-              <div className="dash-counters">
-                <Counter tint="#7c3aed" icon={I_PROGRESS} value={building} label="In progress" />
-                <div className="dash-sep" />
-                <Counter tint="#2563eb" icon={I_DONE} value={live} label="Live" />
-                <div className="dash-sep" />
-                <Counter tint="#f97316" icon={I_SOON} value={upcoming} label="Up coming" />
-              </div>
-            </section>
-
-            <section className="dash-card">
-              <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
-                <h2 className="dash-title">Sales</h2>
-                <span className="dash-range flex-shrink-0">
-                  {I_CAL}
-                  <label className="visually-hidden" htmlFor="dash-range">Sales period</label>
-                  <select id="dash-range" value={range} onChange={(e) => setRange(e.target.value as SalesRange)}>
-                    {SALES_RANGES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-                  </select>
-                  <span className="dash-caret">{I_CARET}</span>
-                </span>
-              </div>
-
-              <div className="dash-figure mb-2">{money(week7Total)}</div>
-
-              {/* The chart renders at every value, including all-zero — the comp has
-                  a chart here, and a flat baseline under a $0 figure says "nothing
-                  sold" perfectly well without swapping the layout for a sentence. */}
-              <div className={`dash-bars${week7.length > 8 ? " dense" : ""}`} role="img"
-                   aria-label={`Revenue by ${rangeLabel.toLowerCase()}. Total ${money(week7Total)}.`}>
-                {week7.map((d, i) => {
-                  const isPeak = i === bestIdx && d.cents > 0;
-                  return (
-                    <div key={d.iso} className="dash-bar-col">
-                      <div className="dash-bar-slot">
-                        <div className="dash-bar-wrap" style={{ height: `${Math.max((d.cents / peak) * 86, 2)}%` }}>
-                          {isPeak && <span className="dash-peak-tag">{money(d.cents)}</span>}
-                          <div className={`dash-bar${isPeak ? " peak" : ""}`} />
-                        </div>
-                      </div>
-                      <span className="dash-bar-l">{d.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
+      {/* ── Header band ─────────────────────────────────────────────────── */}
+      <header className="hrx-header">
+        <div>
+          <p className="hrx-crumb">Portal&nbsp; <span>/&nbsp; Dashboard</span></p>
+          <h1 className="hrx-greet">Good {greeting()} {firstName}!</h1>
+        </div>
+        <div className="hrx-header-right">
+          <div className="hrx-actions">
+            <Link className="hrx-pill" to="/dashboard/marketplace">{I_PLUS} New Business</Link>
+            <span className="hrx-pill d-none d-md-inline-flex">{I_CAL} {monthSpan}</span>
+            <Link className="hrx-pill primary" to="/dashboard/console">{I_DOC} Open Console</Link>
           </div>
+        </div>
+      </header>
 
-          <section className="dash-card">
-            <div className="d-flex align-items-center justify-content-between gap-2 mb-2 flex-shrink-0">
-              <h2 className="dash-title">Your Business</h2>
-              {orgs.length > 0 && (
-                <>
-                  <label className="visually-hidden" htmlFor="dash-business">Choose a business</label>
-                  <select
-                    id="dash-business"
-                    className="form-select form-select-sm rounded-pill"
-                    style={{ maxWidth: 220, width: "auto", fontSize: 13 }}
-                    value={selected?.id ?? ""}
-                    onChange={(e) => setOrgId(e.target.value)}
-                  >
-                    {orgs.map((o) => (
-                      <option key={o.organization.id} value={o.organization.id}>{o.organization.name}</option>
-                    ))}
-                  </select>
-                </>
-              )}
+      {error && <div className="alert alert-warning py-2 px-3 fz-font-md" role="alert">{error}</div>}
+
+      {/* ── The four numbers an owner actually checks in on ──────────────── */}
+      <div className="hrx-statrow">
+        <StatTile tone="dark" label="Orders · last 30 days" value={new Intl.NumberFormat().format(orders30)} />
+        <StatTile tone={unread > 0 ? "blue" : undefined} label="Unread messages" value={new Intl.NumberFormat().format(unread)} />
+        <StatTile label="Businesses live" value={orgs.length > 0 ? `${live} of ${orgs.length}` : "—"} />
+        <StatTile label="Operator activity" value={aiTokens > 0 ? `${compact(aiTokens)} tokens` : "Quiet"} />
+      </div>
+
+      <div className="hrx-home-grid">
+        {/* ── Column 1: business hero + placements ──────────────────────── */}
+        <div className="hrx-hcol">
+          {selected ? (
+            <div className="hrx-hero">
+              <img
+                className="cover"
+                src={blueprintCover(selectedBlueprint?.slug ?? selected.slug, selectedBlueprint?.cover_url)}
+                alt={`${selected.name} storefront preview`}
+                width={330} height={352} loading="lazy"
+              />
+              <span className="stagepill">{I_CLOCK} {selected.stage}</span>
+              <div className="idcard">
+                <div className="info">
+                  <p className="name">{selected.name}</p>
+                  <p className="sub">{selectedBlueprint?.vertical ?? selected.vertical ?? "Business"}</p>
+                </div>
+                <Link className="hrx-rbtn" to={`/dashboard/businesses/${selected.id}`} aria-label={`Manage ${selected.name}`}>{I_GLOBE}</Link>
+                <Link className="hrx-rbtn dark" to={`/dashboard/businesses/${selected.id}/ops`} aria-label={`Open ${selected.name} console`}>{I_ARROW}</Link>
+              </div>
             </div>
+          ) : (
+            <div className="hrx-card d-flex flex-column align-items-center justify-content-center text-center p-4" style={{ minHeight: 352 }}>
+              <p className="neutral-500 mb-3" style={{ fontSize: 14 }}>
+                {loading ? "Loading…" : "You haven't launched a business yet."}
+              </p>
+              {!loading && <Link className="hrx-pill dark" to="/dashboard/marketplace">Browse the marketplace</Link>}
+            </div>
+          )}
 
-            {!selected ? (
-              <div className="bg-neutral-50 rounded-4 d-flex flex-column align-items-center justify-content-center text-center flex-grow-1 p-3">
-                <p className="neutral-500 mb-3" style={{ fontSize: 13 }}>You haven&apos;t launched a business yet.</p>
-                <Link className="btn btn-dark btn-sm rounded-pill px-3" to="/dashboard/marketplace">Browse the marketplace</Link>
-              </div>
+          <section className="hrx-card hrx-place">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <h2 className="hrx-card-title">{I_BOLT} Your Businesses</h2>
+              <Link className="hrx-seeall" to="/dashboard/businesses">See All</Link>
+            </div>
+            <div className="rule" />
+            {orgs.length === 0 ? (
+              <p className="neutral-500 mb-0 pt-3" style={{ fontSize: 13 }}>Nothing here yet — your businesses appear the moment you own one.</p>
             ) : (
-              <div className="d-flex gap-3 flex-grow-1" style={{ minHeight: 0 }}>
-                <div className="bg-neutral-50 rounded-4 p-3 d-flex flex-column"
-                     style={{ flex: "0 0 40%", minWidth: 0, minHeight: 0 }}>
-                  <div className="neutral-500 text-capitalize" style={{ fontSize: 11 }}>{selected.vertical || "Business"}</div>
-                  <div className="fw-600 mb-2" style={{ fontSize: 16, lineHeight: 1.25 }}>{selected.name}</div>
-                  <Link className="dash-view btn btn-sm rounded-pill px-3 align-self-start fw-600"
-                        to={`/dashboard/businesses/${selected.id}/ops`}>Open console</Link>
-                  <div className="mt-auto d-flex align-items-center gap-2 pt-2" style={{ minWidth: 0 }}>
-                    <span className="d-inline-flex align-items-center justify-content-center bg-neutral-200 flex-shrink-0"
-                          style={{ width: 28, height: 28, borderRadius: 999, fontSize: 11, fontWeight: 600 }}>
-                      {(selected.name || "?").slice(0, 2).toUpperCase()}
-                    </span>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="fw-500 text-truncate" style={{ fontSize: 12 }}>{selected.slug ?? selected.name}</div>
-                      <div className="neutral-500 text-capitalize" style={{ fontSize: 11 }}>{selected.stage}</div>
+              orgs.slice(0, 3).map(({ organization: o }) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className="row1 w-100 border-0 bg-transparent text-start p-0"
+                  onClick={() => setOrgId(o.id)}
+                  aria-pressed={selected?.id === o.id}
+                  title={`Preview ${o.name}`}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <p className="lbl12">Business name</p>
+                    <div className="biz">
+                      <span className="dot">{(o.name || "?").slice(0, 1).toUpperCase()}</span>
+                      <p>{o.name}</p>
                     </div>
                   </div>
-                </div>
-
-                <div className="rounded-4 overflow-hidden position-relative bg-neutral-50"
-                     style={{ flex: "1 1 0", minWidth: 0, minHeight: 0 }}>
-                  <img
-                    src={blueprintCover(selectedBlueprint?.slug ?? selected.slug, selectedBlueprint?.cover_url)}
-                    alt={`${selected.name} storefront preview`}
-                    loading="lazy"
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                  <div className="position-absolute bottom-0 start-0 w-100 p-3"
-                       style={{ background: "linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,0))", color: "#fff" }}>
-                    <span className="d-inline-block text-uppercase fw-600 mb-1"
-                          style={{ fontSize: 9.5, letterSpacing: ".09em", padding: "4px 9px", borderRadius: 999,
-                                   background: "rgba(255,255,255,.92)", color: "#111" }}>
-                      {selectedBlueprint?.vertical ?? selected.vertical ?? "Business"}
-                    </span>
-                    <div className="fw-700 text-truncate" style={{ fontSize: 22, lineHeight: 1.15, letterSpacing: "-0.01em" }}>
-                      {selected.name}
-                    </div>
-                    <div className="text-truncate" style={{ fontSize: 12, opacity: .85 }}>
-                      {live > 0 ? `${money(revenue30)} · last 30 days` : "Not live yet"}
-                      {aiTokens > 0 && ` · ${new Intl.NumberFormat().format(aiTokens)} AI tokens`}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  <span className="hrx-status flex-shrink-0">{I_CLOCK} {o.stage === "active" ? "Live" : o.stage}</span>
+                </button>
+              ))
             )}
           </section>
         </div>
 
-        {/* AI Operator — the same component and stylesheet as the console; only
-            the height differs, and it comes from this grid track. */}
-        <div className="dash-right">
-          {operatorOrg ? (
-            <OperatorChat orgId={operatorOrg.id} opsBase={`/dashboard/businesses/${operatorOrg.id}/ops`} />
-          ) : (
-            <section className="dash-card w-100">
-              <h2 className="dash-title mb-2">AI Operator</h2>
-              <p className="neutral-500 mb-0" style={{ fontSize: 13 }}>
+        {/* ── Column 2: the AI Operator, in the old Sales-card frame ─────── */}
+        <div className="hrx-hcol">
+          <section className="hrx-card hrx-sales">
+            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+              <h2 className="hrx-card-title">{I_CHAT} AI Operator</h2>
+              <span className="hrx-range">
+                {HIST_RANGES.find((r) => r.id === hist)?.label}
+                <span className="caret">{I_CARET}</span>
+                <label className="visually-hidden" htmlFor="hrx-op-hist">Chat history</label>
+                <select id="hrx-op-hist" value={hist} onChange={(e) => setHist(e.target.value as HistRange)}>
+                  {HIST_RANGES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                </select>
+              </span>
+            </div>
+
+            {operatorOrg ? (
+              <div className="hrx-opchat">
+                <OperatorChat
+                  orgId={operatorOrg.id}
+                  opsBase={`/dashboard/businesses/${operatorOrg.id}/ops`}
+                  bare
+                  since={histSince}
+                />
+              </div>
+            ) : (
+              <p className="neutral-500 mb-0 mt-3" style={{ fontSize: 14 }}>
                 Launch a business and your operator appears here — ask it to change a price, chase an order or draft a campaign.
               </p>
-            </section>
-          )}
+            )}
+          </section>
+        </div>
+
+        {/* ── Column 3: setup checklist, or the latest updates once done ── */}
+        <div className="hrx-hcol c3">
+          <section className="hrx-card hrx-side">
+            <div className="hrx-requests">
+              {allDone ? (
+                <>
+                  <h3>Latest updates</h3>
+                  {latest.length === 0 ? (
+                    <p className="text-center mb-0" style={{ color: "rgba(255,255,255,.7)", fontSize: 14 }}>
+                      All caught up — nothing new since your last visit.
+                    </p>
+                  ) : (
+                    latest.map((n) =>
+                      n.link ? (
+                        <Link key={n.id} to={n.link} className="hrx-rq text-decoration-none text-white">
+                          <span className="l">
+                            <span className="circ">{I_BELL}</span>
+                            <span className="txt"><span className="a">{n.title}</span><span className="b">{n.body || new Date(n.created_at).toLocaleDateString()}</span></span>
+                          </span>
+                        </Link>
+                      ) : (
+                        <div key={n.id} className="hrx-rq text-white">
+                          <span className="l">
+                            <span className="circ">{I_BELL}</span>
+                            <span className="txt"><span className="a">{n.title}</span><span className="b">{n.body || new Date(n.created_at).toLocaleDateString()}</span></span>
+                          </span>
+                        </div>
+                      ),
+                    )
+                  )}
+                </>
+              ) : (
+                <>
+                  <h3>My Setup</h3>
+                  {tasks.map((t) => (
+                    <Link key={t.a} to={t.to} className={`hrx-rq text-decoration-none text-white${t.done ? " done" : ""}`}>
+                      <span className="l">
+                        <span className="circ">{t.icon}</span>
+                        <span className="txt"><span className="a">{t.a}</span><span className="b">{t.b}</span></span>
+                      </span>
+                      {t.done ? I_CHECK : <span className="pend" />}
+                    </Link>
+                  ))}
+                </>
+              )}
+            </div>
+          </section>
         </div>
       </div>
+
     </div>
   );
 }

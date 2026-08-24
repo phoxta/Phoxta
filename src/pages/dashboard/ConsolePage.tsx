@@ -1,5 +1,6 @@
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
+import { Card, Empty, InitialAvatar, PageHeader } from "@/components/dash/Ui";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { organizationsQuery } from "@/lib/cache/dashboardQueries";
 
@@ -39,52 +40,60 @@ export default function ConsolePage() {
   if (target) return <Navigate to={`/dashboard/businesses/${target}/ops`} replace />;
 
   if (loading) {
-    return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Opening your console…</div>;
+    return (
+      <div className="hrx-card hrx-pad text-center" style={{ color: "var(--hrx-muted)" }} role="status">
+        Opening your console…
+      </div>
+    );
   }
 
   if (orgs.length === 0) {
     return (
-      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center">
+      <div>
         <PageMeta title="Phoxta - Console" />
-        <p className="neutral-500 mb-3">The operating console runs a business — and you don&apos;t own one yet.</p>
-        <Link to="/dashboard/marketplace" className="at-btn">
-          <span>
-            <span className="text-1">Browse the marketplace</span>
-            <span className="text-2">Browse the marketplace</span>
-          </span>
-        </Link>
+        <Empty
+          title="No business to run yet"
+          action={
+            <Link to="/dashboard/marketplace" className="hrx-pill primary">
+              Browse the marketplace
+            </Link>
+          }
+        >
+          The operating console runs a business — and you don&apos;t own one yet.
+        </Empty>
       </div>
     );
   }
 
   // Several businesses, no remembered one — pick.
   return (
-    <div style={{ maxWidth: 560 }}>
+    <div>
       <PageMeta title="Phoxta - Console" />
-      <h2 className="fw-600 mb-1">Operating console</h2>
-      <p className="neutral-500 mb-4">Which business do you want to run?</p>
-      <div className="d-flex flex-column gap-2">
-        {orgs.map(({ organization: o, role }) => (
-          <button
-            key={o.id}
-            type="button"
-            className="bg-neutral-0 rounded-4 p-4 border-100 d-flex align-items-center justify-content-between text-start w-100"
-            style={{ cursor: "pointer" }}
-            onClick={() => {
-              try {
-                localStorage.setItem(LAST_ORG_KEY, o.id);
-              } catch { /* fine */ }
-              navigate(`/dashboard/businesses/${o.id}/ops`);
-            }}
-          >
-            <span>
-              <span className="fw-600 d-block">{o.name}</span>
-              <span className="fz-font-sm neutral-500 text-capitalize">{o.vertical || "business"} · {role}</span>
-            </span>
-            <span aria-hidden="true">→</span>
-          </button>
-        ))}
-      </div>
+      <PageHeader crumb="Portal" title="Operating console" note="Which business do you want to run?" />
+      <Card className="mt-4">
+        <div style={{ maxWidth: 640 }}>
+          {orgs.map(({ organization: o, role }) => (
+            <button
+              key={o.id}
+              type="button"
+              className="hrx-listrow"
+              onClick={() => {
+                try {
+                  localStorage.setItem(LAST_ORG_KEY, o.id);
+                } catch { /* fine */ }
+                navigate(`/dashboard/businesses/${o.id}/ops`);
+              }}
+            >
+              <InitialAvatar name={o.name} />
+              <span className="main">
+                <span className="t d-block">{o.name}</span>
+                <span className="s d-block text-capitalize">{o.vertical || "business"} · {role}</span>
+              </span>
+              <span aria-hidden="true">→</span>
+            </button>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

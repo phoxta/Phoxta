@@ -11,9 +11,33 @@ import { formatPrice } from "@/lib/db/marketplace";
 import { supabase } from "@/lib/supabaseClient";
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
 import TrainPreview from "@/pages/dashboard/ops/agent/TrainPreview";
+import { Card, Chip } from "@/components/dash/Ui";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** hrx-kit dressing for the Train page — sub-forms, doc rows, day pills and
+ *  the sticky save bar, all local to this page. */
+const AGX_CSS = `
+.agx-note{font-size:13px;color:var(--hrx-muted)}
+.agx-alert{background:#fdf3d7;border:1px solid #f2dfa6;border-radius:16px;color:#a16207;padding:12px 16px;font-size:14px}
+.agx-subform{background:var(--hrx-soft);border:1px solid var(--hrx-border-soft);border-radius:16px;padding:14px 16px}
+.agx-subhead{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--hrx-muted);margin:0 0 10px}
+.agx-linkbtn{background:none;border:0;padding:0;font-size:13px;font-weight:500;color:var(--hrx-muted);cursor:pointer;text-decoration:none}
+.agx-linkbtn:hover{color:var(--hrx-ink)}
+.agx-linkbtn.danger{color:#dc2626}
+.agx-linkbtn.danger:hover{color:#b91c1c}
+.agx-doc{background:var(--hrx-card);border:1px solid var(--hrx-border-soft);border-radius:16px;padding:14px 16px}
+.agx-doc h3{font-size:15px;font-weight:600;letter-spacing:-0.02em;margin:0 0 2px}
+.agx-doc-body{font-size:13px;color:var(--hrx-muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.agx-day{height:34px;padding:0 14px;border-radius:50px;border:1px solid var(--hrx-border-soft);background:#fff;font-size:13px;font-weight:500;color:var(--hrx-ink);cursor:pointer;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.agx-day:hover{background:#f1f2f4}
+.agx-day[aria-pressed="true"]{background:var(--hrx-ink);border-color:var(--hrx-ink);color:#fff}
+.agx-snippet{display:block;background:var(--hrx-soft);border:1px solid var(--hrx-border-soft);border-radius:12px;padding:10px 12px;font-size:12px;word-break:break-all;margin-bottom:10px}
+.agx-savebar{position:sticky;bottom:12px;z-index:1040;background:var(--hrx-ink);color:#fff;border-radius:16px;padding:12px 18px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 18px 50px -18px rgba(0,0,0,.45);margin-top:16px}
+.agx-savebar .hrx-pill:disabled{opacity:.55;cursor:default}
+.agx-panel .hrx-pill:disabled,.agx-panel .hrx-seeall:disabled{opacity:.55;cursor:default}
+`;
 
 // Industry starter presets — one click fills a sensible persona/greeting/tone.
 const INDUSTRY_PRESETS: { key: string; label: string; persona: string; greeting: string; tone: string }[] = [
@@ -110,6 +134,9 @@ export default function ConfigurePage() {
   const suggestedPreset = VERTICAL_TO_PRESET[(org?.vertical || "").toLowerCase().trim()] ?? "generic";
   const [presetKey, setPresetKey] = useState(suggestedPreset);
   const [saving, setSaving] = useState(false);
+  // Section tabs (presentation only): both panels stay mounted — hidden, not
+  // unmounted — so a half-typed doc or a running preview chat survives a switch.
+  const [section, setSection] = useState<"knowledge" | "setup">("knowledge");
 
   // Seed the editable config once per business (re-seeds when orgId changes,
   // so one business's draft never bleeds into another's).
@@ -354,200 +381,260 @@ export default function ConfigurePage() {
   // A failure is an alert with a way out — never a spinner that never resolves.
   if (loadError && !config) {
     return (
-      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center" role="alert">
-        <div className="text-danger fw-600 mb-2">Couldn&rsquo;t load your agent</div>
-        <div className="fz-font-md neutral-500 mb-3">{loadError}</div>
-        <button type="button" className="btn btn-dark btn-sm rounded-pill px-4 ops-tap" onClick={() => reloadConfig()}>Try again</button>
+      <div className="hrx-card hrx-pad text-center" role="alert">
+        <div className="fw-600 mb-2" style={{ color: "#dc2626" }}>Couldn&rsquo;t load your agent</div>
+        <div className="mb-3" style={{ fontSize: 14, color: "var(--hrx-muted)" }}>{loadError}</div>
+        <button type="button" className="hrx-pill dark ops-tap" onClick={() => reloadConfig()}>Try again</button>
       </div>
     );
   }
-  if (loading || !config) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">Loading…</div>;
+  if (loading || !config)
+    return (
+      <div className="hrx-card hrx-pad text-center" style={{ color: "var(--hrx-muted)" }} role="status">
+        Loading…
+      </div>
+    );
 
   const days = config.business_hours?.days ?? [1, 2, 3, 4, 5];
   const snippet = `<script src="https://www.phoxta.com/phoxta-agent.js" data-org="${config.public_key}" defer></script>`;
 
   return (
-    <div className="row g-4">
-      {(loadError || docsError) && <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">{loadError || docsError}</div></div>}
+    <div>
+      <style>{AGX_CSS}</style>
+      {(loadError || docsError) && <div className="agx-alert mb-3" role="alert">{loadError || docsError}</div>}
+
+      {/* ── Section tabs — both panels stay mounted below, only hidden ── */}
+      <div className="hrx-tabbar mb-3" role="tablist" aria-label="Train sections">
+        <button
+          type="button"
+          role="tab"
+          id="agx-tab-knowledge"
+          aria-selected={section === "knowledge"}
+          aria-controls="agx-panel-knowledge"
+          className={`hrx-tab${section === "knowledge" ? " active" : ""}`}
+          onClick={() => setSection("knowledge")}
+        >
+          Knowledge &amp; preview
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="agx-tab-setup"
+          aria-selected={section === "setup"}
+          aria-controls="agx-panel-setup"
+          className={`hrx-tab${section === "setup" ? " active" : ""}`}
+          onClick={() => setSection("setup")}
+        >
+          Set-up
+        </button>
+      </div>
 
       {/* ── Knowledge — the work you come back to, so it leads the page ── */}
-      <div className="col-12 col-lg-7">
-        <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-            <h2 className="fz-font-lg fw-600 mb-0">
-              Knowledge
-              {docs.length > 0 && <span className="badge bg-neutral-100 neutral-700 fw-500 fz-font-sm ms-2 align-middle">{docs.length}</span>}
-            </h2>
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3 ops-tap" onClick={syncFromStore} disabled={syncing}>
-              {syncing ? "Pulling in…" : "Pull in my products & pages"}
-            </button>
-          </div>
-          <p className="fz-font-sm neutral-500 mb-3">Facts, policies and FAQs your agent answers from — it uses these on chat, SMS, WhatsApp and phone calls automatically. Pulling in your store adds your products, published pages and FAQs, kept up to date.</p>
+      <div id="agx-panel-knowledge" role="tabpanel" aria-labelledby="agx-tab-knowledge" className="agx-panel" hidden={section !== "knowledge"}>
+        <div className="row g-3">
+          <div className="col-12 col-lg-7">
+            <Card
+              title={<>Knowledge{docs.length > 0 && <Chip tone="line">{docs.length}</Chip>}</>}
+              right={
+                <button type="button" className="hrx-seeall ops-tap" onClick={syncFromStore} disabled={syncing}>
+                  {syncing ? "Pulling in…" : "Pull in my products & pages"}
+                </button>
+              }
+            >
+              <p className="agx-note mb-3">Facts, policies and FAQs your agent answers from — it uses these on chat, SMS, WhatsApp and phone calls automatically. Pulling in your store adds your products, published pages and FAQs, kept up to date.</p>
 
-          <form onSubmit={submitDoc} className="bg-neutral-50 rounded-4 p-3 mb-3">
-            <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">{editingId ? "Edit this answer" : "Add an answer"}</h3>
-            <div className="row g-2">
-              <div className="col-12">
-                <label className="fz-font-sm fw-500 neutral-500 mb-1 d-block" htmlFor="kb-title">Title</label>
-                <input id="kb-title" ref={docTitleRef} className="form-control rounded-3" placeholder="e.g. Refund policy" value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} />
-              </div>
-              <div className="col-12">
-                <label className="fz-font-sm fw-500 neutral-500 mb-1 d-block" htmlFor="kb-content">What the agent should say</label>
-                <textarea id="kb-content" className="form-control rounded-3" rows={4} placeholder="Knowledge / answer…" value={docForm.content} onChange={(e) => setDocForm({ ...docForm, content: e.target.value })} required />
-              </div>
-              <div className="col-12 d-flex flex-wrap gap-2">
-                <button type="submit" className="btn btn-dark rounded-3 px-4 ops-tap justify-content-center" disabled={docSaving}>{docSaving ? "Saving…" : editingId ? "Save changes" : "Add to knowledge base"}</button>
-                {editingId && <button type="button" className="btn btn-outline-secondary rounded-3 px-3 ops-tap" onClick={() => { setEditingId(null); setDocForm({ title: "", content: "" }); }}>Cancel edit</button>}
-              </div>
-            </div>
-          </form>
+              <form onSubmit={submitDoc} className="agx-subform mb-3">
+                <h3 className="agx-subhead">{editingId ? "Edit this answer" : "Add an answer"}</h3>
+                <label className="hrx-field">
+                  <span>Title</span>
+                  <input ref={docTitleRef} className="form-control" placeholder="e.g. Refund policy" value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} />
+                </label>
+                <label className="hrx-field">
+                  <span>What the agent should say</span>
+                  <textarea className="form-control" rows={4} placeholder="Knowledge / answer…" value={docForm.content} onChange={(e) => setDocForm({ ...docForm, content: e.target.value })} required />
+                </label>
+                <div className="d-flex flex-wrap gap-2">
+                  <button type="submit" className="hrx-pill primary ops-tap" disabled={docSaving}>{docSaving ? "Saving…" : editingId ? "Save changes" : "Add to knowledge base"}</button>
+                  {editingId && <button type="button" className="hrx-pill ops-tap" onClick={() => { setEditingId(null); setDocForm({ title: "", content: "" }); }}>Cancel edit</button>}
+                </div>
+              </form>
 
-          <div className="mb-2">
-            <label className="visually-hidden" htmlFor="kb-search">Search knowledge</label>
-            <input id="kb-search" type="search" className="form-control rounded-3" placeholder="Search knowledge…" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} />
-          </div>
+              <label className="hrx-field">
+                <span className="visually-hidden">Search knowledge</span>
+                <input type="search" className="form-control" placeholder="Search knowledge…" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} />
+              </label>
 
-          {docsLoading ? (
-            <div className="text-center neutral-500 py-4" role="status">Loading…</div>
-          ) : visibleDocs.length === 0 ? (
-            <div className="text-center neutral-500 py-4 fz-font-md">{docs.length === 0 ? "Nothing yet. Add what the agent should know — or hit Pull in my products & pages." : "No answers match your search."}</div>
-          ) : (
-            <ul className="list-unstyled m-0 d-flex flex-column gap-2">
-              {visibleDocs.map((d) => {
-                const isLong = (d.content || "").length > 220 || (d.content.match(/\n/g)?.length ?? 0) >= 3;
-                const isOpen = !!expanded[d.id];
-                const label = d.title || "this answer";
-                return (
-                  <li key={d.id} className="bg-neutral-0 rounded-4 p-3 border-100">
-                    <div className="d-flex justify-content-between gap-2">
-                      <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                        {d.title && <h3 className="fz-font-md fw-600 mb-0">{d.title}</h3>}
-                        <div
-                          className="fz-font-sm neutral-500"
-                          style={isOpen || !isLong
-                            ? { whiteSpace: "pre-wrap" }
-                            : { whiteSpace: "pre-wrap", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}
-                        >
-                          {d.content}
+              {docsLoading ? (
+                <div className="text-center py-4" style={{ color: "var(--hrx-muted)" }} role="status">Loading…</div>
+              ) : visibleDocs.length === 0 ? (
+                <div className="text-center py-4" style={{ fontSize: 14, color: "var(--hrx-muted)" }}>{docs.length === 0 ? "Nothing yet. Add what the agent should know — or hit Pull in my products & pages." : "No answers match your search."}</div>
+              ) : (
+                <ul className="list-unstyled m-0 d-flex flex-column gap-2">
+                  {visibleDocs.map((d) => {
+                    const isLong = (d.content || "").length > 220 || (d.content.match(/\n/g)?.length ?? 0) >= 3;
+                    const isOpen = !!expanded[d.id];
+                    const label = d.title || "this answer";
+                    return (
+                      <li key={d.id} className="agx-doc">
+                        <div className="d-flex justify-content-between gap-2">
+                          <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                            {d.title && <h3>{d.title}</h3>}
+                            <div
+                              className="agx-doc-body"
+                              style={isOpen || !isLong
+                                ? undefined
+                                : { display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+                            >
+                              {d.content}
+                            </div>
+                            {isLong && (
+                              <button type="button" className="agx-linkbtn ops-tap" aria-expanded={isOpen} onClick={() => setExpanded((x) => ({ ...x, [d.id]: !isOpen }))}>
+                                {isOpen ? "Show less" : "Show more"}
+                              </button>
+                            )}
+                          </div>
+                          <div className="d-flex flex-column gap-1 text-end flex-shrink-0">
+                            <button
+                              type="button"
+                              className="agx-linkbtn ops-tap"
+                              aria-label={`Edit ${label}`}
+                              onClick={() => { setEditingId(d.id); setDocForm({ title: d.title || "", content: d.content || "" }); docTitleRef.current?.focus(); }}
+                            >
+                              Edit
+                            </button>
+                            <button type="button" className="agx-linkbtn danger ops-tap" aria-label={`Delete ${label}`} onClick={() => deleteDoc(d.id, d.title)}>Delete</button>
+                          </div>
                         </div>
-                        {isLong && (
-                          <button type="button" className="btn btn-link btn-sm p-0 fz-font-sm text-decoration-none ops-tap" aria-expanded={isOpen} onClick={() => setExpanded((x) => ({ ...x, [d.id]: !isOpen }))}>
-                            {isOpen ? "Show less" : "Show more"}
-                          </button>
-                        )}
-                      </div>
-                      <div className="d-flex flex-column gap-1 text-end flex-shrink-0">
-                        <button
-                          type="button"
-                          className="btn btn-link btn-sm p-0 px-2 neutral-700 text-decoration-none ops-tap"
-                          aria-label={`Edit ${label}`}
-                          onClick={() => { setEditingId(d.id); setDocForm({ title: d.title || "", content: d.content || "" }); docTitleRef.current?.focus(); }}
-                        >
-                          Edit
-                        </button>
-                        <button type="button" className="btn btn-link btn-sm p-0 px-2 text-danger text-decoration-none ops-tap" aria-label={`Delete ${label}`} onClick={() => deleteDoc(d.id, d.title)}>Delete</button>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </div>
-
-      {/* ── Live preview — test what you just taught it ── */}
-      <div className="col-12 col-lg-5">
-        <div style={{ position: "sticky", top: 16 }}>
-          <TrainPreview orgId={orgId} publicKey={config.public_key ?? null} />
-
-          <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100 mt-4">
-            <h2 className="fz-font-md fw-600 mb-2">Add the agent to your website</h2>
-            <p className="fz-font-sm neutral-500 mb-2">Paste this once before <code>&lt;/body&gt;</code> — a chat bubble appears on every page, answered by this agent.</p>
-            <code className="d-block p-2 bg-neutral-50 rounded-3 fz-font-sm mb-2" style={{ wordBreak: "break-all" }}>{snippet}</code>
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-3 px-3 ops-tap" onClick={() => copySnippet(snippet)}>Copy snippet</button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
           </div>
-        </div>
-      </div>
 
-      {/* ── Set-up — one-time configuration, below the daily work ── */}
-      <div className="col-12">
-        <h2 className="fz-font-lg fw-600 mb-1">Set-up</h2>
-        <p className="fz-font-sm neutral-500 mb-3">Set these once: who your agent is, what it may do, when you&rsquo;re open, and how it sounds on the phone.</p>
+          {/* ── Live preview — test what you just taught it ── */}
+          <div className="col-12 col-lg-5">
+            <div>
+              <TrainPreview orgId={orgId} publicKey={config.public_key ?? null} />
 
-        <div className="row g-4">
-          <div className="col-12 col-lg-6">
-            <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100 h-100">
-              <h3 className="fz-font-md fw-600 mb-1">Persona</h3>
-              <p className="fz-font-sm neutral-500 mb-3">Who your agent is on every channel.</p>
-              <div className="row g-3">
-                <div className="col-12">
-                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="train-preset">Industry starter</label>
-                  <div className="d-flex flex-wrap gap-2">
-                    <select id="train-preset" className="form-select rounded-3" style={{ flex: "1 1 200px", minWidth: 0 }} value={presetKey} onChange={(e) => setPresetKey(e.target.value)}>
-                      {INDUSTRY_PRESETS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-                    </select>
-                    <button type="button" className="btn btn-outline-dark rounded-3 px-4 ops-tap" onClick={applyPreset}>Apply</button>
-                  </div>
-                  <p className="fz-font-sm neutral-500 mt-1 mb-0">Applying replaces the persona, greeting and tone below — nothing is saved until you press Save.</p>
-                </div>
-                <div className="col-12 col-md-8"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-name">Agent name</label><input id="agent-name" className="form-control rounded-3" value={config.display_name} onChange={(e) => patch({ display_name: e.target.value })} /></div>
-                <div className="col-12 col-md-4"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-tone">Tone</label><input id="agent-tone" className="form-control rounded-3" value={config.tone} onChange={(e) => patch({ tone: e.target.value })} /></div>
-                <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-persona">Persona / instructions</label><textarea id="agent-persona" className="form-control rounded-3" rows={3} value={config.persona} onChange={(e) => patch({ persona: e.target.value })} /></div>
-                <div className="col-12">
-                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-procedures">Operating procedures</label>
-                  <textarea
-                    id="agent-procedures"
-                    className="form-control rounded-3"
-                    rows={4}
-                    value={config.procedures ?? ""}
-                    onChange={(e) => patch({ procedures: e.target.value })}
-                    placeholder={"Plain-English rules the agent must always follow, e.g.:\n• If an order is unshipped, offer an exchange before a refund.\n• Never promise delivery dates — say \"usually 3–5 business days\".\n• Discounts above 10% need my approval."}
-                  />
-                  <p className="fz-font-sm neutral-500 mt-1 mb-0">These are hard rules — the agent follows them over its own judgment, on every channel.</p>
-                </div>
-                <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="agent-greeting">Greeting</label><input id="agent-greeting" className="form-control rounded-3" value={config.greeting} onChange={(e) => patch({ greeting: e.target.value })} /></div>
-              </div>
+              <Card title="Add the agent to your website" className="mt-3">
+                <p className="agx-note mb-2">Paste this once before <code>&lt;/body&gt;</code> — a chat bubble appears on every page, answered by this agent.</p>
+                <code className="agx-snippet">{snippet}</code>
+                <button type="button" className="hrx-seeall ops-tap" onClick={() => copySnippet(snippet)}>Copy snippet</button>
+              </Card>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div className="col-12 col-lg-6 d-flex flex-column gap-4">
-            <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-              <h3 className="fz-font-md fw-600 mb-1">What your agent can do</h3>
-              <p className="fz-font-sm neutral-500 mb-3">Each switch gates real tools the agent uses on every channel. Everything else — answering from your knowledge, escalating to a human — is always on.</p>
+      {/* ── Set-up — one-time configuration behind its own tab ── */}
+      <div id="agx-panel-setup" role="tabpanel" aria-labelledby="agx-tab-setup" className="agx-panel" hidden={section !== "setup"}>
+        <p className="agx-note mb-3">Set these once: who your agent is, what it may do, when you&rsquo;re open, and how it sounds on the phone.</p>
+
+        <div className="row g-3">
+          <div className="col-12 col-lg-6">
+            <Card title="Persona" className="h-100">
+              <p className="agx-note mb-3">Who your agent is on every channel.</p>
+              <div className="d-flex flex-wrap gap-2 align-items-end">
+                <label className="hrx-field mb-0" style={{ flex: "1 1 200px", minWidth: 0 }}>
+                  <span>Industry starter</span>
+                  <select className="form-select" value={presetKey} onChange={(e) => setPresetKey(e.target.value)}>
+                    {INDUSTRY_PRESETS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+                  </select>
+                </label>
+                <button type="button" className="hrx-pill ops-tap" onClick={applyPreset}>Apply</button>
+              </div>
+              <p className="agx-note mt-1 mb-3">Applying replaces the persona, greeting and tone below — nothing is saved until you press Save.</p>
+              <div className="row g-2">
+                <div className="col-12 col-md-8">
+                  <label className="hrx-field mb-0">
+                    <span>Agent name</span>
+                    <input className="form-control" value={config.display_name} onChange={(e) => patch({ display_name: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-12 col-md-4">
+                  <label className="hrx-field mb-0">
+                    <span>Tone</span>
+                    <input className="form-control" value={config.tone} onChange={(e) => patch({ tone: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-12">
+                  <label className="hrx-field mb-0">
+                    <span>Persona / instructions</span>
+                    <textarea className="form-control" rows={3} value={config.persona} onChange={(e) => patch({ persona: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-12">
+                  <label className="hrx-field mb-0">
+                    <span>Operating procedures</span>
+                    <textarea
+                      className="form-control"
+                      rows={4}
+                      value={config.procedures ?? ""}
+                      onChange={(e) => patch({ procedures: e.target.value })}
+                      placeholder={"Plain-English rules the agent must always follow, e.g.:\n• If an order is unshipped, offer an exchange before a refund.\n• Never promise delivery dates — say \"usually 3–5 business days\".\n• Discounts above 10% need my approval."}
+                    />
+                  </label>
+                  <p className="agx-note mt-1 mb-0">These are hard rules — the agent follows them over its own judgment, on every channel.</p>
+                </div>
+                <div className="col-12">
+                  <label className="hrx-field mb-0">
+                    <span>Greeting</span>
+                    <input className="form-control" value={config.greeting} onChange={(e) => patch({ greeting: e.target.value })} />
+                  </label>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div className="col-12 col-lg-6 d-flex flex-column gap-3">
+            <Card title="What your agent can do">
+              <p className="agx-note mb-3">Each switch gates real tools the agent uses on every channel. Everything else — answering from your knowledge, escalating to a human — is always on.</p>
               <div className="d-flex flex-column gap-3">
                 {CAPABILITY_SWITCHES.map((c) => (
                   <div key={c.key}>
                     <div className="form-check form-switch d-flex align-items-center justify-content-between gap-3 m-0 p-0">
-                      <label className="form-check-label fz-font-md fw-500 neutral-700 ops-tap" htmlFor={`cap-${c.key}`}>{c.label}</label>
+                      <label className="form-check-label fw-500 ops-tap" style={{ fontSize: 15 }} htmlFor={`cap-${c.key}`}>{c.label}</label>
                       <input className="form-check-input m-0 flex-shrink-0" type="checkbox" role="switch" id={`cap-${c.key}`} checked={capOn(c.key)} onChange={() => toggleCap(c.key)} aria-describedby={`cap-help-${c.key}`} />
                     </div>
-                    <div id={`cap-help-${c.key}`} className="fz-font-sm neutral-500 mt-1">{c.help}</div>
+                    <div id={`cap-help-${c.key}`} className="agx-note mt-1">{c.help}</div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
-            <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-              <h3 className="fz-font-md fw-600 mb-3">Business hours &amp; escalation</h3>
-              <div className="row g-3">
-                <div className="col-6 col-md-3"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="hours-open">Open</label><input id="hours-open" type="time" className="form-control rounded-3" value={config.business_hours?.open ?? "09:00"} onChange={(e) => patch({ business_hours: { ...config.business_hours, open: e.target.value } })} /></div>
-                <div className="col-6 col-md-3"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="hours-close">Close</label><input id="hours-close" type="time" className="form-control rounded-3" value={config.business_hours?.close ?? "17:00"} onChange={(e) => patch({ business_hours: { ...config.business_hours, close: e.target.value } })} /></div>
+            <Card title={<>Business hours &amp; escalation</>}>
+              <div className="row g-2">
+                <div className="col-6 col-md-3">
+                  <label className="hrx-field mb-0">
+                    <span>Open</span>
+                    <input type="time" className="form-control" value={config.business_hours?.open ?? "09:00"} onChange={(e) => patch({ business_hours: { ...config.business_hours, open: e.target.value } })} />
+                  </label>
+                </div>
+                <div className="col-6 col-md-3">
+                  <label className="hrx-field mb-0">
+                    <span>Close</span>
+                    <input type="time" className="form-control" value={config.business_hours?.close ?? "17:00"} onChange={(e) => patch({ business_hours: { ...config.business_hours, close: e.target.value } })} />
+                  </label>
+                </div>
                 <div className="col-12 col-md-6">
-                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="hours-tz">Timezone</label>
-                  <select id="hours-tz" className="form-select rounded-3" value={config.business_hours?.tz ?? ""} onChange={(e) => patch({ business_hours: { ...config.business_hours, tz: e.target.value } })}>
-                    {!config.business_hours?.tz && <option value="">Select timezone…</option>}
-                    {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>)}
-                  </select>
+                  <label className="hrx-field mb-0">
+                    <span>Timezone</span>
+                    <select className="form-select" value={config.business_hours?.tz ?? ""} onChange={(e) => patch({ business_hours: { ...config.business_hours, tz: e.target.value } })}>
+                      {!config.business_hours?.tz && <option value="">Select timezone…</option>}
+                      {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>)}
+                    </select>
+                  </label>
                 </div>
                 <div className="col-12">
-                  <span className="form-label d-block fz-font-sm fw-500 neutral-500 mb-1" id="open-days-label">Open days</span>
+                  <span className="d-block" id="open-days-label" style={{ fontSize: 13, fontWeight: 500, color: "var(--hrx-muted)", marginBottom: 6 }}>Open days</span>
                   <div className="d-flex flex-wrap gap-1" role="group" aria-labelledby="open-days-label">
                     {DAYS.map((d, i) => (
                       <button
                         key={d}
                         type="button"
-                        className={`btn btn-sm rounded-pill px-3 ops-tap ${days.includes(i) ? "btn-dark" : "btn-outline-secondary"}`}
+                        className="agx-day ops-tap"
                         aria-pressed={days.includes(i)}
                         onClick={() => toggleDay(i)}
                       >
@@ -555,19 +642,23 @@ export default function ConfigurePage() {
                       </button>
                     ))}
                   </div>
-                  <div className="fz-font-sm neutral-500 mt-1">With after-hours answering on, the agent still replies outside these hours — it captures the lead and offers a callback.</div>
+                  <div className="agx-note mt-1">With after-hours answering on, the agent still replies outside these hours — it captures the lead and offers a callback.</div>
                 </div>
-                <div className="col-12"><label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="escalate-email">Escalate to (email)</label><input id="escalate-email" type="email" className="form-control rounded-3" value={config.escalation?.to_email ?? ""} onChange={(e) => patch({ escalation: { ...config.escalation, to_email: e.target.value } })} /></div>
+                <div className="col-12">
+                  <label className="hrx-field mb-0">
+                    <span>Escalate to (email)</span>
+                    <input type="email" className="form-control" value={config.escalation?.to_email ?? ""} onChange={(e) => patch({ escalation: { ...config.escalation, to_email: e.target.value } })} />
+                  </label>
+                </div>
               </div>
-            </div>
+            </Card>
 
-            <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-              <h3 className="fz-font-md fw-600 mb-2">Voice</h3>
-              <p className="fz-font-sm neutral-500 mb-2">The voice your AI uses on phone calls.</p>
+            <Card title="Voice">
+              <p className="agx-note mb-2">The voice your AI uses on phone calls.</p>
               <label className="visually-hidden" htmlFor="agent-voice">Voice</label>
               <select
                 id="agent-voice"
-                className="form-select rounded-3 mb-2"
+                className="form-select mb-2"
                 value={config.voice?.provider === "cartesia" ? "cartesia|" : `${config.voice?.provider || "deepgram"}|${config.voice?.voice_id || "aura-asteria-en"}`}
                 onChange={(e) => {
                   const [provider, voice_id] = e.target.value.split("|");
@@ -580,23 +671,21 @@ export default function ConfigurePage() {
                   "own recorded voice" option, which needs an ID from them. */}
               {config.voice?.provider === "cartesia" && (
                 <>
-                  <input aria-label="Cartesia voice ID" className="form-control rounded-3" placeholder="Cartesia voice ID (preset or cloned)" value={config.voice?.voice_id || ""} onChange={(e) => patch({ voice: { provider: "cartesia", voice_id: e.target.value } })} />
-                  <div className="fz-font-sm neutral-500 mt-1">To clone a voice: create it in Cartesia, then paste its voice ID here.</div>
+                  <input aria-label="Cartesia voice ID" className="form-control" placeholder="Cartesia voice ID (preset or cloned)" value={config.voice?.voice_id || ""} onChange={(e) => patch({ voice: { provider: "cartesia", voice_id: e.target.value } })} />
+                  <div className="agx-note mt-1">To clone a voice: create it in Cartesia, then paste its voice ID here.</div>
                 </>
               )}
-            </div>
+            </Card>
           </div>
         </div>
       </div>
 
       {dirty && (
-        <div className="col-12" style={{ position: "sticky", bottom: 12, zIndex: 1040 }}>
-          <div className="bg-neutral-900 text-white rounded-4 px-3 px-lg-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2 shadow" role="status">
-            <span className="fz-font-md fw-500">Unsaved changes</span>
-            <div className="d-flex gap-2 ms-auto">
-              <button type="button" className="btn btn-outline-light btn-sm rounded-3 px-3 ops-tap" onClick={discard} disabled={saving}>Discard</button>
-              <button type="button" className="btn btn-light btn-sm rounded-3 px-4 fw-600 ops-tap" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</button>
-            </div>
+        <div className="agx-savebar" role="status">
+          <span style={{ fontSize: 15, fontWeight: 500 }}>Unsaved changes</span>
+          <div className="d-flex gap-2 ms-auto">
+            <button type="button" className="hrx-pill ops-tap" onClick={discard} disabled={saving}>Discard</button>
+            <button type="button" className="hrx-pill primary ops-tap" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</button>
           </div>
         </div>
       )}

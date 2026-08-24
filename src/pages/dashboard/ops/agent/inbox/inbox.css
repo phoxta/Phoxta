@@ -449,10 +449,10 @@
 .ibx-letter {
   padding: 12px 14px;
   background: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Figtree", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  color: #202124;
+  color: #272727;
   overflow-wrap: anywhere;
   /* A 900px-wide marketing table must scroll, not stretch the reading pane. */
   overflow-x: auto;
@@ -465,15 +465,15 @@
 }
 
 .ibx-letter a {
-  color: #1a73e8;
+  color: #195ce5;
   cursor: pointer;
 }
 
 .ibx-letter blockquote {
   margin: 0 0 0 0.8ex;
   padding-left: 1ex;
-  border-left: 2px solid #dadce0;
-  color: #5f6368;
+  border-left: 2px solid #d9d9d9;
+  color: #6b7280;
 }
 
 .ibx-letter pre {
@@ -501,7 +501,7 @@
 }
 
 .ibx-msg__meta .is-read {
-  color: #2563eb;
+  color: #195ce5;
 }
 
 .ibx-msg__meta .is-failed {

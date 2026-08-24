@@ -1,6 +1,23 @@
 import { useEffect, useState } from "react";
 import { confirmDanger, reportMutation, toast, toastError } from "@/lib/ops/feedback";
 import { getGoogleConnection, startGoogleConnect, disconnectGoogle, listWorkspaceEmails, provisionEmails, type GoogleConnection, type WsGroup } from "@/lib/db/ops/google";
+import { Card, Chip } from "@/components/dash/Ui";
+
+const CSS = `
+.ggx-config .hrx-pill:disabled { opacity: 0.55; cursor: not-allowed; }
+.ggx-alert { background: #fdeaea; color: #dc2626; border: 1px solid #f6c9c9; border-radius: 12px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px; }
+.ggx-copy { font-size: 14px; color: var(--hrx-muted); margin: 0 0 14px; max-width: 60ch; }
+.ggx-copy strong { color: var(--hrx-ink); }
+.ggx-conn { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.ggx-conn .dot {
+  width: 44px; height: 44px; border-radius: 999px; flex-shrink: 0; font-size: 20px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #e8effc; border: 1px solid #d4e2fb;
+}
+.ggx-conn .who { min-width: 0; }
+.ggx-conn .who .a { font-size: 15px; font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ggx-conn .who .b { font-size: 13px; color: var(--hrx-muted); display: block; margin-top: 1px; }
+`;
 
 export default function GoogleConfigure({ orgId }: { orgId: string }) {
   const [conn, setConn] = useState<GoogleConnection | null>(null);
@@ -49,37 +66,42 @@ export default function GoogleConfigure({ orgId }: { orgId: string }) {
   }
 
   return (
-    <div className="row g-4" style={{ maxWidth: 720 }}>
+    <div className="row g-3 ggx-config" style={{ maxWidth: 720 }}>
+      <style>{CSS}</style>
       <div className="col-12">
-        <div className="bg-neutral-0 rounded-4 p-4 border-100">
-          <h6 className="fw-600 mb-2">Connection</h6>
-          {loadError && <div className="alert alert-danger py-2 px-3 fz-font-sm mb-2" role="alert">{loadError}</div>}
+        <Card title="Connection" right={conn ? <Chip tone="ok">Connected</Chip> : <Chip tone="line">Not connected</Chip>}>
+          {loadError && <div className="ggx-alert" role="alert">{loadError}</div>}
           {conn ? (
             <>
-              <p className="fz-font-sm neutral-700 mb-2">Connected as <strong>{conn.email || "your Google account"}</strong> — Gmail, Drive, Docs, Sheets &amp; Calendar are available.</p>
-              <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={unlink} disabled={busy}>Disconnect</button>
+              <div className="ggx-conn">
+                <span className="dot" aria-hidden="true">🔗</span>
+                <span className="who">
+                  <span className="a">{conn.email || "Your Google account"}</span>
+                  <span className="b">Gmail, Drive, Docs, Sheets &amp; Calendar are available.</span>
+                </span>
+              </div>
+              <button type="button" className="hrx-pill" onClick={unlink} disabled={busy}>Disconnect</button>
             </>
           ) : (
             <>
-              <p className="fz-font-sm neutral-500 mb-2">Connect your Google Workspace to bring Gmail, Drive, Docs, Sheets and Calendar into Phoxta, and to manage business email addresses.</p>
-              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={connect} disabled={busy}>{busy ? "…" : "Connect Google Workspace"}</button>
+              <p className="ggx-copy">Connect your Google Workspace to bring Gmail, Drive, Docs, Sheets and Calendar into Phoxta, and to manage business email addresses.</p>
+              <button type="button" className="hrx-pill primary" onClick={connect} disabled={busy}>{busy ? "…" : "Connect Google Workspace"}</button>
             </>
           )}
-        </div>
+        </Card>
       </div>
 
       {conn && (
         <div className="col-12">
-          <div className="bg-neutral-0 rounded-4 p-4 border-100">
-            <h6 className="fw-600 mb-2">Business email addresses</h6>
-            <p className="fz-font-sm neutral-500 mb-2">Create the essential role addresses (hello@, info@, support@, sales@, billing@, contact@) as Google Groups that forward to you and accept customer email.</p>
+          <Card title="Business email addresses">
+            <p className="ggx-copy">Create the essential role addresses (hello@, info@, support@, sales@, billing@, contact@) as Google Groups that forward to you and accept customer email.</p>
             {groups.length > 0 && (
-              <div className="d-flex flex-wrap gap-1 mb-2">
-                {groups.map((g) => <span key={g.email} className="badge bg-neutral-100 neutral-700 fw-500">{g.email}</span>)}
+              <div className="d-flex flex-wrap gap-1 mb-3">
+                {groups.map((g) => <Chip key={g.email} tone="blue">{g.email}</Chip>)}
               </div>
             )}
-            <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={provision} disabled={provBusy}>{provBusy ? "Creating…" : "Create essential addresses"}</button>
-          </div>
+            <button type="button" className="hrx-pill dark" onClick={provision} disabled={provBusy}>{provBusy ? "Creating…" : "Create essential addresses"}</button>
+          </Card>
         </div>
       )}
     </div>

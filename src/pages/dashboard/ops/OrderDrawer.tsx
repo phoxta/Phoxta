@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/ops/commerce";
 import { formatPrice } from "@/lib/db/marketplace";
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
+import { Chip, stageTone } from "@/components/dash/Ui";
 
 type Props = {
   orgId: string;
@@ -51,6 +52,28 @@ function toastDelivery(delivery: "sent" | "no-email" | "failed" | null, error: s
   else if (delivery === "no-email") toast("Saved — no customer email on file, so no notification was sent", "info");
   else toastError("Saved, but the customer notification failed.");
 }
+
+const CSS = `
+.cmx-od{background:#fff;border:1px solid var(--hrx-border-soft);border-radius:12px;padding:16px}
+.cmx-od .hrx-pill{height:36px;padding:0 14px;font-size:13px}
+.cmx-od .hrx-field{margin-bottom:8px}
+.cmx-od-sm{font-size:13px}
+.cmx-od-md{font-size:14px}
+.cmx-od-muted{color:var(--hrx-muted)}
+.cmx-od-strong{font-weight:600}
+.cmx-od-title{font-size:16px;font-weight:600;letter-spacing:-0.02em;margin:0}
+.cmx-od-box{background:var(--hrx-soft);border:1px solid var(--hrx-border-soft);border-radius:12px;padding:14px;margin-bottom:14px}
+.cmx-od-kick{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--hrx-muted);margin:0 0 4px}
+.cmx-od-sep{border-top:1px solid var(--hrx-border-soft);padding-top:14px}
+.cmx-od-total{font-size:20px;font-weight:700}
+.cmx-od-lbl{display:block;font-size:13px;font-weight:500;color:var(--hrx-muted);margin-bottom:6px}
+.cmx-od-check{font-size:13px;color:var(--hrx-ink);margin-bottom:0}
+.cmx-od-danger-txt{color:#dc2626;font-weight:600}
+.cmx-od .hrx-pill.cmx-od-danger{background:#fff;border-color:#f3c5c5;color:#dc2626}
+.cmx-od .hrx-pill.cmx-od-danger:hover{background:#fdeaea;color:#dc2626}
+.cmx-od-linkbtn{background:none;border:0;padding:0;font-size:13px;font-weight:500;color:var(--hrx-muted);cursor:pointer;white-space:nowrap}
+.cmx-od-linkbtn:hover{color:var(--hrx-ink);text-decoration:underline}
+`;
 
 /** Expanded order detail card: line items, customer + shipping, payment trail,
  *  fulfilment (tracking + packing slip + notify), cancel and refunds. */
@@ -174,93 +197,103 @@ ${order.notes ? `<h2>Notes</h2><p>${esc(order.notes)}</p>` : ""}
   return (
     <section
       id={`order-detail-${order.id}`}
-      className="bg-neutral-50 rounded-4 border-100 p-3"
+      className="cmx-od"
       aria-label={`Order details for ${order.customer_name || "customer"}`}
     >
+      <style>{CSS}</style>
       <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
         <div style={{ minWidth: 0 }}>
-          <h3 className="fz-font-md fw-600 mb-1">Order {order.id.slice(0, 8).toUpperCase()}</h3>
-          <div className="fz-font-sm neutral-500">
+          <div className="d-flex align-items-center flex-wrap gap-2 mb-1">
+            <h3 className="cmx-od-title">Order {order.id.slice(0, 8).toUpperCase()}</h3>
+            <Chip tone={order.status === "partially_refunded" ? "warn" : stageTone(order.status)}>
+              {order.status.replace(/_/g, " ")}
+            </Chip>
+          </div>
+          <div className="cmx-od-sm cmx-od-muted">
             {order.customer_name || "Customer"} · {order.customer_email || "no email"}
           </div>
-          <div className="fz-font-sm neutral-500">
+          <div className="cmx-od-sm cmx-od-muted">
             {new Date(order.created_at).toLocaleString()}
             {order.source ? ` · via ${order.source}` : ""}
           </div>
         </div>
-        <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap flex-shrink-0" onClick={onClose}>Close</button>
+        <button type="button" className="cmx-od-linkbtn ops-tap flex-shrink-0" onClick={onClose}>Close</button>
       </div>
 
       {/* Line items */}
       {loading ? (
-        <div className="fz-font-sm neutral-500 py-2">Loading items…</div>
+        <div className="cmx-od-sm cmx-od-muted py-2">Loading items…</div>
       ) : itemsError ? (
-        <div className="fz-font-sm text-danger py-2" role="alert">{itemsError}</div>
+        <div className="cmx-od-sm cmx-od-danger-txt py-2" role="alert">{itemsError}</div>
       ) : items.length === 0 ? (
-        <div className="fz-font-sm neutral-500 py-2">No line items recorded.</div>
+        <div className="cmx-od-sm cmx-od-muted py-2">No line items recorded.</div>
       ) : (
-        <div className="bg-neutral-0 rounded-3 border-100 p-3 mb-3">
+        <div className="cmx-od-box">
           {items.map((i) => (
-            <div key={i.id} className="d-flex justify-content-between gap-3 fz-font-md py-1">
-              <span style={{ minWidth: 0 }}>{i.name} <span className="neutral-500">× {i.quantity}</span></span>
-              <span className="fw-600 text-nowrap">{formatPrice(i.unit_price_cents * i.quantity, currency)}</span>
+            <div key={i.id} className="d-flex justify-content-between gap-3 cmx-od-md py-1">
+              <span style={{ minWidth: 0 }}>{i.name} <span className="cmx-od-muted">× {i.quantity}</span></span>
+              <span className="cmx-od-strong text-nowrap">{formatPrice(i.unit_price_cents * i.quantity, currency)}</span>
             </div>
           ))}
-          <div className="d-flex justify-content-between align-items-baseline gap-3 border-top pt-2 mt-2">
-            <span className="fz-font-sm fw-600 neutral-500 text-uppercase" style={{ letterSpacing: ".04em" }}>Total</span>
-            <span className="fz-20 fw-700 text-nowrap">{formatPrice(order.total_cents, currency)}</span>
+          <div className="d-flex justify-content-between align-items-baseline gap-3 cmx-od-sep mt-2" style={{ paddingTop: 8 }}>
+            <span className="cmx-od-kick mb-0">Total</span>
+            <span className="cmx-od-total text-nowrap">{formatPrice(order.total_cents, currency)}</span>
           </div>
         </div>
       )}
 
-      <div className="row g-3 fz-font-sm mb-3">
+      <div className="row g-3 mb-3">
         <div className="col-md-6">
-          <h4 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-1" style={{ letterSpacing: ".04em" }}>Shipping</h4>
-          {ship.length === 0 ? <div className="neutral-500">No shipping address on file.</div> : ship.map((l, i) => <div key={i} className="neutral-700">{l}</div>)}
+          <h4 className="cmx-od-kick">Shipping</h4>
+          {ship.length === 0
+            ? <div className="cmx-od-sm cmx-od-muted">No shipping address on file.</div>
+            : ship.map((l, i) => <div key={i} className="cmx-od-md">{l}</div>)}
         </div>
         <div className="col-md-6">
-          <h4 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-1" style={{ letterSpacing: ".04em" }}>Payment</h4>
-          <div className="neutral-700">Reference: {order.payment_reference || "—"}</div>
-          <div className="neutral-700">Paid: {order.paid_at ? new Date(order.paid_at).toLocaleString() : "not yet"}</div>
+          <h4 className="cmx-od-kick">Payment</h4>
+          <div className="cmx-od-md">Reference: {order.payment_reference || "—"}</div>
+          <div className="cmx-od-md">Paid: {order.paid_at ? new Date(order.paid_at).toLocaleString() : "not yet"}</div>
           {(order.discount_cents ?? 0) > 0 && (
-            <div className="neutral-700">Discount: −{formatPrice(order.discount_cents ?? 0, currency)}{order.promo_code ? ` (${order.promo_code})` : ""}</div>
+            <div className="cmx-od-md">Discount: −{formatPrice(order.discount_cents ?? 0, currency)}{order.promo_code ? ` (${order.promo_code})` : ""}</div>
           )}
-          {refunded > 0 && <div className="text-danger fw-600">Refunded: {formatPrice(refunded, currency)}</div>}
+          {refunded > 0 && <div className="cmx-od-md cmx-od-danger-txt">Refunded: {formatPrice(refunded, currency)}</div>}
         </div>
       </div>
 
-      {order.notes && <div className="fz-font-sm neutral-700 mb-3"><span className="fw-600 neutral-500">Notes:</span> {order.notes}</div>}
+      {order.notes && <div className="cmx-od-sm mb-3"><span className="cmx-od-strong cmx-od-muted">Notes:</span> {order.notes}</div>}
 
       {/* Fulfilment — the tracking field takes its own line on a phone so the
           action buttons below it stay on a full-width, tappable row. */}
-      <div className="border-top pt-3">
-        <label htmlFor={`trk-${order.id}`} className="fz-font-sm neutral-500 d-block mb-1">Tracking number (optional)</label>
-        <input
-          id={`trk-${order.id}`}
-          className="form-control form-control-sm rounded-3 mb-2"
-          style={{ maxWidth: 260 }}
-          placeholder="e.g. 1Z999AA10123456784"
-          value={tracking}
-          onChange={(e) => setTracking(e.target.value)}
-        />
+      <div className="cmx-od-sep">
+        <label className="hrx-field" htmlFor={`trk-${order.id}`}>
+          <span>Tracking number (optional)</span>
+          <input
+            id={`trk-${order.id}`}
+            className="form-control form-control-sm"
+            style={{ maxWidth: 260 }}
+            placeholder="e.g. 1Z999AA10123456784"
+            value={tracking}
+            onChange={(e) => setTracking(e.target.value)}
+          />
+        </label>
         <div className="d-flex flex-wrap align-items-center gap-2">
           {canFulfill ? (
-            <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={doFulfill} disabled={busy !== null}>
+            <button type="button" className="hrx-pill dark" onClick={doFulfill} disabled={busy !== null}>
               {busy === "fulfill" ? "Fulfilling…" : "Mark fulfilled"}
             </button>
           ) : (
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={doSaveTracking} disabled={busy !== null || (tracking.trim() === (order.tracking ?? ""))}>
+            <button type="button" className="hrx-pill" onClick={doSaveTracking} disabled={busy !== null || (tracking.trim() === (order.tracking ?? ""))}>
               {busy === "tracking" ? "Saving…" : "Save tracking"}
             </button>
           )}
-          <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={packingSlip}>Print packing slip</button>
+          <button type="button" className="hrx-pill" onClick={packingSlip}>Print packing slip</button>
           {order.status === "pending" && (
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={doMarkPaid} disabled={busy !== null}>
+            <button type="button" className="hrx-pill" onClick={doMarkPaid} disabled={busy !== null}>
               {busy === "paid" ? "Saving…" : "Payment collected"}
             </button>
           )}
           {canCancel && (
-            <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={doCancel} disabled={busy !== null}>
+            <button type="button" className="hrx-pill cmx-od-danger" onClick={doCancel} disabled={busy !== null}>
               {busy === "cancel" ? "Cancelling…" : "Cancel order"}
             </button>
           )}
@@ -269,8 +302,8 @@ ${order.notes ? `<h2>Notes</h2><p>${esc(order.notes)}</p>` : ""}
 
       {/* Refund */}
       {canRefund && (
-        <div className="border-top pt-3 mt-3">
-          <label htmlFor={`refund-${order.id}`} className="fz-font-sm neutral-500 d-block mb-1">
+        <div className="cmx-od-sep mt-3">
+          <label htmlFor={`refund-${order.id}`} className="cmx-od-lbl">
             Refund amount — leave blank to refund the full {formatPrice(remaining, currency)}
           </label>
           <div className="d-flex flex-wrap align-items-center gap-2">
@@ -280,17 +313,17 @@ ${order.notes ? `<h2>Notes</h2><p>${esc(order.notes)}</p>` : ""}
               inputMode="decimal"
               min={0.01}
               step={0.01}
-              className="form-control form-control-sm rounded-3"
+              className="form-control form-control-sm"
               style={{ maxWidth: 130 }}
               placeholder="Amount"
               value={refundAmount}
               onChange={(e) => setRefundAmount(e.target.value)}
             />
-            <label className="fz-font-sm neutral-600 mb-0 ops-tap">
+            <label className="cmx-od-check ops-tap">
               <input type="checkbox" className="me-1" checked={refundRestock} onChange={(e) => setRefundRestock(e.target.checked)} />
               Return items to stock
             </label>
-            <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={doRefund} disabled={busy !== null}>
+            <button type="button" className="hrx-pill cmx-od-danger" onClick={doRefund} disabled={busy !== null}>
               {busy === "refund" ? "Refunding…" : "Refund"}
             </button>
           </div>

@@ -5,6 +5,7 @@ import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { listPromos, createPromo, updatePromo, deletePromo, type PromoKind } from "@/lib/db/ops/promo";
 import { formatPrice } from "@/lib/db/marketplace";
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
+import { Card, Chip, Empty } from "@/components/dash/Ui";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 /** A code stays usable until the END of its expiry day, so compare calendar
@@ -12,6 +13,17 @@ import type { OpsContext } from "@/layouts/OperatingLayout";
 const dayOf = (iso: string) => iso.slice(0, 10);
 const isExpired = (iso: string | null) => !!iso && dayOf(iso) < new Date().toISOString().slice(0, 10);
 const showDay = (iso: string) => new Date(`${dayOf(iso)}T12:00:00`).toLocaleDateString();
+
+const CSS = `
+.cmx-pc .hrx-field{margin-bottom:0}
+.cmx-pc-sm{font-size:13px}
+.cmx-pc-muted{color:var(--hrx-muted)}
+.cmx-pc-wide{width:100%;justify-content:center}
+.cmx-pc-linkbtn{background:none;border:0;padding:0;font-size:13px;font-weight:600;color:var(--hrx-blue);cursor:pointer;white-space:nowrap}
+.cmx-pc-linkbtn:hover{color:var(--hrx-blue-deep);text-decoration:underline}
+.cmx-pc-linkbtn.danger{color:#dc2626}
+.cmx-pc-linkbtn.danger:hover{color:#b91c1c}
+`;
 
 // Console manager for a business's promo / discount codes.
 export default function PromoCodes({ orgId }: { orgId: string }) {
@@ -70,56 +82,81 @@ export default function PromoCodes({ orgId }: { orgId: string }) {
   }
 
   return (
-    <div className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100">
-      <h2 className="fz-font-lg fw-600 mb-3">Promo codes</h2>
-      {loadError && <div className="alert alert-warning py-2 px-3 fz-font-sm" role="alert">{loadError}</div>}
+    <Card title="Promo codes" className="cmx-pc">
+      <style>{CSS}</style>
+      {loadError && <div className="alert alert-warning py-2 px-3 cmx-pc-sm" role="alert">{loadError}</div>}
       <form onSubmit={add} className="row g-2 align-items-end mb-4">
-        <div className="col-12 col-md-3"><label htmlFor="promo-code" className="fz-font-sm neutral-500 d-block mb-1">Code</label><input id="promo-code" className="form-control form-control-sm rounded-3 text-uppercase" placeholder="WELCOME10" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
-        <div className="col-6 col-md-2"><label htmlFor="promo-kind" className="fz-font-sm neutral-500 d-block mb-1">Type</label><select id="promo-kind" className="form-select form-select-sm rounded-3" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as PromoKind })}><option value="percent">% off</option><option value="fixed">{currency} off</option></select></div>
-        <div className="col-6 col-md-2"><label htmlFor="promo-value" className="fz-font-sm neutral-500 d-block mb-1">{form.kind === "percent" ? "Percent (1–100)" : `Amount (${currency})`}</label><input id="promo-value" type="number" min={form.kind === "percent" ? 1 : 0.01} max={form.kind === "percent" ? 100 : undefined} step={form.kind === "percent" ? 1 : 0.01} inputMode="decimal" className="form-control form-control-sm rounded-3" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} /></div>
-        <div className="col-6 col-md-2"><label htmlFor="promo-min" className="fz-font-sm neutral-500 d-block mb-1">Min spend ({currency})</label><input id="promo-min" type="number" min={0} step={0.01} inputMode="decimal" className="form-control form-control-sm rounded-3" placeholder="0" value={form.min} onChange={(e) => setForm({ ...form, min: e.target.value })} /></div>
-        <div className="col-6 col-md-2">
-          <label htmlFor="promo-expires" className="fz-font-sm neutral-500 d-block mb-1">Expires</label>
-          <input id="promo-expires" type="date" className="form-control form-control-sm rounded-3" value={form.expires} onChange={(e) => setForm({ ...form, expires: e.target.value })} />
+        <div className="col-12 col-md-3">
+          <label className="hrx-field" htmlFor="promo-code">
+            <span>Code</span>
+            <input id="promo-code" className="form-control form-control-sm text-uppercase" placeholder="WELCOME10" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+          </label>
         </div>
-        <div className="col-12 col-md-1"><button type="submit" className="btn btn-dark btn-sm w-100 rounded-3 text-nowrap" disabled={busy}>{busy ? "…" : "Add"}</button></div>
-        {form.expires && <div className="col-12 fz-font-sm neutral-500">Valid through {showDay(form.expires)} — customers can use the code until the end of that day.</div>}
+        <div className="col-6 col-md-2">
+          <label className="hrx-field" htmlFor="promo-kind">
+            <span>Type</span>
+            <select id="promo-kind" className="form-select form-select-sm" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as PromoKind })}>
+              <option value="percent">% off</option>
+              <option value="fixed">{currency} off</option>
+            </select>
+          </label>
+        </div>
+        <div className="col-6 col-md-2">
+          <label className="hrx-field" htmlFor="promo-value">
+            <span>{form.kind === "percent" ? "Percent (1–100)" : `Amount (${currency})`}</span>
+            <input id="promo-value" type="number" min={form.kind === "percent" ? 1 : 0.01} max={form.kind === "percent" ? 100 : undefined} step={form.kind === "percent" ? 1 : 0.01} inputMode="decimal" className="form-control form-control-sm" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
+          </label>
+        </div>
+        <div className="col-6 col-md-2">
+          <label className="hrx-field" htmlFor="promo-min">
+            <span>Min spend ({currency})</span>
+            <input id="promo-min" type="number" min={0} step={0.01} inputMode="decimal" className="form-control form-control-sm" placeholder="0" value={form.min} onChange={(e) => setForm({ ...form, min: e.target.value })} />
+          </label>
+        </div>
+        <div className="col-6 col-md-2">
+          <label className="hrx-field" htmlFor="promo-expires">
+            <span>Expires</span>
+            <input id="promo-expires" type="date" className="form-control form-control-sm" value={form.expires} onChange={(e) => setForm({ ...form, expires: e.target.value })} />
+          </label>
+        </div>
+        <div className="col-12 col-md-1"><button type="submit" className="hrx-pill primary cmx-pc-wide" disabled={busy}>{busy ? "…" : "Add"}</button></div>
+        {form.expires && <div className="col-12 cmx-pc-sm cmx-pc-muted">Valid through {showDay(form.expires)} — customers can use the code until the end of that day.</div>}
       </form>
       {loading ? (
-        <div className="neutral-500 fz-font-md" role="status">Loading…</div>
+        <div className="cmx-pc-muted" role="status">Loading…</div>
       ) : promos.length === 0 ? (
-        <div className="neutral-500 fz-font-md">No codes yet — add one above (e.g. WELCOME10 for 10% off).</div>
+        <Empty title="No codes yet">Add one above — e.g. WELCOME10 for 10% off.</Empty>
       ) : (
-        <div className="d-flex flex-column gap-2">
+        <div>
           {promos.map((p) => {
             const expired = isExpired(p.expires_at);
             const live = p.active && !expired;
             return (
-              <div key={p.id} className="border-100 rounded-3 p-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <div className="flex-grow-1" style={{ minWidth: "12rem" }}>
-                  <div className="fz-font-md fw-600">
-                    {p.code}
-                    <span className={`badge fw-500 ms-2 ${live ? "bg-success-subtle text-success" : expired ? "bg-danger-subtle text-danger" : "bg-neutral-100 neutral-700"}`}>
+              <div key={p.id} className="hrx-listrow">
+                <div className="main">
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <p className="t mb-0">{p.code}</p>
+                    <Chip tone={live ? "ok" : expired ? "danger" : "plain"}>
                       {expired ? "Expired" : p.active ? "Active" : "Paused"}
-                    </span>
+                    </Chip>
                   </div>
-                  <div className="fz-font-sm neutral-500">
+                  <p className="s">
                     {p.kind === "percent" ? `${p.value}% off` : `${formatPrice(p.value, currency)} off`}
                     {p.min_cents > 0 ? ` · min ${formatPrice(p.min_cents, currency)}` : ""}
                     {p.expires_at ? ` · valid through ${showDay(p.expires_at)}` : " · no expiry"}
-                  </div>
+                  </p>
                 </div>
                 <div className="d-flex align-items-center gap-3 flex-shrink-0">
                   <button
                     type="button"
-                    className="btn btn-link btn-sm p-0 neutral-700 text-decoration-none ops-tap text-nowrap"
+                    className="cmx-pc-linkbtn ops-tap"
                     onClick={async () => { if (await reportMutation(updatePromo(p.id, { active: !p.active }), p.active ? `${p.code} paused.` : `${p.code} activated.`)) reload(); }}
                   >
                     {p.active ? "Pause" : "Activate"}
                   </button>
                   <button
                     type="button"
-                    className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap"
+                    className="cmx-pc-linkbtn danger ops-tap"
                     onClick={async () => { if (confirmDanger(`Delete ${p.code}? Customers will no longer be able to use it.`)) { if (await reportMutation(deletePromo(p.id), "Code deleted.")) reload(); } }}
                   >
                     Delete
@@ -130,6 +167,6 @@ export default function PromoCodes({ orgId }: { orgId: string }) {
           })}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

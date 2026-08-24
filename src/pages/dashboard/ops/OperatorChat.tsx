@@ -166,7 +166,20 @@ function Attachments({ items, urls }: { items: OperatorAttachment[]; urls: Recor
 }
 
 // ---------------------------------------------------------------------------
-export default function OperatorChat({ orgId, opsBase }: { orgId: string; opsBase: string }) {
+export default function OperatorChat({
+  orgId,
+  opsBase,
+  bare = false,
+  since = null,
+}: {
+  orgId: string;
+  opsBase: string;
+  /** Skip the panel's own header — for hosts that provide their own chrome. */
+  bare?: boolean;
+  /** Only DISPLAY messages from this ISO timestamp on. The agent still gets the
+   *  full thread as context; this windows what is shown, nothing else. */
+  since?: string | null;
+}) {
   const [msgs, setMsgs] = useState<OperatorMsg[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState<OperatorAttachment[]>([]);
@@ -243,15 +256,16 @@ export default function OperatorChat({ orgId, opsBase }: { orgId: string; opsBas
   // Group consecutive same-sender messages, split by day — the design shows one
   // avatar/name/time footer per group, under a day separator.
   const groups = useMemo(() => {
+    const visible = since ? msgs.filter((m) => !m.created_at || m.created_at >= since) : msgs;
     const out: { day: string; role: OperatorMsg["role"]; items: OperatorMsg[] }[] = [];
-    for (const m of msgs) {
+    for (const m of visible) {
       const day = dayKey(m.created_at);
       const last = out[out.length - 1];
       if (last && last.role === m.role && last.day === day) last.items.push(m);
       else out.push({ day, role: m.role, items: [m] });
     }
     return out;
-  }, [msgs]);
+  }, [msgs, since]);
 
   async function pickFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -335,11 +349,13 @@ export default function OperatorChat({ orgId, opsBase }: { orgId: string; opsBas
   }
 
   return (
-    <section className="opc" aria-label="AI Operator">
-      <header className="opc-head">
-        <h2>AI Operator</h2>
-        <Link to={`${opsBase}/agent/operator`}>Approvals &amp; audit →</Link>
-      </header>
+    <section className={`opc${bare ? " opc-bare" : ""}`} aria-label="AI Operator">
+      {!bare && (
+        <header className="opc-head">
+          <h2>AI Operator</h2>
+          <Link to={`${opsBase}/agent/operator`}>Approvals &amp; audit →</Link>
+        </header>
+      )}
 
       {/* The scroller is wrapped so the blur veil has something to anchor to.
           A sticky pseudo-element inside .opc-body would work too, but it has to
@@ -348,11 +364,16 @@ export default function OperatorChat({ orgId, opsBase }: { orgId: string; opsBas
         <div className="opc-body" ref={bodyRef} aria-live="polite">
           {groups.length === 0 && !busy && (
             <div className="opc-empty">
-              <div className="opc-starters">
-                {STARTERS.map((s) => (
-                  <button key={s} type="button" onClick={() => send(s)}>{s}</button>
-                ))}
-              </div>
+              {since && msgs.length > 0 ? (
+                // The thread exists — this window of it is just quiet.
+                <p className="mb-0">Nothing in this period — pick a longer history, or just ask.</p>
+              ) : (
+                <div className="opc-starters">
+                  {STARTERS.map((s) => (
+                    <button key={s} type="button" onClick={() => send(s)}>{s}</button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

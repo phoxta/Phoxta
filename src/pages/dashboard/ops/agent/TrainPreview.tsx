@@ -2,6 +2,22 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { friendlyError } from "@/lib/friendlyError";
 import { summarizeConversation } from "@/lib/db/ops/agent";
+import { Chip } from "@/components/dash/Ui";
+
+/** hrx-kit dressing for the sandbox chat — the card, bubbles and link-buttons. */
+const AGX_CSS = `
+.agx-tp-chat{height:min(70vh,720px);min-height:420px;display:flex;flex-direction:column}
+.agx-tp-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--hrx-border-soft)}
+.agx-tp-foot{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--hrx-border-soft)}
+.agx-tp-foot .hrx-pill:disabled{opacity:.55;cursor:default}
+.agx-bubble{max-width:85%;padding:10px 14px;border-radius:16px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.agx-bubble.customer{background:var(--hrx-ink);color:#fff;border-bottom-right-radius:4px}
+.agx-bubble.agent{background:var(--hrx-soft);border:1px solid var(--hrx-border-soft);border-bottom-left-radius:4px}
+.agx-bubble.pending{background:var(--hrx-soft);border:1px solid var(--hrx-border-soft);color:var(--hrx-muted)}
+.agx-linkbtn{background:none;border:0;padding:0;font-size:13px;font-weight:500;color:var(--hrx-muted);cursor:pointer;text-decoration:none}
+.agx-linkbtn:hover{color:var(--hrx-ink)}
+.agx-alert{background:#fdf3d7;border:1px solid #f2dfa6;border-radius:16px;color:#a16207;padding:10px 14px;font-size:14px;margin:12px 16px 0}
+`;
 
 // The voice widget pulls in WebRTC + the Pipecat client SDK — lazy-load it so
 // it never weighs down the dashboard until the Train tab is open.
@@ -98,56 +114,57 @@ export default function TrainPreview({ orgId, publicKey }: { orgId: string; publ
   }
 
   return (
-    <div className="d-flex flex-column gap-4">
+    <div className="d-flex flex-column gap-3">
+      <style>{AGX_CSS}</style>
       {/* Same sizing convention as the Inbox thread and the Operator chat:
           viewport-relative, with a floor so it stays usable on a short phone. */}
-      <div className="bg-neutral-0 rounded-4 border-100 d-flex flex-column" style={{ height: "min(70vh, 720px)", minHeight: 420 }}>
-        <div className="d-flex flex-wrap align-items-center justify-content-between px-3 py-3 border-bottom border-100 gap-2">
+      <div className="hrx-card agx-tp-chat">
+        <div className="agx-tp-head">
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            <h2 className="fw-600 fz-font-md mb-0">Live preview</h2>
+            <h2 className="hrx-card-title">Live preview</h2>
             <label className="visually-hidden" htmlFor="train-preview-channel">Channel</label>
-            <select id="train-preview-channel" className="form-select form-select-sm rounded-3 text-capitalize" style={{ width: "auto" }} value={channel} onChange={(e) => setChannel(e.target.value)}>
+            <select id="train-preview-channel" className="form-select form-select-sm text-capitalize" style={{ width: "auto" }} value={channel} onChange={(e) => setChannel(e.target.value)}>
               {CHANNELS.map((c) => <option key={c} value={c} className="text-capitalize">{c}</option>)}
             </select>
-            <span className="badge bg-neutral-100 neutral-700 fw-500">Sandbox</span>
+            <Chip tone="line">Sandbox</Chip>
           </div>
-          <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={reset}>New chat</button>
+          <button type="button" className="agx-linkbtn ops-tap" onClick={reset}>New chat</button>
         </div>
 
         <div ref={threadRef} className="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-3" role="log" aria-label="Preview conversation" aria-busy={sending}>
           {messages.length === 0 && !sending && (
-            <div className="m-auto text-center neutral-500 px-2" style={{ maxWidth: 360 }}>
-              <h3 className="fw-600 fz-font-md neutral-700 mb-2">Talk to your agent as a customer</h3>
-              <p className="fz-font-md mb-0">Try “Do you have anything available this week? My name's Sam, sam@email.com”. Test chats never show in your Inbox or stats.</p>
+            <div className="m-auto text-center px-2" style={{ maxWidth: 360, color: "var(--hrx-muted)" }}>
+              <h3 className="mb-2" style={{ fontSize: 15, fontWeight: 600, color: "var(--hrx-ink)" }}>Talk to your agent as a customer</h3>
+              <p className="mb-0" style={{ fontSize: 14 }}>Try “Do you have anything available this week? My name's Sam, sam@email.com”. Test chats never show in your Inbox or stats.</p>
             </div>
           )}
           {messages.map((m, i) => (
             <div key={i} className={`d-flex ${m.role === "customer" ? "justify-content-end" : "justify-content-start"}`}>
-              <div className={`px-3 py-2 rounded-4 fz-font-md ${m.role === "customer" ? "bg-neutral-900 text-white" : "bg-neutral-100 neutral-900"}`} style={{ maxWidth: "85%", whiteSpace: "pre-wrap" }}>
+              <div className={`agx-bubble ${m.role === "customer" ? "customer" : "agent"}`}>
                 {m.body}
                 {m.actions && m.actions.length > 0 && (
                   <div className="mt-2 d-flex flex-wrap gap-1">
-                    {m.actions.map((a, j) => <span key={j} className="badge bg-success-subtle text-success fw-500">✓ {a}</span>)}
+                    {m.actions.map((a, j) => <Chip key={j} tone="ok">✓ {a}</Chip>)}
                   </div>
                 )}
-                {m.escalated && <div className="mt-1"><span className="badge bg-danger-subtle text-danger fw-500">Escalated to a human</span></div>}
+                {m.escalated && <div className="mt-1"><Chip tone="danger">Escalated to a human</Chip></div>}
               </div>
             </div>
           ))}
-          {sending && <div className="d-flex justify-content-start"><div className="px-3 py-2 rounded-4 fz-font-md bg-neutral-100 neutral-500">Thinking…</div></div>}
+          {sending && <div className="d-flex justify-content-start"><div className="agx-bubble pending">Thinking…</div></div>}
         </div>
 
-        {error && <div className="alert alert-warning py-2 px-3 fz-font-md m-3 mb-0" role="alert">{error}</div>}
+        {error && <div className="agx-alert" role="alert">{error}</div>}
 
-        <form onSubmit={send} className="border-top border-100 p-3 d-flex gap-2">
+        <form onSubmit={send} className="agx-tp-foot">
           <label className="visually-hidden" htmlFor="train-preview-draft">Message your agent</label>
-          <input id="train-preview-draft" className="form-control rounded-3" style={{ minWidth: 0 }} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Message your agent…" disabled={sending} />
-          <button type="submit" className="btn btn-dark rounded-3 px-4 flex-shrink-0" disabled={sending || !draft.trim()}>Send</button>
+          <input id="train-preview-draft" className="form-control" style={{ minWidth: 0 }} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Message your agent…" disabled={sending} />
+          <button type="submit" className="hrx-pill dark flex-shrink-0" disabled={sending || !draft.trim()}>Send</button>
         </form>
       </div>
 
       {publicKey && VOICE_SERVER_URL && (
-        <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">Loading voice…</div>}>
+        <Suspense fallback={<div className="hrx-card hrx-pad text-center" style={{ color: "var(--hrx-muted)", fontSize: 14 }}>Loading voice…</div>}>
           <VoiceAgentWidget publicKey={publicKey} serverUrl={VOICE_SERVER_URL} />
         </Suspense>
       )}

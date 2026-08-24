@@ -171,6 +171,67 @@ export async function fetchPlatformAudit(limit = 100): Promise<{ data: PlatformA
   return { data: (data as PlatformAuditRow[] | null) ?? [], error: friendlyError(error?.message) };
 }
 
+// ── Users (auth roster) ─────────────────────────────────────────────────────
+// GoTrue admin operations — list every account, create one, mint a recovery
+// link/OTP, ban — live in the platform-users edge function, because they need
+// the service role. The function re-checks platform_admins membership and
+// audits every write; these are thin wrappers.
+
+export type PlatformUser = {
+  id: string;
+  email: string;
+  full_name: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  confirmed: boolean;
+  banned: boolean;
+  orgs: string[];
+};
+
+const usersFn = async (body: Record<string, unknown>): Promise<{ data: Record<string, unknown> | null; error: string | null }> => {
+  const { data, error } = await supabase.functions.invoke("platform-users", { body });
+  if (error) {
+    let msg = error.message;
+    try { const ctx = await (error as { context?: Response }).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* keep */ }
+    return { data: null, error: friendlyError(msg) };
+  }
+  const d = (data ?? {}) as Record<string, unknown>;
+  if (typeof d.error === "string") return { data: null, error: d.error };
+  return { data: d, error: null };
+};
+
+export async function listPlatformUsers(page = 1, q = ""): Promise<{
+  users: PlatformUser[]; total: number; error: string | null;
+}> {
+  const { data, error } = await usersFn({ action: "list", page, q });
+  if (error || !data) return { users: [], total: 0, error };
+  return { users: (data.users as PlatformUser[]) ?? [], total: Number(data.total) || 0, error: null };
+}
+
+/** Creates a confirmed account. The credentials come back exactly once. */
+export async function createPlatformUser(email: string, fullName: string, password?: string): Promise<{
+  email: string | null; password: string | null; error: string | null;
+}> {
+  const { data, error } = await usersFn({ action: "create", email, fullName, password: password || undefined });
+  if (error || !data) return { email: null, password: null, error };
+  return { email: String(data.email), password: String(data.password), error: null };
+}
+
+/** Password-reset link + OTP for the admin to relay to the customer directly
+ *  (outbound email is not dependable right now, so nothing is "sent"). */
+export async function generateRecoveryLink(email: string): Promise<{
+  link: string | null; otp: string | null; error: string | null;
+}> {
+  const { data, error } = await usersFn({ action: "recovery", email });
+  if (error || !data) return { link: null, otp: null, error };
+  return { link: (data.link as string) ?? null, otp: (data.otp as string) ?? null, error: null };
+}
+
+export async function setUserBanned(userId: string, ban: boolean): Promise<{ ok: boolean; error: string | null }> {
+  const { data, error } = await usersFn({ action: "ban", userId, ban });
+  return { ok: !!data?.ok, error };
+}
+
 // ── Payment tests ───────────────────────────────────────────────────────────
 
 /**

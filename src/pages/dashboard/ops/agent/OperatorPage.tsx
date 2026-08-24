@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useOutletContext } from "react-router-dom";
+import { Card, Chip } from "@/components/dash/Ui";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import { formatPrice } from "@/lib/db/marketplace";
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
@@ -30,6 +31,24 @@ import {
 
 // deno-style loose arg bag — action args come from the agent as free-form JSON.
 type Args = Record<string, unknown>;
+
+/** hrx-kit dressing for the operator page — cards from the shared kit, plus a
+ *  few local classes for the approval rows, link-buttons and the chat shell. */
+const AGX_CSS = `
+.agx-alert{border-radius:16px;padding:12px 16px;font-size:14px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px}
+.agx-alert.danger{background:#fdeaea;border:1px solid #f3c1c1;color:#dc2626}
+.agx-approval{background:var(--hrx-soft);border:1px solid var(--hrx-border-soft);border-radius:16px;padding:14px 16px}
+.agx-approval p{overflow-wrap:anywhere}
+.agx-approval .hrx-pill:disabled,.agx-approval .agx-linkbtn:disabled{opacity:.55;cursor:default}
+.agx-linkbtn{background:none;border:0;padding:0;font-size:13px;font-weight:500;color:var(--hrx-muted);cursor:pointer;text-decoration:none}
+.agx-linkbtn:hover{color:var(--hrx-ink)}
+.agx-linkbtn.danger{color:#dc2626}
+.agx-linkbtn.danger:hover{color:#b91c1c}
+.agx-grouphead{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--hrx-muted);margin:0 0 8px}
+.agx-note{font-size:13px;color:var(--hrx-muted)}
+.agx-chat{height:min(70vh,720px);min-height:420px;display:flex;flex-direction:column}
+.agx-json{white-space:pre-wrap;max-height:160px;overflow:auto;background:#fff;border:1px solid var(--hrx-border-soft);border-radius:12px;padding:8px;font-size:12px;margin:6px 0 0}
+`;
 
 const short = (s: unknown, n = 140): string => {
     const t = String(s ?? "");
@@ -342,12 +361,13 @@ export default function OperatorPage() {
     const pending = actions.filter((a) => a.status === "pending");
 
     return (
-        <div className="row g-4">
+        <div className="row g-3">
+            <style>{AGX_CSS}</style>
             {/* Anything that failed to load or send is stated at the very top —
                 never buried under the chat, where the queue looks simply empty. */}
             {error && (
                 <div className="col-12">
-                    <div className="alert alert-danger py-2 px-3 fz-font-md mb-0" role="alert">{error}</div>
+                    <div className="agx-alert danger mb-0" role="alert">{error}</div>
                 </div>
             )}
 
@@ -355,28 +375,28 @@ export default function OperatorPage() {
                 on desktop it spans the full width above the chat. */}
             {!loading && pending.length > 0 && (
                 <div className="col-12">
-                    <section className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100" aria-labelledby="ops-approvals-heading">
-                        <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                            <h2 id="ops-approvals-heading" className="fz-font-lg fw-600 mb-0">Waiting for you</h2>
-                            <span className="badge bg-warning-subtle text-warning fw-500">{pending.length} to approve</span>
+                    <section className="hrx-card hrx-pad" aria-labelledby="ops-approvals-heading">
+                        <div className="hrx-card-head" style={{ marginBottom: 4 }}>
+                            <h2 id="ops-approvals-heading" className="hrx-card-title">Waiting for you</h2>
+                            <Chip tone="warn">{pending.length} to approve</Chip>
                         </div>
-                        <p className="fz-font-sm neutral-500 mb-3">Nothing here happens until you approve it.</p>
+                        <p className="agx-note mb-3">Nothing here happens until you approve it.</p>
                         <ul className="list-unstyled m-0 d-flex flex-column gap-2">
                             {pending.map((a) => {
                                 const sentence = humanSentence(a, org.currency || "GBP");
                                 const editable = EDITABLE_FIELD[a.tool];
                                 const editing = editDrafts[a.id] !== undefined;
                                 return (
-                                    <li key={a.id} className="bg-neutral-50 border-100 rounded-3 p-3">
+                                    <li key={a.id} className="agx-approval">
                                         {sentence ? (
-                                            <p className="fz-font-md neutral-900 mb-2">{sentence}</p>
+                                            <p className="mb-2" style={{ fontSize: 15 }}>{sentence}</p>
                                         ) : (
                                             <>
-                                                <p className="fw-600 fz-font-md neutral-900 mb-2">{a.title}</p>
+                                                <p className="fw-600 mb-2" style={{ fontSize: 15 }}>{a.title}</p>
                                                 {a.args && Object.keys(a.args as Args).length > 0 && (
                                                     <details className="mb-2">
-                                                        <summary className="fz-font-sm neutral-500 ops-tap" style={{ cursor: "pointer" }}>What exactly will change</summary>
-                                                        <pre className="fz-font-sm bg-neutral-0 rounded-2 p-2 mt-1 mb-0" style={{ whiteSpace: "pre-wrap", maxHeight: 160, overflow: "auto" }}>
+                                                        <summary className="agx-note ops-tap" style={{ cursor: "pointer" }}>What exactly will change</summary>
+                                                        <pre className="agx-json">
                                                             {JSON.stringify(a.args, null, 1)}
                                                         </pre>
                                                     </details>
@@ -384,32 +404,31 @@ export default function OperatorPage() {
                                             </>
                                         )}
                                         {editable && editing && (
-                                            <div className="mb-2">
-                                                <label className="fz-font-sm fw-500 neutral-500 d-block mb-1" htmlFor={`edit-${a.id}`}>Edit the message before approving</label>
+                                            <label className="hrx-field">
+                                                <span>Edit the message before approving</span>
                                                 <textarea
-                                                    id={`edit-${a.id}`}
-                                                    className="form-control rounded-3 fz-font-sm"
+                                                    className="form-control"
                                                     rows={4}
                                                     value={editDrafts[a.id]}
                                                     onChange={(e) => setEditDrafts((d) => ({ ...d, [a.id]: e.target.value }))}
                                                 />
-                                            </div>
+                                            </label>
                                         )}
                                         <div className="d-flex gap-2 align-items-center flex-wrap">
-                                            <button type="button" className="btn btn-dark rounded-pill px-4 fw-600 ops-tap" disabled={deciding === a.id} onClick={() => decide(a, "approve")}>
+                                            <button type="button" className="hrx-pill dark ops-tap" disabled={deciding === a.id} onClick={() => decide(a, "approve")}>
                                                 {deciding === a.id ? "…" : editing ? "Approve edited" : "Approve"}
                                             </button>
                                             {editable && !editing && (
-                                                <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap" onClick={() => setEditDrafts((d) => ({ ...d, [a.id]: String((a.args as Args)?.[editable] ?? "") }))}>
+                                                <button type="button" className="hrx-seeall ops-tap" onClick={() => setEditDrafts((d) => ({ ...d, [a.id]: String((a.args as Args)?.[editable] ?? "") }))}>
                                                     Edit first
                                                 </button>
                                             )}
                                             {editable && editing && (
-                                                <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" onClick={() => setEditDrafts((d) => { const n = { ...d }; delete n[a.id]; return n; })}>
+                                                <button type="button" className="agx-linkbtn ops-tap" onClick={() => setEditDrafts((d) => { const n = { ...d }; delete n[a.id]; return n; })}>
                                                     Discard edit
                                                 </button>
                                             )}
-                                            <button type="button" className="btn btn-link btn-sm p-0 px-2 ms-auto text-danger text-decoration-none ops-tap" disabled={deciding === a.id} onClick={() => decide(a, "reject")}>Reject</button>
+                                            <button type="button" className="agx-linkbtn danger ms-auto ops-tap" disabled={deciding === a.id} onClick={() => decide(a, "reject")}>Reject</button>
                                         </div>
                                     </li>
                                 );
@@ -420,7 +439,7 @@ export default function OperatorPage() {
             )}
 
             <div className="col-12 col-lg-7">
-                <div className="bg-neutral-0 rounded-4 border-100 d-flex flex-column" style={{ height: "min(70vh, 720px)", minHeight: 420 }}>
+                <div className="hrx-card agx-chat">
                     <h2 className="visually-hidden">Chat with your operator</h2>
                     <div className="flex-grow-1 overflow-auto p-3 p-lg-4 d-flex flex-column gap-2" ref={bodyRef} role="log" aria-label="Operator conversation" aria-busy={busy}>
                         {msgs.map((m, i) => (
@@ -451,34 +470,31 @@ export default function OperatorPage() {
                         <button className="btn btn-dark rounded-3 px-4 flex-shrink-0" disabled={busy}>{busy ? "…" : "Send"}</button>
                     </form>
                 </div>
-                <p className="fz-font-sm neutral-500 mt-2 mb-0">Enter sends · Shift + Enter starts a new line.</p>
+                <p className="agx-note mt-2 mb-0">Enter sends · Shift + Enter starts a new line.</p>
             </div>
 
-            <div className="col-12 col-lg-5 d-flex flex-column gap-4">
+            <div className="col-12 col-lg-5 d-flex flex-column gap-3">
                 {loading ? (
-                    <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-                        <h2 className="fz-font-md fw-600 mb-2">Waiting for you</h2>
-                        <p className="neutral-500 fz-font-md mb-0" role="status">Loading&hellip;</p>
-                    </div>
+                    <Card title="Waiting for you">
+                        <p className="mb-0" style={{ fontSize: 14, color: "var(--hrx-muted)" }} role="status">Loading&hellip;</p>
+                    </Card>
                 ) : pending.length === 0 ? (
-                    <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-                        <h2 className="fz-font-md fw-600 mb-2">Waiting for you</h2>
-                        <p className="neutral-500 fz-font-md mb-0">Nothing waiting. Actions you&rsquo;ve set to &ldquo;Ask me&rdquo; appear here for approval.</p>
-                    </div>
+                    <Card title="Waiting for you">
+                        <p className="mb-0" style={{ fontSize: 14, color: "var(--hrx-muted)" }}>Nothing waiting. Actions you&rsquo;ve set to &ldquo;Ask me&rdquo; appear here for approval.</p>
+                    </Card>
                 ) : null}
 
-                <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-                    <h2 className="fz-font-md fw-600 mb-1">What the operator may do</h2>
-                    <p className="fz-font-sm neutral-500 mb-3">Off = blocked · Ask me = queued for your approval · Auto = runs immediately.</p>
+                <Card title="What the operator may do">
+                    <p className="agx-note mb-3">Off = blocked · Ask me = queued for your approval · Auto = runs immediately.</p>
                     <div className="d-flex flex-column gap-3">
                         {WRITE_TOOL_GROUPS.map((group) => (
                             <div key={group.label}>
-                                <h3 className="fz-font-sm fw-600 text-uppercase neutral-500 mb-2">{group.label}</h3>
+                                <h3 className="agx-grouphead">{group.label}</h3>
                                 <div className="d-flex flex-column gap-2">
                                     {group.tools.map((tool) => (
                                         <div key={tool} className="d-flex align-items-center justify-content-between gap-2">
-                                            <span className="fz-font-md" style={{ minWidth: 0 }}>{WRITE_TOOL_LABELS[tool] ?? tool}</span>
-                                            <select className="form-select form-select-sm rounded-3 flex-shrink-0" style={{ width: "auto" }} aria-label={`Policy for ${WRITE_TOOL_LABELS[tool] ?? tool}`} value={modeOf(tool)} onChange={(e) => changeMode(tool, e.target.value as ToolPolicy["mode"])}>
+                                            <span style={{ minWidth: 0, fontSize: 14 }}>{WRITE_TOOL_LABELS[tool] ?? tool}</span>
+                                            <select className="form-select form-select-sm flex-shrink-0" style={{ width: "auto" }} aria-label={`Policy for ${WRITE_TOOL_LABELS[tool] ?? tool}`} value={modeOf(tool)} onChange={(e) => changeMode(tool, e.target.value as ToolPolicy["mode"])}>
                                                 <option value="off">Off</option>
                                                 <option value="approve">Ask me</option>
                                                 <option value="auto">Auto</option>
@@ -489,33 +505,32 @@ export default function OperatorPage() {
                             </div>
                         ))}
                     </div>
-                </div>
+                </Card>
 
-                <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-                    <h2 className="fz-font-md fw-600 mb-1">Memory</h2>
-                    <p className="fz-font-sm neutral-500 mb-2">Things the agent should remember about how you work.</p>
+                <Card title="Memory">
+                    <p className="agx-note mb-2">Things the agent should remember about how you work.</p>
                     <form className="d-flex gap-2 mb-2" onSubmit={async (e) => { e.preventDefault(); const t = memDraft.trim(); if (!t) return; const ok = await reportMutation(addMemory(orgId, t), "Saved."); if (ok) { setMemDraft(""); refresh(); } }}>
-                        <input className="form-control form-control-sm rounded-3" style={{ minWidth: 0 }} aria-label="New memory note" placeholder="Teach the agent something to remember…" value={memDraft} onChange={(e) => setMemDraft(e.target.value)} />
-                        <button className="btn btn-dark btn-sm rounded-3 px-3 flex-shrink-0 ops-tap" type="submit">Save</button>
+                        <input className="form-control form-control-sm" style={{ minWidth: 0 }} aria-label="New memory note" placeholder="Teach the agent something to remember…" value={memDraft} onChange={(e) => setMemDraft(e.target.value)} />
+                        <button className="btn btn-dark btn-sm px-3 flex-shrink-0 ops-tap" type="submit">Save</button>
                     </form>
                     {memory.length === 0 ? (
-                        <p className="neutral-500 fz-font-sm mb-0">Nothing yet — the agent adds notes as you work, or add your own.</p>
+                        <p className="agx-note mb-0">Nothing yet — the agent adds notes as you work, or add your own.</p>
                     ) : (
                         <ul className="list-unstyled m-0 d-flex flex-column gap-1">
                             {memory.slice(0, 8).map((m) => (
-                                <li key={m.id} className="d-flex align-items-start justify-content-between gap-2 fz-font-sm">
+                                <li key={m.id} className="d-flex align-items-start justify-content-between gap-2" style={{ fontSize: 13 }}>
                                     {memEdit?.id === m.id ? (
                                         <form className="d-flex flex-wrap gap-2 flex-grow-1" onSubmit={(e) => { e.preventDefault(); saveMemoryEdit(); }}>
-                                            <input className="form-control form-control-sm rounded-3" style={{ flex: "1 1 160px", minWidth: 0 }} aria-label="Edit memory note" value={memEdit.text} onChange={(e) => setMemEdit({ id: m.id, text: e.target.value })} autoFocus />
-                                            <button className="btn btn-dark btn-sm rounded-3 px-3 ops-tap" type="submit">Save</button>
-                                            <button className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" type="button" onClick={() => setMemEdit(null)}>Cancel</button>
+                                            <input className="form-control form-control-sm" style={{ flex: "1 1 160px", minWidth: 0 }} aria-label="Edit memory note" value={memEdit.text} onChange={(e) => setMemEdit({ id: m.id, text: e.target.value })} autoFocus />
+                                            <button className="btn btn-dark btn-sm px-3 ops-tap" type="submit">Save</button>
+                                            <button className="agx-linkbtn ops-tap" type="button" onClick={() => setMemEdit(null)}>Cancel</button>
                                         </form>
                                     ) : (
                                         <>
-                                            <span className="neutral-700">{m.title ? `${m.title}: ` : ""}{m.content}</span>
+                                            <span>{m.title ? `${m.title}: ` : ""}{m.content}</span>
                                             <span className="d-flex gap-2 flex-shrink-0">
-                                                <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" aria-label={`Edit note: ${short(m.content, 40)}`} onClick={() => setMemEdit({ id: m.id, text: m.content })}>Edit</button>
-                                                <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" aria-label={`Forget note: ${short(m.content, 40)}`} onClick={() => forgetMemory(m.id)}>×</button>
+                                                <button type="button" className="agx-linkbtn ops-tap" aria-label={`Edit note: ${short(m.content, 40)}`} onClick={() => setMemEdit({ id: m.id, text: m.content })}>Edit</button>
+                                                <button type="button" className="agx-linkbtn ops-tap" aria-label={`Forget note: ${short(m.content, 40)}`} onClick={() => forgetMemory(m.id)}>×</button>
                                             </span>
                                         </>
                                     )}
@@ -523,29 +538,28 @@ export default function OperatorPage() {
                             ))}
                         </ul>
                     )}
-                </div>
+                </Card>
 
-                <div className="bg-neutral-0 rounded-4 p-3 p-lg-4 border-100">
-                    <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
-                        <h2 className="fz-font-md fw-600 mb-0">Recent activity</h2>
-                        {auditAll === null ? (
-                            <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none fz-font-sm ops-tap" onClick={async () => { const { data, error } = await listAudit(orgId, 100); if (error) { toastError(error); return; } setAuditAll(data); }}>View all</button>
-                        ) : (
-                            <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none fz-font-sm ops-tap" onClick={() => setAuditAll(null)}>Collapse</button>
-                        )}
-                    </div>
+                <Card
+                    title="Recent activity"
+                    right={auditAll === null ? (
+                        <button type="button" className="hrx-seeall ops-tap" onClick={async () => { const { data, error } = await listAudit(orgId, 100); if (error) { toastError(error); return; } setAuditAll(data); }}>View all</button>
+                    ) : (
+                        <button type="button" className="hrx-seeall ops-tap" onClick={() => setAuditAll(null)}>Collapse</button>
+                    )}
+                >
                     {loading ? (
-                        <p className="neutral-500 fz-font-md mb-0" role="status">Loading&hellip;</p>
+                        <p className="mb-0" style={{ fontSize: 14, color: "var(--hrx-muted)" }} role="status">Loading&hellip;</p>
                     ) : (auditAll ?? audit).length === 0 ? (
-                        <p className="neutral-500 fz-font-md mb-0">No activity yet.</p>
+                        <p className="mb-0" style={{ fontSize: 14, color: "var(--hrx-muted)" }}>No activity yet.</p>
                     ) : (
                         <ul className="list-unstyled m-0 d-flex flex-column gap-2" style={auditAll ? { maxHeight: 420, overflowY: "auto" } : undefined}>
                             {(auditAll ?? audit.slice(0, 8)).map((a) => (
-                                <li key={a.id} className="fz-font-sm d-flex gap-2 align-items-start">
-                                    <span className={`badge fw-500 flex-shrink-0 ${a.status === "ok" ? "bg-success-subtle text-success" : a.status === "error" || a.status === "denied" ? "bg-danger-subtle text-danger" : "bg-neutral-100 neutral-700"}`} style={{ height: "fit-content" }}>{AUDIT_STATUS[a.status] ?? a.status}</span>
+                                <li key={a.id} className="d-flex gap-2 align-items-start" style={{ fontSize: 13 }}>
+                                    <Chip tone={a.status === "ok" ? "ok" : a.status === "error" || a.status === "denied" ? "danger" : "plain"}>{AUDIT_STATUS[a.status] ?? a.status}</Chip>
                                     <span className="d-flex flex-column" style={{ minWidth: 0 }}>
-                                        <span className="neutral-700">{a.summary}</span>
-                                        <span className="neutral-500">
+                                        <span>{a.summary}</span>
+                                        <span style={{ color: "var(--hrx-muted)" }}>
                                             {new Date(a.created_at).toLocaleString()} · {WRITE_TOOL_LABELS[a.tool] ?? a.tool}
                                             {auditAll && argsSummary(a.args) ? ` · ${argsSummary(a.args)}` : ""}
                                         </span>
@@ -554,7 +568,7 @@ export default function OperatorPage() {
                             ))}
                         </ul>
                     )}
-                </div>
+                </Card>
             </div>
         </div>
     );

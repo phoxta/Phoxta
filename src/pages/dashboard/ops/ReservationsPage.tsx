@@ -23,6 +23,7 @@ import AvailabilityCalendar from "./AvailabilityCalendar";
 import { formatPrice } from "@/lib/db/marketplace";
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
 import type { OpsContext } from "@/layouts/OperatingLayout";
+import { Card, StatTile, Chip, Empty, InitialAvatar, stageTone } from "@/components/dash/Ui";
 
 // Local (not UTC) YYYY-MM-DD — toISOString() shifts the date in non-UTC timezones.
 const ymdLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -30,13 +31,6 @@ const todayPlus = (n: number) => {
     const t = new Date();
     t.setDate(t.getDate() + n);
     return ymdLocal(t);
-};
-
-const STYLE: Record<ReservationStatus, string> = {
-  pending: "bg-neutral-100 neutral-700",
-  confirmed: "bg-success-subtle text-success",
-  completed: "bg-neutral-100 neutral-500",
-  cancelled: "bg-danger-subtle text-danger",
 };
 
 const FILTERS: Array<{ key: ReservationStatus | "all"; label: string }> = [
@@ -49,10 +43,16 @@ const FILTERS: Array<{ key: ReservationStatus | "all"; label: string }> = [
 
 const days = (a: string, b: string) => Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
 
-// Theme-aware hairline between stacked rows (main.css owns the neutral scale).
-const DIVIDER = "1px solid var(--at-neutral-100)";
+// Page-local presentation styles (hrx palette; bkx- prefixed).
+const BKX_CSS = `
+.bkx-sub { font-size: 12.5px; color: #6b7280; }
+.bkx-sub summary { cursor: pointer; }
+.bkx-linkbtn { border: 0; background: transparent; padding: 0 4px; font-size: 13px; font-weight: 500; color: #6b7280; cursor: pointer; }
+.bkx-linkbtn:hover { color: #272727; text-decoration: underline; }
+.bkx-actcell { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+`;
 
-const PaidBadge = () => <span className="badge fw-500 bg-success-subtle text-success">Paid</span>;
+const PaidBadge = () => <Chip tone="ok">Paid</Chip>;
 
 export default function ReservationsPage() {
   const { orgId, org, console: cfg } = useOutletContext<OpsContext>();
@@ -201,14 +201,22 @@ export default function ReservationsPage() {
     [filtered, today],
   );
 
-  if (loading && !data) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">Loading…</div>;
+  if (loading && !data) {
+    return (
+      <Card>
+        <div className="text-center py-4" style={{ color: "#6b7280" }} role="status">Loading…</div>
+      </Card>
+    );
+  }
   if (loadError && !data) {
     return (
-      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center" role="alert">
-        <div className="text-danger fw-600 mb-2">Couldn't load reservations</div>
-        <div className="fz-font-md neutral-500 mb-3">{loadError}</div>
-        <button type="button" className="btn btn-dark btn-sm rounded-pill px-4 ops-tap" onClick={() => reload()}>Retry</button>
-      </div>
+      <Card>
+        <div className="text-center py-4" role="alert">
+          <div className="fw-semibold mb-2" style={{ color: "#dc2626" }}>Couldn't load reservations</div>
+          <div className="mb-3" style={{ color: "#6b7280" }}>{loadError}</div>
+          <button type="button" className="hrx-pill dark ops-tap" onClick={() => reload()}>Retry</button>
+        </div>
+      </Card>
     );
   }
 
@@ -222,112 +230,104 @@ export default function ReservationsPage() {
 
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
-  // Money strings are long: at 32px they overflow a half-width tile on a 390px phone.
-  const KPI = ({ label, value, money = false }: { label: string; value: string | number; money?: boolean }) => (
-    <div className="col-6 col-md-3">
-      <div className="bg-neutral-0 rounded-4 p-3 border-100 h-100">
-        <div className="fz-font-sm neutral-500">{label}</div>
-        <div className={`fw-700 lh-1 neutral-900 ${money ? "fz-20" : "fz-32"}`} style={{ overflowWrap: "anywhere" }}>{value}</div>
-      </div>
-    </div>
-  );
-
-  const ManifestRow = ({ r, action, first }: { r: Reservation; action: "in" | "out"; first: boolean }) => {
+  const ManifestRow = ({ r, action }: { r: Reservation; action: "in" | "out" }) => {
     const md = reservationMeta(r);
     // r.units is HOW MANY resources are booked; the span is a separate count of
-    // nights/days. Both use this business's own vocabulary, same as ReservationCard.
+    // nights/days. Both use this business's own vocabulary, same as ReservationRow.
     const noun = cfg.itemNoun.toLowerCase();
     const span = days(r.start_date, r.end_date);
     return (
-      <div
-        className="d-flex align-items-center justify-content-between gap-2 flex-wrap py-3"
-        style={first ? undefined : { borderTop: DIVIDER }}
-      >
-        <div style={{ minWidth: 0, flex: "1 1 200px" }}>
-          <div className="fw-600 fz-font-lg neutral-900">
+      <div className="hrx-listrow">
+        <InitialAvatar name={r.customer_name || "Guest"} />
+        <div className="main">
+          <p className="t">
             {r.customer_name || "Guest"}
             {/* Table reservations have no product — don't render a bare "· —". */}
-            {!isTableReservation(r) && r.product_name && (
-              <span className="neutral-500 fw-500 fz-font-md"> · {r.product_name}</span>
-            )}{" "}
-            {isReservationPaid(r) && <PaidBadge />}
-          </div>
-          <div className="fz-font-sm neutral-500">
+            {!isTableReservation(r) && r.product_name && <span style={{ color: "#6b7280", fontWeight: 500 }}> · {r.product_name}</span>}
+          </p>
+          <p className="s">
             {isTableReservation(r)
               ? `${md.time || "Time TBC"} · ${r.units} guest${r.units === 1 ? "" : "s"}`
               : `${r.units} ${noun}${r.units === 1 ? "" : "s"} · ${span} ${unitWord}${span === 1 ? "" : "s"} · ${r.start_date} → ${r.end_date}`}
             {/* The table RPC echoes time + party into notes; don't print it twice. */}
             {r.notes && !(isTableReservation(r) && md.time && r.notes.includes(md.time)) ? ` · “${r.notes}”` : ""}
-          </div>
+          </p>
         </div>
-        {action === "in" && r.status === "pending" && (
-          <button type="button" className="btn btn-dark rounded-pill px-4 fw-600 ops-tap" disabled={busyId === r.id} onClick={() => checkIn(r)}>Check in</button>
-        )}
-        {action === "in" && r.status === "confirmed" && (
-          isTableReservation(r) || r.start_date === r.end_date ? (
-            <button type="button" className="btn btn-outline-dark rounded-pill px-4 fw-600 ops-tap" disabled={busyId === r.id} onClick={() => completeReservation(r, "Checked out")}>Check out</button>
-          ) : (
-            <span className="badge fw-500 bg-success-subtle text-success">Checked in</span>
-          )
-        )}
-        {action === "out" && (
-          <button type="button" className="btn btn-dark rounded-pill px-4 fw-600 ops-tap" disabled={busyId === r.id} onClick={() => completeReservation(r, "Checked out")}>Check out</button>
-        )}
+        <div className="d-flex align-items-center gap-2 flex-shrink-0 flex-wrap justify-content-end">
+          {isReservationPaid(r) && <PaidBadge />}
+          {action === "in" && r.status === "pending" && (
+            <button type="button" className="hrx-pill dark ops-tap" disabled={busyId === r.id} onClick={() => checkIn(r)}>Check in</button>
+          )}
+          {action === "in" && r.status === "confirmed" && (
+            isTableReservation(r) || r.start_date === r.end_date ? (
+              <button type="button" className="hrx-pill ops-tap" disabled={busyId === r.id} onClick={() => completeReservation(r, "Checked out")}>Check out</button>
+            ) : (
+              <Chip tone="ok">Checked in</Chip>
+            )
+          )}
+          {action === "out" && (
+            <button type="button" className="hrx-pill dark ops-tap" disabled={busyId === r.id} onClick={() => completeReservation(r, "Checked out")}>Check out</button>
+          )}
+        </div>
       </div>
     );
   };
 
   const ManifestList = ({ items, action, empty }: { items: Reservation[]; action: "in" | "out"; empty: string }) =>
     items.length === 0 ? (
-      <div className="fz-font-md neutral-500">{empty}</div>
+      <div style={{ color: "#6b7280", fontSize: 14 }}>{empty}</div>
     ) : (
       <div className="d-flex flex-column">
-        {items.map((r, i) => <ManifestRow key={r.id} r={r} action={action} first={i === 0} />)}
+        {items.map((r) => <ManifestRow key={r.id} r={r} action={action} />)}
       </div>
     );
 
-  const ReservationCard = ({ r }: { r: Reservation }) => {
+  const ReservationRow = ({ r }: { r: Reservation }) => {
     const md = reservationMeta(r);
     const table = isTableReservation(r);
+    const span = days(r.start_date, r.end_date);
+    const extras = Array.isArray(md.extras) ? md.extras.map((e) => e?.label).filter(Boolean) : [];
+    const bits = [
+      extras.length ? `Extras: ${extras.join(", ")}` : "",
+      md.driver?.license ? `Licence ${md.driver.license}` : "",
+      md.driver?.age ? `Age ${md.driver.age}` : "",
+      r.notes && !(table && md.time && r.notes.includes(md.time)) ? `“${r.notes}”` : "",
+    ].filter(Boolean);
     return (
-      <div className="bg-neutral-0 rounded-4 p-3 border-100">
-        <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap">
-          <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-            <div className="fw-600 fz-font-md">
-              {r.customer_name || "Customer"}
-              {!table && r.product_name && ` · ${r.product_name}`}
-              {!table && r.units > 1 && <span className="neutral-500 fw-500"> × {r.units}</span>}{" "}
-              {isReservationPaid(r) && <PaidBadge />}
-            </div>
-            <div className="fz-font-sm neutral-500">
-              {table
-                ? `${r.start_date} · Table · ${md.time || "time TBC"} · ${r.units} guest${r.units === 1 ? "" : "s"}`
-                : `${r.start_date} → ${r.end_date} · ${days(r.start_date, r.end_date)} ${unitWord}${days(r.start_date, r.end_date) === 1 ? "" : "s"}`}
-              {" · "}{formatPrice(r.total_cents, cur(r))}
-              {r.customer_email ? ` · ${r.customer_email}` : ""}
-            </div>
-            {(() => {
-              const extras = Array.isArray(md.extras) ? md.extras.map((e) => e?.label).filter(Boolean) : [];
-              const bits = [
-                extras.length ? `Extras: ${extras.join(", ")}` : "",
-                md.driver?.license ? `Licence ${md.driver.license}` : "",
-                md.driver?.age ? `Age ${md.driver.age}` : "",
-                r.notes && !(table && md.time && r.notes.includes(md.time)) ? `“${r.notes}”` : "",
-              ].filter(Boolean);
-              return bits.length ? <div className="fz-font-sm neutral-600 mt-1">{bits.join(" · ")}</div> : null;
-            })()}
-            {isReservationPaid(r) && (
-              <details className="fz-font-sm neutral-500 mt-1">
-                <summary style={{ cursor: "pointer" }}>Payment details</summary>
-                <div className="mt-1">
-                  {md.payment_reference ? `Paystack ref ${md.payment_reference}` : "Paid (no reference on file)"}
-                  {md.paid_at ? ` · ${String(md.paid_at).slice(0, 10)}` : ""}
-                </div>
-              </details>
-            )}
+      <tr>
+        <td>
+          <div style={{ fontWeight: 600 }}>
+            {r.customer_name || "Customer"}{" "}
+            {isReservationPaid(r) && <PaidBadge />}
           </div>
-          <div className="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-            <span className={`badge fw-500 text-capitalize ${STYLE[r.status]}`}>{r.status}</span>
+          {r.customer_email && <div className="bkx-sub">{r.customer_email}</div>}
+        </td>
+        <td>
+          <div>
+            {table
+              ? `Table · ${md.time || "time TBC"} · ${r.units} guest${r.units === 1 ? "" : "s"}`
+              : <>{r.product_name}{r.units > 1 && <span style={{ color: "#6b7280" }}> × {r.units}</span>}</>}
+          </div>
+          <div className="bkx-sub">
+            {table
+              ? r.start_date
+              : `${r.start_date} → ${r.end_date} · ${span} ${unitWord}${span === 1 ? "" : "s"}`}
+          </div>
+          {bits.length > 0 && <div className="bkx-sub">{bits.join(" · ")}</div>}
+          {isReservationPaid(r) && (
+            <details className="bkx-sub">
+              <summary>Payment details</summary>
+              <div className="mt-1">
+                {md.payment_reference ? `Paystack ref ${md.payment_reference}` : "Paid (no reference on file)"}
+                {md.paid_at ? ` · ${String(md.paid_at).slice(0, 10)}` : ""}
+              </div>
+            </details>
+          )}
+        </td>
+        <td style={{ whiteSpace: "nowrap", fontWeight: 600 }}>{formatPrice(r.total_cents, cur(r))}</td>
+        <td><Chip tone={stageTone(r.status)}>{r.status}</Chip></td>
+        <td className="text-end">
+          <span className="bkx-actcell">
             {r.status === "pending" && (
               <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" disabled={busyId === r.id} onClick={() => confirmReservation(r)}>Confirm</button>
             )}
@@ -335,48 +335,62 @@ export default function ReservationsPage() {
               <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap" disabled={busyId === r.id} onClick={() => completeReservation(r)}>Complete</button>
             )}
             {isActive(r) && (
-              <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" disabled={busyId === r.id} onClick={() => cancelReservation(r)}>Cancel</button>
+              <button type="button" className="bkx-linkbtn ops-tap" disabled={busyId === r.id} onClick={() => cancelReservation(r)}>Cancel</button>
             )}
-          </div>
-        </div>
-      </div>
+          </span>
+        </td>
+      </tr>
     );
   };
 
+  const reservationsHead = (
+    <thead>
+      <tr>
+        <th scope="col">Guest</th>
+        <th scope="col">Reservation</th>
+        <th scope="col">Total</th>
+        <th scope="col">Status</th>
+        <th scope="col" className="text-end">Actions</th>
+      </tr>
+    </thead>
+  );
+
   return (
     <div>
-      {loadError && <div className="alert alert-danger py-2 px-3 fz-font-md" role="alert">{loadError}</div>}
+      <style>{BKX_CSS}</style>
+      {loadError && <div className="alert alert-danger py-2 px-3" style={{ borderRadius: 16 }} role="alert">{loadError}</div>}
 
       {/* 1 — Today's manifest. The daily surface, so it leads the page and gets the
           biggest card, the largest names and full-size check-in/out buttons. */}
-      <section className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 mb-4" aria-labelledby="today-heading">
-        <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2">
-          <h2 id="today-heading" className="fw-700 fz-font-xl mb-0">{isRestaurant ? "Tonight's tables" : "Today"}</h2>
-          <span className="fz-font-sm neutral-500">{todayLabel}</span>
-        </div>
-        {isRestaurant ? (
-          <ManifestList items={arrivals} action="in" empty="No tables reserved for today." />
-        ) : (
-          <div className="row g-3 g-md-4">
-            <div className="col-md-6">
-              <h3 className="fw-600 fz-font-md neutral-500 text-uppercase mb-1">Arriving ({arrivals.length})</h3>
-              <ManifestList items={arrivals} action="in" empty="No arrivals today." />
+      <section aria-labelledby="today-heading" className="mb-4">
+        <Card
+          title={<span id="today-heading">{isRestaurant ? "Tonight's tables" : "Today"}</span>}
+          right={<span className="bkx-sub">{todayLabel}</span>}
+        >
+          {isRestaurant ? (
+            <ManifestList items={arrivals} action="in" empty="No tables reserved for today." />
+          ) : (
+            <div className="row g-3 g-md-4">
+              <div className="col-md-6">
+                <h3 className="text-uppercase" style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", color: "#6b7280" }}>Arriving ({arrivals.length})</h3>
+                <ManifestList items={arrivals} action="in" empty="No arrivals today." />
+              </div>
+              <div className="col-md-6">
+                <h3 className="text-uppercase" style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", color: "#6b7280" }}>Leaving ({departures.length})</h3>
+                <ManifestList items={departures} action="out" empty="No departures today." />
+              </div>
             </div>
-            <div className="col-md-6">
-              <h3 className="fw-600 fz-font-md neutral-500 text-uppercase mb-1">Leaving ({departures.length})</h3>
-              <ManifestList items={departures} action="out" empty="No departures today." />
-            </div>
-          </div>
-        )}
+          )}
+        </Card>
       </section>
 
       {/* 2 — At-a-glance numbers */}
       <h2 className="visually-hidden">Summary</h2>
-      <div className="row g-2 g-md-3 mb-4">
-        <KPI label="Upcoming" value={upcoming} />
-        <KPI label="Awaiting confirmation" value={pending} />
-        <KPI label="Paid" value={formatPrice(paidSum, paidRows[0]?.currency || kpiCurrency)} money />
-        <KPI label="Awaiting payment" value={formatPrice(awaitingSum, awaitingRows[0]?.currency || kpiCurrency)} money />
+      <div className="hrx-statrow mb-4">
+        <StatTile label="Upcoming" value={upcoming} tone="dark" />
+        <StatTile label="Awaiting confirmation" value={pending} tone={pending > 0 ? "soft" : undefined} />
+        <StatTile label="Paid" value={formatPrice(paidSum, paidRows[0]?.currency || kpiCurrency)} tone="blue" />
+        <StatTile label="Awaiting payment" value={formatPrice(awaitingSum, awaitingRows[0]?.currency || kpiCurrency)} />
       </div>
 
       {/* 3 — Availability: the calendar and the blocked-dates form are two halves of
@@ -388,77 +402,98 @@ export default function ReservationsPage() {
             <AvailabilityCalendar products={products} blackouts={blackouts} reservations={rows} onBlockDate={prefillBlackout} itemNoun={cfg.itemNoun} />
           </div>
 
-          <h2 className="fw-600 fz-font-lg mb-1">Blocked dates</h2>
-          <p className="fz-font-sm neutral-500 mb-3">Mark a {cfg.itemNoun.toLowerCase()} unavailable (maintenance, owner hold) — customers can't book these dates.</p>
-          <form ref={blackoutFormRef} onSubmit={addBlackout} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-            <div className="row g-2 align-items-end">
-              <div className="col-12 col-md-4">
-                <label className="fz-font-sm neutral-500" htmlFor="blk-product">{cfg.itemNoun}</label>
-                <select id="blk-product" className="form-select rounded-3" value={bForm.product_id} onChange={(e) => setBForm({ ...bForm, product_id: e.target.value })}>
-                  <option value="">Select…</option>
-                  {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <div className="col-6 col-md-4">
-                <label className="fz-font-sm neutral-500" htmlFor="blk-from">From</label>
-                <input id="blk-from" type="date" className="form-control rounded-3" value={bForm.start_date} min={todayPlus(0)} onChange={(e) => setBForm({ ...bForm, start_date: e.target.value })} />
-              </div>
-              <div className="col-6 col-md-4">
-                <label className="fz-font-sm neutral-500" htmlFor="blk-to">To</label>
-                <input id="blk-to" type="date" className="form-control rounded-3" value={bForm.end_date} min={bForm.start_date} onChange={(e) => setBForm({ ...bForm, end_date: e.target.value })} />
-              </div>
-              <div className="col-12 col-md-8">
-                <label className="fz-font-sm neutral-500" htmlFor="blk-reason">Reason (optional)</label>
-                <input id="blk-reason" className="form-control rounded-3" placeholder="e.g. servicing" value={bForm.reason} onChange={(e) => setBForm({ ...bForm, reason: e.target.value })} />
-              </div>
-              <div className="col-12 col-md-4"><button type="submit" className="btn btn-dark w-100 rounded-3 ops-tap justify-content-center">Block these dates</button></div>
-            </div>
-          </form>
-          {blackouts.length === 0 ? (
-            <div className="neutral-500 fz-font-md">No blocked dates.</div>
-          ) : (
-            <div className="d-flex flex-column gap-2">
-              {blackouts.map((b) => (
-                <div key={b.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                  <div style={{ minWidth: 0 }}>
-                    <span className="fw-600">{b.product_name}</span>
-                    <span className="fz-font-sm neutral-500"> · {b.start_date} → {b.end_date}{b.reason ? ` · ${b.reason}` : ""}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap"
-                    aria-label={`Unblock ${b.product_name} from ${b.start_date} to ${b.end_date}`}
-                    onClick={() => unblock(b.id)}
-                  >
-                    Remove
-                  </button>
+          <Card title="Blocked dates" className="mb-4">
+            <p className="bkx-sub" style={{ fontSize: 14, marginTop: -8 }}>
+              Mark a {cfg.itemNoun.toLowerCase()} unavailable (maintenance, owner hold) — customers can't book these dates.
+            </p>
+            <form ref={blackoutFormRef} onSubmit={addBlackout} className="mb-3">
+              <div className="row g-2 align-items-end">
+                <div className="col-12 col-md-4">
+                  <label className="hrx-field mb-0" htmlFor="blk-product"><span>{cfg.itemNoun}</span>
+                    <select id="blk-product" className="form-select" value={bForm.product_id} onChange={(e) => setBForm({ ...bForm, product_id: e.target.value })}>
+                      <option value="">Select…</option>
+                      {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="col-6 col-md-4">
+                  <label className="hrx-field mb-0" htmlFor="blk-from"><span>From</span>
+                    <input id="blk-from" type="date" className="form-control" value={bForm.start_date} min={todayPlus(0)} onChange={(e) => setBForm({ ...bForm, start_date: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-6 col-md-4">
+                  <label className="hrx-field mb-0" htmlFor="blk-to"><span>To</span>
+                    <input id="blk-to" type="date" className="form-control" value={bForm.end_date} min={bForm.start_date} onChange={(e) => setBForm({ ...bForm, end_date: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-12 col-md-8">
+                  <label className="hrx-field mb-0" htmlFor="blk-reason"><span>Reason (optional)</span>
+                    <input id="blk-reason" className="form-control" placeholder="e.g. servicing" value={bForm.reason} onChange={(e) => setBForm({ ...bForm, reason: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-12 col-md-4"><button type="submit" className="hrx-pill dark w-100 justify-content-center ops-tap">Block these dates</button></div>
+              </div>
+            </form>
+            {blackouts.length === 0 ? (
+              <div className="bkx-sub" style={{ fontSize: 14 }}>No blocked dates.</div>
+            ) : (
+              <div className="hrx-tablewrap">
+                <table className="hrx-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{cfg.itemNoun}</th>
+                      <th scope="col">Dates</th>
+                      <th scope="col">Reason</th>
+                      <th scope="col" className="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {blackouts.map((b) => (
+                      <tr key={b.id}>
+                        <td style={{ fontWeight: 600 }}>{b.product_name}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>{b.start_date} → {b.end_date}</td>
+                        <td>{b.reason || <span className="bkx-sub">—</span>}</td>
+                        <td className="text-end">
+                          <button
+                            type="button"
+                            className="bkx-linkbtn ops-tap"
+                            aria-label={`Unblock ${b.product_name} from ${b.start_date} to ${b.end_date}`}
+                            onClick={() => unblock(b.id)}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
         </>
       )}
 
       {/* 4 — The full list */}
-      <div className={isRestaurant ? "" : "mt-5"}>
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-          <h2 className="fw-600 fz-font-lg mb-0">All reservations</h2>
+      <Card
+        title="All reservations"
+        right={
           <input
             type="search"
-            className="form-control form-control-sm rounded-3"
+            className="form-control form-control-sm"
             style={{ flex: "1 1 160px", minWidth: 0, maxWidth: 260 }}
             placeholder="Search guests…"
             aria-label="Search guests"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-        </div>
-        <div className="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Filter reservations by status">
+        }
+      >
+        <div className="hrx-tabbar mb-3" role="group" aria-label="Filter reservations by status">
           {FILTERS.map((f) => (
             <button
               key={f.key}
               type="button"
-              className={`btn btn-sm rounded-pill px-3 ops-tap ${statusFilter === f.key ? "btn-dark" : "btn-outline-secondary"}`}
+              className={`hrx-tab${statusFilter === f.key ? " active" : ""}`}
               aria-pressed={statusFilter === f.key}
               onClick={() => setStatusFilter(f.key)}
             >
@@ -468,34 +503,46 @@ export default function ReservationsPage() {
         </div>
 
         {rows.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">
-            No reservations yet. They'll appear here when customers book your {cfg.commerceLabel.toLowerCase()}.
-          </div>
+          <Empty title="No reservations yet">
+            They'll appear here when customers book your {cfg.commerceLabel.toLowerCase()}.
+          </Empty>
         ) : upcomingRows.length === 0 && pastRows.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No reservations match this filter.</div>
+          <Empty title="No reservations match this filter">Try a different status or search term.</Empty>
         ) : (
           <>
             {upcomingRows.length === 0 ? (
-              <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No upcoming reservations match this filter.</div>
+              <Empty title="No upcoming reservations match this filter">Past reservations may still match below.</Empty>
             ) : (
-              <div className="d-flex flex-column gap-2">{upcomingRows.map((r) => <ReservationCard key={r.id} r={r} />)}</div>
+              <div className="hrx-tablewrap">
+                <table className="hrx-table">
+                  {reservationsHead}
+                  <tbody>{upcomingRows.map((r) => <ReservationRow key={r.id} r={r} />)}</tbody>
+                </table>
+              </div>
             )}
             {pastRows.length > 0 && (
               <div className="mt-3">
                 <button
                   type="button"
-                  className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap"
+                  className="hrx-pill ops-tap"
                   aria-expanded={showPast}
                   onClick={() => setShowPast(!showPast)}
                 >
                   {showPast ? "Hide" : "Show"} {pastRows.length} past reservation{pastRows.length === 1 ? "" : "s"}
                 </button>
-                {showPast && <div className="d-flex flex-column gap-2 mt-2">{pastRows.map((r) => <ReservationCard key={r.id} r={r} />)}</div>}
+                {showPast && (
+                  <div className="hrx-tablewrap mt-2">
+                    <table className="hrx-table">
+                      {reservationsHead}
+                      <tbody>{pastRows.map((r) => <ReservationRow key={r.id} r={r} />)}</tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

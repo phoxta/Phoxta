@@ -16,6 +16,21 @@ type ModGrp = { name: string; required: boolean; options: ModOpt[] };
 
 type Props = { orgId: string; product: Product; itemNoun: string; onSaved: () => void; onCancel: () => void };
 
+const CSS = `
+.cmx-pe .hrx-field{margin-bottom:0}
+.cmx-pe-imgbox{width:120px;height:120px;border-radius:12px;border:1px solid var(--hrx-border-soft);background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:8px}
+.cmx-pe-imgbox img{width:100%;height:100%;object-fit:cover;display:block}
+.cmx-pe-nomedia{font-size:13px;color:var(--hrx-muted)}
+.cmx-pe .cmx-pill-sm{height:34px;padding:0 14px;font-size:13px}
+.cmx-pe .cmx-wide{width:100%;justify-content:center}
+.cmx-pe-linkbtn{background:none;border:0;padding:0;font-size:13px;font-weight:600;color:var(--hrx-blue);cursor:pointer;white-space:nowrap}
+.cmx-pe-linkbtn:hover{color:var(--hrx-blue-deep);text-decoration:underline}
+.cmx-pe-linkbtn.muted{color:var(--hrx-muted);font-weight:500}
+.cmx-pe-modbox{background:#fff;border:1px solid var(--hrx-border-soft);border-radius:12px;padding:10px;margin-bottom:8px}
+.cmx-pe-hint{font-size:13px;color:var(--hrx-muted)}
+.cmx-pe-check{font-size:13px;color:var(--hrx-ink);margin-bottom:0;white-space:nowrap}
+`;
+
 // Inline editor for a catalogue/menu item — name, price, stock, category, description,
 // image (upload), and status. Writes through updateProduct; metadata.category drives
 // how the storefront groups the item.
@@ -119,19 +134,20 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
   }
 
   return (
-    <div className="p-3">
-      {err && <div className="alert alert-warning py-2 px-3 fz-font-sm" role="alert">{err}</div>}
+    <div className="p-2 cmx-pe">
+      <style>{CSS}</style>
+      {err && <div className="alert alert-warning py-2 px-3 cmx-pe-hint" role="alert">{err}</div>}
       <div className="d-flex gap-3 flex-wrap">
         {/* Image */}
         <div style={{ width: 120, flexShrink: 0 }}>
-          <div className="rounded-3 border-100 bg-neutral-0 mb-2 d-flex align-items-center justify-content-center overflow-hidden" style={{ width: 120, height: 120 }}>
+          <div className="cmx-pe-imgbox">
             {imageUrl
-              ? <img src={imageUrl} alt={`${name || itemNoun} photo`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : <span className="neutral-400 fz-font-sm">No image</span>}
+              ? <img src={imageUrl} alt={`${name || itemNoun} photo`} />
+              : <span className="cmx-pe-nomedia">No image</span>}
           </div>
           {/* A real button, not a <label> wrapping a hidden input — the label form
               could not be reached or fired from the keyboard. */}
-          <button type="button" className="btn btn-outline-dark btn-sm rounded-3 w-100" onClick={() => fileRef.current?.click()} disabled={uploading}>
+          <button type="button" className="hrx-pill cmx-pill-sm cmx-wide" onClick={() => fileRef.current?.click()} disabled={uploading}>
             {uploading ? "Uploading…" : imageUrl ? "Replace image" : "Upload image"}
           </button>
           <input ref={fileRef} type="file" accept="image/*" hidden tabIndex={-1} aria-hidden="true" onChange={onFile} disabled={uploading} />
@@ -141,69 +157,85 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
         <div className="flex-grow-1" style={{ minWidth: 240 }}>
           <div className="row g-2">
             <div className="col-12">
-              <label htmlFor={fid("name")} className="fz-font-sm neutral-500 d-block mb-1">{itemNoun} name</label>
-              <input id={fid("name")} className="form-control form-control-sm rounded-3" value={name} onChange={(e) => setName(e.target.value)} />
+              <label className="hrx-field" htmlFor={fid("name")}>
+                <span>{itemNoun} name</span>
+                <input id={fid("name")} className="form-control form-control-sm" value={name} onChange={(e) => setName(e.target.value)} />
+              </label>
             </div>
             <div className="col-6 col-sm-4">
-              <label htmlFor={fid("price")} className="fz-font-sm neutral-500 d-block mb-1">Price ({product.currency})</label>
-              <input id={fid("price")} type="number" inputMode="decimal" min={0} step={0.01} className="form-control form-control-sm rounded-3" value={price} onChange={(e) => setPrice(e.target.value)} />
+              <label className="hrx-field" htmlFor={fid("price")}>
+                <span>Price ({product.currency})</span>
+                <input id={fid("price")} type="number" inputMode="decimal" min={0} step={0.01} className="form-control form-control-sm" value={price} onChange={(e) => setPrice(e.target.value)} />
+              </label>
             </div>
             <div className="col-6 col-sm-4">
-              <label htmlFor={fid("stock")} className="fz-font-sm neutral-500 d-block mb-1">Stock</label>
-              <input id={fid("stock")} type="number" min={0} step={1} className="form-control form-control-sm rounded-3" value={stock} onChange={(e) => setStock(e.target.value)} />
+              <label className="hrx-field" htmlFor={fid("stock")}>
+                <span>Stock</span>
+                <input id={fid("stock")} type="number" min={0} step={1} className="form-control form-control-sm" value={stock} onChange={(e) => setStock(e.target.value)} />
+              </label>
             </div>
             <div className="col-12 col-sm-4">
-              <label htmlFor={fid("status")} className="fz-font-sm neutral-500 d-block mb-1">Status</label>
-              <select id={fid("status")} className="form-select form-select-sm rounded-3" value={status} onChange={(e) => setStatus(e.target.value as ProductStatus)}>
-                <option value="active">Active</option>
-                <option value="draft">Draft</option>
-                <option value="archived">Archived</option>
-              </select>
+              <label className="hrx-field" htmlFor={fid("status")}>
+                <span>Status</span>
+                <select id={fid("status")} className="form-select form-select-sm" value={status} onChange={(e) => setStatus(e.target.value as ProductStatus)}>
+                  <option value="active">Active</option>
+                  <option value="draft">Draft</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </label>
             </div>
             <div className="col-12">
-              <label htmlFor={fid("category")} className="fz-font-sm neutral-500 d-block mb-1">Category / section</label>
-              <input id={fid("category")} className="form-control form-control-sm rounded-3" placeholder="e.g. Mains, Desserts, Office Chairs…" value={category} onChange={(e) => setCategory(e.target.value)} />
+              <label className="hrx-field" htmlFor={fid("category")}>
+                <span>Category / section</span>
+                <input id={fid("category")} className="form-control form-control-sm" placeholder="e.g. Mains, Desserts, Office Chairs…" value={category} onChange={(e) => setCategory(e.target.value)} />
+              </label>
             </div>
             <div className="col-12">
-              <label htmlFor={fid("description")} className="fz-font-sm neutral-500 d-block mb-1">Description</label>
-              <textarea id={fid("description")} className="form-control form-control-sm rounded-3" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+              <label className="hrx-field" htmlFor={fid("description")}>
+                <span>Description</span>
+                <textarea id={fid("description")} className="form-control form-control-sm" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+              </label>
             </div>
 
             {/* Sizes & colours drive the variant grid (metadata.sizes / metadata.colors) */}
             <div className="col-12 col-sm-6">
-              <label htmlFor={fid("sizes")} className="fz-font-sm neutral-500 d-block mb-1">Sizes (comma-separated)</label>
-              <input id={fid("sizes")} className="form-control form-control-sm rounded-3" placeholder="e.g. S, M, L, XL" value={sizesStr} onChange={(e) => setSizesStr(e.target.value)} />
+              <label className="hrx-field" htmlFor={fid("sizes")}>
+                <span>Sizes (comma-separated)</span>
+                <input id={fid("sizes")} className="form-control form-control-sm" placeholder="e.g. S, M, L, XL" value={sizesStr} onChange={(e) => setSizesStr(e.target.value)} />
+              </label>
             </div>
             <div className="col-12 col-sm-6">
-              <label htmlFor={fid("colors")} className="fz-font-sm neutral-500 d-block mb-1">Colors (comma-separated)</label>
-              <input id={fid("colors")} className="form-control form-control-sm rounded-3" placeholder="e.g. Black, Ivory" value={colorsStr} onChange={(e) => setColorsStr(e.target.value)} />
+              <label className="hrx-field" htmlFor={fid("colors")}>
+                <span>Colors (comma-separated)</span>
+                <input id={fid("colors")} className="form-control form-control-sm" placeholder="e.g. Black, Ivory" value={colorsStr} onChange={(e) => setColorsStr(e.target.value)} />
+              </label>
             </div>
 
             <div className="col-12">
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                <span id={fid("mods")} className="fz-font-sm neutral-500">Options / modifiers</span>
-                <button type="button" className="btn btn-link btn-sm p-0 fw-600 text-decoration-none ops-tap" onClick={addGrp}>+ Add option group</button>
+                <span id={fid("mods")} className="cmx-pe-hint" style={{ fontWeight: 500 }}>Options / modifiers</span>
+                <button type="button" className="cmx-pe-linkbtn ops-tap" onClick={addGrp}>+ Add option group</button>
               </div>
-              {mods.length === 0 && <div className="fz-font-sm neutral-400 mb-1">None — e.g. a “Size” group with Regular / Large (+£3), or “Add-ons”.</div>}
+              {mods.length === 0 && <div className="cmx-pe-hint mb-1">None — e.g. a “Size” group with Regular / Large (+£3), or “Add-ons”.</div>}
               <div role="group" aria-labelledby={fid("mods")}>
                 {mods.map((g, gi) => (
-                  <div key={gi} className="border-100 rounded-3 p-2 mb-2">
+                  <div key={gi} className="cmx-pe-modbox">
                     <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
                       <input
-                        className="form-control form-control-sm rounded-3"
+                        className="form-control form-control-sm"
                         style={{ flex: "1 1 150px", minWidth: 0 }}
                         placeholder="Group name (e.g. Size)"
                         aria-label={`Option group ${gi + 1} name`}
                         value={g.name}
                         onChange={(e) => setGrp(gi, { name: e.target.value })}
                       />
-                      <label className="fz-font-sm neutral-600 text-nowrap mb-0 ops-tap"><input type="checkbox" checked={g.required} onChange={(e) => setGrp(gi, { required: e.target.checked })} className="me-1" />Required</label>
-                      <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={() => delGrp(gi)}>Remove{g.name.trim() ? ` “${g.name.trim()}”` : " group"}</button>
+                      <label className="cmx-pe-check ops-tap"><input type="checkbox" checked={g.required} onChange={(e) => setGrp(gi, { required: e.target.checked })} className="me-1" />Required</label>
+                      <button type="button" className="cmx-pe-linkbtn muted ops-tap" onClick={() => delGrp(gi)}>Remove{g.name.trim() ? ` “${g.name.trim()}”` : " group"}</button>
                     </div>
                     {g.options.map((o, oi) => (
                       <div key={oi} className="d-flex flex-wrap align-items-center gap-2 mb-1">
                         <input
-                          className="form-control form-control-sm rounded-3"
+                          className="form-control form-control-sm"
                           style={{ flex: "1 1 140px", minWidth: 0 }}
                           placeholder="Option (e.g. Large)"
                           aria-label={`Option ${oi + 1} name in ${g.name.trim() || `group ${gi + 1}`}`}
@@ -220,18 +252,18 @@ export default function ProductEditor({ orgId, product, itemNoun, onSaved, onCan
                             onChange={(e) => setOpt(gi, oi, { price: e.target.value })}
                           />
                         </div>
-                        <button type="button" className="btn btn-link btn-sm p-0 neutral-400 text-decoration-none ops-tap" onClick={() => delOpt(gi, oi)} aria-label={`Remove option ${oi + 1} from ${g.name.trim() || `group ${gi + 1}`}`}>✕</button>
+                        <button type="button" className="cmx-pe-linkbtn muted ops-tap" onClick={() => delOpt(gi, oi)} aria-label={`Remove option ${oi + 1} from ${g.name.trim() || `group ${gi + 1}`}`}>✕</button>
                       </div>
                     ))}
-                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={() => addOpt(gi)}>+ Add option</button>
+                    <button type="button" className="cmx-pe-linkbtn muted ops-tap" onClick={() => addOpt(gi)}>+ Add option</button>
                   </div>
                 ))}
               </div>
             </div>
           </div>
           <div className="d-flex flex-wrap align-items-center gap-3 mt-3">
-            <button type="button" className="btn btn-dark btn-sm rounded-pill px-4" onClick={save} disabled={busy || uploading}>{busy ? "Saving…" : "Save"}</button>
-            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={onCancel}>Cancel</button>
+            <button type="button" className="hrx-pill primary" onClick={save} disabled={busy || uploading}>{busy ? "Saving…" : "Save"}</button>
+            <button type="button" className="cmx-pe-linkbtn muted ops-tap" onClick={onCancel}>Cancel</button>
           </div>
         </div>
       </div>

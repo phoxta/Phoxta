@@ -15,7 +15,7 @@
    img-87-header is a re-encoded copy of img-87 (690 KB -> 66 KB, same pixels);
    the original stays put because the Studio asset picker offers it.
    (No backticks in here - this block lives in a template literal.) */
-.opc-head{background-color:#4B4557;
+.opc-head{background-color:#1246b0;
   background-image:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),url(/assets/imgs/pages/img-87-header.webp);
   background-size:cover;background-position:center;background-repeat:no-repeat;
   padding:22px 20px;display:flex;align-items:center;gap:10px}
@@ -35,7 +35,7 @@
   word-break:break-word}
 .opc-group.theirs .opc-bubble{background:var(--at-neutral-0);border:1px solid var(--at-neutral-200);
   color:var(--at-neutral-900);border-bottom-left-radius:4px}
-.opc-group.mine .opc-bubble{background:#232327;color:#fff;border-bottom-right-radius:4px}
+.opc-group.mine .opc-bubble{background:#272727;color:#fff;border-bottom-right-radius:4px}
 /* Markdown from the agent, rendered as real nodes by shared-chat's RichText.
    .rich drops pre-wrap: RichText already turns newlines into <p> blocks, and
    keeping pre-wrap on top of them double-spaced every line.
@@ -61,10 +61,10 @@
 .opc-say{flex:0 0 auto;border:0;background:transparent;padding:2px;margin-bottom:2px;cursor:pointer;
   color:var(--at-neutral-500);display:flex;align-items:center;justify-content:center;border-radius:5px}
 .opc-say:hover{color:var(--at-neutral-900);background:var(--at-neutral-100)}
-.opc-say.on{color:#fff;background:#232327}
+.opc-say.on{color:#fff;background:#272727}
 .opc-meta{display:flex;align-items:center;gap:6px;padding:0 2px}
 .opc-group.mine .opc-meta{flex-direction:row-reverse}
-.opc-av{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:#232327;color:#fff;
+.opc-av{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:#272727;color:#fff;
   font-size:8.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .opc-meta b{font-size:11.5px;font-weight:600;color:var(--at-neutral-900)}
 .opc-meta i{font-size:10.5px;font-style:normal;color:var(--at-neutral-500)}
@@ -112,7 +112,7 @@
 .opc-text{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;font-size:13px;padding:6px 0;
   color:var(--at-neutral-900)}
 .opc-text::placeholder{color:var(--at-neutral-400)}
-.opc-mic{flex:0 0 38px;width:38px;height:38px;border:0;border-radius:50%;background:#232327;color:#fff;
+.opc-mic{flex:0 0 38px;width:38px;height:38px;border:0;border-radius:50%;background:#272727;color:#fff;
   display:flex;align-items:center;justify-content:center;cursor:pointer}
 .opc-mic:hover{background:#000}
 .opc-mic.on{background:#D64550}
@@ -124,7 +124,7 @@
    dashboard home want different heights, and everything else about the panel is
    identical. */
 .opc{display:flex;flex-direction:column;background:var(--at-neutral-0);border:1px solid rgba(0,0,0,.07);
-  border-radius:14px;overflow:hidden}
+  border-radius:14px;overflow:hidden;font-family:"Figtree","DM Sans",sans-serif}
 @keyframes opcBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
 
 /* ---- Glass panel ---------------------------------------------------------
@@ -143,16 +143,16 @@
    readable. */
 .opc {
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 20px;
+  border-radius: 16px;
   background:
     linear-gradient(180deg, rgba(6, 10, 30, 0) 52%, rgba(6, 10, 30, 0.34) 100%),
     radial-gradient(72% 55% at 10% 6%,  #14173a 0%, rgba(20, 23, 58, 0) 68%),
-    radial-gradient(58% 42% at 60% 4%,  #2b5fc4 0%, rgba(43, 95, 196, 0) 66%),
-    radial-gradient(52% 40% at 98% 26%, #e2632f 0%, rgba(226, 99, 47, 0) 64%),
-    radial-gradient(48% 36% at 28% 40%, #b8386f 0%, rgba(184, 56, 111, 0) 64%),
-    radial-gradient(58% 44% at 4%  74%, #2f6fd0 0%, rgba(47, 111, 208, 0) 66%),
+    radial-gradient(58% 42% at 60% 4%,  #195ce5 0%, rgba(25, 92, 229, 0) 66%),
+    radial-gradient(52% 40% at 98% 26%, #fe5f2b 0%, rgba(254, 95, 43, 0) 64%),
+    radial-gradient(48% 36% at 28% 40%, #1246b0 0%, rgba(18, 70, 176, 0) 64%),
+    radial-gradient(58% 44% at 4%  74%, #195ce5 0%, rgba(25, 92, 229, 0) 66%),
     radial-gradient(68% 52% at 74% 96%, #8ccdec 0%, rgba(140, 205, 236, 0) 70%),
-    linear-gradient(152deg, #1b1f42 0%, #7a3d86 34%, #2f6fd0 68%, #93cbe8 100%);
+    linear-gradient(152deg, #1b1f42 0%, #1246b0 34%, #195ce5 68%, #93cbe8 100%);
 }
 
 /* The header becomes an inset glass bar carrying the operator's face, on the
@@ -216,7 +216,7 @@
 .opc-group.theirs .opc-bubble {
   background: rgba(255, 255, 255, 0.66);
   border: 1px solid rgba(255, 255, 255, 0.78);
-  color: #142a5f;
+  color: #1246b0;
   border-bottom-left-radius: 6px;
 }
 .opc-group.mine .opc-bubble {
@@ -239,7 +239,7 @@
 .opc-tick { color: #fff; }
 .opc-say { color: rgba(255, 255, 255, 0.88); }
 .opc-say:hover { color: #fff; background: rgba(255, 255, 255, 0.18); }
-.opc-say.on { color: #142a5f; background: #fff; }
+.opc-say.on { color: #1246b0; background: #fff; }
 
 .opc-day span { color: rgba(255, 255, 255, 0.80); }
 .opc-empty { color: #fff; }
@@ -269,6 +269,6 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .opc-head { background-color: rgba(12, 14, 28, 0.72); }
   .opc-input { background-color: rgba(18, 20, 40, 0.58); }
-  .opc-group.theirs .opc-bubble { background: #fff; color: #142a5f; }
+  .opc-group.theirs .opc-bubble { background: #fff; color: #1246b0; }
   .opc-group.mine .opc-bubble { background: rgba(8, 10, 22, 0.66); }
 }

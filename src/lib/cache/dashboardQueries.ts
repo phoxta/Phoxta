@@ -64,6 +64,28 @@ export const revenue30Query = query("revenue.30d", async () => {
   return sum(orders.data) + sum(reservations.data);
 });
 
+/** How many sales those 30 days of revenue came from — same tables, same
+ *  status filters as revenue30Query, so the two tiles can never disagree. */
+export const orders30Query = query("orders.30d", async () => {
+  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const [orders, reservations] = await Promise.all([
+    supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["paid", "fulfilled"]).gte("created_at", since),
+    supabase.from("reservations").select("id", { count: "exact", head: true }).in("status", ["confirmed", "completed"]).gte("created_at", since),
+  ]);
+  return (orders.count ?? 0) + (reservations.count ?? 0);
+});
+
+/** Unread customer conversations across every business the user belongs to
+ *  (RLS scopes the table) — the same definition the console's Inbox badge uses. */
+export const unreadConvos30Query = query("convos.unread", async () => {
+  const { count } = await supabase
+    .from("conversations")
+    .select("id", { count: "exact", head: true })
+    .eq("unread", true)
+    .not("is_test", "is", true);
+  return count ?? 0;
+});
+
 /** Revenue bucketed by day for the last 7 days, oldest first.
  *
  *  The home page charts this. Same sources and same status filters as

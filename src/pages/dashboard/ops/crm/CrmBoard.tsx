@@ -26,18 +26,17 @@ export const STAGE_LABEL: Record<ContactStage, string> = {
 };
 
 /**
- * The four column palettes, taken from the design in column order: the pale blue
- * of "New lead", the solid indigo of "Returning", the near-black violet of
- * "Priority" with its tinted card, and the mint of "Follow-up".
- *
- * Each stage owns one, so a column reads as itself at a glance instead of every
- * card being the same white rectangle.
+ * Stage tones, mapped onto the hrx kit's chip tints (dashboard-theme.css):
+ * lead is the blue chip, prospect the amber "warn", customer the green "ok",
+ * churned the plain grey. Cards themselves stay white on the soft (#f9fbfc)
+ * columns — the stage pill carries the colour, matching how chips read
+ * everywhere else in the dashboard.
  */
 const STAGE_THEME: Record<ContactStage, { pill: string; ink: string; card: string; edge: string }> = {
-  lead: { pill: "#D5E8FC", ink: "#17457F", card: "#F6FAFE", edge: "#DCEAFA" },
-  prospect: { pill: "#4353D8", ink: "#FFFFFF", card: "#F4F5FE", edge: "#DFE2FA" },
-  customer: { pill: "#2A2550", ink: "#FFFFFF", card: "#EFECFD", edge: "#DCD5F8" },
-  churned: { pill: "#7DF0A5", ink: "#07542F", card: "#F1FCF5", edge: "#D5F3E1" },
+  lead: { pill: "#e8effc", ink: "#195ce5", card: "#ffffff", edge: "#ededed" },
+  prospect: { pill: "#fdf3d7", ink: "#a16207", card: "#ffffff", edge: "#ededed" },
+  customer: { pill: "#e6f6ec", ink: "#15803d", card: "#ffffff", edge: "#ededed" },
+  churned: { pill: "#f1f2f4", ink: "#6b7280", card: "#ffffff", edge: "#ededed" },
 };
 
 /** Above this the lead score is treated as a flag worth showing. */
@@ -56,13 +55,6 @@ const shortDate = (iso: string) => {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 };
 
-/** Stable colour per string, so the same tag or person keeps the same swatch. */
-function hueOf(text: string): number {
-  let h = 0;
-  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 360;
-  return h;
-}
-
 const initials = (name: string) =>
   name.trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase() || "?";
 
@@ -70,7 +62,8 @@ const initials = (name: string) =>
 // Stat strip
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SERIES_COLOURS = ["#4338CA", "#7C7BF5", "#7FE3D6", "#F59E0B"];
+/** Chart series in the kit's palette: blue, deep blue, orange, yellow. */
+const SERIES_COLOURS = ["#195ce5", "#1246b0", "#fe5f2b", "#facb5c"];
 
 type DayPoint = { label: string; iso: string; bySource: Record<string, number> };
 
@@ -162,7 +155,7 @@ export function CrmStats({ rows, currency }: { rows: Contact[]; currency: string
       <section className="crm-panel">
         <h3 className="crm-panel__h">New customers</h3>
         {rows.length === 0 ? (
-          <p className="fz-font-sm neutral-500 mb-0">No contacts yet — added ones appear here by the day and source they arrived from.</p>
+          <p className="crm-note">No contacts yet — added ones appear here by the day and source they arrived from.</p>
         ) : (
           <>
             <svg className="crm-chart" viewBox={`0 0 ${W} ${H + 18}`} preserveAspectRatio="none" role="img"
@@ -305,7 +298,7 @@ function Card({
 
       {person && (
         <div className="crm-card__who">
-          <span className="crm-avatar" style={{ background: `hsl(${hueOf(person)} 55% 45%)` }} aria-hidden="true">
+          <span className="crm-avatar" aria-hidden="true">
             {initials(person)}
           </span>
           <div>

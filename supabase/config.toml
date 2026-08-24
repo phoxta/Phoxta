@@ -179,6 +179,10 @@ verify_jwt = true
 [functions.domain-manager]
 verify_jwt = true
 
+# User administration for the platform console (platform_admins-gated inside).
+[functions.platform-users]
+verify_jwt = true
+
 [functions.domain-checkout]
 verify_jwt = true
 

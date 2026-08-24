@@ -7,8 +7,10 @@ import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { getBlueprint, formatPrice, getBlueprintScorecards, type BlueprintScorecard } from "@/lib/db/marketplace";
 import { PROMO, promoPriceCents } from "@/lib/promo";
 import { startBlueprintCheckout } from "@/lib/db/payments";
+import { blueprintCover } from "@/lib/blueprintCover";
 import { PLATFORM_PLANS } from "@/lib/plans";
 import Section12Pricing from "@/shared/sections/index-2/Section12Pricing";
+import { PageHeader, Card, Chip, Empty } from "@/components/dash/Ui";
 
 const GROWTH_PRICE = PLATFORM_PLANS.find((p) => p.key === "growth")?.priceMonthly ?? 250;
 
@@ -20,6 +22,21 @@ const INCLUDED = [
   "Your first month of the Growth plan — free",
   "The Phoxta Launch Guarantee (below)",
 ];
+
+// Page-local styles only — everything else comes from the .hrx kit.
+const CSS = `
+.mpx-hero { aspect-ratio: 16 / 9; }
+.mpx-sticky { position: static; }
+.mpx-price-big { font-size: clamp(38px, 4vw, 54px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.mpx-price-was { font-size: 20px; font-weight: 500; color: var(--hrx-muted); margin-right: 8px; }
+.mpx-tier { font-size: 14px; color: var(--hrx-muted); }
+.mpx-buy:disabled { opacity: 0.55; pointer-events: none; }
+.mpx-full { width: 100%; justify-content: center; }
+.mpx-note { font-size: 13px; color: var(--hrx-muted); margin: 12px 0 0; }
+.mpx-desc { font-size: 15px; color: var(--hrx-ink); margin: 0; }
+.mpx-check li { font-size: 14px; }
+.mpx-facts { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; }
+`;
 
 export default function MarketplaceDetailPage() {
   const { slug } = useParams();
@@ -61,123 +78,161 @@ export default function MarketplaceDetailPage() {
     window.location.assign(url);
   }
 
-  if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+  if (loading)
+    return (
+      <Card>
+        <p className="text-center mb-0 py-4" style={{ color: "var(--hrx-muted)" }} role="status">Loading…</p>
+      </Card>
+    );
   if (!bp)
     return (
-      <div>
-        <p className="neutral-500">Business not found.</p>
-        <Link to="/dashboard/marketplace" className="fw-600 text-decoration-none">
-          ← Back to marketplace
-        </Link>
-      </div>
+      <Empty
+        title="Business not found"
+        action={
+          <Link to="/dashboard/marketplace" className="hrx-pill">
+            ← Back to marketplace
+          </Link>
+        }
+      >
+        This listing may have been removed or the link is wrong.
+      </Empty>
     );
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div className="d-flex flex-column gap-2">
       <PageMeta title={`Phoxta - ${bp.name}`} />
-      <Link to="/dashboard/marketplace" className="fz-font-md neutral-500 text-decoration-none">
-        ← Marketplace
-      </Link>
+      <style>{CSS}</style>
 
-      {(error || loadError) && <div className="alert alert-warning py-2 px-3 fz-font-md mt-3">{error || loadError}</div>}
+      <PageHeader
+        crumb="Marketplace"
+        title={bp.name}
+        note={bp.tagline}
+        actions={
+          <Link to="/dashboard/marketplace" className="hrx-pill">
+            ← Marketplace
+          </Link>
+        }
+      />
 
-      <div className="row g-4 mt-1">
-        <div className="col-lg-7">
-          <div className="d-flex align-items-center gap-2 mb-2">
-            <span className="badge bg-neutral-100 neutral-700 fw-500">{bp.vertical}</span>
-            {bp.verified && <span className="badge bg-success-subtle text-success fw-500">Verified</span>}
-            {bp.ai_included && <span className="badge bg-neutral-100 neutral-700 fw-500">AI inside</span>}
+      {(error || loadError) && (
+        <div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">
+          {error || loadError}
+        </div>
+      )}
+
+      <div className="row g-2">
+        <div className="col-lg-7 d-flex flex-column gap-2">
+          <div className="hrx-imgcard mpx-hero">
+            <img
+              src={blueprintCover(bp.slug, bp.cover_url)}
+              alt={bp.name}
+              width={800}
+              height={450}
+              loading="lazy"
+            />
+            <span className="shade">
+              <span className="cat text-capitalize">{bp.vertical}</span>
+              <span className="name">{bp.name}</span>
+            </span>
+            <span className="corner-r">
+              {bp.verified && <Chip tone="ok">Verified</Chip>}
+              {bp.ai_included && <Chip tone="blue">AI inside</Chip>}
+              {PROMO.active && <Chip tone="orange">{PROMO.label}</Chip>}
+            </span>
           </div>
-          <h2 className="fw-600 mb-2">{bp.name}</h2>
-          <p className="neutral-700 mb-4">{bp.description || bp.tagline}</p>
+
+          <Card title="About this business">
+            <div className="d-flex flex-wrap gap-1 mb-3">
+              <Chip tone="line">{bp.vertical}</Chip>
+              {bp.verified && <Chip tone="ok">Verified</Chip>}
+              {bp.ai_included && <Chip tone="blue">AI inside</Chip>}
+            </div>
+            <p className="mpx-desc">{bp.description || bp.tagline}</p>
+          </Card>
 
           {scorecard && (scorecard.orders_90d > 0 || scorecard.reservations_90d > 0 || scorecard.conversations_90d > 0) && (
-            <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-4">
-              <h6 className="fw-600 mb-2">Verified platform activity — last 90 days</h6>
-              <p className="fz-font-sm neutral-500 mb-2">
+            <Card title="Verified platform activity — last 90 days">
+              <p className="mpx-note mt-0 mb-3">
                 Live, anonymized data from businesses running this blueprint on Phoxta — not projections.
               </p>
-              <div className="d-flex flex-wrap gap-3 fz-font-md">
+              <div className="mpx-facts">
                 <span><b>{scorecard.businesses}</b> running business{scorecard.businesses === 1 ? "" : "es"}</span>
                 {scorecard.orders_90d > 0 && <span><b>{scorecard.orders_90d}</b> orders</span>}
                 {scorecard.reservations_90d > 0 && <span><b>{scorecard.reservations_90d}</b> reservations</span>}
                 {scorecard.conversations_90d > 0 && <span><b>{scorecard.conversations_90d}</b> customer conversations handled</span>}
                 {scorecard.avg_qa_score != null && <span><b>{scorecard.avg_qa_score}/5</b> AI quality score</span>}
               </div>
-            </div>
+            </Card>
           )}
 
-          <h6 className="fw-600 mb-2">What&apos;s included</h6>
-          <ul className="list-unstyled d-flex flex-column gap-2">
-            {INCLUDED.map((line) => (
-              <li key={line} className="d-flex align-items-start gap-2 fz-font-md neutral-700">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 mt-1 text-success">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-                {line}
-              </li>
-            ))}
-          </ul>
+          <Card title="What's included">
+            <ul className="list-unstyled d-flex flex-column gap-2 mb-0 mpx-check">
+              {INCLUDED.map((line) => (
+                <li key={line} className="d-flex align-items-start gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 mt-1 text-success" aria-hidden="true">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </Card>
         </div>
 
         <div className="col-lg-5">
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 position-sticky" style={{ top: 88 }}>
-            {PROMO.active && (
-              <div className="mb-2">
-                <del className="neutral-500 fz-24 fw-500 me-2">{formatPrice(bp.price_cents, bp.currency)}</del>
-                <span className="badge bg-danger align-middle">{PROMO.label}</span>
+          <div className="mpx-sticky">
+            <Card>
+              {PROMO.active && (
+                <div className="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                  <del className="mpx-price-was">{formatPrice(bp.price_cents, bp.currency)}</del>
+                  <Chip tone="orange">{PROMO.label}</Chip>
+                </div>
+              )}
+              <div className="mpx-price-big mb-1">
+                {formatPrice(PROMO.active ? promoPriceCents(bp.price_cents) : bp.price_cents, bp.currency)}
               </div>
-            )}
-            <div className="fw-700 fz-60 lh-1 mb-1">
-              {formatPrice(PROMO.active ? promoPriceCents(bp.price_cents) : bp.price_cents, bp.currency)}
-            </div>
-            <div className="fz-font-md neutral-500 text-capitalize mb-3">{bp.tier} business · one-time</div>
-            <button type="button" className="at-btn w-100 justify-content-center mb-2" disabled={buying} onClick={onBuy}>
-              <span>
-                <span className="text-1">{buying ? "Setting up…" : "Make it yours"}</span>
-                <span className="text-2">{buying ? "Setting up…" : "Make it yours"}</span>
-              </span>
-            </button>
-            {bp.demo_url && (
-              <a className="at-btn at-btn-border-dark w-100 justify-content-center" href={bp.demo_url} target="_blank" rel="noreferrer">
-                <span>
-                  <span className="text-1">View live demo</span>
-                  <span className="text-2">View live demo</span>
-                </span>
-              </a>
-            )}
-            <p className="fz-font-sm neutral-500 mb-0 mt-3">
-              One-time business price — your first month of the Growth plan is included free.
-              After that it&apos;s ${GROWTH_PRICE}/mo (change or cancel anytime in Billing).
-            </p>
+              <div className="mpx-tier text-capitalize mb-3">{bp.tier} business · one-time</div>
+              <div className="d-flex flex-column gap-2">
+                <button type="button" className="hrx-pill primary mpx-buy mpx-full" disabled={buying} onClick={onBuy}>
+                  {buying ? "Setting up…" : "Make it yours"}
+                </button>
+                {bp.demo_url && (
+                  <a className="hrx-pill mpx-full" href={bp.demo_url} target="_blank" rel="noreferrer">
+                    View live demo
+                  </a>
+                )}
+              </div>
+              <p className="mpx-note">
+                One-time business price — your first month of the Growth plan is included free.
+                After that it&apos;s ${GROWTH_PRICE}/mo (change or cancel anytime in Billing).
+              </p>
+            </Card>
           </div>
         </div>
       </div>
 
       {/* The named outcome guarantee no acquisition marketplace offers. */}
-      <div className="mt-4 bg-neutral-0 rounded-4 p-4 border-100" style={{ maxWidth: 640 }}>
-        <h6 className="fw-600 mb-1">The Phoxta Launch Guarantee</h6>
-        <p className="fz-font-md neutral-700 mb-0">
+      <Card title="The Phoxta Launch Guarantee">
+        <p className="mpx-desc" style={{ maxWidth: 640 }}>
           Your business is live on its own address with every channel connected — web chat, SMS,
           WhatsApp, email and phone — and your AI agent handling real customer conversations within
           30 days of purchase, or we refund the purchase price in full.
         </p>
-      </div>
+      </Card>
 
       {/* Monthly plan after purchase — the ongoing platform subscription. */}
-      <div className="mt-5 pt-4 border-top border-100">
-        <h5 className="fw-600 mb-1">Your first month of Growth is on us</h5>
-        <p className="neutral-500 fz-font-md mb-4" style={{ maxWidth: 620 }}>
+      <Card title="Your first month of Growth is on us">
+        <p className="mpx-note mt-0 mb-3" style={{ maxWidth: 620, fontSize: 14 }}>
           The price above is a one-time fee to make this business yours — and it includes a free
           month of the Growth plan. After that, Growth (${GROWTH_PRICE}/mo) continues automatically;
           switch plans or cancel anytime in <Link to="/dashboard/billing" className="text-decoration-underline">Billing</Link>.
         </p>
         {/* Same plan cards + Monthly/Annual toggle as the Pricing page. */}
         <Section12Pricing />
-        <p className="fz-font-sm neutral-500 mb-0 mt-3">
+        <p className="mpx-note">
           Need more? <Link to="/pricing" className="text-decoration-underline">See the full plan comparison</Link> — including Enterprise.
         </p>
-      </div>
+      </Card>
     </div>
   );
 }

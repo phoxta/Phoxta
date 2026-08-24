@@ -19,12 +19,6 @@ import "./crm.css";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 const STAGES: ContactStage[] = ["lead", "prospect", "customer", "churned"];
-const STAGE_STYLE: Record<ContactStage, string> = {
-  lead: "bg-neutral-100 neutral-700",
-  prospect: "bg-warning-subtle text-warning",
-  customer: "bg-success-subtle text-success",
-  churned: "bg-neutral-100 neutral-500",
-};
 
 const SCORE_CAP = 25;
 
@@ -42,13 +36,6 @@ type ScoreResult = {
   next_action: string;
   reasons: string[];
 };
-
-function scoreColor(score: number | null): string {
-  if (score == null) return "bg-neutral-100 neutral-500";
-  if (score >= 70) return "bg-success-subtle text-success";
-  if (score >= 40) return "bg-warning-subtle text-warning";
-  return "bg-neutral-100 neutral-700";
-}
 
 function metaKey(orgId: string): string {
   return `ops:crm:score-meta:${orgId}`;
@@ -244,8 +231,8 @@ export default function CrmPage() {
   return (
     <div className="crm">
       <div className="crm-bar">
-        <h2 className="fz-font-lg fw-600 mb-0 me-2">Contacts</h2>
-        <span className="fz-font-sm neutral-500">
+        <h2 className="crm-bar__title">Contacts</h2>
+        <span className="crm-bar__count">
           {loading
             ? "Loading…"
             : display.length === rows.length
@@ -325,7 +312,7 @@ export default function CrmPage() {
       </div>
 
       {loadError && (
-        <div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">
+        <div className="alert alert-warning py-2 px-3 mb-0" role="alert">
           {loadError}
         </div>
       )}
@@ -335,19 +322,19 @@ export default function CrmPage() {
           <h3 className="crm-panel__h">Add a contact</h3>
           <div className="row g-2">
             <div className="col-md-3">
-              <label htmlFor="crm-add-name" className="form-label fz-font-sm neutral-500 mb-1">Name</label>
+              <label htmlFor="crm-add-name" className="form-label mb-1">Name</label>
               <input id="crm-add-name" className="form-control rounded-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div className="col-md-3">
-              <label htmlFor="crm-add-email" className="form-label fz-font-sm neutral-500 mb-1">Email</label>
+              <label htmlFor="crm-add-email" className="form-label mb-1">Email</label>
               <input id="crm-add-email" type="email" className="form-control rounded-3" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
             <div className="col-md-2">
-              <label htmlFor="crm-add-phone" className="form-label fz-font-sm neutral-500 mb-1">Phone</label>
+              <label htmlFor="crm-add-phone" className="form-label mb-1">Phone</label>
               <input id="crm-add-phone" className="form-control rounded-3" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div className="col-md-2">
-              <label htmlFor="crm-add-company" className="form-label fz-font-sm neutral-500 mb-1">Company</label>
+              <label htmlFor="crm-add-company" className="form-label mb-1">Company</label>
               <input id="crm-add-company" className="form-control rounded-3" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
             </div>
             <div className="col-md-2 d-flex align-items-end">

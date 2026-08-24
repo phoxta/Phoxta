@@ -1,6 +1,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
+import { Chip, Empty, stageTone } from "@/components/dash/Ui";
 import { getBusiness, type Organization } from "@/lib/db/organizations";
 import { resolveConsole, consoleTabs, type VerticalConsole } from "@/lib/ops/consoleConfig";
 import { preloadOpsConsole, preloadOpsTab } from "@/pages/dashboard/preload";
@@ -15,6 +16,20 @@ export type OpsContext = { orgId: string; org: Organization; console: VerticalCo
 
 /** Attention counts surfaced as pills on the Inbox / AI Agent tabs. */
 type TabBadges = { unread: number; approvals: number };
+
+/** Chrome-only styles for the console header (the shared kit covers the rest). */
+const CSS = `
+/* One line of chrome, NOT sticky: identity on the left, the section tabs on the
+   right, wrapping only when the window truly cannot fit both. Content scrolls
+   underneath nothing — the only pinned bar in the app is the shell's top nav. */
+.ocx-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: 14px; }
+.ocx-back { width: 36px; height: 36px; flex-shrink: 0; }
+.ocx-title { font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; color: #000; margin: 0 2px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 32vw; }
+.ocx-tabs { margin-left: auto; min-width: 0; max-width: 100%; }
+.ocx-tabs .ocx-live { color: var(--hrx-blue); border-color: #d7e3fb; }
+.ocx-tabs .ocx-live:hover { color: var(--hrx-blue-deep); background: #f0f5fe; }
+@media (max-width: 767.98px) { .ocx-title { max-width: 100%; } .ocx-tabs { margin-left: 0; } }
+`;
 
 export default function OperatingLayout() {
   const { id } = useParams();
@@ -108,28 +123,45 @@ export default function OperatingLayout() {
     [badges],
   );
 
-  if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+  if (loading)
+    return (
+      <div className="hrx-card hrx-pad text-center" style={{ color: "var(--hrx-muted)" }} role="status">
+        Loading…
+      </div>
+    );
   if (loadError)
     return (
-      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center">
-        <p className="neutral-700 mb-3">Couldn't load this business — {loadError}</p>
-        <button type="button" className="btn btn-dark btn-sm rounded-3" onClick={() => setRetryTick((n) => n + 1)}>
-          Retry
-        </button>
-        <div className="mt-3">
-          <Link to="/dashboard/businesses" className="fz-font-md neutral-500 text-decoration-none">
-            ← Back to businesses
-          </Link>
-        </div>
+      <div className="hrx-card hrx-pad">
+        <Empty
+          title="Couldn't load this business"
+          action={
+            <div className="d-flex flex-column align-items-center gap-3">
+              <button type="button" className="hrx-pill dark" onClick={() => setRetryTick((n) => n + 1)}>
+                Retry
+              </button>
+              <Link to="/dashboard/businesses" className="hrx-seeall">
+                ← Back to businesses
+              </Link>
+            </div>
+          }
+        >
+          {loadError}
+        </Empty>
       </div>
     );
   if (!org || !id)
     return (
-      <div>
-        <p className="neutral-500">Business not found.</p>
-        <Link to="/dashboard/businesses" className="fw-600 text-decoration-none">
-          ← Back to businesses
-        </Link>
+      <div className="hrx-card hrx-pad">
+        <Empty
+          title="Business not found"
+          action={
+            <Link to="/dashboard/businesses" className="hrx-pill dark">
+              ← Back to businesses
+            </Link>
+          }
+        >
+          It may have been removed, or the link is stale.
+        </Empty>
       </div>
     );
 
@@ -142,35 +174,22 @@ export default function OperatingLayout() {
 
   return (
     <div>
+      <style>{CSS}</style>
       <PageMeta title={`Phoxta - ${org.name} operations`} />
-      {/* Console chrome — breadcrumb, business title and the tab bar. Pinned via
-          .dash-sticky-head so it stays put while only the tab's content scrolls;
-          the tabs used to ride up out of view with the content beneath them. */}
-      <div className="dash-sticky-head pb-4">
-        <div className="mb-2 d-flex flex-wrap align-items-center gap-2">
-          <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
-            ← Business details
+      {/* Console chrome — ONE line, not sticky: back button, business name,
+          switcher and stage on the left; the section tabs (plus the live-site
+          link) right-aligned on the same line. Only the shell's top nav pins. */}
+      <div className="pb-2">
+        <div className="ocx-bar">
+          <Link
+            to={`/dashboard/businesses/${id}`}
+            className="hrx-rbtn ocx-back"
+            aria-label="Business details"
+            title="Business details"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
           </Link>
-          {liveUrl ? (
-            <a
-              href={liveUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="fz-font-sm fw-600 text-decoration-none"
-            >
-              View live site ↗
-            </a>
-          ) : (
-            <Link to={`/dashboard/businesses/${id}`} className="fz-font-sm neutral-500 text-decoration-none">
-              Not live yet — set up your domain
-            </Link>
-          )}
-        </div>
-        {/* The business being operated is the headline — "Operating console" is a
-            constant that carries no information once you are inside it, and on a
-            phone it was costing most of the first screen. */}
-        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-          <h1 className="fw-600 mb-0 me-1 fz-font-2xl lh-1 neutral-900">{org.name}</h1>
+          <h1 className="ocx-title">{org.name}</h1>
           {myOrgs.length > 1 && (
             <select
               className="form-select form-select-sm w-auto"
@@ -195,48 +214,44 @@ export default function OperatingLayout() {
               ))}
             </select>
           )}
-          {org.vertical && <span className="badge bg-neutral-900 text-white text-capitalize fw-500">{org.vertical}</span>}
-          <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{org.stage}</span>
-        </div>
+          <Chip tone={stageTone(org.stage)}>{org.stage}</Chip>
 
-        {/* One scrollable line rather than four wrapped rows on a phone.
-            mb-0 here (the gap below now comes from the sticky wrapper) so the tab
-            bar's bottom border sits flush against the pinned block's edge. */}
-        <nav className="mb-0 border-bottom ops-tabs" aria-label="Console sections">
-          <ul className="list-unstyled m-0 d-flex gap-1">
+          <nav className="hrx-tabbar ocx-tabs" aria-label="Console sections">
             {tabs.map((t) => (
-              <li key={t.seg}>
-                <NavLink
-                  to={t.seg ? `${base}/${t.seg}` : base}
-                  end={t.end}
-                  onMouseEnter={() => preloadOpsTab(t.seg)}
-                  className={({ isActive }) =>
-                    `d-inline-block px-3 py-2 fz-font-md text-decoration-none border-bottom border-2 ${
-                      isActive ? "neutral-900 fw-600 border-dark" : "neutral-500 border-transparent"
-                    }`
-                  }
-                >
-                  {t.label}
-                  {badgeFor(t.seg) > 0 && (
-                    <span
-                      className={`badge rounded-pill ms-1 fz-font-sm ${
-                        t.seg === "inbox" ? "bg-danger text-white" : "bg-warning text-dark"
-                      }`}
-                    >
-                      {badgeFor(t.seg)}
-                    </span>
-                  )}
-                </NavLink>
-              </li>
+              <NavLink
+                key={t.seg}
+                to={t.seg ? `${base}/${t.seg}` : base}
+                end={t.end}
+                onMouseEnter={() => preloadOpsTab(t.seg)}
+                className={({ isActive }) => `hrx-tab${isActive ? " active" : ""}`}
+              >
+                {t.label}
+                {badgeFor(t.seg) > 0 && <span className="hrx-tab-badge">{badgeFor(t.seg)}</span>}
+              </NavLink>
             ))}
-          </ul>
-        </nav>
-        {/* A tab's second-level nav lands here — inside the pinned block. */}
+            {liveUrl ? (
+              <a href={liveUrl} target="_blank" rel="noreferrer" className="hrx-tab ocx-live">
+                Live ↗
+              </a>
+            ) : (
+              <Link to={`/dashboard/businesses/${id}`} className="hrx-tab ocx-live" title="Not live yet — set up your domain">
+                Go live
+              </Link>
+            )}
+          </nav>
+        </div>
+        {/* A tab's second-level nav lands here, directly under the chrome line. */}
         <div ref={setSubSlot} />
       </div>
 
       <div>
-        <Suspense fallback={<div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>}>
+        <Suspense
+          fallback={
+            <div className="hrx-card hrx-pad text-center" style={{ color: "var(--hrx-muted)" }} role="status">
+              Loading…
+            </div>
+          }
+        >
           <OpsSubNavSlotProvider value={subSlot}>
             <Outlet context={{ orgId: id, org, console: cfg } satisfies OpsContext} />
           </OpsSubNavSlotProvider>

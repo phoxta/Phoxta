@@ -8,16 +8,22 @@ import {
 import { formatPrice } from "@/lib/db/marketplace";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import OperatorChat from "@/pages/dashboard/ops/OperatorChat";
+import { StatTile } from "@/components/dash/Ui";
 
 /**
- * Overview styles, kept local so the global stylesheet stays untouched: the
- * two-pane shell (data rail + work board) and the work card itself.
+ * Overview styles, kept local so the global stylesheet stays untouched.
+ * Two layers here:
+ *  - the structural shell (.ops-ov / .ops-ov-side / .ops-pin / .opc) whose
+ *    class names are LOAD-BEARING — the measurement effect below queries and
+ *    toggles them — so they keep their names;
+ *  - everything visual, redesigned on ovx-* classes to the hrx dashboard kit
+ *    (Figtree, ink #272727, blue #195ce5, soft #f9fbfc, 16px radius).
  */
-const OVERVIEW_CSS = `/* ---- Overview shell: console data rail + task board ----------------------
+const OVERVIEW_CSS = `/* ---- Overview shell: Operator rail + work board --------------------------
    Two panes side by side: the AI Operator on the left, the work board right.
-   Note if anything Bootstrap-gridded is ever put back in the rail: the grid keys
-   off the VIEWPORT, not the parent, so col-md/col-xl inside this fixed-width
-   pane collapse to a fraction of it on a wide screen. */
+   Note if anything Bootstrap-gridded is ever put back in the rail: the grid
+   keys off the VIEWPORT, not the parent, so col-md/col-xl inside this
+   fixed-width pane collapse to a fraction of it on a wide screen. */
 /* The Operator is a fixed-height panel with its own internal scroll, so it has
    no reason to travel with the page - only the board does. It pins below the
    console's own sticky header, whose height is measured onto --ops-head-h
@@ -29,116 +35,117 @@ const OVERVIEW_CSS = `/* ---- Overview shell: console data rail + task board ---
    down: a floor taller than the space available is exactly what pushed its
    bottom below the fold. */
 .ops-pin .opc{height:var(--ops-op-h);min-height:0}
-.ops-ov-board{flex:1 1 auto;min-width:0;display:flex;gap:13px;overflow-x:auto;padding-bottom:4px;align-items:flex-start}
+/* Appearance lives in operator-chat.css; only HEIGHT is this console's business. */
+.opc{height:calc(100vh - 300px);min-height:460px}
+.ovx-main{flex:1 1 auto;min-width:0}
+
+/* ---- Headline: true per-stage totals straight off the board RPC ---------- */
+.ovx-stats{margin:0 0 14px}
+
+/* ---- Refused-move notice ------------------------------------------------- */
+.ovx-notice{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:10px 14px;
+  border-radius:12px;border:1px solid #f2e3b0;background:#fdf3d7;color:#a16207;
+  font-size:13px;line-height:1.45}
+.ovx-notice button{margin-left:auto;border:0;background:transparent;color:inherit;cursor:pointer;
+  font-size:16px;line-height:1;padding:0 2px}
+
+/* ---- Board scroller ------------------------------------------------------ */
+.ops-ov-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;align-items:flex-start}
+.ops-ov-board::-webkit-scrollbar{height:8px}
+.ops-ov-board::-webkit-scrollbar-thumb{background:#d9d9d9;border-radius:8px}
+
+/* ---- Board columns -------------------------------------------------------
+   Quiet soft-grey panels in the hrx card grammar: the COLOUR lives on the
+   cards (keyed to their module) and on the stage dot, not on the panel. */
+.ovx-col{flex:0 0 252px;width:252px;min-width:0;border-radius:16px;padding:12px;
+  background:#f9fbfc;border:1px solid #ededed}
+.ovx-col.dropping{outline:2px dashed #195ce5;outline-offset:2px;background:#e8effc}
+.ovx-colhead{display:flex;align-items:center;gap:8px;padding:2px 4px 12px}
+.ovx-colhead b{font-size:13.5px;font-weight:600;letter-spacing:-0.01em;color:#272727}
+.ovx-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;background:#d9d9d9}
+.col-todo   .ovx-dot{background:#6b7280}
+.col-doing  .ovx-dot{background:#195ce5}
+.col-review .ovx-dot{background:#fe5f2b}
+.col-ready  .ovx-dot{background:#16a34a}
+.ovx-count{margin-left:auto;min-width:26px;height:20px;padding:0 8px;border-radius:40px;
+  background:#fff;border:1px solid #ededed;color:#6b7280;font-size:11px;font-weight:600;
+  display:inline-flex;align-items:center;justify-content:center}
+.ovx-empty{border:1px dashed #d9d9d9;border-radius:12px;background:transparent;
+  min-height:220px;display:flex;align-items:center;justify-content:center;
+  padding:22px 14px;text-align:center;font-size:12.5px;color:#6b7280}
+
+/* ---- Work card -----------------------------------------------------------
+   White hrx card with a module-hued left accent, so colour still carries
+   meaning (blue = inbox, green = commerce, orange = money owed ...) without
+   the pastel wash. The hue is a custom property the chip, avatar and
+   progress fill all inherit. */
+.ovx-cards{display:flex;flex-direction:column;gap:10px}
+.ovx-card{display:block;text-decoration:none;background:#fff;color:#272727;
+  border:1px solid #ededed;border-left:3px solid var(--ovx-hue,#272727);
+  border-radius:14px;padding:12px 12px 12px 13px;
+  transition:box-shadow .15s ease,transform .15s ease,border-color .15s ease}
+.ovx-card:hover,.ovx-card:focus-visible{box-shadow:0 10px 24px rgba(39,39,39,.10);
+  transform:translateY(-1px);color:#272727}
 /* Drag to move a card between stages. The lifted card stays visible at low
    opacity rather than disappearing, so you can still see what you are holding. */
-.ops-ov-card[draggable="true"]{cursor:grab}
-.ops-ov-card.dragging{opacity:.4;cursor:grabbing}
-.ops-ov-col.dropping{outline:2px dashed var(--at-neutral-400);outline-offset:2px;background:var(--at-neutral-50)}
-.ops-ov-notice{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:9px 12px;border-radius:10px;
-  background:#FFF4E5;color:#7A4B00;font-size:13px;line-height:1.45}
-.ops-ov-notice button{margin-left:auto;border:0;background:transparent;color:inherit;cursor:pointer;
-  font-size:16px;line-height:1;padding:0 2px}
-.ops-ov-board::-webkit-scrollbar{height:8px}
-.ops-ov-board::-webkit-scrollbar-thumb{background:var(--at-neutral-200);border-radius:8px}
-.ops-ov-col{flex:0 0 229px;width:229px;min-width:0}
-.ops-ov-colhead{display:flex;align-items:baseline;gap:6px;padding:0 2px 12px}
-.ops-ov-colhead b{font-size:15px;font-weight:600;color:var(--at-neutral-900)}
-.ops-ov-colhead span{font-size:13px;color:var(--at-neutral-400)}
-/* ---- Board columns -------------------------------------------------------
-   Each column is a tinted panel, and each CARD is tinted too — by its module,
-   so the colour carries meaning (green = commerce, blue = inbox, amber = money
-   owed …) rather than being decorative. Title text takes the deeper shade of
-   the same hue, as in the design. */
-.ops-ov-col{flex:0 0 229px;width:229px;min-width:0;border-radius:14px;padding:12px 11px 14px;
-  border:1px solid rgba(0,0,0,.05)}
-.col-todo  {background:#F6F7FC}
-.col-doing {background:#FDF7F2}
-.col-review{background:#FDF3F7}
-.col-ready {background:#F1F8FD}
-.ops-ov-colhead{display:flex;align-items:center;gap:6px;padding:2px 3px 12px}
-.ops-ov-colhead b{font-size:13.5px;font-weight:600;color:var(--at-neutral-900)}
-.ops-ov-colhead .n{font-size:12px;color:var(--at-neutral-400);margin-right:auto}
-.ops-ov-colhead .chev{color:var(--at-neutral-400);font-size:11px}
-.ops-ov-colhead .dots{color:var(--at-neutral-400);font-size:13px;letter-spacing:1px}
-.ops-ov-empty{border:1px dashed rgba(0,0,0,.13);border-radius:10px;background:transparent;
-  min-height:240px;display:flex;align-items:center;justify-content:center;
-  padding:22px 14px;text-align:center;font-size:12.5px;color:var(--at-neutral-400)}
-/* ---- Work card ----------------------------------------------------------
-   Anatomy from the design: #hashtag chips + overflow glyph · coloured title ·
-   note line · optional media · optional progress · avatar · count pills. */
-.ops-ov-cards{display:flex;flex-direction:column;gap:11px}
-.ops-ov-card{display:block;text-decoration:none;border-radius:12px;padding:13px;
-  border:1px solid rgba(0,0,0,.04);transition:box-shadow .15s ease,transform .15s ease}
-.ops-ov-card:hover,.ops-ov-card:focus-visible{box-shadow:0 8px 20px rgba(0,0,0,.10);transform:translateY(-1px)}
-.ops-ov-card-top{display:flex;align-items:center;gap:5px;margin-bottom:9px}
-.ops-ov-chip{font-size:10px;font-weight:500;line-height:1;padding:5px 8px;border-radius:6px;
-  background:rgba(255,255,255,.72);color:rgba(0,0,0,.62);white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;max-width:92px}
-.ops-ov-dots{margin-left:auto;color:rgba(0,0,0,.32);font-size:14px;line-height:1;letter-spacing:1px}
-.ops-ov-card h3{font-size:14px;font-weight:600;line-height:1.32;margin:0 0 5px;
+.ovx-card[draggable="true"]{cursor:grab}
+.ovx-card.dragging{opacity:.4;cursor:grabbing}
+.ovx-top{display:flex;align-items:center;gap:5px;margin-bottom:9px}
+.ovx-tag{font-size:10.5px;font-weight:500;line-height:1;padding:5px 8px;border-radius:40px;
+  background:#f1f2f4;color:#6b7280;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:104px}
+.ovx-tag.mod{background:var(--ovx-hue-bg,#f1f2f4);color:var(--ovx-hue,#272727)}
+.ovx-card h3{font-size:14px;font-weight:600;letter-spacing:-0.01em;line-height:1.32;
+  color:#272727;margin:0 0 5px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ops-ov-card p{font-size:10.5px;line-height:1.5;color:rgba(0,0,0,.55);margin:0 0 10px;
+.ovx-card p{font-size:11px;line-height:1.5;color:#6b7280;margin:0 0 10px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-/* Media slot: image, video poster or a call-recording strip. Surfaces sit on
-   rgba white so they read correctly on every card tint. */
-.ops-ov-media{position:relative;border-radius:8px;overflow:hidden;margin:0 0 10px;
-  background:rgba(255,255,255,.55);line-height:0}
-.ops-ov-media img,.ops-ov-media video{display:block;width:100%;height:118px;object-fit:cover;
+/* Media slot: image, video poster or a call-recording strip. */
+.ovx-media{position:relative;border-radius:10px;overflow:hidden;margin:0 0 10px;
+  background:#f1f2f4;line-height:0}
+.ovx-media img,.ovx-media video{display:block;width:100%;height:118px;object-fit:cover;
   pointer-events:none}
-.ops-ov-more{position:absolute;right:7px;bottom:7px;background:rgba(0,0,0,.55);color:#fff;
-  font-size:9.5px;font-weight:600;line-height:1;padding:4px 6px;border-radius:5px}
-.ops-ov-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
-.ops-ov-play b{width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;
+.ovx-more{position:absolute;right:7px;bottom:7px;background:rgba(39,39,39,.72);color:#fff;
+  font-size:9.5px;font-weight:600;line-height:1;padding:4px 6px;border-radius:40px}
+.ovx-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.ovx-play b{width:34px;height:34px;border-radius:50%;background:rgba(39,39,39,.6);color:#fff;
   display:flex;align-items:center;justify-content:center}
-.ops-ov-audio{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 10px;border-radius:8px;
-  background:rgba(255,255,255,.6);font-size:10.5px;color:rgba(0,0,0,.66)}
-.ops-ov-audio b{flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;
+.ovx-audio{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 10px;
+  border-radius:10px;background:#f9fbfc;border:1px solid #ededed;font-size:11px;color:#6b7280}
+.ovx-audio b{flex:0 0 24px;width:24px;height:24px;border-radius:50%;
+  background:var(--ovx-hue,#272727);color:#fff;
   display:flex;align-items:center;justify-content:center}
-/* Progress: the dotted meter from the design. Only rendered where there is a
-   real ratio behind it (a campaign's sent-vs-recipients), never as decoration. */
-.ops-ov-prog{margin:0 0 10px}
-.ops-ov-prog-top{display:flex;align-items:center;font-size:10px;color:rgba(0,0,0,.55);margin-bottom:5px}
-.ops-ov-prog-top b{margin-left:auto;font-weight:600}
-.ops-ov-prog-dots{display:flex;gap:3px}
-.ops-ov-prog-dots i{flex:1 1 auto;height:7px;border-radius:99px;background:rgba(255,255,255,.75)}
-.ops-ov-prog-dots i.on{background:currentColor}
-.ops-ov-who{display:flex;align-items:center;gap:7px;margin-bottom:10px}
-.ops-ov-av{width:24px;height:24px;flex:0 0 24px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);
-  box-shadow:0 0 0 2px rgba(255,255,255,.75)}
-.ops-ov-who b{display:block;font-size:10.5px;font-weight:600;color:rgba(0,0,0,.78);line-height:1.2;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
-.ops-ov-who i{display:block;font-style:normal;font-size:9.5px;color:rgba(0,0,0,.45);line-height:1.2;
+/* Progress: only rendered where there is a real ratio behind it (a campaign's
+   sent-vs-recipients), never as decoration. Fill takes the module hue. */
+.ovx-prog{margin:0 0 10px}
+.ovx-prog-top{display:flex;align-items:center;font-size:10.5px;color:#6b7280;margin-bottom:5px}
+.ovx-prog-top b{margin-left:auto;font-weight:600;color:#272727}
+.ovx-prog-bar{height:6px;border-radius:99px;background:#f1f2f4;overflow:hidden}
+.ovx-prog-bar i{display:block;height:100%;border-radius:99px;background:var(--ovx-hue,#272727)}
+.ovx-who{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ovx-av{width:26px;height:26px;flex:0 0 26px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:9px;font-weight:700;
+  color:var(--ovx-hue,#272727);background:var(--ovx-hue-bg,#f1f2f4)}
+.ovx-who b{display:block;font-size:11px;font-weight:600;color:#272727;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.ovx-who i{display:block;font-style:normal;font-size:9.5px;color:#6b7280;line-height:1.2;
   text-transform:capitalize}
-.ops-ov-foot{display:flex;align-items:center;gap:6px;font-size:10px;color:rgba(0,0,0,.55)}
-.ops-ov-foot .m{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.72);
-  border-radius:6px;padding:4px 7px}
-.ops-ov-foot .r{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
-.ops-ov-foot svg{flex:0 0 auto;opacity:.6}
-/* Card tints, keyed to the module. The CSS color property carries the deep
-   shade, so the title and the filled progress dots inherit it via currentColor.
-   (No backticks in here — this block lives inside a JS template literal.) */
-.tint-inbox      {background:#E8EDFB;color:#3B5BC4}
-.tint-agent      {background:#EDE7FB;color:#6B4CC4}
-.tint-commerce   {background:#E3F5E9;color:#2E8B57}
-.tint-invoicing  {background:#FDEEE0;color:#C4703B}
-.tint-marketing  {background:#FBE7EE;color:#C43B6B}
-.tint-crm        {background:#E3F1FB;color:#2C7BB0}
-.tint-reservations,.tint-bookings{background:#FBF3DC;color:#8A6A11}
-.tint-settings   {background:#EEF0F3;color:#4A5460}
-.ops-ov-card h3{color:currentColor}
-/* ---- AI Operator chat ----------------------------------------------------
-   Built to the chat design: a dark title band, day separators, grouped bubbles
-   (mine lavender on the right, the agent's light on the left) with one
-   avatar/name/time footer per group, and a composer carrying attach, send and
-   a mic. Fills the rail's height so the thread scrolls inside it and the
-   composer stays pinned instead of the page growing. */
-/* Appearance lives in operator-chat.css so the panel looks the same wherever it
-   is mounted. Only its HEIGHT is set here, because that is genuinely this
-   console's business: the rail is a fixed column and the thread scrolls inside
-   it. The dashboard home sets its own height the same way. */
-.opc{height:calc(100vh - 300px);min-height:460px}
+.ovx-foot{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#6b7280}
+.ovx-foot .m{display:inline-flex;align-items:center;gap:4px;background:#f9fbfc;
+  border:1px solid #f1f2f4;border-radius:6px;padding:4px 7px;white-space:nowrap}
+.ovx-foot .r{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
+.ovx-foot svg{flex:0 0 auto;opacity:.6}
+/* Module hues, in the hrx chip palette. The custom properties feed the left
+   accent, the module tag, the avatar and the progress fill.
+   (No backticks in here - this block lives inside a JS template literal.) */
+.tint-inbox        {--ovx-hue:#195ce5;--ovx-hue-bg:#e8effc}
+.tint-agent        {--ovx-hue:#6b4cc4;--ovx-hue-bg:#efeafc}
+.tint-commerce     {--ovx-hue:#15803d;--ovx-hue-bg:#e6f6ec}
+.tint-invoicing    {--ovx-hue:#c2570f;--ovx-hue-bg:#fff0e9}
+.tint-marketing    {--ovx-hue:#c43b6b;--ovx-hue-bg:#fbe7ee}
+.tint-crm          {--ovx-hue:#2c7bb0;--ovx-hue-bg:#e3f1fb}
+.tint-reservations,.tint-bookings{--ovx-hue:#a16207;--ovx-hue-bg:#fdf3d7}
+.tint-settings     {--ovx-hue:#4a5460;--ovx-hue-bg:#eef0f3}
 @media (max-width:991.98px){
 .opc{height:auto;min-height:0;max-height:72vh}
 }
@@ -149,12 +156,21 @@ const OVERVIEW_CSS = `/* ---- Overview shell: console data rail + task board ---
   /* Stacked, the Operator sits ABOVE the board, so pinning it would park it on
      top of the thing you scrolled down to read. */
   .ops-ov-side{width:100%;flex:1 1 auto;position:static}
-  .ops-ov-board{width:100%}
+  .ovx-main{width:100%}
 }
 @media (max-width:575.98px){
-.ops-ov-col{flex:0 0 82%;width:82%}
+.ovx-col{flex:0 0 82%;width:82%}
 }
 `;
+
+/** Stat-tile tone per board column, so the headline row reads left-to-right
+ *  from backlog to done: neutral, blue (active), soft, dark (shipped). */
+const STAT_TONES: Record<WorkColumn, "soft" | "dark" | "blue" | undefined> = {
+  todo: undefined,
+  doing: "blue",
+  review: "soft",
+  ready: "dark",
+};
 
 /** Initials for the card avatar. "Ada Lovelace" -> AL, "Vercel" -> VE. */
 function initials(name: string): string {
@@ -175,8 +191,8 @@ function shortDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
-// Footer icons — thin line set, matching the card design's calendar / comment /
-// link glyphs. Module-level consts, per the house style for inline SVG.
+// Footer icons — thin line set, matching the kit's calendar / comment / link
+// glyphs. Module-level consts, per the house style for inline SVG.
 const ICON_DATE = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"
        strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -215,19 +231,19 @@ function CardMedia({ media }: { media: WorkMedia[] }) {
 
   if (first.kind === "audio") {
     return (
-      <div className="ops-ov-audio">
+      <div className="ovx-audio">
         <b aria-hidden="true">{ICON_PLAY}</b>
         Call recording
       </div>
     );
   }
   return (
-    <div className="ops-ov-media">
+    <div className="ovx-media">
       {first.kind === "video" ? (
         <>
           {/* muted + preload=metadata: a poster frame, not a playing video in a list */}
           <video src={first.url} muted playsInline preload="metadata" tabIndex={-1} aria-hidden="true" />
-          <span className="ops-ov-play" aria-hidden="true"><b>{ICON_PLAY}</b></span>
+          <span className="ovx-play" aria-hidden="true"><b>{ICON_PLAY}</b></span>
         </>
       ) : (
         <img
@@ -239,17 +255,18 @@ function CardMedia({ media }: { media: WorkMedia[] }) {
           onError={() => setBroken(true)}
         />
       )}
-      {extra > 0 && <span className="ops-ov-more">+{extra}</span>}
+      {extra > 0 && <span className="ovx-more">+{extra}</span>}
     </div>
   );
 }
 
-/** Tag text as the design's hashtag chips: "AI Agent" -> "#ai-agent". */
+/** Tag text as hashtag chips: "AI Agent" -> "#ai-agent". */
 const hashTag = (t: string) => `#${t.toLowerCase().replace(/\s+/g, "-")}`;
 
 /** One work item. The whole card links to the record it was derived from.
- *  The card is tinted by module, so colour tells you which part of the business
- *  a card belongs to before you read it. */
+ *  The card carries a module-hued accent (left edge, first tag, avatar,
+ *  progress fill), so colour tells you which part of the business a card
+ *  belongs to before you read it. */
 function WorkCardView({
   card, base, currency, dragging, onDragStart, onDragEnd,
 }: {
@@ -265,7 +282,7 @@ function WorkCardView({
   return (
     <Link
       to={`${base}/${card.to_path}`}
-      className={`ops-ov-card tint-${card.module}${dragging ? " dragging" : ""}`}
+      className={`ovx-card tint-${card.module}${dragging ? " dragging" : ""}`}
       aria-label={`${card.title} — ${card.detail}`}
       draggable={canMove}
       onDragStart={(e) => {
@@ -277,9 +294,10 @@ function WorkCardView({
       }}
       onDragEnd={onDragEnd}
     >
-      <div className="ops-ov-card-top">
-        {tags.map((t) => <span key={t} className="ops-ov-chip">{hashTag(t)}</span>)}
-        <span className="ops-ov-dots" aria-hidden="true">•••</span>
+      <div className="ovx-top">
+        {tags.map((t, i) => (
+          <span key={t} className={`ovx-tag${i === 0 ? " mod" : ""}`}>{hashTag(t)}</span>
+        ))}
       </div>
 
       <h3>{card.title}</h3>
@@ -288,25 +306,23 @@ function WorkCardView({
       <CardMedia media={media} />
 
       {card.progress != null && (
-        <div className="ops-ov-prog">
-          <div className="ops-ov-prog-top">Progress<b>{card.progress}%</b></div>
-          <div className="ops-ov-prog-dots" aria-hidden="true">
-            {Array.from({ length: 10 }, (_, i) => (
-              <i key={i} className={i < Math.round(card.progress! / 10) ? "on" : ""} />
-            ))}
+        <div className="ovx-prog">
+          <div className="ovx-prog-top">Progress<b>{card.progress}%</b></div>
+          <div className="ovx-prog-bar" aria-hidden="true">
+            <i style={{ width: `${Math.min(100, Math.max(0, card.progress))}%` }} />
           </div>
         </div>
       )}
 
-      <div className="ops-ov-who">
-        <span className="ops-ov-av" aria-hidden="true">{initials(card.who)}</span>
+      <div className="ovx-who">
+        <span className="ovx-av" aria-hidden="true">{initials(card.who)}</span>
         <span>
           <b>{card.who}</b>
           <i>{card.who_role}</i>
         </span>
       </div>
 
-      <div className="ops-ov-foot">
+      <div className="ovx-foot">
         <span className="m">{ICON_DATE}{shortDate(card.occurred_at)}</span>
         <span className="r">
           {card.amount_cents != null && card.amount_cents > 0 && (
@@ -456,62 +472,78 @@ export default function OverviewPage() {
       <style>{OVERVIEW_CSS}</style>
 
       <div className="ops-ov">
-        {/* ================= Left rail: this console's own data ================= */}
+        {/* ================= Left rail: the AI Operator ========================= */}
         <div className="ops-ov-side">
           <OperatorChat orgId={orgId} opsBase={opsBase} />
         </div>
+
         {/* ================= Work board =========================================
             Fed by app_org_work_board: every row that represents outstanding work
             anywhere in this business becomes a card, and its column comes from
             that row's real status. Cards for modules this vertical doesn't run
             are dropped here — the console config owns that decision, not SQL. */}
-        {notice && (
-          <div className="ops-ov-notice" role="status">
-            <span>{notice}</span>
-            <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button>
-          </div>
-        )}
+        <div className="ovx-main">
+          {notice && (
+            <div className="ovx-notice" role="status">
+              <span>{notice}</span>
+              <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button>
+            </div>
+          )}
 
-        <div className="ops-ov-board" aria-label="Work board">
-          {WORK_COLUMNS.map(({ key, label }) => {
-            const cards = visibleCards.filter((c) => c.col === key);
-            return (
-              <section
+          {/* Headline metrics: the server's true totals per stage (a column can
+              list 8 cards while holding 17). No deltas — the board RPC carries
+              no prior-window comparison to show. */}
+          <div className="hrx-statrow ovx-stats" role="group" aria-label="Work by stage">
+            {WORK_COLUMNS.map(({ key, label }) => (
+              <StatTile
                 key={key}
-                className={`ops-ov-col col-${key}${overCol === key && dragId ? " dropping" : ""}`}
-                aria-label={label}
-                onDragOver={(e) => {
-                  if (!dragId || !movableColumns(dragId).includes(key)) return;
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                  setOverCol(key);
-                }}
-                onDragLeave={() => setOverCol((c) => (c === key ? null : c))}
-                onDrop={(e) => { e.preventDefault(); void drop(e.dataTransfer.getData("text/plain") || dragId || "", key); }}
-              >
-                <header className="ops-ov-colhead">
-                  <span className="chev" aria-hidden="true">›</span>
-                  <b>{label}</b>
-                  <span className="n">{board?.counts?.[key] ?? 0}</span>
-                  <span className="dots" aria-hidden="true">⋮</span>
-                </header>
-                {cards.length === 0 ? (
-                  <div className="ops-ov-empty">Nothing here</div>
-                ) : (
-                  <div className="ops-ov-cards">
-                    {cards.map((c) => (
-                      <WorkCardView
-                        key={c.id} card={c} base={opsBase} currency={currency}
-                        dragging={dragId === c.id}
-                        onDragStart={() => setDragId(c.id)}
-                        onDragEnd={() => { setDragId(null); setOverCol(null); }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </section>
-            );
-          })}
+                label={label}
+                value={board?.counts?.[key] ?? 0}
+                tone={STAT_TONES[key]}
+              />
+            ))}
+          </div>
+
+          <div className="ops-ov-board" aria-label="Work board">
+            {WORK_COLUMNS.map(({ key, label }) => {
+              const cards = visibleCards.filter((c) => c.col === key);
+              return (
+                <section
+                  key={key}
+                  className={`ovx-col col-${key}${overCol === key && dragId ? " dropping" : ""}`}
+                  aria-label={label}
+                  onDragOver={(e) => {
+                    if (!dragId || !movableColumns(dragId).includes(key)) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    setOverCol(key);
+                  }}
+                  onDragLeave={() => setOverCol((c) => (c === key ? null : c))}
+                  onDrop={(e) => { e.preventDefault(); void drop(e.dataTransfer.getData("text/plain") || dragId || "", key); }}
+                >
+                  <header className="ovx-colhead">
+                    <span className="ovx-dot" aria-hidden="true" />
+                    <b>{label}</b>
+                    <span className="ovx-count">{board?.counts?.[key] ?? 0}</span>
+                  </header>
+                  {cards.length === 0 ? (
+                    <div className="ovx-empty">Nothing here</div>
+                  ) : (
+                    <div className="ovx-cards">
+                      {cards.map((c) => (
+                        <WorkCardView
+                          key={c.id} card={c} base={opsBase} currency={currency}
+                          dragging={dragId === c.id}
+                          onDragStart={() => setDragId(c.id)}
+                          onDragEnd={() => { setDragId(null); setOverCol(null); }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

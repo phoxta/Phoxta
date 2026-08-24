@@ -7,6 +7,23 @@ import { toast, toastError } from "@/lib/ops/feedback";
 
 type Props = { orgId: string; productId: string; basePriceCents: number; currency: string };
 
+const CSS = `
+.cmx-vm-sm{font-size:13px}
+.cmx-vm-muted{color:var(--hrx-muted)}
+.cmx-vm-strong{font-weight:600;color:var(--hrx-ink)}
+.cmx-vm-danger{color:#dc2626;font-weight:600}
+.cmx-vm-wrap{background:#fff;border:1px solid var(--hrx-border-soft);border-radius:12px;overflow-x:auto;margin-bottom:8px}
+.cmx-vm-table{width:100%;border-collapse:collapse;font-size:13px}
+.cmx-vm-table thead th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--hrx-muted);padding:8px 10px;border-bottom:1px solid var(--hrx-border-soft);white-space:nowrap}
+.cmx-vm-table td{padding:8px 10px;border-bottom:1px solid #f1f2f4;vertical-align:top}
+.cmx-vm-table tbody th{text-align:left;font-size:13px;font-weight:600;color:var(--hrx-ink);padding:8px 10px;border-bottom:1px solid #f1f2f4;white-space:nowrap;vertical-align:middle}
+.cmx-vm-table tbody tr:last-child td,.cmx-vm-table tbody tr:last-child th{border-bottom:0}
+.cmx-vm-stick{position:sticky;left:0;background:#fff}
+.cmx-vm-pill-sm{height:34px;padding:0 14px;font-size:13px}
+.cmx-vm-linkbtn{background:none;border:0;padding:0;font-size:13px;font-weight:500;color:var(--hrx-muted);cursor:pointer;white-space:nowrap}
+.cmx-vm-linkbtn:hover{color:var(--hrx-ink);text-decoration:underline}
+`;
+
 // Editable size × colour grid for one product (retail/fashion): per-cell stock
 // and an optional per-cell price override (blank = inherit the product price).
 export default function VariantMatrix({ orgId, productId, basePriceCents, currency }: Props) {
@@ -117,13 +134,21 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
     }
   }
 
-  if (loading) return <div className="fz-font-sm neutral-500 p-2">Loading variants…</div>;
+  if (loading) {
+    return (
+      <div className="p-2">
+        <style>{CSS}</style>
+        <div className="cmx-vm-sm cmx-vm-muted">Loading variants…</div>
+      </div>
+    );
+  }
 
   if (variants.length === 0) {
     return (
       <div className="p-2">
-        <div className="fz-font-sm neutral-500 mb-2">No variants yet. Set sizes &amp; colors in the editor, then generate the grid.</div>
-        <button type="button" className="btn btn-outline-dark btn-sm rounded-3" onClick={gen} disabled={busy}>
+        <style>{CSS}</style>
+        <div className="cmx-vm-sm cmx-vm-muted mb-2">No variants yet. Set sizes &amp; colors in the editor, then generate the grid.</div>
+        <button type="button" className="hrx-pill cmx-vm-pill-sm" onClick={gen} disabled={busy}>
           {busy ? "…" : "Generate from sizes & colors"}
         </button>
       </div>
@@ -142,27 +167,28 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
 
   return (
     <div className="p-2">
-      <div className="fz-font-sm neutral-500 mb-2">
-        Stock &amp; price by size × color · <span className="fw-600 neutral-700">{total} in stock</span>
-        {outOfStock > 0 && <span className="text-danger fw-600"> · {outOfStock} variant{outOfStock === 1 ? "" : "s"} at 0</span>}
-        <span className="neutral-400"> · blank price = inherits {formatPrice(basePriceCents, currency)}</span>
+      <style>{CSS}</style>
+      <div className="cmx-vm-sm cmx-vm-muted mb-2">
+        Stock &amp; price by size × color · <span className="cmx-vm-strong">{total} in stock</span>
+        {outOfStock > 0 && <span className="cmx-vm-danger"> · {outOfStock} variant{outOfStock === 1 ? "" : "s"} at 0</span>}
+        <span> · blank price = inherits {formatPrice(basePriceCents, currency)}</span>
       </div>
-      <div className="ops-scroll-x bg-neutral-0 rounded-3 border-100 mb-2">
-        <table className="table table-sm align-middle mb-0" style={{ minWidth: gridMinWidth }}>
+      <div className="cmx-vm-wrap">
+        <table className="cmx-vm-table" style={{ minWidth: gridMinWidth }}>
           <caption className="visually-hidden">Stock and price override for every size and color combination</caption>
           <thead>
             <tr>
-              <th scope="col" className="fz-font-sm neutral-500 fw-500" style={{ position: "sticky", left: 0, background: "var(--at-neutral-0)", zIndex: 2 }}>Size</th>
-              {colors.map((c) => <th key={c} scope="col" className="fz-font-sm fw-600 text-nowrap">{c}</th>)}
+              <th scope="col" className="cmx-vm-stick" style={{ zIndex: 2 }}>Size</th>
+              {colors.map((c) => <th key={c} scope="col">{c}</th>)}
             </tr>
           </thead>
           <tbody>
             {sizes.map((size) => (
               <tr key={size}>
-                <th scope="row" className="fz-font-sm fw-600 text-nowrap" style={{ position: "sticky", left: 0, background: "var(--at-neutral-0)", zIndex: 1 }}>{size}</th>
+                <th scope="row" className="cmx-vm-stick" style={{ zIndex: 1 }}>{size}</th>
                 {colors.map((color) => {
                   const v = cell(size, color);
-                  if (!v) return <td key={color} className="neutral-400 text-center">—</td>;
+                  if (!v) return <td key={color} className="cmx-vm-muted text-center">—</td>;
                   const stockVal = stockDrafts[v.id] ?? String(v.stock);
                   const priceVal = priceDrafts[v.id] ?? (v.price_cents == null ? "" : (v.price_cents / 100).toFixed(2));
                   return (
@@ -173,7 +199,7 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
                           min={0}
                           step={1}
                           aria-label={`Stock for ${size} / ${color}`}
-                          className={`form-control form-control-sm rounded-2 ${v.stock === 0 ? "border-danger" : ""}`}
+                          className={`form-control form-control-sm ${v.stock === 0 ? "border-danger" : ""}`}
                           value={stockVal}
                           onChange={(e) => setStockDrafts((d) => ({ ...d, [v.id]: e.target.value }))}
                           onBlur={() => saveStock(v.id)}
@@ -183,14 +209,14 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
                           min={0}
                           step={0.01}
                           aria-label={`Price override for ${size} / ${color}`}
-                          className="form-control form-control-sm rounded-2"
+                          className="form-control form-control-sm"
                           placeholder="price"
                           title={v.price_cents == null ? `Inherits ${formatPrice(basePriceCents, currency)}` : formatPrice(v.price_cents, currency)}
                           value={priceVal}
                           onChange={(e) => setPriceDrafts((d) => ({ ...d, [v.id]: e.target.value }))}
                           onBlur={() => savePrice(v.id)}
                         />
-                        {v.stock === 0 && <span className="fz-font-sm text-danger fw-500">Sold out</span>}
+                        {v.stock === 0 && <span className="cmx-vm-sm cmx-vm-danger">Sold out</span>}
                       </div>
                     </td>
                   );
@@ -200,7 +226,7 @@ export default function VariantMatrix({ orgId, productId, basePriceCents, curren
           </tbody>
         </table>
       </div>
-      <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={gen} disabled={busy}>+ Sync new sizes / colors</button>
+      <button type="button" className="cmx-vm-linkbtn ops-tap" onClick={gen} disabled={busy}>+ Sync new sizes / colors</button>
     </div>
   );
 }

@@ -4,31 +4,30 @@ import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { getAgentSummary, getAgentConfig, type AgentSummary } from "@/lib/db/ops/agent";
 import { supabase } from "@/lib/supabaseClient";
+import { Card, Chip } from "@/components/dash/Ui";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 
 /**
- * One stat-tile treatment for the whole console — identical to the copy in
- * ops/OverviewPage.tsx so both pages read as the same product:
- * - a tile that navigates or expands gets the white card, a trailing marker and a hover lift
- * - a tile that only reports a number is recessed (bg-neutral-50) with no marker
- * - numerals shrink one step on phones so nothing overflows a two-up grid at 390px.
+ * hrx-kit treatment for the agent overview: metering as .hrx-stat tiles (a
+ * tile that navigates or expands is interactive — hover lift + trailing
+ * marker; an inert tile stays flat), drill-downs as .hrx-listrow rows.
  */
-const TILE_CSS = `
-.ops-tile{transition:border-color .15s ease,box-shadow .15s ease}
-.ops-tile-value,.ops-attn-value{overflow-wrap:anywhere}
-@media (max-width:575.98px){.ops-tile-value{font-size:24px}.ops-attn-value{font-size:32px}}
-.ops-tile-link{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;text-align:left;text-decoration:none}
-.ops-tile-link:hover .ops-tile,.ops-tile-link:focus-visible .ops-tile{border-color:var(--at-neutral-300)!important;box-shadow:0 6px 20px rgba(0,0,0,.07)}
-.ops-tile-link:hover .ops-tile-arrow{transform:translateX(3px)}
-.ops-tile-arrow{display:inline-block;transition:transform .15s ease}
-.ops-attn-card{box-shadow:0 2px 10px rgba(0,0,0,.05)}
-`;
-
-/** Row affordance for the QA drill-down list (whole row is one link). */
-const ROW_CSS = `
-.ops-row-link{display:flex;text-decoration:none;transition:background-color .15s ease}
-.ops-row-link:hover,.ops-row-link:focus-visible{background-color:var(--at-neutral-100)!important}
-.ops-row-link:hover .ops-tile-arrow{transform:translateX(3px)}
+const AGX_CSS = `
+.agx-tile{cursor:pointer;display:block;width:100%;height:100%;text-align:left;text-decoration:none;font:inherit;transition:border-color .15s ease,box-shadow .15s ease}
+.agx-tile:hover,.agx-tile:focus-visible{border-color:var(--hrx-blue);box-shadow:0 12px 30px -18px rgba(25,92,229,.5);color:inherit;text-decoration:none}
+.agx-tile.tint-dark:hover,.agx-tile.tint-dark:focus-visible{border-color:var(--hrx-ink);box-shadow:0 12px 30px -18px rgba(0,0,0,.55);color:#fff}
+.agx-tile:hover .agx-mark{transform:translateX(3px)}
+.agx-mark{display:inline-block;margin-left:auto;color:var(--hrx-muted);transition:transform .15s ease}
+.tint-dark .agx-mark,.tint-blue .agx-mark{color:rgba(255,255,255,.65)}
+.agx-sub{display:block;font-size:12px;font-weight:500;color:var(--hrx-muted);margin-top:6px}
+.tint-dark .agx-sub{color:rgba(255,255,255,.6)}
+.tint-blue .agx-sub{color:rgba(255,255,255,.7)}
+.agx-alert{background:#fdf3d7;border:1px solid #f2dfa6;border-radius:16px;color:#a16207;padding:12px 16px;font-size:14px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px}
+.agx-link{background:none;border:0;padding:0;font-size:13px;font-weight:500;color:var(--hrx-muted);text-decoration:none;cursor:pointer}
+.agx-link:hover{color:var(--hrx-ink)}
+.agx-sechead{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.agx-loc{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:10px 0;border-top:1px solid var(--hrx-border-soft)}
+.agx-loc:first-child{border-top:0;padding-top:0}
 `;
 
 /** The four capability toggles that actually exist on the agent config. */
@@ -73,6 +72,8 @@ type Tile = {
   to?: string;
   /** Present = the tile expands a panel in place. */
   qa?: boolean;
+  /** Optional hrx tint. */
+  tone?: "dark" | "blue";
 };
 
 /** The shared stat tile: navigating (arrow), expanding (chevron) or inert (flat). */
@@ -81,45 +82,45 @@ function StatTile({
   value,
   sub,
   to,
+  tone,
   onToggle,
   expanded,
   controls,
 }: Tile & { onToggle?: () => void; expanded?: boolean; controls?: string }) {
   const interactive = Boolean(to || onToggle);
+  const cls = `hrx-stat${tone ? ` tint-${tone}` : ""}${interactive ? " agx-tile" : ""}`;
   const body = (
-    <div className={`ops-tile rounded-4 p-3 p-md-4 h-100 border-100 ${interactive ? "bg-neutral-0" : "bg-neutral-50"}`}>
-      <div className="d-flex align-items-start gap-2 mb-2">
-        <span className="fz-font-sm neutral-500">{label}</span>
+    <>
+      <span className="l">
+        {label}
         {to && (
-          <span className="ms-auto neutral-400 ops-tile-arrow" aria-hidden="true">
+          <span className="agx-mark" aria-hidden="true">
             →
           </span>
         )}
         {onToggle && (
-          <span className="ms-auto neutral-400" aria-hidden="true">
+          <span className="agx-mark" aria-hidden="true">
             {expanded ? "▴" : "▾"}
           </span>
         )}
-      </div>
-      <div className="fz-32 ops-tile-value fw-700 lh-1 neutral-900">{value}</div>
-      {sub && <div className="fz-font-sm neutral-400 mt-1">{sub}</div>}
-    </div>
+      </span>
+      <div className="v">{value}</div>
+      {sub && <span className="agx-sub">{sub}</span>}
+    </>
   );
-  return (
-    <div className="col-6 col-md-4 col-xl-3">
-      {to ? (
-        <Link to={to} className="ops-tile-link text-decoration-none">
-          {body}
-        </Link>
-      ) : onToggle ? (
-        <button type="button" className="ops-tile-link" aria-expanded={expanded} aria-controls={controls} onClick={onToggle}>
-          {body}
-        </button>
-      ) : (
-        body
-      )}
-    </div>
-  );
+  if (to)
+    return (
+      <Link to={to} className={cls}>
+        {body}
+      </Link>
+    );
+  if (onToggle)
+    return (
+      <button type="button" className={cls} aria-expanded={expanded} aria-controls={controls} onClick={onToggle}>
+        {body}
+      </button>
+    );
+  return <div className={cls}>{body}</div>;
 }
 
 export default function AgentOverviewPage() {
@@ -224,7 +225,13 @@ export default function AgentOverviewPage() {
   // `to` is only set where a page actually shows that number's detail:
   // conversations live in the console inbox, outbound tasks in marketing.
   const stats: Tile[] = [
-    { label: "Conversations", value: num(conv.total), sub: `${num(conv.open)} open · ${num(conv.escalated)} escalated`, to: "../inbox" },
+    {
+      label: "Conversations",
+      value: num(conv.total),
+      sub: `${num(conv.open)} open · ${num(conv.escalated)} escalated`,
+      to: "../inbox",
+      tone: "dark",
+    },
     { label: "Qualified leads", value: num(conv.qualified) },
     { label: "After-hours calls captured", value: num(n("after_hours_calls")) },
     { label: "Appointments booked", value: num(n("bookings")) },
@@ -238,6 +245,7 @@ export default function AgentOverviewPage() {
           ? `${data.qaCount} graded · see the lowest`
           : "Scored automatically through the day",
       qa: true,
+      tone: "blue",
     },
     {
       // The provider bill is settled in US dollars, so this one figure is USD
@@ -251,7 +259,7 @@ export default function AgentOverviewPage() {
 
   if (loading) {
     return (
-      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">
+      <div className="hrx-card hrx-pad text-center" style={{ color: "var(--hrx-muted)" }} role="status">
         Loading…
       </div>
     );
@@ -259,36 +267,32 @@ export default function AgentOverviewPage() {
 
   return (
     <div>
-      <style>{TILE_CSS + ROW_CSS}</style>
+      <style>{AGX_CSS}</style>
 
       {showProblem && (
-        <div className="alert alert-warning rounded-4 d-flex align-items-start flex-wrap gap-2 fz-font-sm mb-4" role="alert">
+        <div className="agx-alert mb-4" role="alert">
           <span className="me-auto">
             Some numbers couldn't be loaded, so they show as a dash instead of a zero. {problem}
           </span>
-          <button type="button" className="btn btn-outline-dark btn-sm rounded-3 ops-tap" onClick={() => void reload()}>
+          <button type="button" className="hrx-seeall ops-tap" onClick={() => void reload()}>
             Retry
           </button>
-          <button
-            type="button"
-            className="btn btn-link neutral-500 text-decoration-none btn-sm ops-tap"
-            onClick={() => setDismissedError(problem)}
-          >
+          <button type="button" className="agx-link ops-tap" onClick={() => setDismissedError(problem)}>
             Dismiss
           </button>
         </div>
       )}
 
-      <section className="mb-5" aria-labelledby="agent-activity-h">
-        <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
-          <h2 id="agent-activity-h" className="fz-font-lg fw-600 neutral-900 m-0">
+      <section className="mb-4" aria-labelledby="agent-activity-h">
+        <div className="agx-sechead">
+          <h2 id="agent-activity-h" className="hrx-card-title">
             Agent activity
           </h2>
-          <Link to="operator" className="btn btn-link neutral-500 text-decoration-none fz-font-sm ops-tap ms-auto p-0">
+          <Link to="operator" className="hrx-seeall ms-auto">
             Approvals &amp; actions →
           </Link>
         </div>
-        <div className="row g-3">
+        <div className="hrx-statrow">
           {stats.map((st) =>
             st.qa ? (
               <StatTile
@@ -305,74 +309,68 @@ export default function AgentOverviewPage() {
         </div>
 
         {showQa && (
-          <div id="agent-qa-panel" className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 mt-3">
-            <h3 className="fz-font-md fw-600 neutral-900 mb-3">Lowest-scoring conversations this month</h3>
-            {(data?.worst ?? []).length === 0 ? (
-              <p className="neutral-500 fz-font-md mb-0">No graded conversations yet this month.</p>
-            ) : (
-              <ul className="list-unstyled m-0 d-flex flex-column gap-2">
-                {(data?.worst ?? []).map((w) => (
-                  <li key={w.id}>
-                    <Link
-                      to="../inbox"
-                      className="ops-row-link text-decoration-none ops-tap d-flex align-items-center flex-wrap gap-2 gap-md-3 p-2 rounded-3 bg-neutral-50"
-                    >
-                      <span className="fw-600 fz-font-md neutral-900">
-                        {channelLabel(w.channel_type)}
-                        {shortDay(w.created_at) && <span className="neutral-500 fw-400"> · {shortDay(w.created_at)}</span>}
+          <div id="agent-qa-panel" className="mt-3">
+            <Card title="Lowest-scoring conversations this month">
+              {(data?.worst ?? []).length === 0 ? (
+                <p className="m-0" style={{ fontSize: 14, color: "var(--hrx-muted)" }}>No graded conversations yet this month.</p>
+              ) : (
+                <div>
+                  {(data?.worst ?? []).map((w) => (
+                    <Link key={w.id} to="../inbox" className="hrx-listrow ops-tap">
+                      <div className="main">
+                        <p className="t">
+                          {channelLabel(w.channel_type)}
+                          {shortDay(w.created_at) && <span style={{ color: "var(--hrx-muted)", fontWeight: 400 }}> · {shortDay(w.created_at)}</span>}
+                        </p>
+                        {w.qa_verdict && <p className="s">{w.qa_verdict}</p>}
+                      </div>
+                      <Chip tone={w.qa_score <= 2 ? "danger" : "line"}>{w.qa_score}/5</Chip>
+                      <span className="agx-mark" aria-hidden="true" style={{ fontSize: 13 }}>
+                        Open inbox →
                       </span>
-                      <span
-                        className={`badge fw-500 ${w.qa_score <= 2 ? "bg-danger-subtle text-danger" : "bg-neutral-100 neutral-700"}`}
-                      >
-                        {w.qa_score}/5
-                      </span>
-                      {w.qa_verdict && <span className="neutral-500 fz-font-sm">{w.qa_verdict}</span>}
-                      <span className="ms-auto fz-font-sm neutral-400 ops-tile-arrow">Open inbox →</span>
                     </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  ))}
+                </div>
+              )}
+            </Card>
           </div>
         )}
       </section>
 
-      <div className="row g-4">
+      <div className="row g-3">
         <div className="col-lg-7">
-          <div className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 h-100">
-            <h2 className="fz-font-lg fw-600 neutral-900 mb-1">What the agent handles</h2>
-            <p className="fz-font-sm neutral-500 mb-3">Change these in Configure.</p>
+          <Card title="What the agent handles" className="h-100">
+            <p className="mb-3" style={{ fontSize: 13, color: "var(--hrx-muted)" }}>Change these in Configure.</p>
             <div className="d-flex flex-wrap gap-2">
               {REAL_CAPABILITIES.map((c) => {
                 const on = config?.capabilities?.[c.key] !== false;
                 return (
-                  <span key={c.key} className={`badge fw-500 ${on ? "bg-success-subtle text-success" : "bg-neutral-100 neutral-500"}`}>
+                  <Chip key={c.key} tone={on ? "ok" : "plain"}>
                     <span aria-hidden="true">{on ? "● " : "○ "}</span>
                     {c.label}
                     {/* State is spoken, not carried by colour alone. */}
                     <span className="visually-hidden">{on ? " — on" : " — off"}</span>
-                  </span>
+                  </Chip>
                 );
               })}
             </div>
-          </div>
+          </Card>
         </div>
         <div className="col-lg-5">
-          <div className="bg-neutral-0 rounded-4 p-3 p-md-4 border-100 h-100">
-            <h2 className="fz-font-lg fw-600 neutral-900 mb-3">Calls by location</h2>
+          <Card title="Calls by location" className="h-100">
             {Object.keys(byLocation).length === 0 ? (
-              <p className="neutral-500 fz-font-md mb-0">No calls logged yet.</p>
+              <p className="m-0" style={{ fontSize: 14, color: "var(--hrx-muted)" }}>No calls logged yet.</p>
             ) : (
-              <ul className="list-unstyled m-0 d-flex flex-column gap-2">
+              <ul className="list-unstyled m-0">
                 {Object.entries(byLocation).map(([name, count]) => (
-                  <li key={name} className="d-flex justify-content-between gap-3 fz-font-md">
-                    <span className="neutral-700">{name}</span>
-                    <span className="fw-600 neutral-900">{count}</span>
+                  <li key={name} className="agx-loc">
+                    <span>{name}</span>
+                    <span style={{ fontWeight: 600 }}>{count}</span>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

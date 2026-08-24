@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import SitePreviewModal from "@/shared/elements/SitePreviewModal";
 
 const PLUS_SVG = (
   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="11" viewBox="0 0 12 11" fill="none">
@@ -36,12 +37,31 @@ export default function PortfolioCard2({
   compareAt,
   dealLabel,
 }: PortfolioCard2Props) {
+  // External links are live demo sites — open them in the in-page preview
+  // popup instead of navigating away. Internal links keep SPA navigation.
+  const external = /^https?:\/\//.test(link);
+  const [preview, setPreview] = useState(false);
+  const openPreview = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return; // let the browser open a real tab
+    e.preventDefault();
+    setPreview(true);
+  };
+  const CardLink = ({ className, children }: { className: string; children: ReactNode }) =>
+    external ? (
+      <a href={link} onClick={openPreview} className={className}>
+        {children}
+      </a>
+    ) : (
+      <Link to={link} className={className}>
+        {children}
+      </Link>
+    );
   return (
     <div
       className={`alt-portfolio-item card-portfolio mb-50 at-hover-item ${classList}`.trim()}
       data-category={category}
     >
-      <Link to={link} className="alt-portfolio-thumb mb-15 p-relative fix d-block">
+      <CardLink className="alt-portfolio-thumb mb-15 p-relative fix d-block">
         <img src={img} alt={title} width={600} height={400} className="w-100 img-cover" />
         <span className="alt-portfolio-btn">
           <div className="content changeless">
@@ -58,23 +78,26 @@ export default function PortfolioCard2({
           </span>
         )}
         {featuredHtml}
-      </Link>
+      </CardLink>
       <div className="alt-portfolio-content d-flex justify-content-between">
         <h5 className="alt-portfolio-title mb-0 fw-600">
-          <Link to={link} className="common-underline">
+          <CardLink className="common-underline">
             {compareAt && (
               <del className="neutral-500 fw-400 me-2" aria-label={`Was ${compareAt}`}>
                 {compareAt}
               </del>
             )}
             {title}
-          </Link>
+          </CardLink>
         </h5>
         <Link to={linkCase} className="alt-portfolio-plus neutral-950 d-flex align-items-center gap-2">
           <span className="fz-font-label neutral-900 text-uppercase fw-600">View case</span>
           {PLUS_SVG}
         </Link>
       </div>
+      {external && (
+        <SitePreviewModal url={link} title={headline} open={preview} onClose={() => setPreview(false)} />
+      )}
     </div>
   );
 }

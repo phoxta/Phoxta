@@ -1,23 +1,29 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   CRM page  (.crm-*)
+   CRM page  (.crm-*)  —  restyled to the hrx dashboard kit.
    ───────────────────────────────────────────────────────────────────────
-   Built to the supplied design: a stat strip (new customers, activity, two
-   figures) sitting over a pipeline board.
+   A stat strip (new customers, activity, two figures) over a pipeline
+   board. Palette/typography follow src/styles/dashboard-theme.css:
+   Figtree, ink #272727, blue #195ce5, orange #fe5f2b, soft #f9fbfc,
+   borders #d9d9d9 / #ededed, 16px radii, 50px pills.
 
-   The LAYOUT follows the comp. The CONTENT does not invent. The comp is a
-   template mock — "Prepayments $12,076", "Tasks in progress 76", people named
-   Scarlett Floyd — and a console showing an owner a confident figure that is
-   not theirs is worse than one showing a plain zero. Every number here is read
-   from crm_contacts, and where the design implies a field this CRM does not
-   have, the slot is dropped rather than filled with something plausible.
+   Every number is read from crm_contacts — nothing is invented to fill a
+   slot the comp implied but this CRM does not store.
    ═══════════════════════════════════════════════════════════════════════ */
 
 .crm {
-  --crm-line: rgba(15, 23, 42, 0.08);
-  --crm-card: var(--at-neutral-0, #fff);
+  --crm-ink: #272727;
+  --crm-blue: #195ce5;
+  --crm-blue-deep: #1246b0;
+  --crm-orange: #fe5f2b;
+  --crm-soft: #f9fbfc;
+  --crm-border: #d9d9d9;
+  --crm-line: #ededed;
+  --crm-muted: #6b7280;
+  --crm-card: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  color: var(--crm-ink);
 }
 
 /* ── Toolbar ──────────────────────────────────────────────────────────── */
@@ -28,67 +34,88 @@
   flex-wrap: wrap;
 }
 
+.crm-bar__title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0 8px 0 0;
+}
+
+.crm-bar__count {
+  font-size: 13px;
+  color: var(--crm-muted);
+  white-space: nowrap;
+}
+
 .crm-bar__spacer {
   flex: 1 1 auto;
 }
 
+/* Toolbar buttons are the kit's pills. */
 .crm-tool {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--at-neutral-700, #374151);
-  font-size: 13px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--crm-line);
+  border-radius: 50px;
+  background: #fff;
+  color: var(--crm-ink);
+  font-size: 14px;
   font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .crm-tool:hover {
-  background: var(--at-neutral-50);
+  background: #f1f2f4;
 }
 
 .crm-tool[aria-pressed="true"] {
-  background: var(--at-neutral-100);
-  color: var(--at-neutral-900);
+  background: var(--crm-ink);
+  border-color: var(--crm-ink);
+  color: #fff;
 }
 
 .crm-tool:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: default;
 }
 
 .crm-tool--dark {
-  background: var(--at-neutral-900, #14161f);
+  background: var(--crm-ink);
+  border-color: var(--crm-ink);
   color: #fff;
-  border-radius: 999px;
   padding: 0 16px;
 }
 
 .crm-tool--dark:hover {
-  background: #000;
+  background: var(--crm-ink);
   color: #fff;
+  opacity: 0.85;
 }
 
 .crm-search {
   display: flex;
   align-items: center;
-  gap: 7px;
-  height: 34px;
-  padding: 0 11px;
-  background: var(--at-neutral-50);
-  border: 1px solid transparent;
-  border-radius: 9px;
-  min-width: 200px;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  background: #fff;
+  border: 1px solid var(--crm-line);
+  border-radius: 24px;
+  min-width: 210px;
+  color: var(--crm-muted);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .crm-search:focus-within {
-  background: var(--crm-card);
-  border-color: var(--at-neutral-300, #cbd5e1);
+  border-color: var(--crm-blue);
+  box-shadow: 0 0 0 0.2rem rgba(25, 92, 229, 0.12);
 }
 
 .crm-search input {
@@ -97,7 +124,36 @@
   border: 0;
   outline: 0;
   background: transparent;
+  font-size: 14px;
+  color: var(--crm-ink);
+}
+
+.crm-search input::placeholder {
+  color: var(--crm-muted);
+}
+
+/* ── Panels (add form + stat strip) ───────────────────────────────────── */
+.crm-panel {
+  background: var(--crm-card);
+  border: 1px solid var(--crm-border);
+  border-radius: 16px;
+  padding: clamp(16px, 1.6vw, 22px);
+  min-width: 0;
+}
+
+.crm-panel__h {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  color: var(--crm-ink);
+}
+
+.crm-panel .form-label,
+.crm .form-label {
   font-size: 13px;
+  font-weight: 500;
+  color: var(--crm-muted);
 }
 
 /* ── Stat strip ───────────────────────────────────────────────────────── */
@@ -105,21 +161,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 12px;
-}
-
-.crm-panel {
-  background: var(--crm-card);
-  border: 1px solid var(--crm-line);
-  border-radius: 16px;
-  padding: 16px 18px;
-  min-width: 0;
-}
-
-.crm-panel__h {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 10px;
-  color: var(--at-neutral-900);
 }
 
 .crm-minis {
@@ -131,20 +172,20 @@
 
 .crm-tile {
   background: var(--crm-card);
-  border: 1px solid var(--crm-line);
+  border: 1px solid var(--crm-border);
   border-radius: 16px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
 }
 
 .crm-tile__label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--at-neutral-700);
+  color: var(--crm-muted);
 }
 
 .crm-tile__row {
@@ -155,31 +196,39 @@
 }
 
 .crm-tile__n {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: var(--at-neutral-900);
+  font-size: clamp(24px, 2.2vw, 32px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--crm-ink);
 }
 
+/* Delta chips share the kit's chip tones. */
 .crm-delta {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: #d9f7e7;
-  color: #08704a;
+  padding: 3px 10px;
+  border-radius: 38px;
+  background: #e6f6ec;
+  color: #15803d;
   white-space: nowrap;
 }
 
 .crm-delta.is-down {
-  background: #fde7e7;
-  color: #9b1c1c;
+  background: #fff0e9;
+  color: var(--crm-orange);
 }
 
 .crm-delta.is-flat {
-  background: var(--at-neutral-100);
-  color: var(--at-neutral-500);
+  background: #f1f2f4;
+  color: var(--crm-muted);
+}
+
+/* Quiet helper text inside panels. */
+.crm-note {
+  font-size: 13px;
+  color: var(--crm-muted);
+  margin: 0;
 }
 
 /* ── Area chart ───────────────────────────────────────────────────────── */
@@ -196,7 +245,7 @@
 
 .crm-axis {
   font-size: 10.5px;
-  fill: var(--at-neutral-500);
+  color: var(--crm-muted);
 }
 
 .crm-legend {
@@ -211,7 +260,7 @@
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  color: var(--at-neutral-500);
+  color: var(--crm-muted);
 }
 
 .crm-legend i {
@@ -236,21 +285,21 @@
 
 .crm-heat__lab {
   font-size: 10.5px;
-  color: var(--at-neutral-500);
+  color: var(--crm-muted);
   white-space: nowrap;
 }
 
 .crm-heat__cell {
   aspect-ratio: 1;
   border-radius: 4px;
-  background: var(--at-neutral-100);
+  background: #f1f2f4;
 }
 
 .crm-heat__foot {
   display: flex;
   justify-content: space-between;
   font-size: 10.5px;
-  color: var(--at-neutral-500);
+  color: var(--crm-muted);
   margin-top: 7px;
 }
 
@@ -258,48 +307,58 @@
 .crm-board {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(232px, 1fr);
+  grid-auto-columns: minmax(248px, 1fr);
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 4px;
   align-items: start;
 }
 
+/* Columns are soft cards; the white deal cards sit on the tint. */
 .crm-col {
   min-width: 0;
+  background: var(--crm-soft);
+  border: 1px solid var(--crm-line);
+  border-radius: 16px;
+  padding: 10px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .crm-col__h {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 2px 2px 10px;
+  padding: 4px 6px 12px;
 }
 
 .crm-col__h b {
   font-size: 15px;
   font-weight: 600;
-  color: var(--at-neutral-900);
+  letter-spacing: -0.02em;
+  color: var(--crm-ink);
 }
 
+/* Count chip — the kit's outlined chip. */
 .crm-col__n {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
+  min-width: 24px;
   height: 22px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--at-neutral-900);
-  color: #fff;
-  font-size: 11.5px;
+  padding: 0 8px;
+  border-radius: 38px;
+  background: #fff;
+  border: 1px solid var(--crm-line);
+  color: var(--crm-ink);
+  font-size: 12px;
   font-weight: 600;
 }
 
 .crm-col.dropping {
-  outline: 2px dashed var(--at-neutral-400);
-  outline-offset: 3px;
-  border-radius: 14px;
+  border-color: var(--crm-blue);
+  background: #f4f8fe;
+  outline: 2px dashed var(--crm-blue);
+  outline-offset: 2px;
 }
 
 .crm-cards {
@@ -315,14 +374,16 @@
   text-align: left;
   background: var(--crm-card);
   border: 1px solid var(--crm-line);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 13px 14px;
   cursor: grab;
   color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .crm-card:hover {
-  border-color: var(--at-neutral-300, #cbd5e1);
+  border-color: var(--crm-border);
+  box-shadow: 0 6px 18px -12px rgba(39, 39, 39, 0.35);
 }
 
 .crm-card.dragging {
@@ -330,11 +391,10 @@
   cursor: grabbing;
 }
 
-/* Each stage colours its own cards (STAGE_THEME, applied inline), so a flagged
-   card cannot take the background over — it would stop reading as part of its
-   column. It gets a ring instead, which reads on any of the four tints. */
+/* A flagged (high lead score) card gets a blue ring, so it still reads as
+   part of its column. */
 .crm-card.is-hot {
-  box-shadow: 0 0 0 2px rgba(67, 83, 216, 0.35);
+  box-shadow: 0 0 0 2px rgba(25, 92, 229, 0.3);
 }
 
 .crm-card__top {
@@ -344,38 +404,40 @@
   margin-bottom: 9px;
 }
 
+/* Stage/tag chip — tone comes inline from STAGE_THEME (kit chip tints). */
 .crm-tag {
   font-size: 11px;
   font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 7px;
+  padding: 4px 10px;
+  border-radius: 38px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 150px;
 }
 
 .crm-card__menu {
   margin-left: auto;
   border: 0;
   background: transparent;
-  color: var(--at-neutral-400);
+  color: var(--crm-muted);
   cursor: pointer;
   line-height: 1;
-  padding: 2px 5px;
-  border-radius: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
 .crm-card__menu:hover {
-  background: var(--at-neutral-100);
-  color: var(--at-neutral-900);
+  background: #f1f2f4;
+  color: var(--crm-ink);
 }
 
 .crm-card__name {
   font-size: 15px;
   font-weight: 600;
-  color: var(--at-neutral-900);
+  letter-spacing: -0.02em;
+  color: var(--crm-ink);
   margin: 0 0 5px;
   overflow-wrap: anywhere;
 }
@@ -383,7 +445,7 @@
 .crm-card__desc {
   font-size: 12.5px;
   line-height: 1.45;
-  color: var(--at-neutral-500);
+  color: var(--crm-muted);
   margin: 0 0 11px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -408,7 +470,7 @@
   display: block;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--at-neutral-900);
+  color: var(--crm-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -417,23 +479,26 @@
 .crm-card__who span {
   display: block;
   font-size: 11px;
-  color: var(--at-neutral-500);
+  color: var(--crm-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Initials avatar in the kit's orange tint (matches .hrx-avat). */
 .crm-avatar {
-  flex: 0 0 26px;
-  width: 26px;
-  height: 26px;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
   font-weight: 700;
-  color: #fff;
+  background: #fff0e9;
+  color: var(--crm-orange);
+  border: 1px solid #ffd9c8;
 }
 
 .crm-card__foot {
@@ -441,8 +506,8 @@
   align-items: center;
   gap: 12px;
   font-size: 11.5px;
-  color: var(--at-neutral-500);
-  border-top: 1px solid var(--crm-line);
+  color: var(--crm-muted);
+  border-top: 1px solid #f1f2f4;
   padding-top: 9px;
   flex-wrap: wrap;
 }
@@ -459,12 +524,12 @@
 }
 
 .crm-empty {
-  border: 1px dashed var(--crm-line);
+  border: 1px dashed var(--crm-border);
   border-radius: 12px;
-  padding: 16px 12px;
+  padding: 18px 12px;
   text-align: center;
   font-size: 12.5px;
-  color: var(--at-neutral-400);
+  color: var(--crm-muted);
 }
 
 @media (max-width: 1199.98px) {

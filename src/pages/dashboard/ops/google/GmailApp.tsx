@@ -3,6 +3,28 @@ import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { toast, toastError } from "@/lib/ops/feedback";
 import { gmailList, gmailGet, gmailSend, gmailImport, gmailSync, gmailBackfillHtml, type GmailMsg, type GmailFull } from "@/lib/db/ops/google";
+import { Card, Empty, InitialAvatar } from "@/components/dash/Ui";
+
+const CSS = `
+.ggx-gmail .hrx-pill:disabled { opacity: 0.55; cursor: not-allowed; }
+.ggx-alert { background: #fdeaea; color: #dc2626; border: 1px solid #f6c9c9; border-radius: 12px; padding: 10px 14px; font-size: 14px; }
+.ggx-maillist { max-height: 560px; overflow: auto; }
+.ggx-mailrow { padding: 12px 10px; border-radius: 12px; cursor: pointer; transition: background-color 0.12s ease; }
+.ggx-mailrow:hover { background: var(--hrx-soft); }
+.ggx-mailrow.sel { background: #e8effc; }
+.ggx-mailrow .row1 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.ggx-mailrow .who { font-size: 14px; font-weight: 500; color: var(--hrx-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ggx-mailrow .when { font-size: 12px; color: var(--hrx-muted); white-space: nowrap; flex-shrink: 0; }
+.ggx-mailrow .subj { display: block; font-size: 14px; color: var(--hrx-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.ggx-mailrow .snip { display: block; font-size: 13px; color: var(--hrx-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.ggx-mailrow.unread .who, .ggx-mailrow.unread .subj { font-weight: 700; }
+.ggx-mailrow.unread .who::after { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 999px; background: var(--hrx-blue); margin-left: 6px; vertical-align: middle; }
+.ggx-msgmeta { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; }
+.ggx-msgmeta .from { font-size: 13px; color: var(--hrx-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ggx-msgbody { font-size: 14.5px; line-height: 1.6; color: var(--hrx-ink); white-space: pre-wrap; max-height: 340px; overflow: auto; background: var(--hrx-soft); border: 1px solid var(--hrx-border-soft); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+.ggx-replybar { border-top: 1px solid var(--hrx-border-soft); padding-top: 16px; }
+.ggx-loading { background: var(--hrx-soft); border: 1px solid var(--hrx-border-soft); border-radius: 16px; padding: 32px 24px; text-align: center; color: var(--hrx-muted); font-size: 14px; }
+`;
 
 const emailOf = (raw: string) => (raw.match(/<([^>]+)>/)?.[1] ?? raw).trim();
 const nameOf = (raw: string) => raw.replace(/<[^>]+>/, "").replace(/"/g, "").trim() || raw;
@@ -78,15 +100,16 @@ export default function GmailApp({ orgId }: { orgId: string }) {
   }
 
   return (
-    <div className="row g-4">
-      {error && <div className="col-12"><div className="alert alert-danger py-2 px-3 fz-font-md mb-0" role="alert">{error}</div></div>}
+    <div className="row g-4 ggx-gmail">
+      <style>{CSS}</style>
+      {error && <div className="col-12"><div className="ggx-alert" role="alert">{error}</div></div>}
 
       <div className="col-lg-5">
-        <div className="d-flex gap-2 mb-2">
-          <button type="button" className="btn btn-dark rounded-3 flex-grow-1" onClick={() => { setComposing(true); setSelected(null); }}>✎ Compose</button>
+        <div className="d-flex flex-wrap gap-2 mb-3">
+          <button type="button" className="hrx-pill primary flex-grow-1 justify-content-center" onClick={() => { setComposing(true); setSelected(null); }}>✎ Compose</button>
           <button
             type="button"
-            className="btn btn-outline-dark rounded-3 px-3 text-nowrap"
+            className="hrx-pill"
             disabled={syncing}
             onClick={async () => {
               setSyncing(true);
@@ -103,7 +126,7 @@ export default function GmailApp({ orgId }: { orgId: string }) {
               fetched again for messages already in the Inbox. */}
           <button
             type="button"
-            className="btn btn-outline-dark rounded-3 px-3 text-nowrap"
+            className="hrx-pill"
             disabled={backfilling}
             title="Re-fetch the formatting for mail imported before it was kept"
             onClick={async () => {
@@ -132,56 +155,69 @@ export default function GmailApp({ orgId }: { orgId: string }) {
             {backfilling ? "…" : "Restore formatting"}
           </button>
         </div>
-        <div className="d-flex gap-1 mb-2">
+        <div className="hrx-tabbar mb-3" role="group" aria-label="Mail folders">
           {FOLDERS.map((f) => (
-            <button key={f.key} type="button" onClick={() => { setFolder(f.key); setApplied(search.trim()); }} className={`btn btn-sm rounded-pill px-3 ${folder === f.key ? "btn-dark" : "btn-outline-secondary"}`}>{f.label}</button>
+            <button key={f.key} type="button" onClick={() => { setFolder(f.key); setApplied(search.trim()); }} className={`hrx-tab${folder === f.key ? " active" : ""}`} aria-pressed={folder === f.key}>{f.label}</button>
           ))}
         </div>
-        <form className="d-flex gap-2 mb-2" onSubmit={(e) => { e.preventDefault(); runSearch(); }}>
-          <input className="form-control form-control-sm rounded-3" type="search" aria-label="Search mail" placeholder="Search mail…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <button className="btn btn-outline-secondary btn-sm rounded-3 px-3" type="submit">Search</button>
+        <form className="d-flex gap-2 mb-3" onSubmit={(e) => { e.preventDefault(); runSearch(); }}>
+          <input className="form-control form-control-sm" type="search" aria-label="Search mail" placeholder="Search mail…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <button className="hrx-pill dark" type="submit" style={{ height: 38 }}>Search</button>
         </form>
         {loading ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500" role="status">Loading…</div>
+          <div className="ggx-loading" role="status">Loading…</div>
         ) : list.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No messages.</div>
+          <Empty title="No messages" icon={<span aria-hidden="true">✉️</span>}>Nothing in this folder matches.</Empty>
         ) : (
-          <div className="d-flex flex-column gap-2" style={{ maxHeight: 560, overflow: "auto" }}>
-            {list.map((m) => (
-              <button key={m.id} type="button" onClick={() => { setComposing(false); open(m); }} className={`text-start bg-neutral-0 rounded-4 p-3 border-100 ${selected?.id === m.id ? "bg-neutral-100" : ""}`}>
-                <div className="d-flex justify-content-between gap-2">
-                  <span className={`text-truncate ${m.unread ? "fw-600" : "fw-500 neutral-700"}`}>{nameOf(m.from)}</span>
-                  <span className="fz-font-sm neutral-400 text-nowrap">{m.date ? new Date(m.date).toLocaleDateString() : ""}</span>
-                </div>
-                <div className={`fz-font-md text-truncate ${m.unread ? "fw-600" : "neutral-700"}`}>{m.subject}</div>
-                <div className="fz-font-sm neutral-500 text-truncate">{m.snippet}</div>
-              </button>
-            ))}
-          </div>
+          <Card pad={false} className="ggx-maillist">
+            <div className="px-2 py-1">
+              {list.map((m) => (
+                <button key={m.id} type="button" onClick={() => { setComposing(false); open(m); }} className={`hrx-listrow ggx-mailrow${selected?.id === m.id ? " sel" : ""}${m.unread ? " unread" : ""}`}>
+                  <InitialAvatar name={nameOf(m.from)} />
+                  <span className="main">
+                    <span className="row1">
+                      <span className="who">{nameOf(m.from)}</span>
+                      <span className="when">{m.date ? new Date(m.date).toLocaleDateString() : ""}</span>
+                    </span>
+                    <span className="subj">{m.subject}</span>
+                    <span className="snip">{m.snippet}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </Card>
         )}
       </div>
 
       <div className="col-lg-7">
         {composing ? (
-          <div className="bg-neutral-0 rounded-4 border-100 p-4">
-            <h6 className="fw-600 mb-3">New message</h6>
-            <input className="form-control rounded-3 mb-2" aria-label="To" placeholder="To" value={compose.to} onChange={(e) => setCompose({ ...compose, to: e.target.value })} />
-            <input className="form-control rounded-3 mb-2" aria-label="Subject" placeholder="Subject" value={compose.subject} onChange={(e) => setCompose({ ...compose, subject: e.target.value })} />
-            <textarea className="form-control rounded-3 mb-2" rows={8} aria-label="Message" placeholder="Write your message…" value={compose.body} onChange={(e) => setCompose({ ...compose, body: e.target.value })} />
-            <div className="d-flex gap-2">
-              <button type="button" className="btn btn-dark rounded-pill px-4" onClick={sendCompose} disabled={busy}>{busy ? "Sending…" : "Send"}</button>
-              <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setComposing(false)}>Discard</button>
+          <Card title="New message">
+            <label className="hrx-field">
+              <span>To</span>
+              <input className="form-control" placeholder="name@example.com" value={compose.to} onChange={(e) => setCompose({ ...compose, to: e.target.value })} />
+            </label>
+            <label className="hrx-field">
+              <span>Subject</span>
+              <input className="form-control" placeholder="Subject" value={compose.subject} onChange={(e) => setCompose({ ...compose, subject: e.target.value })} />
+            </label>
+            <label className="hrx-field">
+              <span>Message</span>
+              <textarea className="form-control" rows={8} placeholder="Write your message…" value={compose.body} onChange={(e) => setCompose({ ...compose, body: e.target.value })} />
+            </label>
+            <div className="d-flex align-items-center gap-2">
+              <button type="button" className="hrx-pill primary" onClick={sendCompose} disabled={busy}>{busy ? "Sending…" : "Send"}</button>
+              <button type="button" className="hrx-pill" onClick={() => setComposing(false)}>Discard</button>
             </div>
-          </div>
+          </Card>
         ) : !selected ? (
-          <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" style={{ minHeight: 200 }}>Select a message or compose a new one.</div>
+          <Empty title="No message open" icon={<span aria-hidden="true">📬</span>}>Select a message from the list, or compose a new one.</Empty>
         ) : (
-          <div className="bg-neutral-0 rounded-4 border-100 p-4">
-            <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
-              <h6 className="fw-600 mb-0">{selected.subject}</h6>
+          <Card
+            title={selected.subject}
+            right={
               <button
                 type="button"
-                className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap"
+                className="hrx-pill"
                 onClick={async () => {
                   const { ok, error } = await gmailImport(orgId, selected.id);
                   if (!ok || error) toastError(error ?? "Couldn't add.");
@@ -190,14 +226,21 @@ export default function GmailApp({ orgId }: { orgId: string }) {
               >
                 ↪ To Inbox
               </button>
+            }
+          >
+            <div className="ggx-msgmeta">
+              <InitialAvatar name={nameOf(selected.from)} size={32} />
+              <span className="from">{selected.from}{selected.date ? ` · ${new Date(selected.date).toLocaleString()}` : ""}</span>
             </div>
-            <div className="fz-font-sm neutral-500 mb-3">{selected.from}{selected.date ? ` · ${new Date(selected.date).toLocaleString()}` : ""}</div>
-            <div className="fz-font-md neutral-800 mb-3" style={{ whiteSpace: "pre-wrap", maxHeight: 340, overflow: "auto" }}>{selected.body}</div>
-            <form onSubmit={(e) => { e.preventDefault(); sendReply(); }} className="border-top border-100 pt-3">
-              <textarea className="form-control rounded-3 mb-2" rows={4} aria-label="Reply" value={reply} onChange={(e) => setReply(e.target.value)} placeholder={`Reply to ${nameOf(selected.from)}…`} />
-              <button type="submit" className="btn btn-dark rounded-pill px-4" disabled={busy || !reply.trim()}>{busy ? "Sending…" : "Send reply"}</button>
+            <div className="ggx-msgbody">{selected.body}</div>
+            <form onSubmit={(e) => { e.preventDefault(); sendReply(); }} className="ggx-replybar">
+              <label className="hrx-field">
+                <span>Reply</span>
+                <textarea className="form-control" rows={4} value={reply} onChange={(e) => setReply(e.target.value)} placeholder={`Reply to ${nameOf(selected.from)}…`} />
+              </label>
+              <button type="submit" className="hrx-pill primary" disabled={busy || !reply.trim()}>{busy ? "Sending…" : "Send reply"}</button>
             </form>
-          </div>
+          </Card>
         )}
       </div>
     </div>

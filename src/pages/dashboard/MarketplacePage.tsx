@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 import { useCachedData } from "@/lib/hooks/useCachedData";
@@ -8,6 +8,17 @@ import { formatPrice, type Blueprint } from "@/lib/db/marketplace";
 import { PROMO, promoPriceCents } from "@/lib/promo";
 import { blueprintCover } from "@/lib/blueprintCover";
 import { startBlueprintCheckout } from "@/lib/db/payments";
+import { PageHeader, Card, Chip, Empty } from "@/components/dash/Ui";
+
+// Page-local styles only — everything else comes from the .hrx kit.
+const CSS = `
+.mpx-cover { aspect-ratio: 16 / 10; border-radius: 16px 16px 0 0; }
+.mpx-tagline { font-size: 14px; color: var(--hrx-muted); margin: 0 0 14px; }
+.mpx-price { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+.mpx-price del { font-size: 14px; font-weight: 400; color: var(--hrx-muted); margin-right: 6px; }
+.mpx-tier { font-size: 13px; color: var(--hrx-muted); margin-top: 5px; }
+.mpx-buy:disabled { opacity: 0.55; pointer-events: none; }
+`;
 
 export default function MarketplacePage() {
   const { user } = useAuth();
@@ -21,8 +32,15 @@ export default function MarketplacePage() {
   const [vertical, setVertical] = useState<string>("All");
   const [buyingId, setBuyingId] = useState<string | null>(null);
 
+  // ?q= comes from the shell's top-bar search.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = (searchParams.get("q") ?? "").trim().toLowerCase();
+
   const verticals = useMemo(() => ["All", ...Array.from(new Set(items.map((i) => i.vertical))).sort()], [items]);
-  const shown = vertical === "All" ? items : items.filter((i) => i.vertical === vertical);
+  const byVertical = vertical === "All" ? items : items.filter((i) => i.vertical === vertical);
+  const shown = q
+    ? byVertical.filter((i) => `${i.name} ${i.tagline ?? ""} ${i.vertical ?? ""}`.toLowerCase().includes(q))
+    : byVertical;
 
   // Buying goes through Paystack — the webhook provisions the business after
   // the charge succeeds, so this only starts the hosted checkout.
@@ -40,89 +58,113 @@ export default function MarketplacePage() {
   }
 
   return (
-    <div>
+    <div className="d-flex flex-column gap-2">
       <PageMeta title="Phoxta - Marketplace" />
-      <div className="dash-sticky-head pb-4">
-        <h1 className="fw-600 mb-2 lh-1" style={{ fontSize: "clamp(2.5rem, 5vw, 3.75rem)" }}>Marketplace</h1>
-        <p className="neutral-500 mb-0 fz-font-lg">Validated, AI-powered businesses — make one your own and launch in minutes.</p>
-      </div>
+      <style>{CSS}</style>
+
+      <PageHeader
+        crumb="Portal"
+        title="Marketplace"
+        note="Validated, AI-powered businesses — make one your own and launch in minutes."
+        tabs={
+          !loading && items.length > 0 ? (
+            <div className="hrx-tabbar" role="tablist" aria-label="Filter by vertical">
+              {verticals.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="tab"
+                  aria-selected={vertical === v}
+                  onClick={() => setVertical(v)}
+                  className={`hrx-tab text-capitalize${vertical === v ? " active" : ""}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          ) : undefined
+        }
+      />
 
       {error && (
-        <div className="alert alert-warning py-2 px-3 fz-font-md" role="alert">
+        <div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">
           {error}
         </div>
       )}
 
-      {!loading && items.length > 0 && (
-        <div className="d-flex flex-wrap gap-2 mb-4">
-          {verticals.map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setVertical(v)}
-              className={`btn btn-sm rounded-pill px-3 ${vertical === v ? "btn-dark" : "btn-outline-secondary"}`}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+      {q && (
+        <p className="mb-0" style={{ fontSize: 14, color: "var(--hrx-muted)" }} role="status">
+          {shown.length} result{shown.length === 1 ? "" : "s"} for “{searchParams.get("q")}”
+          <button
+            type="button"
+            className="btn btn-link p-0 ms-2 fz-font-md text-decoration-underline"
+            onClick={() => setSearchParams({}, { replace: true })}
+          >
+            Clear
+          </button>
+        </p>
       )}
 
       {loading ? (
-        <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading marketplace…</div>
+        <Card>
+          <p className="text-center mb-0 py-4" style={{ color: "var(--hrx-muted)" }} role="status">
+            Loading marketplace…
+          </p>
+        </Card>
       ) : shown.length === 0 ? (
-        <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">
-          No businesses listed yet.
-        </div>
+        <Empty title="No businesses listed yet">
+          {q ? "Nothing matches that search — try a different word or clear the filter." : "Check back soon — new businesses are added regularly."}
+        </Empty>
       ) : (
-        <div className="row g-4">
+        <div className="row g-2">
           {shown.map((bp) => (
             <div key={bp.id} className="col-xl-4 col-md-6">
-              <div className="bg-neutral-0 rounded-4 h-100 border-100 d-flex flex-column overflow-hidden">
-                <Link
-                  to={`/dashboard/marketplace/${bp.slug}`}
-                  className="d-block"
-                  style={{ aspectRatio: "16 / 9", overflow: "hidden", background: "#f1efea" }}
-                >
+              <div className="hrx-card h-100 d-flex flex-column">
+                <Link to={`/dashboard/marketplace/${bp.slug}`} className="hrx-imgcard mpx-cover" aria-label={`${bp.name} — view details`}>
                   <img
                     src={blueprintCover(bp.slug, bp.cover_url)}
                     alt={bp.name}
+                    width={600}
+                    height={375}
                     loading="lazy"
-                    style={{ width: "100%", aspectRatio: "16 / 9", height: "auto", objectFit: "cover", display: "block" }}
                   />
+                  <span className="shade">
+                    <span className="cat text-capitalize">{bp.vertical}</span>
+                    <span className="name">{bp.name}</span>
+                  </span>
+                  <span className="corner-r">
+                    {bp.verified && <Chip tone="ok">Verified</Chip>}
+                    {PROMO.active && <Chip tone="orange">{PROMO.label}</Chip>}
+                  </span>
                 </Link>
-                <div className="p-3 d-flex flex-column flex-grow-1">
-                <div className="d-flex align-items-center gap-1 mb-2 flex-wrap">
-                  <span className="badge bg-neutral-100 neutral-700 fw-500">{bp.vertical}</span>
-                  {bp.verified && <span className="badge bg-success-subtle text-success fw-500">Verified</span>}
-                  {bp.ai_included && <span className="badge bg-neutral-100 neutral-700 fw-500">AI inside</span>}
-                </div>
-                <h6 className="fw-600 mb-1">
-                  <Link to={`/dashboard/marketplace/${bp.slug}`} className="neutral-900 text-decoration-none">
-                    {bp.name}
-                  </Link>
-                </h6>
-                <p className="fz-font-sm neutral-500 flex-grow-1 mb-0">{bp.tagline}</p>
-                <div className="d-flex align-items-center justify-content-between mt-3">
-                  <div>
-                    {PROMO.active ? (
-                      <div className="fw-700 fz-20 lh-1">
-                        <del className="neutral-500 fw-400 fz-font-md me-1">{formatPrice(bp.price_cents, bp.currency)}</del>
-                        {formatPrice(promoPriceCents(bp.price_cents), bp.currency)}
-                        <span className="badge bg-danger ms-2 align-middle">{PROMO.label}</span>
-                      </div>
-                    ) : (
-                      <div className="fw-700 fz-20 lh-1">{formatPrice(bp.price_cents, bp.currency)}</div>
-                    )}
-                    <div className="fz-font-sm neutral-500 text-capitalize">{bp.tier} · one-time</div>
+                <div className="hrx-pad d-flex flex-column flex-grow-1">
+                  {bp.ai_included && (
+                    <div className="mb-2">
+                      <Chip tone="blue">AI inside</Chip>
+                    </div>
+                  )}
+                  <p className="mpx-tagline flex-grow-1">{bp.tagline}</p>
+                  <div className="d-flex align-items-end justify-content-between gap-2 flex-wrap">
+                    <div>
+                      {PROMO.active ? (
+                        <div className="mpx-price">
+                          <del>{formatPrice(bp.price_cents, bp.currency)}</del>
+                          {formatPrice(promoPriceCents(bp.price_cents), bp.currency)}
+                        </div>
+                      ) : (
+                        <div className="mpx-price">{formatPrice(bp.price_cents, bp.currency)}</div>
+                      )}
+                      <div className="mpx-tier text-capitalize">{bp.tier} · one-time</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="hrx-pill primary mpx-buy"
+                      disabled={buyingId === bp.id}
+                      onClick={() => onBuy(bp)}
+                    >
+                      {buyingId === bp.id ? "Setting up…" : "Make it yours"}
+                    </button>
                   </div>
-                  <button type="button" className="at-btn" disabled={buyingId === bp.id} onClick={() => onBuy(bp)}>
-                    <span>
-                      <span className="text-1">{buyingId === bp.id ? "Setting up…" : "Make it yours"}</span>
-                      <span className="text-2">{buyingId === bp.id ? "Setting up…" : "Make it yours"}</span>
-                    </span>
-                  </button>
-                </div>
                 </div>
               </div>
             </div>

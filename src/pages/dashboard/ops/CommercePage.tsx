@@ -5,6 +5,7 @@ import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import VariantMatrix from "./VariantMatrix";
 import ProductEditor from "./ProductEditor";
 import OrderDrawer from "./OrderDrawer";
+import { Card, Chip, Empty, stageTone } from "@/components/dash/Ui";
 import {
   listProducts,
   createProduct,
@@ -33,14 +34,9 @@ type ProductCopy = { description: string; bullets: string[]; seo_title: string; 
 type RestockResult = { items: { product: string; suggested_restock: number; rationale: string }[]; note: string };
 type RecommendResult = { recommendations: { title: string; products: string[]; rationale: string }[] };
 
-const ORDER_STATUS_STYLE: Record<Order["status"], string> = {
-  pending: "bg-neutral-100 neutral-700",
-  paid: "bg-success-subtle text-success",
-  fulfilled: "bg-success-subtle text-success",
-  cancelled: "bg-danger-subtle text-danger",
-  refunded: "bg-danger-subtle text-danger",
-  partially_refunded: "bg-warning-subtle text-warning",
-};
+/** Chip tone per order status — stageTone covers everything but the partial case. */
+const orderTone = (status: Order["status"]) =>
+  status === "partially_refunded" ? "warn" : stageTone(status);
 
 /** Sentence-case labels, matching the Inbox's filter chips. */
 const ORDER_STATUS_LABEL: Record<Order["status"], string> = {
@@ -59,21 +55,48 @@ const ORDER_FILTERS: { v: "all" | Order["status"]; label: string }[] = [
 
 const ORDERS_PAGE = 50;
 
+const CSS = `
+.cmx-sec{font-size:18px;font-weight:600;letter-spacing:-0.02em;margin:0 0 12px}
+.cmx-summary{cursor:pointer;font-size:18px;font-weight:600;letter-spacing:-0.02em}
+.cmx-sm{font-size:13px}
+.cmx-md{font-size:14px}
+.cmx-muted{color:var(--hrx-muted)}
+.cmx-strong{font-weight:600}
+.cmx-wide{width:100%;justify-content:center}
+.cmx-thumb{width:44px;height:44px;border-radius:10px;background:var(--hrx-soft);border:1px solid var(--hrx-border-soft);overflow:hidden;flex-shrink:0}
+.cmx-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.cmx-imgbtn{width:56px;height:56px;border-radius:12px;border:1px dashed var(--hrx-border);background:var(--hrx-soft);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;color:var(--hrx-muted);font-size:20px;padding:0}
+.cmx-imgbtn:disabled{cursor:default;opacity:.7}
+.cmx-imgbtn img{width:100%;height:100%;object-fit:cover;display:block}
+.cmx-linkbtn{background:none;border:0;padding:0;font-size:13px;font-weight:600;color:var(--hrx-blue);cursor:pointer;white-space:nowrap}
+.cmx-linkbtn:hover{color:var(--hrx-blue-deep);text-decoration:underline}
+.cmx-linkbtn.muted{color:var(--hrx-muted);font-weight:500}
+.cmx-soft{background:var(--hrx-soft);border:1px solid var(--hrx-border-soft);border-radius:12px}
+.cmx-subh{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--hrx-muted);margin:0 0 4px}
+.cmx-row-toggle{cursor:pointer}
+.hrx-table td.cmx-nested{padding:10px 14px;background:var(--hrx-soft)}
+.cmx-chevbtn{width:32px;height:32px;border-radius:999px;border:0;background:rgba(39,39,39,.06);color:var(--hrx-ink);display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;flex-shrink:0}
+.cmx-chevbtn:hover{background:rgba(39,39,39,.14)}
+.cmx-chevbtn span{transition:transform .15s ease;display:inline-block}
+.cmx-chevbtn[aria-expanded="true"] span{transform:rotate(90deg)}
+.cmx-check{font-size:14px;color:var(--hrx-ink);margin-bottom:0}
+`;
+
 /** Orders are a headline surface for sell-a-thing verticals and a rarely-used
  *  add-on for reservation ones — same capability, different prominence. */
 function OrdersFrame({ show, children }: { show: boolean; children: React.ReactNode }) {
   if (show) {
     return (
       <>
-        <h2 className="fz-font-lg fw-600 mb-3">Orders</h2>
+        <h2 className="cmx-sec">Orders</h2>
         {children}
       </>
     );
   }
   return (
     <details>
-      <summary className="fz-font-lg fw-600 ops-tap" style={{ cursor: "pointer" }}>Manual orders</summary>
-      <div className="fz-font-sm neutral-500 mt-1 mb-3">Most money arrives through reservations — use this for one-off add-on sales.</div>
+      <summary className="cmx-summary ops-tap">Manual orders</summary>
+      <div className="cmx-sm cmx-muted mt-1 mb-3">Most money arrives through reservations — use this for one-off add-on sales.</div>
       {children}
     </details>
   );
@@ -312,7 +335,7 @@ export default function CommercePage() {
   }
 
   if (productsLoading && ordersLoading && products.length === 0 && orders.length === 0) {
-    return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+    return <div className="hrx-card hrx-pad text-center" style={{ color: "var(--hrx-muted)" }}>Loading…</div>;
   }
 
   const variantSizes = [...new Set(orderVariants.map((v) => v.size))];
@@ -320,50 +343,52 @@ export default function CommercePage() {
 
   return (
     <div className="row g-4">
+      <style>{CSS}</style>
       {(productsError || ordersError) && (
-        <div className="col-12"><div className="alert alert-warning py-2 px-3 fz-font-md mb-0" role="alert">{productsError || ordersError}</div></div>
+        <div className="col-12"><div className="alert alert-warning py-2 px-3 cmx-md mb-0" role="alert">{productsError || ordersError}</div></div>
       )}
 
       {/* Products */}
       <div className={showOrders ? "col-lg-6" : "col-12"}>
-        <h2 className="fz-font-lg fw-600 mb-3">{cfg.commerceLabel}</h2>
-        <form onSubmit={addProduct} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <div className="row g-2 align-items-center">
-            <div className="col-auto">
-              {/* A real button — the previous <label>-wrapped file input could not be
-                  reached or triggered from the keyboard. */}
-              <button
-                type="button"
-                className="btn p-0 rounded-3 border-100 bg-neutral-50 d-flex align-items-center justify-content-center overflow-hidden"
-                style={{ width: 56, height: 56 }}
-                onClick={() => pImgRef.current?.click()}
-                disabled={pUploading}
-                aria-label={pImg ? `Replace ${cfg.itemNoun} image` : `Add ${cfg.itemNoun} image`}
-              >
-                {pImg ? <img src={pImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span className="neutral-400 fz-20" aria-hidden="true">{pUploading ? "…" : "+"}</span>}
-              </button>
-              <input ref={pImgRef} type="file" accept="image/*" hidden tabIndex={-1} aria-hidden="true" onChange={onAddImage} disabled={pUploading} />
+        <h2 className="cmx-sec">{cfg.commerceLabel}</h2>
+        <Card title={`Add ${cfg.itemNoun.toLowerCase()}`} className="mb-3">
+          <form onSubmit={addProduct}>
+            <div className="row g-2 align-items-center">
+              <div className="col-auto">
+                {/* A real button — the previous <label>-wrapped file input could not be
+                    reached or triggered from the keyboard. */}
+                <button
+                  type="button"
+                  className="cmx-imgbtn"
+                  onClick={() => pImgRef.current?.click()}
+                  disabled={pUploading}
+                  aria-label={pImg ? `Replace ${cfg.itemNoun} image` : `Add ${cfg.itemNoun} image`}
+                >
+                  {pImg ? <img src={pImg} alt="" /> : <span aria-hidden="true">{pUploading ? "…" : "+"}</span>}
+                </button>
+                <input ref={pImgRef} type="file" accept="image/*" hidden tabIndex={-1} aria-hidden="true" onChange={onAddImage} disabled={pUploading} />
+              </div>
+              {/* Six controls on one line clipped every placeholder inside this
+                  half-width column — give them room instead. */}
+              <div className="col"><input className="form-control" placeholder={`${cfg.itemNoun} name`} aria-label={`${cfg.itemNoun} name`} value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} required /></div>
+              <div className="col-12"><input className="form-control" placeholder="Category / section" aria-label="Category / section" value={pForm.category} onChange={(e) => setPForm({ ...pForm, category: e.target.value })} /></div>
+              <div className="col-6"><input type="number" inputMode="decimal" min={0} step={0.01} className="form-control" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={pForm.price} onChange={(e) => setPForm({ ...pForm, price: e.target.value })} /></div>
+              <div className="col-6"><input type="number" min={0} step={1} className="form-control" placeholder="Stock" aria-label="Stock" value={pForm.stock} onChange={(e) => setPForm({ ...pForm, stock: e.target.value })} /></div>
+              <div className="col-12"><button type="submit" className="hrx-pill primary cmx-wide" disabled={pUploading}>Add {cfg.itemNoun.toLowerCase()}</button></div>
             </div>
-            {/* Six controls on one line clipped every placeholder inside this
-                half-width column — give them room instead. */}
-            <div className="col"><input className="form-control rounded-3" placeholder={`${cfg.itemNoun} name`} aria-label={`${cfg.itemNoun} name`} value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} required /></div>
-            <div className="col-12"><input className="form-control rounded-3" placeholder="Category / section" aria-label="Category / section" value={pForm.category} onChange={(e) => setPForm({ ...pForm, category: e.target.value })} /></div>
-            <div className="col-6"><input type="number" inputMode="decimal" min={0} step={0.01} className="form-control rounded-3" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={pForm.price} onChange={(e) => setPForm({ ...pForm, price: e.target.value })} /></div>
-            <div className="col-6"><input type="number" min={0} step={1} className="form-control rounded-3" placeholder="Stock" aria-label="Stock" value={pForm.stock} onChange={(e) => setPForm({ ...pForm, stock: e.target.value })} /></div>
-            <div className="col-12"><button type="submit" className="btn btn-dark w-100 rounded-3 px-3" disabled={pUploading}>Add</button></div>
-          </div>
-        </form>
+          </form>
+        </Card>
 
         <div className="d-flex gap-2 mb-3">
           <input
             type="search"
-            className="form-control rounded-3"
+            className="form-control"
             placeholder={`Search ${cfg.commerceLabel.toLowerCase()}…`}
             aria-label={`Search ${cfg.commerceLabel.toLowerCase()}`}
             value={pSearch}
             onChange={(e) => setPSearch(e.target.value)}
           />
-          <select className="form-select rounded-3" style={{ maxWidth: 140 }} aria-label="Filter by status" value={pStatus} onChange={(e) => setPStatus(e.target.value as "all" | ProductStatus)}>
+          <select className="form-select" style={{ maxWidth: 140 }} aria-label="Filter by status" value={pStatus} onChange={(e) => setPStatus(e.target.value as "all" | ProductStatus)}>
             <option value="all">All statuses</option>
             <option value="active">Active</option>
             <option value="draft">Draft</option>
@@ -372,67 +397,79 @@ export default function CommercePage() {
         </div>
 
         {visibleProducts.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">
-            {products.length === 0 ? `No ${cfg.itemNoun.toLowerCase()}s yet.` : "Nothing matches that filter."}
-          </div>
+          <Empty title={products.length === 0 ? `No ${cfg.itemNoun.toLowerCase()}s yet` : "Nothing matches that filter"}>
+            {products.length === 0 ? `Add your first ${cfg.itemNoun.toLowerCase()} with the form above.` : "Try a different search or status."}
+          </Empty>
         ) : (
-          // No `overflow-hidden` here: Bootstrap sets it !important and would beat
-          // .ops-scroll-x's overflow-x:auto, clipping the right-hand action cell.
-          <div className="bg-neutral-0 rounded-4 border-100 ops-scroll-x">
-            <table className="table mb-0 align-middle" style={{ minWidth: 520 }}>
-              <tbody>
-                {visibleProducts.map((p) => (
-                  <Fragment key={p.id}>
-                    <tr>
-                      <td className="py-3 ps-4">
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="rounded-3 border-100 bg-neutral-50 overflow-hidden flex-shrink-0" style={{ width: 44, height: 44 }}>
-                            {p.image_url && <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                          </div>
-                          <div>
-                            <div className="fw-600">{p.name}</div>
-                            <div className="fz-font-sm neutral-500">
-                              {formatPrice(p.price_cents, p.currency || orgCurrency)}
-                              {typeof p.metadata?.category === "string" && p.metadata.category ? ` · ${p.metadata.category}` : ""}
-                              {p.status !== "active" ? ` · ${p.status}` : ""}
+          <div className="hrx-card">
+            <div className="hrx-tablewrap">
+              <table className="hrx-table" style={{ minWidth: 560 }}>
+                <thead>
+                  <tr>
+                    <th>{cfg.itemNoun}</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th className="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleProducts.map((p) => (
+                    <Fragment key={p.id}>
+                      <tr>
+                        <td>
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="cmx-thumb">
+                              {p.image_url && <img src={p.image_url} alt="" />}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div className="cmx-strong d-flex align-items-center gap-2">
+                                {p.name}
+                                {p.status !== "active" && <Chip tone="line">{p.status}</Chip>}
+                              </div>
+                              {typeof p.metadata?.category === "string" && p.metadata.category && (
+                                <div className="cmx-sm cmx-muted">{p.metadata.category}</div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3 pe-4 text-end">
-                        <div className="d-flex align-items-center justify-content-end flex-wrap gap-3">
-                          <span className={`badge fw-500 ${p.stock === 0 ? "bg-danger-subtle text-danger" : p.stock <= 5 ? "bg-warning-subtle text-warning" : "bg-neutral-100 neutral-700"}`}>
+                        </td>
+                        <td className="text-nowrap">{formatPrice(p.price_cents, p.currency || orgCurrency)}</td>
+                        <td>
+                          <Chip tone={p.stock === 0 ? "danger" : p.stock <= 5 ? "warn" : "line"}>
                             {p.stock === 0 ? "Out of stock" : `${p.stock} in stock`}
-                          </span>
-                          {cfg.booking === "none" && (
-                            <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none neutral-500 ops-tap" onClick={() => setVariantsFor(variantsFor === p.id ? null : p.id)} aria-expanded={variantsFor === p.id} aria-label={`${variantsFor === p.id ? "Hide" : "Show"} variants for ${p.name}`}>
-                              {variantsFor === p.id ? "Hide variants" : "Variants"}
+                          </Chip>
+                        </td>
+                        <td className="text-end">
+                          <div className="d-flex align-items-center justify-content-end flex-wrap gap-3">
+                            {cfg.booking === "none" && (
+                              <button type="button" className="cmx-linkbtn muted ops-tap" onClick={() => setVariantsFor(variantsFor === p.id ? null : p.id)} aria-expanded={variantsFor === p.id} aria-label={`${variantsFor === p.id ? "Hide" : "Show"} variants for ${p.name}`}>
+                                {variantsFor === p.id ? "Hide variants" : "Variants"}
+                              </button>
+                            )}
+                            <button type="button" className="cmx-linkbtn ops-tap" onClick={() => setEditingId(editingId === p.id ? null : p.id)} aria-expanded={editingId === p.id} aria-label={`${editingId === p.id ? "Close editor for" : "Edit"} ${p.name}`}>
+                              {editingId === p.id ? "Close" : "Edit"}
                             </button>
-                          )}
-                          <button type="button" className="btn btn-link btn-sm p-0 fw-600 text-decoration-none ops-tap" onClick={() => setEditingId(editingId === p.id ? null : p.id)} aria-expanded={editingId === p.id} aria-label={`${editingId === p.id ? "Close editor for" : "Edit"} ${p.name}`}>
-                            {editingId === p.id ? "Close" : "Edit"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {editingId === p.id && (
-                      <tr>
-                        <td colSpan={2} className="bg-neutral-50 p-0">
-                          <ProductEditor orgId={orgId} product={p} itemNoun={cfg.itemNoun} onSaved={() => { setEditingId(null); drainEmbeddings(); reloadProducts(); }} onCancel={() => setEditingId(null)} />
+                          </div>
                         </td>
                       </tr>
-                    )}
-                    {variantsFor === p.id && (
-                      <tr>
-                        <td colSpan={2} className="bg-neutral-50 px-4">
-                          <VariantMatrix orgId={orgId} productId={p.id} basePriceCents={p.price_cents} currency={p.currency || orgCurrency} />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
+                      {editingId === p.id && (
+                        <tr>
+                          <td colSpan={4} className="cmx-nested">
+                            <ProductEditor orgId={orgId} product={p} itemNoun={cfg.itemNoun} onSaved={() => { setEditingId(null); drainEmbeddings(); reloadProducts(); }} onCancel={() => setEditingId(null)} />
+                          </td>
+                        </tr>
+                      )}
+                      {variantsFor === p.id && (
+                        <tr>
+                          <td colSpan={4} className="cmx-nested">
+                            <VariantMatrix orgId={orgId} productId={p.id} basePriceCents={p.price_cents} currency={p.currency || orgCurrency} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -440,59 +477,61 @@ export default function CommercePage() {
       {/* Orders */}
       <div className={showOrders ? "col-lg-6" : "col-12"}>
         <OrdersFrame show={showOrders}>
-        <form onSubmit={addOrder} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <div className="row g-2">
-            <div className="col-md-6"><input className="form-control rounded-3" placeholder="Customer name" aria-label="Customer name" value={oForm.customer} onChange={(e) => setOForm({ ...oForm, customer: e.target.value })} required /></div>
-            <div className="col-md-6"><input type="email" className="form-control rounded-3" placeholder="Customer email (optional)" aria-label="Customer email" value={oForm.email} onChange={(e) => setOForm({ ...oForm, email: e.target.value })} /></div>
-            <div className="col-12">
-              <select className="form-select rounded-3" aria-label={cfg.itemNoun} value={oForm.productId} onChange={(e) => setOForm({ ...oForm, productId: e.target.value })} required>
-                <option value="">Choose {cfg.itemNoun.toLowerCase()}…</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {formatPrice(p.price_cents, p.currency || orgCurrency)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* Size / colour belong with the item they qualify, above the quantity. */}
-            {orderVariants.length > 0 && (
-              <>
-                <div className="col-6">
-                  <select className="form-select rounded-3" aria-label="Size" value={oForm.size} onChange={(e) => setOForm({ ...oForm, size: e.target.value })}>
-                    <option value="">Size…</option>
-                    {variantSizes.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
+        <Card title="New order" className="mb-3">
+          <form onSubmit={addOrder}>
+            <div className="row g-2">
+              <div className="col-md-6"><input className="form-control" placeholder="Customer name" aria-label="Customer name" value={oForm.customer} onChange={(e) => setOForm({ ...oForm, customer: e.target.value })} required /></div>
+              <div className="col-md-6"><input type="email" className="form-control" placeholder="Customer email (optional)" aria-label="Customer email" value={oForm.email} onChange={(e) => setOForm({ ...oForm, email: e.target.value })} /></div>
+              <div className="col-12">
+                <select className="form-select" aria-label={cfg.itemNoun} value={oForm.productId} onChange={(e) => setOForm({ ...oForm, productId: e.target.value })} required>
+                  <option value="">Choose {cfg.itemNoun.toLowerCase()}…</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {formatPrice(p.price_cents, p.currency || orgCurrency)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/* Size / colour belong with the item they qualify, above the quantity. */}
+              {orderVariants.length > 0 && (
+                <>
+                  <div className="col-6">
+                    <select className="form-select" aria-label="Size" value={oForm.size} onChange={(e) => setOForm({ ...oForm, size: e.target.value })}>
+                      <option value="">Size…</option>
+                      {variantSizes.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-6">
+                    <select className="form-select" aria-label="Color" value={oForm.color} onChange={(e) => setOForm({ ...oForm, color: e.target.value })}>
+                      <option value="">Color…</option>
+                      {variantColors.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
+              <div className="col-4"><input type="number" min={1} step={1} className="form-control" placeholder="Qty" aria-label="Quantity" value={oForm.qty} onChange={(e) => setOForm({ ...oForm, qty: e.target.value })} /></div>
+              <div className="col-8 d-flex align-items-center">
+                <label className="cmx-check ops-tap">
+                  <input type="checkbox" className="me-1" checked={oForm.paid} onChange={(e) => setOForm({ ...oForm, paid: e.target.checked })} />
+                  Payment collected
+                </label>
+              </div>
+              <div className="col-12">
+                <button type="submit" className="hrx-pill dark cmx-wide" disabled={placingOrder}>{placingOrder ? "Adding…" : "Add order"}</button>
+                <div className="cmx-sm cmx-muted mt-1">
+                  {oForm.paid ? "This order will be saved as paid." : <>Leave “Payment collected” unticked and the order is saved as <span className="cmx-strong">pending</span>.</>}
                 </div>
-                <div className="col-6">
-                  <select className="form-select rounded-3" aria-label="Color" value={oForm.color} onChange={(e) => setOForm({ ...oForm, color: e.target.value })}>
-                    <option value="">Color…</option>
-                    {variantColors.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-              </>
-            )}
-            <div className="col-4"><input type="number" min={1} step={1} className="form-control rounded-3" placeholder="Qty" aria-label="Quantity" value={oForm.qty} onChange={(e) => setOForm({ ...oForm, qty: e.target.value })} /></div>
-            <div className="col-8 d-flex align-items-center">
-              <label className="fz-font-sm neutral-600 mb-0 ops-tap">
-                <input type="checkbox" className="me-1" checked={oForm.paid} onChange={(e) => setOForm({ ...oForm, paid: e.target.checked })} />
-                Payment collected
-              </label>
-            </div>
-            <div className="col-12">
-              <button type="submit" className="btn btn-dark w-100 rounded-3" disabled={placingOrder}>{placingOrder ? "Adding…" : "Add order"}</button>
-              <div className="fz-font-sm neutral-500 mt-1">
-                {oForm.paid ? "This order will be saved as paid." : <>Leave “Payment collected” unticked and the order is saved as <span className="fw-600">pending</span>.</>}
               </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </Card>
 
-        <div className="d-flex flex-wrap gap-1 mb-2" role="group" aria-label="Filter orders by status">
+        <div className="hrx-tabbar mb-2" role="group" aria-label="Filter orders by status">
           {ORDER_FILTERS.map((f) => (
             <button
               key={f.v}
               type="button"
-              className={`btn btn-sm rounded-pill px-3 fz-font-sm ${oStatusFilter === f.v ? "btn-dark" : "btn-outline-secondary"}`}
+              className={`hrx-tab${oStatusFilter === f.v ? " active" : ""}`}
               onClick={() => setOStatusFilter(f.v)}
               aria-pressed={oStatusFilter === f.v}
             >
@@ -502,7 +541,7 @@ export default function CommercePage() {
         </div>
         <input
           type="search"
-          className="form-control rounded-3 mb-3"
+          className="form-control mb-3"
           placeholder="Search by customer name or email…"
           aria-label="Search orders by customer"
           value={oSearch}
@@ -510,120 +549,136 @@ export default function CommercePage() {
         />
 
         {visibleOrders.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">
-            {orders.length === 0 ? "No orders yet." : "No orders match that filter."}
-          </div>
+          <Empty title={orders.length === 0 ? "No orders yet" : "No orders match that filter"}>
+            {orders.length === 0 ? "Orders from your storefront and manual orders show up here." : "Try a different status or search."}
+          </Empty>
         ) : (
-          <div className="d-flex flex-column gap-2">
-            {visibleOrders.map((o) => {
-              const open = openOrderId === o.id;
-              return (
-              <Fragment key={o.id}>
-                {/* Two stacked rows: name + money on top, date + status underneath —
-                    so the total can never collide with the badges on a phone. */}
-                <button
-                  type="button"
-                  className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center gap-3 w-100 text-start btn"
-                  onClick={() => setOpenOrderId(open ? null : o.id)}
-                  aria-expanded={open}
-                  aria-controls={`order-detail-${o.id}`}
-                >
-                  <span className="flex-grow-1" style={{ minWidth: 0 }}>
-                    <span className="d-flex align-items-baseline justify-content-between gap-2">
-                      <span className="fw-600 text-truncate">{o.customer_name || "Customer"}</span>
-                      <span className="fw-700 text-nowrap">{formatPrice(o.total_cents, o.currency || orgCurrency)}</span>
-                    </span>
-                    <span className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-1">
-                      <span className="fz-font-sm neutral-500">{new Date(o.created_at).toLocaleDateString()}</span>
-                      <span className="d-flex align-items-center gap-1">
-                        {(o.status === "paid" || o.status === "pending") && o.fulfillment_status === "unfulfilled" && (
-                          <span className="badge fw-500 bg-neutral-100 neutral-700">Unfulfilled</span>
-                        )}
-                        <span className={`badge fw-500 ${ORDER_STATUS_STYLE[o.status]}`}>{ORDER_STATUS_LABEL[o.status]}</span>
-                      </span>
-                    </span>
-                  </span>
-                  <span
-                    className="neutral-400 flex-shrink-0"
-                    aria-hidden="true"
-                    style={{ transition: "transform .15s ease", transform: open ? "rotate(90deg)" : "none", lineHeight: 1 }}
-                  >
-                    ›
-                  </span>
-                </button>
-                {open && (
-                  <OrderDrawer
-                    orgId={orgId}
-                    orgName={org.name}
-                    orgCurrency={orgCurrency}
-                    order={o}
-                    onChanged={reloadAll}
-                    onClose={() => setOpenOrderId(null)}
-                  />
-                )}
-              </Fragment>
-              );
-            })}
+          <>
+            <div className="hrx-card">
+              <div className="hrx-tablewrap">
+                <table className="hrx-table" style={{ minWidth: 520 }}>
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Date</th>
+                      <th>Status</th>
+                      <th className="text-end">Total</th>
+                      <th aria-label="Details" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleOrders.map((o) => {
+                      const open = openOrderId === o.id;
+                      return (
+                        <Fragment key={o.id}>
+                          <tr className="cmx-row-toggle" onClick={() => setOpenOrderId(open ? null : o.id)}>
+                            <td>
+                              <span className="cmx-strong">{o.customer_name || "Customer"}</span>
+                            </td>
+                            <td className="cmx-muted text-nowrap">{new Date(o.created_at).toLocaleDateString()}</td>
+                            <td>
+                              <span className="d-inline-flex align-items-center gap-1">
+                                {(o.status === "paid" || o.status === "pending") && o.fulfillment_status === "unfulfilled" && (
+                                  <Chip tone="line">Unfulfilled</Chip>
+                                )}
+                                <Chip tone={orderTone(o.status)}>{ORDER_STATUS_LABEL[o.status]}</Chip>
+                              </span>
+                            </td>
+                            <td className="text-end cmx-strong text-nowrap">{formatPrice(o.total_cents, o.currency || orgCurrency)}</td>
+                            <td className="text-end">
+                              <button
+                                type="button"
+                                className="cmx-chevbtn"
+                                onClick={(e) => { e.stopPropagation(); setOpenOrderId(open ? null : o.id); }}
+                                aria-expanded={open}
+                                aria-controls={`order-detail-${o.id}`}
+                                aria-label={`${open ? "Hide" : "View"} order details for ${o.customer_name || "customer"}`}
+                              >
+                                <span aria-hidden="true">›</span>
+                              </button>
+                            </td>
+                          </tr>
+                          {open && (
+                            <tr>
+                              <td colSpan={5} className="cmx-nested">
+                                <OrderDrawer
+                                  orgId={orgId}
+                                  orgName={org.name}
+                                  orgCurrency={orgCurrency}
+                                  order={o}
+                                  onChanged={reloadAll}
+                                  onClose={() => setOpenOrderId(null)}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
             {orderPage?.hasMore && (
-              <button type="button" className="btn btn-outline-dark rounded-3 w-100" onClick={() => setOrderLimit((l) => l + ORDERS_PAGE)} disabled={ordersLoading}>
+              <button type="button" className="hrx-pill cmx-wide mt-2" onClick={() => setOrderLimit((l) => l + ORDERS_PAGE)} disabled={ordersLoading}>
                 {ordersLoading ? "Loading…" : "Load more"}
               </button>
             )}
-          </div>
+          </>
         )}
         </OrdersFrame>
       </div>
 
       {/* AI tools — below the operational surfaces on purpose */}
       <div className="col-12">
-        <div className="bg-neutral-0 rounded-4 p-4 border-100">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h2 className="fz-font-md fw-600 mb-0"><span aria-hidden="true">✨ </span>AI merchandising</h2>
+        <Card
+          title={<><span aria-hidden="true">✨ </span>AI merchandising</>}
+          right={
             <div className="d-flex flex-wrap gap-2">
-              <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={runRestock} disabled={aiBusy === "restock"}>{aiBusy === "restock" ? "…" : "Restock suggestions"}</button>
-              <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3" onClick={runRecommend} disabled={aiBusy === "recommend"}>{aiBusy === "recommend" ? "…" : "Recommendations"}</button>
+              <button type="button" className="hrx-pill" onClick={runRestock} disabled={aiBusy === "restock"}>{aiBusy === "restock" ? "…" : "Restock suggestions"}</button>
+              <button type="button" className="hrx-pill" onClick={runRecommend} disabled={aiBusy === "recommend"}>{aiBusy === "recommend" ? "…" : "Recommendations"}</button>
             </div>
-          </div>
-
+          }
+        >
           <div className="row g-2 align-items-end">
-            <div className="col-md-4"><input className="form-control rounded-3" placeholder={`${cfg.itemNoun} name`} aria-label={`${cfg.itemNoun} name`} value={copyForm.name} onChange={(e) => setCopyForm({ ...copyForm, name: e.target.value })} /></div>
-            <div className="col-md-4"><input className="form-control rounded-3" placeholder="Hints (features, audience)" aria-label="Hints" value={copyForm.hints} onChange={(e) => setCopyForm({ ...copyForm, hints: e.target.value })} /></div>
-            <div className="col-md-2"><input type="number" inputMode="decimal" min={0} step={0.01} className="form-control rounded-3" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={copyForm.price} onChange={(e) => setCopyForm({ ...copyForm, price: e.target.value })} /></div>
-            <div className="col-md-2"><button type="button" className="btn btn-dark w-100 rounded-3" onClick={genCopy} disabled={copyLoading}>{copyLoading ? "…" : "Generate copy"}</button></div>
+            <div className="col-md-4"><input className="form-control" placeholder={`${cfg.itemNoun} name`} aria-label={`${cfg.itemNoun} name`} value={copyForm.name} onChange={(e) => setCopyForm({ ...copyForm, name: e.target.value })} /></div>
+            <div className="col-md-4"><input className="form-control" placeholder="Hints (features, audience)" aria-label="Hints" value={copyForm.hints} onChange={(e) => setCopyForm({ ...copyForm, hints: e.target.value })} /></div>
+            <div className="col-md-2"><input type="number" inputMode="decimal" min={0} step={0.01} className="form-control" placeholder={`Price (${orgCurrency})`} aria-label={`Price (${orgCurrency})`} value={copyForm.price} onChange={(e) => setCopyForm({ ...copyForm, price: e.target.value })} /></div>
+            <div className="col-md-2"><button type="button" className="hrx-pill dark cmx-wide" onClick={genCopy} disabled={copyLoading}>{copyLoading ? "…" : "Generate copy"}</button></div>
           </div>
 
           {copy && (
-            <div className="mt-3 p-3 bg-neutral-50 rounded-3">
-              <p className="fz-font-md neutral-900 mb-2">{copy.description}</p>
+            <div className="mt-3 p-3 cmx-soft">
+              <p className="cmx-md mb-2">{copy.description}</p>
               {copy.bullets?.length > 0 && (
-                <ul className="fz-font-sm neutral-700 mb-2">
+                <ul className="cmx-sm cmx-muted mb-2">
                   {copy.bullets.map((b, i) => <li key={i}>{b}</li>)}
                 </ul>
               )}
-              <div className="fz-font-sm neutral-500 mb-2">SEO: {copy.seo_title} — {copy.seo_description}</div>
-              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={createFromCopy}>Create {cfg.itemNoun.toLowerCase()} with this copy</button>
+              <div className="cmx-sm cmx-muted mb-2">SEO: {copy.seo_title} — {copy.seo_description}</div>
+              <button type="button" className="hrx-pill primary" onClick={createFromCopy}>Create {cfg.itemNoun.toLowerCase()} with this copy</button>
             </div>
           )}
 
           {restock && (
             <div className="mt-3">
-              <h3 className="fz-font-sm fw-600 neutral-500 mb-1">Restock</h3>
-              <div className="fz-font-sm neutral-500 mb-2">{restock.note}</div>
-              <ul className="fz-font-md neutral-700 mb-0">
-                {restock.items?.map((it, i) => <li key={i}><span className="fw-600">{it.product}</span> · +{it.suggested_restock} — {it.rationale}</li>)}
+              <h3 className="cmx-subh">Restock</h3>
+              <div className="cmx-sm cmx-muted mb-2">{restock.note}</div>
+              <ul className="cmx-md mb-0">
+                {restock.items?.map((it, i) => <li key={i}><span className="cmx-strong">{it.product}</span> · +{it.suggested_restock} — {it.rationale}</li>)}
               </ul>
             </div>
           )}
 
           {recommend && (
             <div className="mt-3">
-              <h3 className="fz-font-sm fw-600 neutral-500 mb-1">Recommended bundles</h3>
-              <ul className="fz-font-md neutral-700 mb-0">
-                {recommend.recommendations?.map((r, i) => <li key={i}><span className="fw-600">{r.title}</span> ({r.products?.join(", ")}) — {r.rationale}</li>)}
+              <h3 className="cmx-subh">Recommended bundles</h3>
+              <ul className="cmx-md mb-0">
+                {recommend.recommendations?.map((r, i) => <li key={i}><span className="cmx-strong">{r.title}</span> ({r.products?.join(", ")}) — {r.rationale}</li>)}
               </ul>
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

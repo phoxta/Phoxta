@@ -6,6 +6,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import KeepAliveOutlet from "@/layouts/KeepAliveOutlet";
 import { preloadRoute } from "@/pages/dashboard/preload";
 import { warmDashboard } from "@/lib/cache/warmDashboard";
+import "@/styles/dashboard-theme.css";
 import {
   listNotifications,
   markNotificationRead,
@@ -16,7 +17,6 @@ import {
 type NavItem = {
   to: string;
   label: string;
-  icon: React.ReactNode;
   end?: boolean;
   platformOnly?: boolean;
   /** Overrides prefix matching where a page lives under someone else's path. */
@@ -40,43 +40,34 @@ function navActive(item: NavItem, pathname: string): boolean {
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
 
-const HERO_BG = "/assets/imgs/pages/bg-img-4.webp";
-
-const Icon = ({ d }: { d: string }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d={d} />
-  </svg>
-);
-
 const CUBE_LOGO = (
-  <img width={26} height={28} src="/assets/imgs/template/logo/favicon.svg" alt="Phoxta" loading="lazy" />
+  <img width={36} height={36} src="/assets/imgs/template/logo/favicon.svg" alt="Phoxta" loading="lazy" />
 );
 
 const NAV: NavItem[] = [
-  { to: "/dashboard", end: true, label: "Home", icon: <Icon d="M3 11l9-8 9 8M5 10v10h14V10" /> },
+  { to: "/dashboard", end: true, label: "Home" },
   {
     to: "/dashboard/console", label: "Console",
     activeWhen: (p) => p === "/dashboard/console" || isOpsConsole(p),
-    icon: <Icon d="M4 5h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM7 9l3 3-3 3M12 15h5M8 21h8" />,
   },
-  { to: "/dashboard/studio", label: "Studio", icon: <Icon d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5zM2 2l7.586 7.586M11 13a2 2 0 100-4 2 2 0 000 4z" /> },
-  { to: "/dashboard/marketplace", label: "Marketplace", icon: <Icon d="M3 9l1.5-5h15L21 9M4 9h16v11H4zM9 13h6" /> },
+  { to: "/dashboard/studio", label: "Studio" },
+  { to: "/dashboard/marketplace", label: "Marketplace" },
   {
     to: "/dashboard/businesses", label: "Businesses",
     activeWhen: (p) => p.startsWith("/dashboard/businesses") && !isOpsConsole(p),
-    icon: <Icon d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01" />,
   },
-  { to: "/dashboard/billing", label: "Billing", icon: <Icon d="M2 7h20v10H2zM2 11h20M6 15h4" /> },
+  { to: "/dashboard/billing", label: "Billing" },
   // Phoxta's own operating console. Hidden unless the signed-in user is on the
   // platform_admins roster — the RPCs behind it enforce that server-side too, so
   // hiding the link is presentation, not the control.
-  { to: "/dashboard/platform", label: "Platform", platformOnly: true, icon: <Icon d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" /> },
-  { to: "/dashboard/settings", label: "Settings", icon: <Icon d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 13a7.9 7.9 0 000-2l2-1.5-2-3.5-2.4 1a8 8 0 00-1.7-1l-.4-2.5H10.1l-.4 2.5a8 8 0 00-1.7 1l-2.4-1-2 3.5L3.6 11a7.9 7.9 0 000 2l-2 1.5 2 3.5 2.4-1a8 8 0 001.7 1l.4 2.5h3.8l.4-2.5a8 8 0 001.7-1l2.4 1 2-3.5z" /> },
+  { to: "/dashboard/platform", label: "Platform", platformOnly: true },
 ];
+
+const SETTINGS_PATH = "/dashboard/settings";
 
 // The top-level nav pages are all param-free, so they're kept mounted (via <Activity>)
 // after their first visit — instant revisits with preserved scroll + in-page state.
-const KEEP_ALIVE_PATHS = NAV.filter((i) => !i.platformOnly).map((item) => item.to);
+const KEEP_ALIVE_PATHS = [...NAV.filter((i) => !i.platformOnly).map((item) => item.to), SETTINGS_PATH];
 
 const MENU_ICON = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -84,9 +75,23 @@ const MENU_ICON = (
   </svg>
 );
 
+const SEARCH_ICON = (
+  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+    <path d="M14.5 14.5a6.8 6.8 0 1 0-9.6-9.6 6.8 6.8 0 0 0 9.6 9.6Zm0 0 2.6 2.6" />
+  </svg>
+);
+
 const BELL_ICON = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" />
+  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5.6 8.3a4.4 4.4 0 0 1 8.8 0v2.6c0 .6.2 1.2.6 1.7l.7 1c.4.6 0 1.4-.7 1.4H5a.9.9 0 0 1-.7-1.4l.7-1c.4-.5.6-1.1.6-1.7V8.3Z" />
+    <path d="M8.2 15.8a1.9 1.9 0 0 0 3.6 0" />
+  </svg>
+);
+
+const GEAR_ICON = (
+  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="10" cy="10" r="2.5" />
+    <path d="M8.6 2.5h2.8l.5 2 1.4.8 2-.7 1.4 2.4-1.5 1.4v1.6l1.5 1.4-1.4 2.4-2-.7-1.4.8-.5 2H8.6l-.5-2-1.4-.8-2 .7-1.4-2.4 1.5-1.4V8.4L3.3 7l1.4-2.4 2 .7 1.4-.8.5-2Z" />
   </svg>
 );
 
@@ -100,6 +105,8 @@ export default function DashboardLayout() {
   const [ready] = useState(true);
   const [notes, setNotes] = useState<Notification[]>([]);
   const [bellOpen, setBellOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
+  const [q, setQ] = useState("");
   // Platform console is admin-only. This hides the link; app_is_platform_admin()
   // guards the data, so a hand-typed URL still gets nothing.
   const [platformAdmin, setPlatformAdmin] = useState(false);
@@ -171,15 +178,20 @@ export default function DashboardLayout() {
     navigate("/auth", { replace: true });
   }
 
+  function submitSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const term = q.trim();
+    navigate(term ? `/dashboard/marketplace?q=${encodeURIComponent(term)}` : "/dashboard/marketplace");
+    setQ("");
+  }
+
   const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
+  const today = new Date().toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short" });
 
   if (!ready) {
     return (
-      <div
-        className="d-flex align-items-center justify-content-center"
-        style={{ minHeight: "100vh", backgroundImage: `url(${HERO_BG})`, backgroundSize: "cover", backgroundPosition: "center" }}
-      >
-        <div className="spinner-border text-white" role="status" aria-label="Loading">
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh", background: "#fcfeff" }}>
+        <div className="spinner-border text-dark" role="status" aria-label="Loading">
           <span className="visually-hidden">Loading…</span>
         </div>
       </div>
@@ -187,207 +199,159 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div
-      className="phoxta-dash-stage position-relative d-flex align-items-center justify-content-center"
-      style={{
-        height: "100vh",
-        overflow: "hidden",
-        padding: "clamp(16px, 3vw, 52px) clamp(16px, 3vw, 52px) 0",
-        backgroundColor: "#0a0a0c",
-      }}
-    >
+    <div className="hrx">
       <NoIndex />
-      {/* Blurred hero background */}
-      <div
-        aria-hidden="true"
-        className="position-absolute top-0 start-0 w-100 h-100"
-        style={{
-          backgroundImage: `url(${HERO_BG})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          filter: "blur(7px)",
-          transform: "scale(1.08)",
-          zIndex: 0,
-        }}
-      />
-      {/* Black overlay */}
-      <div
-        aria-hidden="true"
-        className="position-absolute top-0 start-0 w-100 h-100"
-        style={{ background: "rgba(0,0,0,.55)", zIndex: 0 }}
-      />
 
-      {/* Floating app card (bright-grey canvas) */}
-      <div
-        className="bg-neutral-50 position-relative d-flex overflow-hidden w-100 h-100 p-2 p-lg-3 gap-2 gap-lg-3"
-        style={{ borderRadius: "28px 28px 0 0", maxWidth: 1480, zIndex: 1, boxShadow: "0 24px 70px -24px rgba(0,0,0,.55)" }}
-      >
-        {/* Sidebar — white rounded panel */}
-        <aside
-          className={`phoxta-dash-sidebar bg-neutral-0 flex-column flex-shrink-0 ${open ? "d-flex" : "d-none d-lg-flex"}`}
-          style={{ width: 258, borderRadius: 20 }}
-        >
-          <div className="d-flex align-items-center justify-content-between px-4 pt-4 pb-4">
-            <Link to="/dashboard" className="d-inline-flex align-items-center gap-2 text-decoration-none">
-              {CUBE_LOGO}
-              <h6 className="fw-700 fz-20 mb-0 neutral-900">Phoxta</h6>
-            </Link>
-            <button type="button" className="btn btn-link p-0 neutral-500 d-lg-none" aria-label="Close menu" onClick={() => setOpen(false)}>
-              ✕
-            </button>
-          </div>
-
-          <nav className="px-4 flex-grow-1 overflow-auto">
-            <ul className="list-unstyled m-0 d-flex flex-column gap-1">
-              {navItems.map((item) => (
-                <li key={item.to}>
-                  <Link
-                    to={item.to}
-                    onMouseEnter={() => preloadRoute(item.to)}
-                    onClick={() => setOpen(false)}
-                    aria-current={navActive(item, pathname) ? "page" : undefined}
-                    className={`d-flex align-items-center gap-3 px-3 py-2 rounded-3 text-decoration-none fz-font-md fw-500 ${
-                      navActive(item, pathname) ? "bg-neutral-100 neutral-900" : "neutral-500 phoxta-dash-link"
-                    }`}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+      <header className="hrx-nav position-relative">
+        <div className="hrx-nav-left">
+          <button type="button" className="btn btn-link p-0 d-lg-none" style={{ color: "#272727" }} aria-label="Open menu" onClick={() => setOpen((v) => !v)}>
+            {MENU_ICON}
+          </button>
+          <Link to="/dashboard" className="hrx-logo">
+            {CUBE_LOGO}
+            <b className="d-none d-sm-inline">Phoxta</b>
+          </Link>
+          <nav className="hrx-tabs d-none d-lg-flex" aria-label="Dashboard">
+            {navItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onMouseEnter={() => preloadRoute(item.to)}
+                aria-current={navActive(item, pathname) ? "page" : undefined}
+                className={`hrx-tab${navActive(item, pathname) ? " active" : ""}`}
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
+        </div>
 
-          {/* Sidebar footer: notifications, account, sign out */}
-          <div className="px-4 pb-4 pt-3">
-            <div className="d-flex align-items-center gap-2 px-1 mb-2">
-              <div className="position-relative">
+        <div className="hrx-nav-right">
+          <form className="hrx-search d-none d-xl-flex" role="search" onSubmit={submitSearch}>
+            {SEARCH_ICON}
+            <label className="visually-hidden" htmlFor="hrx-q">Search the marketplace</label>
+            <input id="hrx-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search everything..." />
+          </form>
+
+          <div className="position-relative">
+            <button type="button" className="hrx-notif" aria-label="Notifications" onClick={() => setBellOpen((v) => !v)}>
+              <span className="hrx-bell">{BELL_ICON}</span>
+              <span className="hrx-notif-date d-none d-md-inline">{today}</span>
+              {unread > 0 && <span className="hrx-badge">{unread > 9 ? "9+" : unread}</span>}
+            </button>
+
+            {bellOpen && (
+              <>
                 <button
                   type="button"
-                  className="d-inline-flex align-items-center justify-content-center rounded-circle border-100 bg-neutral-0 neutral-700 position-relative"
-                  style={{ width: 38, height: 38 }}
-                  aria-label="Notifications"
-                  onClick={() => setBellOpen((v) => !v)}
-                >
-                  {BELL_ICON}
-                  {unread > 0 && (
-                    <span
-                      className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                      style={{ fontSize: 10 }}
-                    >
-                      {unread > 9 ? "9+" : unread}
-                    </span>
-                  )}
-                </button>
-
-                {bellOpen && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label="Close notifications"
-                      className="position-fixed top-0 start-0 w-100 h-100 border-0 bg-transparent"
-                      style={{ zIndex: 1050 }}
-                      onClick={() => setBellOpen(false)}
-                    />
-                    <div
-                      className="position-absolute start-0 bg-neutral-0 rounded-4 border-100 shadow-sm"
-                      style={{ bottom: "calc(100% + 10px)", width: 320, maxHeight: 420, overflow: "auto", zIndex: 1051 }}
-                    >
-                      <div className="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
-                        <span className="fw-600 fz-font-md">Notifications</span>
-                        {unread > 0 && (
-                          <button type="button" className="btn btn-link btn-sm p-0 fz-font-sm text-decoration-none" onClick={readAll}>
-                            Mark all read
+                  aria-label="Close notifications"
+                  className="position-fixed top-0 start-0 w-100 h-100 border-0 bg-transparent"
+                  style={{ zIndex: 1050 }}
+                  onClick={() => setBellOpen(false)}
+                />
+                <div className="hrx-pop" style={{ width: 320, maxHeight: 420, overflow: "auto" }}>
+                  <div className="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                    <span className="fw-600 fz-font-md">Notifications</span>
+                    {unread > 0 && (
+                      <button type="button" className="btn btn-link btn-sm p-0 fz-font-sm text-decoration-none" onClick={readAll}>
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  {notes.length === 0 ? (
+                    <div className="px-3 py-4 text-center neutral-500 fz-font-md">You're all caught up.</div>
+                  ) : (
+                    <ul className="list-unstyled m-0">
+                      {notes.map((n) => (
+                        <li key={n.id}>
+                          <button
+                            type="button"
+                            onClick={() => openNote(n)}
+                            className={`w-100 text-start border-0 px-3 py-2 ${n.read ? "bg-neutral-0" : "bg-neutral-100"}`}
+                          >
+                            <div className="fw-600 fz-font-md neutral-900">{n.title}</div>
+                            {n.body && <div className="fz-font-sm neutral-500">{n.body}</div>}
+                            <div className="fz-font-sm neutral-500">{new Date(n.created_at).toLocaleDateString()}</div>
                           </button>
-                        )}
-                      </div>
-                      {notes.length === 0 ? (
-                        <div className="px-3 py-4 text-center neutral-500 fz-font-md">You're all caught up.</div>
-                      ) : (
-                        <ul className="list-unstyled m-0">
-                          {notes.map((n) => (
-                            <li key={n.id}>
-                              <button
-                                type="button"
-                                onClick={() => openNote(n)}
-                                className={`w-100 text-start border-0 px-3 py-2 ${n.read ? "bg-neutral-0" : "bg-neutral-100"}`}
-                              >
-                                <div className="fw-600 fz-font-md neutral-900">{n.title}</div>
-                                {n.body && <div className="fz-font-sm neutral-500">{n.body}</div>}
-                                <div className="fz-font-sm neutral-500">{new Date(n.created_at).toLocaleDateString()}</div>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <span
-                className="d-inline-flex align-items-center justify-content-center rounded-circle bg-neutral-900 text-white fw-700 fz-font-sm"
-                style={{ width: 38, height: 38 }}
-                title={user?.email ?? "Account"}
-              >
-                {initials}
-              </span>
-
-              <button
-                type="button"
-                className="btn btn-dark rounded-pill fw-600 fz-font-sm px-3 py-2 ms-auto"
-                onClick={handleSignOut}
-              >
-                Sign Out
-              </button>
-            </div>
-
-            <hr className="my-2 border-100" />
-
-            <Link to="/" className="d-flex align-items-center gap-2 px-3 py-2 rounded-3 text-decoration-none neutral-500 fz-font-md phoxta-dash-link">
-              <Icon d="M10 19l-7-7 7-7M3 12h18" />
-              <span>Back to site</span>
-            </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </>
+            )}
           </div>
-        </aside>
 
-        {/* Backdrop (mobile) */}
-        {open && (
-          <button
-            type="button"
-            aria-label="Close menu"
-            className="position-fixed top-0 start-0 w-100 h-100 border-0 d-lg-none"
-            style={{ background: "rgba(0,0,0,.35)", zIndex: 1040 }}
-            onClick={() => setOpen(false)}
-          />
-        )}
+          <Link
+            to={SETTINGS_PATH}
+            onMouseEnter={() => preloadRoute(SETTINGS_PATH)}
+            className={`hrx-gear${pathname.startsWith(SETTINGS_PATH) ? " active" : ""}`}
+            aria-label="Settings"
+            aria-current={pathname.startsWith(SETTINGS_PATH) ? "page" : undefined}
+          >
+            {GEAR_ICON}
+          </Link>
 
-        {/* Main column. The column itself does NOT scroll — only the inner region
-            does. That keeps permanent chrome (the mobile bar here, and a page's own
-            `.dash-sticky-head` such as the operating console's tabs) out of the
-            scrolling box, so it can pin to the top on every breakpoint instead of
-            riding up with the content. */}
-        <div className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0, overflow: "hidden" }}>
-          {/* Mobile-only top bar — outside the scroll region, so it never moves.
-              (No `sticky-top` needed now that nothing scrolls past it.) */}
-          <div className="d-flex d-lg-none align-items-center gap-2 px-3 py-3 border-bottom bg-neutral-0 flex-shrink-0">
-            <button type="button" className="btn btn-link p-0 neutral-700" aria-label="Open menu" onClick={() => setOpen(true)}>
-              {MENU_ICON}
+          <div className="position-relative">
+            <button type="button" className="hrx-avatar" title={user?.email ?? "Account"} aria-label="Account menu" onClick={() => setUserOpen((v) => !v)}>
+              {initials}
             </button>
-            <Link to="/dashboard" className="d-inline-flex align-items-center gap-2 text-decoration-none ms-1">
-              {CUBE_LOGO}
-              <h6 className="fw-700 fz-18 mb-0 neutral-900">Phoxta</h6>
-            </Link>
-          </div>
-
-          {/* The scroll container. `scrollRef` must stay on the element that actually
-              scrolls — KeepAliveOutlet reads/writes its scrollTop to restore position. */}
-          <div ref={scrollRef} className="flex-grow-1 d-flex flex-column" style={{ overflow: "auto" }}>
-            <main className="px-3 px-lg-4 px-xl-5 py-4 flex-grow-1">
-              <KeepAliveOutlet keepPaths={KEEP_ALIVE_PATHS} scrollContainerRef={scrollRef} />
-            </main>
+            {userOpen && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Close account menu"
+                  className="position-fixed top-0 start-0 w-100 h-100 border-0 bg-transparent"
+                  style={{ zIndex: 1050 }}
+                  onClick={() => setUserOpen(false)}
+                />
+                <div className="hrx-pop" style={{ width: 230 }}>
+                  <div className="px-3 py-2 border-bottom fz-font-sm neutral-500 text-truncate">{user?.email}</div>
+                  <Link to="/" className="d-block px-3 py-2 text-decoration-none fz-font-md" style={{ color: "#272727" }} onClick={() => setUserOpen(false)}>
+                    Back to site
+                  </Link>
+                  <button type="button" className="w-100 text-start border-0 bg-transparent px-3 py-2 fz-font-md fw-600" style={{ color: "#fe5f2b" }} onClick={handleSignOut}>
+                    Sign Out
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
+
+        {/* Mobile nav panel */}
+        {open && (
+          <>
+            <button
+              type="button"
+              aria-label="Close menu"
+              className="position-fixed top-0 start-0 w-100 h-100 border-0 d-lg-none"
+              style={{ background: "rgba(0,0,0,.25)", zIndex: 1050 }}
+              onClick={() => setOpen(false)}
+            />
+            <nav className="hrx-menu-panel d-lg-none" aria-label="Dashboard">
+              {[...navItems, { to: SETTINGS_PATH, label: "Settings" } as NavItem].map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setOpen(false)}
+                  aria-current={navActive(item, pathname) ? "page" : undefined}
+                  className={`hrx-tab${navActive(item, pathname) ? " active" : ""}`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </>
+        )}
+      </header>
+
+      {/* The scroll container. `scrollRef` must stay on the element that actually
+          scrolls — KeepAliveOutlet reads/writes its scrollTop to restore position. */}
+      <div ref={scrollRef} className="hrx-scroll">
+        <main className="hrx-main">
+          <KeepAliveOutlet keepPaths={KEEP_ALIVE_PATHS} scrollContainerRef={scrollRef} />
+        </main>
       </div>
     </div>
   );

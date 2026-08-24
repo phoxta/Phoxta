@@ -18,25 +18,25 @@
    are portalled to <body>, outside any page's subtree, and would otherwise lose
    every colour. They are namespaced, so nothing collides. */
 :root {
-  /* The violet the messaging design already used, promoted to tokens.
+  /* The hrx design system's blue (#195ce5 / deep #1246b0), promoted to tokens.
      Two accents, not one: --oc-accent is the accent used as INK (text,
      borders, focus rings) against the page, so in dark it has to go light;
      --oc-accent-fill is the accent used as a FILLED SURFACE under white
      text, so it has to stay saturated in both themes. Collapsing them left
      white-on-accent at 2.7:1 in dark mode. Same split for danger. */
-  --oc-accent: #7c3aed;
-  --oc-accent-hover: #6d28d9;
-  --oc-accent-fill: #7c3aed;
-  --oc-accent-fill-hover: #6d28d9;
+  --oc-accent: #195ce5;
+  --oc-accent-hover: #1246b0;
+  --oc-accent-fill: #195ce5;
+  --oc-accent-fill-hover: #1246b0;
   --oc-on-fill: #fff;
-  --oc-accent-soft: #ede9fe;
-  --oc-accent-ink: #4c1d95;
+  --oc-accent-soft: #e8effc;
+  --oc-accent-ink: #1246b0;
   --oc-ok: #15803d;
   --oc-warn: #b45309;
-  --oc-warn-soft: #fef3c7;
+  --oc-warn-soft: #fdf3d7;
   --oc-danger: #b91c1c;
   --oc-danger-fill: #b91c1c;
-  --oc-sel: #f4f0ff;
+  --oc-sel: #f0f5fe;
 
   /* Shared geometry. --oc-h is the measured fill height a full-bleed page sets
      inline (see useFillHeight); the default only matters before it measures. */
@@ -45,20 +45,20 @@
 }
 
 [data-bs-theme="dark"] {
-  --oc-accent: #a78bfa;
-  --oc-accent-hover: #c4b5fd;
-  /* Deliberately NOT the light violet above: white sits on this one. */
-  --oc-accent-fill: #6d28d9;
-  --oc-accent-fill-hover: #7c3aed;
+  --oc-accent: #60a5fa;
+  --oc-accent-hover: #93c5fd;
+  /* Deliberately NOT the light blue above: white sits on this one. */
+  --oc-accent-fill: #1246b0;
+  --oc-accent-fill-hover: #195ce5;
   --oc-on-fill: #fff;
-  --oc-accent-soft: #2e2547;
-  --oc-accent-ink: #ddd6fe;
+  --oc-accent-soft: #182647;
+  --oc-accent-ink: #c3d7fb;
   --oc-ok: #4ade80;
   --oc-warn: #fbbf24;
   --oc-warn-soft: #3a2f14;
   --oc-danger: #f87171;
   --oc-danger-fill: #b91c1c;
-  --oc-sel: #241f33;
+  --oc-sel: #16213b;
 }
 
 /* Native form controls and scrollbars follow the app theme — without this

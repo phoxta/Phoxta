@@ -12,6 +12,7 @@ import {
     type Domain,
 } from "@/lib/db/domains";
 import { updateBusiness, type Organization } from "@/lib/db/organizations";
+import { Card, Chip } from "@/components/dash/Ui";
 
 // "Site & domains" for a business — storefront app, deployed URL, and domains.
 // Owners can LINK their own domain (we attach it — plus its www↔apex pair — to the
@@ -20,16 +21,32 @@ import { updateBusiness, type Organization } from "@/lib/db/organizations";
 // background so it flips to "live" on its own. All driven by the domain-manager edge
 // function; the owner never touches Vercel.
 
-const STATUS_BADGE: Record<Domain["status"], string> = {
-    live: "bg-success-subtle text-success",
-    verifying: "bg-warning-subtle text-warning",
-    pending: "bg-neutral-100 neutral-700",
-    error: "bg-danger-subtle text-danger",
+const STATUS_TONE: Record<Domain["status"], "ok" | "warn" | "plain" | "danger"> = {
+    live: "ok",
+    verifying: "warn",
+    pending: "plain",
+    error: "danger",
 };
 
 const LIFECYCLE: Array<Organization["lifecycle_stage"]> = ["draft", "building", "operating", "archived"];
 
 type Props = { org: Organization; canManage: boolean; onUpdated: (patch: Partial<Organization>) => void };
+
+const CSS = `
+.bzx-site-label { font-size: 13px; font-weight: 600; color: var(--hrx-muted); margin-bottom: 6px; }
+.bzx-site-label .opt { font-weight: 400; }
+.bzx-live-link { font-size: 15px; font-weight: 600; color: #15803d; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.bzx-live-link:hover { color: #15803d; text-decoration: underline; }
+.bzx-domain { border: 1px solid var(--hrx-border-soft); border-radius: 12px; padding: 12px 14px; background: #fff; }
+.bzx-domain + .bzx-domain { margin-top: 8px; }
+.bzx-linkbtn { background: none; border: 0; padding: 0; font-size: 13px; font-weight: 600; color: var(--hrx-blue); cursor: pointer; }
+.bzx-linkbtn:hover { color: var(--hrx-blue-deep); }
+.bzx-linkbtn.mut { color: var(--hrx-muted); font-weight: 500; }
+.bzx-linkbtn.mut:hover { color: var(--hrx-ink); }
+.bzx-dns { background: var(--hrx-soft); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; word-break: break-all; font-size: 13px; }
+.bzx-buybox { border: 1px solid var(--hrx-border-soft); border-radius: 12px; padding: 12px 14px; margin-top: 8px; background: var(--hrx-soft); }
+.bzx-note { font-size: 13px; color: var(--hrx-muted); }
+`;
 
 export default function BusinessSiteCard({ org, canManage, onUpdated }: Props) {
     const { data: cachedDomains, loading } = useCachedData(
@@ -196,14 +213,14 @@ export default function BusinessSiteCard({ org, canManage, onUpdated }: Props) {
     }
 
     return (
-        <div className="bg-neutral-0 rounded-4 p-4 border-100">
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <h6 className="fw-600 mb-0">Site &amp; domains</h6>
-                <div className="d-flex align-items-center gap-2">
-                    <span className="fz-font-sm neutral-500">Stage</span>
+        <Card
+            title="Site & domains"
+            right={
+                <label className="d-flex align-items-center gap-2 mb-0">
+                    <span className="bzx-note">Stage</span>
                     {canManage ? (
                         <select
-                            className="form-select form-select-sm rounded-3 text-capitalize"
+                            className="form-select form-select-sm text-capitalize"
                             style={{ width: "auto" }}
                             value={org.lifecycle_stage ?? "draft"}
                             onChange={(e) => onLifecycle(e.target.value as Organization["lifecycle_stage"])}
@@ -213,84 +230,86 @@ export default function BusinessSiteCard({ org, canManage, onUpdated }: Props) {
                             ))}
                         </select>
                     ) : (
-                        <span className="badge bg-neutral-100 neutral-700 text-capitalize fw-500">{org.lifecycle_stage ?? "draft"}</span>
+                        <Chip tone="line">{org.lifecycle_stage ?? "draft"}</Chip>
                     )}
-                </div>
-            </div>
+                </label>
+            }
+        >
+            <style>{CSS}</style>
 
             {/* Live address — the canonical primary domain */}
             <div className="mb-4">
-                <div className="fz-font-sm fw-600 neutral-500 mb-1">Live at</div>
+                <div className="bzx-site-label">Live at</div>
                 {primary ? (
-                    <a className="fz-font-md fw-600 text-success text-decoration-none d-inline-flex align-items-center gap-1" href={`https://${primary.hostname}`} target="_blank" rel="noreferrer">
+                    <a className="bzx-live-link" href={`https://${primary.hostname}`} target="_blank" rel="noreferrer">
                         {primary.hostname} <span aria-hidden>↗</span>
                     </a>
                 ) : (
-                    <div className="fz-font-md neutral-500">Not live yet — add or buy a domain below.</div>
+                    <div className="bzx-note" style={{ fontSize: 14 }}>Not live yet — add or buy a domain below.</div>
                 )}
             </div>
 
             {/* Storefront app */}
             <div className="mb-4">
-                <div className="fz-font-sm fw-600 neutral-500 mb-1">Storefront app</div>
-                <div className="fz-font-md neutral-700 mb-3">
-                    {org.app_path ? <code>{org.app_path}</code> : <span className="neutral-500">Not linked to a storefront app</span>}
+                <div className="bzx-site-label">Storefront app</div>
+                <div className="mb-3" style={{ fontSize: 14 }}>
+                    {org.app_path ? <code>{org.app_path}</code> : <span className="bzx-note" style={{ fontSize: 14 }}>Not linked to a storefront app</span>}
                 </div>
-                <div className="fz-font-sm fw-600 neutral-500 mb-1">External site URL <span className="fw-400 neutral-400">(optional override)</span></div>
-                <div className="d-flex gap-2">
-                    <input
-                        className="form-control form-control-sm rounded-3"
-                        placeholder="https://your-business.example.com"
-                        value={siteUrl}
-                        onChange={(e) => setSiteUrl(e.target.value)}
-                        disabled={!canManage}
-                    />
-                    {canManage && (
-                        <button type="button" className="btn btn-dark btn-sm rounded-3 px-3 flex-shrink-0" onClick={onSaveSite} disabled={busy}>
-                            Save
-                        </button>
-                    )}
-                </div>
+                <label className="hrx-field mb-0">
+                    <span>External site URL <span className="opt">(optional override)</span></span>
+                    <span className="d-flex gap-2">
+                        <input
+                            className="form-control"
+                            placeholder="https://your-business.example.com"
+                            value={siteUrl}
+                            onChange={(e) => setSiteUrl(e.target.value)}
+                            disabled={!canManage}
+                        />
+                        {canManage && (
+                            <button type="button" className="hrx-pill dark flex-shrink-0" onClick={onSaveSite} disabled={busy}>
+                                Save
+                            </button>
+                        )}
+                    </span>
+                </label>
             </div>
 
             {/* Domains */}
-            <div className="fz-font-sm fw-600 neutral-500 mb-2">Domains</div>
+            <div className="bzx-site-label mb-2">Domains</div>
             {loading ? (
-                <div className="neutral-500 fz-font-md">Loading…</div>
+                <div className="bzx-note" style={{ fontSize: 14 }}>Loading…</div>
             ) : (
-                <ul className="list-unstyled m-0 d-flex flex-column gap-2">
-                    {domains.length === 0 && <li className="neutral-500 fz-font-md">No domains yet.</li>}
+                <div>
+                    {domains.length === 0 && <div className="bzx-note" style={{ fontSize: 14 }}>No domains yet.</div>}
                     {domains.map((d) => (
-                        <li key={d.id} className="border-100 rounded-3 p-3">
+                        <div key={d.id} className="bzx-domain">
                             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
                                 <span className="d-flex align-items-center gap-2 flex-wrap">
-                                    <span className="fw-500 neutral-900">{d.hostname}</span>
-                                    {d.is_primary && <span className="badge bg-neutral-900 text-white fw-500">Primary</span>}
-                                    <span className={`badge fw-500 text-capitalize ${STATUS_BADGE[d.status]}`}>
-                                        {d.status === "verifying" ? "verifying…" : d.status}
-                                    </span>
-                                    {d.kind === "subdomain" && <span className="badge bg-neutral-100 neutral-700 fw-500">Phoxta subdomain</span>}
-                                    {d.source === "purchased" && <span className="badge bg-info-subtle text-info fw-500">Purchased</span>}
+                                    <span style={{ fontWeight: 600, fontSize: 14 }}>{d.hostname}</span>
+                                    {d.is_primary && <Chip tone="solid">Primary</Chip>}
+                                    <Chip tone={STATUS_TONE[d.status]}>{d.status === "verifying" ? "verifying…" : d.status}</Chip>
+                                    {d.kind === "subdomain" && <Chip tone="line">Phoxta subdomain</Chip>}
+                                    {d.source === "purchased" && <Chip tone="blue">Purchased</Chip>}
                                 </span>
                                 {canManage && (
-                                    <span className="d-flex align-items-center gap-2">
+                                    <span className="d-flex align-items-center gap-3">
                                         {d.kind === "custom" && d.status !== "live" && (
-                                            <button type="button" className="btn btn-link btn-sm p-0 fw-600 text-decoration-none" onClick={() => onVerify(d)} disabled={busy}>
+                                            <button type="button" className="bzx-linkbtn" onClick={() => onVerify(d)} disabled={busy}>
                                                 Verify
                                             </button>
                                         )}
                                         {d.kind === "custom" && d.dns_records?.length > 0 && (
-                                            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => setExpanded(expanded === d.id ? null : d.id)}>
+                                            <button type="button" className="bzx-linkbtn mut" onClick={() => setExpanded(expanded === d.id ? null : d.id)}>
                                                 DNS records
                                             </button>
                                         )}
                                         {d.status === "live" && !d.is_primary && (
-                                            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => onPrimary(d)}>
+                                            <button type="button" className="bzx-linkbtn mut" onClick={() => onPrimary(d)}>
                                                 Set primary
                                             </button>
                                         )}
                                         {d.kind === "custom" && (
-                                            <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none" onClick={() => onRemove(d)}>
+                                            <button type="button" className="bzx-linkbtn mut" onClick={() => onRemove(d)}>
                                                 Remove
                                             </button>
                                         )}
@@ -298,16 +317,16 @@ export default function BusinessSiteCard({ org, canManage, onUpdated }: Props) {
                                 )}
                             </div>
                             {expanded === d.id && d.kind === "custom" && (
-                                <div className="mt-3 fz-font-sm neutral-700">
-                                    <div className="neutral-500 mb-2">Add these at your domain's DNS provider. We check automatically — it goes live once DNS propagates (usually a few minutes):</div>
+                                <div className="mt-3">
+                                    <div className="bzx-note mb-2">Add these at your domain's DNS provider. We check automatically — it goes live once DNS propagates (usually a few minutes):</div>
                                     {(d.dns_records ?? []).map((r, i) => (
-                                        <div key={i} className="bg-neutral-50 rounded-3 p-2 mb-2 d-flex align-items-center justify-content-between gap-2 text-break">
+                                        <div key={i} className="bzx-dns">
                                             <span>
-                                                <span className="fw-600">{r.type}</span> &nbsp;<code>{r.name}</code> → <code>{r.value}</code>
+                                                <span style={{ fontWeight: 600 }}>{r.type}</span> &nbsp;<code>{r.name}</code> → <code>{r.value}</code>
                                             </span>
                                             <button
                                                 type="button"
-                                                className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none text-nowrap"
+                                                className="bzx-linkbtn mut text-nowrap"
                                                 onClick={() => copy(r.value, `${d.id}-${i}`)}
                                             >
                                                 {copied === `${d.id}-${i}` ? "Copied ✓" : "Copy"}
@@ -315,63 +334,63 @@ export default function BusinessSiteCard({ org, canManage, onUpdated }: Props) {
                                         </div>
                                     ))}
                                     {(!d.dns_records || d.dns_records.length === 0) && (
-                                        <div className="neutral-500">No records needed.</div>
+                                        <div className="bzx-note">No records needed.</div>
                                     )}
                                 </div>
                             )}
                             {d.expires_at && (
-                                <div className="fz-font-sm neutral-500 mt-2">Renews {new Date(d.expires_at).toLocaleDateString()}</div>
+                                <div className="bzx-note mt-2">Renews {new Date(d.expires_at).toLocaleDateString()}</div>
                             )}
-                        </li>
+                        </div>
                     ))}
-                </ul>
+                </div>
             )}
 
             {canManage && (
                 <>
                     {/* Link your own domain */}
                     <form onSubmit={onAdd} className="d-flex gap-2 mt-3">
-                        <input className="form-control form-control-sm rounded-3" placeholder="yourbrand.com — link a domain you own" value={host} onChange={(e) => setHost(e.target.value)} />
-                        <button type="submit" className="btn btn-outline-dark btn-sm rounded-3 px-3 flex-shrink-0" disabled={busy}>
+                        <input className="form-control" placeholder="yourbrand.com — link a domain you own" value={host} onChange={(e) => setHost(e.target.value)} aria-label="Domain to link" />
+                        <button type="submit" className="hrx-pill flex-shrink-0" disabled={busy}>
                             Link domain
                         </button>
                     </form>
-                    <div className="fz-font-sm neutral-500 mt-1">Linking a root domain (yourbrand.com) also connects www automatically.</div>
+                    <div className="bzx-note mt-1">Linking a root domain (yourbrand.com) also connects www automatically.</div>
 
                     {/* Buy a domain */}
-                    <button type="button" className="btn btn-link btn-sm p-0 mt-2 fw-600 text-decoration-none" onClick={() => setShowBuy((v) => !v)}>
+                    <button type="button" className="bzx-linkbtn mt-2" onClick={() => setShowBuy((v) => !v)}>
                         {showBuy ? "− Hide" : "+ Buy a new domain"}
                     </button>
                     {showBuy && (
-                        <div className="border-100 rounded-3 p-3 mt-2">
+                        <div className="bzx-buybox">
                             <form onSubmit={onSearch} className="d-flex gap-2">
-                                <input className="form-control form-control-sm rounded-3" placeholder="yourbrand.com" value={query} onChange={(e) => setQuery(e.target.value)} />
-                                <button type="submit" className="btn btn-dark btn-sm rounded-3 px-3 flex-shrink-0" disabled={searching}>
+                                <input className="form-control" placeholder="yourbrand.com" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Domain to check" />
+                                <button type="submit" className="hrx-pill dark flex-shrink-0" disabled={searching}>
                                     {searching ? "…" : "Check"}
                                 </button>
                             </form>
                             {result && (
                                 <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
-                                    <span className="fz-font-md">
+                                    <span style={{ fontSize: 14 }}>
                                         <code>{result.host}</code>{" "}
                                         {result.available
-                                            ? <span className="text-success fw-600">available{result.price != null ? ` · $${result.price}/yr` : ""}</span>
-                                            : <span className="neutral-500">not available</span>}
+                                            ? <span style={{ color: "#15803d", fontWeight: 600 }}>available{result.price != null ? ` · $${result.price}/yr` : ""}</span>
+                                            : <span className="bzx-note" style={{ fontSize: 14 }}>not available</span>}
                                     </span>
                                     {result.available && result.price != null && (
-                                        <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={onBuy} disabled={busy}>
+                                        <button type="button" className="hrx-pill primary" onClick={onBuy} disabled={busy}>
                                             Buy &amp; connect
                                         </button>
                                     )}
                                 </div>
                             )}
-                            <div className="fz-font-sm neutral-500 mt-2">Purchased domains (and their www) are configured and secured automatically — no DNS setup needed.</div>
+                            <div className="bzx-note mt-2">Purchased domains (and their www) are configured and secured automatically — no DNS setup needed.</div>
                         </div>
                     )}
                 </>
             )}
 
-            {msg && <div className="fz-font-md neutral-700 mt-3">{msg}</div>}
-        </div>
+            {msg && <div className="mt-3" style={{ fontSize: 14 }} role="status">{msg}</div>}
+        </Card>
     );
 }

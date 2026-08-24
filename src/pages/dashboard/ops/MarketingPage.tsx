@@ -46,6 +46,7 @@ import { invokeAction } from "@/lib/db/ops/ai";
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import { OpsSubNav } from "@/layouts/OpsSubNav";
+import { Card, Chip, Empty } from "@/components/dash/Ui";
 import PromoCodes from "./PromoCodes";
 
 // ---------------------------------------------------------------------------
@@ -61,9 +62,9 @@ const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: "promos", label: "Promo codes" },
 ];
 
-/** Underlined sub-tab strip: navigation between the four Marketing sections.
- *  Deliberately NOT the rounded pills used for list filters elsewhere, and
- *  visually subordinate to the console shell's tab bar. */
+/** Pill sub-tab strip: navigation between the four Marketing sections.
+ *  Rendered into the console header's pinned block (see OpsSubNav) so it stays
+ *  reachable while the section content scrolls. */
 function SectionTabs({ tab, setTab }: { tab: SectionKey; setTab: (k: SectionKey) => void }) {
   function move(e: React.KeyboardEvent, i: number) {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
@@ -73,55 +74,72 @@ function SectionTabs({ tab, setTab }: { tab: SectionKey; setTab: (k: SectionKey)
     document.getElementById(`mk-tab-${next.key}`)?.focus();
   }
   return (
-    // Rendered into the console header's pinned block (see OpsSubNav).
     <OpsSubNav>
-      <div className="ops-scroll-x border-bottom">
-        <div className="d-flex flex-nowrap" role="tablist" aria-label="Marketing sections">
-          {SECTIONS.map((s, i) => {
-            const active = tab === s.key;
-            return (
-              <button
-                key={s.key}
-                id={`mk-tab-${s.key}`}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-controls={`mk-panel-${s.key}`}
-                tabIndex={active ? 0 : -1}
-                onKeyDown={(e) => move(e, i)}
-                onClick={() => setTab(s.key)}
-                className={`btn btn-sm rounded-0 bg-transparent text-nowrap px-3 py-2 ops-tap ${active ? "neutral-900 fw-700" : "neutral-500 fw-500"}`}
-                style={{ border: "none", borderBottom: `2px solid ${active ? "#212529" : "transparent"}`, marginBottom: -1 }}
-              >
-                {s.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <nav className="hrx-tabbar" role="tablist" aria-label="Marketing sections">
+        {SECTIONS.map((s, i) => {
+          const active = tab === s.key;
+          return (
+            <button
+              key={s.key}
+              id={`mk-tab-${s.key}`}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-controls={`mk-panel-${s.key}`}
+              tabIndex={active ? 0 : -1}
+              onKeyDown={(e) => move(e, i)}
+              onClick={() => setTab(s.key)}
+              className={`hrx-tab${active ? " active" : ""}`}
+            >
+              {s.label}
+            </button>
+          );
+        })}
+      </nav>
     </OpsSubNav>
   );
 }
 
-const RUN_STYLE: Record<string, string> = {
-  pending: "bg-neutral-100 neutral-700",
-  running: "bg-warning-subtle text-warning",
-  succeeded: "bg-success-subtle text-success",
-  failed: "bg-danger-subtle text-danger",
+type ChipTone = "plain" | "blue" | "orange" | "ok" | "warn" | "danger" | "solid" | "line";
+const RUN_TONE: Record<string, ChipTone> = {
+  pending: "line",
+  running: "warn",
+  succeeded: "ok",
+  failed: "danger",
 };
-const TASK_STYLE: Record<string, string> = {
-  queued: "bg-neutral-100 neutral-700",
-  in_progress: "bg-warning-subtle text-warning",
-  done: "bg-success-subtle text-success",
-  failed: "bg-danger-subtle text-danger",
-  no_answer: "bg-neutral-100 neutral-500",
+const TASK_TONE: Record<string, ChipTone> = {
+  queued: "line",
+  in_progress: "warn",
+  done: "ok",
+  failed: "danger",
+  no_answer: "plain",
 };
-const CAMPAIGN_STYLE: Record<Campaign["status"], string> = {
-  draft: "bg-neutral-100 neutral-700",
-  scheduled: "bg-warning-subtle text-warning",
-  sending: "bg-warning-subtle text-warning",
-  sent: "bg-success-subtle text-success",
+const CAMPAIGN_TONE: Record<Campaign["status"], ChipTone> = {
+  draft: "line",
+  scheduled: "warn",
+  sending: "warn",
+  sent: "ok",
 };
+
+/** Page-local styles on top of the shared .hrx kit. */
+const CSS = `
+.mkx-accent { box-shadow: inset 3px 0 0 var(--hrx-ink); }
+.mkx-pre { white-space: pre-wrap; background: var(--hrx-soft); border: 1px solid var(--hrx-border-soft); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.mkx-hint { font-size: 13px; color: var(--hrx-muted); }
+.mkx-recipe { background: var(--hrx-soft); border: 1px solid var(--hrx-border-soft); border-radius: 12px; padding: 14px 16px; }
+.mkx-recipe .t { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px; }
+.mkx-recipe .d { font-size: 13px; color: var(--hrx-muted); margin: 0 0 12px; }
+.mkx-runrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 9px 0; border-top: 1px solid #f1f2f4; font-size: 13.5px; }
+.mkx-runrow:first-of-type { border-top: 0; }
+.mkx-runrow .who { min-width: 0; color: var(--hrx-ink); }
+.mkx-details { border: 1px solid var(--hrx-border-soft); border-radius: 12px; padding: 10px 12px; background: var(--hrx-soft); }
+.mkx-details summary { cursor: pointer; font-size: 13.5px; }
+.mkx-details[open] > summary { margin-bottom: 8px; }
+.mkx-item { padding: 12px 0; border-top: 1px solid #ececec; }
+.mkx-item:first-child { border-top: 0; padding-top: 0; }
+.mkx-item:last-child { padding-bottom: 0; }
+.mkx-row { display: flex; align-items: center; justify-content: space-between; gap: 10px 12px; flex-wrap: wrap; }
+`;
 
 const TRIGGERS: { value: AutomationTrigger; label: string }[] = [
   { value: "contact_created", label: "New contact" },
@@ -178,13 +196,14 @@ export default function MarketingPage() {
     { ttl: DASHBOARD_TTL },
   );
 
-  if (loading) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500">Loading…</div>;
+  if (loading) return <div className="hrx-card hrx-pad text-center" style={{ color: "var(--hrx-muted)" }} role="status">Loading…</div>;
 
   return (
     <div>
+      <style>{CSS}</style>
       <SectionTabs tab={tab} setTab={setTab} />
 
-      {loadError && <div className="alert alert-warning py-2 px-3 fz-font-md mb-3" role="alert">{loadError}</div>}
+      {loadError && <div className="alert alert-warning py-2 px-3 mb-3" style={{ borderRadius: 12, fontSize: 14 }} role="alert">{loadError}</div>}
 
       <div id={`mk-panel-${tab}`} role="tabpanel" aria-labelledby={`mk-tab-${tab}`}>
         {tab === "campaigns" && (
@@ -335,146 +354,173 @@ function CampaignsTab({ orgId, campaigns, segments, contacts, reload }: {
   };
 
   return (
-    <div className="row g-4">
-      <div className="col-lg-7">
-        <h2 className="fz-font-lg fw-600 mb-3">Campaigns</h2>
-
-        <form onSubmit={addCampaign} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <div className="row g-2">
-            <div className="col-md-5">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-c-name">Campaign name</label>
-              <input id="mk-c-name" className="form-control rounded-3" value={cForm.name} onChange={(e) => setCForm({ ...cForm, name: e.target.value })} required />
+    <div className="row g-3">
+      <div className="col-lg-7 d-flex flex-column gap-3">
+        <Card title="New campaign">
+          <form onSubmit={addCampaign}>
+            <div className="row g-2">
+              <div className="col-md-5">
+                <label className="hrx-field mb-0" htmlFor="mk-c-name">
+                  <span>Campaign name</span>
+                  <input id="mk-c-name" className="form-control" value={cForm.name} onChange={(e) => setCForm({ ...cForm, name: e.target.value })} required />
+                </label>
+              </div>
+              <div className="col-md-3">
+                <label className="hrx-field mb-0" htmlFor="mk-c-channel">
+                  <span>Channel</span>
+                  <select id="mk-c-channel" className="form-select" value={cForm.channel} onChange={(e) => setCForm({ ...cForm, channel: e.target.value as "email" | "sms" })}>
+                    <option value="email">Email</option>
+                    <option value="sms">SMS</option>
+                  </select>
+                </label>
+              </div>
+              <div className="col-md-4">
+                <label className="hrx-field mb-0" htmlFor="mk-c-audience">
+                  <span>Audience</span>
+                  <select id="mk-c-audience" className="form-select" value={cForm.audience} onChange={(e) => setCForm({ ...cForm, audience: e.target.value })}>
+                    <option value="all">All contacts</option>
+                    {segments.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.contact_ids?.length ?? 0})</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="col-12">
+                <label className="hrx-field mb-0" htmlFor="mk-c-subject">
+                  <span>Subject</span>
+                  <input id="mk-c-subject" className="form-control" value={cForm.subject} onChange={(e) => setCForm({ ...cForm, subject: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-12">
+                <label className="hrx-field mb-0" htmlFor="mk-c-body">
+                  <span>Body</span>
+                  <textarea id="mk-c-body" className="form-control" rows={5} value={cForm.body} onChange={(e) => setCForm({ ...cForm, body: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-12 d-flex flex-wrap align-items-center gap-2">
+                <button type="submit" className="hrx-pill primary flex-shrink-0">Create campaign</button>
+                <span className="mkx-hint">Every marketing email automatically includes an unsubscribe footer.</span>
+              </div>
             </div>
-            <div className="col-md-3">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-c-channel">Channel</label>
-              <select id="mk-c-channel" className="form-select rounded-3" value={cForm.channel} onChange={(e) => setCForm({ ...cForm, channel: e.target.value as "email" | "sms" })}>
-                <option value="email">Email</option>
-                <option value="sms">SMS</option>
-              </select>
-            </div>
-            <div className="col-md-4">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-c-audience">Audience</label>
-              <select id="mk-c-audience" className="form-select rounded-3" value={cForm.audience} onChange={(e) => setCForm({ ...cForm, audience: e.target.value })}>
-                <option value="all">All contacts</option>
-                {segments.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.contact_ids?.length ?? 0})</option>)}
-              </select>
-            </div>
-            <div className="col-12">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-c-subject">Subject</label>
-              <input id="mk-c-subject" className="form-control rounded-3" value={cForm.subject} onChange={(e) => setCForm({ ...cForm, subject: e.target.value })} />
-            </div>
-            <div className="col-12">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-c-body">Body</label>
-              <textarea id="mk-c-body" className="form-control rounded-3" rows={5} value={cForm.body} onChange={(e) => setCForm({ ...cForm, body: e.target.value })} />
-            </div>
-            <div className="col-12 d-flex flex-wrap align-items-center gap-2">
-              <button type="submit" className="btn btn-dark rounded-3 px-4 text-nowrap flex-shrink-0">Create campaign</button>
-              <span className="fz-font-sm neutral-500">Every marketing email automatically includes an unsubscribe footer.</span>
-            </div>
-          </div>
-        </form>
+          </form>
+        </Card>
 
         {sendPrep && (
-          <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-3" style={{ boxShadow: "inset 3px 0 0 #212529" }} role="status">
-            <div className="fw-600 mb-1">
-              Send &quot;{sendPrep.campaign.subject || sendPrep.campaign.name}&quot; to {sendPrep.eligible.length} contact{sendPrep.eligible.length === 1 ? "" : "s"} via {sendPrep.campaign.channel}
-            </div>
-            <div className="fz-font-sm neutral-500 mb-2">
-              {sendPrep.audienceLabel} · {sendPrep.skipped} skipped (no {sendPrep.campaign.channel === "email" ? "email address" : "phone number"} or opted out)
-            </div>
-            {sendPrep.campaign.body
-              ? <div className="p-2 bg-neutral-50 rounded-3 fz-font-sm neutral-700 mb-2" style={{ whiteSpace: "pre-wrap", maxHeight: 180, overflowY: "auto" }}>{sendPrep.campaign.body}</div>
-              : <div className="fz-font-sm text-danger mb-2">This campaign has no body — it will send empty.</div>}
-            <div className="d-flex flex-wrap gap-2">
-              <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 text-nowrap" onClick={confirmSend} disabled={sending || sendPrep.eligible.length === 0}>{sending ? "Queuing…" : `Confirm send to ${sendPrep.eligible.length}`}</button>
-              <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 text-nowrap" onClick={() => setSendPrep(null)} disabled={sending}>Cancel</button>
-            </div>
-          </div>
-        )}
-
-        {campaigns.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No campaigns yet.</div>
-        ) : (
-          <div className="d-flex flex-column gap-2">
-            {campaigns.map((c) => (
-              <div key={c.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <div style={{ minWidth: "12rem" }} className="flex-grow-1">
-                  <div className="fw-600">{c.name} <span className="badge bg-neutral-100 neutral-700 fw-500 text-uppercase ms-1">{c.channel}</span></div>
-                  <div className="fz-font-sm neutral-500">{statusLine(c)}</div>
-                </div>
-                <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                  <span className={`badge fw-500 text-capitalize ${CAMPAIGN_STYLE[c.status] ?? CAMPAIGN_STYLE.draft}`}>{c.status === "sending" ? "Sending…" : c.status}</span>
-                  {(c.status === "draft" || c.status === "scheduled") && (
-                    <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={() => prepareSend(c)}>Send</button>
-                  )}
-                </div>
+          <Card
+            className="mkx-accent"
+            title={<>Send &quot;{sendPrep.campaign.subject || sendPrep.campaign.name}&quot; to {sendPrep.eligible.length} contact{sendPrep.eligible.length === 1 ? "" : "s"} via {sendPrep.campaign.channel}</>}
+          >
+            <div role="status">
+              <div className="mkx-hint mb-2">
+                {sendPrep.audienceLabel} · {sendPrep.skipped} skipped (no {sendPrep.campaign.channel === "email" ? "email address" : "phone number"} or opted out)
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* AI helper sits below the operational surface, like Commerce. */}
-        <div className="bg-neutral-0 rounded-4 p-3 border-100 mt-3">
-          <h3 className="fz-font-sm fw-600 neutral-500 mb-1">✨ Generate campaign</h3>
-          <p className="fz-font-sm neutral-500 mb-2">Writes draft copy into the campaign form above — you review and edit before anything is created.</p>
-          <div className="row g-2">
-            <div className="col-md-6">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-g-goal">Goal</label>
-              <input id="mk-g-goal" className="form-control rounded-3" placeholder="e.g. win back lapsed customers" value={genForm.goal} onChange={(e) => setGenForm({ ...genForm, goal: e.target.value })} />
-            </div>
-            <div className="col-6 col-md-3">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-g-channel">Channel</label>
-              <select id="mk-g-channel" className="form-select rounded-3" value={genForm.channel} onChange={(e) => setGenForm({ ...genForm, channel: e.target.value })}>
-                <option value="email">Email</option>
-                <option value="sms">SMS</option>
-              </select>
-            </div>
-            <div className="col-6 col-md-3 d-flex align-items-end">
-              <button type="button" className="btn btn-dark w-100 rounded-3 text-nowrap" onClick={genCampaign} disabled={genLoading}>{genLoading ? "Writing…" : "Generate"}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="col-lg-5">
-        <h2 className="fz-font-lg fw-600 mb-3">Segments</h2>
-
-        {segments.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No saved segments yet — build one with AI below, then target it from the campaign form.</div>
-        ) : (
-          <div className="d-flex flex-column gap-2">
-            {segments.map((s) => (
-              <div key={s.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <div style={{ minWidth: "10rem" }} className="flex-grow-1">
-                  <div className="fw-600">{s.name}</div>
-                  <div className="fz-font-sm neutral-500">{s.contact_ids?.length ?? 0} contacts · {s.criteria}</div>
-                </div>
-                <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap flex-shrink-0" onClick={() => removeSegment(s)}>Delete</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="bg-neutral-0 rounded-4 p-3 border-100 mt-3">
-          <h3 className="fz-font-sm fw-600 neutral-500 mb-1">✨ AI audience builder</h3>
-          <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-s-desc">Describe the audience</label>
-          <div className="d-flex flex-wrap gap-2">
-            <input id="mk-s-desc" className="form-control rounded-3 flex-grow-1" style={{ minWidth: "12rem" }} placeholder="e.g. high-value customers at churn risk" value={segDesc} onChange={(e) => setSegDesc(e.target.value)} />
-            <button type="button" className="btn btn-dark rounded-3 px-3 text-nowrap flex-shrink-0" onClick={runSegment} disabled={segLoading}>{segLoading ? "Building…" : "Build"}</button>
-          </div>
-          {seg && (
-            <div className="mt-3 pt-3 border-top">
-              <div className="fz-font-md neutral-700 mb-2">
-                <span className="fw-600">{seg.criteria}</span> — {seg.count} contacts. <span className="neutral-500">{seg.rationale}</span>
-              </div>
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-s-name">Segment name</label>
+              {sendPrep.campaign.body
+                ? <div className="mkx-pre mb-3" style={{ maxHeight: 180, overflowY: "auto" }}>{sendPrep.campaign.body}</div>
+                : <div className="text-danger mb-3" style={{ fontSize: 14 }}>This campaign has no body — it will send empty.</div>}
               <div className="d-flex flex-wrap gap-2">
-                <input id="mk-s-name" className="form-control rounded-3 flex-grow-1" style={{ minWidth: "12rem" }} placeholder="Segment name" value={segName} onChange={(e) => setSegName(e.target.value)} />
-                <button type="button" className="btn btn-dark rounded-3 px-3 text-nowrap flex-shrink-0" onClick={saveSegment}>Save segment</button>
+                <button type="button" className="hrx-pill dark" onClick={confirmSend} disabled={sending || sendPrep.eligible.length === 0}>{sending ? "Queuing…" : `Confirm send to ${sendPrep.eligible.length}`}</button>
+                <button type="button" className="hrx-pill" onClick={() => setSendPrep(null)} disabled={sending}>Cancel</button>
               </div>
+            </div>
+          </Card>
+        )}
+
+        <Card
+          title="Campaigns"
+          right={campaigns.length > 0 ? <Chip tone="line">{campaigns.length} campaign{campaigns.length === 1 ? "" : "s"}</Chip> : undefined}
+        >
+          {campaigns.length === 0 ? (
+            <Empty title="No campaigns yet">Create one with the form above — or let ✨ Generate write the first draft for you.</Empty>
+          ) : (
+            <div>
+              {campaigns.map((c) => (
+                <div key={c.id} className="hrx-listrow">
+                  <div className="main">
+                    <p className="t">{c.name}</p>
+                    <p className="s">{statusLine(c)}</p>
+                  </div>
+                  <div className="d-flex align-items-center gap-2 flex-shrink-0 flex-wrap justify-content-end">
+                    <Chip tone="line">{c.channel === "sms" ? "SMS" : "Email"}</Chip>
+                    <Chip tone={CAMPAIGN_TONE[c.status] ?? "line"}>{c.status === "sending" ? "Sending…" : c.status}</Chip>
+                    {(c.status === "draft" || c.status === "scheduled") && (
+                      <button type="button" className="btn btn-dark btn-sm rounded-pill px-3" onClick={() => prepareSend(c)}>Send</button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-        </div>
+        </Card>
+
+        {/* AI helper sits below the operational surface, like Commerce. */}
+        <Card title="✨ Generate campaign">
+          <p className="mkx-hint mb-3">Writes draft copy into the campaign form above — you review and edit before anything is created.</p>
+          <div className="row g-2">
+            <div className="col-md-6">
+              <label className="hrx-field mb-0" htmlFor="mk-g-goal">
+                <span>Goal</span>
+                <input id="mk-g-goal" className="form-control" placeholder="e.g. win back lapsed customers" value={genForm.goal} onChange={(e) => setGenForm({ ...genForm, goal: e.target.value })} />
+              </label>
+            </div>
+            <div className="col-6 col-md-3">
+              <label className="hrx-field mb-0" htmlFor="mk-g-channel">
+                <span>Channel</span>
+                <select id="mk-g-channel" className="form-select" value={genForm.channel} onChange={(e) => setGenForm({ ...genForm, channel: e.target.value })}>
+                  <option value="email">Email</option>
+                  <option value="sms">SMS</option>
+                </select>
+              </label>
+            </div>
+            <div className="col-6 col-md-3 d-flex align-items-end">
+              <button type="button" className="hrx-pill dark w-100 justify-content-center" onClick={genCampaign} disabled={genLoading}>{genLoading ? "Writing…" : "Generate"}</button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="col-lg-5 d-flex flex-column gap-3">
+        <Card
+          title="Segments"
+          right={segments.length > 0 ? <Chip tone="line">{segments.length} saved</Chip> : undefined}
+        >
+          {segments.length === 0 ? (
+            <Empty title="No saved segments yet">Build one with AI below, then target it from the campaign form.</Empty>
+          ) : (
+            <div>
+              {segments.map((s) => (
+                <div key={s.id} className="hrx-listrow">
+                  <div className="main">
+                    <p className="t">{s.name}</p>
+                    <p className="s">{s.contact_ids?.length ?? 0} contacts · {s.criteria}</p>
+                  </div>
+                  <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none flex-shrink-0" onClick={() => removeSegment(s)}>Delete</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card title="✨ AI audience builder">
+          <label className="hrx-field mb-0" htmlFor="mk-s-desc">
+            <span>Describe the audience</span>
+            <div className="d-flex flex-wrap gap-2">
+              <input id="mk-s-desc" className="form-control flex-grow-1" style={{ minWidth: "12rem" }} placeholder="e.g. high-value customers at churn risk" value={segDesc} onChange={(e) => setSegDesc(e.target.value)} />
+              <button type="button" className="hrx-pill dark flex-shrink-0" onClick={runSegment} disabled={segLoading}>{segLoading ? "Building…" : "Build"}</button>
+            </div>
+          </label>
+          {seg && (
+            <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--hrx-border-soft)" }}>
+              <div className="mb-3" style={{ fontSize: 14 }}>
+                <span className="fw-semibold">{seg.criteria}</span> — {seg.count} contacts. <span style={{ color: "var(--hrx-muted)" }}>{seg.rationale}</span>
+              </div>
+              <label className="hrx-field mb-0" htmlFor="mk-s-name">
+                <span>Segment name</span>
+                <div className="d-flex flex-wrap gap-2">
+                  <input id="mk-s-name" className="form-control flex-grow-1" style={{ minWidth: "12rem" }} placeholder="Segment name" value={segName} onChange={(e) => setSegName(e.target.value)} />
+                  <button type="button" className="hrx-pill dark flex-shrink-0" onClick={saveSegment}>Save segment</button>
+                </div>
+              </label>
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );
@@ -577,15 +623,14 @@ function AutomationsTab({ orgId, businessName, automations, runs, reload }: {
   }
 
   return (
-    <div className="row g-4">
-      <div className="col-12">
-        <h2 className="fz-font-lg fw-600 mb-3">Recipes</h2>
-        <div className="row g-3">
+    <div className="d-flex flex-column gap-3">
+      <Card title="Recipes">
+        <div className="row g-2">
           {recipeDefs(businessName).map((r) => (
             <div key={r.key} className="col-md-4">
-              <div className="bg-neutral-0 rounded-4 p-3 border-100 h-100 d-flex flex-column">
-                <h3 className="fz-font-md fw-600 mb-1">{r.title}</h3>
-                <div className="fz-font-sm neutral-500 mb-2 flex-grow-1">{r.desc}</div>
+              <div className="mkx-recipe h-100 d-flex flex-column">
+                <p className="t">{r.title}</p>
+                <p className="d flex-grow-1">{r.desc}</p>
                 <div>
                   <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap" onClick={() => addRecipe(r)} disabled={busyRecipe === r.key}>
                     {busyRecipe === r.key ? "Adding…" : "Add automation"}
@@ -595,94 +640,104 @@ function AutomationsTab({ orgId, businessName, automations, runs, reload }: {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
-      <div className="col-lg-6">
-        <h2 className="fz-font-lg fw-600 mb-3">{editingId ? "Edit automation" : "New automation"}</h2>
-        <form onSubmit={submit} className="bg-neutral-0 rounded-4 p-3 border-100">
-          <div className="row g-2">
-            <div className="col-12">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-a-name">Automation name</label>
-              <input id="mk-a-name" className="form-control rounded-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            </div>
-            <div className="col-6">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-a-trigger">Trigger</label>
-              <select id="mk-a-trigger" className="form-select rounded-3" value={form.trigger} onChange={(e) => setForm({ ...form, trigger: e.target.value as AutomationTrigger })}>
-                {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-            <div className="col-6">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-a-action">Action</label>
-              <select id="mk-a-action" className="form-select rounded-3" value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value as AutomationAction })}>
-                {ACTIONS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
-              </select>
-            </div>
-            {form.action === "send_email" && (
-              <>
-                <div className="col-12">
-                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-a-subject">Email subject</label>
-                  <input id="mk-a-subject" className="form-control rounded-3" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
+      <div className="row g-3">
+        <div className="col-lg-6">
+          <Card className={editingId ? "mkx-accent" : undefined} title={editingId ? "Edit automation" : "New automation"}>
+            <form onSubmit={submit}>
+              <label className="hrx-field" htmlFor="mk-a-name">
+                <span>Automation name</span>
+                <input id="mk-a-name" className="form-control" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              </label>
+              <div className="row g-2">
+                <div className="col-6">
+                  <label className="hrx-field" htmlFor="mk-a-trigger">
+                    <span>Trigger</span>
+                    <select id="mk-a-trigger" className="form-select" value={form.trigger} onChange={(e) => setForm({ ...form, trigger: e.target.value as AutomationTrigger })}>
+                      {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </label>
                 </div>
-                <div className="col-12">
-                  <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-a-body">Email body</label>
-                  <textarea id="mk-a-body" className="form-control rounded-3" rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
-                  <div className="fz-font-sm neutral-500 mt-1">{PLACEHOLDER_HELP}</div>
+                <div className="col-6">
+                  <label className="hrx-field" htmlFor="mk-a-action">
+                    <span>Action</span>
+                    <select id="mk-a-action" className="form-select" value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value as AutomationAction })}>
+                      {ACTIONS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+                    </select>
+                  </label>
                 </div>
-              </>
+              </div>
+              {form.action === "send_email" && (
+                <>
+                  <label className="hrx-field" htmlFor="mk-a-subject">
+                    <span>Email subject</span>
+                    <input id="mk-a-subject" className="form-control" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
+                  </label>
+                  <label className="hrx-field" htmlFor="mk-a-body">
+                    <span>Email body</span>
+                    <textarea id="mk-a-body" className="form-control" rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+                  </label>
+                  <p className="mkx-hint" style={{ marginTop: -8 }}>{PLACEHOLDER_HELP}</p>
+                </>
+              )}
+              <div className="d-flex flex-wrap gap-2">
+                <button type="submit" className="hrx-pill primary">{editingId ? "Save changes" : "Add automation"}</button>
+                {editingId && <button type="button" className="hrx-pill" onClick={() => { setEditingId(null); setForm(blank); }}>Cancel</button>}
+              </div>
+            </form>
+          </Card>
+        </div>
+
+        <div className="col-lg-6 d-flex flex-column gap-3">
+          <Card
+            title="Your automations"
+            right={automations.length > 0 ? <Chip tone="line">{automations.length} automation{automations.length === 1 ? "" : "s"}</Chip> : undefined}
+          >
+            {automations.length === 0 ? (
+              <Empty title="No automations yet">Try a recipe above — it goes live in one click.</Empty>
+            ) : (
+              <div>
+                {automations.map((a) => {
+                  const trig = TRIGGERS.find((t) => t.value === a.trigger)?.label ?? a.trigger;
+                  const act = ACTIONS.find((x) => x.value === a.action)?.label ?? a.action;
+                  return (
+                    <div key={a.id} className="hrx-listrow">
+                      <div className="main">
+                        <p className="t">
+                          {a.name}
+                          {lastRunFailed.get(a.id) && <span className="ms-2"><Chip tone="danger">Last run failed</Chip></span>}
+                        </p>
+                        <p className="s">When {trig} → {act}{a.config?.subject ? ` · "${a.config.subject}"` : ""}</p>
+                      </div>
+                      <div className="d-flex align-items-center gap-3 flex-shrink-0">
+                        <button type="button" className="btn btn-link btn-sm p-0 text-secondary text-decoration-none" onClick={() => startEdit(a)}>Edit</button>
+                        <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none" onClick={() => remove(a)}>Delete</button>
+                        <div className="form-check form-switch m-0">
+                          <input className="form-check-input" type="checkbox" aria-label={`${a.name} active`} checked={a.active} onChange={async (e) => { const ok = await reportMutation(toggleAutomation(a.id, e.target.checked), e.target.checked ? "Automation turned on." : "Automation paused."); if (ok) reload(); }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
-            <div className="col-12 d-flex flex-wrap gap-2">
-              <button type="submit" className="btn btn-dark rounded-3 px-4 text-nowrap">{editingId ? "Save changes" : "Add automation"}</button>
-              {editingId && <button type="button" className="btn btn-outline-secondary rounded-3 px-3 text-nowrap" onClick={() => { setEditingId(null); setForm(blank); }}>Cancel</button>}
-            </div>
-          </div>
-        </form>
-      </div>
+          </Card>
 
-      <div className="col-lg-6">
-        <h2 className="fz-font-lg fw-600 mb-3">Your automations</h2>
-        {automations.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No automations yet — try a recipe above.</div>
-        ) : (
-          <div className="d-flex flex-column gap-2">
-            {automations.map((a) => {
-              const trig = TRIGGERS.find((t) => t.value === a.trigger)?.label ?? a.trigger;
-              const act = ACTIONS.find((x) => x.value === a.action)?.label ?? a.action;
-              return (
-                <div key={a.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                  <div style={{ minWidth: "12rem" }} className="flex-grow-1">
-                    <div className="fw-600">
-                      {a.name}
-                      {lastRunFailed.get(a.id) && <span className="badge bg-danger-subtle text-danger fw-500 ms-2">Last run failed</span>}
-                    </div>
-                    <div className="fz-font-sm neutral-500">When {trig} → {act}{a.config?.subject ? ` · "${a.config.subject}"` : ""}</div>
+          <Card title="Automation runs">
+            {runs.length === 0 ? (
+              <p className="mkx-hint mb-0">Nothing yet. Runs start on their own whenever a trigger fires — usually within a few minutes.</p>
+            ) : (
+              <div>
+                {runs.slice(0, 8).map((r) => (
+                  <div key={r.id} className="mkx-runrow">
+                    <span className="who">{r.automations?.name ?? "Automation"} · {r.trigger.replace("_", " ")} · {new Date(r.created_at).toLocaleString()}</span>
+                    <Chip tone={RUN_TONE[r.status] ?? "line"}>{r.status}</Chip>
                   </div>
-                  <div className="d-flex align-items-center gap-3 flex-shrink-0">
-                    <button type="button" className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap" onClick={() => startEdit(a)}>Edit</button>
-                    <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap" onClick={() => remove(a)}>Delete</button>
-                    <div className="form-check form-switch m-0">
-                      <input className="form-check-input" type="checkbox" aria-label={`${a.name} active`} checked={a.active} onChange={async (e) => { const ok = await reportMutation(toggleAutomation(a.id, e.target.checked), e.target.checked ? "Automation turned on." : "Automation paused."); if (ok) reload(); }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="mt-4">
-          <h3 className="fz-font-md fw-600 mb-2">Automation runs</h3>
-          {runs.length === 0 ? (
-            <p className="fz-font-sm neutral-500 mb-0">Nothing yet. Runs start on their own whenever a trigger fires — usually within a few minutes.</p>
-          ) : (
-            <div className="d-flex flex-column gap-1">
-              {runs.slice(0, 8).map((r) => (
-                <div key={r.id} className="d-flex flex-wrap align-items-center justify-content-between fz-font-sm gap-2">
-                  <span className="neutral-700">{r.automations?.name ?? "Automation"} · {r.trigger.replace("_", " ")} · {new Date(r.created_at).toLocaleString()}</span>
-                  <span className={`badge fw-500 text-capitalize flex-shrink-0 ${RUN_STYLE[r.status] ?? RUN_STYLE.pending}`}>{r.status}</span>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
       </div>
     </div>
@@ -754,105 +809,125 @@ function OutreachTab({ orgId, outbound, tasks, contacts, aiAutos, aiRuns, reload
   }
 
   return (
-    <div className="row g-4">
-      <div className="col-lg-6">
-        <h2 className="fz-font-lg fw-600 mb-3">Outreach campaigns</h2>
-        <form onSubmit={create} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <div className="row g-2">
-            <div className="col-12">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-o-name">Campaign name</label>
-              <input id="mk-o-name" className="form-control rounded-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            </div>
-            <div className="col-6">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-o-type">Type</label>
-              <select id="mk-o-type" className="form-select rounded-3" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                {OUTBOUND_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-            <div className="col-6">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-o-channel">Channel</label>
-              <select id="mk-o-channel" className="form-select rounded-3" value={form.channel_pref} onChange={(e) => setForm({ ...form, channel_pref: e.target.value })}>
-                <option value="call">Call</option>
-                <option value="sms">SMS</option>
-                <option value="whatsapp">WhatsApp</option>
-                <option value="email">Email</option>
-              </select>
-            </div>
-            <div className="col-12">
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-o-goal">Goal</label>
-              <input id="mk-o-goal" className="form-control rounded-3" placeholder="e.g. rebook lapsed customers" value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} />
-            </div>
-            <div className="col-12"><button type="submit" className="btn btn-dark rounded-3 px-4 text-nowrap">Create campaign</button></div>
-          </div>
-        </form>
-
-        <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-2">
-          <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-o-audience">Audience (optional — AI-matched before queueing)</label>
-          <div className="d-flex flex-wrap gap-2">
-            <input
-              id="mk-o-audience"
-              className="form-control rounded-3 flex-grow-1"
-              style={{ minWidth: "12rem" }}
-              value={audience}
-              onChange={(e) => setAudience(e.target.value)}
-              placeholder={`e.g. "customers who haven't ordered in 60 days" — empty = all ${contacts.length} contacts`}
-            />
-            <button type="button" className="btn btn-outline-dark rounded-3 px-3 text-nowrap flex-shrink-0" onClick={matchAudience} disabled={matching || !filterActive}>{matching ? "Matching…" : "Match"}</button>
-          </div>
-          <div role="status" aria-live="polite">
-            {filterActive && !filterResolved && <p className="fz-font-sm neutral-500 mt-1 mb-0">Tap Match to see who this will reach — until then the send buttons stay off.</p>}
-            {filterResolved && <p className="fz-font-sm neutral-700 mt-1 mb-0">Matched <span className="fw-600">{matched.ids.length}</span> contact(s) for &quot;{matched.desc}&quot;.</p>}
-          </div>
-        </div>
-
-        {outbound.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No outreach campaigns yet.</div>
-        ) : (
-          <div className="d-flex flex-column gap-2">
-            {outbound.map((c) => (
-              <div key={c.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <div style={{ minWidth: "12rem" }} className="flex-grow-1">
-                  <div className="fw-600">{c.name} <span className="badge bg-neutral-100 neutral-700 fw-500 ms-1 text-capitalize">{c.type.replace("_", " ")}</span></div>
-                  <div className="fz-font-sm neutral-500">{c.channel_pref} · {c.goal || "—"}</div>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap flex-shrink-0"
-                  onClick={() => queue(c)}
-                  disabled={queuing === c.id || (filterActive && !filterResolved)}
-                >
-                  {queuing === c.id ? "Queuing…" : targetCount === null ? "Match audience first" : `Queue to ${targetCount}`}
-                </button>
+    <div className="row g-3">
+      <div className="col-lg-6 d-flex flex-column gap-3">
+        <Card title="New outreach campaign">
+          <form onSubmit={create}>
+            <label className="hrx-field" htmlFor="mk-o-name">
+              <span>Campaign name</span>
+              <input id="mk-o-name" className="form-control" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </label>
+            <div className="row g-2">
+              <div className="col-6">
+                <label className="hrx-field" htmlFor="mk-o-type">
+                  <span>Type</span>
+                  <select id="mk-o-type" className="form-select" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                    {OUTBOUND_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </label>
               </div>
-            ))}
-          </div>
-        )}
+              <div className="col-6">
+                <label className="hrx-field" htmlFor="mk-o-channel">
+                  <span>Channel</span>
+                  <select id="mk-o-channel" className="form-select" value={form.channel_pref} onChange={(e) => setForm({ ...form, channel_pref: e.target.value })}>
+                    <option value="call">Call</option>
+                    <option value="sms">SMS</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="email">Email</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <label className="hrx-field" htmlFor="mk-o-goal">
+              <span>Goal</span>
+              <input id="mk-o-goal" className="form-control" placeholder="e.g. rebook lapsed customers" value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} />
+            </label>
+            <button type="submit" className="hrx-pill primary">Create campaign</button>
+          </form>
+        </Card>
 
-        <div className="mt-4">
-          <h3 className="fz-font-md fw-600 mb-2">Task queue</h3>
-          {tasks.length === 0 ? (
-            <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500 fz-font-md">No outreach yet. Once a campaign goes out, each call or message shows up here with its result. Booking reminders appear here automatically too.</div>
+        <Card
+          title="Outreach campaigns"
+          right={outbound.length > 0 ? <Chip tone="line">{outbound.length} campaign{outbound.length === 1 ? "" : "s"}</Chip> : undefined}
+        >
+          <label className="hrx-field" htmlFor="mk-o-audience">
+            <span>Audience (optional — AI-matched before queueing)</span>
+            <div className="d-flex flex-wrap gap-2">
+              <input
+                id="mk-o-audience"
+                className="form-control flex-grow-1"
+                style={{ minWidth: "12rem" }}
+                value={audience}
+                onChange={(e) => setAudience(e.target.value)}
+                placeholder={`e.g. "customers who haven't ordered in 60 days" — empty = all ${contacts.length} contacts`}
+              />
+              <button type="button" className="hrx-pill flex-shrink-0" onClick={matchAudience} disabled={matching || !filterActive}>{matching ? "Matching…" : "Match"}</button>
+            </div>
+          </label>
+          <div role="status" aria-live="polite">
+            {filterActive && !filterResolved && <p className="mkx-hint mt-0 mb-2">Tap Match to see who this will reach — until then the send buttons stay off.</p>}
+            {filterResolved && <p className="mt-0 mb-2" style={{ fontSize: 14 }}>Matched <span className="fw-semibold">{matched.ids.length}</span> contact(s) for &quot;{matched.desc}&quot;.</p>}
+          </div>
+
+          {outbound.length === 0 ? (
+            <Empty title="No outreach campaigns yet">Create one above — the AI works through calls and messages for you.</Empty>
           ) : (
-            // No `overflow-hidden` here: it is !important and would clip the
-            // horizontal scroll `.ops-scroll-x` provides on phones.
-            <div className="bg-neutral-0 rounded-4 border-100 ops-scroll-x">
-              <table className="table mb-0 align-middle" style={{ minWidth: 520 }}>
+            <div>
+              {outbound.map((c) => (
+                <div key={c.id} className="hrx-listrow">
+                  <div className="main">
+                    <p className="t">{c.name}</p>
+                    <p className="s">{c.channel_pref} · {c.goal || "—"}</p>
+                  </div>
+                  <div className="d-flex align-items-center gap-2 flex-shrink-0 flex-wrap justify-content-end">
+                    <Chip tone="line">{c.type.replace("_", " ")}</Chip>
+                    <button
+                      type="button"
+                      className="btn btn-outline-dark btn-sm rounded-pill px-3 text-nowrap"
+                      onClick={() => queue(c)}
+                      disabled={queuing === c.id || (filterActive && !filterResolved)}
+                    >
+                      {queuing === c.id ? "Queuing…" : targetCount === null ? "Match audience first" : `Queue to ${targetCount}`}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card
+          title="Task queue"
+          right={tasks.length > 0 ? <Chip tone="line">{tasks.length} task{tasks.length === 1 ? "" : "s"}</Chip> : undefined}
+        >
+          {tasks.length === 0 ? (
+            <Empty title="No outreach yet">Once a campaign goes out, each call or message shows up here with its result. Booking reminders appear here automatically too.</Empty>
+          ) : (
+            <div className="hrx-tablewrap">
+              <table className="hrx-table" style={{ minWidth: 520 }}>
+                <thead>
+                  <tr>
+                    <th>Contact</th>
+                    <th>When</th>
+                    <th style={{ textAlign: "right" }}>Status</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {tasks.map((t) => (
                     <tr key={t.id}>
-                      <td className="py-2 ps-4">
-                        <div className="fw-600 fz-font-md">{t.customer_name || "Contact"}</div>
-                        <div className="fz-font-sm neutral-500 text-capitalize">{t.type.replace("_", " ")} · {t.channel}{t.outcome ? ` · ${t.outcome}` : ""}</div>
+                      <td>
+                        <div className="fw-semibold">{t.customer_name || "Contact"}</div>
+                        <div className="text-capitalize" style={{ color: "var(--hrx-muted)", fontSize: 13 }}>{t.type.replace("_", " ")} · {t.channel}{t.outcome ? ` · ${t.outcome}` : ""}</div>
                       </td>
-                      <td className="py-2 fz-font-sm neutral-500 text-nowrap">{new Date(t.created_at).toLocaleString()}</td>
-                      <td className="py-2 pe-4 text-end"><span className={`badge fw-500 text-capitalize ${TASK_STYLE[t.status] ?? TASK_STYLE.queued}`}>{t.status.replace("_", " ")}</span></td>
+                      <td className="text-nowrap" style={{ color: "var(--hrx-muted)" }}>{new Date(t.created_at).toLocaleString()}</td>
+                      <td style={{ textAlign: "right" }}><Chip tone={TASK_TONE[t.status] ?? "line"}>{t.status.replace("_", " ")}</Chip></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       <div className="col-lg-6">
@@ -907,84 +982,86 @@ function ProactiveSection({ orgId, autos, runs, reload }: {
   }
 
   return (
-    <div className="d-flex flex-column gap-4">
-      <div>
-        <h2 className="fz-font-lg fw-600 mb-3">Proactive briefings &amp; tasks</h2>
-        <div className="bg-neutral-0 rounded-4 p-3 border-100">
-          <p className="fz-font-sm neutral-500 mb-2">Have the AI run on a schedule — a briefing it emails you, or a task it performs.</p>
-          <form onSubmit={create} className="d-flex flex-column gap-2">
-            <div>
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-p-name">Name</label>
-              <input id="mk-p-name" className="form-control rounded-3" placeholder="e.g. Morning briefing" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+    <div className="d-flex flex-column gap-3">
+      <Card title="Proactive briefings & tasks">
+        <p className="mkx-hint mb-3">Have the AI run on a schedule — a briefing it emails you, or a task it performs.</p>
+        <form onSubmit={create}>
+          <label className="hrx-field" htmlFor="mk-p-name">
+            <span>Name</span>
+            <input id="mk-p-name" className="form-control" placeholder="e.g. Morning briefing" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </label>
+          <div className="row g-2">
+            <div className="col-6">
+              <label className="hrx-field" htmlFor="mk-p-action">
+                <span>What</span>
+                <select id="mk-p-action" className="form-select" value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value as typeof form.action })}><option value="ai_briefing">AI briefing</option><option value="ai_task">AI task</option></select>
+              </label>
             </div>
-            <div className="row g-2">
-              <div className="col-6">
-                <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-p-action">What</label>
-                <select id="mk-p-action" className="form-select rounded-3" value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value as typeof form.action })}><option value="ai_briefing">AI briefing</option><option value="ai_task">AI task</option></select>
-              </div>
-              <div className="col-6">
-                <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-p-schedule">When</label>
-                <select id="mk-p-schedule" className="form-select rounded-3" value={form.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value as typeof form.schedule })}><option value="schedule_daily">Daily</option><option value="schedule_weekly">Weekly</option></select>
-              </div>
+            <div className="col-6">
+              <label className="hrx-field" htmlFor="mk-p-schedule">
+                <span>When</span>
+                <select id="mk-p-schedule" className="form-select" value={form.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value as typeof form.schedule })}><option value="schedule_daily">Daily</option><option value="schedule_weekly">Weekly</option></select>
+              </label>
             </div>
-            <div>
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-p-instruction">Instruction</label>
-              <textarea id="mk-p-instruction" className="form-control rounded-3" rows={3} placeholder={form.action === "ai_task" ? "What should the AI do? (e.g. draft a blog post about this week's new arrivals)" : "What to include (optional — defaults to a full business briefing)"} value={form.instruction} onChange={(e) => setForm({ ...form, instruction: e.target.value })} />
-            </div>
-            <div>
-              <label className="form-label fz-font-sm fw-500 neutral-500 mb-1" htmlFor="mk-p-channel">Deliver to</label>
-              <select id="mk-p-channel" className="form-select rounded-3" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value as typeof form.channel })}><option value="email">Email it to me</option><option value="dashboard">Dashboard only</option></select>
-            </div>
-            <button type="submit" className="btn btn-dark rounded-3 text-nowrap" disabled={busy}>{busy ? "Creating…" : "Create automation"}</button>
-          </form>
-        </div>
-      </div>
+          </div>
+          <label className="hrx-field" htmlFor="mk-p-instruction">
+            <span>Instruction</span>
+            <textarea id="mk-p-instruction" className="form-control" rows={3} placeholder={form.action === "ai_task" ? "What should the AI do? (e.g. draft a blog post about this week's new arrivals)" : "What to include (optional — defaults to a full business briefing)"} value={form.instruction} onChange={(e) => setForm({ ...form, instruction: e.target.value })} />
+          </label>
+          <label className="hrx-field" htmlFor="mk-p-channel">
+            <span>Deliver to</span>
+            <select id="mk-p-channel" className="form-select" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value as typeof form.channel })}><option value="email">Email it to me</option><option value="dashboard">Dashboard only</option></select>
+          </label>
+          <button type="submit" className="hrx-pill primary" disabled={busy}>{busy ? "Creating…" : "Create automation"}</button>
+        </form>
+      </Card>
 
-      <div>
-        <h3 className="fz-font-md fw-600 mb-2">Your scheduled AI automations</h3>
+      <Card
+        title="Your scheduled AI automations"
+        right={autos.length > 0 ? <Chip tone="line">{autos.length} scheduled</Chip> : undefined}
+      >
         {autos.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 neutral-500 fz-font-md">None yet. Try a daily &quot;Morning briefing&quot;.</div>
+          <Empty title="None yet">Try a daily &quot;Morning briefing&quot;.</Empty>
         ) : (
-          <div className="d-flex flex-column gap-2">
+          <div>
             {autos.map((a) => (
-              <div key={a.id} className="bg-neutral-0 rounded-4 p-3 border-100">
-                <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                  <div style={{ minWidth: "12rem" }} className="flex-grow-1">
-                    <div className="fw-600">{a.name}</div>
-                    <div className="fz-font-sm neutral-500">{actionLabel(a.action)} · {scheduleLabel(a.trigger)}{a.last_run_at ? ` · last run ${new Date(a.last_run_at).toLocaleString()}` : ""}</div>
+              <div key={a.id} className="mkx-item">
+                <div className="mkx-row">
+                  <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                    <p className="mb-0 fw-semibold" style={{ fontSize: 15 }}>{a.name}</p>
+                    <p className="mb-0 mkx-hint">{actionLabel(a.action)} · {scheduleLabel(a.trigger)}{a.last_run_at ? ` · last run ${new Date(a.last_run_at).toLocaleString()}` : ""}</p>
                   </div>
                   <div className="d-flex align-items-center gap-3 flex-shrink-0">
                     <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 text-nowrap" onClick={() => run(a)} disabled={running === a.id}>{running === a.id ? "Running…" : "Run now"}</button>
                     <div className="form-check form-switch m-0"><input className="form-check-input" type="checkbox" aria-label={`${a.name} active`} checked={a.active} onChange={async (e) => { const ok = await reportMutation(toggleAiAutomation(a.id, e.target.checked), e.target.checked ? "Automation turned on." : "Automation paused."); if (ok) reload(); }} /></div>
-                    <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none ops-tap" onClick={() => remove(a)}>Remove</button>
+                    <button type="button" className="btn btn-link btn-sm p-0 text-danger text-decoration-none" onClick={() => remove(a)}>Remove</button>
                   </div>
                 </div>
-                {output?.id === a.id && <div className="mt-2 p-2 bg-neutral-50 rounded-3 fz-font-sm neutral-900" style={{ whiteSpace: "pre-wrap" }}>{output.text}</div>}
+                {output?.id === a.id && <div className="mkx-pre mt-2">{output.text}</div>}
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
-      <div>
-        <h3 className="fz-font-md fw-600 mb-2">Recent AI runs</h3>
+      <Card title="Recent AI runs">
         {runs.length === 0 ? (
-          <p className="neutral-500 fz-font-md mb-0">No runs yet.</p>
+          <p className="mkx-hint mb-0">No runs yet.</p>
         ) : (
           <div className="d-flex flex-column gap-2">
             {runs.slice(0, 6).map((r) => (
-              <details key={r.id} className="bg-neutral-0 rounded-3 border-100 p-2">
-                <summary className="fz-font-sm neutral-700" style={{ cursor: "pointer" }}>
+              <details key={r.id} className="mkx-details">
+                <summary>
                   {new Date(r.created_at).toLocaleString()}
-                  <span className={`badge fw-500 text-capitalize ms-2 ${RUN_STYLE[r.status] ?? RUN_STYLE.pending}`}>{r.status}</span>
-                  <span className="neutral-500"> — {r.output.slice(0, 80)}{r.output.length > 80 ? "…" : ""}</span>
+                  <span className="ms-2"><Chip tone={RUN_TONE[r.status] ?? "line"}>{r.status}</Chip></span>
+                  <span style={{ color: "var(--hrx-muted)" }}> — {r.output.slice(0, 80)}{r.output.length > 80 ? "…" : ""}</span>
                 </summary>
-                <div className="fz-font-sm neutral-700 mt-2" style={{ whiteSpace: "pre-wrap" }}>{r.output}</div>
+                <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5 }}>{r.output}</div>
               </details>
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

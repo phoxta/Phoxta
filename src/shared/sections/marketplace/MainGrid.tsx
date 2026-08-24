@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { listBlueprints, formatPrice, type Blueprint } from "@/lib/db/marketplace";
 import { PROMO, promoPriceCents } from "@/lib/promo";
 import { blueprintCover } from "@/lib/blueprintCover";
+import SitePreviewModal from "@/shared/elements/SitePreviewModal";
 
 // The marketplace's main UI — the "Selected work" grid design from the
 // brand-design page (sec-4-home-9), populated with the REAL businesses for sale
@@ -26,7 +27,19 @@ const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").repla
 function Card({ b }: { b: Blueprint }) {
   const href = b.demo_url || "/auth";
   const external = Boolean(b.demo_url);
-  const linkProps = external ? { href, target: "_blank", rel: "noreferrer" } : { href };
+  // Demo sites open in the in-page preview popup; keep href so middle-click /
+  // "open in new tab" still work.
+  const [preview, setPreview] = useState(false);
+  const linkProps = external
+    ? {
+        href,
+        onClick: (e: React.MouseEvent) => {
+          if (e.metaKey || e.ctrlKey || e.shiftKey) return; // let the browser open a real tab
+          e.preventDefault();
+          setPreview(true);
+        },
+      }
+    : { href };
   return (
     <article className="sec-4-home-9__card" data-category={slugify(b.vertical || "other")}>
       <div className="sec-4-home-9__visual">
@@ -61,6 +74,9 @@ function Card({ b }: { b: Blueprint }) {
           <CaseArrow />
         </a>
       </div>
+      {external && (
+        <SitePreviewModal url={href} title={b.name} open={preview} onClose={() => setPreview(false)} />
+      )}
     </article>
   );
 }

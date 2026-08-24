@@ -63,7 +63,7 @@ export default function PaymentCallbackPage() {
   return (
     <div className="d-flex align-items-center justify-content-center" style={{ minHeight: "60vh" }}>
       <PageMeta title="Phoxta - Payment" noindex />
-      <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center" style={{ maxWidth: 460 }}>
+      <div className="hrx-card p-5 text-center" style={{ maxWidth: 460 }}>
         {phase === "checking" && (
           <>
             <div className="spinner-border text-dark mb-3" role="status" aria-label="Verifying payment" />
@@ -87,11 +87,8 @@ export default function PaymentCallbackPage() {
             <p className="neutral-500 mb-3 fz-font-md">
               Setup is finishing in the background — it will appear in your dashboard shortly.
             </p>
-            <Link to={kind === "subscription" ? "/dashboard/billing" : "/dashboard/businesses"} className="at-btn">
-              <span>
-                <span className="text-1">Go to dashboard</span>
-                <span className="text-2">Go to dashboard</span>
-              </span>
+            <Link to={kind === "subscription" ? "/dashboard/billing" : "/dashboard/businesses"} className="hrx-pill primary d-inline-flex">
+              Go to dashboard
             </Link>
           </>
         )}
@@ -100,11 +97,8 @@ export default function PaymentCallbackPage() {
             <div className="fz-40 mb-2">⚠️</div>
             <h5 className="fw-600 mb-1">Payment not completed</h5>
             <p className="neutral-500 mb-3 fz-font-md">{error}</p>
-            <Link to="/dashboard/marketplace" className="at-btn">
-              <span>
-                <span className="text-1">Back to marketplace</span>
-                <span className="text-2">Back to marketplace</span>
-              </span>
+            <Link to="/dashboard/marketplace" className="hrx-pill primary d-inline-flex">
+              Back to marketplace
             </Link>
           </>
         )}

@@ -9,6 +9,7 @@ import {
   PRIMARY_GOALS,
   type ProfileForm,
 } from "@/lib/db/profile";
+import { Card, InitialAvatar, PageHeader } from "@/components/dash/Ui";
 
 const EMPTY: ProfileForm = {
   full_name: "",
@@ -20,6 +21,24 @@ const EMPTY: ProfileForm = {
   country: "",
   primary_goal: "",
 };
+
+const CSS = `
+.stx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.stx-grid .hrx-field { margin-bottom: 0; }
+@media (max-width: 640px) { .stx-grid { grid-template-columns: 1fr; } }
+.stx-sect { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.stx-sect span {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--hrx-muted); white-space: nowrap;
+}
+.stx-sect::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--hrx-border-soft); }
+.stx-who { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.stx-who .lbl { font-size: 13px; color: var(--hrx-muted); margin: 0 0 2px; }
+.stx-who .val { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stx-pwrow { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.stx-pwrow .hrx-field { flex: 1 1 260px; margin-bottom: 0; }
+.stx-note { font-size: 14px; color: var(--hrx-muted); margin: -6px 0 14px; }
+`;
 
 export default function SettingsPage() {
   const { user, updatePassword } = useAuth();
@@ -67,153 +86,159 @@ export default function SettingsPage() {
     setSaving(false);
   }
 
+  // Profile completion from the fields already on this page — no extra fetching.
+  const fieldValues = Object.values(form) as string[];
+  const completion = Math.round(
+    (fieldValues.filter((v) => v.trim() !== "").length / fieldValues.length) * 100,
+  );
+
   return (
-    <div style={{ maxWidth: 760 }}>
+    <>
       <PageMeta title="Phoxta - Settings" />
-      <div className="dash-sticky-head pb-4">
-        <h2 className="fw-600 mb-1">Settings</h2>
-        <p className="neutral-500 mb-0">Your account and company profile.</p>
-      </div>
+      <style>{CSS}</style>
 
-      <div className="bg-neutral-0 rounded-4 p-4 p-md-5 border-100">
-        <div className="mb-4">
-          <span className="fz-font-sm neutral-500">Signed in as</span>
-          <div className="fw-600">{user?.email}</div>
-        </div>
+      <PageHeader
+        crumb="Portal"
+        title="Settings"
+        note="Your account and company profile."
+        stat={{ label: "Profile complete", value: `${completion}%` }}
+      />
 
-        {(error || readError) && (
-          <div className="alert alert-danger py-2 px-3 fz-font-md" role="alert">
-            {error || readError}
-          </div>
-        )}
-        {saved && (
-          <div className="alert alert-success py-2 px-3 fz-font-md" role="alert">
-            Profile saved.
-          </div>
-        )}
-
-        {loading ? (
-          <div className="py-5 text-center">
-            <div className="spinner-border text-dark" role="status" aria-label="Loading">
-              <span className="visually-hidden">Loading…</span>
+      <div className="d-grid mt-2" style={{ gap: 8, maxWidth: 860 }}>
+        <Card title="Account">
+          <div className="stx-who">
+            <InitialAvatar name={user?.email} />
+            <div style={{ minWidth: 0 }}>
+              <p className="lbl">Signed in as</p>
+              <div className="val">{user?.email}</div>
             </div>
           </div>
-        ) : (
-          <form onSubmit={onSubmit}>
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label fz-font-md fw-500">Full name</label>
-                <input className="form-control rounded-3" value={form.full_name} onChange={(e) => update("full_name", e.target.value)} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fz-font-md fw-500">Job title</label>
-                <input className="form-control rounded-3" value={form.job_title} onChange={(e) => update("job_title", e.target.value)} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fz-font-md fw-500">Phone</label>
-                <input className="form-control rounded-3" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fz-font-md fw-500">Country</label>
-                <input className="form-control rounded-3" value={form.country} onChange={(e) => update("country", e.target.value)} />
-              </div>
+        </Card>
 
-              <div className="col-12">
-                <hr className="my-2 opacity-25" />
-                <span className="fz-font-sm fw-600 text-uppercase neutral-500">Your company</span>
-              </div>
+        <Card title="Profile">
+          {(error || readError) && (
+            <div className="alert alert-danger py-2 px-3" role="alert">
+              {error || readError}
+            </div>
+          )}
+          {saved && (
+            <div className="alert alert-success py-2 px-3" role="alert">
+              Profile saved.
+            </div>
+          )}
 
-              <div className="col-md-6">
-                <label className="form-label fz-font-md fw-500">Company name</label>
-                <input className="form-control rounded-3" value={form.company_name} onChange={(e) => update("company_name", e.target.value)} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fz-font-md fw-500">Industry</label>
-                <input className="form-control rounded-3" value={form.industry} onChange={(e) => update("industry", e.target.value)} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fz-font-md fw-500">Company size</label>
-                <select className="form-select rounded-3" value={form.company_size} onChange={(e) => update("company_size", e.target.value)}>
-                  <option value="">Select…</option>
-                  {COMPANY_SIZES.map((s) => (
-                    <option key={s} value={s}>
-                      {s === "1" ? "Just me" : `${s} people`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fz-font-md fw-500">What you want most</label>
-                <select className="form-select rounded-3" value={form.primary_goal} onChange={(e) => update("primary_goal", e.target.value)}>
-                  <option value="">Select…</option>
-                  {PRIMARY_GOALS.map((g) => (
-                    <option key={g.value} value={g.value}>
-                      {g.label}
-                    </option>
-                  ))}
-                </select>
+          {loading ? (
+            <div className="py-5 text-center">
+              <div className="spinner-border text-dark" role="status" aria-label="Loading">
+                <span className="visually-hidden">Loading…</span>
               </div>
             </div>
+          ) : (
+            <form onSubmit={onSubmit}>
+              <div className="stx-grid">
+                <label className="hrx-field">
+                  <span>Full name</span>
+                  <input className="form-control" value={form.full_name} onChange={(e) => update("full_name", e.target.value)} />
+                </label>
+                <label className="hrx-field">
+                  <span>Job title</span>
+                  <input className="form-control" value={form.job_title} onChange={(e) => update("job_title", e.target.value)} />
+                </label>
+                <label className="hrx-field">
+                  <span>Phone</span>
+                  <input className="form-control" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
+                </label>
+                <label className="hrx-field">
+                  <span>Country</span>
+                  <input className="form-control" value={form.country} onChange={(e) => update("country", e.target.value)} />
+                </label>
 
-            <div className="pt-4">
-              <button type="submit" className="at-btn" disabled={saving}>
-                <span>
-                  <span className="text-1">{saving ? "Saving…" : "Save changes"}</span>
-                  <span className="text-2">{saving ? "Saving…" : "Save changes"}</span>
-                </span>
+                <div className="stx-sect" role="presentation">
+                  <span>Your company</span>
+                </div>
+
+                <label className="hrx-field">
+                  <span>Company name</span>
+                  <input className="form-control" value={form.company_name} onChange={(e) => update("company_name", e.target.value)} />
+                </label>
+                <label className="hrx-field">
+                  <span>Industry</span>
+                  <input className="form-control" value={form.industry} onChange={(e) => update("industry", e.target.value)} />
+                </label>
+                <label className="hrx-field">
+                  <span>Company size</span>
+                  <select className="form-select" value={form.company_size} onChange={(e) => update("company_size", e.target.value)}>
+                    <option value="">Select…</option>
+                    {COMPANY_SIZES.map((s) => (
+                      <option key={s} value={s}>
+                        {s === "1" ? "Just me" : `${s} people`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="hrx-field">
+                  <span>What you want most</span>
+                  <select className="form-select" value={form.primary_goal} onChange={(e) => update("primary_goal", e.target.value)}>
+                    <option value="">Select…</option>
+                    {PRIMARY_GOALS.map((g) => (
+                      <option key={g.value} value={g.value}>
+                        {g.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="pt-3">
+                <button type="submit" className="hrx-pill primary" disabled={saving}>
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </form>
+          )}
+        </Card>
+
+        <Card title="Security">
+          <p className="stx-note">Update the password for {user?.email}.</p>
+          {pwMsg && (
+            <div className={`alert ${pwMsg.ok ? "alert-success" : "alert-danger"} py-2 px-3`} role="alert">
+              {pwMsg.text}
+            </div>
+          )}
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setPwSaving(true);
+              setPwMsg(null);
+              const { error } = await updatePassword(newPassword);
+              setPwSaving(false);
+              if (error) setPwMsg({ ok: false, text: error });
+              else {
+                setPwMsg({ ok: true, text: "Password updated." });
+                setNewPassword("");
+              }
+            }}
+          >
+            <div className="stx-pwrow">
+              <label className="hrx-field">
+                <span>New password</span>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={8}
+                  placeholder="••••••••"
+                  required
+                />
+              </label>
+              <button type="submit" className="hrx-pill dark" disabled={pwSaving || newPassword.length < 8}>
+                {pwSaving ? "Updating…" : "Update password"}
               </button>
             </div>
           </form>
-        )}
+        </Card>
       </div>
-
-      {/* Security */}
-      <div className="bg-neutral-0 rounded-4 p-4 p-md-5 border-100 mt-4">
-        <h5 className="fw-600 mb-1">Security</h5>
-        <p className="neutral-500 mb-4">Update the password for {user?.email}.</p>
-        {pwMsg && (
-          <div className={`alert ${pwMsg.ok ? "alert-success" : "alert-danger"} py-2 px-3 fz-font-md`} role="alert">
-            {pwMsg.text}
-          </div>
-        )}
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setPwSaving(true);
-            setPwMsg(null);
-            const { error } = await updatePassword(newPassword);
-            setPwSaving(false);
-            if (error) setPwMsg({ ok: false, text: error });
-            else {
-              setPwMsg({ ok: true, text: "Password updated." });
-              setNewPassword("");
-            }
-          }}
-        >
-          <div className="row g-3 align-items-end">
-            <div className="col-md-7">
-              <label className="form-label fz-font-md fw-500">New password</label>
-              <input
-                type="password"
-                className="form-control rounded-3"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                minLength={8}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-            <div className="col-md-5">
-              <button type="submit" className="at-btn" disabled={pwSaving || newPassword.length < 8}>
-                <span>
-                  <span className="text-1">{pwSaving ? "Updating…" : "Update password"}</span>
-                  <span className="text-2">{pwSaving ? "Updating…" : "Update password"}</span>
-                </span>
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+    </>
   );
 }

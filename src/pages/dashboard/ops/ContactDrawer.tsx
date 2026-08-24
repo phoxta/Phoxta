@@ -14,6 +14,7 @@ import {
 import { formatPrice } from "@/lib/db/marketplace";
 import { toastError, reportMutation, confirmDanger } from "@/lib/ops/feedback";
 import { useDialog } from "@/lib/ops/useDialog";
+import { Chip } from "@/components/dash/Ui";
 
 const STAGES: ContactStage[] = ["lead", "prospect", "customer", "churned"];
 
@@ -50,12 +51,48 @@ const KIND_PATH: Record<ActivityItem["kind"], string> = {
 
 const BAD_STATUS = ["cancelled", "canceled", "escalated", "failed", "no_show", "churned", "refunded"];
 
-function statusClass(status: string): string {
-  if (BAD_STATUS.includes(status)) return "bg-danger-subtle text-danger";
-  if (["paid", "fulfilled", "confirmed", "closed", "handled", "resolved", "completed"].includes(status)) return "bg-success-subtle text-success";
-  if (["pending", "open", "unfulfilled", "partially_refunded", "snoozed"].includes(status)) return "bg-warning-subtle text-warning";
-  return "bg-neutral-100 neutral-700";
+/** Maps an activity status to the kit's chip tones (Chip in components/dash/Ui). */
+function statusTone(status: string): "danger" | "ok" | "warn" | "plain" {
+  if (BAD_STATUS.includes(status)) return "danger";
+  if (["paid", "fulfilled", "confirmed", "closed", "handled", "resolved", "completed"].includes(status)) return "ok";
+  if (["pending", "open", "unfulfilled", "partially_refunded", "snoozed"].includes(status)) return "warn";
+  return "plain";
 }
+
+/** Lead-score chip tone: high reads green, middling amber, low stays plain. */
+function scoreTone(score: number): "ok" | "warn" | "plain" {
+  if (score >= 70) return "ok";
+  if (score >= 40) return "warn";
+  return "plain";
+}
+
+/* Drawer-local presentation, on the hrx palette: Figtree (inherited from the
+   .hrx layout), ink #272727, blue #195ce5, soft #f9fbfc, borders #ededed. */
+const DRAWER_CSS = `
+.crx-drawer { background: #fff; border-left: 1px solid #ededed; color: #272727; padding: clamp(18px, 2.4vw, 28px); }
+.crx-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.crx-sub { font-size: 13px; color: #6b7280; }
+.crx-close { height: 32px; padding: 0 14px; border-radius: 50px; border: 1px solid #ededed; background: #fff; color: #272727; font-size: 13px; font-weight: 500; line-height: 1; display: inline-flex; align-items: center; cursor: pointer; transition: background-color 0.15s ease; }
+.crx-close:hover { background: #f1f2f4; }
+.crx-sec { background: #f9fbfc; border: 1px solid #ededed; border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+.crx-sec__h { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 10px; }
+.crx-sec .form-label { font-size: 13px; font-weight: 500; color: #6b7280; }
+.crx-note { font-size: 13px; color: #6b7280; margin: 0; }
+.crx-body { font-size: 13px; color: #272727; }
+.crx-danger { font-size: 13px; color: #dc2626; }
+.crx-meta { font-size: 12.5px; color: #6b7280; }
+.crx-kv { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid #ececec; margin: 0; }
+.crx-kv:first-child { border-top: 0; padding-top: 0; }
+.crx-kv dt { font-size: 13px; font-weight: 500; color: #6b7280; }
+.crx-kv dd { margin: 0; font-size: 13px; font-weight: 600; color: #272727; text-align: right; }
+.crx-time { display: flex; flex-direction: column; }
+.crx-row { padding: 12px 0; border-top: 1px solid #ececec; }
+.crx-row:first-child { border-top: 0; padding-top: 4px; }
+.crx-row__t { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.crx-row__s { font-size: 13px; color: #6b7280; margin-top: 2px; }
+.crx-open { font-size: 13px; font-weight: 500; color: #195ce5; text-decoration: none; }
+.crx-open:hover { color: #1246b0; }
+`;
 
 const isAiSource = (source: string | null) => !!source && /\b(ai|agent)\b/i.test(source);
 
@@ -176,7 +213,7 @@ export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, 
         aria-modal="true"
         aria-label={`Contact ${contact.name}`}
         tabIndex={-1}
-        className="bg-neutral-0 h-100 shadow p-3 p-lg-4"
+        className="crx-drawer h-100 shadow"
         style={{
           position: "absolute",
           right: 0,
@@ -187,17 +224,19 @@ export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, 
           overscrollBehavior: "contain",
         }}
       >
-        <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+        <style>{DRAWER_CSS}</style>
+
+        <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
           <div style={{ minWidth: 0 }}>
-            <h2 className="fz-font-lg fw-600 mb-1">{contact.name || "Unnamed contact"}</h2>
-            <p className="fz-font-sm neutral-500 mb-0">
+            <h2 className="crx-title mb-1">{contact.name || "Unnamed contact"}</h2>
+            <p className="crx-sub mb-0">
               Added {new Date(contact.created_at).toLocaleDateString()}
               {contact.source ? ` · via ${contact.source}` : ""}
             </p>
           </div>
           <button
             type="button"
-            className="btn btn-link btn-sm p-0 neutral-500 text-decoration-none ops-tap flex-shrink-0"
+            className="crx-close flex-shrink-0 ops-tap"
             aria-label="Close contact details"
             onClick={requestClose}
           >
@@ -207,59 +246,59 @@ export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, 
 
         {(isAiSource(contact.source) || contact.email_opt_out || contact.sms_opt_out) && (
           <div className="d-flex flex-wrap gap-2 mb-3">
-            {isAiSource(contact.source) && <span className="badge fz-font-sm bg-neutral-100 neutral-700 fw-500">✨ Captured by AI</span>}
-            {contact.email_opt_out && <span className="badge fz-font-sm bg-danger-subtle text-danger fw-500">Email unsubscribed</span>}
-            {contact.sms_opt_out && <span className="badge fz-font-sm bg-danger-subtle text-danger fw-500">SMS unsubscribed</span>}
+            {isAiSource(contact.source) && <Chip tone="blue">✨ Captured by AI</Chip>}
+            {contact.email_opt_out && <Chip tone="danger">Email unsubscribed</Chip>}
+            {contact.sms_opt_out && <Chip tone="danger">SMS unsubscribed</Chip>}
           </div>
         )}
 
         {/* Editable details */}
-        <form onSubmit={onSave} className="bg-neutral-50 rounded-4 border-100 p-3 mb-3">
-          <h3 className="fz-font-md fw-600 mb-2">Details</h3>
+        <form onSubmit={onSave} className="crx-sec">
+          <h3 className="crx-sec__h">Details</h3>
           <div className="row g-2">
             <div className="col-md-6">
-              <label htmlFor={fid("name")} className="form-label fz-font-sm neutral-500 mb-1">Name</label>
+              <label htmlFor={fid("name")} className="form-label mb-1">Name</label>
               <input id={fid("name")} className="form-control form-control-sm rounded-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div className="col-md-6">
-              <label htmlFor={fid("email")} className="form-label fz-font-sm neutral-500 mb-1">Email</label>
+              <label htmlFor={fid("email")} className="form-label mb-1">Email</label>
               <input id={fid("email")} type="email" className="form-control form-control-sm rounded-3" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
             <div className="col-md-6">
-              <label htmlFor={fid("phone")} className="form-label fz-font-sm neutral-500 mb-1">Phone</label>
+              <label htmlFor={fid("phone")} className="form-label mb-1">Phone</label>
               <input id={fid("phone")} type="tel" className="form-control form-control-sm rounded-3" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div className="col-md-6">
-              <label htmlFor={fid("company")} className="form-label fz-font-sm neutral-500 mb-1">Company</label>
+              <label htmlFor={fid("company")} className="form-label mb-1">Company</label>
               <input id={fid("company")} className="form-control form-control-sm rounded-3" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
             </div>
             <div className="col-md-6">
-              <label htmlFor={fid("value")} className="form-label fz-font-sm neutral-500 mb-1">Value ({orgCurrency})</label>
+              <label htmlFor={fid("value")} className="form-label mb-1">Value ({orgCurrency})</label>
               <input id={fid("value")} type="number" min={0} step={0.01} className="form-control form-control-sm rounded-3" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
             </div>
             <div className="col-md-6">
-              <label htmlFor={fid("stage")} className="form-label fz-font-sm neutral-500 mb-1">Stage</label>
+              <label htmlFor={fid("stage")} className="form-label mb-1">Stage</label>
               <select id={fid("stage")} className="form-select form-select-sm rounded-3 text-capitalize" value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as ContactStage })}>
                 {STAGES.map((s) => <option key={s} value={s} className="text-capitalize">{s}</option>)}
               </select>
             </div>
             <div className="col-12">
-              <label htmlFor={fid("tags")} className="form-label fz-font-sm neutral-500 mb-1">Tags (comma-separated)</label>
+              <label htmlFor={fid("tags")} className="form-label mb-1">Tags (comma-separated)</label>
               <input id={fid("tags")} className="form-control form-control-sm rounded-3" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
             </div>
             <div className="col-12">
-              <label htmlFor={fid("notes")} className="form-label fz-font-sm neutral-500 mb-1">Notes</label>
+              <label htmlFor={fid("notes")} className="form-label mb-1">Notes</label>
               <textarea id={fid("notes")} rows={3} className="form-control form-control-sm rounded-3" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
           </div>
           <div className="d-flex flex-wrap align-items-center gap-2 mt-3">
-            <button type="submit" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" disabled={saving}>
+            <button type="submit" className="hrx-pill dark ops-tap" disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </button>
-            {dirty && !saving && <span className="fz-font-sm neutral-500">Unsaved changes</span>}
+            {dirty && !saving && <span className="crx-meta">Unsaved changes</span>}
             <button
               type="button"
-              className="btn btn-link btn-sm p-0 ms-auto text-danger text-decoration-none ops-tap"
+              className="btn btn-link btn-sm p-0 ms-auto crx-danger text-decoration-none ops-tap"
               onClick={onDelete}
             >
               Delete contact
@@ -268,94 +307,105 @@ export default function ContactDrawer({ orgId, orgCurrency, contact, scoreMeta, 
         </form>
 
         {/* AI scores */}
-        <div className="bg-neutral-50 rounded-4 border-100 p-3 mb-3">
+        <div className="crx-sec">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-            <h3 className="fw-600 fz-font-md mb-0">AI score</h3>
-            <button type="button" className="btn btn-outline-dark btn-sm rounded-pill px-3 ops-tap" onClick={onScore} disabled={scoring}>
+            <h3 className="crx-sec__h mb-0">AI score</h3>
+            <button type="button" className="hrx-pill ops-tap" onClick={onScore} disabled={scoring}>
               {scoring ? "Scoring…" : contact.scored_at ? "Re-score" : "✨ Score"}
             </button>
           </div>
           {contact.scored_at == null ? (
-            <p className="fz-font-sm neutral-500 mb-0">Not scored yet — score this contact to get a lead score, churn risk and a suggested next step.</p>
+            <p className="crx-note">Not scored yet — score this contact to get a lead score, churn risk and a suggested next step.</p>
           ) : (
             <>
-              <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+              <dl className="mb-2">
                 {contact.lead_score != null && (
-                  <span className="badge fz-font-sm bg-neutral-100 neutral-700 fw-600">Lead score {contact.lead_score}</span>
+                  <div className="crx-kv">
+                    <dt>Lead score</dt>
+                    <dd><Chip tone={scoreTone(contact.lead_score)}>{contact.lead_score}</Chip></dd>
+                  </div>
                 )}
                 {contact.churn_risk != null && (
-                  <span className="badge fz-font-sm bg-neutral-100 neutral-700 fw-600">Churn risk {Math.round(contact.churn_risk * 100)}%</span>
+                  <div className="crx-kv">
+                    <dt>Churn risk</dt>
+                    <dd><Chip tone={contact.churn_risk >= 0.5 ? "danger" : "plain"}>{Math.round(contact.churn_risk * 100)}%</Chip></dd>
+                  </div>
                 )}
-                <span className="fz-font-sm neutral-500">scored {new Date(contact.scored_at).toLocaleDateString()}</span>
-              </div>
-              {contact.ai_summary && <p className="fz-font-sm neutral-700 mb-2">{contact.ai_summary}</p>}
+                <div className="crx-kv">
+                  <dt>Scored</dt>
+                  <dd>{new Date(contact.scored_at).toLocaleDateString()}</dd>
+                </div>
+              </dl>
+              {contact.ai_summary && <p className="crx-body mb-2">{contact.ai_summary}</p>}
               {scoreMeta ? (
                 <>
                   {scoreMeta.next_action && (
-                    <p className="fz-font-sm neutral-700 mb-2"><span className="fw-600">Next:</span> {scoreMeta.next_action}</p>
+                    <p className="crx-body mb-2"><span className="fw-600">Next:</span> {scoreMeta.next_action}</p>
                   )}
                   {scoreMeta.reasons.length > 0 && (
-                    <ul className="fz-font-sm neutral-500 mb-0 ps-3">
+                    <ul className="crx-note mb-0 ps-3">
                       {scoreMeta.reasons.map((r, i) => <li key={i}>{r}</li>)}
                     </ul>
                   )}
                 </>
               ) : (
-                <p className="fz-font-sm neutral-500 mb-0">Re-score to see the reasons behind this score.</p>
+                <p className="crx-note">Re-score to see the reasons behind this score.</p>
               )}
             </>
           )}
         </div>
 
         {/* Activity timeline */}
-        <h3 className="fw-600 fz-font-md mb-2">Activity</h3>
-        {activityLoading ? (
-          <p className="fz-font-sm neutral-500 py-2 mb-0">Loading activity…</p>
-        ) : activityError ? (
-          <p className="fz-font-sm text-danger py-2 mb-0" role="alert">
-            {activityError}
-          </p>
-        ) : activity.length === 0 ? (
-          <p className="fz-font-sm neutral-500 py-2 mb-0">
-            No orders, reservations, bookings, conversations or tickets found for this contact
-            {contact.email ? "" : " — add an email address so their activity can be matched"}.
-          </p>
-        ) : (
-          <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
-            {activity.map((a) => {
-              const meta = [
-                fmtDay(a.date),
-                a.detail,
-                a.amount_cents != null ? formatPrice(a.amount_cents, a.currency || orgCurrency) : "",
-              ]
-                .filter(Boolean)
-                .join(" · ");
-              return (
-                <li key={`${a.kind}-${a.id}`} className="bg-neutral-50 rounded-3 border-100 p-2">
-                  <div className="d-flex align-items-start justify-content-between gap-2">
-                    <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                      <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <span className="badge fz-font-sm bg-neutral-100 neutral-700 fw-500">{KIND_LABEL[a.kind]}</span>
-                        {/* Status is spelled out, not only colour-coded. */}
-                        <span className={`badge fz-font-sm fw-500 ${statusClass(a.status)}`}>{statusLabel(a.status)}</span>
+        <div className="crx-sec">
+          <h3 className="crx-sec__h">Activity</h3>
+          {activityLoading ? (
+            <p className="crx-note py-1">Loading activity…</p>
+          ) : activityError ? (
+            <p className="crx-danger py-1 mb-0" role="alert">
+              {activityError}
+            </p>
+          ) : activity.length === 0 ? (
+            <p className="crx-note py-1">
+              No orders, reservations, bookings, conversations or tickets found for this contact
+              {contact.email ? "" : " — add an email address so their activity can be matched"}.
+            </p>
+          ) : (
+            <div className="crx-time">
+              {activity.map((a) => {
+                const meta = [
+                  fmtDay(a.date),
+                  a.detail,
+                  a.amount_cents != null ? formatPrice(a.amount_cents, a.currency || orgCurrency) : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <div key={`${a.kind}-${a.id}`} className="crx-row">
+                    <div className="d-flex align-items-start justify-content-between gap-2">
+                      <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                        <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                          <Chip tone="line">{KIND_LABEL[a.kind]}</Chip>
+                          {/* Status is spelled out, not only colour-coded. */}
+                          <Chip tone={statusTone(a.status)}>{statusLabel(a.status)}</Chip>
+                        </div>
+                        <div className="crx-row__t text-truncate">{a.title}</div>
+                        {meta && <div className="crx-row__s">{meta}</div>}
                       </div>
-                      <div className="fz-font-md fw-600 text-truncate">{a.title}</div>
-                      {meta && <div className="fz-font-sm neutral-500">{meta}</div>}
+                      <Link
+                        to={`${base}/${KIND_PATH[a.kind]}`}
+                        className="crx-open flex-shrink-0 ops-tap"
+                        aria-label={`Open ${KIND_LABEL[a.kind].toLowerCase()} in ${KIND_PATH[a.kind]}`}
+                        onClick={onClose}
+                      >
+                        Open →
+                      </Link>
                     </div>
-                    <Link
-                      to={`${base}/${KIND_PATH[a.kind]}`}
-                      className="fz-font-sm text-decoration-none flex-shrink-0 ops-tap"
-                      aria-label={`Open ${KIND_LABEL[a.kind].toLowerCase()} in ${KIND_PATH[a.kind]}`}
-                      onClick={onClose}
-                    >
-                      Open →
-                    </Link>
                   </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

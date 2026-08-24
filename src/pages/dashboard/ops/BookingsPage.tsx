@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
@@ -18,14 +18,7 @@ import {
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
 import { formatPrice } from "@/lib/db/marketplace";
 import type { OpsContext } from "@/layouts/OperatingLayout";
-
-const BOOKING_STYLE: Record<BookingStatus, string> = {
-  pending: "bg-neutral-100 neutral-700",
-  confirmed: "bg-success-subtle text-success",
-  completed: "bg-neutral-100 neutral-500",
-  cancelled: "bg-danger-subtle text-danger",
-  no_show: "bg-danger-subtle text-danger",
-};
+import { Card, StatTile, Chip, Empty, InitialAvatar, stageTone } from "@/components/dash/Ui";
 
 const STATUS_LABEL: Record<BookingStatus, string> = {
   pending: "Pending",
@@ -35,8 +28,22 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
   no_show: "No-show",
 };
 
-// Theme-aware hairline (main.css owns the neutral scale).
-const DIVIDER = "1px solid var(--at-neutral-100)";
+/** stageTone doesn't know "no_show"; everything else maps straight through. */
+const bookingTone = (s: BookingStatus) => (s === "no_show" ? "danger" : stageTone(s));
+
+// Page-local presentation styles (hrx palette; bkx- prefixed).
+const BKX_CSS = `
+.bkx-note { background: #f9fbfc; border: 1px solid #ededed; border-radius: 16px; padding: 12px 16px; font-size: 14px; color: #6b7280; }
+.bkx-note a { color: #195ce5; font-weight: 600; }
+.bkx-sub { font-size: 12.5px; color: #6b7280; }
+.bkx-dayhead th { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: #272727; background: #f9fbfc; border-radius: 12px; }
+.bkx-dayhead th .bkx-count { font-weight: 500; color: #6b7280; }
+.bkx-actcell { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.bkx-linkbtn { border: 0; background: transparent; padding: 0 4px; font-size: 13px; font-weight: 500; color: #6b7280; cursor: pointer; }
+.bkx-linkbtn:hover { color: #272727; text-decoration: underline; }
+.bkx-linkbtn.danger { color: #dc2626; }
+.bkx-linkbtn.danger:hover { color: #dc2626; }
+`;
 
 /** "12.50" -> 1250; "" -> 0; garbage/negative -> null. */
 function parseMoney(s: string): number | null {
@@ -111,6 +118,19 @@ export default function BookingsPage() {
     return { todayAndUpcoming: groups, past: pastRows };
   }, [bookings, search, statusFilter]);
 
+  // At-a-glance numbers (derived from the already-loaded list; display only).
+  const stats = useMemo(() => {
+    const todayKey = new Date().toDateString();
+    const open = (b: Booking) => b.status === "pending" || b.status === "confirmed";
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return {
+      today: bookings.filter((b) => open(b) && new Date(b.start_at).toDateString() === todayKey).length,
+      upcoming: bookings.filter((b) => open(b) && new Date(b.start_at).getTime() >= startOfToday.getTime()).length,
+      pending: bookings.filter((b) => b.status === "pending").length,
+    };
+  }, [bookings]);
+
   async function addService(e: React.FormEvent) {
     e.preventDefault();
     if (!sForm.name.trim()) return;
@@ -183,27 +203,35 @@ export default function BookingsPage() {
     setBusyId(null);
   }
 
-  function renderBooking(b: Booking) {
+  function renderBookingRow(b: Booking) {
     const isPastDated = new Date(b.start_at).getTime() < Date.now();
     const open = b.status === "pending" || b.status === "confirmed";
     const busy = busyId === b.id;
+    const when = new Date(b.start_at);
     return (
-      <div key={b.id} className="bg-neutral-0 rounded-4 p-3 border-100">
-        <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap">
-          <div style={{ minWidth: 0, flex: "1 1 200px" }}>
-            <div className="fw-600 fz-font-md">
-              {b.customer_name || "Customer"}
-              {b.services?.name ? <span className="neutral-500 fw-500"> · {b.services.name}</span> : null}
-            </div>
-            <div className="fz-font-sm neutral-500">
-              {new Date(b.start_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
-              {b.customer_email ? ` · ${b.customer_email}` : ""}
-              {b.customer_phone ? ` · ${b.customer_phone}` : ""}
-            </div>
-            {b.notes && <div className="fz-font-sm neutral-500 fst-italic">{b.notes}</div>}
-          </div>
-          <div className="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-            <span className={`badge fw-500 ${BOOKING_STYLE[b.status]}`}>{STATUS_LABEL[b.status]}</span>
+      <tr key={b.id}>
+        <td style={{ whiteSpace: "nowrap" }}>
+          <div style={{ fontWeight: 600 }}>{when.toLocaleTimeString([], { timeStyle: "short" })}</div>
+          <div className="bkx-sub">{when.toLocaleDateString([], { dateStyle: "medium" })}</div>
+        </td>
+        <td>
+          <div style={{ fontWeight: 600 }}>{b.customer_name || "Customer"}</div>
+          {b.services?.name && <div className="bkx-sub">{b.services.name}</div>}
+          {b.notes && <div className="bkx-sub fst-italic">{b.notes}</div>}
+        </td>
+        <td>
+          {b.customer_email || b.customer_phone ? (
+            <>
+              {b.customer_email && <div className="bkx-sub">{b.customer_email}</div>}
+              {b.customer_phone && <div className="bkx-sub">{b.customer_phone}</div>}
+            </>
+          ) : (
+            <span className="bkx-sub">—</span>
+          )}
+        </td>
+        <td><Chip tone={bookingTone(b.status)}>{STATUS_LABEL[b.status]}</Chip></td>
+        <td className="text-end">
+          <span className="bkx-actcell">
             {open && isPastDated ? (
               <>
                 <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" disabled={busy} onClick={() => changeStatus(b, "completed")}>Completed</button>
@@ -215,191 +243,269 @@ export default function BookingsPage() {
                 {b.status === "confirmed" && <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap" disabled={busy} onClick={() => changeStatus(b, "completed")}>Complete</button>}
               </>
             )}
-            {open && <button type="button" className="btn btn-link btn-sm p-0 px-2 neutral-500 text-decoration-none ops-tap" disabled={busy} onClick={() => changeStatus(b, "cancelled")}>Cancel</button>}
-          </div>
-        </div>
-      </div>
+            {open && <button type="button" className="bkx-linkbtn ops-tap" disabled={busy} onClick={() => changeStatus(b, "cancelled")}>Cancel</button>}
+          </span>
+        </td>
+      </tr>
     );
   }
 
-  if (loading && !data) return <div className="bg-neutral-0 rounded-4 p-5 border-100 text-center neutral-500" role="status">Loading…</div>;
+  const tableHead = (
+    <thead>
+      <tr>
+        <th scope="col">When</th>
+        <th scope="col">Customer</th>
+        <th scope="col">Contact</th>
+        <th scope="col">Status</th>
+        <th scope="col" className="text-end">Actions</th>
+      </tr>
+    </thead>
+  );
+
+  if (loading && !data) {
+    return (
+      <Card>
+        <div className="text-center py-4" style={{ color: "#6b7280" }} role="status">Loading…</div>
+      </Card>
+    );
+  }
+  // A hard load failure must never render as "No bookings yet".
+  if (loadError && !data) {
+    return (
+      <Card>
+        <div className="text-center py-4" role="alert">
+          <div className="fw-semibold mb-2" style={{ color: "#dc2626" }}>Couldn't load bookings</div>
+          <div className="mb-3" style={{ color: "#6b7280" }}>{loadError}</div>
+          <button type="button" className="hrx-pill dark ops-tap" onClick={() => reload()}>Retry</button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
-    <div className="row g-4">
+    <div>
+      <style>{BKX_CSS}</style>
+
       {loadError && (
-        <div className="col-12 order-first">
-          <div className="alert alert-danger py-2 px-3 fz-font-md mb-0 d-flex flex-wrap align-items-center justify-content-between gap-2" role="alert">
-            <span>{loadError}</span>
-            <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" onClick={() => reload()}>Retry</button>
-          </div>
+        <div className="alert alert-danger py-2 px-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ borderRadius: 16 }} role="alert">
+          <span>{loadError}</span>
+          <button type="button" className="btn btn-dark btn-sm rounded-pill px-3 ops-tap" onClick={() => reload()}>Retry</button>
         </div>
       )}
 
-      {/* Day sheet — the daily job, so it comes first on a phone and sits on the
-          right (wider column) from lg up. */}
-      <div className="col-lg-7 order-0 order-lg-1">
-        <h2 className="fw-600 fz-font-lg mb-3">Bookings</h2>
-        <div className="bg-neutral-0 rounded-4 p-3 border-100 mb-3 fz-font-sm neutral-700">
-          Reminders are sent automatically 24h before each booking once messaging automations are on —{" "}
-          <Link to={`/dashboard/businesses/${orgId}/ops/marketing`} className="fw-600">set up in Marketing</Link>.
-        </div>
-        <form onSubmit={addBooking} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">Add a booking</h3>
-          <div className="row g-2 align-items-end">
-            <div className="col-12 col-md-4">
-              <label className="fz-font-sm neutral-500" htmlFor="bk-name">Customer name</label>
-              <input id="bk-name" className="form-control rounded-3" value={bForm.customer} onChange={(e) => setBForm({ ...bForm, customer: e.target.value })} required />
-            </div>
-            <div className="col-12 col-md-4">
-              <label className="fz-font-sm neutral-500" htmlFor="bk-email">Email (for confirmations)</label>
-              <input id="bk-email" type="email" className="form-control rounded-3" value={bForm.email} onChange={(e) => setBForm({ ...bForm, email: e.target.value })} />
-            </div>
-            <div className="col-12 col-md-4">
-              <label className="fz-font-sm neutral-500" htmlFor="bk-phone">Phone</label>
-              <input id="bk-phone" type="tel" className="form-control rounded-3" value={bForm.phone} onChange={(e) => setBForm({ ...bForm, phone: e.target.value })} />
-            </div>
-            <div className="col-12 col-md-4">
-              <label className="fz-font-sm neutral-500" htmlFor="bk-service">Service</label>
-              <select id="bk-service" className="form-select rounded-3" value={bForm.serviceId} onChange={(e) => setBForm({ ...bForm, serviceId: e.target.value })}>
-                <option value="">Any service</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-12 col-md-4">
-              <label className="fz-font-sm neutral-500" htmlFor="bk-start">Date &amp; time</label>
-              <input id="bk-start" type="datetime-local" className="form-control rounded-3" value={bForm.start} onChange={(e) => setBForm({ ...bForm, start: e.target.value })} required />
-            </div>
-            <div className="col-12 col-md-4"><button type="submit" className="btn btn-dark w-100 rounded-3 ops-tap justify-content-center">Add booking</button></div>
-          </div>
-        </form>
-
-        <div className="row g-2 mb-3">
-          <div className="col-12 col-sm-7">
-            <label className="fz-font-sm neutral-500" htmlFor="bk-search">Search</label>
-            <input id="bk-search" type="search" className="form-control rounded-3" placeholder="Customer, email, phone or service…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-          <div className="col-12 col-sm-5">
-            <label className="fz-font-sm neutral-500" htmlFor="bk-status">Status</label>
-            <select id="bk-status" className="form-select rounded-3" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "" | BookingStatus)}>
-              <option value="">All statuses</option>
-              {(Object.keys(STATUS_LABEL) as BookingStatus[]).map((s) => (
-                <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {todayAndUpcoming.length === 0 && past.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">
-            {bookings.length === 0 ? "No bookings yet." : "Nothing matches that search."}
-          </div>
-        ) : (
-          <div className="d-flex flex-column gap-4">
-            {todayAndUpcoming.length === 0 && (
-              <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">Nothing coming up.</div>
-            )}
-            {todayAndUpcoming.map((g) => (
-              <div key={g.key}>
-                <div className="d-flex align-items-baseline justify-content-between gap-2 mb-2 pb-1" style={{ borderBottom: DIVIDER }}>
-                  <h3 className="fz-font-md fw-700 neutral-900 mb-0">{dayLabel(g.key)}</h3>
-                  <span className="fz-font-sm neutral-500">{g.rows.length} booking{g.rows.length === 1 ? "" : "s"}</span>
-                </div>
-                <div className="d-flex flex-column gap-2">{g.rows.map(renderBooking)}</div>
-              </div>
-            ))}
-            {past.length > 0 && (
-              <div>
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary btn-sm rounded-pill px-3 ops-tap"
-                  aria-expanded={showPast}
-                  onClick={() => setShowPast((v) => !v)}
-                >
-                  {showPast ? "Hide" : "Show"} past bookings ({past.length})
-                </button>
-                {showPast && <div className="d-flex flex-column gap-2 mt-2">{past.map(renderBooking)}</div>}
-              </div>
-            )}
-          </div>
-        )}
+      {/* At-a-glance numbers */}
+      <h2 className="visually-hidden">Summary</h2>
+      <div className="hrx-statrow mb-4">
+        <StatTile label="Today" value={stats.today} tone="dark" />
+        <StatTile label="Upcoming" value={stats.upcoming} />
+        <StatTile label="Awaiting confirmation" value={stats.pending} tone={stats.pending > 0 ? "soft" : undefined} />
+        <StatTile label="Active services" value={services.filter((s) => s.active).length} />
       </div>
 
-      {/* Services — setup, so it drops below the day sheet on a phone. */}
-      <div className="col-lg-5 order-1 order-lg-0">
-        <h2 className="fw-600 fz-font-lg mb-3">Services</h2>
-        <form onSubmit={addService} className="bg-neutral-0 rounded-4 p-3 border-100 mb-3">
-          <h3 className="fz-font-sm fw-600 neutral-500 text-uppercase mb-2">Add a service</h3>
-          <div className="row g-2 align-items-end">
-            <div className="col-12">
-              <label className="fz-font-sm neutral-500" htmlFor="svc-name">Service name</label>
-              <input id="svc-name" className="form-control rounded-3" placeholder="e.g. Haircut" value={sForm.name} onChange={(e) => setSForm({ ...sForm, name: e.target.value })} required />
-            </div>
-            <div className="col-6">
-              <label className="fz-font-sm neutral-500" htmlFor="svc-mins">Duration (mins)</label>
-              <input id="svc-mins" type="number" min={1} step={1} className="form-control rounded-3" value={sForm.duration} onChange={(e) => setSForm({ ...sForm, duration: e.target.value })} />
-            </div>
-            <div className="col-6">
-              <label className="fz-font-sm neutral-500" htmlFor="svc-price">Price ({org.currency})</label>
-              <input id="svc-price" type="number" min={0} step="0.01" className="form-control rounded-3" placeholder="0.00" value={sForm.price} onChange={(e) => setSForm({ ...sForm, price: e.target.value })} />
-            </div>
-            <div className="col-12"><button type="submit" className="btn btn-dark w-100 rounded-3 ops-tap justify-content-center">Add service</button></div>
+      <div className="row g-4">
+        {/* Day sheet — the daily job, so it comes first on a phone and sits on the
+            right (wider column) from lg up. */}
+        <div className="col-lg-7 order-0 order-lg-1">
+          <div className="bkx-note mb-3">
+            Reminders are sent automatically 24h before each booking once messaging automations are on —{" "}
+            <Link to={`/dashboard/businesses/${orgId}/ops/marketing`}>set up in Marketing</Link>.
           </div>
-        </form>
-        {services.length === 0 ? (
-          <div className="bg-neutral-0 rounded-4 p-4 border-100 text-center neutral-500">No services yet.</div>
-        ) : (
-          <div className="d-flex flex-column gap-2">
-            {services.map((s) =>
-              editId === s.id ? (
-                <form key={s.id} onSubmit={saveEdit} className="bg-neutral-0 rounded-4 p-3 border-100">
-                  <div className="row g-2 align-items-end">
-                    <div className="col-12">
-                      <label className="fz-font-sm neutral-500" htmlFor={`edit-name-${s.id}`}>Service name</label>
-                      <input id={`edit-name-${s.id}`} className="form-control rounded-3" value={eForm.name} onChange={(e) => setEForm({ ...eForm, name: e.target.value })} required />
-                    </div>
-                    <div className="col-6">
-                      <label className="fz-font-sm neutral-500" htmlFor={`edit-mins-${s.id}`}>Duration (mins)</label>
-                      <input id={`edit-mins-${s.id}`} type="number" min={1} step={1} className="form-control rounded-3" value={eForm.duration} onChange={(e) => setEForm({ ...eForm, duration: e.target.value })} />
-                    </div>
-                    <div className="col-6">
-                      <label className="fz-font-sm neutral-500" htmlFor={`edit-price-${s.id}`}>Price ({s.currency || org.currency})</label>
-                      <input id={`edit-price-${s.id}`} type="number" min={0} step="0.01" className="form-control rounded-3" value={eForm.price} onChange={(e) => setEForm({ ...eForm, price: e.target.value })} />
-                    </div>
-                    <div className="col-12 d-flex gap-2">
-                      <button type="submit" className="btn btn-dark btn-sm rounded-3 flex-grow-1 ops-tap justify-content-center">Save</button>
-                      <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 ops-tap" onClick={() => setEditId(null)}>Cancel</button>
-                    </div>
-                  </div>
-                </form>
-              ) : (
-                <div key={s.id} className="bg-neutral-0 rounded-4 p-3 border-100 d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                  <div style={{ minWidth: 0 }}>
-                    <div className="fw-600 fz-font-md">{s.name}</div>
-                    <div className="fz-font-sm neutral-500">
-                      {s.duration_min} min · {formatPrice(s.price_cents, s.currency || org.currency)}
-                      {!s.active && <span className="badge fw-500 bg-neutral-100 neutral-700 ms-2">Hidden</span>}
-                    </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-2">
-                    <button type="button" className="btn btn-link btn-sm p-0 px-2 text-decoration-none ops-tap" aria-label={`Edit ${s.name}`} onClick={() => startEdit(s.id, s.name, s.duration_min, s.price_cents)}>Edit</button>
-                    <button type="button" className="btn btn-link btn-sm p-0 px-2 text-danger text-decoration-none ops-tap" aria-label={`Delete ${s.name}`} onClick={() => removeService(s.id, s.name)}>Delete</button>
-                    <div className="form-check form-switch m-0">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        aria-label={`Show ${s.name} to customers`}
-                        checked={s.active}
-                        onChange={async (e) => { if (await reportMutation(toggleService(s.id, e.target.checked), e.target.checked ? "Service activated" : "Service deactivated")) reload(); }}
-                      />
-                    </div>
-                  </div>
+
+          <Card title="Add a booking" className="mb-3">
+            <form onSubmit={addBooking}>
+              <div className="row g-2 align-items-end">
+                <div className="col-12 col-md-4">
+                  <label className="hrx-field mb-0" htmlFor="bk-name"><span>Customer name</span>
+                    <input id="bk-name" className="form-control" value={bForm.customer} onChange={(e) => setBForm({ ...bForm, customer: e.target.value })} required />
+                  </label>
                 </div>
-              ),
-            )}
+                <div className="col-12 col-md-4">
+                  <label className="hrx-field mb-0" htmlFor="bk-email"><span>Email (for confirmations)</span>
+                    <input id="bk-email" type="email" className="form-control" value={bForm.email} onChange={(e) => setBForm({ ...bForm, email: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-12 col-md-4">
+                  <label className="hrx-field mb-0" htmlFor="bk-phone"><span>Phone</span>
+                    <input id="bk-phone" type="tel" className="form-control" value={bForm.phone} onChange={(e) => setBForm({ ...bForm, phone: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-12 col-md-4">
+                  <label className="hrx-field mb-0" htmlFor="bk-service"><span>Service</span>
+                    <select id="bk-service" className="form-select" value={bForm.serviceId} onChange={(e) => setBForm({ ...bForm, serviceId: e.target.value })}>
+                      <option value="">Any service</option>
+                      {services.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="col-12 col-md-4">
+                  <label className="hrx-field mb-0" htmlFor="bk-start"><span>Date &amp; time</span>
+                    <input id="bk-start" type="datetime-local" className="form-control" value={bForm.start} onChange={(e) => setBForm({ ...bForm, start: e.target.value })} required />
+                  </label>
+                </div>
+                <div className="col-12 col-md-4"><button type="submit" className="hrx-pill dark w-100 justify-content-center ops-tap">Add booking</button></div>
+              </div>
+            </form>
+          </Card>
+
+          <div className="row g-2 mb-3">
+            <div className="col-12 col-sm-7">
+              <label className="hrx-field mb-0" htmlFor="bk-search"><span>Search</span>
+                <input id="bk-search" type="search" className="form-control" placeholder="Customer, email, phone or service…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </label>
+            </div>
+            <div className="col-12 col-sm-5">
+              <label className="hrx-field mb-0" htmlFor="bk-status"><span>Status</span>
+                <select id="bk-status" className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "" | BookingStatus)}>
+                  <option value="">All statuses</option>
+                  {(Object.keys(STATUS_LABEL) as BookingStatus[]).map((s) => (
+                    <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
-        )}
+
+          {todayAndUpcoming.length === 0 && past.length === 0 ? (
+            <Empty title={bookings.length === 0 ? "No bookings yet" : "Nothing matches that search"}>
+              {bookings.length === 0 ? "New bookings will appear here as they come in." : "Try a different search or status filter."}
+            </Empty>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              {todayAndUpcoming.length === 0 && (
+                <Empty title="Nothing coming up">Every upcoming day is clear for now.</Empty>
+              )}
+              {todayAndUpcoming.length > 0 && (
+                <Card title="Bookings">
+                  <div className="hrx-tablewrap">
+                    <table className="hrx-table">
+                      {tableHead}
+                      <tbody>
+                        {todayAndUpcoming.map((g) => (
+                          <Fragment key={g.key}>
+                            <tr className="bkx-dayhead">
+                              <th colSpan={5} scope="colgroup">
+                                {dayLabel(g.key)}{" "}
+                                <span className="bkx-count">· {g.rows.length} booking{g.rows.length === 1 ? "" : "s"}</span>
+                              </th>
+                            </tr>
+                            {g.rows.map(renderBookingRow)}
+                          </Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+              {past.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    className="hrx-pill ops-tap"
+                    aria-expanded={showPast}
+                    onClick={() => setShowPast((v) => !v)}
+                  >
+                    {showPast ? "Hide" : "Show"} past bookings ({past.length})
+                  </button>
+                  {showPast && (
+                    <Card className="mt-2">
+                      <div className="hrx-tablewrap">
+                        <table className="hrx-table">
+                          {tableHead}
+                          <tbody>{past.map(renderBookingRow)}</tbody>
+                        </table>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Services — setup, so it drops below the day sheet on a phone. */}
+        <div className="col-lg-5 order-1 order-lg-0">
+          <Card title="Add a service" className="mb-3">
+            <form onSubmit={addService}>
+              <div className="row g-2 align-items-end">
+                <div className="col-12">
+                  <label className="hrx-field mb-0" htmlFor="svc-name"><span>Service name</span>
+                    <input id="svc-name" className="form-control" placeholder="e.g. Haircut" value={sForm.name} onChange={(e) => setSForm({ ...sForm, name: e.target.value })} required />
+                  </label>
+                </div>
+                <div className="col-6">
+                  <label className="hrx-field mb-0" htmlFor="svc-mins"><span>Duration (mins)</span>
+                    <input id="svc-mins" type="number" min={1} step={1} className="form-control" value={sForm.duration} onChange={(e) => setSForm({ ...sForm, duration: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-6">
+                  <label className="hrx-field mb-0" htmlFor="svc-price"><span>Price ({org.currency})</span>
+                    <input id="svc-price" type="number" min={0} step="0.01" className="form-control" placeholder="0.00" value={sForm.price} onChange={(e) => setSForm({ ...sForm, price: e.target.value })} />
+                  </label>
+                </div>
+                <div className="col-12"><button type="submit" className="hrx-pill dark w-100 justify-content-center ops-tap">Add service</button></div>
+              </div>
+            </form>
+          </Card>
+          {services.length === 0 ? (
+            <Empty title="No services yet">Add your first service above so customers can book it.</Empty>
+          ) : (
+            <Card title="Services">
+              <div className="d-flex flex-column">
+                {services.map((s) =>
+                  editId === s.id ? (
+                    <form key={s.id} onSubmit={saveEdit} className="py-3" style={{ borderTop: "1px solid #ececec" }}>
+                      <div className="row g-2 align-items-end">
+                        <div className="col-12">
+                          <label className="hrx-field mb-0" htmlFor={`edit-name-${s.id}`}><span>Service name</span>
+                            <input id={`edit-name-${s.id}`} className="form-control" value={eForm.name} onChange={(e) => setEForm({ ...eForm, name: e.target.value })} required />
+                          </label>
+                        </div>
+                        <div className="col-6">
+                          <label className="hrx-field mb-0" htmlFor={`edit-mins-${s.id}`}><span>Duration (mins)</span>
+                            <input id={`edit-mins-${s.id}`} type="number" min={1} step={1} className="form-control" value={eForm.duration} onChange={(e) => setEForm({ ...eForm, duration: e.target.value })} />
+                          </label>
+                        </div>
+                        <div className="col-6">
+                          <label className="hrx-field mb-0" htmlFor={`edit-price-${s.id}`}><span>Price ({s.currency || org.currency})</span>
+                            <input id={`edit-price-${s.id}`} type="number" min={0} step="0.01" className="form-control" value={eForm.price} onChange={(e) => setEForm({ ...eForm, price: e.target.value })} />
+                          </label>
+                        </div>
+                        <div className="col-12 d-flex gap-2">
+                          <button type="submit" className="hrx-pill dark flex-grow-1 justify-content-center ops-tap">Save</button>
+                          <button type="button" className="hrx-pill ops-tap" onClick={() => setEditId(null)}>Cancel</button>
+                        </div>
+                      </div>
+                    </form>
+                  ) : (
+                    <div key={s.id} className="hrx-listrow">
+                      <InitialAvatar name={s.name} />
+                      <div className="main">
+                        <p className="t">{s.name}</p>
+                        <p className="s">{s.duration_min} min · {formatPrice(s.price_cents, s.currency || org.currency)}</p>
+                      </div>
+                      <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                        {!s.active && <Chip>Hidden</Chip>}
+                        <button type="button" className="bkx-linkbtn ops-tap" aria-label={`Edit ${s.name}`} onClick={() => startEdit(s.id, s.name, s.duration_min, s.price_cents)}>Edit</button>
+                        <button type="button" className="bkx-linkbtn danger ops-tap" aria-label={`Delete ${s.name}`} onClick={() => removeService(s.id, s.name)}>Delete</button>
+                        <div className="form-check form-switch m-0">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            aria-label={`Show ${s.name} to customers`}
+                            checked={s.active}
+                            onChange={async (e) => { if (await reportMutation(toggleService(s.id, e.target.checked), e.target.checked ? "Service activated" : "Service deactivated")) reload(); }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
