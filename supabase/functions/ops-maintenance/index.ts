@@ -289,6 +289,29 @@ Deno.serve(async (req) => {
       }
     } catch (_) { /* best effort */ }
 
+    // 5. One-shot copy correction (2026-08-26): the platform agent's knowledge
+    //    still carried the old "live in days" claim after the marketing copy
+    //    moved to "immediately / minutes". Exact legacy phrases only, so this
+    //    is surgical and naturally idempotent (zero matching rows after the
+    //    first pass). Safe to delete once confirmed clean.
+    try {
+      const { data: stale } = await admin
+        .from("knowledge_docs")
+        .select("id, content")
+        .or("content.ilike.%brand and run within days%,content.ilike.%business in days%,content.ilike.%revenue in days%,content.ilike.%live in days%")
+        .limit(50);
+      for (const doc of (stale as { id: string; content: string }[] | null) ?? []) {
+        const fixed = doc.content
+          .replaceAll("brand and run within days", "brand and run within minutes of purchase — it goes live immediately")
+          .replaceAll("business in days", "business in minutes")
+          .replaceAll("revenue in days", "revenue in minutes")
+          .replaceAll("live in days", "live immediately");
+        if (fixed !== doc.content) {
+          await admin.from("knowledge_docs").update({ content: fixed }).eq("id", doc.id);
+        }
+      }
+    } catch (_) { /* copy fix must never break housekeeping */ }
+
     return json({
       ok: true,
       ...(typeof data === "object" && data !== null ? data : { result: data }),

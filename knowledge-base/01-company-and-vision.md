@@ -1,7 +1,7 @@
 # 01 — Company & Vision
 
 ## Executive summary
-Phoxta is an AI-native multi-business platform. It builds complete, ready-to-launch businesses — storefronts, service shops, content sites, native apps — on **one shared backend**, packages each finished business as a **cloneable blueprint**, and sells those blueprints in a marketplace to as many buyers as want them. Every buyer inherits a working, AI-powered business they can brand and run within days.
+Phoxta is an AI-native multi-business platform. It builds complete, ready-to-launch businesses — storefronts, service shops, content sites, native apps — on **one shared backend**, packages each finished business as a **cloneable blueprint**, and sells those blueprints in a marketplace to as many buyers as want them. Every buyer inherits a working, AI-powered business that goes live immediately - branded and running within minutes of purchase.
 
 Beyond the marketplace, Phoxta is a **meeting point**: founders seeking co-founders, operators seeking funded businesses to run, investors seeking proven blueprints to fund, and groups seeking to invest together. The same backend that builds and clones businesses is the layer that matches the people behind them.
 
@@ -47,7 +47,7 @@ Raising a **Seed of $3.5M** to complete the marketplace and matchmaking layers, 
 - **IS NOT:** consultancy/agency; single-sale business broker; theme/template store; social network/recruitment platform; single-editor site builder; no-rules customizable core.
 
 ## Vision, mission & values
-- **Vision (10-year):** anyone with an idea, capital or operational skill can stand up a working AI-powered business in days — and find the people to grow it. By **2036, Phoxta is the default starting point for one million new businesses worldwide.**
+- **Vision (10-year):** anyone with an idea, capital or operational skill can stand up a working AI-powered business in minutes — and find the people to grow it. By **2036, Phoxta is the default starting point for one million new businesses worldwide.**
 - **Mission (3-year):** turn the work of *starting* a business into the work of *choosing* one. By **2029, 10,000 active businesses on Phoxta.**
 
 ### Operating principles

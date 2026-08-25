@@ -40,7 +40,7 @@ const TAGS = ["E-commerce", "Local services", "Content & creator", "SaaS", "Mark
 const HERO_SLIDES = [
     {
         title: "Own a business that already works.",
-        sub: "Pick a validated, AI-powered business, make it your own, and go from launch to revenue in days.",
+        sub: "Pick a validated, AI-powered business, make it your own, and go live immediately - launch to revenue in minutes.",
     },
     {
         title: "Get started with your Business Ideas",

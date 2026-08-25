@@ -114,7 +114,7 @@ export default function Section12() {
                         <div className="col-lg-4 col-md-6 ms-auto text-end">
                             <span className="common-white fz-font-lg">
                                 [ Phoxta gives you a ready-to-launch, AI-powered business. Pick a proven design, make it
-                                your own, and start running it in days. ]
+                                your own, and start running it in minutes. ]
                             </span>
                         </div>
                     </div>

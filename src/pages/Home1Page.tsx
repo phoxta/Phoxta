@@ -22,7 +22,7 @@ export default function Home1Page() {
     <>
       <PageMeta
         title="Phoxta — Own a business that already works."
-        description="Pick a validated, AI-powered business, make it your own, and go from launch to revenue in days — not months."
+        description="Pick a validated, AI-powered business, make it your own, and go live in minutes — not days."
         path="/"
       />
                 <Section1 />

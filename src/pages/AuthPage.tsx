@@ -195,7 +195,7 @@ export default function AuthPage() {
           <div className="pe-xl-5">
             <h2 className="text-white fw-600 lh-1 mb-3">Own a business that already works.</h2>
             <p className="text-white" style={{ opacity: 0.75, maxWidth: 460 }}>
-              Pick a validated, AI-powered business, make it your own, and go from launch to revenue in days — not months.
+              Pick a validated, AI-powered business, make it your own, and go live in minutes — not days.
             </p>
           </div>
           <span className="fz-font-label text-white" style={{ opacity: 0.5 }}>
