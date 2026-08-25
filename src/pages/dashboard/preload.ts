@@ -12,7 +12,6 @@ type Loader = () => Promise<unknown>;
 /** Top-level dashboard nav targets, keyed by route path (mirrors DashboardLayout NAV). */
 export const DASHBOARD_PRELOADERS: Record<string, Loader> = {
   "/dashboard": () => import("@/pages/dashboard/DashboardHomePage"),
-  "/dashboard/ideas": () => import("@/pages/dashboard/IdeasPage"),
   "/dashboard/studio": () => import("@/pages/dashboard/StudioPage"),
   "/dashboard/marketplace": () => import("@/pages/dashboard/MarketplacePage"),
   "/dashboard/businesses": () => import("@/pages/dashboard/BusinessesPage"),
@@ -39,6 +38,11 @@ export const OPS_PRELOADERS: Record<string, Loader> = {
   settings: () => import("@/pages/dashboard/ops/SettingsPage"),
   // Not tabs anymore, but still routed (redirects/links) — keep chunks warm.
   google: () => import("@/pages/dashboard/ops/google/GoogleWorkspacePage"),
+  // Phoxta-only tabs. Warming them for every tenant would download chunks
+  // nobody on that console can open, so they are keyed like any other tab and
+  // only fetched when the tab is actually there to hover.
+  ideas: () => import("@/pages/dashboard/IdeasPage"),
+  platform: () => import("@/pages/dashboard/ops/PlatformPage"),
   inbox: () => import("@/pages/dashboard/ops/agent/InboxPage"),
 };
 

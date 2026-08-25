@@ -39,6 +39,11 @@ export const MODULES: Record<string, OpsModuleDef> = {
   "help-center": { seg: "help-center", label: "Help Center" },
   agent: { seg: "agent", label: "AI Agent" },
   platform: { seg: "platform", label: "Platform" },
+  // Idea Validator. Phoxta-only: it validates ideas for businesses that do not
+  // exist yet, which is Phoxta's own work, not something a tenant running a
+  // storefront has any use for. Listed here rather than in the top-level
+  // dashboard so there is one place a module can live.
+  ideas: { seg: "ideas", label: "Ideas" },
   settings: { seg: "settings", label: "Settings" },
 };
 
@@ -104,7 +109,7 @@ const PLATFORM: VerticalConsole = {
   commerceLabel: "Blueprints",
   itemNoun: "Blueprint",
   booking: "none",
-  modules: ["overview", "platform", "engage", "crm", "invoicing", "help-center", "operator", "settings"],
+  modules: ["overview", "platform", "ideas", "engage", "crm", "invoicing", "help-center", "operator", "settings"],
 };
 
 const DEFAULT: VerticalConsole = {

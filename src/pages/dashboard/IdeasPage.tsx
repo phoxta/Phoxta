@@ -105,7 +105,7 @@ export default function IdeasPage() {
     }
     setSeed("");
     setShowNew(false);
-    navigate(`/dashboard/ideas/${data.id}`);
+    navigate(data.id);
   }
 
   async function remove(idea: Idea) {
@@ -252,8 +252,8 @@ export default function IdeasPage() {
             return (
               <div key={idea.id} className="idv-card bg-neutral-0 rounded-5 p-4"
                    role="button" tabIndex={0}
-                   onClick={() => navigate(`/dashboard/ideas/${idea.id}`)}
-                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/dashboard/ideas/${idea.id}`); } }}>
+                   onClick={() => navigate(idea.id)}
+                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(idea.id); } }}>
                 <div className="d-flex align-items-start gap-3">
                   <div className="flex-grow-1" style={{ minWidth: 0 }}>
                     <div className="d-flex align-items-center gap-3 flex-wrap mb-10">
@@ -305,7 +305,7 @@ export default function IdeasPage() {
 
                   <div className="d-flex flex-column gap-2 flex-shrink-0">
                     <button type="button" className="idv-iconbtn" title="Open idea" aria-label={`Open ${idea.title}`}
-                            onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/ideas/${idea.id}`); }}>
+                            onClick={(e) => { e.stopPropagation(); navigate(idea.id); }}>
                       {I_ARROW_R}
                     </button>
                     <button type="button" className="idv-iconbtn idv-iconbtn--danger" title="Delete idea"

@@ -8,10 +8,12 @@ import { buildPlanHtml } from "@/lib/ideas/plan";
 /**
  * The business plan, full screen.
  *
- * Deliberately outside the dashboard shell. The deck is a 1280-wide document
- * meant to be read, printed and sent on — squeezing it into a content column
- * beside a sidebar would shrink every slide to make room for navigation nobody
- * needs while reading a plan. Studio's editor and preview take the same view.
+ * Routed inside the console but painted over it. The deck is a 1280-wide
+ * document meant to be read, printed and sent on — squeezed into a content
+ * column beside two levels of navigation, every slide would shrink to make room
+ * for chrome nobody wants while reading a plan. So the route nests (which keeps
+ * every link here relative and the page indifferent to where it is mounted) and
+ * the layout does not: .idv-plan is a fixed overlay with its own back button.
  *
  * The deck renders inside an iframe rather than into this page. It carries its
  * own reset, its own font and its own `@page` rules, and it has to stay a
@@ -32,7 +34,7 @@ function fileNameFor(title: string): string {
 }
 
 export default function IdeaPlanPage() {
-  const { id = "" } = useParams();
+  const { ideaId: id = "" } = useParams();
   const [idea, setIdea] = useState<Idea | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export default function IdeaPlanPage() {
       <PageMeta title={idea ? `Phoxta - ${idea.title} plan` : "Phoxta - Business plan"} />
 
       <header className="idv-plan__bar">
-        <Link to={`/dashboard/ideas/${id}`} className="at-btn common-black bg-transparent rounded-0 p-0">
+        <Link to=".." relative="path" className="at-btn common-black bg-transparent rounded-0 p-0">
           <span><span className="text-1">{I_BACK} BACK TO THE IDEA</span><span className="text-2">{I_BACK} BACK TO THE IDEA</span></span>
         </Link>
 
@@ -117,7 +119,7 @@ export default function IdeaPlanPage() {
               steps on the idea and the deck builds itself from what they produce.
             </p>
             <div className="at-btn-group">
-              <Link to={`/dashboard/ideas/${id}`} className="at-btn z-index-1">
+              <Link to=".." relative="path" className="at-btn z-index-1">
                 <span><span className="text-1">BACK TO THE IDEA</span><span className="text-2">BACK TO THE IDEA</span></span>
               </Link>
             </div>

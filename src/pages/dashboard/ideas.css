@@ -423,8 +423,9 @@
 /* ═══════════════════════════════════════════════════════════════════════
    Business plan viewer
    ───────────────────────────────────────────────────────────────────────
-   Full screen, outside the dashboard shell. The deck is a document; it gets
-   the width. The bar is the only Phoxta chrome on the page.
+   The route nests inside the console; the layout does not. The deck is a
+   document, so it gets the whole window — above the console's own sidebar and
+   header, which is what the z-index is for. The bar is the only chrome left.
    ═══════════════════════════════════════════════════════════════════════ */
 
 .idv-plan {
@@ -433,7 +434,7 @@
   display: flex;
   flex-direction: column;
   background: var(--at-neutral-50);
-  z-index: 5;
+  z-index: 1040;
 }
 
 .idv-plan__bar {

@@ -115,15 +115,11 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<OnboardingPage />} />
         {/* Studio editor + preview run full-screen (no dashboard chrome / zoom). */}
-        {/* The business plan is a document, not a dashboard screen — full width. */}
-        <Route path="/dashboard/ideas/:id/plan" element={<IdeaPlanPage />} />
         <Route path="/studio/:orgId/site" element={<StudioSiteEditorPage />} />
         <Route path="/studio/:orgId/:pageId" element={<StudioEditorPage />} />
         <Route path="/studio/:orgId/:pageId/preview" element={<StudioPreviewPage />} />
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardHomePage />} />
-          <Route path="/dashboard/ideas" element={<IdeasPage />} />
-          <Route path="/dashboard/ideas/:id" element={<IdeaDetailPage />} />
           <Route path="/dashboard/studio" element={<StudioPage />} />
           <Route path="/dashboard/console" element={<ConsolePage />} />
           {/* Phoxta's own operating console — cross-tenant, platform-admin only. */}
@@ -158,6 +154,14 @@ export default function App() {
             <Route path="crm" element={<CrmPage />} />
             {/* Phoxta's own cross-tenant module — admin-gated by the RPCs behind it. */}
             <Route path="platform" element={<OpsPlatformPage />} />
+            {/* Idea Validator — configured into the platform vertical only, so it
+                is a tab on Phoxta's console and nowhere else. Its links are all
+                relative, so the pages do not know or care where they are
+                mounted; the plan renders as a full-screen document over the
+                console rather than inside it. */}
+            <Route path="ideas" element={<IdeasPage />} />
+            <Route path="ideas/:ideaId" element={<IdeaDetailPage />} />
+            <Route path="ideas/:ideaId/plan" element={<IdeaPlanPage />} />
             <Route path="commerce" element={<CommercePage />} />
             <Route path="invoicing" element={<InvoicingPage />} />
             <Route path="bookings" element={<BookingsPage />} />

@@ -43,7 +43,7 @@ const I_CLOCK = <svg viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="
 const I_DECK = <svg width="14" height="14" viewBox="0 0 24 24" {...ln} aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="1.5" /><path d="M12 17v3M8 20h8" /></svg>;
 
 export default function IdeaDetailPage() {
-  const { id = "" } = useParams();
+  const { ideaId: id = "" } = useParams();
   const [idea, setIdea] = useState<Idea | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +119,7 @@ export default function IdeaDetailPage() {
         <div className="bg-neutral-0 rounded-5 p-5 idv-card" style={{ cursor: "default" }}>
           <p className="fz-font-lg neutral-700 mb-30">{error ?? "That idea was not found."}</p>
           <div className="at-btn-group">
-            <Link to="/dashboard/ideas" className="at-btn z-index-1">
+            <Link to=".." relative="path" className="at-btn z-index-1">
               <span><span className="text-1">BACK TO IDEAS</span><span className="text-2">BACK TO IDEAS</span></span>
               <i>{ARROW}{ARROW}</i>
             </Link>
@@ -155,7 +155,7 @@ export default function IdeaDetailPage() {
           </div>
         </div>
         <div className="col-lg-4 d-flex justify-content-lg-end mt-20 mt-lg-0">
-          <Link to="/dashboard/ideas" className="at-btn common-black bg-transparent rounded-0 p-0">
+          <Link to=".." relative="path" className="at-btn common-black bg-transparent rounded-0 p-0">
             <span><span className="text-1">{I_BACK} ALL IDEAS</span><span className="text-2">{I_BACK} ALL IDEAS</span></span>
           </Link>
         </div>
@@ -248,7 +248,7 @@ export default function IdeaDetailPage() {
 
               <p className="idv-tabs__group">Deliverable</p>
               {planReady ? (
-                <Link to={`/dashboard/ideas/${id}/plan`} className="idv-tab">
+                <Link to="plan" className="idv-tab">
                   <span className="idv-tab__dot is-done on-amber" />
                   <span className="idv-tab__n">{I_DECK}</span>
                   <span className="idv-tab__name">Business plan</span>
@@ -299,7 +299,7 @@ export default function IdeaDetailPage() {
                 </p>
               </div>
               <div className="at-btn-group">
-                <Link to={`/dashboard/ideas/${id}/plan`} className="at-btn z-index-1">
+                <Link to="plan" className="at-btn z-index-1">
                   <span><span className="text-1">OPEN THE BUSINESS PLAN</span><span className="text-2">OPEN THE BUSINESS PLAN</span></span>
                   <i>{ARROW}{ARROW}</i>
                 </Link>
