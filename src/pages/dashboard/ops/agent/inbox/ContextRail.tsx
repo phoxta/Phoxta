@@ -15,7 +15,12 @@ import {
   X,
 } from "lucide-react";
 import { formatPrice } from "@/lib/db/marketplace";
-import { getCustomerContext, type CustomerContext } from "@/lib/db/ops/inbox";
+import {
+  getCustomerContext,
+  listCallsForConversation,
+  type ConversationCall,
+  type CustomerContext,
+} from "@/lib/db/ops/inbox";
 import type { Conversation, OrgMember } from "@/lib/db/ops/agent";
 import type { Ticket } from "@/lib/db/ops/helpdesk";
 import { Avatar, Tag } from "@/pages/dashboard/ops/ui/primitives";
@@ -113,6 +118,24 @@ export default function ContextRail({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasIdentity = !!(email.trim() || phone.trim());
+
+  // Calls attached to THIS conversation (any channel — an SMS thread the AI
+  // phoned about carries call logs too, not only channel_type "voice").
+  const convId = conv?.id ?? null;
+  const [calls, setCalls] = useState<ConversationCall[]>([]);
+  useEffect(() => {
+    if (!convId) {
+      setCalls([]);
+      return;
+    }
+    let active = true;
+    listCallsForConversation(convId).then(({ data }) => {
+      if (active) setCalls(data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [convId]);
 
   useEffect(() => {
     if (!hasIdentity) {
@@ -305,6 +328,30 @@ export default function ContextRail({
               )}
             </Section>
           </>
+        )}
+
+        {/* ── Calls on this conversation ───────────────────────────────── */}
+        {conv && calls.length > 0 && (
+          <Section title="Calls" icon={<Phone />} count={calls.length}>
+            {calls.map((c) => (
+              <div key={c.id} className="ibx-rail__row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                <div className="d-flex align-items-center justify-content-between gap-2">
+                  <span className="text-capitalize" style={{ fontSize: 12 }}>
+                    {c.direction} call{c.after_hours ? " · after hours" : ""}
+                  </span>
+                  <Tag tone={c.outcome === "escalated" ? "warn" : c.outcome === "failed" ? "danger" : c.outcome === "booked" ? "ok" : "plain"}>
+                    {c.outcome}
+                  </Tag>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--at-neutral-500)" }}>
+                  {new Date(c.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </div>
+                {c.recording_url && (
+                  <audio controls preload="none" src={c.recording_url} className="w-100 mt-1" style={{ height: 30 }} />
+                )}
+              </div>
+            ))}
+          </Section>
         )}
 
         {/* ── How this thread is filed ─────────────────────────────────── */}

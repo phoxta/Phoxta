@@ -156,19 +156,13 @@ export default function SideBar({ open, hamburgerOpen, onClose }: SideBarProps) 
             <h5 className="at-offcanvas-title sm">Get in touch</h5>
             <ul>
               <li>
-                <a className="fz-font-lg" href="tel:(212) 555-7398">
-                  (212) 555-7398
+                <a className="fz-font-lg" href="tel:+44 7350 172153">
+                  +44 7350 172153
                 </a>
               </li>
               <li>
                 <a className="fz-font-lg" href="mailto:hello@phoxta.com">
                   hello@phoxta.com
-                </a>
-              </li>
-              <li>
-                <a className="fz-font-lg" href="#" onClick={(e) => e.preventDefault()}>
-                  245 Fifth Avenue, Suite 1800 <br />
-                  New York, NY 10016, USA
                 </a>
               </li>
             </ul>

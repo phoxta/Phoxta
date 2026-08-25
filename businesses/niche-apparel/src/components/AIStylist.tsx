@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RichText, ProductCards, type ChatCard } from "@/lib/chatRich";
 import { useCatalog } from "@/util/catalog";
 
@@ -24,7 +24,42 @@ if (!AGENT_URL && typeof console !== "undefined") {
 const ENV_AGENT_KEY = (import.meta.env.VITE_AGENT_PUBLIC_KEY as string | undefined) ?? "";
 const ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
-type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[] };
+// --- Human takeover (console → widget) -------------------------------------
+// When the business takes a thread over, a send returns { human: true, reply: "" }
+// and the person's replies are fetched with { action: "poll", conversationId,
+// afterId? } → { messages: [{ id, role: "agent"|"human", body, created_at }],
+// human }. The conversation id + poll cursor live in sessionStorage so SPA
+// navigation doesn't orphan a live human conversation. Fail-soft everywhere:
+// blocked storage just loses resume, a failed poll just waits for the next one.
+const CONV_KEY = "phoxta:chat:conv";
+function loadStoredConv(): { id: string; lastSeenId: string | null } | null {
+    try {
+        const raw = sessionStorage.getItem(CONV_KEY);
+        if (!raw) return null;
+        const v = JSON.parse(raw) as { id?: unknown; lastSeenId?: unknown };
+        if (v && typeof v.id === "string") {
+            return { id: v.id, lastSeenId: typeof v.lastSeenId === "string" ? v.lastSeenId : null };
+        }
+    } catch {
+        /* storage unavailable */
+    }
+    return null;
+}
+function storeConv(id: string | null, lastSeenId: string | null) {
+    try {
+        if (id) sessionStorage.setItem(CONV_KEY, JSON.stringify({ id, lastSeenId }));
+        else sessionStorage.removeItem(CONV_KEY);
+    } catch {
+        /* storage unavailable */
+    }
+}
+
+const HUMAN_JOINED = "A team member has joined the chat…";
+const TEAM_LABEL = "Team";
+const POLL_MS = 5000; // receive cadence while the panel is open
+const POLL_IDLE_MS = 120_000; // stop polling ~2 min after the last activity
+
+type Msg = { role: "bot" | "user" | "status"; text: string; cards?: ChatCard[]; team?: boolean };
 const CHIPS = ["What's new in?", "Style a wool coat", "Gift under £150", "Size advice"];
 
 function localReply(q: string): string {
@@ -45,6 +80,114 @@ export default function AIStylist() {
     const [busy, setBusy] = useState(false);
     const conv = useRef<string | null>(null);
     const bodyRef = useRef<HTMLDivElement>(null);
+    // Human-takeover receive path: the last delivered message id (poll cursor),
+    // ids already rendered (dedupe), whether the takeover notice has been shown,
+    // and the last activity time that keeps the poll loop alive.
+    const lastSeen = useRef<string | null>(null);
+    const seenIds = useRef<Set<string>>(new Set());
+    const humanActive = useRef(false);
+    const humanNoticed = useRef(false);
+    const lastActivity = useRef(Date.now());
+
+    // Resume across SPA navigation: a human conversation must not be orphaned
+    // because the visitor changed page — restore the thread id + poll cursor.
+    useEffect(() => {
+        const s = loadStoredConv();
+        if (s && !conv.current) {
+            conv.current = s.id;
+            lastSeen.current = s.lastSeenId;
+        }
+    }, []);
+
+    const persistConv = () => storeConv(conv.current, lastSeen.current);
+
+    const scrollDown = () =>
+        setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 50);
+
+    // A person has (or has released) this thread. Surface the takeover once per
+    // page load; a later hand-back re-arms the notice.
+    function noteHuman(active: boolean) {
+        if (active && !humanNoticed.current) {
+            humanNoticed.current = true;
+            setMsgs((m) => [...m, { role: "status", text: HUMAN_JOINED }]);
+            scrollDown();
+        }
+        if (!active && humanActive.current) humanNoticed.current = false;
+        humanActive.current = active;
+    }
+
+    // One poll: POST { public_key, action: "poll", conversationId, afterId? } →
+    // { messages: [{ id, role: "agent"|"human", body, created_at }], human }.
+    // With no cursor yet the first poll is an ANCHOR: it swallows the history
+    // (those bubbles are already on screen from send responses) and only records
+    // the frontier; later polls deliver what comes after it.
+    async function pollOnce(key: string) {
+        if (!AGENT_URL || !conv.current) return;
+        const anchor = lastSeen.current === null;
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (ANON) { headers["Authorization"] = `Bearer ${ANON}`; headers["apikey"] = ANON; }
+        const r = await fetch(AGENT_URL, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+                public_key: key,
+                action: "poll",
+                conversationId: conv.current,
+                ...(lastSeen.current ? { afterId: lastSeen.current } : {}),
+            }),
+        });
+        if (!r.ok) throw new Error(`poll ${r.status}`);
+        const d = await r.json();
+        const raw: unknown[] = Array.isArray(d.messages) ? d.messages : [];
+        const list = raw.filter((m): m is { id: string; role: string; body: string } => {
+            const x = m as { id?: unknown; role?: unknown; body?: unknown } | null;
+            return !!x && typeof x.id === "string" && typeof x.role === "string" && typeof x.body === "string";
+        });
+        if (list.length) lastSeen.current = list[list.length - 1].id;
+        if (d.human === true) noteHuman(true);
+        else if (d.human === false) noteHuman(false);
+        if (!anchor) {
+            const fresh = list.filter((m) => m.body.trim() && !seenIds.current.has(m.id));
+            fresh.forEach((m) => seenIds.current.add(m.id));
+            if (fresh.length) {
+                setMsgs((prev) => [...prev, ...fresh.map((m) => ({ role: "bot" as const, text: m.body, team: m.role === "human" }))]);
+                lastActivity.current = Date.now();
+                scrollDown();
+            }
+        } else {
+            list.forEach((m) => seenIds.current.add(m.id));
+        }
+        persistConv();
+    }
+
+    // Receive loop: the console's human replies have no push channel — this poll
+    // is their delivery leg. Runs while the panel is open, goes quiet ~2 minutes
+    // after the last activity (a send or an incoming message re-arms it), backs
+    // off silently on network failures, and stops when the panel closes.
+    useEffect(() => {
+        if (!open) return;
+        lastActivity.current = Date.now();
+        let stopped = false;
+        let failures = 0;
+        let timer: ReturnType<typeof setTimeout>;
+        const tick = async () => {
+            if (AGENT_KEY && conv.current && Date.now() - lastActivity.current <= POLL_IDLE_MS) {
+                try {
+                    await pollOnce(AGENT_KEY);
+                    failures = 0;
+                } catch {
+                    failures = Math.min(failures + 1, 5); // 5s → 30s, silently
+                }
+            }
+            if (!stopped) timer = setTimeout(tick, POLL_MS * (1 + failures));
+        };
+        tick();
+        return () => {
+            stopped = true;
+            clearTimeout(timer);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, AGENT_KEY]);
 
     async function send(text: string) {
         const q = text.trim();
@@ -54,6 +197,7 @@ export default function AIStylist() {
         setBusy(true);
         let reply = "";
         let cards: ChatCard[] = [];
+        let humanTurn = false;
         if (AGENT_URL && AGENT_KEY) {
             try {
                 const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -62,13 +206,27 @@ export default function AIStylist() {
                 const d = await r.json();
                 conv.current = d.conversationId ?? conv.current;
                 reply = d.reply ?? "";
-        cards = Array.isArray(d.cards) ? d.cards : [];
+                cards = Array.isArray(d.cards) ? d.cards : [];
+                humanTurn = d.human === true;
+                // The reply arrives inline: re-anchor the poll cursor past it so
+                // the receive loop never re-delivers an on-screen bubble.
+                if (reply) lastSeen.current = null;
+                persistConv();
             } catch { reply = ""; }
         }
-        if (!reply) reply = localReply(q);
-        setMsgs((m) => [...m, { role: "bot", text: reply, cards }]);
+        lastActivity.current = Date.now();
+        if (humanTurn) {
+            // A person has this thread: the empty reply is honest silence while
+            // they type — no canned stylist line. Show the takeover once; the
+            // poll loop delivers their words as they come.
+            noteHuman(true);
+            if (reply) setMsgs((m) => [...m, { role: "bot", text: reply, cards }]);
+        } else {
+            if (!reply) reply = localReply(q);
+            setMsgs((m) => [...m, { role: "bot", text: reply, cards }]);
+        }
         setBusy(false);
-        setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 50);
+        scrollDown();
     }
 
     return (
@@ -83,9 +241,16 @@ export default function AIStylist() {
                         <p className="fz-12 opacity-50 mb-0">AI assistant · styling, fit &amp; gifts</p>
                     </div>
                     <div className="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-2" ref={bodyRef}>
-                        {msgs.map((m, i) => (
-                            <div key={i} className={`fz-14 ${m.role === "user" ? "align-self-end bg-dark text-white" : "align-self-start bg-neutral-100"}`} style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, lineHeight: 1.5 }}><RichText text={m.text} /><ProductCards cards={m.cards} /></div>
-                        ))}
+                        {msgs.map((m, i) =>
+                            m.role === "status" ? (
+                                <div key={i} className="align-self-center text-center fz-12" style={{ opacity: 0.6, padding: "2px 6px" }}>{m.text}</div>
+                            ) : (
+                                <div key={i} className={`fz-14 ${m.role === "user" ? "align-self-end bg-dark text-white" : "align-self-start bg-neutral-100"}`} style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, lineHeight: 1.5 }}>
+                                    {m.team && <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.55, marginBottom: 2 }}>{TEAM_LABEL}</div>}
+                                    <RichText text={m.text} /><ProductCards cards={m.cards} />
+                                </div>
+                            ),
+                        )}
                         {busy && <div className="align-self-start bg-neutral-100 fz-14" style={{ padding: "10px 14px", borderRadius: 12 }}>…</div>}
                     </div>
                     <div className="d-flex flex-wrap gap-2 px-3 pb-2">

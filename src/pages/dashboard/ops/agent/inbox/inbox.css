@@ -400,6 +400,74 @@
   border-radius: 10px;
 }
 
+/* Markdown in a bubble, rendered as real nodes by shared-chat's RichText (the
+   AI writes "**bold**" and bullet lists whether or not anything renders them).
+   .rich drops pre-wrap: RichText already turns lines into <p> blocks, and
+   keeping pre-wrap on top of them double-spaced every line. The reset matters:
+   main.css styles bare p at 16px/500/-2% and colours code pink, so a paragraph
+   rendered twice the size of the list item beside it — font:inherit puts every
+   block back on the bubble's own type. Long bare URLs must wrap, not stretch
+   the bubble past the pane. */
+.ibx-bubble.rich {
+  white-space: normal;
+}
+
+.ibx-bubble.rich p,
+.ibx-bubble.rich li,
+.ibx-bubble.rich ul {
+  font: inherit;
+  color: inherit;
+  letter-spacing: normal;
+}
+
+.ibx-bubble.rich p {
+  margin: 4px 0;
+}
+
+.ibx-bubble.rich p:first-child {
+  margin-top: 0;
+}
+
+.ibx-bubble.rich p:last-child {
+  margin-bottom: 0;
+}
+
+.ibx-bubble.rich strong {
+  font-weight: 700;
+}
+
+.ibx-bubble.rich em {
+  font-style: italic;
+}
+
+.ibx-bubble.rich code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  letter-spacing: normal;
+  color: inherit;
+  background: rgba(127, 127, 127, 0.2);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.ibx-bubble.rich a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.ibx-bubble.rich ul {
+  margin: 6px 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.ibx-bubble.rich li {
+  margin: 2px 0;
+}
+
 .ibx-bubble__subject {
   font-weight: 700;
   margin-bottom: 4px;

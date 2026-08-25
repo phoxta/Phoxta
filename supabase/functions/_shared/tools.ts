@@ -55,7 +55,8 @@ export const MARKETPLACE_TOOLS: Tool[] = [
     name: "list_blueprints",
     description:
       "The businesses a customer can buy RIGHT NOW, read live from the catalogue. " +
-      "Always call this before naming, counting or pricing what is for sale — never answer from memory or from any document, which may describe products that were retired.",
+      "Always call this before naming, counting or pricing what is for sale — never answer from memory or from any document, which may describe products that were retired. " +
+      "On web chat, rich cards (cover image, price, demo and buy buttons) are attached to your reply automatically — introduce them with one short line (e.g. \"Here's what's available:\") and do NOT repeat the same items as a markdown list or paste bare URLs.",
     input_schema: { type: "object", properties: {} },
   },
 ];

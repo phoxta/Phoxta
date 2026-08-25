@@ -98,19 +98,10 @@ export default function Footer3() {
               <div className="d-flex flex-column gap-3">
                 <span className="d-block fz-font-label neutral-0 opacity-50 text-uppercase">GET IN TOUCH</span>
                 <h6 className="text-white mb-2 fw-medium">
-                  <a href="tel:+2125557398" className="text-white text-decoration-none">+212-555-7398</a>
+                  <a href="tel:+447350172153" className="text-white text-decoration-none">+44 7350 172153</a>
                 </h6>
                 <h6 className="text-white mb-2">
                   <a href="mailto:hello@phoxta.com" className="text-white text-decoration-none">hello@phoxta.com</a>
-                </h6>
-              </div>
-              <div className="d-flex flex-column gap-3 mt-60">
-                <span className="d-block fz-font-label neutral-0 opacity-50 text-uppercase">OFFICE</span>
-                <h6 className="text-white mb-2">
-                  <a href="#" className="text-white text-decoration-none">
-                    245 Fifth Avenue, Suite 1800 <br />
-                    New York, NY 10016, USA
-                  </a>
                 </h6>
               </div>
             </div>

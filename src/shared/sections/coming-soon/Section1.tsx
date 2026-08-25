@@ -98,8 +98,8 @@ export default function Section1() {
                             We&apos;re crafting something exciting — a special surprise just for our subscribers.
                         </p>
                         <div className="d-flex flex-wrap align-items-center gap-5">
-                            <a href="tel:+2125557398" className="fz-font-lg neutral-500 fw-500">
-                                [ (+01) 555-7398 ]
+                            <a href="tel:+447350172153" className="fz-font-lg neutral-500 fw-500">
+                                [ +44 7350 172153 ]
                             </a>
                             <a href="mailto:hello@phoxta.com" className="fz-font-lg neutral-500 fw-500">
                                 [ hello@phoxta.com ]

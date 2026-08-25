@@ -69,7 +69,7 @@ export default function Footer13() {
                             <p className="footer-13__col-title mb-0">INVESTOR RELATIONS</p>
                             <ul className="footer-13__col-list list-unstyled mb-0">
                                 <li><a href="mailto:invest@phoxta.com">invest@phoxta.com</a></li>
-                                <li><a href="tel:+12125550142">+1 (212) 555-0142</a></li>
+                                <li><a href="tel:+447350172153">+44 7350 172153</a></li>
                                 <li><Link to="/auth">Talk to our team</Link></li>
                                 <li><Link to="/invest">Eligibility &amp; terms</Link></li>
                             </ul>

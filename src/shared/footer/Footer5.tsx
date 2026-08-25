@@ -74,8 +74,8 @@ export default function Footer5() {
                         <div className="col-12">
                             <div className="d-flex justify-content-between">
                                 <h6 className="fw-600">
-                                    <Link to="tel:+2125557398" className="text-decoration-none">
-                                        +212 - 555-7398
+                                    <Link to="tel:+447350172153" className="text-decoration-none">
+                                        +44 7350 172153
                                     </Link>
                                 </h6>
                                 <span className="at-footer-copyright neutral-900 opacity-100">Phoxta © 2026</span>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { RichText, ProductCards, type ChatCard } from "@shared-chat/chatRich";
+import { RichText, ProductCards, MediaRow, type ChatCard, type ChatMedia } from "@shared-chat/chatRich";
 
 /**
  * Text chat for phoxta.com.
@@ -30,7 +30,7 @@ const GREETING =
   "Hi — I can explain how Phoxta works, walk you through the businesses you can buy, and answer anything about running one. What are you looking to do?";
 const CHIPS = ["What can I buy?", "How does it work?", "What does it cost?", "Can I use my own domain?"];
 
-type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[] };
+type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[]; media?: ChatMedia[] };
 
 const CHAT_ICON = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
@@ -62,6 +62,7 @@ export default function FloatingChatWidget() {
 
     let reply = "";
     let cards: ChatCard[] = [];
+    let media: ChatMedia[] = [];
     if (AGENT_URL && AGENT_KEY) {
       try {
         const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -78,6 +79,7 @@ export default function FloatingChatWidget() {
         conv.current = d.conversationId ?? conv.current;
         reply = (d.reply ?? "").trim();
         cards = Array.isArray(d.cards) ? d.cards : [];
+        media = Array.isArray(d.media) ? d.media : [];
       } catch (err) {
         console.error("[phoxta] chat agent unreachable:", err);
       }
@@ -85,7 +87,7 @@ export default function FloatingChatWidget() {
     if (!reply) {
       reply = "I couldn't reach the assistant just then — try again in a moment, or use the contact page and a person will pick it up.";
     }
-    setMsgs((m) => [...m, { role: "bot", text: reply, cards }]);
+    setMsgs((m) => [...m, { role: "bot", text: reply, cards, media }]);
     setBusy(false);
   }
 
@@ -134,6 +136,7 @@ export default function FloatingChatWidget() {
                 }}
               >
                 <RichText text={m.text} />
+                <MediaRow media={m.media} />
                 <ProductCards cards={m.cards} />
               </div>
             ))}

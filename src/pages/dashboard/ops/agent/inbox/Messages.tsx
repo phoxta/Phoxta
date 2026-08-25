@@ -1,6 +1,7 @@
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import { StickyNote } from "lucide-react";
 import { Letter } from "react-letter";
+import { RichText } from "@shared-chat/chatRich";
 import type { TimelineMessage } from "@/lib/db/ops/agent";
 import type { TicketMessage } from "@/lib/db/ops/helpdesk";
 import { Avatar, AuthorIcon, DeliveryTick } from "@/pages/dashboard/ops/ui/primitives";
@@ -190,6 +191,11 @@ function MessageBubble({
   const delivery = m.delivery_status ? DELIVERY_LABEL[m.delivery_status] : undefined;
   const label = m.role === "customer" ? customerName : AUTHOR_LABEL[m.role] ?? m.role;
   const tone = m.role === "agent" ? " is-ai" : m.role === "system" ? " is-system" : "";
+  // The AI writes markdown ("**bold**", bullet lists) whether or not anything
+  // renders it — shown raw, a web-chat customer reply full of asterisks. Agent,
+  // human and customer text all go through shared-chat's RichText (safe React
+  // nodes, no innerHTML); system rows keep the plain rendering.
+  const rich = !html && m.role !== "system";
 
   return (
     <div className={`ibx-msg ${mine ? "is-mine" : "is-theirs"}${tone}${html ? " has-email" : ""}`}>
@@ -200,9 +206,9 @@ function MessageBubble({
       <span className="ibx-msg__slot">{!mine && endsGroup && <Avatar name={label} size="sm" />}</span>
 
       <span className="ibx-msg__stack">
-        <span className={`ibx-bubble${html ? " ibx-bubble--html" : ""}`}>
+        <span className={`ibx-bubble${html ? " ibx-bubble--html" : ""}${rich ? " rich" : ""}`}>
           {subject && <span className="ibx-bubble__subject">{subject}</span>}
-          {html ? <EmailBody html={html} /> : <PlainBody text={m.body} />}
+          {html ? <EmailBody html={html} /> : rich ? <RichText text={m.body} /> : <PlainBody text={m.body} />}
         </span>
 
         {endsGroup && (
@@ -253,7 +259,9 @@ export function TicketMessages({ messages, customerName }: { messages: TicketMes
                     <EmailBody html={m.body} />
                   </span>
                 ) : (
-                  <span className="ibx-bubble"><PlainBody text={m.body} /></span>
+                  /* Same treatment as conversations: AI drafts and typed replies
+                     carry markdown; render it rather than show the asterisks. */
+                  <span className="ibx-bubble rich"><RichText text={m.body} /></span>
                 )}
                 {endsGroup && (
                   <span className="ibx-msg__meta">

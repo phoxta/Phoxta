@@ -61,6 +61,7 @@ const BookingsPage = lazy(() => import("@/pages/dashboard/ops/BookingsPage"));
 const ReservationsPage = lazy(() => import("@/pages/dashboard/ops/ReservationsPage"));
 const EngageLayout = lazy(() => import("@/pages/dashboard/ops/engage/EngageLayout"));
 const AudiencePage = lazy(() => import("@/pages/dashboard/ops/engage/AudiencePage"));
+const CallsPage = lazy(() => import("@/pages/dashboard/ops/engage/CallsPage"));
 const FlowsPage = lazy(() => import("@/pages/dashboard/ops/engage/FlowsPage"));
 const FlowEditorPage = lazy(() => import("@/pages/dashboard/ops/engage/FlowEditorPage"));
 const JourneysPage = lazy(() => import("@/pages/dashboard/ops/engage/JourneysPage"));
@@ -130,6 +131,7 @@ export default function App() {
             <Route path="engage" element={<EngageLayout />}>
               <Route index element={<Navigate to="inbox" replace />} />
               <Route path="inbox" element={<OpsInboxPage />} />
+              <Route path="calls" element={<CallsPage />} />
               <Route path="audience" element={<AudiencePage />} />
               <Route path="flows" element={<FlowsPage />} />
               <Route path="flows/:flowId" element={<FlowEditorPage />} />

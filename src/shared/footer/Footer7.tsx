@@ -172,13 +172,10 @@ export default function Footer7() {
                         <div className="col-xxl-3 col-lg-4 col-md-6">
                             <div className="footer-7__contact">
                                 <p className="footer-7__contact-line mb-1 at_fade_anim" data-delay="0.1">
-                                    <Link to="tel:+12125557398">+212 - 555-7398</Link>
+                                    <Link to="tel:+447350172153">+44 7350 172153</Link>
                                 </p>
                                 <p className="footer-7__contact-line mb-3 at_fade_anim" data-delay="0.2">
                                     <Link to="mailto:hello@phoxta.com">hello@phoxta.com</Link>
-                                </p>
-                                <p className="footer-7__address mb-0 at_fade_anim" data-delay="0.3">
-                                    245 Fifth Avenue, Suite 1800<br />New York, NY 10016, USA
                                 </p>
 
                                 <div className="footer-7__hours mt-30 at_fade_anim" data-delay="0.4">

@@ -216,7 +216,7 @@ export default function Section1() {
                                     <a href="mailto:amelia@phoxta.com">amelia@phoxta.com</a>
                                 </h6>
                                 <h6 className="fw-600">
-                                    <a href="tel:(212) 555-7398">(212) 555-7398</a>
+                                    <a href="tel:+44 7350 172153">+44 7350 172153</a>
                                 </h6>
                             </div>
                             <div className="block-content">

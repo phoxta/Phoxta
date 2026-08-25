@@ -34,7 +34,6 @@ import {
   addInternalNote,
   suggestReply,
   placeCall,
-  voiceToken,
   setAiPaused,
   setConversationStatus,
   setConversationTags,
@@ -80,7 +79,7 @@ import type { OpsContext } from "@/layouts/OperatingLayout";
 import { supabase } from "@/lib/supabaseClient";
 import EmailComposer from "./EmailComposer";
 import RepliesDrawer from "./RepliesDrawer";
-import type { Call, Device } from "@twilio/voice-sdk";
+import { connectBrowserCall, logBrowserCall, type Softphone } from "@/lib/db/ops/calls";
 
 import "@/pages/dashboard/ops/ui/console.css";
 import "./inbox/inbox.css";
@@ -298,8 +297,8 @@ export default function InboxPage() {
   const [connecting, setConnecting] = useState(false);
   const [inCall, setInCall] = useState(false);
   const [muted, setMuted] = useState(false);
-  const deviceRef = useRef<Device | null>(null);
-  const callRef = useRef<Call | null>(null);
+  /** The live browser call, via the shared softphone wiring in db/ops/calls. */
+  const phoneRef = useRef<Softphone | null>(null);
 
   const bodyRef = useRef<HTMLDivElement>(null);
   /** The queue's scroll pane. State, not a ref — see QueueList: the virtualiser
@@ -1056,68 +1055,55 @@ export default function InboxPage() {
     setCallOpen(false);
   }
   function endBrowserCall() {
-    try {
-      callRef.current?.disconnect();
-    } catch {
-      /* noop */
-    }
-    try {
-      deviceRef.current?.destroy();
-    } catch {
-      /* noop */
-    }
-    callRef.current = null;
-    deviceRef.current = null;
-    setInCall(false);
-    setConnecting(false);
-    setMuted(false);
+    // hangUp fires the softphone's onEnd exactly once, which resets the state.
+    phoneRef.current?.hangUp();
+    phoneRef.current = null;
   }
   async function startBrowserCall() {
     if (!selConv || !callTo || connecting || inCall) return;
     setConnecting(true);
     setSendNote(null);
-    try {
-      const { token, error } = await voiceToken(orgId);
-      if (error || !token) {
-        setConnecting(false);
-        toastError(error ?? "Browser calling isn't configured.");
-        return;
-      }
-      const { Device } = await import("@twilio/voice-sdk");
-      const device = new Device(token, { logLevel: "error" });
-      deviceRef.current = device;
-      const c = await device.connect({ params: { To: callTo } });
-      callRef.current = c;
-      c.on("accept", () => {
+    const convId = selConv.id;
+    const { phone, error } = await connectBrowserCall(orgId, callTo, {
+      onAccept: () => {
         setInCall(true);
         setConnecting(false);
-      });
-      c.on("disconnect", endBrowserCall);
-      c.on("cancel", endBrowserCall);
-      c.on("error", (e: { message?: string }) => {
-        toastError(`Call error: ${e?.message ?? "unknown"}`);
-        endBrowserCall();
-      });
-    } catch (e) {
+      },
+      onEnd: (durationSec) => {
+        phoneRef.current = null;
+        setInCall(false);
+        setConnecting(false);
+        setMuted(false);
+        // Browser calls have no server leg that writes call_logs (voice-outgoing
+        // only returns TwiML) — record the finished call so it lands in the log
+        // and on the thread like every other call.
+        if (durationSec > 0) {
+          logBrowserCall(orgId, callTo, durationSec, convId).then(() => {
+            const sel = selectedRef.current;
+            if (sel?.kind === "conversation" && sel.id === convId) {
+              listCallsForConversation(convId).then((r) => setCalls(r.data));
+            }
+          });
+        }
+      },
+      onError: (msg) => toastError(`Call error: ${msg}`),
+    });
+    if (error || !phone) {
       setConnecting(false);
-      toastError(`Could not start the browser call: ${(e as Error)?.message ?? String(e)}`);
+      toastError(error ?? "Could not start the browser call.");
+      return;
     }
+    phoneRef.current = phone;
   }
   function toggleMute() {
-    const c = callRef.current;
-    if (!c) return;
+    if (!phoneRef.current) return;
     const m = !muted;
-    c.mute(m);
+    phoneRef.current.mute(m);
     setMuted(m);
   }
   useEffect(
     () => () => {
-      try {
-        callRef.current?.disconnect();
-        deviceRef.current?.destroy();
-      } catch {
-        /* noop */
-      }
+      phoneRef.current?.hangUp();
     },
     [],
   );

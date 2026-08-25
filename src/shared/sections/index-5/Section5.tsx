@@ -43,7 +43,7 @@ export default function Section5() {
                                         <br className="d-block" />
                                         Phone:{" "}
                                         <span className="neutral-900">
-                                            <Link to="tel:+1234567890">+1234567890</Link>
+                                            <Link to="tel:+447350172153">+44 7350 172153</Link>
                                         </span>
                                         <br className="d-block" />
                                         Email:{" "}

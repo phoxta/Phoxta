@@ -3,7 +3,7 @@
 // loads unified cross-channel memory, runs the tool-using agent, persists, meters.
 import { runAgent, callMessages } from "./anthropic.ts";
 import { modelFor, type Tier } from "./models.ts";
-import { buildAgentTools, agentToolRunner, resolveBookingMode, type AgentCtx, type ProductCard } from "./agentTools.ts";
+import { buildAgentTools, agentToolRunner, resolveBookingMode, type AgentCtx, type ProductCard, type MediaItem } from "./agentTools.ts";
 import { meter, tokensUsedThisMonth, MONTHLY_TOKEN_CAP } from "./meter.ts";
 import { guardInput, guardOutput, INJECTION_GUARD_NOTE } from "./guardrails.ts";
 import { loadCustomerMemory, extractCustomerMemory } from "./memory.ts";
@@ -152,7 +152,7 @@ export async function respondCore(
   org: Org,
   config: AgentConfig,
   params: { channel: string; conversationId?: string; customer: AgentCtx["customer"]; message: string; userId?: string | null; isTest?: boolean },
-): Promise<{ conversationId: string; reply: string; actions: string[]; escalated: boolean; cards: ProductCard[]; paused?: boolean }> {
+): Promise<{ conversationId: string; reply: string; actions: string[]; escalated: boolean; cards: ProductCard[]; media: MediaItem[]; paused?: boolean }> {
   const { id: conversationId, contactId, aiPaused } = await resolveConversation(admin, org.id, params.channel, params.conversationId, params.customer, params.isTest === true);
 
   // Input guardrail: bound length + flag prompt-injection attempts. Use the
@@ -179,7 +179,7 @@ export async function respondCore(
         link: `/dashboard/businesses/${org.id}/ops/engage/inbox?c=${conversationId}`,
       });
     }
-    return { conversationId, reply: "", actions: [], escalated: false, cards: [], paused: true };
+    return { conversationId, reply: "", actions: [], escalated: false, cards: [], media: [], paused: true };
   }
 
   // This conversation's history.
@@ -210,7 +210,7 @@ export async function respondCore(
       { organization_id: org.id, conversation_id: conversationId, role: "agent", channel_type: params.channel, body: capped, meta: { capped: true } },
     ]);
     await admin.from("conversations").update({ last_message_at: new Date().toISOString(), status: "escalated" }).eq("id", conversationId);
-    return { conversationId, reply: capped, actions: ["Usage cap reached — flagged for follow-up"], escalated: true, cards: [] };
+    return { conversationId, reply: capped, actions: ["Usage cap reached — flagged for follow-up"], escalated: true, cards: [], media: [] };
   }
 
   // Unified memory: summaries of this customer's other conversations.
@@ -328,9 +328,10 @@ export async function respondCore(
 
   await meter(admin, { organizationId: org.id, userId: params.userId, conversationId, model: run.model, feature: "agent", tier: config.model_tier ?? "balanced", inTok: run.inTok, outTok: run.outTok, cacheWriteTok: run.cacheWriteTok, cacheReadTok: run.cacheReadTok, latencyMs: latency });
 
-  // cards: products the agent surfaced this turn, so a chat UI can render them
-  // as real cards. Text-only channels simply ignore the field.
-  return { conversationId, reply, actions: ctx.actions, escalated, cards: ctx.cards ?? [] };
+  // cards/media: rich results the agent's tools surfaced this turn, so a chat
+  // UI can render real cards and inline images. Text-only channels simply
+  // ignore both fields.
+  return { conversationId, reply, actions: ctx.actions, escalated, cards: ctx.cards ?? [], media: ctx.media ?? [] };
 }
 
 /** Refresh a conversation's rolling summary (memory + reporting). */

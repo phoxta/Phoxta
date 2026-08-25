@@ -181,13 +181,10 @@ export default function Footer10() {
                             <div className="footer-10__contact-hours d-flex flex-wrap gap-4 gap-xxl-5">
                                 <div className="footer-10__contact">
                                     <p className="footer-10__contact-line mb-1">
-                                        <Link to="tel:+12125557398">+212 - 555-7398</Link>
+                                        <Link to="tel:+447350172153">+44 7350 172153</Link>
                                     </p>
                                     <p className="footer-10__contact-line mb-3">
                                         <Link to="mailto:hello@phoxta.com">hello@phoxta.com</Link>
-                                    </p>
-                                    <p className="footer-10__address mb-0">
-                                        245 Fifth Avenue, Suite 1800<br />New York, NY 10016, USA
                                     </p>
                                 </div>
                                 <div className="footer-10__hours">

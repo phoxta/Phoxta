@@ -290,7 +290,7 @@ Deno.serve(async (req) => {
     });
     if (engaged?.suppressAi) {
       await classifyLater(classifyInbound(admin, org, engaged.conversationId, message));
-      return json({ conversationId: engaged.conversationId, reply: engaged.reply, cards: [] });
+      return json({ conversationId: engaged.conversationId, reply: engaged.reply, cards: [], media: [] });
     }
     const result = await respondCore(admin, org, config, {
       channel: body?.channel ?? "web",
@@ -307,13 +307,14 @@ Deno.serve(async (req) => {
     // response shape is otherwise unchanged (older widgets fall back to their
     // canned line on an empty reply — honest silence from the AI either way).
     if (result.paused) {
-      return json({ conversationId: result.conversationId, reply: "", human: true, cards: [] });
+      return json({ conversationId: result.conversationId, reply: "", human: true, cards: [], media: [] });
     }
     await classifyLater(classifyInbound(admin, org, result.conversationId, message));
     return json({
       conversationId: result.conversationId,
       reply: engaged?.reply ? `${engaged.reply}\n\n${result.reply}` : result.reply,
       cards: result.cards ?? [],
+      media: result.media ?? [],
     });
   } catch (err) {
     console.error("agent-inbound error", err);

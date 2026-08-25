@@ -87,26 +87,15 @@ export default function Footer4() {
                             <div className="d-flex flex-wrap gap-lg-5 gap-4">
                                 <div className="d-flex flex-column">
                                     <span className="d-block fz-font-label neutral-0 opacity-50 text-uppercase mb-3">
-                                        base on
-                                    </span>
-                                    <h6 className="text-white mb-2">
-                                        <Link to="#" className="text-white text-decoration-none">
-                                            245 Fifth Avenue, Suite 1800 <br className="d-block" />
-                                            New York, NY 10016, USA
-                                        </Link>
-                                    </h6>
-                                </div>
-                                <div className="d-flex flex-column">
-                                    <span className="d-block fz-font-label neutral-0 opacity-50 text-uppercase mb-3">
                                         Tel
                                     </span>
                                     <h6 className="text-white mb-2">
-                                        <Link to="tel:+2125557398" className="text-white text-decoration-none">
-                                            +212 - 555-7398
+                                        <Link to="tel:+447350172153" className="text-white text-decoration-none">
+                                            +44 7350 172153
                                         </Link>
                                     </h6>
                                     <h6 className="text-white mb-2">
-                                        <Link to="tel:+2126667399" className="text-white text-decoration-none">
+                                        <Link to="tel:+447350172153" className="text-white text-decoration-none">
                                             +212 - 666-7399
                                         </Link>
                                     </h6>

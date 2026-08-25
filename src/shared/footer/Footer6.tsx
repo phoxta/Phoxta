@@ -55,19 +55,13 @@ export default function Footer6() {
                         <div className="col-lg-3 col-md-6">
                             <div className="d-flex flex-column">
                                 <p className="h6 text-white mb-2 fw-medium">
-                                    <Link to="tel:+2125557398" className="text-white text-decoration-none">
-                                        +212-555-7398
+                                    <Link to="tel:+447350172153" className="text-white text-decoration-none">
+                                        +44 7350 172153
                                     </Link>
                                 </p>
                                 <p className="h6 text-white mb-2">
                                     <Link to="mailto:hello@phoxta.com" className="text-white text-decoration-none">
                                         hello@phoxta.com
-                                    </Link>
-                                </p>
-                                <p className="h6 text-white mb-2">
-                                    <Link to="#" className="text-white text-decoration-none">
-                                        245 Fifth Avenue, Suite 1800 <br />
-                                        New York, NY 10016, USA
                                     </Link>
                                 </p>
                             </div>

@@ -12,7 +12,7 @@ export type ServicesIntroProps = {
 export const SERVICES_INTRO_DEFAULTS = {
     heading: "Phoxta Studio®",
     email: "hello@phoxta.com",
-    phone: "(212) 555-7398",
+    phone: "+44 7350 172153",
     image: "/assets/imgs/pages/img-153.webp",
 } satisfies Required<ServicesIntroProps>;
 

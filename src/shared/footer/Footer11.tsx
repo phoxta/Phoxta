@@ -20,7 +20,6 @@ const NAV_LINKS_2 = [
 const LOCATIONS = [
     { city: "Seoul", address: "12F, Gangnam-gu, Seoul 06012, KR" },
     { city: "London", address: "Studio 4, Shoreditch, London EC2A 3NW, UK" },
-    { city: "New York", address: "245 Fifth Avenue, Suite 1800 New York, NY 10016, USA" },
 ];
 
 const SOCIAL_LINKS = [
@@ -160,7 +159,7 @@ export default function Footer11() {
                             <div className="footer-11__contact-hours d-flex flex-column gap-4">
                                 <div className="footer-11__contact">
                                     <p className="footer-11__contact-line mb-1">
-                                        <Link to="tel:+12125557398">+212 - 555-7398</Link>
+                                        <Link to="tel:+447350172153">+44 7350 172153</Link>
                                     </p>
                                     <p className="footer-11__contact-line mb-3">
                                         <Link to="mailto:hello@phoxta.com">hello@phoxta.com</Link>

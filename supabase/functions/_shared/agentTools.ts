@@ -17,6 +17,10 @@ import { READ_TOOLS, MARKETPLACE_TOOLS, toolRunner } from "./tools.ts";
 // deno-lint-ignore no-explicit-any
 type Json = any;
 
+/** A call-to-action on a card ("View demo", "Buy on Phoxta"). The chat widget
+ *  renders these as buttons and drops anything that isn't http(s). */
+export type CardLink = { label: string; url: string };
+
 /** A product the agent referenced this turn, returned to the caller so a chat
  *  surface can render a real card — image, price, link — instead of the model
  *  describing a photo it cannot show. */
@@ -27,7 +31,15 @@ export type ProductCard = {
   price_cents: number;
   currency: string;
   image_url: string | null;
+  /** Optional strapline shown under the name; the widget falls back to description. */
+  tagline?: string | null;
+  /** Optional CTA links rendered as buttons that open in a new tab. */
+  links?: CardLink[];
 };
+
+/** Inline media a tool attaches to the reply (rendered inside the chat bubble
+ *  on web; text-only channels ignore it, exactly like cards). */
+export type MediaItem = { type: "image"; url: string; alt?: string };
 
 export type AgentCtx = {
   conversationId: string | null;
@@ -51,6 +63,9 @@ export type AgentCtx = {
   /** Rich results produced this turn. Text channels (SMS, voice) ignore these;
    *  web chat renders them. */
   cards?: ProductCard[];
+  /** Inline media (images) attached this turn — same contract as cards:
+   *  additive, absent by default, ignored by text-only channels. */
+  media?: MediaItem[];
 };
 
 // ---------------------------------------------------------------------------
@@ -319,6 +334,26 @@ function parseDay(v: unknown): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Blueprint covers (platform marketplace cards)
+// ---------------------------------------------------------------------------
+// Server-side twin of src/lib/blueprintCover.ts: curated storefront screenshots
+// win over blueprints.cover_url (generic stock), and nothing ever renders a
+// broken image. Absolute URLs because the card can be shown on any origin.
+const PLATFORM_SITE = "https://www.phoxta.com";
+const BLUEPRINT_COVERS: Record<string, string> = {
+  carento: `${PLATFORM_SITE}/assets/imgs/pages/FS1.webp`,
+  "niche-apparel": `${PLATFORM_SITE}/assets/imgs/pages/FS.webp`,
+  travel: `${PLATFORM_SITE}/assets/imgs/pages/FS2.webp`,
+  "restaurant-orders": `${PLATFORM_SITE}/assets/imgs/pages/FS3.webp`,
+  gearo: `${PLATFORM_SITE}/assets/imgs/pages/FS4.webp`,
+};
+function blueprintCoverUrl(slug?: string | null, dbCoverUrl?: string | null): string {
+  if (slug && BLUEPRINT_COVERS[slug]) return BLUEPRINT_COVERS[slug];
+  if (dbCoverUrl && /^https?:\/\//i.test(dbCoverUrl)) return dbCoverUrl;
+  return `${PLATFORM_SITE}/assets/imgs/pages/FS.webp`;
+}
+
+// ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
 export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: AgentCtx, mode: BookingMode = "appointments") {
@@ -394,6 +429,56 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
   }
 
   return async (name: string, input: Json): Promise<string> => {
+    // Intercepted here (not in tools.ts) because only this runner has ctx:
+    // the platform agent's blueprint answers become real cards — image, price,
+    // demo + buy buttons — instead of a markdown list of bare URLs.
+    if (name === "list_blueprints") {
+      const { data } = await admin
+        .from("blueprints")
+        .select("id, name, slug, tagline, description, price_cents, currency, vertical, demo_url, cover_url")
+        .eq("status", "live")
+        .order("name");
+      const rows = ((data as Json[] | null) ?? []);
+      if (!rows.length) return "No blueprints are currently available to buy.";
+      ctx.cards = rows.slice(0, 8).map((b) => {
+        const links: CardLink[] = [];
+        if (typeof b.demo_url === "string" && /^https?:\/\//i.test(b.demo_url)) {
+          links.push({ label: "View demo", url: b.demo_url });
+        }
+        // No public /marketplace/:slug route exists — the buyable grid at
+        // /marketplace filters by ?q= over name/tagline, so link there.
+        links.push({
+          label: "Buy on Phoxta",
+          url: `${PLATFORM_SITE}/marketplace?q=${encodeURIComponent(String(b.name ?? b.slug ?? ""))}`,
+        });
+        return {
+          id: String(b.id ?? b.slug ?? b.name),
+          name: String(b.name ?? ""),
+          description: String(b.description ?? b.tagline ?? ""),
+          price_cents: Number(b.price_cents) || 0,
+          currency: String(b.currency || "GBP"),
+          image_url: blueprintCoverUrl(b.slug, b.cover_url),
+          tagline: (b.tagline as string | null) ?? null,
+          links,
+        };
+      });
+      const catalogue = rows.map((b) => ({
+        name: b.name, slug: b.slug, tagline: b.tagline, price_cents: b.price_cents,
+        currency: b.currency, vertical: b.vertical, demo_url: b.demo_url,
+      }));
+      // Web chat renders the cards, so the model gets no URLs to paste and an
+      // explicit brief. Text channels (SMS/voice/WhatsApp) ignore cards, so
+      // there the model keeps the full rows — demo links included.
+      if ((ctx.channel ?? "web") === "web") {
+        return JSON.stringify({
+          note:
+            "Rich cards for these blueprints (cover image, price, demo + buy buttons) are attached to your reply and shown to the customer. " +
+            "Reply with ONE short intro line (e.g. \"Here's what's available:\") plus a direct answer to anything they asked — do NOT repeat the items as a markdown/bullet list and do NOT paste URLs.",
+          blueprints: catalogue.map(({ demo_url: _demo, ...rest }) => rest),
+        });
+      }
+      return JSON.stringify(catalogue);
+    }
     if (!isWrite.has(name)) return readRun(name, input);
 
     // ---------------- check_availability (vertical-aware) ----------------

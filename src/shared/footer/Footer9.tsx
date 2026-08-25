@@ -141,13 +141,10 @@ export default function Footer9() {
                         <div className="footer-9__contact-row">
                             <div className="footer-9__contact">
                                 <p className="footer-9__contact-line mb-0 at_fade_anim" data-delay="0.1">
-                                    <Link to="tel:+12125557398">+212 - 555-7398</Link>
+                                    <Link to="tel:+447350172153">+44 7350 172153</Link>
                                 </p>
                                 <p className="footer-9__contact-line mb-0 at_fade_anim" data-delay="0.2">
                                     <Link to="mailto:hello@phoxta.com">hello@phoxta.com</Link>
-                                </p>
-                                <p className="footer-9__address mb-0 at_fade_anim" data-delay="0.3">
-                                    245 Fifth Avenue, Suite 1800<br />New York, NY 10016, USA
                                 </p>
                             </div>
                             <div className="footer-9__hours">

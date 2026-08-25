@@ -43,8 +43,8 @@ export default function Section2() {
                                 </div>
                                 <div>
                                     <h6 className="fw-600">
-                                        <Link to="tel:+2125557398" className="text-decoration-none">
-                                            +212 - 555-7398
+                                        <Link to="tel:+447350172153" className="text-decoration-none">
+                                            +44 7350 172153
                                         </Link>
                                     </h6>
                                     <h4 className="mb-0 fw-medium text-decoration-underline">
