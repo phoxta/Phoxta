@@ -1,11 +1,15 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 // Layouts + the auth guard stay eager (small, shared route wrappers).
 import MainLayout from "@/layouts/MainLayout";
 import ProtectedRoute from "@/auth/ProtectedRoute";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import OperatingLayout from "@/layouts/OperatingLayout";
-import AgentLayout from "@/layouts/AgentLayout";
+/** Redirect that keeps the query string — notification links carry ?c=… */
+function KeepSearch({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: to, search }} replace />;
+}
 
 // Pages are lazy-loaded so each route ships its own chunk (smaller first load).
 // Marketing site — the curated, public Phoxta pages.
@@ -55,12 +59,18 @@ const CommercePage = lazy(() => import("@/pages/dashboard/ops/CommercePage"));
 const InvoicingPage = lazy(() => import("@/pages/dashboard/ops/InvoicingPage"));
 const BookingsPage = lazy(() => import("@/pages/dashboard/ops/BookingsPage"));
 const ReservationsPage = lazy(() => import("@/pages/dashboard/ops/ReservationsPage"));
-const MarketingPage = lazy(() => import("@/pages/dashboard/ops/MarketingPage"));
+const EngageLayout = lazy(() => import("@/pages/dashboard/ops/engage/EngageLayout"));
+const AudiencePage = lazy(() => import("@/pages/dashboard/ops/engage/AudiencePage"));
+const FlowsPage = lazy(() => import("@/pages/dashboard/ops/engage/FlowsPage"));
+const FlowEditorPage = lazy(() => import("@/pages/dashboard/ops/engage/FlowEditorPage"));
+const JourneysPage = lazy(() => import("@/pages/dashboard/ops/engage/JourneysPage"));
+const BroadcastsPage = lazy(() => import("@/pages/dashboard/ops/engage/BroadcastsPage"));
+const ChannelsPage = lazy(() => import("@/pages/dashboard/ops/engage/ChannelsPage"));
+const InsightsPage = lazy(() => import("@/pages/dashboard/ops/engage/InsightsPage"));
 const OpsHelpCenterPage = lazy(() => import("@/pages/dashboard/ops/HelpCenterPage"));
 const OpsInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
 const OpsSettingsPage = lazy(() => import("@/pages/dashboard/ops/SettingsPage"));
 const OpsPlatformPage = lazy(() => import("@/pages/dashboard/ops/PlatformPage"));
-const AgentOverviewPage = lazy(() => import("@/pages/dashboard/ops/agent/AgentOverviewPage"));
 const AgentOperatorPage = lazy(() => import("@/pages/dashboard/ops/agent/OperatorPage"));
 const AgentConfigurePage = lazy(() => import("@/pages/dashboard/ops/agent/ConfigurePage"));
 const AgentKnowledgePage = lazy(() => import("@/pages/dashboard/ops/agent/KnowledgePage"));
@@ -116,7 +126,26 @@ export default function App() {
           <Route path="/dashboard/businesses/:id" element={<BusinessDetailPage />} />
           <Route path="/dashboard/businesses/:id/ops" element={<OperatingLayout />}>
             <Route index element={<OverviewPage />} />
-            <Route path="inbox" element={<OpsInboxPage />} />
+            {/* ── Engage: one tab, eight areas, over the tables we trust. ── */}
+            <Route path="engage" element={<EngageLayout />}>
+              <Route index element={<Navigate to="inbox" replace />} />
+              <Route path="inbox" element={<OpsInboxPage />} />
+              <Route path="audience" element={<AudiencePage />} />
+              <Route path="flows" element={<FlowsPage />} />
+              <Route path="flows/:flowId" element={<FlowEditorPage />} />
+              <Route path="journeys" element={<JourneysPage />} />
+              <Route path="journeys/:flowId" element={<FlowEditorPage />} />
+              <Route path="broadcasts" element={<BroadcastsPage />} />
+              <Route path="channels" element={<ChannelsPage />} />
+              <Route path="agent" element={<AgentConfigurePage />} />
+              <Route path="knowledge" element={<AgentKnowledgePage />} />
+              <Route path="insights" element={<InsightsPage />} />
+            </Route>
+            {/* The owner's copilot keeps its own tab. */}
+            <Route path="operator" element={<AgentOperatorPage />} />
+            {/* Old tab URLs live on as redirects (search string preserved —
+                notification links carry ?c=<conversation>). */}
+            <Route path="inbox" element={<KeepSearch to="../engage/inbox" />} />
             <Route path="crm" element={<CrmPage />} />
             {/* Phoxta's own cross-tenant module — admin-gated by the RPCs behind it. */}
             <Route path="platform" element={<OpsPlatformPage />} />
@@ -124,7 +153,7 @@ export default function App() {
             <Route path="invoicing" element={<InvoicingPage />} />
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="reservations" element={<ReservationsPage />} />
-            <Route path="marketing" element={<MarketingPage />} />
+            <Route path="marketing" element={<KeepSearch to="../engage/broadcasts" />} />
             {/* Public knowledge base — published articles appear at /help/:org. */}
             <Route path="help-center" element={<OpsHelpCenterPage />} />
             <Route path="settings" element={<OpsSettingsPage />} />
@@ -134,18 +163,19 @@ export default function App() {
             {/* IA redirects: old tab URLs keep working after the console reshuffle. */}
             <Route path="helpdesk" element={<Navigate to="../inbox" replace />} />
             <Route path="content" element={<Navigate to=".." replace />} />
-            <Route path="agent" element={<AgentLayout />}>
-              <Route index element={<AgentOverviewPage />} />
-              <Route path="operator" element={<AgentOperatorPage />} />
-              <Route path="configure" element={<AgentConfigurePage />} />
-              <Route path="knowledge" element={<AgentKnowledgePage />} />
-              {/* Old agent sub-tabs → their new homes. */}
-              <Route path="inbox" element={<Navigate to="../../inbox" replace />} />
-              <Route path="snippets" element={<Navigate to="../../inbox" replace />} />
-              <Route path="outbound" element={<Navigate to="../../marketing" replace />} />
-              <Route path="proactive" element={<Navigate to="../../marketing" replace />} />
+            {/* The old AI Agent module: config/knowledge live in Engage now,
+                the Operator has its own tab. */}
+            <Route path="agent">
+              <Route index element={<Navigate to="../engage/agent" replace />} />
+              <Route path="operator" element={<Navigate to="../../operator" replace />} />
+              <Route path="configure" element={<Navigate to="../../engage/agent" replace />} />
+              <Route path="knowledge" element={<Navigate to="../../engage/knowledge" replace />} />
+              <Route path="inbox" element={<Navigate to="../../engage/inbox" replace />} />
+              <Route path="snippets" element={<Navigate to="../../engage/inbox" replace />} />
+              <Route path="outbound" element={<Navigate to="../../engage/broadcasts" replace />} />
+              <Route path="proactive" element={<Navigate to="../../engage/broadcasts" replace />} />
               <Route path="call-center" element={<Navigate to="../../settings" replace />} />
-              <Route path="test" element={<Navigate to="../configure" replace />} />
+              <Route path="test" element={<Navigate to="../../engage/agent" replace />} />
             </Route>
           </Route>
           <Route path="/dashboard/billing" element={<BillingPage />} />

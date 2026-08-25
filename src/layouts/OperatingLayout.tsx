@@ -119,7 +119,9 @@ export default function OperatingLayout() {
   }, [id]);
 
   const badgeFor = useCallback(
-    (seg: string): number => (seg === "inbox" ? badges.unread : seg === "agent" ? badges.approvals : 0),
+    // Engage carries the Inbox now, so it wears the unread count; the approval
+    // queue belongs to the Operator's own tab.
+    (seg: string): number => (seg === "engage" ? badges.unread : seg === "operator" ? badges.approvals : 0),
     [badges],
   );
 

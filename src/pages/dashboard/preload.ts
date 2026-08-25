@@ -23,18 +23,22 @@ export const DASHBOARD_PRELOADERS: Record<string, Loader> = {
 export const OPS_PRELOADERS: Record<string, Loader> = {
   "": () => import("@/pages/dashboard/ops/OverviewPage"),
   overview: () => import("@/pages/dashboard/ops/OverviewPage"),
-  inbox: () => import("@/pages/dashboard/ops/agent/InboxPage"),
+  // Engage lands on its Inbox area, so warm both the shell and the landing.
+  engage: () => Promise.all([
+    import("@/pages/dashboard/ops/engage/EngageLayout"),
+    import("@/pages/dashboard/ops/agent/InboxPage"),
+  ]),
+  operator: () => import("@/pages/dashboard/ops/agent/OperatorPage"),
   crm: () => import("@/pages/dashboard/ops/CrmPage"),
   commerce: () => import("@/pages/dashboard/ops/CommercePage"),
   invoicing: () => import("@/pages/dashboard/ops/InvoicingPage"),
   bookings: () => import("@/pages/dashboard/ops/BookingsPage"),
   reservations: () => import("@/pages/dashboard/ops/ReservationsPage"),
-  marketing: () => import("@/pages/dashboard/ops/MarketingPage"),
   "help-center": () => import("@/pages/dashboard/ops/HelpCenterPage"),
   settings: () => import("@/pages/dashboard/ops/SettingsPage"),
-  // Not a tab anymore, but Settings links into it — keep the chunk warm.
+  // Not tabs anymore, but still routed (redirects/links) — keep chunks warm.
   google: () => import("@/pages/dashboard/ops/google/GoogleWorkspacePage"),
-  agent: () => import("@/pages/dashboard/ops/agent/AgentOverviewPage"),
+  inbox: () => import("@/pages/dashboard/ops/agent/InboxPage"),
 };
 
 /** AI-agent sub-tabs, keyed by route segment (mirrors AgentLayout SUBTABS). */
