@@ -1,10 +1,7 @@
-import { Card, Empty } from "@/components/dash/Ui";
+import FlowsBoard from "@/components/engage/FlowsBoard";
 
-/** Engage - Journeys area. Placeholder shell: the Journeys build lands here. */
+/** Engage → Journeys: event + time lifecycle automations, with recipes picked
+ *  for this business's vertical (booking reminders vs post-purchase asks). */
 export default function JourneysPage() {
-  return (
-    <Card title="Journeys">
-      <Empty title="Lifecycle automation">Time-based journeys - abandoned cart, post-stay review, win-back - with revenue attribution per journey. Coming online now.</Empty>
-    </Card>
-  );
+  return <FlowsBoard kind="journey" />;
 }

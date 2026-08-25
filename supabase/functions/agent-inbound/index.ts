@@ -12,6 +12,8 @@ import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
 import { meter } from "../_shared/meter.ts";
 import { phoneForStorage } from "../_shared/telephony.ts";
+import { engageHandleInbound, type EngageInboundParams } from "../engage-run/executor.ts";
+import type { AgentConfig } from "../_shared/agentCore.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -79,6 +81,29 @@ async function overLimit(admin: ReturnType<typeof adminClient>, orgId: string): 
   return (count ?? 0) >= MAX_MSGS_PER_HOUR;
 }
 
+// ---------------------------------------------------------------------------
+// Engage flows (the console's Engage tab) — see supabase/functions/engage-run.
+// Runs BEFORE the AI composes a reply. Fully guarded: any error, a missing
+// schema (the Engage tab was never used — engageHandleInbound skips on the
+// missing table rather than eagerly ensuring it), or simply no live flow for
+// this org returns null and the existing AI path runs exactly as before.
+// A non-null result either fully claims the turn (suppressAi) or hands the
+// SAME conversation to respondCore (handoff_ai / nothing matched mid-run).
+// ---------------------------------------------------------------------------
+async function tryEngage(
+  admin: ReturnType<typeof adminClient>,
+  org: Org,
+  config: AgentConfig,
+  params: Omit<EngageInboundParams, "businessHours">,
+): Promise<Awaited<ReturnType<typeof engageHandleInbound>>> {
+  try {
+    return await engageHandleInbound(admin, org, { ...params, businessHours: config.business_hours });
+  } catch (e) {
+    console.error("engage hook skipped", e); // the AI path must never break
+    return null;
+  }
+}
+
 async function postToChatwoot(accountId: string | number, conversationId: string | number, content: string) {
   const base = Deno.env.get("CHATWOOT_URL");
   const token = Deno.env.get("CHATWOOT_API_TOKEN");
@@ -143,13 +168,25 @@ Deno.serve(async (req) => {
       if (await overLimit(admin, org.id)) return json({ ok: true }); // silently defer (avoid webhook retries)
       const sender = body.sender ?? {};
       const channelType = String(body.conversation?.channel ?? "web").toLowerCase().includes("whatsapp") ? "whatsapp" : "web";
-      const result = await respondCore(admin, org, config, {
+      // Engage flows get first claim on the turn (additive — null = unchanged path).
+      const engaged = await tryEngage(admin, org, config, {
         channel: channelType,
         customer: { name: sender.name, email: sender.email, phone: sender.phone_number },
         message,
       });
+      if (engaged?.suppressAi) {
+        await classifyLater(classifyInbound(admin, org, engaged.conversationId, message));
+        if (engaged.reply) await postToChatwoot(body.account?.id, body.conversation?.id, engaged.reply);
+        return json({ ok: true });
+      }
+      const result = await respondCore(admin, org, config, {
+        channel: channelType,
+        conversationId: engaged?.conversationId, // keep the flow's thread when it fell through to the AI
+        customer: { name: sender.name, email: sender.email, phone: sender.phone_number },
+        message,
+      });
       await classifyLater(classifyInbound(admin, org, result.conversationId, message));
-      await postToChatwoot(body.account?.id, body.conversation?.id, result.reply);
+      await postToChatwoot(body.account?.id, body.conversation?.id, engaged?.reply ? `${engaged.reply}\n\n${result.reply}` : result.reply);
       return json({ ok: true });
     }
 
@@ -205,9 +242,21 @@ Deno.serve(async (req) => {
         reply: "Thanks for your message! We're handling a lot of enquiries right now — a team member will follow up shortly.",
       });
     }
-    const result = await respondCore(admin, org, config, {
+    // Engage flows get first claim on the turn (additive — null = unchanged path).
+    const engaged = await tryEngage(admin, org, config, {
       channel: body?.channel ?? "web",
       conversationId: body?.conversationId,
+      customer: body?.customer ?? {},
+      message,
+      isTest: body?.test === true,
+    });
+    if (engaged?.suppressAi) {
+      await classifyLater(classifyInbound(admin, org, engaged.conversationId, message));
+      return json({ conversationId: engaged.conversationId, reply: engaged.reply, cards: [] });
+    }
+    const result = await respondCore(admin, org, config, {
+      channel: body?.channel ?? "web",
+      conversationId: engaged?.conversationId ?? body?.conversationId, // keep the flow's thread on handoff_ai
       customer: body?.customer ?? {},
       message,
       // Sandbox: test:true opens the conversation with is_test=true (subsequent
@@ -215,7 +264,11 @@ Deno.serve(async (req) => {
       isTest: body?.test === true,
     });
     await classifyLater(classifyInbound(admin, org, result.conversationId, message));
-    return json({ conversationId: result.conversationId, reply: result.reply, cards: result.cards ?? [] });
+    return json({
+      conversationId: result.conversationId,
+      reply: engaged?.reply ? `${engaged.reply}\n\n${result.reply}` : result.reply,
+      cards: result.cards ?? [],
+    });
   } catch (err) {
     console.error("agent-inbound error", err);
     return json({ error: "Something went wrong. Please try again." }, 500);

@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useOutletContext } from "react-router-dom";
 
 /**
  * Engage — the one tab for everything customer-messaging.
@@ -48,6 +48,10 @@ const CSS = `
 `;
 
 export default function EngageLayout() {
+  // A nested <Outlet /> SHADOWS the parent's outlet context — the Inbox and
+  // Agent pages read OperatingLayout's OpsContext via useOutletContext, so it
+  // must be forwarded through this layer or they render against undefined.
+  const ops = useOutletContext();
   return (
     <div className="egx">
       <style>{CSS}</style>
@@ -60,7 +64,7 @@ export default function EngageLayout() {
         ))}
       </nav>
       <div className="egx-main">
-        <Outlet />
+        <Outlet context={ops} />
       </div>
     </div>
   );

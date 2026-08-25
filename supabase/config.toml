@@ -87,6 +87,10 @@ verify_jwt = false
 [functions.campaign-run]
 verify_jwt = false
 
+# Engage runtime: member {action:'setup'} leg is authorize()-guarded in-body; cron leg uses x-cron-secret.
+[functions.engage-run]
+verify_jwt = false
+
 # Provider webhooks — authenticated by the provider's own signature header.
 [functions.stripe-webhook]
 verify_jwt = false

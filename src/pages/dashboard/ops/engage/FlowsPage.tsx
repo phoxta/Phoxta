@@ -1,10 +1,6 @@
-import { Card, Empty } from "@/components/dash/Ui";
+import FlowsBoard from "@/components/engage/FlowsBoard";
 
-/** Engage - Flows area. Placeholder shell: the Flows build lands here. */
+/** Engage → Flows: drag-and-drop chat automations where the AI agent is a node. */
 export default function FlowsPage() {
-  return (
-    <Card title="Flows">
-      <Empty title="Chat automation, with the AI as a node">Drag-and-drop conversation flows: keyword menus, capture, routing - and guaranteed handoffs to the AI agent or a human. Coming online now.</Empty>
-    </Card>
-  );
+  return <FlowsBoard kind="flow" />;
 }

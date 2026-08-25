@@ -271,6 +271,24 @@ Deno.serve(async (req) => {
       policyError = String((err as Error)?.message || err);
     }
 
+    // 4. Engage runtime tick: the same scheduler slot drives engage-run (flow
+    //    timers + journey triggers) with zero external infra changes. Fire-and-
+    //    forget with the same x-cron-secret — engage work must never fail or
+    //    slow housekeeping.
+    try {
+      const base = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
+      if (base) {
+        const tick = fetch(`${base}/functions/v1/engage-run`, {
+          method: "POST",
+          headers: { "x-cron-secret": presented, "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "cron" }),
+        }).then((r) => r.body?.cancel(), () => { /* best effort */ });
+        // deno-lint-ignore no-explicit-any
+        const rt = (globalThis as any).EdgeRuntime;
+        if (rt?.waitUntil) rt.waitUntil(tick);
+      }
+    } catch (_) { /* best effort */ }
+
     return json({
       ok: true,
       ...(typeof data === "object" && data !== null ? data : { result: data }),
