@@ -25,6 +25,11 @@ export const MODULES: Record<string, OpsModuleDef> = {
   bookings: { seg: "bookings", label: "Bookings" },
   invoicing: { seg: "invoicing", label: "Invoicing" },
   marketing: { seg: "marketing", label: "Marketing" },
+  // Public knowledge base: articles written here publish at /help/:org on the
+  // marketing site, and feed the AI agent's knowledge on publish. Key equals
+  // seg (like every module) so OperatingLayout's business-switcher tab check
+  // (`modules.includes(seg)`) keeps working.
+  "help-center": { seg: "help-center", label: "Help Center" },
   agent: { seg: "agent", label: "AI Agent" },
   platform: { seg: "platform", label: "Platform" },
   settings: { seg: "settings", label: "Settings" },
@@ -34,13 +39,13 @@ const RETAIL: VerticalConsole = {
   commerceLabel: "Catalog",
   itemNoun: "Product",
   booking: "none",
-  modules: ["overview", "inbox", "commerce", "crm", "marketing", "invoicing", "agent", "settings"],
+  modules: ["overview", "inbox", "commerce", "crm", "marketing", "invoicing", "help-center", "agent", "settings"],
 };
 const RENTAL: VerticalConsole = {
   commerceLabel: "Fleet",
   itemNoun: "Vehicle",
   booking: "reservations",
-  modules: ["overview", "inbox", "commerce", "reservations", "crm", "marketing", "invoicing", "agent", "settings"],
+  modules: ["overview", "inbox", "commerce", "reservations", "crm", "marketing", "invoicing", "help-center", "agent", "settings"],
 };
 // Car SALES (a dealership or marketplace) is a different business from rental:
 // the vehicle is sold once, not booked by the day. So there is no reservations
@@ -50,25 +55,25 @@ const SALES: VerticalConsole = {
   commerceLabel: "Inventory",
   itemNoun: "Vehicle",
   booking: "appointments",
-  modules: ["overview", "inbox", "commerce", "bookings", "crm", "marketing", "invoicing", "agent", "settings"],
+  modules: ["overview", "inbox", "commerce", "bookings", "crm", "marketing", "invoicing", "help-center", "agent", "settings"],
 };
 const EXPERIENCES: VerticalConsole = {
   commerceLabel: "Experiences",
   itemNoun: "Experience",
   booking: "reservations",
-  modules: ["overview", "inbox", "commerce", "reservations", "crm", "marketing", "agent", "settings"],
+  modules: ["overview", "inbox", "commerce", "reservations", "crm", "marketing", "help-center", "agent", "settings"],
 };
 const STAYS: VerticalConsole = {
   commerceLabel: "Listings",
   itemNoun: "Listing",
   booking: "reservations",
-  modules: ["overview", "inbox", "commerce", "reservations", "crm", "marketing", "invoicing", "agent", "settings"],
+  modules: ["overview", "inbox", "commerce", "reservations", "crm", "marketing", "invoicing", "help-center", "agent", "settings"],
 };
 const SERVICES: VerticalConsole = {
   commerceLabel: "Services",
   itemNoun: "Service",
   booking: "appointments",
-  modules: ["overview", "inbox", "bookings", "crm", "marketing", "invoicing", "agent", "settings"],
+  modules: ["overview", "inbox", "bookings", "crm", "marketing", "invoicing", "help-center", "agent", "settings"],
 };
 // Digital-first kitchen: the business is online ordering (delivery/collection)
 // plus special orders — catering, bulk and custom bakes. There is no dining
@@ -78,7 +83,7 @@ const RESTAURANT: VerticalConsole = {
   commerceLabel: "Menu",
   itemNoun: "Menu item",
   booking: "none",
-  modules: ["overview", "inbox", "commerce", "crm", "marketing", "invoicing", "agent", "settings"],
+  modules: ["overview", "inbox", "commerce", "crm", "marketing", "invoicing", "help-center", "agent", "settings"],
 };
 // Default: generic / unknown vertical. One booking surface only (reservations).
 // Phoxta itself. It runs on the same console as any tenant — Inbox for
@@ -92,14 +97,14 @@ const PLATFORM: VerticalConsole = {
   commerceLabel: "Blueprints",
   itemNoun: "Blueprint",
   booking: "none",
-  modules: ["overview", "platform", "inbox", "crm", "marketing", "invoicing", "agent", "settings"],
+  modules: ["overview", "platform", "inbox", "crm", "marketing", "invoicing", "help-center", "agent", "settings"],
 };
 
 const DEFAULT: VerticalConsole = {
   commerceLabel: "Commerce",
   itemNoun: "Product",
   booking: "reservations",
-  modules: ["overview", "inbox", "crm", "commerce", "reservations", "invoicing", "marketing", "agent", "settings"],
+  modules: ["overview", "inbox", "crm", "commerce", "reservations", "invoicing", "marketing", "help-center", "agent", "settings"],
 };
 
 // Map vertical synonyms → a console config.

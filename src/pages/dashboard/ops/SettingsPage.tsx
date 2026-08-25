@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useCachedData } from "@/lib/hooks/useCachedData";
-import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
+import { DASHBOARD_TTL, organizationsQuery } from "@/lib/cache/dashboardQueries";
 import { updateBusiness } from "@/lib/db/organizations";
 import { listLocations, createLocation, deleteLocation, type Location } from "@/lib/db/ops/agent";
+import { getServicePolicies, saveServicePolicies, type ServicePolicies } from "@/lib/db/ops/policies";
+import { can } from "@/lib/ops/permissions";
 import { confirmDanger, reportMutation, toast, toastError } from "@/lib/ops/feedback";
 import { Card, Chip, Empty, InitialAvatar } from "@/components/dash/Ui";
 import type { OpsContext } from "@/layouts/OperatingLayout";
@@ -28,6 +30,14 @@ const CURRENCIES: { code: string; label: string }[] = [
   { code: "CHF", label: "CHF — Swiss franc" },
   { code: "BRL", label: "BRL — Brazilian real" },
   { code: "MXN", label: "MXN — Mexican peso" },
+];
+
+/** First-response target presets (minutes); any other value renders as Custom. */
+const SLA_PRESETS: { minutes: number; label: string }[] = [
+  { minutes: 15, label: "15 minutes" },
+  { minutes: 60, label: "1 hour" },
+  { minutes: 240, label: "4 hours" },
+  { minutes: 480, label: "8 hours" },
 ];
 
 // Same order and wording as the Google Workspace page, so the two read as one place.
@@ -67,6 +77,59 @@ const CSS = `
 export default function SettingsPage() {
   const { orgId, org } = useOutletContext<OpsContext>();
   const base = `/dashboard/businesses/${orgId}/ops`;
+
+  // ── Who am I here? (client-side gate only — see lib/ops/permissions) ──────
+  // Role comes from the warmed organizations cache (membership role per org).
+  const { data: myOrgs = [] } = useCachedData(organizationsQuery.key, organizationsQuery.fetch);
+  const myRole = myOrgs.find((m) => m.organization.id === orgId)?.role ?? null;
+  // Gate only once the role is actually known — no read-only flash while warming.
+  const readOnly = myRole !== null && !can(myRole, "manage_settings");
+
+  // ── Service levels & routing (stored in agent_config.escalation jsonb) ────
+  const { data: policies, reload: reloadPolicies } = useCachedData<ServicePolicies>(
+    `ops:settings:policies:${orgId}`,
+    async () => {
+      const { data, error } = await getServicePolicies(orgId);
+      if (error) throw new Error(error);
+      return data;
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+  const [pol, setPol] = useState<{
+    enabled: boolean;
+    frMinutes: number;
+    frCustom: boolean;
+    resHours: number;
+    routing: "off" | "round_robin";
+  } | null>(null);
+  const [polBusy, setPolBusy] = useState(false);
+  useEffect(() => {
+    if (!policies) return;
+    setPol({
+      enabled: policies.sla.enabled,
+      frMinutes: policies.sla.first_response_minutes,
+      frCustom: !SLA_PRESETS.some((p) => p.minutes === policies.sla.first_response_minutes),
+      resHours: policies.sla.resolution_hours,
+      routing: policies.routing.mode,
+    });
+  }, [policies]);
+
+  async function savePolicies(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pol || polBusy) return;
+    if (!(pol.frMinutes > 0)) { toastError("The first-response target must be at least 1 minute."); return; }
+    if (!(pol.resHours > 0)) { toastError("The resolution target must be at least 1 hour."); return; }
+    setPolBusy(true);
+    const ok = await reportMutation(
+      saveServicePolicies(orgId, {
+        sla: { enabled: pol.enabled, first_response_minutes: Math.round(pol.frMinutes), resolution_hours: Math.round(pol.resHours) },
+        routing: { mode: pol.routing },
+      }),
+      "Saved — the Inbox shows due/overdue chips and the maintenance run applies routing within a few minutes.",
+    );
+    setPolBusy(false);
+    if (ok) reloadPolicies();
+  }
 
   // ── Business ──────────────────────────────────────────────────────────────
   const [name, setName] = useState(org.name);
@@ -145,6 +208,18 @@ export default function SettingsPage() {
     setRouted(locations.find((l) => l.id === hit.id) ?? "none");
   }
 
+  // Agents/viewers don't manage settings — a friendly hand-off, not dead forms.
+  // (Client-side gate only in v1: `can()` shapes the UI; RLS is not yet role-aware.)
+  if (readOnly)
+    return (
+      <Card>
+        <Empty title="Settings are managed by an admin">
+          Your role in {org.name} is {myRole === "staff" ? "agent" : myRole}. Ask an owner or admin to change
+          business details, service levels, routing or locations.
+        </Empty>
+      </Card>
+    );
+
   return (
     <div className="row g-3">
       <style>{CSS}</style>
@@ -167,6 +242,92 @@ export default function SettingsPage() {
             </label>
             <button type="submit" className="hrx-pill dark osx-btn" disabled={bizBusy}>{bizBusy ? "Saving…" : "Save changes"}</button>
           </form>
+        </Card>
+
+        {/* ── Service levels & routing ── */}
+        <Card title="Service levels & routing">
+          {!pol ? (
+            <p className="osx-note text-center mb-0" role="status">Loading…</p>
+          ) : (
+            <form onSubmit={savePolicies}>
+              <label className="d-flex align-items-center gap-2 mb-3" style={{ fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  className="form-check-input mt-0"
+                  checked={pol.enabled}
+                  onChange={(e) => setPol({ ...pol, enabled: e.target.checked })}
+                />
+                <span>Track response-time targets (SLA)</span>
+              </label>
+              <div className="row g-2 osx-grid">
+                <div className={pol.frCustom ? "col-6 col-md-4" : "col-6"}>
+                  <label className="hrx-field">
+                    <span>First response</span>
+                    <select
+                      className="form-select"
+                      value={pol.frCustom ? "custom" : String(pol.frMinutes)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "custom") setPol({ ...pol, frCustom: true });
+                        else setPol({ ...pol, frCustom: false, frMinutes: Number(v) });
+                      }}
+                    >
+                      {SLA_PRESETS.map((p) => <option key={p.minutes} value={p.minutes}>{p.label}</option>)}
+                      <option value="custom">Custom…</option>
+                    </select>
+                  </label>
+                </div>
+                {pol.frCustom && (
+                  <div className="col-6 col-md-4">
+                    <label className="hrx-field">
+                      <span>Minutes</span>
+                      <input
+                        type="number"
+                        min={1}
+                        className="form-control"
+                        value={pol.frMinutes}
+                        onChange={(e) => setPol({ ...pol, frMinutes: Number(e.target.value) })}
+                      />
+                    </label>
+                  </div>
+                )}
+                <div className={pol.frCustom ? "col-6 col-md-4" : "col-6"}>
+                  <label className="hrx-field">
+                    <span>Resolution (hours)</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className="form-control"
+                      value={pol.resHours}
+                      onChange={(e) => setPol({ ...pol, resHours: Number(e.target.value) })}
+                    />
+                  </label>
+                </div>
+              </div>
+              <span className="osx-hint d-block mb-3">
+                Open conversations show a &ldquo;Due in&rdquo; chip in the Inbox and an overdue breach notifies the
+                assignee (or the admins) once per conversation. Snoozing pauses the chip.
+              </span>
+              <label className="hrx-field">
+                <span>Routing — new conversations</span>
+                <select
+                  className="form-select"
+                  value={pol.routing}
+                  onChange={(e) => setPol({ ...pol, routing: e.target.value as "off" | "round_robin" })}
+                >
+                  <option value="off">No auto-assignment</option>
+                  <option value="round_robin">Round-robin across the team</option>
+                </select>
+                <span className="osx-hint">
+                  Round-robin assigns unassigned open conversations evenly across owners, admins and agents, and
+                  notifies each assignee. Applied by the maintenance run every few minutes.
+                </span>
+              </label>
+              <button type="submit" className="hrx-pill dark osx-btn" disabled={polBusy}>
+                {polBusy ? "Saving…" : "Save service levels"}
+              </button>
+            </form>
+          )}
         </Card>
 
         {/* ── Agent permissions ── */}

@@ -27,6 +27,11 @@ type Props = {
   onDraft: (patch: Partial<PostDraft>) => void;
   onBlocks: (blocks: ArticleBlock[]) => void;
   onUpload: (file: File) => Promise<string | null>;
+  /** Breadcrumb category text. Defaults to the blog's CATEGORY_LABELS lookup,
+   *  so non-blog callers (the Help Center) can show their free-text category. */
+  categoryLabel?: string;
+  /** Breadcrumb root label (defaults to "Blog"). */
+  crumbRoot?: string;
 };
 
 const CHEVRON_SVG = (
@@ -82,7 +87,7 @@ const PALETTE: { key: string; label: string; make?: () => ArticleBlock }[] = [
   { key: "table", label: "Table", make: () => ({ kind: "table", head: ["Column A", "Column B"], rows: [["", ""]] }) },
 ];
 
-export default function ArticleEditor({ draft, blocks, onDraft, onBlocks, onUpload }: Props) {
+export default function ArticleEditor({ draft, blocks, onDraft, onBlocks, onUpload, categoryLabel, crumbRoot }: Props) {
   const [paletteAt, setPaletteAt] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [busyImg, setBusyImg] = useState(false);
@@ -258,9 +263,9 @@ export default function ArticleEditor({ draft, blocks, onDraft, onBlocks, onUplo
         <div className="row align-items-center">
           <div className="col-lg-8 mx-auto">
             <div className="nav-menu d-flex align-items-center gap-2 pb-2">
-              <span className="nav-menu__item neutral-900">Blog</span>
+              <span className="nav-menu__item neutral-900">{crumbRoot ?? "Blog"}</span>
               <span className="nav-menu__item-separator">{CHEVRON_SVG}</span>
-              <span className="nav-menu__item neutral-500">{CATEGORY_LABELS[draft.category]}</span>
+              <span className="nav-menu__item neutral-500">{categoryLabel ?? CATEGORY_LABELS[draft.category]}</span>
             </div>
             <Editable as="h2" className="fw-600 lh-1 mb-0" value={draft.title} placeholder="Give the post a title…" onCommit={(t) => onDraft({ title: t })} />
             <div className="d-flex flex-column flex-md-row align-items-md-end gap-2 justify-content-between pt-30">
@@ -278,9 +283,18 @@ export default function ArticleEditor({ draft, blocks, onDraft, onBlocks, onUplo
 
           <div className="col-12 py-5 text-center">
             <div className="opx-imgwrap d-inline-block">
-              <img src={draft.hero} className="img-fluid" alt={draft.title} width={1720} height={789} style={{ width: "auto", height: "auto" }} loading="lazy" />
-              <button type="button" className="opx-imgswap" disabled={busyImg} onClick={() => pick({ kind: "hero" })}>
-                {busyImg ? "Uploading…" : "Replace hero image"}
+              {/* Hero is optional for non-blog callers: no URL, no <img>. */}
+              {draft.hero && (
+                <img src={draft.hero} className="img-fluid" alt={draft.title} width={1720} height={789} style={{ width: "auto", height: "auto" }} loading="lazy" />
+              )}
+              <button
+                type="button"
+                className="opx-imgswap"
+                style={draft.hero ? undefined : { position: "static" }}
+                disabled={busyImg}
+                onClick={() => pick({ kind: "hero" })}
+              >
+                {busyImg ? "Uploading…" : draft.hero ? "Replace hero image" : "Add a hero image (optional)"}
               </button>
             </div>
           </div>

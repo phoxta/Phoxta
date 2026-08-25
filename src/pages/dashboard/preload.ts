@@ -30,6 +30,7 @@ export const OPS_PRELOADERS: Record<string, Loader> = {
   bookings: () => import("@/pages/dashboard/ops/BookingsPage"),
   reservations: () => import("@/pages/dashboard/ops/ReservationsPage"),
   marketing: () => import("@/pages/dashboard/ops/MarketingPage"),
+  "help-center": () => import("@/pages/dashboard/ops/HelpCenterPage"),
   settings: () => import("@/pages/dashboard/ops/SettingsPage"),
   // Not a tab anymore, but Settings links into it — keep the chunk warm.
   google: () => import("@/pages/dashboard/ops/google/GoogleWorkspacePage"),

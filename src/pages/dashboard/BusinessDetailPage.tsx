@@ -17,6 +17,8 @@ import {
   revokeInvitation,
   type Invitation,
 } from "@/lib/db/collaboration";
+import { setMemberRole } from "@/lib/db/ops/policies";
+import { ASSIGNABLE_ROLES, roleLabel } from "@/lib/ops/permissions";
 
 const INVITE_ROLES: { value: Invitation["role"]; label: string }[] = [
   { value: "admin", label: "Admin" },
@@ -79,6 +81,24 @@ export default function BusinessDetailPage() {
 
   const myRole = members.find((m) => m.user_id === user?.id)?.role;
   const canManage = myRole === "owner" || myRole === "admin";
+
+  // Team role changes go through the app_set_member_role security-definer RPC
+  // (memberships have no UPDATE policy). The server re-checks the caller is an
+  // owner/admin and that the owner seat is untouched — the UI gate is comfort only.
+  const [roleBusy, setRoleBusy] = useState<string | null>(null);
+  const [teamMsg, setTeamMsg] = useState<string | null>(null);
+  async function onChangeRole(userId: string, role: "admin" | "staff" | "viewer") {
+    if (!id || roleBusy) return;
+    setRoleBusy(userId);
+    setTeamMsg(null);
+    const { error: roleErr } = await setMemberRole(id, userId, role);
+    setRoleBusy(null);
+    if (roleErr) setTeamMsg(roleErr);
+    else {
+      setTeamMsg("Role updated.");
+      reload();
+    }
+  }
 
   async function onInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -204,9 +224,31 @@ export default function BusinessDetailPage() {
               <div className="main">
                 <p className="t">{m.user_id === user?.id ? "You" : "Member"}</p>
               </div>
-              <Chip tone={m.role === "owner" ? "blue" : "line"}>{m.role}</Chip>
+              {/* The owner seat is immutable; only an owner/admin edits the rest. */}
+              {canManage && m.role !== "owner" ? (
+                <select
+                  className="form-select form-select-sm w-auto"
+                  aria-label="Change role"
+                  value={m.role}
+                  disabled={roleBusy === m.user_id}
+                  onChange={(e) => onChangeRole(m.user_id, e.target.value as "admin" | "staff" | "viewer")}
+                >
+                  {ASSIGNABLE_ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Chip tone={m.role === "owner" ? "blue" : "line"}>{roleLabel(m.role)}</Chip>
+              )}
             </div>
           ))}
+          {teamMsg && (
+            <p className="mt-2 mb-0" style={{ color: "var(--hrx-muted)", fontSize: 14 }} role="status">
+              {teamMsg}
+            </p>
+          )}
         </Card>
 
         <div className="bzx-span">

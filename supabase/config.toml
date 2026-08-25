@@ -188,6 +188,11 @@ verify_jwt = true
 [functions.platform-posts]
 verify_jwt = true
 
+# Help-center authoring for the operating console (org-member gated inside);
+# the public /help pages read help_articles directly under RLS, not this function.
+[functions.help-center]
+verify_jwt = true
+
 [functions.domain-checkout]
 verify_jwt = true
 

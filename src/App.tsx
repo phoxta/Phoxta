@@ -20,6 +20,8 @@ const PricingPage = lazy(() => import("@/pages/PricingPage"));
 const ProductArchivePage = lazy(() => import("@/pages/ProductArchivePage")); // /marketplace
 const BlogPage = lazy(() => import("@/pages/BlogPage")); // /blog (index)
 const ArticlePage = lazy(() => import("@/pages/ArticlePage")); // /blog/:slug
+const PublicHelpPage = lazy(() => import("@/pages/PublicHelpPage")); // /help/:org (per-tenant help center)
+const PublicHelpArticlePage = lazy(() => import("@/pages/PublicHelpArticlePage")); // /help/:org/:slug
 const FaqsPage = lazy(() => import("@/pages/FaqsPage"));
 const CareersPage = lazy(() => import("@/pages/CareersPage"));
 const Contact1Page = lazy(() => import("@/pages/Contact1Page")); // /contact
@@ -54,6 +56,7 @@ const InvoicingPage = lazy(() => import("@/pages/dashboard/ops/InvoicingPage"));
 const BookingsPage = lazy(() => import("@/pages/dashboard/ops/BookingsPage"));
 const ReservationsPage = lazy(() => import("@/pages/dashboard/ops/ReservationsPage"));
 const MarketingPage = lazy(() => import("@/pages/dashboard/ops/MarketingPage"));
+const OpsHelpCenterPage = lazy(() => import("@/pages/dashboard/ops/HelpCenterPage"));
 const OpsInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
 const OpsSettingsPage = lazy(() => import("@/pages/dashboard/ops/SettingsPage"));
 const OpsPlatformPage = lazy(() => import("@/pages/dashboard/ops/PlatformPage"));
@@ -122,6 +125,8 @@ export default function App() {
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="reservations" element={<ReservationsPage />} />
             <Route path="marketing" element={<MarketingPage />} />
+            {/* Public knowledge base — published articles appear at /help/:org. */}
+            <Route path="help-center" element={<OpsHelpCenterPage />} />
             <Route path="settings" element={<OpsSettingsPage />} />
             {/* Google Workspace lives inside Settings now — the route stays valid
                 (Settings links into it) but it's no longer a top-level tab. */}
@@ -177,6 +182,9 @@ export default function App() {
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/blog/:slug" element={<ArticlePage />} />
+        {/* Per-tenant public Help Centers (dynamic — deliberately NOT prerendered). */}
+        <Route path="/help/:org" element={<PublicHelpPage />} />
+        <Route path="/help/:org/:slug" element={<PublicHelpArticlePage />} />
         <Route path="/faqs" element={<FaqsPage />} />
         <Route path="/careers" element={<CareersPage />} />
         <Route path="/contact" element={<Contact1Page />} />

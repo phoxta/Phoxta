@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import NoIndex from "@/seo/NoIndex";
 import { useAuth } from "@/auth/AuthProvider";
 import KeepAliveOutlet from "@/layouts/KeepAliveOutlet";
+import CommandBar from "@/components/dash/CommandBar";
 import { preloadRoute } from "@/pages/dashboard/preload";
 import { warmDashboard } from "@/lib/cache/warmDashboard";
 import "@/styles/dashboard-theme.css";
@@ -65,6 +66,9 @@ const NAV: NavItem[] = [
 
 const SETTINGS_PATH = "/dashboard/settings";
 
+/** Which modifier the command-bar shortcut hint should advertise. */
+const IS_MAC = typeof navigator !== "undefined" && /Mac|iP(hone|ad|od)/.test(navigator.platform);
+
 // The top-level nav pages are all param-free, so they're kept mounted (via <Activity>)
 // after their first visit — instant revisits with preserved scroll + in-page state.
 const KEEP_ALIVE_PATHS = [...NAV.filter((i) => !i.platformOnly).map((item) => item.to), SETTINGS_PATH];
@@ -107,6 +111,7 @@ export default function DashboardLayout() {
   const [bellOpen, setBellOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [cmdOpen, setCmdOpen] = useState(false);
   // Platform console is admin-only. This hides the link; app_is_platform_admin()
   // guards the data, so a hand-typed URL still gets nothing.
   const [platformAdmin, setPlatformAdmin] = useState(false);
@@ -143,6 +148,18 @@ export default function DashboardLayout() {
     setNotes((list) => list.map((x) => ({ ...x, read: true })));
     markAllNotificationsRead();
   }
+
+  // Ctrl+K / Cmd+K toggles the command bar from anywhere in the dashboard.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Preload the whole dashboard the moment the shell mounts after sign-in — every nav
   // page's DATA + JS CHUNK — so the first click on any page is instant. It starts
@@ -231,6 +248,27 @@ export default function DashboardLayout() {
             {SEARCH_ICON}
             <label className="visually-hidden" htmlFor="hrx-q">Search the marketplace</label>
             <input id="hrx-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search everything..." />
+            <button
+              type="button"
+              onClick={() => setCmdOpen(true)}
+              aria-label="Open command bar"
+              title={`Command bar (${IS_MAC ? "⌘" : "Ctrl+"}K)`}
+              style={{
+                flexShrink: 0,
+                border: "1px solid rgba(209, 216, 224, 0.55)",
+                borderRadius: 6,
+                background: "#fff",
+                color: "#6b7280",
+                fontSize: 11,
+                fontWeight: 600,
+                lineHeight: "16px",
+                padding: "1px 6px",
+                whiteSpace: "nowrap",
+                cursor: "pointer",
+              }}
+            >
+              {IS_MAC ? "⌘K" : "Ctrl K"}
+            </button>
           </form>
 
           <div className="position-relative">
@@ -353,6 +391,9 @@ export default function DashboardLayout() {
           <KeepAliveOutlet keepPaths={KEEP_ALIVE_PATHS} scrollContainerRef={scrollRef} />
         </main>
       </div>
+
+      {/* Ctrl+K / Cmd+K — navItems is the same platform-gated list the tabs render. */}
+      <CommandBar open={cmdOpen} onClose={() => setCmdOpen(false)} navItems={navItems} platformAdmin={platformAdmin} />
     </div>
   );
 }

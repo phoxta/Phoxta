@@ -74,8 +74,10 @@ const NEXT_SVG = (
     </svg>
 );
 
-/** Renders one content block. Keys are supplied by the caller. */
-function Block({ block }: { block: ArticleBlock }) {
+/** Renders one content block. Keys are supplied by the caller.
+ *  Exported so other article-shaped surfaces (the public Help Center) render
+ *  ArticleBlock[] bodies with the exact same markup as the blog. */
+export function Block({ block }: { block: ArticleBlock }) {
     switch (block.kind) {
         case "lead":
             return <h6 className="fz-font-2xl fw-400 mb-60">{block.text}</h6>;

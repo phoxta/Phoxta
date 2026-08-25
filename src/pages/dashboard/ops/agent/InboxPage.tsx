@@ -70,6 +70,8 @@ import {
   type ConversationCall,
 } from "@/lib/db/ops/inbox";
 import { invokeAction, drainEmbeddings } from "@/lib/db/ops/ai";
+import { getServicePolicies } from "@/lib/db/ops/policies";
+import type { SlaPolicy } from "@/lib/ops/sla";
 import { toast, toastError, reportMutation } from "@/lib/ops/feedback";
 import { callablePhone, displayPhone } from "@/lib/ops/phone";
 import type { OpsContext } from "@/layouts/OperatingLayout";
@@ -235,6 +237,8 @@ export default function InboxPage() {
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [me, setMe] = useState<string | null>(null);
   const [viewers, setViewers] = useState<string[]>([]);
+  /** The org's SLA policy — drives the due/overdue chips in the queue. */
+  const [slaPolicy, setSlaPolicy] = useState<SlaPolicy | null>(null);
 
   // Panels & popovers
   const [suggestion, setSuggestion] = useState<{ summary: string; suggestion: string } | null>(null);
@@ -463,6 +467,7 @@ export default function InboxPage() {
       setMe(await currentUserId());
       setCanned((await listCanned(orgId)).data);
       setMembers((await listMembers(orgId)).data);
+      setSlaPolicy((await getServicePolicies(orgId)).data.sla);
     })();
   }, [orgId]);
   const refreshCanned = useCallback(async () => setCanned((await listCanned(orgId)).data), [orgId]);
@@ -1443,6 +1448,7 @@ export default function InboxPage() {
               onCursor={setCursorKey}
               scrollEl={listEl}
               assigneeName={memberName}
+              sla={slaPolicy}
               hasMore={convos.length >= limit}
               loadingMore={loadingMore}
               onLoadMore={() => {

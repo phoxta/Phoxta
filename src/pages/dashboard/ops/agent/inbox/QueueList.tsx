@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { AlertTriangle, Frown, Hash, Star } from "lucide-react";
+import { AlertTriangle, Frown, Hash, Star, Timer } from "lucide-react";
 import { Avatar, Tag } from "@/pages/dashboard/ops/ui/primitives";
 import { channelLabel } from "@/pages/dashboard/ops/ui/util";
+import { firstResponseSla, type SlaPolicy } from "@/lib/ops/sla";
 import {
   channelOf,
   isUnread,
@@ -34,6 +35,7 @@ export default function QueueList({
   onCursor,
   scrollEl,
   assigneeName,
+  sla,
   hasMore,
   loadingMore,
   onLoadMore,
@@ -51,6 +53,9 @@ export default function QueueList({
    */
   scrollEl: HTMLDivElement | null;
   assigneeName: (id: string | null) => string;
+  /** The org's SLA policy (null/disabled → no due chips). Computed per row,
+   *  client-side, from created_at + first_response_at — see lib/ops/sla. */
+  sla?: SlaPolicy | null;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
@@ -95,6 +100,8 @@ export default function QueueList({
         const ticket = it.kind === "ticket" ? it.ticket : null;
         const assignee = conv?.assigned_to ? assigneeName(conv.assigned_to) : null;
         const negative = (conv?.sentiment ?? ticket?.sentiment) === "negative";
+        // First-response SLA countdown (conversations only; snoozed rows show none).
+        const slaChip = conv ? firstResponseSla(conv, sla) : null;
 
         return (
           <div
@@ -127,9 +134,14 @@ export default function QueueList({
                   {title || <span className="fst-italic opacity-75">{channelLabel(channelOf(it))}</span>}
                 </span>
 
-                {(status || assignee || negative || ticket?.priority === "high" || (conv?.tags?.length ?? 0) > 0 || conv?.csat_score != null) && (
+                {(status || assignee || negative || slaChip || ticket?.priority === "high" || (conv?.tags?.length ?? 0) > 0 || conv?.csat_score != null) && (
                   <span className="ibx-row__meta">
                     {status && <Tag tone={status.tone}>{status.label}</Tag>}
+                    {slaChip && (
+                      <Tag tone={slaChip.tone} icon={<Timer />}>
+                        {slaChip.label}
+                      </Tag>
+                    )}
                     {ticket?.priority === "high" && (
                       <Tag tone="danger" icon={<AlertTriangle />}>
                         High
