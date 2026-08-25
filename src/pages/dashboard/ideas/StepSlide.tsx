@@ -1,4 +1,4 @@
-import { imageForIdea, sectorOf, stockImage } from "@/lib/ideas/imagery";
+import { imageForIdea } from "@/lib/ideas/imagery";
 import { getStep, stepIndex, type IdeaStep } from "@/lib/ideas/steps";
 
 /**
@@ -558,84 +558,6 @@ function StrategySlide({ d }: { d: Json }) {
   );
 }
 
-function WebsiteSlide({ d, seed }: { d: Json; seed: string }) {
-  const hero = obj(d.hero);
-  const palette = obj(d.palette);
-  const sector = sectorOf(str(d.templateHint), seed);
-  return (
-    <>
-      <div className="row g-3 align-items-center mb-30">
-        <div className="col-lg-7">
-          <span className="fz-font-label text-uppercase neutral-500 d-block mb-10">{str(d.brandName)}</span>
-          <h3 className="fz-font-2xl fw-600 neutral-900 lh-1 mb-10">{str(hero.headline) || str(d.tagline)}</h3>
-          <p className="fz-font-md neutral-500 mb-0">{str(hero.subhead)}</p>
-        </div>
-        <div className="col-lg-5">
-          <img src={stockImage(sector, 1, 600, 400)} alt={`${str(d.brandName)} preview`}
-               width={600} height={400} loading="lazy" className="img-cover w-100 rounded-3" />
-        </div>
-      </div>
-
-      {(str(palette.primary) || str(palette.accent)) && (
-        <>
-          <Head>Palette</Head>
-          <div className="d-flex align-items-center gap-3 mb-30">
-            {["primary", "accent", "ink"].map((k) => str(palette[k]) && (
-              <div key={k} className="text-center">
-                <span className="idv-swatch d-block mb-1" style={{ background: str(palette[k]) }} />
-                <span className="fz-font-label neutral-500">{str(palette[k])}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {arr(d.features).length > 0 && (
-        <div className="row g-3 mb-30">
-          {arr(d.features).map((f, i) => (
-            <div key={i} className="col-md-4">
-              <div className="idv-tile">
-                <span className="fz-font-md fw-600 neutral-900 d-block mb-10">{str(f.title)}</span>
-                <p className="fz-font-md neutral-500 mb-0">{str(f.body)}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {arr(d.sections).length > 0 && (
-        <>
-          <Head>Page sections</Head>
-          <div className="row g-3 mb-30">
-            {arr(d.sections).map((sec, i) => (
-              <div key={i} className="col-md-6">
-                <div className="idv-tile idv-tile--accent">
-                  <span className="fz-font-md fw-600 neutral-900 d-block mb-10">{str(sec.heading)}</span>
-                  <p className="fz-font-md neutral-500 mb-0">{str(sec.body)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {arr(d.faqs).length > 0 && (
-        <>
-          <Head>FAQs</Head>
-          <div className="d-flex flex-column gap-2">
-            {arr(d.faqs).map((f, i) => (
-              <div key={i} className="idv-tile">
-                <span className="fz-font-md fw-600 neutral-900 d-block mb-1">{str(f.q)}</span>
-                <p className="fz-font-md neutral-500 mb-0">{str(f.a)}</p>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </>
-  );
-}
-
 /* ── Dispatch ────────────────────────────────────────────────────────── */
 
 export default function StepSlide({ step, output, seed }: { step: IdeaStep; output: unknown; seed: string }) {
@@ -649,8 +571,7 @@ export default function StepSlide({ step, output, seed }: { step: IdeaStep; outp
           : step === "customer" ? <CustomerSlide d={d} />
             : step === "model" ? <ModelSlide d={d} />
               : step === "report" ? <ReportSlide d={d} />
-                : step === "strategy" ? <StrategySlide d={d} />
-                  : <WebsiteSlide d={d} seed={seed} />;
+                : <StrategySlide d={d} />;
 
   return (
     <div className="idv-slide">

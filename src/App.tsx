@@ -41,6 +41,7 @@ const OnboardingPage = lazy(() => import("@/pages/OnboardingPage"));
 const DashboardHomePage = lazy(() => import("@/pages/dashboard/DashboardHomePage"));
 const IdeasPage = lazy(() => import("@/pages/dashboard/IdeasPage"));
 const IdeaDetailPage = lazy(() => import("@/pages/dashboard/IdeaDetailPage"));
+const IdeaPlanPage = lazy(() => import("@/pages/dashboard/IdeaPlanPage"));
 const MarketplacePage = lazy(() => import("@/pages/dashboard/MarketplacePage"));
 const MarketplaceDetailPage = lazy(() => import("@/pages/dashboard/MarketplaceDetailPage"));
 const BusinessesPage = lazy(() => import("@/pages/dashboard/BusinessesPage"));
@@ -114,6 +115,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<OnboardingPage />} />
         {/* Studio editor + preview run full-screen (no dashboard chrome / zoom). */}
+        {/* The business plan is a document, not a dashboard screen — full width. */}
+        <Route path="/dashboard/ideas/:id/plan" element={<IdeaPlanPage />} />
         <Route path="/studio/:orgId/site" element={<StudioSiteEditorPage />} />
         <Route path="/studio/:orgId/:pageId" element={<StudioEditorPage />} />
         <Route path="/studio/:orgId/:pageId/preview" element={<StudioPreviewPage />} />

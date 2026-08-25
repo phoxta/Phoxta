@@ -19,9 +19,9 @@ import { modelFor } from "../_shared/models.ts";
 // deno-lint-ignore no-explicit-any
 type Json = any;
 
-type Step = "problem" | "market" | "value" | "customer" | "model" | "report" | "strategy" | "website";
+type Step = "problem" | "market" | "value" | "customer" | "model" | "report" | "strategy";
 
-const ORDER: Step[] = ["problem", "market", "value", "customer", "model", "report", "strategy", "website"];
+const ORDER: Step[] = ["problem", "market", "value", "customer", "model", "report", "strategy"];
 
 /**
  * What each step asks for, and the shape it must answer in.
@@ -144,24 +144,6 @@ Return JSON: {
   },
   "milestones": [{ "when": string, "target": string }] — 4 to 6, each with a number,
   "fundingNeed": { "amount": string, "use": string }
-}
-The idea: "${idea.idea_seed}"`,
-  },
-  website: {
-    system: "You are a conversion-focused web copywriter. Reply with JSON only.",
-    tier: "balanced",
-    user: (ctx, idea) => `${ctx}
-Write the landing page copy for this business.
-
-Return JSON: {
-  "brandName": string,
-  "tagline": string,
-  "hero": { "headline": string, "subhead": string, "cta": string },
-  "sections": [{ "heading": string, "body": string }] — 3 to 5,
-  "features": [{ "title": string, "body": string }] — 3 to 6,
-  "faqs": [{ "q": string, "a": string }] — 4 to 6,
-  "palette": { "primary": string, "accent": string, "ink": string } — hex, suited to the sector,
-  "templateHint": string — one word describing the sector, to pick a template
 }
 The idea: "${idea.idea_seed}"`,
   },

@@ -22,8 +22,7 @@ export type IdeaStep =
   | "customer"
   | "model"
   | "report"
-  | "strategy"
-  | "website";
+  | "strategy";
 
 export interface StepSpec {
   key: IdeaStep;
@@ -31,7 +30,7 @@ export interface StepSpec {
   description: string;
   /** Roughly how long this one takes, for a progress line that isn't a lie. */
   seconds: number;
-  group: "Validation" | "Plan" | "Launch";
+  group: "Validation" | "Plan";
 }
 
 export const STEPS: StepSpec[] = [
@@ -41,14 +40,13 @@ export const STEPS: StepSpec[] = [
   { key: "customer", name: "Customer evidence",   description: "Real demand signals and what people already pay for.",             seconds: 30, group: "Validation" },
   { key: "model",    name: "Business model",      description: "Revenue model, pricing and the unit economics underneath.",        seconds: 30, group: "Validation" },
   { key: "report",   name: "Validation report",   description: "Everything above, judged and scored, with what to do next.",       seconds: 40, group: "Validation" },
-  { key: "strategy", name: "Business plan",       description: "A full plan with financial assumptions and an execution path.",    seconds: 60, group: "Plan" },
-  { key: "website",  name: "Website",             description: "A ready landing page built from the plan, yours to publish.",      seconds: 45, group: "Launch" },
+  { key: "strategy", name: "Plan & financials",  description: "The written plan: sections, projections, milestones and the ask.",  seconds: 60, group: "Plan" },
 ];
 
 export const STEP_KEYS: IdeaStep[] = STEPS.map((s) => s.key);
 export const TOTAL_STEPS = STEPS.length;
 
-/** ~5 minutes at these estimates. The UI quotes this rather than a rounder
+/** ~4 minutes at these estimates. The UI quotes this rather than a rounder
  *  number someone liked the sound of — if the steps get slower, the promise
  *  moves with them. */
 export const ESTIMATED_SECONDS = STEPS.reduce((sum, s) => sum + s.seconds, 0);
@@ -61,13 +59,12 @@ export const stepIndex = (key: IdeaStep): number => STEP_KEYS.indexOf(key);
  * The phases the segmented bar draws, in order.
  *
  * Tones are the palette the earlier app used for the same bar — blue for
- * validation, amber for the plan, emerald for launch — so the port matches
- * rather than picks new colours for old meanings.
+ * validation and amber for the plan — the palette the earlier app used for the
+ * same bar, so the port matches rather than picks new colours for old meanings.
  */
-export const GROUPS: { name: StepSpec["group"]; tone: "blue" | "amber" | "emerald"; steps: IdeaStep[] }[] = [
+export const GROUPS: { name: StepSpec["group"]; tone: "blue" | "amber"; steps: IdeaStep[] }[] = [
   { name: "Validation", tone: "blue", steps: STEPS.filter((s) => s.group === "Validation").map((s) => s.key) },
   { name: "Plan", tone: "amber", steps: STEPS.filter((s) => s.group === "Plan").map((s) => s.key) },
-  { name: "Launch", tone: "emerald", steps: STEPS.filter((s) => s.group === "Launch").map((s) => s.key) },
 ];
 
 /** The five that decide whether the idea is worth pursuing at all. */

@@ -13,7 +13,7 @@
  * rate-limit a slide into a grey box.
  *
  * It is a fixed set, not a search: two food businesses get the same photographs,
- * though within one run all eight steps get different ones.
+ * though within one run every step gets a different one.
  * When a PEXELS_API_KEY is added, searchStock() below becomes the live path and
  * this becomes the fallback for when that call fails — which is the right shape
  * anyway, because a slide should never be blocked on a third party being up.
@@ -67,8 +67,8 @@ export function sectorOf(...text: (string | null | undefined)[]): Sector {
 /**
  * A photograph for a slide.
  *
- * `variant` spreads the choice across a run so eight slides for one idea are not
- * eight copies of the same picture — it indexes into the sector's set rather
+ * `variant` spreads the choice across a run so the slides for one idea are not
+ * copies of the same picture — it indexes into the sector's set rather
  * than randomising, so the same slide shows the same image on every render.
  */
 export function stockImage(sector: Sector, variant = 0, w = 1200, h = 600): string {

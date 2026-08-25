@@ -324,3 +324,136 @@
 .row > [class*="col"] > .idv-tier {
   height: 100%;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Stage tabs
+   ───────────────────────────────────────────────────────────────────────
+   The run as a rail rather than a stack. Sticky on wide screens so the whole
+   run stays in view while the pane beside it scrolls; on narrow ones it un-
+   sticks and sits above the pane, because a sticky rail on a phone is just a
+   block of the viewport you cannot scroll past.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.idv-rail { position: sticky; top: 20px; }
+
+/* In the rail the primary action is the card's full width — a content-sized
+   pill floating in a column reads as an afterthought. */
+.idv-rail .at-btn-group { display: block; }
+.idv-rail .at-btn-group .at-btn { width: 100%; justify-content: center; }
+
+@media (max-width: 991.98px) {
+  .idv-rail { position: static; }
+}
+
+.idv-tabs__group {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--at-neutral-500);
+  margin: 14px 0 6px 12px;
+}
+
+.idv-tabs > div:first-child .idv-tabs__group { margin-top: 0; }
+
+.idv-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  color: var(--at-neutral-700);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.idv-tab:hover { background: var(--at-neutral-50); color: var(--at-neutral-900); }
+
+.idv-tab--on,
+.idv-tab--on:hover {
+  background: var(--at-neutral-900);
+  color: var(--at-neutral-0);
+}
+
+/* Not a button: the plan does not exist until the plan step has run. It stays
+   in the list so the deliverable is visible from the first minute. */
+.idv-tab--muted { cursor: default; opacity: 0.45; }
+.idv-tab--muted:hover { background: transparent; color: var(--at-neutral-700); }
+
+.idv-tab__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--at-neutral-200);
+}
+
+.idv-tab__dot.on-blue { background: var(--idv-blue); }
+.idv-tab__dot.on-amber { background: var(--idv-amber); }
+.idv-tab__dot.is-running { background: var(--idv-amber); animation: idvPulse 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .idv-tab__dot.is-running { animation: none; }
+}
+
+.idv-tab__n {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.idv-tab__name {
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Business plan viewer
+   ───────────────────────────────────────────────────────────────────────
+   Full screen, outside the dashboard shell. The deck is a document; it gets
+   the width. The bar is the only Phoxta chrome on the page.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.idv-plan {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--at-neutral-50);
+  z-index: 5;
+}
+
+.idv-plan__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 24px;
+  background: var(--at-neutral-0);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.09);
+}
+
+.idv-plan__stage { flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+/* The deck brings its own background and scrolling, so the frame is a pane,
+   not a card — no border, no radius, no second scrollbar. */
+.idv-plan__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
