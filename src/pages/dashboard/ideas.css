@@ -1,0 +1,313 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Idea Validator  (.idv-*)
+   ───────────────────────────────────────────────────────────────────────
+   The earlier Next.js Phoxta's Ideas UI, reproduced. That app was Tailwind 4
+   and shadcn/ui; neither exists here, so its classes would render as nothing.
+   These rules restate the same design in real CSS: the amber-tinted header
+   tile, the four tinted stat pills, the segmented phase bar with the current
+   step pulsing, and the status badge in small uppercase.
+
+   Colours are the Tailwind palette values the original used, written out —
+   blue-500 #3b82f6, purple-500 #a855f7, amber-500 #f59e0b, emerald-500 #10b981
+   — so the port matches rather than approximates. Tints are the same /10
+   backgrounds and /20 borders, expressed as rgba.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.idv {
+  --idv-blue: #3b82f6;
+  --idv-purple: #a855f7;
+  --idv-amber: #f59e0b;
+  --idv-emerald: #10b981;
+  --idv-line: rgba(15, 23, 42, 0.09);
+  --idv-muted: var(--at-neutral-500, #6b7280);
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.idv-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--idv-line);
+  margin-bottom: 16px;
+}
+
+.idv-head__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--idv-amber);
+  flex: 0 0 38px;
+}
+
+.idv-head__title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--at-neutral-900);
+}
+
+.idv-head__sub {
+  font-size: 12px;
+  color: var(--idv-muted);
+  margin: 0;
+}
+
+.idv-head__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Stat pills ───────────────────────────────────────────────────────── */
+.idv-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.idv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.idv-pill svg { width: 14px; height: 14px; flex: none; }
+
+.idv-pill--blue    { background: rgba(59, 130, 246, 0.08); border-color: rgba(59, 130, 246, 0.25); color: #1d4ed8; }
+.idv-pill--amber   { background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.25); color: #b45309; }
+.idv-pill--emerald { background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.25); color: #047857; }
+.idv-pill--purple  { background: rgba(168, 85, 247, 0.08); border-color: rgba(168, 85, 247, 0.25); color: #7e22ce; }
+
+/* ── Filter tabs ──────────────────────────────────────────────────────── */
+.idv-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.idv-tab {
+  border: 1px solid var(--idv-line);
+  background: transparent;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--idv-muted);
+  cursor: pointer;
+  text-transform: capitalize;
+}
+
+.idv-tab:hover { background: var(--at-neutral-50); }
+.idv-tab[aria-pressed="true"] { background: var(--at-neutral-900); border-color: var(--at-neutral-900); color: #fff; }
+
+/* ── Idea card ────────────────────────────────────────────────────────── */
+.idv-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--at-neutral-0, #fff);
+  border: 1px solid var(--idv-line);
+  border-radius: 14px;
+  padding: 20px;
+  cursor: pointer;
+  color: inherit;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.idv-card:hover {
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
+.idv-card__top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+
+/* Small uppercase status badge, as in the original. */
+.idv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.idv-badge svg { width: 13px; height: 13px; }
+
+.idv-badge--active    { background: rgba(59, 130, 246, 0.1); color: #2563eb; border-color: rgba(59, 130, 246, 0.2); }
+.idv-badge--completed { background: rgba(16, 185, 129, 0.1); color: #059669; border-color: rgba(16, 185, 129, 0.2); }
+.idv-badge--archived  { background: rgba(113, 113, 122, 0.1); color: #71717a; border-color: rgba(113, 113, 122, 0.2); }
+
+.idv-card__date { font-size: 11px; color: var(--idv-muted); }
+
+.idv-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  color: var(--at-neutral-900);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.idv-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--idv-muted);
+  margin-bottom: 12px;
+}
+
+.idv-card__meta svg { width: 12px; height: 12px; flex: none; }
+
+/* ── Segmented phase bar ──────────────────────────────────────────────── */
+.idv-progress__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--idv-muted);
+  margin-bottom: 6px;
+}
+
+.idv-progress__row b { font-weight: 500; color: var(--at-neutral-900); }
+
+/* One segment per step, grouped by phase — the original's signature element. */
+.idv-bar { display: flex; gap: 2px; margin-bottom: 8px; }
+.idv-bar__group { display: flex; gap: 1px; flex: 1 1 0; }
+
+.idv-seg {
+  height: 6px;
+  flex: 1 1 0;
+  border-radius: 999px;
+  background: var(--at-neutral-200, #e5e7eb);
+}
+
+.idv-seg--blue    { background: var(--idv-blue); }
+.idv-seg--purple  { background: var(--idv-purple); }
+.idv-seg--amber   { background: var(--idv-amber); }
+.idv-seg--emerald { background: var(--idv-emerald); }
+
+/* The step being generated right now. */
+.idv-seg--current { opacity: 0.4; animation: idvPulse 1.6s ease-in-out infinite; }
+
+@keyframes idvPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idv-seg--current { animation: none; }
+}
+
+/* ── Phase legend ─────────────────────────────────────────────────────── */
+.idv-legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.idv-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--idv-muted);
+}
+
+.idv-legend i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(113, 113, 122, 0.3);
+  display: inline-block;
+}
+
+.idv-legend i.on-blue    { background: var(--idv-blue); }
+.idv-legend i.on-purple  { background: var(--idv-purple); }
+.idv-legend i.on-amber   { background: var(--idv-amber); }
+.idv-legend i.on-emerald { background: var(--idv-emerald); }
+
+/* ── Card actions ─────────────────────────────────────────────────────── */
+.idv-card__actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+
+.idv-iconbtn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--idv-muted);
+  cursor: pointer;
+}
+
+.idv-iconbtn:hover { background: var(--at-neutral-100); color: var(--at-neutral-900); }
+.idv-iconbtn--danger:hover { background: rgba(220, 38, 38, 0.08); color: #dc2626; }
+
+/* ── Empty state ──────────────────────────────────────────────────────── */
+.idv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.idv-empty__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--idv-amber);
+  margin-bottom: 16px;
+}
+
+.idv-empty h3 { font-size: 18px; font-weight: 600; margin: 0 0 4px; color: var(--at-neutral-900); }
+.idv-empty p { font-size: 13px; color: var(--idv-muted); max-width: 24rem; margin: 0 0 24px; }
+
+/* ── Step rows on the detail page ─────────────────────────────────────── */
+.idv-step {
+  border: 1px solid var(--idv-line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--at-neutral-0, #fff);
+}
+
+.idv-step--done { border-color: rgba(16, 185, 129, 0.28); background: rgba(16, 185, 129, 0.03); }
+.idv-step--running { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.04); }
+
+.idv-step__name { font-size: 14px; font-weight: 600; color: var(--at-neutral-900); display: block; }
+.idv-step__desc { font-size: 12px; color: var(--idv-muted); display: block; }
+
+.idv-out {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--idv-line);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--at-neutral-700);
+}
+
+.idv-out ul { margin: 0; padding-left: 18px; }
+.idv-out li { margin-bottom: 4px; }
+.idv-out .k { color: var(--idv-muted); text-transform: capitalize; }

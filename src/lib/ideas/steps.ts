@@ -57,6 +57,19 @@ export const getStep = (key: IdeaStep): StepSpec | undefined => STEPS.find((s) =
 
 export const stepIndex = (key: IdeaStep): number => STEP_KEYS.indexOf(key);
 
+/**
+ * The phases the segmented bar draws, in order.
+ *
+ * Tones are the palette the earlier app used for the same bar — blue for
+ * validation, amber for the plan, emerald for launch — so the port matches
+ * rather than picks new colours for old meanings.
+ */
+export const GROUPS: { name: StepSpec["group"]; tone: "blue" | "amber" | "emerald"; steps: IdeaStep[] }[] = [
+  { name: "Validation", tone: "blue", steps: STEPS.filter((s) => s.group === "Validation").map((s) => s.key) },
+  { name: "Plan", tone: "amber", steps: STEPS.filter((s) => s.group === "Plan").map((s) => s.key) },
+  { name: "Launch", tone: "emerald", steps: STEPS.filter((s) => s.group === "Launch").map((s) => s.key) },
+];
+
 /** The five that decide whether the idea is worth pursuing at all. */
 export const VALIDATION_STEPS: IdeaStep[] = STEPS.filter((s) => s.group === "Validation").map((s) => s.key);
 
