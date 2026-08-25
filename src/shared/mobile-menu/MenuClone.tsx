@@ -54,17 +54,21 @@ export default function MenuClone() {
       });
     };
 
-    const setupClone = (clone: HTMLElement, opts?: { flattenLinkSwap?: boolean }) => {
-      if (opts?.flattenLinkSwap) {
-        // Hamburger offcanvas (.at-offcanvas-2-area) shows both .text-1 and .text-2 stacked
-        // because the hover-swap CSS doesn't apply here. Flatten each <span class="at-link-swap">
-        // to plain text (keep `.text-1` content only). Desktop main menu untouched.
-        clone.querySelectorAll<HTMLElement>(".at-link-swap").forEach((swap) => {
-          const text = swap.querySelector<HTMLElement>(".text-1")?.textContent ?? swap.textContent ?? "";
-          const replacement = document.createTextNode(text);
-          swap.replaceWith(replacement);
-        });
-      }
+    const setupClone = (clone: HTMLElement) => {
+      // Every menu label ships twice — .text-1 and .text-2 — because the desktop
+      // menu swaps between them on hover. That effect needs the positioning the
+      // desktop menu's CSS provides; inside an offcanvas both spans compute to
+      // display:inline and BOTH render, so every item read "HomeHome".
+      //
+      // This used to be applied only to .at-offcanvas-2-area, which is why the
+      // hamburger panel looked right and the other one doubled. It is a property
+      // of being in an offcanvas at all, not of which offcanvas, so flatten each
+      // swap to its .text-1 text everywhere. The desktop menu is untouched — this
+      // only ever runs on the clone.
+      clone.querySelectorAll<HTMLElement>(".at-link-swap").forEach((swap) => {
+        const text = swap.querySelector<HTMLElement>(".text-1")?.textContent ?? swap.textContent ?? "";
+        swap.replaceWith(document.createTextNode(text));
+      });
       const submenus = clone.querySelectorAll(".at-submenu");
       submenus.forEach((sub) => {
         const parentLi = sub.parentElement;
@@ -122,8 +126,7 @@ export default function MenuClone() {
       const clone = sourceUl.cloneNode(true) as HTMLElement;
       targetNav.innerHTML = "";
       targetNav.appendChild(clone);
-      const insideOffcanvas2 = !!(targetNav as HTMLElement).closest(".at-offcanvas-2-area");
-      const cleanup = setupClone(clone, { flattenLinkSwap: insideOffcanvas2 });
+      const cleanup = setupClone(clone);
       if (cleanup) cleanups.push(cleanup);
     });
 
