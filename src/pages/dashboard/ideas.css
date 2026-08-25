@@ -94,6 +94,27 @@
 .idv-chip--amber   { background: rgba(245, 158, 11, 0.1);  color: #b45309; border-color: rgba(245, 158, 11, 0.22); }
 .idv-chip--emerald { background: rgba(16, 185, 129, 0.1);  color: #047857; border-color: rgba(16, 185, 129, 0.22); }
 .idv-chip--grey    { background: rgba(113, 113, 122, 0.1); color: #52525b; border-color: rgba(113, 113, 122, 0.22); }
+.idv-chip--purple  { background: rgba(168, 85, 247, 0.1);  color: #7e22ce; border-color: rgba(168, 85, 247, 0.22); }
+
+/* The stat pills read as sentences, not labels, so they keep normal casing. */
+.idv-chip--stat { text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 500; }
+
+/* Ghost icon button on a card — main.css has no equivalent. */
+.idv-iconbtn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--at-neutral-500);
+  cursor: pointer;
+}
+
+.idv-iconbtn:hover { background: var(--at-neutral-100); color: var(--at-neutral-900); }
+.idv-iconbtn--danger:hover { background: rgba(220, 38, 38, 0.08); color: #dc2626; }
 
 /* ── Step row ─────────────────────────────────────────────────────────── */
 /* A plain surface; padding, type and colour all come from main.css utilities
@@ -121,4 +142,185 @@
 .idv-card:hover {
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
   border-color: rgba(15, 23, 42, 0.16);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Step slides
+   ───────────────────────────────────────────────────────────────────────
+   Each step renders as a designed slide rather than a key/value dump: a
+   photographic band, then infographics shaped to that step's own data —
+   severity-ranked pain points, a TAM/SAM/SOM funnel, pricing tiers, a SWOT
+   quadrant, a scores panel, a milestone timeline.
+
+   The chrome lives here; type, colour and spacing still come from main.css
+   utilities on the elements themselves.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.idv-slide {
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--at-neutral-0, #fff);
+}
+
+/* Photographic band. The gradient is what keeps white type legible over an
+   image nobody has vetted for contrast. */
+.idv-slide__band {
+  position: relative;
+  height: 190px;
+  background-size: cover;
+  background-position: center;
+}
+
+.idv-slide__band::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 14, 30, 0.15) 0%, rgba(10, 14, 30, 0.82) 100%);
+}
+
+.idv-slide__bandtext {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 22px 26px;
+  z-index: 1;
+  color: #fff;
+}
+
+.idv-slide__body { padding: 26px; }
+
+/* ── Stat tiles ───────────────────────────────────────────────────────── */
+.idv-stat {
+  border-radius: 14px;
+  padding: 18px;
+  background: var(--at-neutral-50);
+}
+
+.idv-stat__n {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--at-neutral-900);
+  display: block;
+}
+
+.idv-stat__k {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--at-neutral-500);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.idv-stat--blue    { background: rgba(59, 130, 246, 0.08); }
+.idv-stat--amber   { background: rgba(245, 158, 11, 0.08); }
+.idv-stat--emerald { background: rgba(16, 185, 129, 0.08); }
+.idv-stat--purple  { background: rgba(168, 85, 247, 0.08); }
+
+/* ── Market funnel: TAM wider than SAM wider than SOM ─────────────────── */
+.idv-funnel { display: flex; flex-direction: column; gap: 10px; }
+
+.idv-funnel__row {
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 0;
+  color: #fff;
+  margin-inline: auto;
+}
+
+.idv-funnel__row:nth-child(1) { width: 100%; background: #1e3a8a; }
+.idv-funnel__row:nth-child(2) { width: 78%;  background: #2563eb; }
+.idv-funnel__row:nth-child(3) { width: 56%;  background: #60a5fa; color: #0b1b3a; }
+
+/* ── Severity / strength meter ────────────────────────────────────────── */
+.idv-meter { display: inline-flex; gap: 3px; vertical-align: middle; }
+.idv-meter i { width: 16px; height: 5px; border-radius: 999px; background: var(--at-neutral-200); display: inline-block; }
+.idv-meter i.on-low { background: #10b981; }
+.idv-meter i.on-med { background: #f59e0b; }
+.idv-meter i.on-high { background: #dc2626; }
+
+/* Severity and strength both run 1-3, but they mean opposite things: three bars
+   of pain is bad news and three bars of demand is good. Same widget, inverted
+   palette, so a founder reads the colour rather than counting the bars. */
+.idv-meter i.on-good { background: #10b981; }
+.idv-meter i.on-weak { background: #dc2626; }
+
+/* ── Listed cards ─────────────────────────────────────────────────────── */
+.idv-tile {
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--at-neutral-0);
+}
+
+.idv-tile--accent { border-left: 3px solid var(--idv-blue); }
+
+/* ── SWOT quadrant ────────────────────────────────────────────────────── */
+.idv-swot { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.idv-swot > div { border-radius: 12px; padding: 16px; }
+.idv-swot > div:nth-child(1) { background: rgba(16, 185, 129, 0.08); }
+.idv-swot > div:nth-child(2) { background: rgba(220, 38, 38, 0.07); }
+.idv-swot > div:nth-child(3) { background: rgba(59, 130, 246, 0.08); }
+.idv-swot > div:nth-child(4) { background: rgba(245, 158, 11, 0.08); }
+
+@media (max-width: 575.98px) { .idv-swot { grid-template-columns: 1fr; } }
+
+/* ── Score bars ───────────────────────────────────────────────────────── */
+.idv-score { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.idv-score__k { flex: 0 0 148px; font-size: 12.5px; color: var(--at-neutral-500); }
+.idv-score__track { flex: 1 1 auto; height: 8px; border-radius: 999px; background: var(--at-neutral-200); overflow: hidden; }
+.idv-score__fill { display: block; height: 100%; border-radius: 999px; background: var(--idv-blue); }
+.idv-score__n { flex: 0 0 34px; text-align: right; font-size: 12.5px; font-weight: 600; color: var(--at-neutral-900); }
+
+/* ── Pricing tiers ────────────────────────────────────────────────────── */
+.idv-tier { border: 1px solid rgba(15, 23, 42, 0.09); border-radius: 14px; padding: 20px; }
+.idv-tier--mid { border-color: var(--idv-blue); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.12); }
+.idv-tier__price { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--at-neutral-900); }
+
+/* ── Milestone timeline ───────────────────────────────────────────────── */
+.idv-timeline { position: relative; padding-left: 26px; }
+.idv-timeline::before {
+  content: "";
+  position: absolute;
+  left: 7px; top: 6px; bottom: 6px;
+  width: 2px;
+  background: var(--at-neutral-200);
+}
+.idv-timeline__item { position: relative; padding-bottom: 18px; }
+.idv-timeline__item::before {
+  content: "";
+  position: absolute;
+  left: -23px; top: 5px;
+  width: 10px; height: 10px;
+  border-radius: 999px;
+  background: var(--idv-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+/* ── Palette swatches ─────────────────────────────────────────────────── */
+.idv-swatch { width: 46px; height: 46px; border-radius: 10px; border: 1px solid rgba(15, 23, 42, 0.12); }
+
+/* Opened inside a step row, the slide IS the card's lower half — it bleeds to
+   the row's edges rather than sitting inside it as a second bordered box. */
+.idv-step .idv-slide {
+  margin: 20px -1.5rem -1.5rem;
+  border: 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.09);
+  border-radius: 0 0 var(--bs-border-radius-xxl, 2rem) var(--bs-border-radius-xxl, 2rem);
+  background: transparent;
+}
+
+.idv-step .idv-slide__band { border-radius: 0; }
+
+/* Equal-height cards, but only inside a grid column.
+   A percentage height resolves against a stretched flex item, which a Bootstrap
+   column is — outside one it has nothing to resolve against and the card grows
+   to fill the viewport. So the rule is scoped to where it means something. */
+.row > [class*="col"] > .idv-stat,
+.row > [class*="col"] > .idv-tile,
+.row > [class*="col"] > .idv-tier {
+  height: 100%;
 }

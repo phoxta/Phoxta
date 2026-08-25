@@ -9,6 +9,7 @@ import {
   ESTIMATED_SECONDS, GROUPS, STEPS, TOTAL_STEPS, getCompletedSteps, humanDuration,
   nextStep, progressPercent, remainingSeconds, type IdeaStep,
 } from "@/lib/ideas/steps";
+import StepSlide from "./ideas/StepSlide";
 import "./ideas.css";
 
 /**
@@ -36,30 +37,6 @@ const ARROW = (
 const I_BACK = <svg width="15" height="15" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>;
 const I_TICK = <svg viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m8 12.5 2.5 2.5L16 9.5" /></svg>;
 const I_CLOCK = <svg viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
-
-/** Renders whatever a step produced, without a schema for each one. */
-function Value({ value }: { value: unknown }) {
-  if (value === null || value === undefined || value === "") return null;
-
-  if (Array.isArray(value)) {
-    return <ul>{value.map((v, i) => <li key={i}><Value value={v} /></li>)}</ul>;
-  }
-
-  if (typeof value === "object") {
-    return (
-      <div className="d-flex flex-column gap-1">
-        {Object.entries(value as Record<string, unknown>).map(([k, v]) => (
-          <div key={k}>
-            <span className="k">{k.replace(/([A-Z])/g, " $1").trim()}: </span>
-            <Value value={v} />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return <>{String(value)}</>;
-}
 
 export default function IdeaDetailPage() {
   const { id = "" } = useParams();
@@ -132,10 +109,12 @@ export default function IdeaDetailPage() {
         <PageMeta title="Phoxta - Idea" />
         <div className="bg-neutral-0 rounded-5 p-5 idv-card" style={{ cursor: "default" }}>
           <p className="fz-font-lg neutral-700 mb-30">{error ?? "That idea was not found."}</p>
-          <Link to="/dashboard/ideas" className="at-btn text-white rounded-0">
-            <span><span className="text-1">BACK TO IDEAS</span><span className="text-2">BACK TO IDEAS</span></span>
-            <i>{ARROW}{ARROW}</i>
-          </Link>
+          <div className="at-btn-group">
+            <Link to="/dashboard/ideas" className="at-btn z-index-1">
+              <span><span className="text-1">BACK TO IDEAS</span><span className="text-2">BACK TO IDEAS</span></span>
+              <i>{ARROW}{ARROW}</i>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -205,14 +184,16 @@ export default function IdeaDetailPage() {
         <div className="d-flex align-items-center gap-3 flex-wrap">
           {upNext ? (
             <>
-              <button type="button" className="at-btn text-white rounded-0" disabled={running !== null}
-                      onClick={() => void runAll()}>
-                <span>
-                  <span className="text-1">{running ? "RUNNING…" : "RUN THE VALIDATION"}</span>
-                  <span className="text-2">{running ? "RUNNING…" : "RUN THE VALIDATION"}</span>
-                </span>
-                <i>{ARROW}{ARROW}</i>
-              </button>
+              <div className="at-btn-group">
+                <button type="button" className="at-btn z-index-1" disabled={running !== null}
+                        onClick={() => void runAll()}>
+                  <span>
+                    <span className="text-1">{running ? "RUNNING…" : "RUN THE VALIDATION"}</span>
+                    <span className="text-2">{running ? "RUNNING…" : "RUN THE VALIDATION"}</span>
+                  </span>
+                  <i>{ARROW}{ARROW}</i>
+                </button>
+              </div>
               <span className="fz-font-md neutral-500">
                 {done.length === 0 ? humanDuration(ESTIMATED_SECONDS) : `${humanDuration(remainingSeconds(done))} left`}
               </span>
@@ -268,8 +249,8 @@ export default function IdeaDetailPage() {
               </div>
 
               {open === spec.key && output != null && (
-                <div className="idv-out fz-font-md neutral-700 mt-20 pt-20 border-top">
-                  <Value value={output} />
+                <div>
+                  <StepSlide step={spec.key} output={output} seed={`${idea.title} ${idea.idea_seed ?? ""}`} />
                 </div>
               )}
             </div>
@@ -309,7 +290,8 @@ export default function IdeaDetailPage() {
                   <option key={o.organization.id} value={o.organization.id}>{o.organization.name}</option>
                 ))}
               </select>
-              <button type="button" className="at-btn text-white rounded-0"
+              <div className="at-btn-group">
+              <button type="button" className="at-btn z-index-1"
                       disabled={!siteOrg || building}
                       onClick={async () => {
                         setBuilding(true);
@@ -325,6 +307,7 @@ export default function IdeaDetailPage() {
                 </span>
                 <i>{ARROW}{ARROW}</i>
               </button>
+              </div>
             </div>
           )}
         </div>
