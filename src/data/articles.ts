@@ -816,11 +816,21 @@ export const ARTICLES: Article[] = [
     },
 ];
 
+// The per-solution editorial sets live in sibling files (they are surfaced on
+// /marketing, /ai-tech and /brand-design as well as here). They import only
+// TYPES from this file, so the value imports below are not circular.
+import { MARKETING_ARTICLES } from "@/data/articles-marketing";
+import { AI_ARTICLES } from "@/data/articles-ai";
+import { BRAND_ARTICLES } from "@/data/articles-brand";
+
+/** Every article, all sets. */
+export const ALL_ARTICLES: Article[] = [...ARTICLES, ...MARKETING_ARTICLES, ...AI_ARTICLES, ...BRAND_ARTICLES];
+
 /** Newest first — the order used by the index and the homepage. */
-export const ARTICLES_BY_DATE: Article[] = [...ARTICLES].sort((a, b) => b.iso.localeCompare(a.iso));
+export const ARTICLES_BY_DATE: Article[] = [...ALL_ARTICLES].sort((a, b) => b.iso.localeCompare(a.iso));
 
 export function getArticle(slug: string | undefined): Article | undefined {
-    return ARTICLES.find((a) => a.slug === slug);
+    return ALL_ARTICLES.find((a) => a.slug === slug);
 }
 
 /** Previous/next in reading order, for the article footer links. */

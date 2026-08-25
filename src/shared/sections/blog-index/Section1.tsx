@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 import ArticleCard1 from "@/shared/cards/ArticleCard1";
-import { ARTICLES_BY_DATE, CATEGORY_LABELS, type ArticleCategory } from "@/data/articles";
+import { CATEGORY_LABELS, type ArticleCategory } from "@/data/articles";
+import { useLiveArticles } from "@/lib/hooks/useLiveArticles";
 
 // blog-index section 1 — the actual blog listing: intro, category filter and the
 // full article grid. Individual posts live at /blog/:slug (blog-article group).
@@ -18,20 +19,25 @@ const ARROW_SVG = (
 
 type Filter = "all" | ArticleCategory;
 
-/** Only offer filters that actually have posts behind them. */
-const FILTERS: Filter[] = [
-    "all",
-    ...(Object.keys(CATEGORY_LABELS) as ArticleCategory[]).filter((c) =>
-        ARTICLES_BY_DATE.some((a) => a.category === c),
-    ),
-];
-
 export default function Section1() {
     const [filter, setFilter] = useState<Filter>("all");
+    // Built-in editorial plus everything published from the platform console.
+    const articles = useLiveArticles();
+
+    /** Only offer filters that actually have posts behind them. */
+    const filters = useMemo<Filter[]>(
+        () => [
+            "all",
+            ...(Object.keys(CATEGORY_LABELS) as ArticleCategory[]).filter((c) =>
+                articles.some((a) => a.category === c),
+            ),
+        ],
+        [articles],
+    );
 
     const posts = useMemo(
-        () => (filter === "all" ? ARTICLES_BY_DATE : ARTICLES_BY_DATE.filter((a) => a.category === filter)),
-        [filter],
+        () => (filter === "all" ? articles : articles.filter((a) => a.category === filter)),
+        [filter, articles],
     );
 
     const [lead, ...rest] = posts;
@@ -66,7 +72,7 @@ export default function Section1() {
 
                 {/* Category filter */}
                 <div className="d-flex flex-wrap align-items-center gap-2 mb-50">
-                    {FILTERS.map((f) => (
+                    {filters.map((f) => (
                         <button
                             key={f}
                             type="button"

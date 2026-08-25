@@ -183,6 +183,11 @@ verify_jwt = true
 [functions.platform-users]
 verify_jwt = true
 
+# Blog authoring for the platform console (platform_admins-gated inside);
+# the public blog reads the table directly under RLS, not this function.
+[functions.platform-posts]
+verify_jwt = true
+
 [functions.domain-checkout]
 verify_jwt = true
 

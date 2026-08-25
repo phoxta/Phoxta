@@ -15,6 +15,12 @@ import {
   type PlatformLead, type PlatformBlueprint, type PlatformMargin, type PlatformAuditRow,
   type PaymentTest, type PlatformUser,
 } from "@/lib/db/platform";
+import {
+  listPlatformPosts, savePlatformPost, deletePlatformPost, shareLinks, postUrl,
+  type PlatformPost, type PostDraft,
+} from "@/lib/db/platformPosts";
+import { blocksToText, textToBlocks, estimateReadMinutes } from "@/lib/articleText";
+import { CATEGORY_LABELS, type ArticleCategory } from "@/data/articles";
 
 /**
  * The Platform module — running Phoxta itself.
@@ -38,7 +44,7 @@ const money = (cents: number, ccy = "GBP") => {
 const num = (n: number) => new Intl.NumberFormat().format(n);
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
-const SECTIONS = ["Overview", "Customers", "Users", "Blueprints", "Leads", "Margin", "Payments", "Access"] as const;
+const SECTIONS = ["Overview", "Customers", "Users", "Blog", "Blueprints", "Leads", "Margin", "Payments", "Access"] as const;
 type Section = (typeof SECTIONS)[number];
 
 /** Page-local styles on top of the shared .hrx kit. */
@@ -66,6 +72,11 @@ const CSS = `
 .opx-copy:hover { background: #fff; color: var(--hrx-ink); border-color: #fff; }
 .opx-linkbtn { border: 0; background: transparent; padding: 0; color: var(--hrx-blue); font-weight: 600; cursor: pointer; }
 .opx-linkbtn:hover { color: var(--hrx-blue-deep); text-decoration: underline; }
+/* Blog composer */
+.opx-body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.7; min-height: 340px; }
+.opx-help { font-size: 12px; color: var(--hrx-muted); margin: 8px 0 0; }
+.opx-help code { background: var(--hrx-soft); border-radius: 4px; padding: 1px 5px; }
+.opx-sharebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 `;
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "dark" | "blue" | "soft" }) {
@@ -171,6 +182,97 @@ export default function OpsPlatformPage() {
       await act(async () => setUserBanned(u.id, true), `${u.email} is banned.`);
     }
     loadUsers(usersPage, usersQ);
+  }
+
+  // ── Blog tab state — the composer edits plain text, saved as blocks. ─────
+  const [posts, setPosts] = useState<PlatformPost[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [draft, setDraft] = useState<PostDraft | null>(null);
+  const [draftText, setDraftText] = useState("");
+  const [share, setShare] = useState<{ slug: string; title: string } | null>(null);
+
+  const loadPosts = useCallback(async () => {
+    setPostsLoading(true);
+    const r = await listPlatformPosts();
+    setPostsLoading(false);
+    if (r.error) { toastError(r.error); return; }
+    setPosts(r.posts);
+  }, []);
+
+  useEffect(() => {
+    if (section === "Blog") loadPosts();
+  }, [section, loadPosts]);
+
+  function openPost(p?: PlatformPost) {
+    setShare(null);
+    if (p) {
+      setDraft({
+        id: p.id, slug: p.slug, title: p.title, excerpt: p.excerpt, category: p.category,
+        img: p.img, hero: p.hero, author: p.author, read_minutes: p.read_minutes,
+        body: p.body, status: p.status,
+      });
+      setDraftText(blocksToText(p.body));
+    } else {
+      setDraft({
+        slug: "", title: "", excerpt: "", category: "playbooks",
+        img: "/assets/imgs/pages/img-72.webp", hero: "/assets/imgs/pages/img-168.webp",
+        author: "Phoxta", read_minutes: 6, body: [], status: "draft",
+      });
+      setDraftText("");
+    }
+  }
+
+  /** Save the composer. `publish` overrides the status; undefined keeps it. */
+  async function onSavePost(publish?: boolean) {
+    if (!draft || busy) return;
+    const body = textToBlocks(draftText);
+    if (!draft.title.trim()) { toastError("The post needs a title."); return; }
+    if (body.length === 0) { toastError("Write something first — the post has no body."); return; }
+    setBusy(true);
+    const r = await savePlatformPost({
+      ...draft,
+      body,
+      read_minutes: estimateReadMinutes(body),
+      status: publish === undefined ? draft.status : publish ? "published" : "draft",
+    });
+    setBusy(false);
+    if (r.error || !r.post) { toastError(r.error ?? "Could not save the post."); return; }
+    toast(r.post.status === "published" ? `Published — live at ${postUrl(r.post.slug)}` : "Draft saved.");
+    setDraft(null);
+    setDraftText("");
+    if (r.post.status === "published") setShare({ slug: r.post.slug, title: r.post.title });
+    loadPosts();
+  }
+
+  async function onDeletePost(p: PlatformPost) {
+    if (busy) return;
+    if (!confirmDanger(`Delete "${p.title}"? ${p.status === "published" ? "It is live on the blog right now. " : ""}This cannot be undone.`)) return;
+    setBusy(true);
+    const r = await deletePlatformPost(p.id);
+    setBusy(false);
+    if (!r.ok) { toastError(r.error ?? "Could not delete the post."); return; }
+    toast("Post deleted.");
+    loadPosts();
+  }
+
+  async function onTogglePublish(p: PlatformPost) {
+    if (busy) return;
+    setBusy(true);
+    const r = await savePlatformPost({
+      id: p.id, slug: p.slug, title: p.title, excerpt: p.excerpt, category: p.category,
+      img: p.img, hero: p.hero, author: p.author, read_minutes: p.read_minutes, body: p.body,
+      status: p.status === "published" ? "draft" : "published",
+    });
+    setBusy(false);
+    if (r.error || !r.post) { toastError(r.error ?? "That didn't work."); return; }
+    if (r.post.status === "published") {
+      toast(`Published — live at ${postUrl(r.post.slug)}`);
+      setShare({ slug: r.post.slug, title: r.post.title });
+    } else {
+      toast("Unpublished — back to draft.");
+      setShare(null);
+    }
+    loadPosts();
   }
 
   const reload = useCallback(async () => {
@@ -503,6 +605,163 @@ export default function OpsPlatformPage() {
             </p>
           </Card>
         </>
+      )}
+
+      {/* ── Blog — write, publish and share posts on phoxta.com/blog ─────── */}
+      {section === "Blog" && !draft && (
+        <>
+          {share && (
+            <div className="opx-item">
+              <div className="opx-sharebar">
+                <strong style={{ fontSize: 14 }}>Share “{share.title}”:</strong>
+                {shareLinks(share.slug, share.title).map((s) => (
+                  <a key={s.name} className="hrx-seeall" href={s.href} target="_blank" rel="noreferrer">{s.name}</a>
+                ))}
+                <button
+                  type="button" className="hrx-seeall"
+                  onClick={() => { navigator.clipboard?.writeText(postUrl(share.slug)); toast("Link copied."); }}
+                >
+                  Copy link
+                </button>
+                <a className="hrx-seeall" href={postUrl(share.slug)} target="_blank" rel="noreferrer">View post ↗</a>
+                <button type="button" className="opx-secret-x" style={{ marginLeft: "auto", color: "var(--hrx-muted)" }} aria-label="Dismiss" onClick={() => setShare(null)}>✕</button>
+              </div>
+            </div>
+          )}
+
+          <Card
+            title="Blog posts"
+            right={<button type="button" className="hrx-pill primary opx-btn" onClick={() => openPost()}>Write a post</button>}
+          >
+            <p className="opx-note">
+              Posts publish straight to <a href="https://www.phoxta.com/blog" target="_blank" rel="noreferrer">phoxta.com/blog</a> with
+              the same article template as the built-in editorial set (which ships in code and always appears there too).
+            </p>
+            {postsLoading ? (
+              <p className="opx-note mb-0" role="status">Loading posts…</p>
+            ) : posts.length === 0 ? (
+              <Empty title="Nothing written yet">Your first post is one “Write a post” away.</Empty>
+            ) : (
+              <div className="hrx-tablewrap">
+                <table className="hrx-table">
+                  <thead>
+                    <tr><th>Post</th><th>Category</th><th>Status</th><th>Published</th><th /></tr>
+                  </thead>
+                  <tbody>
+                    {posts.map((p) => (
+                      <tr key={p.id}>
+                        <td>
+                          <div style={{ minWidth: 0 }}>
+                            <div className="fw-semibold text-truncate" style={{ maxWidth: 320 }}>{p.title}</div>
+                            <div className="text-truncate" style={{ color: "var(--hrx-muted)", fontSize: 13 }}>/blog/{p.slug}</div>
+                          </div>
+                        </td>
+                        <td><Chip tone="line">{CATEGORY_LABELS[p.category as ArticleCategory] ?? p.category}</Chip></td>
+                        <td>{p.status === "published" ? <Chip tone="ok">Published</Chip> : <Chip tone="warn">Draft</Chip>}</td>
+                        <td style={{ color: "var(--hrx-muted)" }}>{p.published_at ? day(p.published_at) : "—"}</td>
+                        <td className="text-end">
+                          <div className="d-flex gap-2 justify-content-end flex-wrap">
+                            <button type="button" className="hrx-seeall opx-btn" disabled={busy} onClick={() => openPost(p)}>Edit</button>
+                            <button type="button" className={`hrx-seeall opx-btn${p.status === "published" ? "" : " opx-solid"}`} disabled={busy} onClick={() => onTogglePublish(p)}>
+                              {p.status === "published" ? "Unpublish" : "Publish"}
+                            </button>
+                            {p.status === "published" && (
+                              <button type="button" className="hrx-seeall opx-btn" onClick={() => setShare({ slug: p.slug, title: p.title })}>Share</button>
+                            )}
+                            <button type="button" className="hrx-seeall opx-btn opx-danger" disabled={busy} onClick={() => onDeletePost(p)}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+
+      {section === "Blog" && draft && (
+        <Card
+          title={draft.id ? "Edit post" : "Write a post"}
+          right={<button type="button" className="hrx-seeall" onClick={() => { setDraft(null); setDraftText(""); }}>← All posts</button>}
+        >
+          <div className="d-flex flex-column gap-3">
+            <div className="row g-3 opx-grid">
+              <div className="col-md-8">
+                <label className="hrx-field">
+                  <span>Title</span>
+                  <input className="form-control" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="How to…" />
+                </label>
+              </div>
+              <div className="col-md-4">
+                <label className="hrx-field">
+                  <span>Category</span>
+                  <select className="form-select" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value as ArticleCategory })}>
+                    {(Object.keys(CATEGORY_LABELS) as ArticleCategory[]).map((c) => (
+                      <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="col-md-8">
+                <label className="hrx-field">
+                  <span>Link (leave empty to make one from the title)</span>
+                  <input className="form-control" value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} placeholder="auto" />
+                </label>
+              </div>
+              <div className="col-md-4">
+                <label className="hrx-field">
+                  <span>Author</span>
+                  <input className="form-control" value={draft.author} onChange={(e) => setDraft({ ...draft, author: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-12">
+                <label className="hrx-field">
+                  <span>Excerpt — shows on the blog index and in link previews</span>
+                  <textarea className="form-control" rows={2} value={draft.excerpt} onChange={(e) => setDraft({ ...draft, excerpt: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-md-6">
+                <label className="hrx-field">
+                  <span>Card image path</span>
+                  <input className="form-control" value={draft.img} onChange={(e) => setDraft({ ...draft, img: e.target.value })} />
+                </label>
+              </div>
+              <div className="col-md-6">
+                <label className="hrx-field">
+                  <span>Hero image path (wide, top of the article)</span>
+                  <input className="form-control" value={draft.hero} onChange={(e) => setDraft({ ...draft, hero: e.target.value })} />
+                </label>
+              </div>
+            </div>
+
+            <label className="hrx-field mb-0">
+              <span>Body</span>
+              <textarea
+                className="form-control opx-body" value={draftText}
+                onChange={(e) => setDraftText(e.target.value)}
+                placeholder={"The first paragraph becomes the large opening standfirst.\n\n## A heading\n\nA normal paragraph.\n\n- A bullet\n- Another bullet\n\n> A pull quote.\n\n![Image description](/assets/imgs/pages/img-192.webp|Optional caption)"}
+              />
+            </label>
+            <p className="opx-help mb-0">
+              Blank line between blocks. <code>## Heading</code> · <code>- bullet</code> · <code>&gt; quote</code> · <code>![alt](/path.webp|caption)</code> —
+              rendered with the exact blog article template. About {estimateReadMinutes(textToBlocks(draftText))} min read.
+            </p>
+
+            <div className="d-flex gap-2 flex-wrap">
+              <button type="button" className="hrx-pill primary opx-btn" disabled={busy} onClick={() => onSavePost(true)}>
+                {draft.status === "published" ? "Save & publish" : "Publish"}
+              </button>
+              <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(draft.status === "published" ? undefined : false)}>
+                {draft.status === "published" ? "Save changes" : "Save draft"}
+              </button>
+              {draft.status === "published" && draft.id && (
+                <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(false)}>Unpublish</button>
+              )}
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* ── Blueprints ───────────────────────────────────────────────────── */}

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import ArticleCard1 from "@/shared/cards/ArticleCard1";
+import { AI_ARTICLES } from "@/data/articles-ai";
 
 const ARROW_SVG = (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -9,45 +10,6 @@ const ARROW_SVG = (
         />
     </svg>
 );
-
-const ARTICLES = [
-    {
-        classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog",
-        linkAuthor: "/about",
-        img: "/assets/imgs/pages/img-97.webp",
-        title: "What agentic AI can actually do in production",
-        author: "Olivia",
-        date: "July 3, 2026",
-    },
-    {
-        classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog",
-        linkAuthor: "/about",
-        img: "/assets/imgs/pages/img-98.webp",
-        title: "Building reliable RAG systems on your own data",
-        author: "Daniel",
-        date: "July 8, 2026",
-    },
-    {
-        classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog",
-        linkAuthor: "/about",
-        img: "/assets/imgs/pages/img-99.webp",
-        title: "AgentOps: monitoring and guardrails for AI in production",
-        author: "Emma",
-        date: "July 12, 2026",
-    },
-    {
-        classList: "col-lg-3 col-md-6 col-12",
-        linkPost: "/blog",
-        linkAuthor: "/about",
-        img: "/assets/imgs/pages/img-100.webp",
-        title: "Choosing the right LLM for your use case",
-        author: "Lucas",
-        date: "July 17, 2026",
-    },
-];
 
 export default function Section8() {
     return (
@@ -91,12 +53,12 @@ export default function Section8() {
                     </div>
                 </div>
                 <div className="row g-3">
-                    {ARTICLES.map((article) => (
+                    {AI_ARTICLES.map((article) => (
                         <ArticleCard1
-                            key={article.img}
-                            classList={article.classList}
-                            linkPost={article.linkPost}
-                            linkAuthor={article.linkAuthor}
+                            key={article.slug}
+                            classList="col-lg-3 col-md-6 col-12"
+                            linkPost={`/blog/${article.slug}`}
+                            linkAuthor="/about"
                             img={article.img}
                             title={article.title}
                             author={article.author}

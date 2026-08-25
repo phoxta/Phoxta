@@ -1,32 +1,6 @@
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
-
-const blogPosts = [
-    {
-        img: "/assets/imgs/pages/home-7/insight-1-retro.webp",
-        title: "What Makes a Brand Identity Truly Distinctive",
-        author: "Olivia",
-        date: "July 3, 2026",
-    },
-    {
-        img: "/assets/imgs/pages/home-7/insight-2-office.webp",
-        title: "Logo, Palette, Type, Voice: The Anatomy of a Brand",
-        author: "Daniel",
-        date: "July 8, 2026",
-    },
-    {
-        img: "/assets/imgs/pages/home-7/insight-3-fabric.webp",
-        title: "How AI Is Changing the Modern Design Studio",
-        author: "Emma",
-        date: "July 12, 2026",
-    },
-    {
-        img: "/assets/imgs/pages/home-7/insight-4-conference.webp",
-        title: "Rebranding: When and How to Do It Right",
-        author: "Lucas",
-        date: "July 17, 2026",
-    },
-];
+import { BRAND_ARTICLES } from "@/data/articles-brand";
 
 export default function Section9() {
     return (
@@ -60,12 +34,12 @@ export default function Section9() {
                     </div>
 
                     <div className="row g-3 sec-10-home-7__grid">
-                        {blogPosts.map((post, i) => (
-                            <div key={i} className="blog-card col-lg-3 col-md-6 col-12 mb-30" data-category="">
+                        {BRAND_ARTICLES.map((article) => (
+                            <div key={article.slug} className="blog-card col-lg-3 col-md-6 col-12 mb-30" data-category="">
                                 <div className="blog-card__thumb hover-effect-1">
-                                    <Link to="/blog" className="blog-card__img-link">
+                                    <Link to={`/blog/${article.slug}`} className="blog-card__img-link">
                                         <img
-                                            src={post.img}
+                                            src={article.img}
                                             className="blog-card__img22"
                                             alt="phoxta"
                                             width={400}
@@ -74,12 +48,12 @@ export default function Section9() {
                                 </div>
                                 <div className="blog-card__content">
                                     <h2 className="h6 blog-card__title">
-                                        <Link to="/blog" className="blog-card__title-link">{post.title}</Link>
+                                        <Link to={`/blog/${article.slug}`} className="blog-card__title-link">{article.title}</Link>
                                     </h2>
                                     <p className="blog-card__meta">
                                         <span className="blog-card__meta-text">By </span>
-                                        <Link to="/about" className="blog-card__author">{post.author}</Link>
-                                        <span className="blog-card__meta-text"> - {post.date}</span>
+                                        <Link to="/about" className="blog-card__author">{article.author}</Link>
+                                        <span className="blog-card__meta-text"> - {article.date}</span>
                                     </p>
                                 </div>
                             </div>

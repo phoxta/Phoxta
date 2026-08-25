@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
+import { MARKETING_ARTICLES } from "@/data/articles-marketing";
 
 // Home 3 Section 11 - Insights & Inspiration / Latest journal
 
@@ -12,14 +13,15 @@ const ARROW_SVG = (
     </svg>
 );
 
-const POSTS = [
-    { category: "GEO", title: "How to become the answer AI search recommends", author: "Daniel", date: "July 8, 2026", img: "/assets/imgs/pages/img-71.webp" },
-    { category: "Campaigns", title: "Campaigns customers actually respond to", author: "Olivia", date: "July 3, 2026", img: "/assets/imgs/pages/img-72.webp" },
-    { category: "Lifecycle", title: "Lifecycle marketing that compounds over time", author: "Lucas", date: "July 17, 2026", img: "/assets/imgs/pages/img-73.webp" },
-    { category: "Conversion", title: "Turning more visitors into customers with CRO", author: "Olivia", date: "July 28, 2026", img: "/assets/imgs/pages/img-51.webp" },
-    { category: "Paid media", title: "Paid media in the age of AI search", author: "Daniel", date: "July 08, 2026", img: "/assets/imgs/pages/img-52.webp" },
-    { category: "Content", title: "Content that ranks in Google and in AI answers", author: "Emma", date: "July 17, 2026", img: "/assets/imgs/pages/img-53.webp" },
-];
+/** Short card eyebrows for the marketing editorial set, keyed by article slug. */
+const EYEBROWS: Record<string, string> = {
+    "become-the-answer-ai-search-recommends": "GEO",
+    "campaigns-customers-actually-respond-to": "Campaigns",
+    "lifecycle-marketing-that-compounds": "Lifecycle",
+    "turning-visitors-into-customers-with-cro": "Conversion",
+    "paid-media-in-the-age-of-ai-search": "Paid media",
+    "content-that-ranks-in-google-and-ai-answers": "Content",
+};
 
 export default function Section11() {
     return (
@@ -56,13 +58,13 @@ export default function Section11() {
                         <div className="scroll-section vertical-section section">
                             <div className="wrapper">
                                 <div role="list" className="list">
-                                    {POSTS.map((post, i) => (
-                                        <div key={i} className="item">
+                                    {MARKETING_ARTICLES.map((post) => (
+                                        <div key={post.slug} className="item">
                                             <article className="blog-card-2 bg-neutral-0 py-5">
                                                 <div className="blog-card-2__left flex-grow-1">
-                                                    <span className="blog-card-2__category">{post.category}</span>
+                                                    <span className="blog-card-2__category">{EYEBROWS[post.slug] ?? "Journal"}</span>
                                                     <h6 className="blog-card-2__title">
-                                                        <Link to="/blog" className="blog-card-2__title-link">
+                                                        <Link to={`/blog/${post.slug}`} className="blog-card-2__title-link">
                                                             {post.title}
                                                         </Link>
                                                     </h6>
@@ -75,7 +77,7 @@ export default function Section11() {
                                                     </p>
                                                 </div>
                                                 <div className="blog-card-2__thumb hover-effect-1">
-                                                    <Link to="/blog-details" className="blog-card-2__img-link">
+                                                    <Link to={`/blog/${post.slug}`} className="blog-card-2__img-link">
                                                         <img
                                                             src={post.img}
                                                             alt="Phoxta"

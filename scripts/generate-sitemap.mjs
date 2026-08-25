@@ -6,7 +6,7 @@
 // https://www.phoxta.com. Keep ROUTES in sync with SITEMAP_ROUTES in
 // src/seo/seo.config.ts (the app's source of truth).
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 
 function readEnvLocal() {
     try {
@@ -22,13 +22,19 @@ function readEnvLocal() {
     }
 }
 
-// Article slugs are derived from src/data/articles.ts so publishing a post adds
-// it here automatically. Plain regex rather than an import, because this is a
-// Node script and the source is TypeScript.
+// Article slugs are derived from every src/data/articles*.ts file (the core
+// set plus the per-solution editorial sets) so publishing a post adds it here
+// automatically. Plain regex rather than an import, because this is a Node
+// script and the source is TypeScript.
 function articleSlugs() {
     try {
-        const src = readFileSync(new URL("../src/data/articles.ts", import.meta.url), "utf8");
-        return [...src.matchAll(/^\s*slug:\s*"([^"]+)"/gm)].map((m) => m[1]);
+        const dataDir = new URL("../src/data/", import.meta.url);
+        return readdirSync(dataDir)
+            .filter((f) => /^articles.*\.ts$/.test(f))
+            .flatMap((f) => {
+                const src = readFileSync(new URL(f, dataDir), "utf8");
+                return [...src.matchAll(/^\s*slug:\s*"([^"]+)"/gm)].map((m) => m[1]);
+            });
     } catch {
         return [];
     }
