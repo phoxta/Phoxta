@@ -39,6 +39,8 @@ const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 const AuthPage = lazy(() => import("@/pages/AuthPage"));
 const OnboardingPage = lazy(() => import("@/pages/OnboardingPage"));
 const DashboardHomePage = lazy(() => import("@/pages/dashboard/DashboardHomePage"));
+const IdeasPage = lazy(() => import("@/pages/dashboard/IdeasPage"));
+const IdeaDetailPage = lazy(() => import("@/pages/dashboard/IdeaDetailPage"));
 const MarketplacePage = lazy(() => import("@/pages/dashboard/MarketplacePage"));
 const MarketplaceDetailPage = lazy(() => import("@/pages/dashboard/MarketplaceDetailPage"));
 const BusinessesPage = lazy(() => import("@/pages/dashboard/BusinessesPage"));
@@ -117,6 +119,8 @@ export default function App() {
         <Route path="/studio/:orgId/:pageId/preview" element={<StudioPreviewPage />} />
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardHomePage />} />
+          <Route path="/dashboard/ideas" element={<IdeasPage />} />
+          <Route path="/dashboard/ideas/:id" element={<IdeaDetailPage />} />
           <Route path="/dashboard/studio" element={<StudioPage />} />
           <Route path="/dashboard/console" element={<ConsolePage />} />
           {/* Phoxta's own operating console — cross-tenant, platform-admin only. */}

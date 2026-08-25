@@ -51,6 +51,11 @@ const NAV: NavItem[] = [
     to: "/dashboard/console", label: "Console",
     activeWhen: (p) => p === "/dashboard/console" || isOpsConsole(p),
   },
+  {
+    // The detail page lives under /dashboard/ideas/:id, so prefix matching is
+    // right here — unlike Console, which sits under someone else's path.
+    to: "/dashboard/ideas", label: "Ideas",
+  },
   { to: "/dashboard/studio", label: "Studio" },
   { to: "/dashboard/marketplace", label: "Marketplace" },
   {
