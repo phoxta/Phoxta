@@ -16,11 +16,20 @@ import {
   type PaymentTest, type PlatformUser,
 } from "@/lib/db/platform";
 import {
-  listPlatformPosts, savePlatformPost, deletePlatformPost, shareLinks, postUrl,
+  listPlatformPosts, savePlatformPost, deletePlatformPost, shareLinks, postUrl, articleToDraft,
   type PlatformPost, type PostDraft,
 } from "@/lib/db/platformPosts";
 import { blocksToText, textToBlocks, estimateReadMinutes } from "@/lib/articleText";
-import { CATEGORY_LABELS, type ArticleCategory } from "@/data/articles";
+import { ALL_ARTICLES, CATEGORY_LABELS, type Article, type ArticleCategory } from "@/data/articles";
+
+/** Slugs of the code-shipped editorial set — a DB row with one of these slugs
+ *  is an OVERRIDE of that article, not a separate post. */
+const BUILTIN_SLUGS = new Set(ALL_ARTICLES.map((a) => a.slug));
+
+/** One row of the console's blog list, whichever side it lives on. */
+type BlogItem =
+  | { kind: "console" | "override"; post: PlatformPost }
+  | { kind: "builtin"; article: Article };
 
 /**
  * The Platform module — running Phoxta itself.
@@ -203,6 +212,16 @@ export default function OpsPlatformPage() {
     if (section === "Blog") loadPosts();
   }, [section, loadPosts]);
 
+  /** Everything on the blog, one list: console posts and overrides from the
+   *  DB, plus every code-shipped article that has no override row yet. */
+  const blogItems: BlogItem[] = [
+    ...posts.map((p): BlogItem => ({ kind: BUILTIN_SLUGS.has(p.slug) ? "override" : "console", post: p })),
+    ...ALL_ARTICLES.filter((a) => !posts.some((p) => p.slug === a.slug)).map((a): BlogItem => ({ kind: "builtin", article: a })),
+  ].sort((x, y) => {
+    const key = (i: BlogItem) => (i.kind === "builtin" ? i.article.iso : (i.post.published_at ?? i.post.created_at).slice(0, 10));
+    return key(y).localeCompare(key(x));
+  });
+
   function openPost(p?: PlatformPost) {
     setShare(null);
     if (p) {
@@ -222,46 +241,79 @@ export default function OpsPlatformPage() {
     }
   }
 
-  /** Save the composer. `publish` overrides the status; undefined keeps it. */
+  /** Open a code-shipped article — saving publishes a live override of it. */
+  function openArticle(a: Article) {
+    setShare(null);
+    setDraft(articleToDraft(a));
+    setDraftText(blocksToText(a.body));
+  }
+
+  const editingBuiltin = draft ? BUILTIN_SLUGS.has(draft.slug) : false;
+
+  /** Save the composer. true → publish; false → draft (or hidden, for a
+   *  built-in's override); undefined → keep the current status. */
   async function onSavePost(publish?: boolean) {
     if (!draft || busy) return;
     const body = textToBlocks(draftText);
     if (!draft.title.trim()) { toastError("The post needs a title."); return; }
     if (body.length === 0) { toastError("Write something first — the post has no body."); return; }
+    const isBuiltin = BUILTIN_SLUGS.has(draft.slug);
     setBusy(true);
     const r = await savePlatformPost({
       ...draft,
       body,
       read_minutes: estimateReadMinutes(body),
-      status: publish === undefined ? draft.status : publish ? "published" : "draft",
+      status: publish === undefined ? draft.status : publish ? "published" : isBuiltin ? "hidden" : "draft",
     });
     setBusy(false);
     if (r.error || !r.post) { toastError(r.error ?? "Could not save the post."); return; }
-    toast(r.post.status === "published" ? `Published — live at ${postUrl(r.post.slug)}` : "Draft saved.");
+    toast(
+      r.post.status === "published" ? `Published — live at ${postUrl(r.post.slug)}`
+        : r.post.status === "hidden" ? "Hidden — the article is off the site."
+          : "Draft saved.",
+    );
     setDraft(null);
     setDraftText("");
     if (r.post.status === "published") setShare({ slug: r.post.slug, title: r.post.title });
     loadPosts();
   }
 
-  async function onDeletePost(p: PlatformPost) {
+  /** Delete a console post — or, for an override, restore the built-in. */
+  async function onDeletePost(p: PlatformPost, isOverride: boolean) {
     if (busy) return;
-    if (!confirmDanger(`Delete "${p.title}"? ${p.status === "published" ? "It is live on the blog right now. " : ""}This cannot be undone.`)) return;
+    const msg = isOverride
+      ? `Revert "${p.title}" to the original built-in version? Your console edits to it will be lost.`
+      : `Delete "${p.title}"? ${p.status === "published" ? "It is live on the blog right now. " : ""}This cannot be undone.`;
+    if (!confirmDanger(msg)) return;
     setBusy(true);
     const r = await deletePlatformPost(p.id);
     setBusy(false);
-    if (!r.ok) { toastError(r.error ?? "Could not delete the post."); return; }
-    toast("Post deleted.");
+    if (!r.ok) { toastError(r.error ?? "That didn't work."); return; }
+    toast(isOverride ? "Reverted — the original article is back." : "Post deleted.");
     loadPosts();
   }
 
-  async function onTogglePublish(p: PlatformPost) {
+  /** Take a built-in article off the site without editing it. */
+  async function onHideBuiltin(a: Article) {
+    if (busy) return;
+    if (!confirmDanger(`Hide "${a.title}" from the blog? Readers will no longer see it; you can restore it any time.`)) return;
+    setBusy(true);
+    const r = await savePlatformPost({ ...articleToDraft(a), status: "hidden" });
+    setBusy(false);
+    if (r.error || !r.post) { toastError(r.error ?? "That didn't work."); return; }
+    toast("Hidden — the article is off the site.");
+    loadPosts();
+  }
+
+  async function onTogglePublish(p: PlatformPost, isOverride: boolean) {
     if (busy) return;
     setBusy(true);
     const r = await savePlatformPost({
       id: p.id, slug: p.slug, title: p.title, excerpt: p.excerpt, category: p.category,
       img: p.img, hero: p.hero, author: p.author, read_minutes: p.read_minutes, body: p.body,
-      status: p.status === "published" ? "draft" : "published",
+      // A console post rests as a private draft; a built-in's override can't —
+      // "off" for a built-in means hidden from the site.
+      status: p.status === "published" ? (isOverride ? "hidden" : "draft") : "published",
     });
     setBusy(false);
     if (r.error || !r.post) { toastError(r.error ?? "That didn't work."); return; }
@@ -269,7 +321,7 @@ export default function OpsPlatformPage() {
       toast(`Published — live at ${postUrl(r.post.slug)}`);
       setShare({ slug: r.post.slug, title: r.post.title });
     } else {
-      toast("Unpublished — back to draft.");
+      toast(r.post.status === "hidden" ? "Hidden — the article is off the site." : "Unpublished — back to draft.");
       setShare(null);
     }
     loadPosts();
@@ -634,45 +686,75 @@ export default function OpsPlatformPage() {
             right={<button type="button" className="hrx-pill primary opx-btn" onClick={() => openPost()}>Write a post</button>}
           >
             <p className="opx-note">
-              Posts publish straight to <a href="https://www.phoxta.com/blog" target="_blank" rel="noreferrer">phoxta.com/blog</a> with
-              the same article template as the built-in editorial set (which ships in code and always appears there too).
+              Every article on <a href="https://www.phoxta.com/blog" target="_blank" rel="noreferrer">phoxta.com/blog</a> is managed here.
+              The built-in editorial set ships in code: editing one publishes your version in its place, Hide takes it off
+              the site, and Revert restores the original. Console posts are yours outright.
             </p>
-            {postsLoading ? (
+            {postsLoading && posts.length === 0 ? (
               <p className="opx-note mb-0" role="status">Loading posts…</p>
-            ) : posts.length === 0 ? (
-              <Empty title="Nothing written yet">Your first post is one “Write a post” away.</Empty>
             ) : (
               <div className="hrx-tablewrap">
                 <table className="hrx-table">
                   <thead>
-                    <tr><th>Post</th><th>Category</th><th>Status</th><th>Published</th><th /></tr>
+                    <tr><th>Post</th><th>Category</th><th>Status</th><th>Date</th><th /></tr>
                   </thead>
                   <tbody>
-                    {posts.map((p) => (
-                      <tr key={p.id}>
-                        <td>
-                          <div style={{ minWidth: 0 }}>
-                            <div className="fw-semibold text-truncate" style={{ maxWidth: 320 }}>{p.title}</div>
-                            <div className="text-truncate" style={{ color: "var(--hrx-muted)", fontSize: 13 }}>/blog/{p.slug}</div>
-                          </div>
-                        </td>
-                        <td><Chip tone="line">{CATEGORY_LABELS[p.category as ArticleCategory] ?? p.category}</Chip></td>
-                        <td>{p.status === "published" ? <Chip tone="ok">Published</Chip> : <Chip tone="warn">Draft</Chip>}</td>
-                        <td style={{ color: "var(--hrx-muted)" }}>{p.published_at ? day(p.published_at) : "—"}</td>
-                        <td className="text-end">
-                          <div className="d-flex gap-2 justify-content-end flex-wrap">
-                            <button type="button" className="hrx-seeall opx-btn" disabled={busy} onClick={() => openPost(p)}>Edit</button>
-                            <button type="button" className={`hrx-seeall opx-btn${p.status === "published" ? "" : " opx-solid"}`} disabled={busy} onClick={() => onTogglePublish(p)}>
-                              {p.status === "published" ? "Unpublish" : "Publish"}
-                            </button>
-                            {p.status === "published" && (
-                              <button type="button" className="hrx-seeall opx-btn" onClick={() => setShare({ slug: p.slug, title: p.title })}>Share</button>
-                            )}
-                            <button type="button" className="hrx-seeall opx-btn opx-danger" disabled={busy} onClick={() => onDeletePost(p)}>Delete</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {blogItems.map((item) => {
+                      const a = item.kind === "builtin" ? item.article : null;
+                      const p = item.kind === "builtin" ? null : item.post;
+                      const slug = a ? a.slug : p!.slug;
+                      const title = a ? a.title : p!.title;
+                      const category = a ? a.category : p!.category;
+                      const live = a ? true : p!.status === "published";
+                      return (
+                        <tr key={slug}>
+                          <td>
+                            <div style={{ minWidth: 0 }}>
+                              <div className="fw-semibold text-truncate" style={{ maxWidth: 320 }}>{title}</div>
+                              <div className="text-truncate" style={{ color: "var(--hrx-muted)", fontSize: 13 }}>/blog/{slug}</div>
+                            </div>
+                          </td>
+                          <td><Chip tone="line">{CATEGORY_LABELS[category as ArticleCategory] ?? category}</Chip></td>
+                          <td>
+                            <div className="d-flex gap-1 flex-wrap">
+                              {a && <><Chip tone="ok">Published</Chip><Chip tone="plain">built-in</Chip></>}
+                              {p && item.kind === "override" && (
+                                p.status === "published"
+                                  ? <><Chip tone="ok">Published</Chip><Chip tone="plain">edited</Chip></>
+                                  : <Chip tone="danger">Hidden</Chip>
+                              )}
+                              {p && item.kind === "console" && (
+                                p.status === "published" ? <Chip tone="ok">Published</Chip> : <Chip tone="warn">Draft</Chip>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ color: "var(--hrx-muted)" }}>
+                            {a ? day(a.iso) : p!.published_at ? day(p!.published_at) : "—"}
+                          </td>
+                          <td className="text-end">
+                            <div className="d-flex gap-2 justify-content-end flex-wrap">
+                              <button type="button" className="hrx-seeall opx-btn" disabled={busy} onClick={() => (a ? openArticle(a) : openPost(p!))}>Edit</button>
+                              {a && (
+                                <button type="button" className="hrx-seeall opx-btn" disabled={busy} onClick={() => onHideBuiltin(a)}>Hide</button>
+                              )}
+                              {p && (
+                                <button type="button" className={`hrx-seeall opx-btn${live ? "" : " opx-solid"}`} disabled={busy} onClick={() => onTogglePublish(p, item.kind === "override")}>
+                                  {live ? (item.kind === "override" ? "Hide" : "Unpublish") : "Publish"}
+                                </button>
+                              )}
+                              {live && (
+                                <button type="button" className="hrx-seeall opx-btn" onClick={() => setShare({ slug, title })}>Share</button>
+                              )}
+                              {p && (
+                                <button type="button" className="hrx-seeall opx-btn opx-danger" disabled={busy} onClick={() => onDeletePost(p, item.kind === "override")}>
+                                  {item.kind === "override" ? "Revert" : "Delete"}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -683,7 +765,7 @@ export default function OpsPlatformPage() {
 
       {section === "Blog" && draft && (
         <Card
-          title={draft.id ? "Edit post" : "Write a post"}
+          title={editingBuiltin ? "Edit article" : draft.id ? "Edit post" : "Write a post"}
           right={<button type="button" className="hrx-seeall" onClick={() => { setDraft(null); setDraftText(""); }}>← All posts</button>}
         >
           <div className="d-flex flex-column gap-3">
@@ -706,8 +788,8 @@ export default function OpsPlatformPage() {
               </div>
               <div className="col-md-8">
                 <label className="hrx-field">
-                  <span>Link (leave empty to make one from the title)</span>
-                  <input className="form-control" value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} placeholder="auto" />
+                  <span>{editingBuiltin ? "Link (fixed — this edits the built-in article)" : "Link (leave empty to make one from the title)"}</span>
+                  <input className="form-control" value={draft.slug} disabled={editingBuiltin} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} placeholder="auto" />
                 </label>
               </div>
               <div className="col-md-4">
@@ -751,13 +833,17 @@ export default function OpsPlatformPage() {
 
             <div className="d-flex gap-2 flex-wrap">
               <button type="button" className="hrx-pill primary opx-btn" disabled={busy} onClick={() => onSavePost(true)}>
-                {draft.status === "published" ? "Save & publish" : "Publish"}
+                {draft.status === "published" || editingBuiltin ? "Save & publish" : "Publish"}
               </button>
-              <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(draft.status === "published" ? undefined : false)}>
-                {draft.status === "published" ? "Save changes" : "Save draft"}
-              </button>
-              {draft.status === "published" && draft.id && (
-                <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(false)}>Unpublish</button>
+              {!editingBuiltin && (
+                <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(draft.status === "published" ? undefined : false)}>
+                  {draft.status === "published" ? "Save changes" : "Save draft"}
+                </button>
+              )}
+              {(draft.status === "published" || draft.status === "hidden") && (editingBuiltin || draft.id) && (
+                <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(false)}>
+                  {editingBuiltin ? "Save & hide from site" : "Unpublish"}
+                </button>
               )}
             </div>
           </div>

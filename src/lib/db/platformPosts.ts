@@ -27,7 +27,9 @@ export type PlatformPost = {
   author: string;
   read_minutes: number;
   body: ArticleBlock[];
-  status: "draft" | "published";
+  /** 'hidden' only ever marks an override of a code-shipped article: it takes
+   *  that article off the public site without touching the code. */
+  status: "draft" | "published" | "hidden";
   published_at: string | null;
   created_at: string;
   updated_at: string;
@@ -50,33 +52,43 @@ export function postToArticle(p: PlatformPost): Article {
   };
 }
 
-/** Every published console post, newest first. Fails soft: the blog must
- *  render the built-in editorial set even if this fetch cannot. */
-export async function fetchPublishedArticles(): Promise<Article[]> {
+/** What the console has done to the live blog: published posts (which include
+ *  edited versions of code-shipped articles, matched by slug) and the slugs of
+ *  built-ins that were hidden. Fails soft: the blog must render the built-in
+ *  editorial set even if this fetch cannot. */
+export async function fetchLiveOverrides(): Promise<{ published: Article[]; hidden: string[] }> {
   try {
     const { data } = await supabase
       .from("platform_posts")
       .select("*")
-      .eq("status", "published")
+      .in("status", ["published", "hidden"])
       .order("published_at", { ascending: false });
-    return ((data as PlatformPost[] | null) ?? []).map(postToArticle);
+    const rows = (data as PlatformPost[] | null) ?? [];
+    return {
+      published: rows.filter((r) => r.status === "published").map(postToArticle),
+      hidden: rows.filter((r) => r.status === "hidden").map((r) => r.slug),
+    };
   } catch {
-    return [];
+    return { published: [], hidden: [] };
   }
 }
 
-/** One published console post by slug, mapped to the Article shape. */
-export async function fetchPublishedArticle(slug: string): Promise<Article | null> {
+/** One slug's live state: the published override/post if there is one, and
+ *  whether the slug has been hidden from the site. */
+export async function fetchPublishedArticle(slug: string): Promise<{ article: Article | null; hidden: boolean }> {
   try {
     const { data } = await supabase
       .from("platform_posts")
       .select("*")
-      .eq("status", "published")
+      .in("status", ["published", "hidden"])
       .eq("slug", slug)
       .maybeSingle();
-    return data ? postToArticle(data as PlatformPost) : null;
+    if (!data) return { article: null, hidden: false };
+    const row = data as PlatformPost;
+    if (row.status === "hidden") return { article: null, hidden: true };
+    return { article: postToArticle(row), hidden: false };
   } catch {
-    return null;
+    return { article: null, hidden: false };
   }
 }
 
@@ -111,8 +123,25 @@ export type PostDraft = {
   author: string;
   read_minutes: number;
   body: ArticleBlock[];
-  status: "draft" | "published";
+  status: "draft" | "published" | "hidden";
 };
+
+/** Open a code-shipped article in the composer: an override draft that will
+ *  save as the live version of that slug. */
+export function articleToDraft(a: Article): PostDraft {
+  return {
+    slug: a.slug,
+    title: a.title,
+    excerpt: a.excerpt,
+    category: a.category,
+    img: a.img,
+    hero: a.hero,
+    author: a.author,
+    read_minutes: a.readMinutes,
+    body: a.body,
+    status: "published",
+  };
+}
 
 export async function savePlatformPost(post: PostDraft): Promise<{ post: PlatformPost | null; error: string | null }> {
   const { data, error } = await postsFn({ action: "save", post });

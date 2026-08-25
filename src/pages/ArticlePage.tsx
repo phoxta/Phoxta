@@ -10,37 +10,35 @@ import { absoluteUrl } from "@/seo/seo.config";
 /**
  * A single article, resolved from /blog/:slug.
  *
- * Two sources, one template: the built-in editorial set resolves instantly;
- * a slug published from the platform console is fetched and rendered through
- * the exact same sections. Only after that lookup comes back empty does an
- * unknown slug redirect to the index.
+ * Two sources, one template: a built-in editorial article renders instantly,
+ * then swaps to its console-edited version if one is live (or leaves if the
+ * console hid it); a slug that exists only as a console post is fetched and
+ * rendered through the exact same sections. Only after the lookup answers
+ * does an unknown slug redirect to the index.
  */
 export default function ArticlePage() {
     const { slug } = useParams<{ slug: string }>();
     const builtIn = getArticle(slug);
 
-    const [remote, setRemote] = useState<Article | null>(null);
-    const [looked, setLooked] = useState(false);
+    const [remote, setRemote] = useState<{ article: Article | null; hidden: boolean } | null>(null);
 
     useEffect(() => {
         setRemote(null);
-        setLooked(false);
-        if (builtIn || !slug) return;
+        if (!slug) return;
         let active = true;
-        fetchPublishedArticle(slug).then((a) => {
-            if (!active) return;
-            setRemote(a);
-            setLooked(true);
-        });
+        fetchPublishedArticle(slug).then((r) => { if (active) setRemote(r); });
         return () => { active = false; };
-    }, [slug, builtIn]);
+    }, [slug]);
 
-    const article = builtIn ?? remote;
+    // The console hid this built-in — it is off the site.
+    if (builtIn && remote?.hidden) return <Navigate to="/blog" replace />;
+
+    const article = remote?.article ?? builtIn;
 
     if (!article) {
         // Unknown slug — send the reader to the index rather than a dead page,
-        // but only once the console-post lookup has actually answered.
-        if (!builtIn && looked) return <Navigate to="/blog" replace />;
+        // but only once the console lookup has actually answered.
+        if (remote) return <Navigate to="/blog" replace />;
         return <div style={{ minHeight: "60vh" }} aria-busy="true" />;
     }
 

@@ -35,9 +35,15 @@ create table if not exists public.platform_posts (
   updated_at timestamptz not null default now()
 );
 alter table public.platform_posts enable row level security;
+-- 'hidden' marks a code-shipped article as taken off the site; the public
+-- client must be able to see WHICH slugs are hidden (their content ships in
+-- the JS bundle anyway), so hidden rows stay readable.
+alter table public.platform_posts drop constraint if exists platform_posts_status_check;
+alter table public.platform_posts add constraint platform_posts_status_check
+  check (status in ('draft','published','hidden'));
 drop policy if exists "public read published posts" on public.platform_posts;
 create policy "public read published posts" on public.platform_posts
-  for select using (status = 'published');
+  for select using (status in ('published','hidden'));
 grant select on public.platform_posts to anon, authenticated;
 `;
 
@@ -109,7 +115,7 @@ Deno.serve(async (req) => {
       if (!title) return json({ error: "The post needs a title." }, 400);
       const slug = slugify(String(p.slug ?? "") || title);
       if (!slug) return json({ error: "That title makes an empty link — change it." }, 400);
-      const status = p.status === "published" ? "published" : "draft";
+      const status = ["published", "hidden", "draft"].includes(p.status) ? p.status : "draft";
 
       const row: Json = {
         slug,
@@ -132,6 +138,17 @@ Deno.serve(async (req) => {
         const { data, error } = await admin.from("platform_posts").update(row).eq("id", p.id).select().single();
         if (error) return json({ error: error.message }, 400);
         await audit(admin, actorEmail, "post_save", slug, { id: p.id, status });
+        return json({ ok: true, post: data });
+      }
+
+      // No id but the slug already has a row (e.g. overriding a built-in that
+      // was overridden before) — update in place rather than failing on unique.
+      const { data: bySlug } = await admin.from("platform_posts").select("id, published_at").eq("slug", slug).maybeSingle();
+      if (bySlug) {
+        row.published_at = status === "published" ? (bySlug.published_at ?? new Date().toISOString()) : bySlug.published_at ?? null;
+        const { data, error } = await admin.from("platform_posts").update(row).eq("id", bySlug.id).select().single();
+        if (error) return json({ error: error.message }, 400);
+        await audit(admin, actorEmail, "post_save", slug, { id: bySlug.id, status });
         return json({ ok: true, post: data });
       }
 
