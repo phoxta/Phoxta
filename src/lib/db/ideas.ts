@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabaseClient";
 import { friendlyError } from "@/lib/friendlyError";
 import { STEP_KEYS, type IdeaStep } from "@/lib/ideas/steps";
+import { planSite, type WebsiteCopy } from "@/lib/ideas/site";
+import { createVisualPage } from "@/lib/db/ops/cms";
 
 /**
  * Ideas: the validation run's data layer.
@@ -140,4 +142,39 @@ export async function listStepInputs(ideaId: string): Promise<{ data: IdeaStep[]
   const { data, error } = await supabase.from("idea_step_inputs").select("step").eq("idea_id", ideaId);
   const steps = ((data as { step: IdeaStep }[] | null) ?? []).map((r) => r.step);
   return { data: steps.filter((s) => STEP_KEYS.includes(s)), error: friendlyError(error?.message) };
+}
+
+// ── Website generation ──────────────────────────────────────────────────────
+
+/**
+ * Build the idea's website as real Studio pages.
+ *
+ * A Studio page belongs to a business, and an idea is not one yet — so the
+ * caller names the business it should land in. Nothing here invents an org:
+ * creating pages inside someone's live storefront by accident is not a mistake
+ * worth risking to save a click.
+ */
+export async function createSiteFromIdea(
+  orgId: string,
+  idea: Idea,
+): Promise<{ created: { title: string; id: string }[]; error: string | null }> {
+  const copy = ((idea.ai_profile ?? {}).website ?? null) as WebsiteCopy | null;
+  if (!copy) return { created: [], error: "Run the website step first — there is no copy to build from yet." };
+
+  const pages = planSite(copy, idea.idea_seed);
+  const created: { title: string; id: string }[] = [];
+
+  for (const page of pages) {
+    const { id, error } = await createVisualPage(orgId, {
+      title: page.title,
+      slug: page.slug,
+      document: page.document,
+    });
+    // Report what did land rather than unwinding: a half-built site the owner
+    // can see and finish beats a silent rollback of work already paid for.
+    if (error) return { created, error };
+    if (id) created.push({ title: page.title, id });
+  }
+
+  return { created, error: null };
 }

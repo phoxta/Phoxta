@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { toast, toastError } from "@/lib/ops/feedback";
-import { getIdea, runStep, type Idea } from "@/lib/db/ideas";
+import { getIdea, runStep, createSiteFromIdea, type Idea } from "@/lib/db/ideas";
+import { organizationsQuery } from "@/lib/cache/dashboardQueries";
+import { useCachedData } from "@/lib/hooks/useCachedData";
 import {
   ESTIMATED_SECONDS, GROUPS, STEPS, TOTAL_STEPS, getCompletedSteps, humanDuration,
   nextStep, progressPercent, remainingSeconds, type IdeaStep,
@@ -68,6 +70,13 @@ export default function IdeaDetailPage() {
   const [running, setRunning] = useState<IdeaStep | null>(null);
   const [open, setOpen] = useState<IdeaStep | null>(null);
   const chainRef = useRef(false);
+
+  // A Studio page belongs to a business; an idea is not one. The owner picks
+  // which business the generated site lands in rather than it guessing.
+  const { data: orgs = [] } = useCachedData(organizationsQuery.key, organizationsQuery.fetch);
+  const [siteOrg, setSiteOrg] = useState("");
+  const [building, setBuilding] = useState(false);
+  const [built, setBuilt] = useState<{ title: string; id: string }[]>([]);
 
   const load = useCallback(async () => {
     const { data, error: err } = await getIdea(id);
@@ -267,6 +276,59 @@ export default function IdeaDetailPage() {
           );
         })}
       </div>
+
+      {/* ── Website ────────────────────────────────────────────────────── */}
+      {(idea.ai_profile ?? {}).website != null && (
+        <div className="bg-neutral-50 rounded-5 p-4 mt-30">
+          <h3 className="fz-font-lg fw-600 neutral-900 mb-10">Build the website</h3>
+          <p className="fz-font-md neutral-500 mb-20">
+            Assembles a multipage site from Phoxta&apos;s own section library and drops it into
+            Studio, where you can edit and publish it like any other page.
+          </p>
+
+          {built.length > 0 ? (
+            <div className="d-flex flex-column gap-2">
+              {built.map((p) => (
+                <Link key={p.id} to={`/studio/${siteOrg}/${p.id}`} className="fz-font-md neutral-900">
+                  {p.title} — open in Studio
+                </Link>
+              ))}
+            </div>
+          ) : orgs.length === 0 ? (
+            <p className="fz-font-md neutral-500 mb-0">
+              You need a business before a site can be built into it.{" "}
+              <Link to="/dashboard/marketplace" className="neutral-900">Browse the marketplace</Link>.
+            </p>
+          ) : (
+            <div className="d-flex align-items-center gap-3 flex-wrap">
+              <label className="visually-hidden" htmlFor="idv-site-org">Business to build into</label>
+              <select id="idv-site-org" className="form-select w-auto" value={siteOrg}
+                      onChange={(e) => setSiteOrg(e.target.value)}>
+                <option value="">Choose a business…</option>
+                {orgs.map((o) => (
+                  <option key={o.organization.id} value={o.organization.id}>{o.organization.name}</option>
+                ))}
+              </select>
+              <button type="button" className="at-btn text-white rounded-0"
+                      disabled={!siteOrg || building}
+                      onClick={async () => {
+                        setBuilding(true);
+                        const { created, error: err } = await createSiteFromIdea(siteOrg, idea);
+                        setBuilding(false);
+                        setBuilt(created);
+                        if (err) toastError(err);
+                        else toast(`Built ${created.length} pages in Studio.`);
+                      }}>
+                <span>
+                  <span className="text-1">{building ? "BUILDING…" : "BUILD THE SITE"}</span>
+                  <span className="text-2">{building ? "BUILDING…" : "BUILD THE SITE"}</span>
+                </span>
+                <i>{ARROW}{ARROW}</i>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Verdict ────────────────────────────────────────────────────── */}
       {report && (
