@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexova – Business Plan 2025–2028</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #e8e4dc;
+  --black: #111111;
+  --orange: #f04e00;
+  --white: #f5f1ea;
+  --font: 'Manrope', sans-serif;
+}
+body { font-family: var(--font); background: #2a2a2a; }
+
+.slide {
+  width: 1280px; height: 720px;
+  position: relative; overflow: hidden;
+  margin: 0 auto 24px; display: block;
+}
+
+.pres-template {
+  position: absolute; top: 24px; right: 40px;
+  font-size: 15px; font-weight: 400; color: var(--black);
+}
+.pres-template strong { font-weight: 700; }
+.pres-template-w { position: absolute; top: 24px; right: 40px; font-size: 15px; font-weight: 400; color: white; }
+.pres-template-w strong { font-weight: 700; }
+
+.slide-num-top {
+  position: absolute; top: 20px; left: 40px;
+  font-size: 52px; font-weight: 800; color: var(--orange); line-height: 1;
+}
+
+.buszet-logo {
+  position: absolute; bottom: 28px; left: 40px; width: 32px; height: 32px;
+}
+
+/* ===== SLIDE 1 ===== */
+#s1 { background: var(--black); }
+#s1 .panel-orange {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 775px;
+  background: var(--orange);
+}
+#s1 .year { position: absolute; top: 42px; left: 40px; font-size: 90px; font-weight: 800; color: white; line-height: 1; }
+#s1 .year-hash { position: absolute; top: 148px; left: 40px; font-size: 13px; color: white; opacity: .85; }
+#s1 .tagline { position: absolute; top: 230px; left: 40px; font-size: 15px; color: white; line-height: 1.6; }
+#s1 .brand { position: absolute; bottom: 50px; left: 20px; font-size: 180px; font-weight: 800; color: var(--white); line-height: 1; letter-spacing: -6px; opacity: .95; }
+#s1 .panel-black-text { position: absolute; right: 0; top: 0; bottom: 0; width: 505px; background: var(--black); }
+#s1 .right-content { position: absolute; bottom: 90px; right: 44px; max-width: 400px; }
+#s1 .right-content h2 { font-size: 22px; font-weight: 500; color: white; line-height: 1.4; margin-bottom: 14px; }
+#s1 .right-content p { font-size: 13.5px; color: rgba(255,255,255,.65); line-height: 1.7; margin-bottom: 12px; }
+#s1 .right-content .ho { color: var(--orange); font-size: 13px; font-weight: 700; }
+#s1 .buszet-logo-r { position: absolute; bottom: 28px; right: 40px; width: 32px; height: 32px; }
+
+/* ===== SLIDE 2 ===== */
+#s2 { background: var(--bg); }
+#s2 .h1 { position: absolute; top: 88px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); line-height: 1; }
+#s2 .h1 .o { color: var(--orange); }
+#s2 .hash { position: absolute; top: 88px; left: 40px; font-size: 13px; color: var(--black); }
+#s2 .right-note { position: absolute; top: 148px; right: 40px; text-align: right; max-width: 320px; }
+#s2 .right-note .ref { font-size: 13px; color: var(--orange); margin-bottom: 4px; }
+#s2 .right-note p { font-size: 13px; color: var(--black); line-height: 1.6; }
+#s2 .right-note .ho { color: var(--orange); font-size: 12px; font-weight: 700; margin-top: 4px; }
+#s2 .year { position: absolute; top: 108px; right: 40px; font-size: 22px; font-weight: 700; color: var(--orange); }
+#s2 .desc { position: absolute; bottom: 80px; left: 40px; font-size: 13.5px; color: var(--black); max-width: 500px; line-height: 1.7; }
+/* shapes — centred horizontally */
+#s2 .sq-blk { position: absolute; width: 88px; height: 88px; background: var(--black); top: 340px; left: calc(50% - 44px); }
+#s2 .arrow-c { position: absolute; width: 52px; height: 52px; border-radius: 50%; border: 2px solid white; top: 358px; left: calc(50% - 26px); display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; }
+#s2 .sq-org { position: absolute; width: 88px; height: 88px; background: var(--orange); top: 420px; left: calc(50% + 26px); }
+
+/* ===== SLIDE 3 ===== */
+#s3 { background: var(--bg); }
+#s3 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s3 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); line-height: 1; }
+#s3 .h1 .o { color: var(--orange); }
+#s3 .sq-org { position: absolute; width: 104px; height: 104px; background: var(--orange); top: 216px; right: 240px; }
+#s3 .who-title { position: absolute; top: 360px; right: 40px; font-size: 56px; font-weight: 600; color: var(--black); }
+#s3 .who-cols { position: absolute; bottom: 64px; right: 40px; display: flex; gap: 48px; }
+#s3 .who-col { max-width: 240px; }
+#s3 .who-col p { font-size: 13px; color: var(--black); line-height: 1.7; }
+#s3 .who-col .ho { color: var(--orange); font-size: 12px; font-weight: 700; margin-top: 4px; }
+
+/* ===== SLIDE 4 ===== */
+#s4 { background: var(--bg); }
+#s4 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s4 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s4 .h1 .o { color: var(--orange); }
+#s4 .right-note { position: absolute; top: 128px; right: 200px; text-align: right; max-width: 280px; }
+#s4 .right-note .ref { font-size: 13px; color: var(--orange); }
+#s4 .right-note p { font-size: 13px; color: var(--black); line-height: 1.6; }
+#s4 .right-note .ho { color: var(--orange); font-size: 12px; font-weight: 700; margin-top: 4px; }
+#s4 .stmt { position: absolute; bottom: 100px; left: 40px; max-width: 760px; font-size: 40px; font-weight: 500; color: var(--black); line-height: 1.25; }
+#s4 .stmt .o { color: var(--orange); font-weight: 700; }
+#s4 .sub { position: absolute; bottom: 58px; left: 40px; font-size: 13px; color: var(--black); }
+
+/* ===== SLIDE 5 ===== */
+#s5 { background: var(--bg); }
+#s5 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s5 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s5 .h1 .o { color: var(--orange); }
+#s5 .sq-org { position: absolute; width: 104px; height: 104px; background: var(--orange); top: 260px; right: 80px; }
+#s5 .blocks { position: absolute; bottom: 56px; left: 40px; display: flex; gap: 64px; }
+#s5 .block { display: flex; gap: 20px; align-items: flex-start; }
+#s5 .icon { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; font-style: italic; color: white; flex-shrink: 0; }
+#s5 .icon.org { background: var(--orange); }
+#s5 .icon.blk { background: var(--black); }
+#s5 .block-text h3 { font-size: 17px; font-weight: 600; color: var(--black); margin-bottom: 8px; }
+#s5 .block-text p { font-size: 13px; color: var(--black); line-height: 1.65; max-width: 300px; }
+
+/* ===== SLIDE 6 ===== */
+#s6 { background: var(--bg); }
+#s6 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s6 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); line-height: 1; }
+#s6 .h1 .o { color: var(--orange); }
+#s6 .team-row { position: absolute; display: flex; gap: 100px; right: 40px; }
+#s6 .team-row.top { top: 240px; }
+#s6 .team-row.bottom { bottom: 80px; }
+#s6 .tname { font-size: 18px; font-weight: 400; color: var(--black); }
+#s6 .tname .o { color: var(--orange); }
+#s6 .stat { position: absolute; bottom: 150px; left: 40px; }
+#s6 .stat .num { font-size: 54px; font-weight: 700; color: var(--black); }
+#s6 .stat .num .o { color: var(--orange); }
+#s6 .stat p { font-size: 13px; color: var(--black); margin-top: 6px; max-width: 280px; line-height: 1.6; }
+
+/* ===== SLIDE 7 ===== */
+#s7 { background: var(--bg); }
+#s7 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s7 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); line-height: 1; }
+#s7 .h1 .o { color: var(--orange); }
+#s7 .sq-org { position: absolute; width: 104px; height: 104px; background: var(--orange); top: 136px; right: 220px; }
+#s7 .desc { position: absolute; bottom: 190px; left: 40px; font-size: 13px; color: var(--black); max-width: 260px; line-height: 1.7; }
+#s7 .right-note { position: absolute; top: 316px; right: 40px; max-width: 340px; }
+#s7 .right-note .ref { font-size: 13px; color: var(--orange); }
+#s7 .right-note p { font-size: 13px; color: var(--black); line-height: 1.6; }
+#s7 .right-note .ho { color: var(--orange); font-size: 12px; font-weight: 700; margin-top: 4px; }
+#s7 .billion { position: absolute; bottom: 52px; left: 50%; transform: translateX(-50%); font-size: 88px; font-weight: 800; color: var(--black); white-space: nowrap; }
+#s7 .billion .o { color: var(--orange); }
+
+/* ===== SLIDE 8 ===== */
+#s8 { background: var(--bg); }
+#s8 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s8 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s8 .h1 .o { color: var(--orange); }
+#s8 .bullets { position: absolute; bottom: 100px; left: 40px; display: flex; flex-direction: column; gap: 28px; }
+#s8 .bitem { display: flex; gap: 18px; align-items: flex-start; }
+#s8 .bsq { width: 32px; height: 32px; flex-shrink: 0; margin-top: 2px; }
+#s8 .bsq.blk { background: var(--black); }
+#s8 .bsq.org { background: var(--orange); }
+#s8 .bitem p { font-size: 15px; color: var(--black); line-height: 1.65; max-width: 400px; }
+#s8 .sq-blk { position: absolute; width: 88px; height: 88px; background: var(--black); bottom: 192px; right: 268px; }
+#s8 .arrow-c { position: absolute; width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--black); bottom: 200px; right: 282px; display: flex; align-items: center; justify-content: center; color: var(--black); font-size: 20px; }
+#s8 .sq-org { position: absolute; width: 88px; height: 88px; background: var(--orange); bottom: 114px; right: 196px; }
+
+/* ===== SLIDE 9 ===== */
+#s9 { background: var(--bg); }
+#s9 .right-half { position: absolute; right: 0; top: 0; bottom: 0; width: 560px; background: var(--orange); }
+#s9 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s9 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s9 .h1 .o { color: var(--orange); }
+#s9 .year-block { position: absolute; bottom: 200px; left: 40px; }
+#s9 .year-block h3 { font-size: 32px; font-weight: 700; color: var(--orange); margin-bottom: 8px; }
+#s9 .year-block p { font-size: 13px; color: var(--black); max-width: 260px; line-height: 1.6; }
+#s9 .year-block .ho { color: var(--orange); font-size: 12px; font-weight: 700; margin-top: 4px; }
+#s9 .donut { position: absolute; bottom: 80px; left: 260px; }
+#s9 .right-note { position: absolute; top: 200px; right: 44px; max-width: 360px; }
+#s9 .right-note .ref { font-size: 13px; color: white; margin-bottom: 6px; }
+#s9 .right-note p { font-size: 13px; color: white; line-height: 1.6; }
+#s9 .right-note .how { color: white; font-weight: 700; font-size: 12px; margin-top: 4px; }
+#s9 .big67 { position: absolute; bottom: 40px; right: 24px; font-size: 72px; font-weight: 800; color: rgba(245,241,234,.28); line-height: 1; max-width: 540px; overflow: hidden; }
+
+/* ===== SLIDE 10 ===== */
+#s10 { background: var(--bg); }
+#s10 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s10 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s10 .h1 .o { color: var(--orange); }
+#s10 .top-cust { position: absolute; top: 80px; right: 40px; text-align: right; }
+#s10 .top-cust .num { font-size: 50px; font-weight: 800; color: var(--black); }
+#s10 .top-cust .num .o { color: var(--orange); }
+#s10 .top-cust small { font-size: 13px; color: var(--black); }
+#s10 .connector { position: absolute; top: 88px; right: 400px; width: 2px; height: 200px; background: var(--orange); }
+#s10 .conn-dot { position: absolute; top: 288px; right: 397px; width: 10px; height: 10px; border-radius: 50%; background: var(--black); }
+#s10 .bars { position: absolute; bottom: 64px; left: 40px; right: 40px; height: 310px; display: flex; align-items: flex-end; gap: 5px; }
+#s10 .bar { flex: 1; background: var(--orange); }
+#s10 .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; background: var(--black); display: flex; align-items: center; padding: 0 40px; justify-content: space-between; }
+#s10 .bottom-bar span { font-size: 14px; color: white; }
+#s10 .bottom-bar .v { color: var(--orange); font-weight: 700; }
+#s10 .bar-axis { position: absolute; bottom: 60px; left: 40px; right: 40px; display: flex; justify-content: space-between; font-size: 12px; color: var(--black); }
+
+/* ===== SLIDE 11 ===== */
+#s11 { background: var(--bg); }
+#s11 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s11 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s11 .h1 .o { color: var(--orange); }
+#s11 .sq-org { position: absolute; width: 104px; height: 104px; background: var(--orange); top: 260px; left: 40px; }
+#s11 .bullets { position: absolute; bottom: 130px; left: 40px; display: flex; gap: 64px; }
+#s11 .bitem { display: flex; gap: 18px; align-items: flex-start; }
+#s11 .bsq { width: 32px; height: 32px; background: var(--black); flex-shrink: 0; margin-top: 2px; }
+#s11 .bitem p { font-size: 14px; color: var(--black); line-height: 1.65; max-width: 260px; }
+#s11 .billion { position: absolute; bottom: 48px; right: 40px; font-size: 64px; font-weight: 800; color: var(--black); white-space: nowrap; text-align: right; }
+#s11 .billion .o { color: var(--orange); }
+
+/* ===== SLIDE 12 ===== */
+#s12 { background: var(--bg); }
+#s12 .right-half { position: absolute; right: 0; top: 0; bottom: 0; width: 660px; background: var(--black); }
+#s12 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s12 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s12 .h1 .o { color: var(--orange); }
+#s12 .billion { position: absolute; bottom: 140px; left: 40px; font-size: 44px; font-weight: 800; color: var(--black); }
+#s12 .billion .o { color: var(--orange); }
+#s12 .desc { position: absolute; bottom: 72px; left: 40px; font-size: 13px; color: var(--black); max-width: 440px; line-height: 1.7; }
+#s12 .top-stat { position: absolute; top: 36px; right: 44px; text-align: right; }
+#s12 .top-stat .num { font-size: 44px; font-weight: 800; color: white; }
+#s12 .top-stat .num .o { color: var(--orange); }
+#s12 .top-stat small { font-size: 12px; color: #888; }
+
+/* ===== SLIDE 13 ===== */
+#s13 { background: var(--bg); }
+#s13 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s13 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s13 .h1 .o { color: var(--orange); }
+#s13 .sq-blk { position: absolute; width: 72px; height: 72px; background: var(--black); top: 330px; left: 570px; }
+#s13 .sq-org { position: absolute; width: 72px; height: 72px; background: var(--orange); top: 394px; left: 506px; }
+#s13 .calendar { position: absolute; top: 100px; right: 40px; width: 430px; }
+#s13 .cal-month { font-size: 26px; font-weight: 700; color: var(--black); margin-bottom: 12px; }
+#s13 .cal-grid { background: var(--black); overflow: hidden; }
+#s13 .cal-head { background: var(--orange); display: grid; grid-template-columns: repeat(7,1fr); text-align: center; padding: 10px 0; }
+#s13 .cal-head span { font-size: 13px; font-weight: 700; color: white; }
+#s13 .cal-body { display: grid; grid-template-columns: repeat(7,1fr); }
+#s13 .cc { text-align: center; padding: 9px 0; font-size: 13px; color: white; }
+#s13 .cc.ot { color: var(--orange); }
+#s13 .cc.hl { display: flex; align-items: center; justify-content: center; }
+#s13 .cc .dot { width: 28px; height: 28px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 13px; margin: 1px auto; }
+#s13 .date-events { position: absolute; bottom: 60px; left: 40px; display: flex; gap: 90px; }
+#s13 .devent h3 { font-size: 34px; font-weight: 700; color: var(--black); margin-bottom: 8px; }
+#s13 .devent p { font-size: 13px; color: var(--black); line-height: 1.6; max-width: 200px; }
+#s13 .devent .ho { color: var(--orange); font-size: 12px; font-weight: 700; margin-top: 4px; }
+
+/* ===== SLIDE 14 ===== */
+#s14 { background: var(--bg); }
+#s14 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s14 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s14 .h1 .o { color: var(--orange); }
+#s14 .sq-org { position: absolute; width: 88px; height: 88px; background: var(--orange); top: 296px; right: 330px; }
+#s14 .desc { position: absolute; top: 308px; left: 40px; font-size: 13.5px; color: var(--black); max-width: 340px; line-height: 1.7; }
+#s14 .desc .ho { color: var(--orange); font-size: 12px; font-weight: 700; }
+#s14 .sq-blk-sm { position: absolute; bottom: 104px; left: 40px; width: 58px; height: 58px; background: var(--black); }
+#s14 .sq-org-sm { position: absolute; bottom: 64px; left: 82px; width: 58px; height: 58px; background: var(--orange); }
+#s14 .big-stat { position: absolute; bottom: 112px; right: 40px; }
+#s14 .big-stat .amt { font-size: 58px; font-weight: 800; color: var(--black); }
+#s14 .big-stat .amt .o { color: var(--orange); }
+#s14 .big-stat p { font-size: 13px; color: var(--black); margin-top: 8px; max-width: 300px; line-height: 1.6; }
+
+/* ===== SLIDE 15 ===== */
+#s15 { background: var(--bg); }
+#s15 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s15 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s15 .h1 .o { color: var(--orange); }
+#s15 .desc { position: absolute; top: 260px; left: 40px; font-size: 13.5px; color: var(--black); max-width: 400px; line-height: 1.7; }
+#s15 .tl-line { position: absolute; bottom: 195px; left: 80px; right: 460px; height: 5px; background: #c8c4ba; }
+#s15 .tl-arrow { position: absolute; bottom: 180px; right: 450px; font-size: 24px; color: #c8c4ba; }
+#s15 .m-pts { position: absolute; bottom: 120px; left: 80px; right: 460px; display: flex; justify-content: space-between; align-items: flex-end; }
+#s15 .mpt { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#s15 .mpt .lbl { font-size: 20px; font-weight: 700; color: var(--orange); }
+#s15 .mpt .dot { width: 28px; height: 28px; }
+#s15 .mpt .dot.org { background: var(--orange); }
+#s15 .mpt .dot.blk { background: var(--black); }
+#s15 .billion { position: absolute; bottom: 56px; right: 40px; font-size: 68px; font-weight: 800; color: var(--black); text-align: right; }
+#s15 .billion .o { color: var(--orange); }
+
+/* ===== SLIDE 16 ===== */
+#s16 { background: var(--bg); }
+#s16 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s16 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); line-height: 1; }
+#s16 .h1 .o { color: var(--orange); }
+#s16 .sq-org-top { position: absolute; width: 82px; height: 82px; background: var(--orange); top: 168px; right: 126px; }
+#s16 .arrow-c { position: absolute; width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--black); top: 234px; right: 40px; display: flex; align-items: center; justify-content: center; color: var(--black); font-size: 20px; }
+#s16 .sq-org-mid { position: absolute; width: 88px; height: 88px; background: var(--orange); top: 350px; left: 580px; }
+#s16 .desc { position: absolute; bottom: 96px; left: 40px; font-size: 13.5px; color: var(--black); max-width: 280px; line-height: 1.7; }
+#s16 .right-note { position: absolute; bottom: 96px; right: 40px; max-width: 280px; }
+#s16 .right-note h3 { font-size: 32px; font-weight: 700; color: var(--black); margin-bottom: 10px; }
+#s16 .right-note p { font-size: 13px; color: var(--black); line-height: 1.6; }
+#s16 .right-note .ho { color: var(--orange); font-size: 12px; font-weight: 700; margin-top: 4px; }
+
+/* ===== SLIDE 17 ===== */
+#s17 { background: var(--bg); }
+#s17 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s17 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s17 .h1 .o { color: var(--orange); }
+#s17 .board-wrap { position: absolute; right: 0; top: 60px; bottom: 0; width: 720px; display: flex; align-items: center; justify-content: center; }
+#s17 .board { width: 580px; height: 350px; border: 3px solid var(--black); position: relative; }
+#s17 .post { position: absolute; bottom: -130px; left: 50%; transform: translateX(-50%); width: 16px; height: 130px; background: var(--black); }
+#s17 .post-base { position: absolute; bottom: -140px; left: 50%; transform: translateX(-50%) translateX(-36px); width: 88px; height: 10px; background: var(--black); }
+#s17 .billion { position: absolute; bottom: 132px; left: 40px; font-size: 44px; font-weight: 800; color: var(--black); }
+#s17 .billion .o { color: var(--orange); }
+#s17 .desc { position: absolute; bottom: 72px; left: 40px; font-size: 13px; color: var(--black); max-width: 440px; line-height: 1.7; }
+
+/* ===== SLIDE 18 ===== */
+#s18 { background: var(--bg); }
+#s18 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s18 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s18 .h1 .o { color: var(--orange); }
+#s18 .laptop { display: none; }
+#s18 .laptop-notch { display: none; }
+#s18 .laptop-base { display: none; }
+#s18 .tablet { display: none; }
+#s18 .tablet-notch { display: none; }
+#s18 .mid-content { position: absolute; bottom: 80px; left: 40px; }
+#s18 .mid-content .billion { font-size: 44px; font-weight: 800; color: var(--black); margin-bottom: 14px; }
+#s18 .mid-content .billion .o { color: var(--orange); }
+#s18 .mid-content p { font-size: 13px; color: var(--black); max-width: 380px; line-height: 1.7; }
+#s18 .rlist { position: absolute; top: 200px; right: 40px; display: flex; flex-direction: column; gap: 28px; }
+#s18 .ritem { display: flex; gap: 16px; align-items: flex-start; }
+#s18 .rbadge { width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; font-style: italic; flex-shrink: 0; }
+#s18 .rbadge.org { background: var(--orange); color: white; }
+#s18 .rbadge.blk { background: var(--black); color: white; }
+#s18 .rbadge.wht { background: white; border: 2px solid var(--black); color: var(--black); }
+#s18 .ritem-text h4 { font-size: 24px; font-weight: 700; color: var(--black); }
+#s18 .ritem-text .ho { color: var(--orange); font-size: 12px; font-weight: 700; }
+
+/* ===== SLIDE 19 ===== */
+#s19 { background: var(--bg); }
+#s19 .hash { position: absolute; top: 92px; left: 40px; font-size: 13px; color: var(--black); }
+#s19 .h1 { position: absolute; top: 108px; left: 40px; font-size: 78px; font-weight: 700; color: var(--black); }
+#s19 .h1 .o { color: var(--orange); }
+#s19 .sq-blk-sm { position: absolute; bottom: 180px; left: 40px; width: 58px; height: 58px; background: var(--black); }
+#s19 .sq-org-sm { position: absolute; bottom: 140px; left: 82px; width: 58px; height: 58px; background: var(--orange); }
+#s19 .contact { position: absolute; bottom: 80px; left: 300px; }
+#s19 .contact h3 { font-size: 17px; font-weight: 700; color: var(--black); margin-bottom: 18px; }
+#s19 .contact p { font-size: 14px; color: var(--black); line-height: 2.1; }
+#s19 .contact p strong { font-weight: 700; }
+#s19 .quotes { position: absolute; bottom: 80px; right: 40px; max-width: 310px; }
+#s19 .quotes h3 { font-size: 32px; font-weight: 600; color: var(--black); margin-bottom: 14px; }
+#s19 .quotes p { font-size: 13px; color: var(--black); line-height: 1.7; }
+#s19 .quotes .ho { color: var(--orange); font-size: 12px; font-weight: 700; margin-top: 4px; }
+
+/* ===== SLIDE 20 ===== */
+#s20 { background: var(--black); }
+#s20 .panel-orange { position: absolute; right: 0; top: 0; bottom: 0; width: 335px; background: var(--orange); }
+#s20 .tagline { position: absolute; top: 180px; left: 44px; font-size: 15px; color: rgba(255,255,255,.4); line-height: 1.6; }
+#s20 .thankyou { position: absolute; bottom: 44px; left: 20px; font-size: 180px; font-weight: 800; color: var(--white); line-height: 1; letter-spacing: -6px; }
+#s20 .right-year { position: absolute; top: 96px; right: 44px; font-size: 88px; font-weight: 800; color: white; line-height: 1; }
+#s20 .right-hash { position: absolute; top: 188px; right: 44px; font-size: 13px; color: white; opacity: .8; }
+#s20 .right-content { position: absolute; bottom: 90px; right: 44px; max-width: 300px; }
+#s20 .right-content h3 { font-size: 20px; font-weight: 500; color: white; line-height: 1.4; margin-bottom: 12px; }
+#s20 .right-content p { font-size: 13.5px; color: rgba(255,255,255,.65); line-height: 1.7; margin-bottom: 10px; }
+#s20 .right-content .ho { color: white; font-size: 13px; font-weight: 700; }
+
+/* ===== deck ===== */
+.deck { padding: 40px 0; display: flex; flex-direction: column; align-items: center; overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="deck">
+<!-- SLIDE 1 -->
+<div class="slide" id="s1">
+  <div class="panel-orange"></div>
+  <div class="panel-black-text"></div>
+  <span class="year">2025</span>
+  <span class="year-hash">Confidential</span>
+  <div class="tagline">Build.<br>Scale. Disrupt.</div>
+  <div class="brand">Nexova</div>
+  <div class="right-content">
+    <h2>Business –<br>Plan 2025–2028</h2>
+    <p>A comprehensive business plan outlining Nexova's strategy to capture the B2B workflow automation market, achieve profitability by Year 2, and reach $50M ARR by 2028.</p>
+    <div class="ho">nexova.io</div>
+  </div>
+  <div class="pres-template-w">Business <strong>Plan</strong></div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 2 -->
+<div class="slide" id="s2">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">01</div>
+  <div class="hash">Executive Summary</div>
+  <div class="h1" style="top:108px;">Executive <span class="o">Summary</span></div>
+  <div class="right-note">
+    <div class="ref">(Key Highlight) Nexova addresses a $42B workflow automation gap across mid-market enterprises</div>
+    <div class="ho">nexova.io</div>
+  </div>
+  <div class="sq-blk"></div>
+  <div class="arrow-c">→</div>
+  <div class="sq-org"></div>
+  <div class="year">$50M ARR</div>
+  <div class="desc">Nexova is a B2B SaaS platform that automates cross-departmental workflows for mid-market enterprises. Founded in 2024, we are seeking $8M Series A funding to accelerate product development, expand our sales team, and capture 1.2% of our $3.5B addressable market by end of 2027.</div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 3 -->
+<div class="slide" id="s3">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">02</div>
+  <div class="hash">Company Overview</div>
+  <div class="h1">About <span class="o">Nexova</span></div>
+  <div class="sq-org"></div>
+  <div class="who-title">Who We Are</div>
+  <div class="who-cols">
+    <div class="who-col"><p>Nexova was incorporated in Delaware in January 2024. We build intelligent automation software that connects HR, Finance, and Operations teams — eliminating manual handoffs that cost enterprises an average of 6.4 hours per employee per week.</p></div>
+    <div class="who-col"><p>Headquartered in Austin, TX with a remote-first team of 18. We have raised $1.2M in pre-seed funding from Founders Fund and 8VC, and currently serve 14 paying enterprise customers with an NPS of 71.</p><div class="ho">nexova.io</div></div>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 4 -->
+<div class="slide" id="s4">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">03</div>
+  <div class="hash">Vision Statement</div>
+  <div class="h1">Our <span class="o">Vision</span></div>
+  <div class="right-note">
+    <p>The future of work is autonomous. Every repetitive workflow is a liability — we eliminate it.</p>
+    <div class="ho">nexova.io</div>
+    <div class="ref" style="margin-top:4px;">(North Star)</div>
+  </div>
+  <div class="stmt">To become the <span class="o">operating system</span> for enterprise workflows — where every process runs <span class="o">intelligently, automatically</span></div>
+  <div class="sub">We measure success by hours returned to knowledge workers, not features shipped.</div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 5 -->
+<div class="slide" id="s5">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">04</div>
+  <div class="hash">Mission & Values</div>
+  <div class="h1">Mission &amp; <span class="o">Values</span></div>
+  <div class="sq-org"></div>
+  <div class="blocks">
+    <div class="block"><div class="icon org">(01)</div><div class="block-text"><h3>Automate the Mundane</h3><p>We obsessively eliminate repetitive tasks so teams can focus on high-value creative and strategic work that only humans can do.</p></div></div>
+    <div class="block"><div class="icon blk">(02)</div><div class="block-text"><h3>Radical Transparency</h3><p>We operate with open financials, public roadmaps, and honest communication — internally with our team and externally with customers and investors.</p></div></div>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 6 -->
+<div class="slide" id="s6">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">05</div>
+  <div class="hash">Leadership Team</div>
+  <div class="h1">Leadership <span class="o">Team</span></div>
+  <div class="team-row top">
+    <div class="tname">Sarah <span class="o">Chen · CEO</span></div>
+    <div class="tname">Marcus <span class="o">Obi · CTO</span></div>
+    <div class="tname">Priya <span class="o">Nair · CFO</span></div>
+  </div>
+  <div class="stat">
+    <div class="num"><span class="o">$</span>1.2M Raised</div>
+    <p>Combined 47 years of enterprise software experience across Salesforce, Workday, and ServiceNow. Two prior exits totalling $340M.</p>
+  </div>
+  <div class="team-row bottom">
+    <div class="tname">James <span class="o">Park · VP Sales</span></div>
+    <div class="tname">Lena <span class="o">Torres · VP Eng</span></div>
+    <div class="tname">Omar <span class="o">Khalil · VP CS</span></div>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 7 -->
+<div class="slide" id="s7">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">06</div>
+  <div class="hash">Problem Statement</div>
+  <div class="h1">The <span class="o">Problem</span></div>
+  <div class="sq-org"></div>
+  <div class="desc">Mid-market enterprises lose $2.9M annually per 500 employees to manual workflow inefficiencies — approvals stuck in email, data re-entered across 6+ systems, and zero cross-department visibility.</div>
+  <div class="right-note">
+    <div class="ref">(Pain Point)</div>
+    <p>74% of operations managers cite "tool fragmentation" as their #1 productivity obstacle. Existing solutions are either too complex (SAP) or too simple (Zapier).</p>
+    <div class="ho">Source: Gartner 2024</div>
+  </div>
+  <div class="billion">$<span class="o">2.9</span>M Lost / Year</div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 8 -->
+<div class="slide" id="s8">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">07</div>
+  <div class="hash">Our Solution</div>
+  <div class="h1">The <span class="o">Solution</span></div>
+  <div class="bullets">
+    <div class="bitem"><div class="bsq blk"></div><p>Nexova's no-code workflow builder lets operations teams design, deploy, and monitor cross-departmental automations in under 2 hours — with no IT involvement required.</p></div>
+    <div class="bitem"><div class="bsq org"></div><p>Our AI layer continuously learns from usage patterns, proactively suggesting optimisations and flagging bottlenecks before they become costly — reducing manual intervention by 83%.</p></div>
+  </div>
+  <div class="sq-blk"></div>
+  <div class="arrow-c">→</div>
+  <div class="sq-org"></div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 9 -->
+<div class="slide" id="s9">
+  <div class="right-half"></div>
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">08</div>
+  <div class="hash">Market Analysis</div>
+  <div class="h1">Market <span class="o">Analysis</span></div>
+  <div class="year-block">
+    <h3>$42B TAM</h3>
+    <p>Total Addressable Market for enterprise workflow automation by 2027, growing at 23% CAGR</p>
+    <div class="ho">Source: IDC, Forrester 2024</div>
+  </div>
+  <div class="donut">
+    <svg width="220" height="220" viewBox="0 0 220 220">
+      <circle cx="110" cy="110" r="76" fill="none" stroke="white" stroke-width="38" stroke-dasharray="239 478" stroke-dashoffset="0"/>
+      <circle cx="110" cy="110" r="76" fill="none" stroke="#f04e00" stroke-width="38" stroke-dasharray="140 478" stroke-dashoffset="-239"/>
+      <circle cx="110" cy="110" r="76" fill="none" stroke="#111" stroke-width="38" stroke-dasharray="99 478" stroke-dashoffset="-379"/>
+      <text x="80" y="84" fill="#f04e00" font-size="12" font-family="Manrope" font-weight="600">TAM 50%</text>
+      <text x="148" y="148" fill="#f04e00" font-size="12" font-family="Manrope" font-weight="600">SAM 29%</text>
+      <text x="36" y="152" fill="#f04e00" font-size="12" font-family="Manrope" font-weight="600">SOM 21%</text>
+    </svg>
+  </div>
+  <div class="right-note">
+    <div class="ref">Serviceable Obtainable Market: $3.5B — mid-market enterprises 250–5,000 employees in North America and Western Europe, seeking workflow automation without enterprise-level complexity.</div>
+    <div class="how">nexova.io</div>
+  </div>
+  <div class="big67">$3.5B SOM</div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 10 -->
+<div class="slide" id="s10">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">09</div>
+  <div class="hash">Target Customers</div>
+  <div class="h1">Target <span class="o">Customers</span></div>
+  <div class="top-cust">
+    <div class="num"><span class="o">+</span>4,200</div>
+    <small>ICP Companies in North America</small>
+  </div>
+  <div class="connector"></div>
+  <div class="conn-dot"></div>
+  <div class="bars" id="bars10"></div>
+  <div class="bar-axis"><span>Q1 2024</span><span>Q4 2027</span></div>
+  <div class="bottom-bar">
+    <span>Sector: Operations &amp; Finance &nbsp;<span class="v">67%</span></span>
+    <span>Avg. Contract Value &nbsp;<span class="v">$48,000 / yr</span></span>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 11 -->
+<div class="slide" id="s11">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">10</div>
+  <div class="hash">Product Overview</div>
+  <div class="h1">Product <span class="o">Overview</span></div>
+  <div class="sq-org"></div>
+  <div class="bullets">
+    <div class="bitem"><div class="bsq"></div><p>Core Platform: Visual workflow builder with 150+ native integrations (Salesforce, SAP, Workday, Slack, Jira). Deploy automation templates in minutes. Role-based access, audit trails, and SOC 2 Type II certified.</p></div>
+    <div class="bitem"><div class="bsq"></div><p>Nexova AI: Embedded intelligence layer that learns organisational patterns, predicts bottlenecks, auto-assigns tasks, and generates weekly optimisation reports — no data science team required.</p></div>
+  </div>
+  <div class="billion">83<span class="o">%</span> Less Manual Work</div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 12 -->
+<div class="slide" id="s12">
+  <div class="right-half"></div>
+  <div class="slide-num-top">11</div>
+  <div class="hash">Revenue Model</div>
+  <div class="h1">Revenue <span class="o">Model</span></div>
+  <div class="billion">3-Tier <span class="o">SaaS</span></div>
+  <div class="desc">Starter $1,200/mo (up to 50 users) · Professional $3,800/mo (up to 250 users) · Enterprise custom pricing. 85% gross margins. 12-month average contract with 94% net revenue retention.</div>
+  <div class="pres-template-w">Business <strong>Plan</strong></div>
+  <div class="top-stat">
+    <div class="num"><span class="o">$</span>4.1M ARR</div>
+    <small>Current Run Rate (Q1 2025)</small>
+  </div>
+  <svg style="position:absolute;top:40px;right:0;width:660px;height:650px;" viewBox="0 0 660 650">
+    <text x="46" y="56" fill="#666" font-size="13" font-family="Manrope" text-anchor="end">$50M</text>
+    <text x="46" y="136" fill="#666" font-size="13" font-family="Manrope" text-anchor="end">$40M</text>
+    <text x="46" y="216" fill="#666" font-size="13" font-family="Manrope" text-anchor="end">$25M</text>
+    <text x="46" y="296" fill="#666" font-size="13" font-family="Manrope" text-anchor="end">$15M</text>
+    <text x="46" y="376" fill="#666" font-size="13" font-family="Manrope" text-anchor="end">$8M</text>
+    <text x="46" y="456" fill="#666" font-size="13" font-family="Manrope" text-anchor="end">$4M</text>
+    <text x="46" y="530" fill="#666" font-size="13" font-family="Manrope" text-anchor="end">$0</text>
+    <line x1="340" y1="30" x2="340" y2="530" stroke="#444" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <polyline fill="none" stroke="#f04e00" stroke-width="2.5"
+      points="60,525 150,456 240,376 310,296 340,246 400,196 460,136 540,76 600,50"/>
+    <circle cx="340" cy="246" r="8" fill="#f04e00"/>
+    <text x="60" y="565" fill="#666" font-size="13" font-family="Manrope">2024</text>
+    <text x="560" y="565" fill="#666" font-size="13" font-family="Manrope">2028</text>
+  </svg>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 13 -->
+<div class="slide" id="s13">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">12</div>
+  <div class="hash">Go-to-Market Plan</div>
+  <div class="h1">Go-to-Market <span class="o">Plan</span></div>
+  <div class="sq-blk"></div>
+  <div class="sq-org"></div>
+  <div class="calendar">
+    <div class="cal-month">2025 Roadmap</div>
+    <div class="cal-grid">
+      <div class="cal-head"><span>Q1</span><span>Q2</span><span>Q3</span><span>Q4</span><span>Y2</span><span>Y3</span><span>Y4</span></div>
+      <div class="cal-body">
+        <div class="cc ot">Launch</div><div class="cc">Hire</div><div class="cc">Scale</div><div class="cc">Expand</div><div class="cc">Series B</div><div class="cc">IPO</div><div class="cc">$50M</div>
+        <div class="cc ot">14→50</div><div class="cc">50→120</div><div class="cc">120→200</div><div class="cc">200→350</div><div class="cc">350→600</div><div class="cc">600→900</div><div class="cc">900+</div>
+        <div class="cc ot">$4M</div><div class="cc">$8M</div><div class="cc">$14M</div><div class="cc">$20M</div><div class="cc hl"><div class="dot">$28M</div></div><div class="cc">$38M</div><div class="cc">$50M</div>
+        <div class="cc">PLG</div><div class="cc">Sales</div><div class="cc">Channel</div><div class="cc hl"><div class="dot">EMEA</div></div><div class="cc">APAC</div><div class="cc">Federal</div><div class="cc">Global</div>
+        <div class="cc ot">SOC 2</div><div class="cc ot">ISO 27K</div><div class="cc">HIPAA</div><div class="cc">FedRAMP</div><div class="cc">GDPR</div><div class="cc">CCPA</div><div class="cc">All</div>
+      </div>
+    </div>
+  </div>
+  <div class="date-events">
+    <div class="devent"><h3>Series A Close</h3><p>$8M led by Accel. Used for team expansion (Engineering × 8, Sales × 6), product investment, and first international hire.</p><div class="ho">Target: June 2025</div></div>
+    <div class="devent"><h3>EMEA Expansion</h3><p>Open London office, hire regional VP, and launch localised platform with GDPR compliance across UK, Germany, and France.</p><div class="ho">Target: Q4 2025</div></div>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 14 -->
+<div class="slide" id="s14">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">13</div>
+  <div class="hash">Competitive Advantage</div>
+  <div class="h1">Competitive <span class="o">Advantage</span></div>
+  <div class="sq-org"></div>
+  <div class="desc">Nexova sits in the "Goldilocks zone" — more powerful than Zapier or Make, simpler than SAP or ServiceNow. Our AI layer is the only one trained on cross-departmental workflow data at scale.<span class="ho"> We have a 14-month head start and 3 filed patents.</span></div>
+  <div class="sq-blk-sm"></div>
+  <div class="sq-org-sm"></div>
+  <div class="big-stat">
+    <div class="amt"><span class="o">71</span> NPS Score</div>
+    <p>Industry average is 31. Our customer retention rate of 94% significantly outperforms the SaaS benchmark of 80%, driven by deep workflow lock-in and continuous ROI delivery.</p>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 15 -->
+<div class="slide" id="s15">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">14</div>
+  <div class="hash">Growth Milestones</div>
+  <div class="h1">Growth <span class="o">Milestones</span></div>
+  <div class="desc">Each milestone is tied to a capital raise or key product event. We model conservative, base, and optimistic scenarios with clear triggers for each stage.</div>
+  <div class="tl-line"></div>
+  <div class="tl-arrow">→</div>
+  <div class="m-pts">
+    <div class="mpt" style="margin-bottom:0px;"><div class="lbl">$4M ARR</div><div class="dot org"></div></div>
+    <div class="mpt" style="margin-bottom:50px;"><div class="lbl">$12M ARR</div><div class="dot blk"></div></div>
+    <div class="mpt" style="margin-bottom:100px;"><div class="lbl">$28M ARR</div><div class="dot org"></div></div>
+    <div class="mpt" style="margin-bottom:70px;"><div class="lbl">$50M ARR</div><div class="dot blk"></div></div>
+  </div>
+  <div class="billion">$<span class="o">50</span>M by 2028</div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 16 -->
+<div class="slide" id="s16">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">15</div>
+  <div class="hash">Investment Opportunity</div>
+  <div class="h1">Investment<br><span class="o">Opportunity</span></div>
+  <div class="sq-org-top"></div>
+  <div class="arrow-c">→</div>
+  <div class="sq-org-mid"></div>
+  <div class="desc">We are raising $8M Series A at a $40M pre-money valuation. Funds will be allocated 45% to Engineering, 35% to Sales & Marketing, 12% to Infrastructure, and 8% to G&A.</div>
+  <div class="right-note">
+    <h3>$8M Series A</h3>
+    <p>18-month runway to reach $12M ARR and cash-flow breakeven. Lead investor receives one board seat. Pro-rata rights on Series B.</p>
+    <div class="ho">Target close: June 2025</div>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 17 -->
+<div class="slide" id="s17">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">16</div>
+  <div class="hash">Financial Projections</div>
+  <div class="h1">Financial <span class="o">Projections</span></div>
+  <div class="board-wrap">
+    <div class="board" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:24px;">
+      <div style="font-size:13px;color:#888;font-family:Manrope;">Annual Recurring Revenue</div>
+      <div style="display:flex;gap:24px;align-items:flex-end;">
+        <div style="text-align:center;"><div style="width:48px;background:#f04e00;height:40px;"></div><div style="font-size:11px;color:#888;margin-top:4px;">2024<br>$4M</div></div>
+        <div style="text-align:center;"><div style="width:48px;background:#f04e00;height:80px;"></div><div style="font-size:11px;color:#888;margin-top:4px;">2025<br>$12M</div></div>
+        <div style="text-align:center;"><div style="width:48px;background:#f04e00;height:140px;"></div><div style="font-size:11px;color:#888;margin-top:4px;">2026<br>$28M</div></div>
+        <div style="text-align:center;"><div style="width:48px;background:#111;height:200px;"></div><div style="font-size:11px;color:#888;margin-top:4px;">2027<br>$42M</div></div>
+        <div style="text-align:center;"><div style="width:48px;background:#f04e00;height:240px;"></div><div style="font-size:11px;color:#888;margin-top:4px;">2028<br>$50M</div></div>
+      </div>
+    </div>
+    <div class="post"></div>
+    <div class="post-base"></div>
+  </div>
+  <div class="billion">85<span class="o">%</span> Gross Margin</div>
+  <div class="desc">Projections based on 130% net revenue retention, $48K average ACV, and 8-month average sales cycle. Breakeven at $12M ARR (Q4 2025 on base case).</div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 18 -->
+<div class="slide" id="s18">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">17</div>
+  <div class="hash">Risk & Mitigation</div>
+  <div class="h1">Risk &amp; <span class="o">Mitigation</span></div>
+  <div class="laptop"><div class="laptop-notch"></div></div>
+  <div class="laptop-base"></div>
+  <div class="tablet"><div class="tablet-notch"></div></div>
+  <div class="mid-content">
+    <div class="billion">3 <span class="o">Key</span> Risks</div>
+    <p>Market risk, competitive risk, and execution risk — all modelled with mitigation strategies and trigger-based contingency plans reviewed quarterly by the board.</p>
+  </div>
+  <div class="rlist">
+    <div class="ritem"><div class="rbadge org">(01)</div><div class="ritem-text"><h4>Market Risk</h4><div class="ho">Mitigation: Diversify verticals early</div></div></div>
+    <div class="ritem"><div class="rbadge blk">(02)</div><div class="ritem-text"><h4>Competitive Risk</h4><div class="ho">Mitigation: AI moat + patent protection</div></div></div>
+    <div class="ritem"><div class="rbadge wht">(03)</div><div class="ritem-text"><h4>Execution Risk</h4><div class="ho">Mitigation: Experienced leadership team</div></div></div>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 19 -->
+<div class="slide" id="s19">
+  <div class="pres-template">Business <strong>Plan</strong></div>
+  <div class="slide-num-top">18</div>
+  <div class="hash">Contact & Next Steps</div>
+  <div class="h1">Let's <span class="o">Connect</span></div>
+  <div class="sq-blk-sm"></div>
+  <div class="sq-org-sm"></div>
+  <div class="contact">
+    <h3>Contact Us</h3>
+    <p><strong>Email :</strong> investors@nexova.io<br><strong>Phone :</strong> +1 (512) 400 8820<br><strong>Address :</strong> 901 S MoPac Expy, Austin TX 78746</p>
+  </div>
+  <div class="quotes">
+    <h3>Next Steps</h3>
+    <p>Sign NDA → receive full data room access → schedule management presentation → indicative term sheet within 2 weeks of first meeting.</p>
+    <div class="ho">nexova.io/investors</div>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+<!-- SLIDE 20 -->
+<div class="slide" id="s20">
+  <div class="panel-orange"></div>
+  <div class="pres-template-w" style="right:44px;">Business <strong>Plan</strong></div>
+  <div class="tagline">Build.<br>Scale. Disrupt.</div>
+  <div class="thankyou">Thank You</div>
+  <div class="right-year">2025</div>
+  <div class="right-hash">Confidential</div>
+  <div class="right-content">
+    <h3>Nexova –<br>Business Plan 2025–2028</h3>
+    <p>Automating the workflows that hold enterprises back. $8M Series A · $50M ARR target · Market leader by 2028.</p>
+    <div class="ho">nexova.io</div>
+  </div>
+  <svg class="buszet-logo" viewBox="0 0 32 32" fill="none"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>
+</div>
+
+</div>
+<script>
+// Slide 10 bar chart — customer growth projection
+const bars10 = document.getElementById('bars10');
+const hts = [14,16,19,22,26,30,35,40,46,52,58,65,72,80,88,96,104,115,126,138,150,165,180,196,213,232,253,276];
+hts.forEach((h,i) => {
+  const b = document.createElement('div');
+  b.className = 'bar';
+  b.style.height = Math.min(h * 1.1, 280) + 'px';
+  if (i === 16) b.style.background = '#111';
+  bars10.appendChild(b);
+});
+</script>
+</body>
+</html>

@@ -12,34 +12,35 @@ import "./ideas.css";
 /**
  * One idea, and the run that validates it.
  *
- * Reproduces the earlier Next.js Phoxta's idea detail screen — the segmented
- * phase bar, the per-step rows that fill in as they complete, and the verdict —
- * restated in ideas.css because that app was Tailwind and shadcn.
+ * Built from Phoxta's own webpage vocabulary — at-btn with its text-swap and
+ * double arrow, the fz-font-* type scale, neutral-* colour, the spacing scale —
+ * rather than a look invented for this screen. ideas.css only supplies what
+ * main.css has no equivalent for: the segmented phase bar and the tinted chips.
  *
- * The chain is driven here a step at a time. The whole run is minutes of model
- * time and an edge function is killed at 150s idle, so one request doing all
- * eight would die partway with some steps saved and nothing recording where it
- * stopped. Per-step means a closed tab costs one step, and reopening resumes.
+ * The chain runs a step at a time. The whole run is minutes of model time and an
+ * edge function is killed at 150s idle, so one request doing all eight would die
+ * partway with some steps saved and nothing recording where it stopped. Per-step
+ * means a closed tab costs one step, and reopening resumes from what is stored.
  */
 
 const ln = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
+const ARROW = (
+  <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+    <path d="M0.22 9.41a.75.75 0 1 0 1.06 1.06L.22 9.41ZM10.69.75a.75.75 0 0 0-.75-.75h-6.75a.75.75 0 0 0 0 1.5h6v6a.75.75 0 0 0 1.5 0V.75ZM.75 9.94l.53.53L10.47 1.28 9.94.75 9.41.22.22 9.41l.53.53Z" fill="currentColor" />
+  </svg>
+);
+
 const I_BACK = <svg width="15" height="15" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>;
 const I_TICK = <svg viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m8 12.5 2.5 2.5L16 9.5" /></svg>;
 const I_CLOCK = <svg viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
-const I_PLAY = <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12z" /></svg>;
-const I_BULB = <svg width="20" height="20" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6V16h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z" /></svg>;
 
-/** Renders whatever a step produced, without needing a schema for each one. */
+/** Renders whatever a step produced, without a schema for each one. */
 function Value({ value }: { value: unknown }) {
   if (value === null || value === undefined || value === "") return null;
 
   if (Array.isArray(value)) {
-    return (
-      <ul>
-        {value.map((v, i) => <li key={i}><Value value={v} /></li>)}
-      </ul>
-    );
+    return <ul>{value.map((v, i) => <li key={i}><Value value={v} /></li>)}</ul>;
   }
 
   if (typeof value === "object") {
@@ -66,7 +67,6 @@ export default function IdeaDetailPage() {
 
   const [running, setRunning] = useState<IdeaStep | null>(null);
   const [open, setOpen] = useState<IdeaStep | null>(null);
-  /** Set while the whole chain is requested; cleared to stop it. */
   const chainRef = useRef(false);
 
   const load = useCallback(async () => {
@@ -79,7 +79,7 @@ export default function IdeaDetailPage() {
 
   useEffect(() => {
     void load();
-    return () => { chainRef.current = false; }; // stop if the page goes away mid-run
+    return () => { chainRef.current = false; };
   }, [load]);
 
   const done = idea ? getCompletedSteps(idea) : [];
@@ -106,8 +106,8 @@ export default function IdeaDetailPage() {
     while (step && chainRef.current) {
       const next = await generate(step);
       if (!next) break;
-      // Re-read what is stored rather than trusting the loop, so nothing is
-      // generated twice if another tab advanced the same idea.
+      // Re-read what is stored rather than trusting the loop, so nothing runs
+      // twice if another tab advanced the same idea.
       const fresh = await getIdea(id);
       step = fresh.data ? nextStep(getCompletedSteps(fresh.data)) : null;
     }
@@ -115,42 +115,44 @@ export default function IdeaDetailPage() {
     chainRef.current = false;
   }
 
-  if (loading) return <div className="fz-font-md neutral-500">Loading…</div>;
+  if (loading) return <p className="fz-font-md neutral-500">Loading…</p>;
 
   if (!idea) {
     return (
       <div className="idv">
         <PageMeta title="Phoxta - Idea" />
-        <div className="idv-card" style={{ cursor: "default" }}>
-          <p className="neutral-700 mb-3">{error ?? "That idea was not found."}</p>
-          <Link to="/dashboard/ideas" className="btn btn-dark btn-sm rounded-3">Back to ideas</Link>
+        <div className="bg-neutral-0 rounded-5 p-5 idv-card" style={{ cursor: "default" }}>
+          <p className="fz-font-lg neutral-700 mb-30">{error ?? "That idea was not found."}</p>
+          <Link to="/dashboard/ideas" className="at-btn text-white rounded-0">
+            <span><span className="text-1">BACK TO IDEAS</span><span className="text-2">BACK TO IDEAS</span></span>
+            <i>{ARROW}{ARROW}</i>
+          </Link>
         </div>
       </div>
     );
   }
 
   const report = (idea.report ?? null) as { verdict?: string; overallScore?: number; summary?: string } | null;
-  const verdictClass =
-    report?.verdict === "Pursue" ? "idv-badge--completed"
-      : report?.verdict === "Reconsider" ? "idv-badge--archived"
-        : "idv-badge--active";
+  const verdictTone =
+    report?.verdict === "Pursue" ? "emerald" : report?.verdict === "Reconsider" ? "grey" : "amber";
 
   return (
     <div className="idv">
       <PageMeta title={`Phoxta - ${idea.title}`} />
 
-      <header className="idv-head">
-        <span className="idv-head__icon">{I_BULB}</span>
-        <div style={{ minWidth: 0 }}>
-          <h1 className="idv-head__title">{idea.title}</h1>
-          <p className="idv-head__sub">{idea.idea_seed}</p>
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="row align-items-end pb-40">
+        <div className="col-lg-8">
+          <span className="fz-font-label text-uppercase neutral-500 d-block mb-10">Idea Validator</span>
+          <h1 className="fz-font-3xl fw-600 lh-1 neutral-900 mb-15">{idea.title}</h1>
+          <p className="fz-font-md neutral-500 mb-0 text-truncate-2">{idea.idea_seed}</p>
         </div>
-        <div className="idv-head__actions">
-          <Link to="/dashboard/ideas" className="btn btn-outline-dark btn-sm rounded-3">
-            {I_BACK} <span className="ms-1">All ideas</span>
+        <div className="col-lg-4 d-flex justify-content-lg-end mt-20 mt-lg-0">
+          <Link to="/dashboard/ideas" className="at-btn common-black bg-transparent rounded-0 p-0">
+            <span><span className="text-1">{I_BACK} ALL IDEAS</span><span className="text-2">{I_BACK} ALL IDEAS</span></span>
           </Link>
         </div>
-      </header>
+      </div>
 
       {idea.run_error && (
         <div className="alert alert-warning py-2 px-3 fz-font-md" role="alert">
@@ -158,13 +160,14 @@ export default function IdeaDetailPage() {
         </div>
       )}
 
-      <div className="idv-card mb-3" style={{ cursor: "default" }}>
-        <div className="idv-progress__row">
-          <span>{done.length}/{TOTAL_STEPS} steps</span>
-          <b>{pct}%</b>
+      {/* ── Progress ───────────────────────────────────────────────────── */}
+      <div className="bg-neutral-50 rounded-5 p-4 mb-30">
+        <div className="d-flex align-items-baseline justify-content-between mb-15">
+          <span className="fz-font-md neutral-500">{done.length} of {TOTAL_STEPS} steps</span>
+          <span className="fz-font-2xl fw-600 neutral-900 lh-1">{pct}%</span>
         </div>
 
-        <div className="idv-bar">
+        <div className="idv-bar mb-15">
           {GROUPS.map((group) => (
             <div key={group.name} className="idv-bar__group">
               {group.steps.map((s) => {
@@ -181,88 +184,101 @@ export default function IdeaDetailPage() {
           ))}
         </div>
 
-        <div className="idv-legend mb-3">
+        <div className="idv-legend d-flex align-items-center gap-4 flex-wrap mb-30">
           {GROUPS.map((group) => (
-            <span key={group.name}>
+            <span key={group.name} className="d-inline-flex align-items-center gap-2 fz-font-label neutral-500">
               <i className={group.steps.every((s) => done.includes(s)) ? `on-${group.tone}` : ""} />
               {group.name}
             </span>
           ))}
         </div>
 
-        <div className="d-flex align-items-center gap-2 flex-wrap">
+        <div className="d-flex align-items-center gap-3 flex-wrap">
           {upNext ? (
             <>
-              <button type="button" className="btn btn-dark btn-sm rounded-3 ops-tap"
-                      disabled={running !== null} onClick={() => void runAll()}>
-                {I_PLAY} <span className="ms-1">{running ? "Running…" : "Run the whole validation"}</span>
+              <button type="button" className="at-btn text-white rounded-0" disabled={running !== null}
+                      onClick={() => void runAll()}>
+                <span>
+                  <span className="text-1">{running ? "RUNNING…" : "RUN THE VALIDATION"}</span>
+                  <span className="text-2">{running ? "RUNNING…" : "RUN THE VALIDATION"}</span>
+                </span>
+                <i>{ARROW}{ARROW}</i>
               </button>
-              <span className="idv-card__date">
+              <span className="fz-font-md neutral-500">
                 {done.length === 0 ? humanDuration(ESTIMATED_SECONDS) : `${humanDuration(remainingSeconds(done))} left`}
               </span>
               {running && (
-                <button type="button" className="btn btn-outline-dark btn-sm rounded-3 ops-tap"
+                <button type="button" className="at-btn common-black bg-transparent rounded-0 p-0"
                         onClick={() => { chainRef.current = false; toast("Stopping after this step."); }}>
-                  Stop after this step
+                  <span><span className="text-1">STOP AFTER THIS STEP</span><span className="text-2">STOP AFTER THIS STEP</span></span>
                 </button>
               )}
             </>
           ) : (
-            <span className="idv-badge idv-badge--completed">{I_TICK} Every step complete</span>
+            <span className="idv-chip idv-chip--emerald">{I_TICK} Every step complete</span>
           )}
         </div>
       </div>
 
-      <div className="d-flex flex-column gap-2">
+      {/* ── Steps ──────────────────────────────────────────────────────── */}
+      <div className="d-flex flex-column gap-3">
         {STEPS.map((spec) => {
           const complete = done.includes(spec.key);
           const isRunning = running === spec.key;
           const output = spec.key === "report" ? idea.report : (idea.ai_profile ?? {})[spec.key];
           return (
-            <div key={spec.key} className={`idv-step${complete ? " idv-step--done" : isRunning ? " idv-step--running" : ""}`}>
-              <div className="d-flex align-items-center gap-3 flex-wrap">
-                <span className="flex-grow-1" style={{ minWidth: 0 }}>
-                  <span className="idv-step__name">{spec.name}</span>
-                  <span className="idv-step__desc">{spec.description}</span>
-                </span>
-
-                <span className="d-flex align-items-center gap-2 flex-shrink-0">
+            <div key={spec.key}
+                 className={`idv-step bg-neutral-0 rounded-5 p-4${complete ? " idv-step--done" : isRunning ? " idv-step--running" : ""}`}>
+              <div className="row align-items-center g-3">
+                <div className="col-md">
+                  <h3 className="fz-font-lg fw-600 neutral-900 mb-0">{spec.name}</h3>
+                  <p className="fz-font-md neutral-500 mb-0">{spec.description}</p>
+                </div>
+                <div className="col-md-auto d-flex align-items-center gap-3">
                   {complete ? (
                     <>
-                      <span className="idv-badge idv-badge--completed">{I_TICK} Done</span>
-                      <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none fz-font-sm ops-tap"
+                      <span className="idv-chip idv-chip--emerald">{I_TICK} Done</span>
+                      <button type="button" className="at-btn common-black bg-transparent rounded-0 p-0"
                               onClick={() => setOpen(open === spec.key ? null : spec.key)}>
-                        {open === spec.key ? "Hide" : "View"}
+                        <span>
+                          <span className="text-1">{open === spec.key ? "HIDE" : "VIEW"}</span>
+                          <span className="text-2">{open === spec.key ? "HIDE" : "VIEW"}</span>
+                        </span>
                       </button>
                     </>
                   ) : isRunning ? (
-                    <span className="idv-badge idv-badge--active">{I_CLOCK} Running…</span>
+                    <span className="idv-chip idv-chip--amber">{I_CLOCK} Running…</span>
                   ) : (
-                    <button type="button" className="btn btn-outline-dark btn-sm rounded-3 ops-tap"
+                    <button type="button" className="at-btn common-black bg-transparent rounded-0 p-0"
                             disabled={running !== null} onClick={() => void generate(spec.key)}>
-                      Run this step
+                      <span><span className="text-1">RUN THIS STEP</span><span className="text-2">RUN THIS STEP</span></span>
+                      <i>{ARROW}{ARROW}</i>
                     </button>
                   )}
-                </span>
+                </div>
               </div>
 
               {open === spec.key && output != null && (
-                <div className="idv-out"><Value value={output} /></div>
+                <div className="idv-out fz-font-md neutral-700 mt-20 pt-20 border-top">
+                  <Value value={output} />
+                </div>
               )}
             </div>
           );
         })}
       </div>
 
+      {/* ── Verdict ────────────────────────────────────────────────────── */}
       {report && (
-        <div className="idv-card mt-3" style={{ cursor: "default" }}>
-          <div className="idv-card__top">
-            {report.verdict && <span className={`idv-badge ${verdictClass}`}>{report.verdict}</span>}
+        <div className="bg-neutral-900 rounded-5 p-5 mt-30">
+          <div className="d-flex align-items-center gap-3 flex-wrap mb-20">
+            <span className="fz-font-label text-uppercase text-white opacity-50">Verdict</span>
+            {report.verdict && <span className={`idv-chip idv-chip--${verdictTone}`}>{report.verdict}</span>}
             {typeof report.overallScore === "number" && (
-              <span className="idv-pill idv-pill--purple">{report.overallScore} / 10</span>
+              <span className="fz-font-2xl fw-600 text-white lh-1">{report.overallScore}<span className="fz-font-md opacity-50"> / 10</span></span>
             )}
           </div>
-          {report.summary && <p className="idv-out mb-0" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>{report.summary}</p>}
+          {report.summary && <p className="fz-font-lg text-white opacity-75 mb-0">{report.summary}</p>}
         </div>
       )}
     </div>
