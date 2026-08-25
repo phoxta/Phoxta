@@ -91,6 +91,12 @@ verify_jwt = false
 [functions.engage-run]
 verify_jwt = false
 
+# The public idea validator. Anonymous on purpose — a visitor validates an idea
+# with no account — so it defends itself with a per-IP daily limit instead of a
+# JWT.
+[functions.idea-validate]
+verify_jwt = false
+
 # Provider webhooks — authenticated by the provider's own signature header.
 [functions.stripe-webhook]
 verify_jwt = false

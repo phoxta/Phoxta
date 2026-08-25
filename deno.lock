@@ -41,6 +41,7 @@
         "npm:react-letter@~0.4.1",
         "npm:react-router-dom@^6.30.1",
         "npm:react@19",
+        "npm:reactflow@^11.11.4",
         "npm:split-text@1",
         "npm:swiper@^14.1.0",
         "npm:typescript-eslint@^8.59.3",
