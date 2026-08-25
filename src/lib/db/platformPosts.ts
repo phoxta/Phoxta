@@ -154,6 +154,21 @@ export async function deletePlatformPost(id: string): Promise<{ ok: boolean; err
   return { ok: !!data?.ok, error };
 }
 
+/** Upload an image to the public blog-media bucket via the gated function;
+ *  returns the public URL to drop into img/hero or a body figure. */
+export async function uploadBlogImage(file: File): Promise<{ url: string | null; error: string | null }> {
+  const data = await new Promise<string | null>((res) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(",")[1] ?? null);
+    r.onerror = () => res(null);
+    r.readAsDataURL(file);
+  });
+  if (!data) return { url: null, error: "Could not read that file." };
+  const { data: d, error } = await postsFn({ action: "upload", name: file.name, type: file.type, data });
+  if (error || !d) return { url: null, error };
+  return { url: (d.url as string) ?? null, error: null };
+}
+
 // ── Sharing ─────────────────────────────────────────────────────────────────
 
 export const postUrl = (slug: string) => `https://www.phoxta.com/blog/${slug}`;

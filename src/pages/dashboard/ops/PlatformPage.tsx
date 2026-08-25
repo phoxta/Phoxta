@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
 import { Card, Chip, Empty, InitialAvatar, stageTone } from "@/components/dash/Ui";
@@ -16,11 +16,14 @@ import {
   type PaymentTest, type PlatformUser,
 } from "@/lib/db/platform";
 import {
-  listPlatformPosts, savePlatformPost, deletePlatformPost, shareLinks, postUrl, articleToDraft,
+  listPlatformPosts, savePlatformPost, deletePlatformPost, shareLinks, postUrl, articleToDraft, uploadBlogImage,
   type PlatformPost, type PostDraft,
 } from "@/lib/db/platformPosts";
-import { blocksToText, textToBlocks, estimateReadMinutes } from "@/lib/articleText";
-import { ALL_ARTICLES, CATEGORY_LABELS, type Article, type ArticleCategory } from "@/data/articles";
+import { estimateReadMinutes } from "@/lib/articleText";
+import { ALL_ARTICLES, CATEGORY_LABELS, type Article, type ArticleBlock, type ArticleCategory } from "@/data/articles";
+// The composer IS the article page: the editor renders the blog template's
+// exact markup, edited in place with drag-and-drop blocks, Studio-style.
+import ArticleEditor from "@/components/dash/ArticleEditor";
 
 /** Slugs of the code-shipped editorial set — a DB row with one of these slugs
  *  is an OVERRIDE of that article, not a separate post. */
@@ -82,10 +85,54 @@ const CSS = `
 .opx-linkbtn { border: 0; background: transparent; padding: 0; color: var(--hrx-blue); font-weight: 600; cursor: pointer; }
 .opx-linkbtn:hover { color: var(--hrx-blue-deep); text-decoration: underline; }
 /* Blog composer */
-.opx-body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.7; min-height: 340px; }
-.opx-help { font-size: 12px; color: var(--hrx-muted); margin: 8px 0 0; }
-.opx-help code { background: var(--hrx-soft); border-radius: 4px; padding: 1px 5px; }
 .opx-sharebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.opx-details { border: 1px solid var(--hrx-border-soft); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; background: var(--hrx-soft); }
+.opx-details summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--hrx-muted); }
+.opx-details[open] summary { margin-bottom: 10px; }
+/* The in-place article editor: white page, blocks light up on hover. */
+.opx-editorwrap { background: #fff; border: 1px solid var(--hrx-border-soft); border-radius: 16px; overflow: hidden; }
+.opx-canvas { padding-top: 36px !important; padding-bottom: 48px !important; }
+.opx-canvas [contenteditable] { outline: none; border-radius: 6px; transition: box-shadow 0.15s; cursor: text; }
+.opx-canvas [contenteditable]:hover { box-shadow: 0 0 0 1px var(--hrx-border-soft); }
+.opx-canvas [contenteditable]:focus { box-shadow: 0 0 0 2px var(--hrx-blue); background: #fff; }
+.opx-canvas [contenteditable]:empty::before { content: attr(data-placeholder); color: #9ca3af; cursor: text; }
+.opx-canvas span[contenteditable], .opx-canvas cite[contenteditable] { display: inline-block; min-width: 40px; }
+.opx-block { position: relative; border-radius: 8px; }
+.opx-block.is-over { box-shadow: 0 -3px 0 0 var(--hrx-blue); }
+.opx-block-tools { position: absolute; top: -14px; right: 0; display: none; gap: 2px; z-index: 6; background: var(--hrx-ink); border-radius: 999px; padding: 4px 10px; align-items: center; }
+.opx-block:hover > .opx-block-tools { display: flex; }
+.opx-block-tools button, .opx-drag { border: 0; background: transparent; color: #fff; font-size: 12px; cursor: pointer; line-height: 1; padding: 2px 5px; }
+.opx-block-tools button:disabled { opacity: 0.35; }
+.opx-drag { cursor: grab; font-size: 14px; }
+.opx-block-tools .opx-del:hover { color: #ff8d7a; }
+.opx-addbar { position: relative; height: 16px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; }
+.opx-addbar:hover, .opx-addbar[data-open], .opx-block:hover .opx-addbar, .content > .opx-addbar:only-child { opacity: 1; }
+.content > .opx-addbar:first-child { opacity: 0.55; }
+.opx-addbtn { width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--hrx-blue); background: #fff; color: var(--hrx-blue); font-size: 14px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+.opx-palette { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); z-index: 30; background: #fff; border: 1px solid var(--hrx-border-soft); border-radius: 12px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12); padding: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 280px; }
+.opx-palette button { border: 0; background: transparent; text-align: left; font-size: 13px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.opx-palette button:hover { background: var(--hrx-soft); }
+.opx-imgwrap { position: relative; }
+.opx-imgswap { position: absolute; bottom: 12px; right: 12px; z-index: 4; border: 0; border-radius: 999px; padding: 8px 14px; background: rgba(17, 17, 17, 0.78); color: #fff; font-size: 13px; cursor: pointer; }
+.opx-imgswap:hover { background: #000; }
+.opx-li-add { list-style: none; }
+.opx-li-add button, .opx-tabletools button { border: 1px dashed var(--hrx-border-soft); background: #fff; border-radius: 8px; font-size: 12px; color: var(--hrx-muted); padding: 2px 8px; cursor: pointer; }
+.opx-li-add button:hover, .opx-tabletools button:hover { color: var(--hrx-ink); border-color: var(--hrx-muted); }
+.opx-tabletools { display: flex; gap: 6px; margin-top: 6px; }
+/* Blog list — visual cards on the kit's imgcard */
+.opx-bloggrid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.opx-blogcard { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.opx-blogcover { aspect-ratio: 16 / 10; }
+.opx-blogcover .shade .name { font-size: 16px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.opx-blogcard.is-off .opx-blogcover img { filter: grayscale(1); opacity: 0.65; }
+.opx-blogmeta { font-size: 12px; color: var(--hrx-muted); display: flex; justify-content: space-between; gap: 8px; }
+.opx-blogacts { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Live preview — the real blog template, with the marketing page's huge
+   section padding trimmed for the console. Links stay visible but inert. */
+.opx-preview { background: #fff; border: 1px solid var(--hrx-border-soft); border-radius: 16px; overflow: hidden; }
+.opx-preview .sec-1-blog-details { padding-top: 40px !important; padding-bottom: 40px !important; }
+/* Small thumbnails beside the image fields */
+.opx-thumb { width: 64px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--hrx-border-soft); flex-shrink: 0; }
 `;
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "dark" | "blue" | "soft" }) {
@@ -197,8 +244,33 @@ export default function OpsPlatformPage() {
   const [posts, setPosts] = useState<PlatformPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [draft, setDraft] = useState<PostDraft | null>(null);
-  const [draftText, setDraftText] = useState("");
+  const [draftBlocks, setDraftBlocks] = useState<ArticleBlock[]>([]);
   const [share, setShare] = useState<{ slug: string; title: string } | null>(null);
+  const [blogCat, setBlogCat] = useState<"all" | ArticleCategory>("all");
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  /** Card-image upload (the editor handles hero + body images itself). */
+  async function onImageFile(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setUploading(true);
+    const r = await uploadBlogImage(f);
+    setUploading(false);
+    if (r.error || !r.url) { toastError(r.error ?? "Upload failed."); return; }
+    const url = r.url;
+    setDraft((d) => (d ? { ...d, img: url } : d));
+    toast("Image uploaded.");
+  }
+
+  /** Upload plumbing for the in-place editor: hero and body figures. */
+  async function onEditorUpload(f: File): Promise<string | null> {
+    const r = await uploadBlogImage(f);
+    if (r.error || !r.url) { toastError(r.error ?? "Upload failed."); return null; }
+    toast("Image uploaded.");
+    return r.url;
+  }
 
   const loadPosts = useCallback(async () => {
     setPostsLoading(true);
@@ -230,14 +302,15 @@ export default function OpsPlatformPage() {
         img: p.img, hero: p.hero, author: p.author, read_minutes: p.read_minutes,
         body: p.body, status: p.status,
       });
-      setDraftText(blocksToText(p.body));
+      setDraftBlocks(p.body);
     } else {
       setDraft({
         slug: "", title: "", excerpt: "", category: "playbooks",
         img: "/assets/imgs/pages/img-72.webp", hero: "/assets/imgs/pages/img-168.webp",
         author: "Phoxta", read_minutes: 6, body: [], status: "draft",
       });
-      setDraftText("");
+      // Start with an empty standfirst so the page invites writing.
+      setDraftBlocks([{ kind: "lead", text: "" }]);
     }
   }
 
@@ -245,7 +318,7 @@ export default function OpsPlatformPage() {
   function openArticle(a: Article) {
     setShare(null);
     setDraft(articleToDraft(a));
-    setDraftText(blocksToText(a.body));
+    setDraftBlocks(a.body);
   }
 
   const editingBuiltin = draft ? BUILTIN_SLUGS.has(draft.slug) : false;
@@ -254,7 +327,10 @@ export default function OpsPlatformPage() {
    *  built-in's override); undefined → keep the current status. */
   async function onSavePost(publish?: boolean) {
     if (!draft || busy) return;
-    const body = textToBlocks(draftText);
+    // Empty text blocks are editing scaffolding, not content.
+    const body = draftBlocks.filter(
+      (b) => !((b.kind === "p" || b.kind === "lead" || b.kind === "h" || b.kind === "quote") && !b.text.trim()),
+    );
     if (!draft.title.trim()) { toastError("The post needs a title."); return; }
     if (body.length === 0) { toastError("Write something first — the post has no body."); return; }
     const isBuiltin = BUILTIN_SLUGS.has(draft.slug);
@@ -273,7 +349,7 @@ export default function OpsPlatformPage() {
           : "Draft saved.",
     );
     setDraft(null);
-    setDraftText("");
+    setDraftBlocks([]);
     if (r.post.status === "published") setShare({ slug: r.post.slug, title: r.post.title });
     loadPosts();
   }
@@ -690,75 +766,82 @@ export default function OpsPlatformPage() {
               The built-in editorial set ships in code: editing one publishes your version in its place, Hide takes it off
               the site, and Revert restores the original. Console posts are yours outright.
             </p>
-            {postsLoading && posts.length === 0 ? (
-              <p className="opx-note mb-0" role="status">Loading posts…</p>
-            ) : (
-              <div className="hrx-tablewrap">
-                <table className="hrx-table">
-                  <thead>
-                    <tr><th>Post</th><th>Category</th><th>Status</th><th>Date</th><th /></tr>
-                  </thead>
-                  <tbody>
-                    {blogItems.map((item) => {
-                      const a = item.kind === "builtin" ? item.article : null;
-                      const p = item.kind === "builtin" ? null : item.post;
-                      const slug = a ? a.slug : p!.slug;
-                      const title = a ? a.title : p!.title;
-                      const category = a ? a.category : p!.category;
-                      const live = a ? true : p!.status === "published";
-                      return (
-                        <tr key={slug}>
-                          <td>
-                            <div style={{ minWidth: 0 }}>
-                              <div className="fw-semibold text-truncate" style={{ maxWidth: 320 }}>{title}</div>
-                              <div className="text-truncate" style={{ color: "var(--hrx-muted)", fontSize: 13 }}>/blog/{slug}</div>
-                            </div>
-                          </td>
-                          <td><Chip tone="line">{CATEGORY_LABELS[category as ArticleCategory] ?? category}</Chip></td>
-                          <td>
-                            <div className="d-flex gap-1 flex-wrap">
-                              {a && <><Chip tone="ok">Published</Chip><Chip tone="plain">built-in</Chip></>}
-                              {p && item.kind === "override" && (
-                                p.status === "published"
-                                  ? <><Chip tone="ok">Published</Chip><Chip tone="plain">edited</Chip></>
-                                  : <Chip tone="danger">Hidden</Chip>
-                              )}
-                              {p && item.kind === "console" && (
-                                p.status === "published" ? <Chip tone="ok">Published</Chip> : <Chip tone="warn">Draft</Chip>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ color: "var(--hrx-muted)" }}>
-                            {a ? day(a.iso) : p!.published_at ? day(p!.published_at) : "—"}
-                          </td>
-                          <td className="text-end">
-                            <div className="d-flex gap-2 justify-content-end flex-wrap">
-                              <button type="button" className="hrx-seeall opx-btn" disabled={busy} onClick={() => (a ? openArticle(a) : openPost(p!))}>Edit</button>
-                              {a && (
-                                <button type="button" className="hrx-seeall opx-btn" disabled={busy} onClick={() => onHideBuiltin(a)}>Hide</button>
-                              )}
-                              {p && (
-                                <button type="button" className={`hrx-seeall opx-btn${live ? "" : " opx-solid"}`} disabled={busy} onClick={() => onTogglePublish(p, item.kind === "override")}>
-                                  {live ? (item.kind === "override" ? "Hide" : "Unpublish") : "Publish"}
-                                </button>
-                              )}
-                              {live && (
-                                <button type="button" className="hrx-seeall opx-btn" onClick={() => setShare({ slug, title })}>Share</button>
-                              )}
-                              {p && (
-                                <button type="button" className="hrx-seeall opx-btn opx-danger" disabled={busy} onClick={() => onDeletePost(p, item.kind === "override")}>
-                                  {item.kind === "override" ? "Revert" : "Delete"}
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="hrx-tabbar mb-3" role="tablist" aria-label="Filter by category">
+              {(["all", ...Object.keys(CATEGORY_LABELS)] as ("all" | ArticleCategory)[]).map((c) => {
+                const count = c === "all"
+                  ? blogItems.length
+                  : blogItems.filter((i) => (i.kind === "builtin" ? i.article.category : i.post.category) === c).length;
+                return (
+                  <button
+                    key={c} type="button" role="tab" aria-selected={blogCat === c}
+                    onClick={() => setBlogCat(c)}
+                    className={`hrx-tab${blogCat === c ? " active" : ""}`}
+                  >
+                    {c === "all" ? "All" : CATEGORY_LABELS[c]} <span className="hrx-tab-badge">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {postsLoading && posts.length === 0 && <p className="opx-note" role="status">Checking for console edits…</p>}
+
+            <div className="opx-bloggrid">
+              {blogItems
+                .filter((i) => blogCat === "all" || (i.kind === "builtin" ? i.article.category : i.post.category) === blogCat)
+                .map((item) => {
+                  const a = item.kind === "builtin" ? item.article : null;
+                  const p = item.kind === "builtin" ? null : item.post;
+                  const slug = a ? a.slug : p!.slug;
+                  const title = a ? a.title : p!.title;
+                  const category = (a ? a.category : p!.category) as ArticleCategory;
+                  const cover = a ? a.img : p!.img;
+                  const mins = a ? a.readMinutes : p!.read_minutes;
+                  const live = a ? true : p!.status === "published";
+                  const off = !!p && p.status === "hidden";
+                  return (
+                    <article key={slug} className={`opx-blogcard${off ? " is-off" : ""}`}>
+                      <div className="hrx-imgcard opx-blogcover">
+                        <img src={cover} alt="" width={400} height={250} loading="lazy" />
+                        <div className="corner-r">
+                          {a && <Chip tone="solid">Built-in</Chip>}
+                          {p && item.kind === "override" && (p.status === "published" ? <Chip tone="blue">Edited</Chip> : <Chip tone="danger">Hidden</Chip>)}
+                          {p && item.kind === "console" && (p.status === "published" ? <Chip tone="ok">Published</Chip> : <Chip tone="warn">Draft</Chip>)}
+                        </div>
+                        <div className="shade">
+                          <span className="cat">{CATEGORY_LABELS[category] ?? category}</span>
+                          <span className="name">{title}</span>
+                        </div>
+                      </div>
+                      <div className="opx-blogmeta">
+                        <span>{a ? day(a.iso) : p!.published_at ? day(p!.published_at) : "Not published"}</span>
+                        <span>{mins} min read</span>
+                      </div>
+                      <div className="opx-blogacts">
+                        <button type="button" className="hrx-seeall opx-btn" disabled={busy} onClick={() => (a ? openArticle(a) : openPost(p!))}>Edit</button>
+                        {a && (
+                          <button type="button" className="hrx-seeall opx-btn" disabled={busy} onClick={() => onHideBuiltin(a)}>Hide</button>
+                        )}
+                        {p && (
+                          <button type="button" className={`hrx-seeall opx-btn${live ? "" : " opx-solid"}`} disabled={busy} onClick={() => onTogglePublish(p, item.kind === "override")}>
+                            {live ? (item.kind === "override" ? "Hide" : "Unpublish") : "Publish"}
+                          </button>
+                        )}
+                        {live && (
+                          <button type="button" className="hrx-seeall opx-btn" onClick={() => setShare({ slug, title })}>Share</button>
+                        )}
+                        {live && (
+                          <a className="hrx-seeall opx-btn" href={postUrl(slug)} target="_blank" rel="noreferrer">View</a>
+                        )}
+                        {p && (
+                          <button type="button" className="hrx-seeall opx-btn opx-danger" disabled={busy} onClick={() => onDeletePost(p, item.kind === "override")}>
+                            {item.kind === "override" ? "Revert" : "Delete"}
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+            </div>
           </Card>
         </>
       )}
@@ -766,16 +849,14 @@ export default function OpsPlatformPage() {
       {section === "Blog" && draft && (
         <Card
           title={editingBuiltin ? "Edit article" : draft.id ? "Edit post" : "Write a post"}
-          right={<button type="button" className="hrx-seeall" onClick={() => { setDraft(null); setDraftText(""); }}>← All posts</button>}
+          right={<button type="button" className="hrx-seeall" onClick={() => { setDraft(null); setDraftBlocks([]); }}>← All posts</button>}
         >
-          <div className="d-flex flex-column gap-3">
+          <input ref={fileInput} type="file" accept="image/*" hidden onChange={onImageFile} />
+
+          {/* Everything that isn't ON the page itself lives in this drawer. */}
+          <details className="opx-details">
+            <summary>Post details — link, category, excerpt, card image</summary>
             <div className="row g-3 opx-grid">
-              <div className="col-md-8">
-                <label className="hrx-field">
-                  <span>Title</span>
-                  <input className="form-control" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="How to…" />
-                </label>
-              </div>
               <div className="col-md-4">
                 <label className="hrx-field">
                   <span>Category</span>
@@ -792,60 +873,54 @@ export default function OpsPlatformPage() {
                   <input className="form-control" value={draft.slug} disabled={editingBuiltin} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} placeholder="auto" />
                 </label>
               </div>
-              <div className="col-md-4">
-                <label className="hrx-field">
-                  <span>Author</span>
-                  <input className="form-control" value={draft.author} onChange={(e) => setDraft({ ...draft, author: e.target.value })} />
-                </label>
-              </div>
-              <div className="col-12">
+              <div className="col-md-6">
                 <label className="hrx-field">
                   <span>Excerpt — shows on the blog index and in link previews</span>
                   <textarea className="form-control" rows={2} value={draft.excerpt} onChange={(e) => setDraft({ ...draft, excerpt: e.target.value })} />
                 </label>
               </div>
               <div className="col-md-6">
-                <label className="hrx-field">
-                  <span>Card image path</span>
-                  <input className="form-control" value={draft.img} onChange={(e) => setDraft({ ...draft, img: e.target.value })} />
-                </label>
-              </div>
-              <div className="col-md-6">
-                <label className="hrx-field">
-                  <span>Hero image path (wide, top of the article)</span>
-                  <input className="form-control" value={draft.hero} onChange={(e) => setDraft({ ...draft, hero: e.target.value })} />
-                </label>
+                <div className="d-flex align-items-end gap-2">
+                  <label className="hrx-field flex-grow-1 mb-0">
+                    <span>Card image (the blog-index tile)</span>
+                    <input className="form-control" value={draft.img} onChange={(e) => setDraft({ ...draft, img: e.target.value })} />
+                  </label>
+                  <img className="opx-thumb" src={draft.img} alt="" width={64} height={44} loading="lazy" />
+                  <button type="button" className="hrx-seeall opx-btn" disabled={uploading} onClick={() => fileInput.current?.click()}>
+                    {uploading ? "…" : "Upload"}
+                  </button>
+                </div>
               </div>
             </div>
+          </details>
 
-            <label className="hrx-field mb-0">
-              <span>Body</span>
-              <textarea
-                className="form-control opx-body" value={draftText}
-                onChange={(e) => setDraftText(e.target.value)}
-                placeholder={"The first paragraph becomes the large opening standfirst.\n\n## A heading\n\nA normal paragraph.\n\n- A bullet\n- Another bullet\n\n> A pull quote.\n\n![Image description](/assets/imgs/pages/img-192.webp|Optional caption)"}
-              />
-            </label>
-            <p className="opx-help mb-0">
-              Blank line between blocks. <code>## Heading</code> · <code>- bullet</code> · <code>&gt; quote</code> · <code>![alt](/path.webp|caption)</code> —
-              rendered with the exact blog article template. About {estimateReadMinutes(textToBlocks(draftText))} min read.
-            </p>
+          {/* The page itself. Click any text to edit it in place, click an
+              image to replace it, hover between blocks for “+”, drag ⠿ to
+              reorder — the Studio treatment on the real article template. */}
+          <div className="opx-editorwrap">
+            <ArticleEditor
+              draft={draft}
+              blocks={draftBlocks}
+              onDraft={(p) => setDraft((d) => (d ? { ...d, ...p } : d))}
+              onBlocks={setDraftBlocks}
+              onUpload={onEditorUpload}
+            />
+          </div>
 
-            <div className="d-flex gap-2 flex-wrap">
-              <button type="button" className="hrx-pill primary opx-btn" disabled={busy} onClick={() => onSavePost(true)}>
-                {draft.status === "published" || editingBuiltin ? "Save & publish" : "Publish"}
+          <div className="d-flex gap-2 flex-wrap" style={{ marginTop: 16 }}>
+            <button type="button" className="hrx-pill primary opx-btn" disabled={busy} onClick={() => onSavePost(true)}>
+              {draft.status === "published" || editingBuiltin ? "Save & publish" : "Publish"}
+            </button>
+            {!editingBuiltin && (
+              <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(draft.status === "published" ? undefined : false)}>
+                {draft.status === "published" ? "Save changes" : "Save draft"}
               </button>
-              {!editingBuiltin && (
-                <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(draft.status === "published" ? undefined : false)}>
-                  {draft.status === "published" ? "Save changes" : "Save draft"}
-                </button>
-              )}
-              {(draft.status === "published" || draft.status === "hidden") && (editingBuiltin || draft.id) && (
-                <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(false)}>
-                  {editingBuiltin ? "Save & hide from site" : "Unpublish"}
-                </button>
-              )}
-            </div>
+            )}
+            {(draft.status === "published" || draft.status === "hidden") && (editingBuiltin || draft.id) && (
+              <button type="button" className="hrx-pill opx-btn" disabled={busy} onClick={() => onSavePost(false)}>
+                {editingBuiltin ? "Save & hide from site" : "Unpublish"}
+              </button>
+            )}
           </div>
         </Card>
       )}

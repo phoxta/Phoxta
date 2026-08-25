@@ -169,6 +169,29 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // --- upload: an image into the public blog-media bucket ------------------
+    if (body.action === "upload") {
+      const name = String(body.name ?? "image");
+      const type = String(body.type ?? "");
+      if (!type.startsWith("image/")) return json({ error: "Only images can be uploaded here." }, 400);
+      let bytes: Uint8Array;
+      try {
+        bytes = Uint8Array.from(atob(String(body.data ?? "")), (c) => c.charCodeAt(0));
+      } catch (_) {
+        return json({ error: "That file didn't survive the trip — try again." }, 400);
+      }
+      if (bytes.length === 0) return json({ error: "The file is empty." }, 400);
+      if (bytes.length > 8 * 1024 * 1024) return json({ error: "Keep images under 8MB." }, 400);
+
+      try { await admin.storage.createBucket("blog-media", { public: true }); } catch (_) { /* already exists */ }
+      const path = `${Date.now()}-${name.toLowerCase().replace(/[^a-z0-9.]+/g, "-").slice(-80)}`;
+      const { error } = await admin.storage.from("blog-media").upload(path, bytes, { contentType: type });
+      if (error) return json({ error: error.message }, 400);
+      const { data: pub } = admin.storage.from("blog-media").getPublicUrl(path);
+      await audit(admin, actorEmail, "post_image_upload", path, { bytes: bytes.length });
+      return json({ ok: true, url: pub.publicUrl });
+    }
+
     return json({ error: "Unknown action." }, 400);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Something went wrong." }, 500);
