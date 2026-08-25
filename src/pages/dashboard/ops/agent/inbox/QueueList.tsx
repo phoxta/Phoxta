@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { AlertTriangle, Frown, Hash, Star, Timer } from "lucide-react";
+import { AlertTriangle, Frown, Hash, Sparkles, Star, Timer } from "lucide-react";
 import { Avatar, Tag } from "@/pages/dashboard/ops/ui/primitives";
 import { channelLabel } from "@/pages/dashboard/ops/ui/util";
 import { firstResponseSla, type SlaPolicy } from "@/lib/ops/sla";
@@ -35,6 +35,7 @@ export default function QueueList({
   onCursor,
   scrollEl,
   assigneeName,
+  responders,
   sla,
   hasMore,
   loadingMore,
@@ -53,6 +54,10 @@ export default function QueueList({
    */
   scrollEl: HTMLDivElement | null;
   assigneeName: (id: string | null) => string;
+  /** Who answered last per conversation id ('ai' | 'human') — drives the AI
+   *  chip so AI-handled rows are unmistakable at a glance. Optional: without
+   *  it the list renders exactly as before. */
+  responders?: Record<string, "ai" | "human">;
   /** The org's SLA policy (null/disabled → no due chips). Computed per row,
    *  client-side, from created_at + first_response_at — see lib/ops/sla. */
   sla?: SlaPolicy | null;
@@ -102,6 +107,9 @@ export default function QueueList({
         const negative = (conv?.sentiment ?? ticket?.sentiment) === "negative";
         // First-response SLA countdown (conversations only; snoozed rows show none).
         const slaChip = conv ? firstResponseSla(conv, sla) : null;
+        // The AI answered last and nobody has taken over — this thread is the
+        // machine's right now, and the owner should be able to see that cold.
+        const aiHandled = !!conv && !conv.ai_paused && conv.status !== "closed" && responders?.[conv.id] === "ai";
 
         return (
           <div
@@ -134,8 +142,13 @@ export default function QueueList({
                   {title || <span className="fst-italic opacity-75">{channelLabel(channelOf(it))}</span>}
                 </span>
 
-                {(status || assignee || negative || slaChip || ticket?.priority === "high" || (conv?.tags?.length ?? 0) > 0 || conv?.csat_score != null) && (
+                {(status || assignee || negative || slaChip || aiHandled || ticket?.priority === "high" || (conv?.tags?.length ?? 0) > 0 || conv?.csat_score != null) && (
                   <span className="ibx-row__meta">
+                    {aiHandled && (
+                      <Tag tone="ok" icon={<Sparkles />}>
+                        AI
+                      </Tag>
+                    )}
                     {status && <Tag tone={status.tone}>{status.label}</Tag>}
                     {slaChip && (
                       <Tag tone={slaChip.tone} icon={<Timer />}>

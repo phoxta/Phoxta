@@ -424,6 +424,10 @@ export function makeJourneyDeliver(admin: SupabaseClient, flow: Json, run: Json,
 export function makeConversationDeliver(admin: SupabaseClient, flow: Json, run: Json, conversation: Json) {
   return async (text: string, _subject?: string): Promise<boolean> => {
     if (!text.trim()) return false;
+    // Take-over gate, re-checked at delivery time (a run can wake hours after
+    // the row was loaded): while a human owns the thread, a flow stays silent.
+    const { data: fresh } = await admin.from("conversations").select("*").eq("id", conversation.id).maybeSingle();
+    if (fresh && (fresh as Json).ai_paused === true) return false;
     const channel = String(conversation.channel_type ?? "web");
     await admin.from("conversation_messages").insert({
       organization_id: run.organization_id,
@@ -522,6 +526,11 @@ export async function engageHandleInbound(
     conv = data ?? null;
   }
   const isNew = !conv;
+
+  // Take-over gate: a human owns this thread (ai_paused set from the Inbox).
+  // Flows must stay as silent as the AI — fall through to respondCore, whose
+  // own guard persists the inbound message and returns a no-reply result.
+  if (conv && conv.ai_paused === true) return null;
 
   // An in-flight run on this conversation claims the turn (reply waits only —
   // a run sleeping on a timer leaves the turn to the AI).
@@ -661,7 +670,10 @@ export async function engageHandleInbound(
   const now = new Date().toISOString();
   const msgRows: Json[] = [];
   if (!out.fallToAi) {
-    msgRows.push({ organization_id: org.id, conversation_id: conv.id, role: "customer", channel_type: p.channel, body: p.message.slice(0, 4000) });
+    // `meta` on every row: PostgREST rejects a batch whose objects don't share
+    // one key set (PGRST102) — mixing this row with the flow's meta-carrying
+    // sends below used to silently drop the whole transcript.
+    msgRows.push({ organization_id: org.id, conversation_id: conv.id, role: "customer", channel_type: p.channel, body: p.message.slice(0, 4000), meta: {} });
   }
   for (const t of texts) {
     msgRows.push({
@@ -673,7 +685,10 @@ export async function engageHandleInbound(
       meta: { engage: { flow_id: flow.id, run_id: run.id } },
     });
   }
-  if (msgRows.length) await admin.from("conversation_messages").insert(msgRows);
+  if (msgRows.length) {
+    const { error: msgErr } = await admin.from("conversation_messages").insert(msgRows);
+    if (msgErr) console.error("[phoxta] engage conversation_messages insert failed:", msgErr.message);
+  }
   if (!out.fallToAi) {
     await admin.from("conversations").update({ last_message_at: now }).eq("id", conv.id);
     if (texts.length) {

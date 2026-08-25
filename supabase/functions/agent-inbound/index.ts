@@ -160,6 +160,41 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // --- Widget receive path: poll for agent/human messages on ONE thread. ---
+    // The web channel had no delivery leg at all: conversation-send recorded a
+    // human reply "for the widget's next poll", but no poll existed — a reply
+    // typed in the Inbox never reached the visitor. This is that poll. Gated by
+    // the same public key as sending; scoped to a single conversation in the
+    // key's own org; returns only what the thread shows anyway (no notes, no
+    // meta, no author identity). `afterId` = last message id the widget has.
+    if (body?.action === "poll" && body?.conversationId) {
+      const { data: conv } = await admin
+        .from("conversations")
+        .select("*")
+        .eq("id", body.conversationId)
+        .eq("organization_id", org.id)
+        .maybeSingle();
+      if (!conv) return json({ error: "Unknown conversation." }, 404);
+      let q = admin
+        .from("conversation_messages")
+        .select("id, role, body, created_at")
+        .eq("conversation_id", body.conversationId)
+        .in("role", ["agent", "human"])
+        .order("created_at", { ascending: true })
+        .limit(50);
+      if (body.afterId) {
+        const { data: anchor } = await admin
+          .from("conversation_messages")
+          .select("created_at")
+          .eq("id", body.afterId)
+          .eq("conversation_id", body.conversationId)
+          .maybeSingle();
+        if (anchor) q = q.gt("created_at", (anchor as Json).created_at);
+      }
+      const { data: msgs } = await q;
+      return json({ messages: msgs ?? [], human: (conv as Json).ai_paused === true });
+    }
+
     // --- Chatwoot Agent-Bot webhook ---
     if (body?.event) {
       if (body.event !== "message_created" || body.message_type !== "incoming") return json({ ok: true });
@@ -185,6 +220,9 @@ Deno.serve(async (req) => {
         customer: { name: sender.name, email: sender.email, phone: sender.phone_number },
         message,
       });
+      // A human has taken over: the message is persisted and the assignee
+      // notified (respondCore's paused branch) — post nothing back.
+      if (result.paused) return json({ ok: true });
       await classifyLater(classifyInbound(admin, org, result.conversationId, message));
       await postToChatwoot(body.account?.id, body.conversation?.id, engaged?.reply ? `${engaged.reply}\n\n${result.reply}` : result.reply);
       return json({ ok: true });
@@ -263,6 +301,14 @@ Deno.serve(async (req) => {
       // messages carry the conversationId, whose row already has the flag).
       isTest: body?.test === true,
     });
+    // A human has taken over this thread: the customer's message is persisted
+    // and the assignee notified (respondCore's paused branch). `human: true`
+    // lets an updated widget switch to polling for the human's replies; the
+    // response shape is otherwise unchanged (older widgets fall back to their
+    // canned line on an empty reply — honest silence from the AI either way).
+    if (result.paused) {
+      return json({ conversationId: result.conversationId, reply: "", human: true, cards: [] });
+    }
     await classifyLater(classifyInbound(admin, org, result.conversationId, message));
     return json({
       conversationId: result.conversationId,

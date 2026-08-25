@@ -47,6 +47,8 @@ export type Conversation = {
   unread: boolean;
   sentiment: string | null;
   contact_id: string | null;
+  /** True while a human has taken over — the AI stays silent on this thread. */
+  ai_paused: boolean;
   created_at: string;
 };
 export type ConversationMessage = {
@@ -125,7 +127,7 @@ async function invokeFn<T>(fn: string, body: Record<string, unknown>): Promise<{
 
 // ---------- Inbox ----------
 const CONV_COLS =
-  "id, channel_type, customer_name, customer_email, customer_phone, status, intent, qualified, lead_score, summary, last_message_at, assigned_to, tags, snoozed_until, first_response_at, csat_score, csat_requested, csat_source, unread, sentiment, contact_id, created_at";
+  "id, channel_type, customer_name, customer_email, customer_phone, status, intent, qualified, lead_score, summary, last_message_at, assigned_to, tags, snoozed_until, first_response_at, csat_score, csat_requested, csat_source, unread, sentiment, contact_id, ai_paused, created_at";
 
 export async function listConversations(
   orgId: string,
@@ -279,6 +281,32 @@ export async function assignConversation(convId: string, userId: string | null):
 export async function snoozeConversation(convId: string, until: string | null): Promise<{ error: string | null }> {
   const { error } = await supabase.from("conversations").update({ status: until ? "snoozed" : "open", snoozed_until: until }).eq("id", convId);
   return { error: friendlyError(error?.message) };
+}
+/** Take over / hand back: while paused the AI (and Engage flows) still record
+ *  inbound customer messages but never compose a reply — the server-side gate
+ *  lives in agentCore.respondCore, keyed on this flag. */
+export async function setAiPaused(convId: string, paused: boolean): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("conversations").update({ ai_paused: paused }).eq("id", convId);
+  return { error: friendlyError(error?.message) };
+}
+
+/** Who answered last on each conversation — 'ai' (role agent) or 'human'
+ *  (role human, sent from the console). One indexed query for the whole queue;
+ *  the newest 1000 outbound messages comfortably cover a 500-row page. */
+export async function mapLastResponders(orgId: string): Promise<{ data: Record<string, "ai" | "human">; error: string | null }> {
+  const { data, error } = await supabase
+    .from("conversation_messages")
+    .select("conversation_id, role, created_at")
+    .eq("organization_id", orgId)
+    .in("role", ["agent", "human"])
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (error) return { data: {}, error: friendlyError(error.message) };
+  const map: Record<string, "ai" | "human"> = {};
+  for (const m of (data as { conversation_id: string; role: string }[] | null) ?? []) {
+    if (!(m.conversation_id in map)) map[m.conversation_id] = m.role === "agent" ? "ai" : "human";
+  }
+  return { data: map, error: null };
 }
 
 // ---------- Collision presence (who's viewing) ----------

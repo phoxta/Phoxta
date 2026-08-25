@@ -56,17 +56,20 @@ async function resolveConversation(
   conversationId: string | undefined,
   customer: AgentCtx["customer"],
   isTest = false,
-): Promise<{ id: string; contactId: string | null }> {
+): Promise<{ id: string; contactId: string | null; aiPaused: boolean }> {
+  // select("*") rather than named columns: ai_paused arrives via the lazily
+  // applied 0107 bootstrap, and a named select of a not-yet-applied column
+  // would error → data null → a duplicate conversation per message.
   if (conversationId) {
-    const { data } = await admin.from("conversations").select("id, contact_id").eq("id", conversationId).eq("organization_id", orgId).maybeSingle();
-    if (data) return { id: (data as Json).id, contactId: (data as Json).contact_id };
+    const { data } = await admin.from("conversations").select("*").eq("id", conversationId).eq("organization_id", orgId).maybeSingle();
+    if (data) return { id: (data as Json).id, contactId: (data as Json).contact_id, aiPaused: (data as Json).ai_paused === true };
   }
   // SMS/WhatsApp thread by phone — reuse the most recent non-closed thread for
   // this number+channel so a person's texts stay in one conversation.
   if ((channel === "sms" || channel === "whatsapp") && customer.phone) {
     const { data } = await admin
       .from("conversations")
-      .select("id, contact_id")
+      .select("*")
       .eq("organization_id", orgId)
       .eq("channel_type", channel)
       .eq("customer_phone", customer.phone)
@@ -75,7 +78,7 @@ async function resolveConversation(
       .order("last_message_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (data) return { id: (data as Json).id, contactId: (data as Json).contact_id };
+    if (data) return { id: (data as Json).id, contactId: (data as Json).contact_id, aiPaused: (data as Json).ai_paused === true };
   }
   // Link to an existing contact (unified memory). app_resolve_contact matches on
   // the contact_identities handle table, falls back to the legacy email/phone
@@ -130,7 +133,18 @@ async function resolveConversation(
     })
     .select("id")
     .single();
-  return { id: (conv as Json).id, contactId };
+  return { id: (conv as Json).id, contactId, aiPaused: false };
+}
+
+/** Persist rows onto the thread, loudly. This insert failed SILENTLY for months:
+ *  PostgREST rejects a batch whose objects don't share the same key set
+ *  (PGRST102 "All object keys must match"), so the agent-row `meta` key made
+ *  every customer+agent pair vanish while the conversation still flipped to
+ *  "handled". Every row now carries an explicit `meta`, and a failure is at
+ *  least visible in the function logs. */
+async function insertMessages(admin: SupabaseClient, rows: Json[]): Promise<void> {
+  const { error } = await admin.from("conversation_messages").insert(rows);
+  if (error) console.error("[phoxta] conversation_messages insert failed:", error.message);
 }
 
 export async function respondCore(
@@ -138,13 +152,35 @@ export async function respondCore(
   org: Org,
   config: AgentConfig,
   params: { channel: string; conversationId?: string; customer: AgentCtx["customer"]; message: string; userId?: string | null; isTest?: boolean },
-): Promise<{ conversationId: string; reply: string; actions: string[]; escalated: boolean; cards: ProductCard[] }> {
-  const { id: conversationId, contactId } = await resolveConversation(admin, org.id, params.channel, params.conversationId, params.customer, params.isTest === true);
+): Promise<{ conversationId: string; reply: string; actions: string[]; escalated: boolean; cards: ProductCard[]; paused?: boolean }> {
+  const { id: conversationId, contactId, aiPaused } = await resolveConversation(admin, org.id, params.channel, params.conversationId, params.customer, params.isTest === true);
 
   // Input guardrail: bound length + flag prompt-injection attempts. Use the
   // sanitized text everywhere downstream (run, history, persistence).
   const inGuard = guardInput(params.message);
   const userText = inGuard.cleaned;
+
+  // Take-over gate: a human owns this thread. Record what the customer said,
+  // surface it (unread flag comes from the insert trigger), tell the assignee,
+  // and compose NOTHING — the honest silence the "Take over" button promises.
+  if (aiPaused) {
+    await insertMessages(admin, [
+      { organization_id: org.id, conversation_id: conversationId, role: "customer", channel_type: params.channel, body: userText, meta: {} },
+    ]);
+    await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conversationId);
+    const { data: convRow } = await admin.from("conversations").select("assigned_to").eq("id", conversationId).maybeSingle();
+    const assignee = (convRow as Json)?.assigned_to as string | null;
+    if (assignee) {
+      await admin.from("notifications").insert({
+        user_id: assignee,
+        title: "New message on a conversation you've taken over",
+        body: userText.slice(0, 140),
+        kind: "info",
+        link: `/dashboard/businesses/${org.id}/ops/engage/inbox?c=${conversationId}`,
+      });
+    }
+    return { conversationId, reply: "", actions: [], escalated: false, cards: [], paused: true };
+  }
 
   // This conversation's history.
   const { data: msgs } = await admin
@@ -168,8 +204,9 @@ export async function respondCore(
   const cap = MONTHLY_TOKEN_CAP[plan] ?? MONTHLY_TOKEN_CAP.starter;
   if ((await tokensUsedThisMonth(admin, org.id)) >= cap) {
     const capped = "Thanks for reaching out! I can't continue the conversation right now, but I've noted your message and a member of the team will follow up with you shortly.";
-    await admin.from("conversation_messages").insert([
-      { organization_id: org.id, conversation_id: conversationId, role: "customer", channel_type: params.channel, body: userText },
+    // Every row carries `meta` — PostgREST rejects mixed-key batches (PGRST102).
+    await insertMessages(admin, [
+      { organization_id: org.id, conversation_id: conversationId, role: "customer", channel_type: params.channel, body: userText, meta: {} },
       { organization_id: org.id, conversation_id: conversationId, role: "agent", channel_type: params.channel, body: capped, meta: { capped: true } },
     ]);
     await admin.from("conversations").update({ last_message_at: new Date().toISOString(), status: "escalated" }).eq("id", conversationId);
@@ -264,8 +301,10 @@ export async function respondCore(
   const reply = out.cleaned;
   const escalated = ctx.actions.some((a) => a.toLowerCase().includes("escalat"));
 
-  await admin.from("conversation_messages").insert([
-    { organization_id: org.id, conversation_id: conversationId, role: "customer", channel_type: params.channel, body: userText },
+  // Every row carries `meta` — PostgREST rejects mixed-key batches (PGRST102),
+  // which is exactly how this transcript silently failed to persist before.
+  await insertMessages(admin, [
+    { organization_id: org.id, conversation_id: conversationId, role: "customer", channel_type: params.channel, body: userText, meta: {} },
     { organization_id: org.id, conversation_id: conversationId, role: "agent", channel_type: params.channel, body: reply, meta: { actions: ctx.actions, tools: run.toolCalls, guardrails: { input_injection: inGuard.injection, output_flags: out.flags } } },
   ]);
   await admin

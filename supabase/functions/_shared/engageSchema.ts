@@ -100,6 +100,24 @@ alter table public.crm_contacts add column if not exists attributes jsonb not nu
 drop trigger if exists trg_engage_flows_touch on public.engage_flows;
 create trigger trg_engage_flows_touch before update on public.engage_flows
   for each row execute function public.app_touch_updated_at();
+
+-- Inbox live view + human take-over (mirrored in 0107_inbox_live.sql).
+-- ai_paused: while true, respondCore and the flow runtime persist inbound
+-- customer messages but never reply — the human who took over owns the thread.
+alter table public.conversations add column if not exists ai_paused boolean not null default false;
+
+-- The console's live watch streams these two tables; re-assert membership
+-- idempotently (same guard as 0041/0107 — only add when missing).
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'conversations') then
+    alter publication supabase_realtime add table public.conversations;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'conversation_messages') then
+    alter publication supabase_realtime add table public.conversation_messages;
+  end if;
+exception when duplicate_object then null;
+end $$;
 `;
 
 let schemaReady = false;

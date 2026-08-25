@@ -28,12 +28,14 @@ import {
 import {
   listConversations,
   listContactTimeline,
+  mapLastResponders,
   sendConversationReply,
   sendConversationTemplate,
   addInternalNote,
   suggestReply,
   placeCall,
   voiceToken,
+  setAiPaused,
   setConversationStatus,
   setConversationTags,
   assignConversation,
@@ -231,6 +233,17 @@ export default function InboxPage() {
   const [search, setSearch] = useState("");
   const [fChannel, setFChannel] = useState("");
   const [fQueue, setFQueue] = useState<QueueFilter>("all");
+  /** Show only the conversations the AI is currently handling. */
+  const [fAi, setFAi] = useState(false);
+
+  // Live watch. `responders` = who answered last on each conversation ('ai' |
+  // 'human') — drives the AI chips and the "AI handling" filter. `live` = the
+  // realtime channel is actually subscribed; when it isn't, the 10s poll below
+  // is the only freshness, and the indicator goes grey rather than lying.
+  const [responders, setResponders] = useState<Record<string, "ai" | "human">>({});
+  const [live, setLive] = useState(false);
+  const liveRef = useRef(live);
+  liveRef.current = live;
 
   // Reference data
   const [canned, setCanned] = useState<CannedResponse[]>([]);
@@ -370,13 +383,16 @@ export default function InboxPage() {
 
   // ── Load the unified queue ────────────────────────────────────────────────
   const load = useCallback(async () => {
-    const [c, t] = await Promise.all([
+    const [c, t, r] = await Promise.all([
       listConversations(orgId, { search, channel: fChannel, limit }),
       listTickets(orgId),
+      // Auxiliary — an error here must not blank the whole queue.
+      mapLastResponders(orgId),
     ]);
     setError(c.error || t.error);
     setConvos(c.data);
     setTickets(t.data);
+    if (!r.error) setResponders(r.data);
     setLoading(false);
     setLoadingMore(false);
     // Keep the open item in sync with refreshed rows.
@@ -410,6 +426,11 @@ export default function InboxPage() {
         { event: "INSERT", schema: "public", table: "conversation_messages", filter: `organization_id=eq.${orgId}` },
         async (payload) => {
           const m = payload.new as ConversationMessage & { conversation_id: string };
+          // Keep the AI/human chips truthful as replies stream in.
+          if (m.role === "agent" || m.role === "human") {
+            const who = m.role === "agent" ? ("ai" as const) : ("human" as const);
+            setResponders((prev) => (prev[m.conversation_id] === who ? prev : { ...prev, [m.conversation_id]: who }));
+          }
           const sel = selectedRef.current;
           if (sel?.kind === "conversation") {
             // The timeline spans every channel this customer uses, so a message
@@ -456,11 +477,45 @@ export default function InboxPage() {
           loadRef.current();
         },
       )
-      .subscribe();
+      // Realtime can drop silently — surface its actual health so the "Live"
+      // dot never claims a stream that isn't flowing (the 10s poll covers it).
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
     return () => {
+      setLive(false);
       supabase.removeChannel(ch);
     };
   }, [orgId]);
+
+  // ── Polling fallback: realtime is best-effort, this is the guarantee ──────
+  // Every 10s while the tab is visible: refresh the open thread; and when the
+  // realtime channel is down, refresh the queue too, so "live" degrades to
+  // "10 seconds behind" instead of "frozen".
+  const openConvId = selected?.kind === "conversation" ? selected.id : null;
+  useEffect(() => {
+    if (!openConvId) return;
+    const t = setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      const sel = selectedRef.current;
+      if (!sel || sel.kind !== "conversation" || sel.id !== openConvId) return;
+      const { data } = await listContactTimeline(orgId, sel.conv.contact_id, sel.id);
+      // Only swap state when something actually changed — a poll must never
+      // cause a re-render that yanks the reader's scroll position.
+      setMessages((prev) =>
+        prev.length === data.length && prev[prev.length - 1]?.id === data[data.length - 1]?.id ? prev : data,
+      );
+    }, 10_000);
+    return () => clearInterval(t);
+  }, [openConvId, orgId]);
+
+  // Queue fallback: with realtime down, the list itself refreshes on a timer —
+  // whether or not a thread is open.
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (document.visibilityState !== "visible" || liveRef.current) return;
+      loadRef.current();
+    }, 15_000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -511,17 +566,30 @@ export default function InboxPage() {
     return n;
   }, [items]);
 
-  const visible = useMemo(() => items.filter((it) => inBucket(it, fQueue)), [items, fQueue]);
+  /** The AI is actively handling: it answered last, nobody has taken over, and
+   *  the thread isn't done. Exactly what "watch what the AI is doing" means. */
+  const isAiHandling = useCallback(
+    (it: QueueItem) =>
+      it.kind === "conversation" && !it.conv.ai_paused && it.conv.status !== "closed" && responders[it.id] === "ai",
+    [responders],
+  );
+  const aiCount = useMemo(() => items.filter(isAiHandling).length, [items, isAiHandling]);
+
+  const visible = useMemo(
+    () => items.filter((it) => inBucket(it, fQueue) && (!fAi || isAiHandling(it))),
+    [items, fQueue, fAi, isAiHandling],
+  );
   /** Derived, so a re-sorted queue keeps the highlight on the same item. */
   const cursor = useMemo(() => visible.findIndex((it) => itemKey(it) === cursorKey), [visible, cursorKey]);
 
   // "Nothing matches this filter" and "nothing here yet" are different problems.
-  const filtersActive = !!search || !!fChannel || fQueue !== "all";
+  const filtersActive = !!search || !!fChannel || fQueue !== "all" || fAi;
   const clearFilters = useCallback(() => {
     setSearchInput("");
     setSearch("");
     setFChannel("");
     setFQueue("all");
+    setFAi(false);
   }, []);
 
   // Local write-through so list + open thread stay in sync after a mutation.
@@ -821,6 +889,28 @@ export default function InboxPage() {
       });
       toast("Ticket classified");
     }
+  }
+
+  // ── Take over / hand back ─────────────────────────────────────────────────
+  /** The honest gate: ai_paused is what actually silences the AI server-side
+   *  (agentCore.respondCore + the Engage flow hook both check it). The status
+   *  change is the same "Taken over" the console already speaks. */
+  async function takeOver() {
+    if (!selConv || !me) return;
+    const ok = await reportMutation(setAiPaused(selConv.id, true), "You've taken over — the AI stays quiet on this thread");
+    if (!ok) return;
+    updateConv(selConv.id, { ai_paused: true, assigned_to: me, status: "escalated" });
+    await assignConversation(selConv.id, me);
+    await setConversationStatus(selConv.id, "escalated");
+    load();
+  }
+  async function handBack() {
+    if (!selConv) return;
+    const ok = await reportMutation(setAiPaused(selConv.id, false), "Handed back — the AI answers here again");
+    if (!ok) return;
+    updateConv(selConv.id, { ai_paused: false, status: "handled" });
+    await setConversationStatus(selConv.id, "handled");
+    load();
   }
 
   // ── Triage actions ────────────────────────────────────────────────────────
@@ -1264,10 +1354,9 @@ export default function InboxPage() {
         {
           id: "takeover",
           group: "This conversation",
-          label: "Take over from the AI",
+          label: selConv.ai_paused ? "Hand back to the AI" : "Take over from the AI",
           icon: <UserRoundCheck />,
-          disabled: selConv.status === "escalated",
-          run: () => setStatus("escalated"),
+          run: selConv.ai_paused ? handBack : takeOver,
         },
         { id: "ai-draft", group: "This conversation", label: "Draft a reply with AI", icon: <Sparkles />, run: runSuggest },
         { id: "note", group: "This conversation", label: "Write an internal note", icon: <StickyNote />, hint: "n", run: () => openComposer("note") },
@@ -1383,7 +1472,33 @@ export default function InboxPage() {
                   <span className="ibx-chip__n">{counts[f.v]}</span>
                 </button>
               ))}
+              {/* Orthogonal to the buckets: a toggle, not a fifth bucket — an
+                  owner watching the AI still wants Unread/Needs-reply to work. */}
+              <button
+                type="button"
+                aria-pressed={fAi}
+                onClick={() => setFAi((v) => !v)}
+                className="ibx-chip"
+                title="Only conversations the AI answered last and still owns"
+              >
+                <Sparkles width={11} height={11} /> AI handling
+                <span className="ibx-chip__n">{aiCount}</span>
+              </button>
             </div>
+
+            {/* Subtle stream-health truth: green = realtime is subscribed and
+                messages land instantly; grey = polling every 10s instead. */}
+            <span
+              className="d-inline-flex align-items-center gap-1"
+              title={live ? "Live — new messages appear instantly" : "Reconnecting — refreshing every 10 seconds"}
+              style={{ fontSize: 10.5, color: "var(--at-neutral-400)", whiteSpace: "nowrap", userSelect: "none" }}
+            >
+              <span
+                aria-hidden="true"
+                style={{ width: 6, height: 6, borderRadius: 999, background: live ? "#16a34a" : "var(--at-neutral-300, #cbd2d9)" }}
+              />
+              Live
+            </span>
 
             {/* The channel picker was a bare <select> under the search box; it is
                 now a menu that shows which channel is active on its trigger. */}
@@ -1448,6 +1563,7 @@ export default function InboxPage() {
               onCursor={setCursorKey}
               scrollEl={listEl}
               assigneeName={memberName}
+              responders={responders}
               sla={slaPolicy}
               hasMore={convos.length >= limit}
               loadingMore={loadingMore}
@@ -1530,6 +1646,37 @@ export default function InboxPage() {
                 </span>
               )}
 
+              {/* Who owns this thread right now — and the switch that changes it.
+                  ai_paused is the server-side gate (respondCore + Engage both
+                  honour it), so this button genuinely silences the AI. */}
+              {selConv && (
+                <>
+                  {selConv.ai_paused ? (
+                    <span className="d-none d-md-inline-flex">
+                      <Tag tone="warn" icon={<UserRoundCheck />}>You've taken over</Tag>
+                    </span>
+                  ) : responders[selConv.id] === "ai" ? (
+                    <span className="d-none d-md-inline-flex">
+                      <Tag tone="ok" icon={<Sparkles />}>AI handling</Tag>
+                    </span>
+                  ) : null}
+                  {/* On phones the same action lives in the ⋯ menu — the header
+                      hasn't the width for both this and the customer's name. */}
+                  <button
+                    type="button"
+                    className="oc-btn d-none d-sm-inline-flex"
+                    onClick={selConv.ai_paused ? handBack : takeOver}
+                    title={
+                      selConv.ai_paused
+                        ? "Let the AI answer this conversation again"
+                        : "Silence the AI on this conversation and reply yourself"
+                    }
+                  >
+                    {selConv.ai_paused ? "Hand back to AI" : "Take over"}
+                  </button>
+                </>
+              )}
+
               {/* Status is the one control that is always one click away. */}
               <Menu
                 label="Status"
@@ -1586,12 +1733,8 @@ export default function InboxPage() {
                 )}
                 {selConv && (
                   <>
-                    <MenuItem
-                      icon={<UserRoundCheck />}
-                      disabled={selConv.status === "escalated"}
-                      onSelect={() => setStatus("escalated")}
-                    >
-                      Take over from the AI
+                    <MenuItem icon={<UserRoundCheck />} onSelect={selConv.ai_paused ? handBack : takeOver}>
+                      {selConv.ai_paused ? "Hand back to the AI" : "Take over from the AI"}
                     </MenuItem>
                     <MenuLabel>{selConv.status === "snoozed" ? "Snoozed" : "Snooze until…"}</MenuLabel>
                     {selConv.status === "snoozed" ? (
