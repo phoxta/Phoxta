@@ -117,9 +117,37 @@ const Stat = ({ k, n, note, dark, children }: {
   );
 };
 
-const Shot = ({ src, tall }: { src: string; tall?: boolean }) => (
-  <img className={`idv-shot${tall ? " idv-shot--tall" : ""}`} src={src} alt=""
-       width={720} height={tall ? 340 : 280} loading="lazy" />
+/** What idea-run stored for this stage after searching Pexels. */
+export type StageImage = {
+  url?: string;
+  alt?: string;
+  photographer?: string;
+  photographerUrl?: string;
+};
+
+/**
+ * The stage photograph.
+ *
+ * `image` is the real one, searched against the stage's own subject and stored
+ * on the idea; `fallback` is the curated set, used when the search has not run
+ * or found nothing.
+ *
+ * The credit is not decoration. Pexels licenses on the condition the
+ * photographer is named wherever the photo appears, so it renders from the same
+ * object as the URL — a slide cannot show the picture and forget the credit,
+ * because there is no path that passes one without the other.
+ */
+const Shot = ({ image, fallback, tall }: { image: StageImage; fallback: string; tall?: boolean }) => (
+  <figure className={`idv-shot-wrap${tall ? " idv-shot-wrap--tall" : ""} mb-0`}>
+    <img className={`idv-shot${tall ? " idv-shot--tall" : ""}`}
+         src={image.url || fallback} alt={image.alt ?? ""}
+         width={720} height={tall ? 340 : 280} loading="lazy" />
+    {image.url && image.photographer && (
+      <a className="idv-shot__credit" href={image.photographerUrl} target="_blank" rel="noopener noreferrer">
+        {image.photographer} / Pexels
+      </a>
+    )}
+  </figure>
 );
 
 const Bullets = ({ items }: { items: string[] }) => (
@@ -128,7 +156,7 @@ const Bullets = ({ items }: { items: string[] }) => (
 
 /* ── Per-step bodies ─────────────────────────────────────────────────── */
 
-function ProblemSlide({ d, image }: { d: Json; image: string }) {
+function ProblemSlide({ d, image, fallback }: { d: Json; image: StageImage; fallback: string }) {
   const audience = obj(d.audience);
   return (
     <>
@@ -136,7 +164,7 @@ function ProblemSlide({ d, image }: { d: Json; image: string }) {
         <div className="col-lg-7">
           {str(d.statement) && <p className="idv-display-md mb-0">{str(d.statement)}</p>}
         </div>
-        <div className="col-lg-5"><Shot src={image} /></div>
+        <div className="col-lg-5"><Shot image={image} fallback={fallback} /></div>
       </div>
 
       {(str(audience.who) || str(audience.demographics)) && (
@@ -180,7 +208,7 @@ function ProblemSlide({ d, image }: { d: Json; image: string }) {
   );
 }
 
-function MarketSlide({ d, image }: { d: Json; image: string }) {
+function MarketSlide({ d, image, fallback }: { d: Json; image: StageImage; fallback: string }) {
   const tam = obj(d.tam), sam = obj(d.sam), som = obj(d.som);
   return (
     <>
@@ -199,7 +227,7 @@ function MarketSlide({ d, image }: { d: Json; image: string }) {
         </div>
         <div className="col-lg-5">
           <div className="mb-3"><Stat k="Annual growth" n={str(d.cagr) || "—"} /></div>
-          <Shot src={image} />
+          <Shot image={image} fallback={fallback} />
         </div>
       </div>
 
@@ -256,14 +284,14 @@ function MarketSlide({ d, image }: { d: Json; image: string }) {
   );
 }
 
-function ValueSlide({ d, image }: { d: Json; image: string }) {
+function ValueSlide({ d, image, fallback }: { d: Json; image: StageImage; fallback: string }) {
   return (
     <>
       <div className="row g-4 align-items-center mb-40">
         <div className="col-lg-7">
           {str(d.statement) && <p className="idv-display-md mb-0">{str(d.statement)}</p>}
         </div>
-        <div className="col-lg-5"><Shot src={image} /></div>
+        <div className="col-lg-5"><Shot image={image} fallback={fallback} /></div>
       </div>
 
       {arr(d.advantages).length > 0 && (
@@ -308,7 +336,7 @@ function ValueSlide({ d, image }: { d: Json; image: string }) {
   );
 }
 
-function CustomerSlide({ d, image }: { d: Json; image: string }) {
+function CustomerSlide({ d, image, fallback }: { d: Json; image: StageImage; fallback: string }) {
   const wtp = obj(d.willingnessToPay);
   return (
     <>
@@ -329,7 +357,7 @@ function CustomerSlide({ d, image }: { d: Json; image: string }) {
                 ))}
               </div>
             </div>
-            <div className="col-lg-5"><Shot src={image} tall /></div>
+            <div className="col-lg-5"><Shot image={image} fallback={fallback} tall /></div>
           </div>
         </div>
       )}
@@ -511,7 +539,7 @@ function ReportSlide({ d }: { d: Json }) {
   );
 }
 
-function StrategySlide({ d, image }: { d: Json; image: string }) {
+function StrategySlide({ d, image, fallback }: { d: Json; image: StageImage; fallback: string }) {
   const fin = obj(d.financials);
   const funding = obj(d.fundingNeed);
   return (
@@ -520,7 +548,7 @@ function StrategySlide({ d, image }: { d: Json; image: string }) {
         <div className="col-lg-7">
           {str(d.executiveSummary) && <p className="idv-body-md mb-0">{str(d.executiveSummary)}</p>}
         </div>
-        <div className="col-lg-5"><Shot src={image} /></div>
+        <div className="col-lg-5"><Shot image={image} fallback={fallback} /></div>
       </div>
 
       {arr(d.sections).length > 0 && (
@@ -607,19 +635,21 @@ const CATEGORY: Record<IdeaStep, string> = {
 
 export default function StepSlide({ step, output, seed }: { step: IdeaStep; output: unknown; seed: string }) {
   const d = obj(output);
-  // The stage names its own subject; the idea's words are only the fallback for
-  // a run generated before imageQuery existed.
-  const query = str(d.imageQuery);
-  const image = imageForStage(query, seed, stepIndex(step), 900, 620);
+  // The real photograph, searched against this stage's own subject by idea-run
+  // and stored on the idea. The curated set is the floor beneath it, for stages
+  // whose search has not run yet or found nothing; the idea's own words are the
+  // last resort, for runs generated before imageQuery existed.
+  const image = obj(d.image) as StageImage;
+  const fallback = imageForStage(str(d.imageQuery), seed, stepIndex(step), 900, 620);
 
   const body =
-    step === "problem" ? <ProblemSlide d={d} image={image} />
-      : step === "market" ? <MarketSlide d={d} image={image} />
-        : step === "value" ? <ValueSlide d={d} image={image} />
-          : step === "customer" ? <CustomerSlide d={d} image={image} />
+    step === "problem" ? <ProblemSlide d={d} image={image} fallback={fallback} />
+      : step === "market" ? <MarketSlide d={d} image={image} fallback={fallback} />
+        : step === "value" ? <ValueSlide d={d} image={image} fallback={fallback} />
+          : step === "customer" ? <CustomerSlide d={d} image={image} fallback={fallback} />
             : step === "model" ? <ModelSlide d={d} />
               : step === "report" ? <ReportSlide d={d} />
-                : <StrategySlide d={d} image={image} />;
+                : <StrategySlide d={d} image={image} fallback={fallback} />;
 
   return (
     <section className="idv-slide" data-cat={CATEGORY[step]}>

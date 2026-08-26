@@ -135,6 +135,26 @@ export async function validateIdeaPublicly(
   return { report: d.report ?? null, remaining: d.remaining ?? null, limited: false, error: null };
 }
 
+/**
+ * Fill in photographs for stages that have not got one.
+ *
+ * idea-run resolves the picture when it generates a step, so this is for the
+ * steps generated before it did — without it, every idea already in the database
+ * would keep its curated fallback for ever and only new runs would get real
+ * photography. It never calls the model: the subject was chosen and stored as
+ * imageQuery already, and this only turns that string into a picture.
+ *
+ * Returns the count, because a caller that gets no count cannot tell success
+ * from a silent no-op, which is how a broken backfill hides.
+ */
+export async function fillIdeaImages(ideaId: string): Promise<{ filled: number; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("idea-image", { body: { ideaId } });
+  if (error) return { filled: 0, error: friendlyError(error.message) };
+  const d = (data ?? {}) as { filled?: number; error?: string };
+  if (d.error) return { filled: 0, error: d.error };
+  return { filled: d.filled ?? 0, error: null };
+}
+
 /** Which steps the founder filled in themselves, as opposed to generated. */
 export async function listStepInputs(ideaId: string): Promise<{ data: IdeaStep[]; error: string | null }> {
   const { data, error } = await supabase.from("idea_step_inputs").select("step").eq("idea_id", ideaId);

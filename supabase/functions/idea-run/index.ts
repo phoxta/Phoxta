@@ -15,6 +15,7 @@ import { requireUser } from "../_shared/auth.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
+import { searchStock } from "../_shared/stock.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -195,6 +196,16 @@ Deno.serve(async (req) => {
       user: spec.user(contextFor(idea, step), idea),
       maxTokens: step === "strategy" ? 6000 : 4000,
     });
+
+    // Resolve the stage's own photograph while we are here. The model named a
+    // subject in imageQuery; this turns it into an actual picture, once, and
+    // stores it — so the slide never searches at render time and the same stage
+    // always shows the same photo. A failure leaves the field unset and the
+    // client falls back to its curated set rather than to a grey box.
+    if (output && typeof output === "object" && typeof output.imageQuery === "string") {
+      const image = await searchStock(output.imageQuery);
+      if (image) output.image = image;
+    }
 
     // The report has its own column because completion is derived from it.
     const patch: Json = { current_step: step, run_error: null };

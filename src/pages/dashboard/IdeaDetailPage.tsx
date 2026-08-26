@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { toast, toastError } from "@/lib/ops/feedback";
-import { getIdea, runStep, type Idea } from "@/lib/db/ideas";
+import { getIdea, runStep, fillIdeaImages, type Idea } from "@/lib/db/ideas";
 import {
   ESTIMATED_SECONDS, GROUPS, TOTAL_STEPS, getCompletedSteps, getStep, humanDuration,
   nextStep, progressPercent, remainingSeconds, stepIndex, type IdeaStep,
@@ -42,6 +42,17 @@ const I_TICK = <svg viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="1
 const I_CLOCK = <svg viewBox="0 0 24 24" {...ln} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
 const I_DECK = <svg width="14" height="14" viewBox="0 0 24 24" {...ln} aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="1.5" /><path d="M12 17v3M8 20h8" /></svg>;
 
+/** Any finished stage that named an image subject but has no picture yet. */
+function needsImages(idea: Idea): boolean {
+  const profile = (idea.ai_profile ?? {}) as Record<string, unknown>;
+  const outputs = [...Object.values(profile), idea.report];
+  return outputs.some((o) => {
+    if (!o || typeof o !== "object") return false;
+    const r = o as Record<string, unknown>;
+    return typeof r.imageQuery === "string" && r.imageQuery.trim() !== "" && !r.image;
+  });
+}
+
 export default function IdeaDetailPage() {
   const { ideaId: id = "" } = useParams();
   const [idea, setIdea] = useState<Idea | null>(null);
@@ -55,6 +66,9 @@ export default function IdeaDetailPage() {
   // yanking the pane away mid-read because a background step finished would be
   // the kind of helpfulness nobody asked for.
   const tabPinned = useRef(false);
+  // Once per mount. A search that finds nothing must not become a request on
+  // every render for the rest of the session.
+  const imagesTried = useRef(false);
 
   const load = useCallback(async () => {
     const { data, error: err } = await getIdea(id);
@@ -71,6 +85,14 @@ export default function IdeaDetailPage() {
         const complete = getCompletedSteps(data);
         setTab(complete.length > 0 ? complete[complete.length - 1] : "problem");
         tabPinned.current = true;
+      }
+      // Stages generated before idea-run resolved photographs have a subject but
+      // no picture. Fill them once, quietly, and reload only if something landed
+      // — a founder reading the slide should not see it flicker for nothing.
+      if (data && needsImages(data) && !imagesTried.current) {
+        imagesTried.current = true;
+        const { filled } = await fillIdeaImages(data.id);
+        if (filled > 0) await load();
       }
     })();
     return () => { chainRef.current = false; };

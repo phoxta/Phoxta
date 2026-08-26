@@ -753,3 +753,27 @@
   border: 0;
 }
 
+
+/* ── Photo credit ────────────────────────────────────────────────────────
+   Pexels licenses on the condition the photographer is credited wherever the
+   photograph appears, so this is a licence term rendered, not a caption. Mono
+   at 11px on a dark plate: legible over any photo without a scrim over the
+   whole image. */
+
+.idv-shot-wrap { position: relative; display: block; }
+
+.idv-shot__credit {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  font-family: var(--wf-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(8, 8, 8, 0.62);
+  border-radius: var(--wf-r-sm);
+  padding: 5px 8px;
+  text-decoration: none;
+}
+
+.idv-shot__credit:hover { background: rgba(8, 8, 8, 0.85); color: #fff; }

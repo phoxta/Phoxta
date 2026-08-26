@@ -96,6 +96,11 @@ verify_jwt = false
 [functions.idea-run]
 verify_jwt = true
 
+# Fills in the photograph for stages generated before idea-run resolved one.
+# Signed-in only: it spends the Pexels quota and writes to an idea.
+[functions.idea-image]
+verify_jwt = true
+
 # The public idea validator. Anonymous on purpose — a visitor validates an idea
 # with no account — so it defends itself with a per-IP daily limit instead of a
 # JWT.
