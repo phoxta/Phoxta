@@ -31,8 +31,16 @@ Deno.serve(async (req) => {
   if (pre) return pre;
 
   try {
+    // requireUser returns EITHER { userId } OR { error: Response }. Both are
+    // truthy, so a falsy check passes the failure straight through and the
+    // undefined id then fails the membership query instead -- refused, but
+    // reported as "you are not a member" to someone who is simply not signed
+    // in. The discriminant is what has to be tested.
     const who = await requireUser(req);
-    if (!who) return json({ error: "Sign in first." }, 401);
+    if ("error" in who) return who.error;
+    // A cron secret authenticates a machine, not a person, and there is no
+    // membership to check for one. Nothing schedules image searches.
+    if (who.userId === "cron") return json({ error: "This endpoint is for signed-in users." }, 403);
 
     const body = await req.json().catch(() => ({}));
     const orgId = String(body?.orgId ?? "");
@@ -46,7 +54,7 @@ Deno.serve(async (req) => {
     // could spend another organisation's image generation budget.
     const admin = adminClient();
     const { data: member } = await admin
-      .from("organization_members").select("user_id")
+      .from("organization_memberships").select("user_id")
       .eq("organization_id", orgId).eq("user_id", who.userId).maybeSingle();
     if (!member) return json({ error: "You are not a member of this business." }, 403);
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
+import { AccessDialog } from "./platform/AccessDialog";
 import { Card, Chip, Empty, InitialAvatar, stageTone } from "@/components/dash/Ui";
 import {
   fetchPlatformOverview, fetchPlatformTenants, fetchPlatformRevenue,
@@ -73,6 +74,21 @@ const CSS = `
 .opx-danger:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
 .opx-msg { font-size: 14px; margin: 0 0 10px; white-space: pre-wrap; }
 /* One-time credentials panel — deliberately loud so it isn't left on screen. */
+/* Business access — a dialog rather than an inline row, because the roster is
+   a table and a searchable picker does not belong inside a table cell. */
+.opx-modal { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgb(10 12 30 / 55%); }
+.opx-modal__box { width: min(620px, 94vw); max-height: 86vh; overflow: auto; background: var(--hrx-card, #fff); border: 1px solid var(--hrx-border); border-radius: 18px; padding: 20px; box-shadow: 0 24px 60px rgb(10 12 30 / 35%); }
+.opx-modal__t { font-size: 17px; font-weight: 700; margin: 0 0 2px; color: var(--hrx-ink); }
+.opx-modal__h { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--hrx-muted); margin: 16px 0 8px; }
+.opx-modal__box .opx-secret-x { color: var(--hrx-muted); }
+
+.opx-access { list-style: none; margin: 0; padding: 0; border: 1px solid var(--hrx-border); border-radius: 12px; overflow: hidden; }
+.opx-access--pick { max-height: 240px; overflow-y: auto; }
+.opx-access li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--hrx-border-soft, var(--hrx-border)); }
+.opx-access li:last-child { border-bottom: 0; }
+.opx-access__n { flex: 1 1 auto; min-width: 0; font-size: 14px; font-weight: 600; color: var(--hrx-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opx-access__r { flex: 0 0 auto; font-size: 12px; color: var(--hrx-muted); text-transform: capitalize; }
+
 .opx-secret { background: var(--hrx-ink); color: #fff; border-radius: 16px; padding: 16px 18px; }
 .opx-secret-title { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
 .opx-secret-x { border: 0; background: transparent; color: #fff; opacity: 0.7; font-size: 14px; cursor: pointer; }
@@ -174,6 +190,8 @@ export default function OpsPlatformPage() {
   const [usersPage, setUsersPage] = useState(1);
   const [usersQ, setUsersQ] = useState("");
   const [usersLoading, setUsersLoading] = useState(false);
+  /** The account whose business access is being edited. */
+  const [access, setAccess] = useState<PlatformUser | null>(null);
   const [nEmail, setNEmail] = useState("");
   const [nName, setNName] = useState("");
   /** One-time credentials / recovery output. Shown once, never persisted. */
@@ -618,6 +636,8 @@ export default function OpsPlatformPage() {
           <Card title="Create an account">
             <p className="opx-note">
               For onboarding a customer by hand. The account is confirmed immediately; the generated password is shown once above.
+              Creating it is only half the job — a new account belongs to no business, so give it one with
+              <strong> Access</strong> below or they will sign in to “No business to run yet”.
             </p>
             <form className="d-flex flex-wrap align-items-end gap-2" onSubmit={onCreateUser}>
               <label className="hrx-field mb-0" style={{ minWidth: 240 }}>
@@ -673,11 +693,16 @@ export default function OpsPlatformPage() {
                           </div>
                         </td>
                         <td>
-                          {u.orgs.length === 0
-                            ? <span style={{ color: "var(--hrx-muted)" }}>—</span>
+                          {/* "No businesses" is the state that sends someone to
+                              "No business to run yet", so it says so rather than
+                              printing a dash and leaving the admin to infer it. */}
+                          {u.access.length === 0
+                            ? <Chip tone="warn">No access</Chip>
                             : <div className="d-flex flex-wrap gap-1">
-                                {u.orgs.slice(0, 3).map((o) => <Chip key={o} tone="line">{o}</Chip>)}
-                                {u.orgs.length > 3 && <Chip tone="plain">+{u.orgs.length - 3}</Chip>}
+                                {u.access.slice(0, 3).map((a) => (
+                                  <Chip key={a.orgId} tone="line">{a.name} · {a.role}</Chip>
+                                ))}
+                                {u.access.length > 3 && <Chip tone="plain">+{u.access.length - 3}</Chip>}
                               </div>}
                         </td>
                         <td>
@@ -689,6 +714,13 @@ export default function OpsPlatformPage() {
                         <td style={{ color: "var(--hrx-muted)" }}>{u.last_sign_in_at ? day(u.last_sign_in_at) : "Never"}</td>
                         <td className="text-end">
                           <div className="d-flex gap-2 justify-content-end">
+                            <button
+                              type="button" className="hrx-seeall opx-btn" disabled={busy}
+                              title="Choose which businesses this account can open."
+                              onClick={() => setAccess(u)}
+                            >
+                              Access
+                            </button>
                             <button
                               type="button" className="hrx-seeall opx-btn" disabled={busy}
                               title="Mints a password-reset link and one-time code to relay to this user."
@@ -723,6 +755,14 @@ export default function OpsPlatformPage() {
               </div>
             )}
           </Card>
+
+          {access && (
+            <AccessDialog
+              user={access}
+              onClose={() => setAccess(null)}
+              onChanged={() => loadUsers(usersPage, usersQ)}
+            />
+          )}
 
           <Card title="Supporting a user">
             <p className="opx-note mb-0">

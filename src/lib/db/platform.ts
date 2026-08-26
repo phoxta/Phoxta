@@ -177,6 +177,11 @@ export async function fetchPlatformAudit(limit = 100): Promise<{ data: PlatformA
 // the service role. The function re-checks platform_admins membership and
 // audits every write; these are thin wrappers.
 
+export type OrgRole = "owner" | "admin" | "staff" | "viewer";
+
+/** One business a user can reach, and what they can do in it. */
+export type UserAccess = { orgId: string; name: string; role: OrgRole };
+
 export type PlatformUser = {
   id: string;
   email: string;
@@ -185,8 +190,13 @@ export type PlatformUser = {
   last_sign_in_at: string | null;
   confirmed: boolean;
   banned: boolean;
+  /** Business names, for the roster line. */
   orgs: string[];
+  /** The same memberships with ids and roles, for the access controls. */
+  access: UserAccess[];
 };
+
+export type PlatformBusiness = { id: string; name: string; vertical: string | null; stage: string | null };
 
 const usersFn = async (body: Record<string, unknown>): Promise<{ data: Record<string, unknown> | null; error: string | null }> => {
   const { data, error } = await supabase.functions.invoke("platform-users", { body });
@@ -283,4 +293,30 @@ export async function startPaymentTest(
   const d = (data ?? {}) as { url?: string; error?: string };
   if (d.error) return { url: null, error: d.error };
   return { url: d.url ?? null, error: null };
+}
+
+/**
+ * Which businesses a user can be given access to.
+ *
+ * Every console in the product is reached through organization_memberships, so
+ * this is the whole of "give someone access": there is no separate permission
+ * to set, and an account with no membership has nothing to open.
+ */
+export async function listPlatformBusinesses(q = ""): Promise<{
+  data: PlatformBusiness[]; error: string | null;
+}> {
+  const { data, error } = await usersFn({ action: "businesses", q });
+  if (error || !data) return { data: [], error };
+  return { data: (data.businesses as PlatformBusiness[]) ?? [], error: null };
+}
+
+/** Give a user access to a business, or change the role they already have. */
+export async function grantAccess(userId: string, orgId: string, role: OrgRole = "staff"): Promise<{ error: string | null }> {
+  const { error } = await usersFn({ action: "grant", userId, orgId, role });
+  return { error };
+}
+
+export async function revokeAccess(userId: string, orgId: string): Promise<{ error: string | null }> {
+  const { error } = await usersFn({ action: "revoke", userId, orgId });
+  return { error };
 }

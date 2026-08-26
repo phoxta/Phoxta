@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     // Membership is the authorisation. The row id alone would let any signed-in
     // account spend another tenant's model budget.
     const { data: member } = await admin
-      .from("memberships").select("organization_id")
+      .from("organization_memberships").select("organization_id")
       .eq("organization_id", orgId).eq("user_id", who.userId).maybeSingle();
     if (!member) return json({ error: "That business is not yours." }, 403);
 
