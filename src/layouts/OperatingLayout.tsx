@@ -14,7 +14,27 @@ import { OpsSubNavSlotProvider } from "@/layouts/OpsSubNav";
 
 export type OpsContext = { orgId: string; org: Organization; console: VerticalConsole };
 
-/** Attention counts surfaced as pills on the Inbox / AI Agent tabs. */
+/**
+ * Console modules whose routes have a second NAMED level — Engage's area rail
+ * (inbox · calls · audience · flows · journeys · broadcasts · channels · agent ·
+ * insights). Everything deeper than that is a record id.
+ */
+const AREA_MODULES = new Set(["engage"]);
+
+/**
+ * The part of a console path that is safe to carry to ANOTHER business: the
+ * module, plus its area where the module has one. Nothing deeper — a segment
+ * below the area is a record id (`engage/flows/<flowId>`), and that id belongs
+ * to this org alone. Carried across, the flow editor opens on the new org's
+ * console holding the old org's record and can save over it.
+ */
+function portablePath(rel: string): string {
+  const [seg = "", area = ""] = rel.split("/");
+  if (!seg) return "";
+  return AREA_MODULES.has(seg) && area ? `${seg}/${area}` : seg;
+}
+
+/** Attention counts surfaced as pills on the Engage / Operator tabs. */
 type TabBadges = { unread: number; approvals: number };
 
 /** Chrome-only styles for the console header (the shared kit covers the rest). */
@@ -201,14 +221,17 @@ export default function OperatingLayout() {
                 const next = e.target.value;
                 if (!next || next === id) return;
                 const nextBase = `/dashboard/businesses/${next}/ops`;
-                // Keep the same console tab when hopping businesses — but only if
-                // the target business's console actually has that tab; otherwise
-                // land on its Overview instead of a dead route.
+                // Keep the same console tab (and Engage area) when hopping
+                // businesses — but only if the target business's console
+                // actually has that tab; otherwise land on its Overview instead
+                // of a dead route. Record ids are dropped rather than rewritten
+                // onto the new org: the area's list view is the safe landing.
                 const nextOrg = myOrgs.find((m) => m.organization.id === next)?.organization;
                 const nextCfg = resolveConsole(nextOrg?.vertical);
-                const seg = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1).split("/")[0] : "";
-                const hasTab = seg === "" || nextCfg.modules.includes(seg);
-                navigate(hasTab ? pathname.replace(base, nextBase) : nextBase);
+                const rel = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1) : "";
+                const keep = portablePath(rel);
+                const hasTab = keep === "" || nextCfg.modules.includes(keep.split("/")[0]);
+                navigate(hasTab && keep ? `${nextBase}/${keep}` : nextBase);
               }}
             >
               {myOrgs.map(({ organization: o }) => (

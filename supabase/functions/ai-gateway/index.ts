@@ -45,13 +45,24 @@ Deno.serve(async (req) => {
       conversationId = created?.id;
     }
 
+    // The NEWEST rows, re-sorted chronologically. Ordering ascending under a
+    // limit hands the model the OPENING of a long thread and never what the
+    // owner just asked. Rows written in one batch share created_at (it defaults
+    // to the statement's now()), so role breaks the tie: descending, "assistant"
+    // sorts before "user", which reverses into the user-then-assistant pair.
     const { data: hist } = await admin
       .from("ai_messages")
       .select("role, content")
       .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
+      .order("role", { ascending: true })
       .limit(20);
-    const history = ((hist as { role: "user" | "assistant"; content: string }[] | null) ?? []).map((m) => ({ role: m.role, content: m.content }));
+    const history = ((hist as { role: "user" | "assistant"; content: string }[] | null) ?? [])
+      .reverse()
+      .map((m) => ({ role: m.role, content: m.content }));
+    // The Messages API requires the first turn to be `user`; a window that
+    // happens to open on an assistant turn would 400 the whole request.
+    while (history.length && history[0].role === "assistant") history.shift();
 
     const system =
       `You are the AI business assistant for "${org.name}", a ${org.vertical || "small"} business on Phoxta. ` +
@@ -74,10 +85,16 @@ Deno.serve(async (req) => {
 
     if (!run.text) return json({ error: "The assistant couldn't produce a reply. Try rephrasing." }, 502);
 
-    await admin.from("ai_messages").insert([
-      { conversation_id: conversationId, organization_id: organizationId, role: "user", content: message },
+    // Both rows carry the SAME key set. PostgREST rejects a mixed-key batch
+    // outright (PGRST102 "All object keys must match"), so the user row's
+    // model/token columns are spelled out as null/0 rather than left off —
+    // omitting them dropped the entire transcript and every follow-up question
+    // then started from an empty history. The error is logged, never swallowed.
+    const { error: msgErr } = await admin.from("ai_messages").insert([
+      { conversation_id: conversationId, organization_id: organizationId, role: "user", content: message, model: null, input_tokens: 0, output_tokens: 0 },
       { conversation_id: conversationId, organization_id: organizationId, role: "assistant", content: run.text, model: run.model, input_tokens: run.inTok, output_tokens: run.outTok },
     ]);
+    if (msgErr) console.error("[phoxta] ai_messages insert failed:", msgErr.message);
     await meter(admin, { organizationId, userId, conversationId, model: run.model, feature: "assistant", tier: "balanced", inTok: run.inTok, outTok: run.outTok, cacheWriteTok: run.cacheWriteTok, cacheReadTok: run.cacheReadTok, latencyMs: latency });
     await admin.from("ai_conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
 

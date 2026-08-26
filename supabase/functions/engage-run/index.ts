@@ -7,7 +7,9 @@
 //                    graph executor (delays elapsing in flows AND journeys);
 //       (b) TRIGGER: every live journey polls its event source past last_cursor
 //                    (orders paid/fulfilled · reservations confirmed · contact
-//                    tag additions) and starts one run per matched contact;
+//                    tag additions), never looking back further than
+//                    EVENT_LOOKBACK_MS, and starts at most one run per SOURCE
+//                    EVENT (see the event key below);
 //       (c) at most 100 run-advances per tick; every real send stamps
 //                    engage_touches (attribution).
 // Conversational flows do NOT run here — agent-inbound drives them on the
@@ -23,6 +25,11 @@ type Json = any;
 
 const MAX_ADVANCES = 100; // per tick, shared by wakes + journey starts
 const PER_FLOW_EVENTS = 20; // journey events consumed per flow per tick
+// How far back a journey may ever look for trigger events. The cron ticks every
+// few minutes, so this never truncates normal operation — it exists so a frozen
+// cursor (a paused journey, a cron outage) can only ever release an hour of
+// events on resume instead of a month's backlog.
+const EVENT_LOOKBACK_MS = 60 * 60 * 1000;
 
 async function loadContact(admin: SupabaseClient, id: string | null): Promise<Json | null> {
   if (!id) return null;
@@ -84,7 +91,12 @@ async function wakeDueRuns(admin: SupabaseClient, budget: { left: number }): Pro
 }
 
 // ── (b) journey trigger polling ──────────────────────────────────────────────
-type EventMatch = { contactId: string | null; email: string; at: string };
+// `key` identifies the SOURCE ROW the match came from, stable across re-polls.
+// Every source table carries a before-update touch trigger, so "in the trigger
+// state AND updated_at > cursor" re-matches on any later edit (an order being
+// marked fulfilled on Thursday looks exactly like it being paid on Monday).
+// Enrolment therefore dedupes on this key, not on elapsed time.
+type EventMatch = { contactId: string | null; email: string; at: string; key: string };
 
 async function pollJourneyEvents(admin: SupabaseClient, flow: Json, event: string, tag: string, cursor: string): Promise<EventMatch[]> {
   if (event === "order_placed") {
@@ -92,31 +104,32 @@ async function pollJourneyEvents(admin: SupabaseClient, flow: Json, event: strin
     // cursor" is the honest signal for an order having been placed/paid.
     const { data } = await admin
       .from("orders")
-      .select("contact_id, customer_email, updated_at")
+      .select("id, contact_id, customer_email, updated_at")
       .eq("organization_id", flow.organization_id)
       .in("status", ["paid", "fulfilled"])
       .gt("updated_at", cursor)
       .order("updated_at", { ascending: true })
       .limit(PER_FLOW_EVENTS);
-    return (((data as Json[]) ?? [])).map((r) => ({ contactId: r.contact_id ?? null, email: String(r.customer_email ?? ""), at: r.updated_at }));
+    return (((data as Json[]) ?? [])).map((r) => ({ contactId: r.contact_id ?? null, email: String(r.customer_email ?? ""), at: r.updated_at, key: `order:${r.id}` }));
   }
   if (event === "reservation_confirmed") {
     const { data } = await admin
       .from("reservations")
-      .select("contact_id, customer_email, updated_at")
+      .select("id, contact_id, customer_email, updated_at")
       .eq("organization_id", flow.organization_id)
       .eq("status", "confirmed")
       .gt("updated_at", cursor)
       .order("updated_at", { ascending: true })
       .limit(PER_FLOW_EVENTS);
-    return (((data as Json[]) ?? [])).map((r) => ({ contactId: r.contact_id ?? null, email: String(r.customer_email ?? ""), at: r.updated_at }));
+    return (((data as Json[]) ?? [])).map((r) => ({ contactId: r.contact_id ?? null, email: String(r.customer_email ?? ""), at: r.updated_at, key: `reservation:${r.id}` }));
   }
   if (event === "contact_tagged") {
     if (!tag) return [];
     // Tags live on crm_contacts.tags (text[]); the touch trigger bumps
     // updated_at on every tag write, so "has the tag + updated since the
-    // cursor" approximates a tag ADDITION (the 24h run-dedupe absorbs the
-    // false re-fires an unrelated contact edit could cause).
+    // cursor" only approximates a tag ADDITION — the (contact, tag) key is what
+    // makes it fire once: an unrelated later edit to the contact re-matches
+    // here but is rejected at enrolment.
     const { data } = await admin
       .from("crm_contacts")
       .select("id, email, updated_at")
@@ -125,7 +138,7 @@ async function pollJourneyEvents(admin: SupabaseClient, flow: Json, event: strin
       .gt("updated_at", cursor)
       .order("updated_at", { ascending: true })
       .limit(PER_FLOW_EVENTS);
-    return (((data as Json[]) ?? [])).map((r) => ({ contactId: r.id, email: String(r.email ?? ""), at: r.updated_at }));
+    return (((data as Json[]) ?? [])).map((r) => ({ contactId: r.id, email: String(r.email ?? ""), at: r.updated_at, key: `tag:${r.id}:${tag}` }));
   }
   return [];
 }
@@ -151,12 +164,26 @@ async function startJourneys(admin: SupabaseClient, budget: { left: number }): P
         await admin.from("engage_flows").update({ last_cursor: nowIso }).eq("id", flow.id);
         continue;
       }
-      const matches = await pollJourneyEvents(admin, flow, event, tag, flow.last_cursor);
-      let maxAt = flow.last_cursor;
-      const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      // Clamp the cursor to the freshness window. A journey paused (status back
+      // to 'draft') keeps a frozen last_cursor while events pile up, and this
+      // poller only sees 'live' journeys — without the clamp, re-publishing (or
+      // the cron coming back from an outage) would enrol the entire backlog in
+      // one tick. Normal ticks are minutes apart, so continuity is untouched.
+      const cursorMs = Date.parse(String(flow.last_cursor));
+      const floorMs = Date.now() - EVENT_LOOKBACK_MS;
+      const cursor = Number.isFinite(cursorMs) && cursorMs > floorMs
+        ? String(flow.last_cursor)
+        : new Date(floorMs).toISOString();
+
+      const matches = await pollJourneyEvents(admin, flow, event, tag, cursor);
+      let maxAt = cursor;
       for (const m of matches) {
-        if (m.at > maxAt) maxAt = m.at;
+        // Budget check BEFORE the watermark moves: an event this tick never got
+        // to process must stay behind the cursor so the next tick re-polls it.
         if (budget.left <= 0) break;
+        // Rows arrive ordered by updated_at ascending, so the last one we take a
+        // decision on (enrol, dedupe, no contact) is the new watermark.
+        maxAt = m.at;
         // Resolve the contact (orders/reservations may only carry an email).
         let contactId = m.contactId;
         if (!contactId && m.email) {
@@ -170,15 +197,27 @@ async function startJourneys(admin: SupabaseClient, budget: { left: number }): P
           contactId = (c as Json)?.id ?? null;
         }
         if (!contactId) continue; // no contact — nobody to walk through the journey
-        // Dedupe: an in-flight run, or one finished <24h ago, blocks a restart.
-        const { data: dupe } = await admin
+        // Dedupe on the SOURCE EVENT ROW. A time window can't do this job: the
+        // same order re-matches whenever staff touch it (fulfilled, refunded,
+        // a note edited), and once the window has lapsed the customer gets
+        // thanked for that one order all over again. One run per event key,
+        // forever. `state` is jsonb, so the key rides along on the run itself.
+        const { data: seen } = await admin
+          .from("engage_runs")
+          .select("id")
+          .eq("flow_id", flow.id)
+          .eq("state->>event_key", m.key)
+          .limit(1);
+        if ((seen as Json[] | null)?.length) continue;
+        // And never run the same contact through one journey twice at once.
+        const { data: inflight } = await admin
           .from("engage_runs")
           .select("id")
           .eq("flow_id", flow.id)
           .eq("contact_id", contactId)
-          .or(`status.in.(active,waiting),updated_at.gt.${dayAgo}`)
+          .in("status", ["active", "waiting"])
           .limit(1);
-        if ((dupe as Json[] | null)?.length) continue;
+        if ((inflight as Json[] | null)?.length) continue;
 
         budget.left--;
         const contact = await loadContact(admin, contactId);
@@ -190,7 +229,7 @@ async function startJourneys(admin: SupabaseClient, budget: { left: number }): P
             contact_id: contactId,
             node_id: trig.id,
             status: "active",
-            state: {},
+            state: { event_key: m.key },
           })
           .select("*")
           .single();
@@ -208,7 +247,11 @@ async function startJourneys(admin: SupabaseClient, budget: { left: number }): P
         await advanceRun(ctx);
         started++;
       }
-      if (maxAt !== flow.last_cursor) {
+      // Only a processed event moves the stored watermark. A stale cursor left
+      // behind by a pause is harmless (the clamp above re-applies every tick)
+      // and writing one every tick would churn engage_flows.updated_at, which
+      // orders the console's list.
+      if (maxAt !== cursor) {
         await admin.from("engage_flows").update({ last_cursor: maxAt }).eq("id", flow.id);
       }
     } catch (e) {

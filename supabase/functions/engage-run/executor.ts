@@ -30,6 +30,18 @@ import { phoneForStorage } from "../_shared/telephony.ts";
 type Json = any;
 
 const MAX_STEPS = 25; // per advance — a cycle in the graph can't spin forever
+/** Messages ONE advance may emit. MAX_STEPS bounds how far the walk travels,
+ *  not how much it SAYS — a graph that loops back on itself can send on every
+ *  step. Three covers the honest shapes (a line or two of copy plus the prompt
+ *  that parks the turn); anything past that is a runaway graph, not a
+ *  conversation, and the run ends instead of spraying sends at a real person. */
+const MAX_SENDS_PER_ADVANCE = 3;
+/** Nodes one run may walk over its whole life. The per-advance guards can't see
+ *  a loop that PARKS on a delay each lap — every wake is a fresh advance — so
+ *  this is what stops the cron driving such a loop forever. Generous: a real
+ *  journey walks a handful of nodes per wake, so even a weekly check-in loop
+ *  runs for over a year before it trips. */
+const MAX_RUN_STEPS = 200;
 
 // ── graph helpers ────────────────────────────────────────────────────────────
 
@@ -257,12 +269,41 @@ export async function advanceRun(ctx: ExecCtx): Promise<AdvanceResult> {
   let fallToAi = false;
   let escalated = false;
 
+  // Nodes walked in THIS advance; `state.steps` carries the run's lifetime total.
+  let steps = 0;
+
   const park = (id: string, why: "reply" | "timer", at?: Date) => {
+    // Lifetime step budget. A loop whose lap contains a delay parks on every
+    // lap, so no single advance ever sees the cycle — the cron just keeps
+    // waking it, sending each time. Refusing to park is what ends it: sleeping
+    // again would only schedule the next lap.
+    if (Number(state.steps ?? 0) + steps >= MAX_RUN_STEPS) {
+      state.note = `step budget (${MAX_RUN_STEPS}) reached — exited`;
+      status = "exited";
+      nodeId = null;
+      return;
+    }
     parked = id;
     state.waiting_for = why;
     wakeAt = at ? at.toISOString() : null;
     status = "waiting";
     nodeId = null;
+  };
+
+  // Every delivery in this advance goes through here so the message budget is
+  // impossible to bypass. Returns false once it is spent, having already ended
+  // the walk — callers just `break`.
+  let sends = 0;
+  const trySend = async (text: string, subject?: string): Promise<boolean> => {
+    if (sends >= MAX_SENDS_PER_ADVANCE) {
+      state.note = `message budget (${MAX_SENDS_PER_ADVANCE}) reached in one advance — exited`;
+      status = "exited";
+      nodeId = null;
+      return false;
+    }
+    sends++;
+    await ctx.deliver(text, subject);
+    return true;
   };
 
   // Resume position -----------------------------------------------------------
@@ -278,8 +319,7 @@ export async function advanceRun(ctx: ExecCtx): Promise<AdvanceResult> {
           nodeId = elseTarget;
         } else {
           // No match, no 'else' wired: repeat the options and keep waiting.
-          await ctx.deliver(renderButtons(node.data));
-          park(node.id, "reply");
+          if (await trySend(renderButtons(node.data))) park(node.id, "reply");
         }
       }
     } else if (node?.type === "collect_input") {
@@ -296,14 +336,27 @@ export async function advanceRun(ctx: ExecCtx): Promise<AdvanceResult> {
   }
 
   // Walk -----------------------------------------------------------------------
-  let steps = 0;
+  // `visited` is per-advance. validateGraph only requires that a node HAS an
+  // outgoing edge, so a graph can legitimately be saved with a cycle in it;
+  // reaching the same node twice without parking in between means we are going
+  // round it, and every lap can send. Parking clears the set (a menu the
+  // customer walks back to on a later turn is fine) — the same node twice
+  // inside one turn is not.
+  const visited = new Set<string>();
   while (nodeId && steps++ < MAX_STEPS) {
+    if (visited.has(nodeId)) {
+      state.note = `cycle detected at node ${nodeId} — exited`;
+      status = "exited";
+      nodeId = null;
+      break;
+    }
+    visited.add(nodeId);
     const node = nodes.get(nodeId);
     if (!node) break;
     const d: Json = node.data ?? {};
     if (node.type === "send_message") {
       const text = String(d.text ?? "");
-      if (text.trim()) await ctx.deliver(text, d.subject ? String(d.subject) : undefined);
+      if (text.trim() && !(await trySend(text, d.subject ? String(d.subject) : undefined))) break;
       nodeId = nextTarget(graph, node.id);
     } else if (node.type === "buttons") {
       if (ctx.mode === "journey") {
@@ -312,7 +365,7 @@ export async function advanceRun(ctx: ExecCtx): Promise<AdvanceResult> {
         status = "exited";
         nodeId = null;
       } else {
-        await ctx.deliver(renderButtons(d));
+        if (!(await trySend(renderButtons(d)))) break;
         park(node.id, "reply");
       }
     } else if (node.type === "collect_input") {
@@ -322,7 +375,7 @@ export async function advanceRun(ctx: ExecCtx): Promise<AdvanceResult> {
         nodeId = null;
       } else {
         const prompt = String(d.prompt ?? "");
-        if (prompt.trim()) await ctx.deliver(prompt);
+        if (prompt.trim() && !(await trySend(prompt))) break;
         park(node.id, "reply");
       }
     } else if (node.type === "condition") {
@@ -356,6 +409,7 @@ export async function advanceRun(ctx: ExecCtx): Promise<AdvanceResult> {
     if (status !== "active") break;
   }
   if (status === "active") status = "done"; // walked off the end (or hit MAX_STEPS)
+  state.steps = Number(state.steps ?? 0) + steps; // lifetime total; park() enforces it
 
   await admin
     .from("engage_runs")
@@ -664,12 +718,20 @@ export async function engageHandleInbound(
   };
   const out = await advanceRun(ctx);
 
-  // Persist the transcript + attribution. When the run falls through to the AI
-  // (handoff_ai), respondCore inserts the customer message itself — writing it
-  // here too would duplicate it, so only the flow's own sends are recorded.
+  // Who owns this turn? Decided ONCE, before any persistence, because every
+  // branch below keys off it. The flow owns the turn only when it actually said
+  // something or escalated; a walk that ended on an unwired branch (validateGraph
+  // only requires SOME outgoing edge, and a renamed buttons option orphans its
+  // edge) authored nothing — that turn belongs to the AI. Suppressing the AI
+  // there would leave the customer in total silence.
+  const flowOwnsTurn = !out.fallToAi && (texts.length > 0 || out.escalated);
+
+  // Persist the transcript + attribution. When the turn goes to the AI,
+  // respondCore inserts the customer message itself — writing it here too would
+  // duplicate it, so only the flow's own sends are recorded.
   const now = new Date().toISOString();
   const msgRows: Json[] = [];
-  if (!out.fallToAi) {
+  if (flowOwnsTurn) {
     // `meta` on every row: PostgREST rejects a batch whose objects don't share
     // one key set (PGRST102) — mixing this row with the flow's meta-carrying
     // sends below used to silently drop the whole transcript.
@@ -689,7 +751,7 @@ export async function engageHandleInbound(
     const { error: msgErr } = await admin.from("conversation_messages").insert(msgRows);
     if (msgErr) console.error("[phoxta] engage conversation_messages insert failed:", msgErr.message);
   }
-  if (!out.fallToAi) {
+  if (flowOwnsTurn) {
     await admin.from("conversations").update({ last_message_at: now }).eq("id", conv.id);
     if (texts.length) {
       await admin.from("conversations").update({ first_response_at: now }).eq("id", conv.id).is("first_response_at", null);
@@ -710,7 +772,7 @@ export async function engageHandleInbound(
   // turn, a short deterministic acknowledgement keeps the channel from going
   // silent mid-conversation (it is fixed copy, not a generated reply).
   const reply = texts.join("\n\n") ||
-    (out.escalated && !out.fallToAi ? "Thanks — a member of the team will take it from here." : "");
+    (out.escalated && flowOwnsTurn ? "Thanks — a member of the team will take it from here." : "");
 
-  return { conversationId: conv.id, reply, suppressAi: !out.fallToAi, escalated: out.escalated };
+  return { conversationId: conv.id, reply, suppressAi: flowOwnsTurn, escalated: out.escalated };
 }

@@ -263,6 +263,46 @@ function CardMedia({ media }: { media: WorkMedia[] }) {
 /** Tag text as hashtag chips: "AI Agent" -> "#ai-agent". */
 const hashTag = (t: string) => `#${t.toLowerCase().replace(/\s+/g, "-")}`;
 
+/**
+ * Where a module's work went when the console was restructured.
+ *
+ * The board RPC (`app_org_work_board`) speaks the console's ORIGINAL module
+ * vocabulary — "inbox", "agent", "marketing" — and it should keep speaking it:
+ * that SQL is shared, and renaming a tab must not mean rewriting a migration.
+ * But no vertical config lists those keys any more (Engage absorbed the Inbox,
+ * Marketing and the agent's config; the approval queue went to the Operator),
+ * so matching the RPC's value straight against `cfg.modules` matches NOTHING
+ * and the whole board renders empty.
+ *
+ * Each entry says which module OWNS that work now, and moves the RPC's
+ * console-relative `to_path` by the same step, because the Engage areas sit one
+ * path segment deeper than the tabs they replaced. The next module rename is
+ * one more line here — nowhere else.
+ *
+ * (`from`/`to` rewrite the leading path segment(s) only, so the RPC's own query
+ * strings — `inbox?c=<conversation>`, `marketing?tab=outreach` — ride along.)
+ */
+const MODULE_MOVES: Record<string, { module: string; from: string; to: string }> = {
+  inbox: { module: "engage", from: "inbox", to: "engage/inbox" },
+  marketing: { module: "engage", from: "marketing", to: "engage/broadcasts" },
+  agent: { module: "operator", from: "agent/operator", to: "operator" },
+};
+
+/** The console module that owns this card's work today. */
+function cardModule(card: WorkCard): string {
+  return MODULE_MOVES[card.module]?.module ?? card.module;
+}
+
+/** The card's console-relative route, moved with its module. */
+function cardPath(card: WorkCard): string {
+  const move = MODULE_MOVES[card.module];
+  if (!move || !card.to_path.startsWith(move.from)) return card.to_path;
+  const rest = card.to_path.slice(move.from.length);
+  // Only rewrite on a segment/query boundary — "inbox" must not eat "inboxes".
+  if (rest && !"?/#".includes(rest[0])) return card.to_path;
+  return move.to + rest;
+}
+
 /** One work item. The whole card links to the record it was derived from.
  *  The card carries a module-hued accent (left edge, first tag, avatar,
  *  progress fill), so colour tells you which part of the business a card
@@ -281,7 +321,9 @@ function WorkCardView({
   const canMove = movableColumns(card.id).length > 0;
   return (
     <Link
-      to={`${base}/${card.to_path}`}
+      to={`${base}/${cardPath(card)}`}
+      // The TINT deliberately keeps the RPC's own module word: it is what tells
+      // an inbox card from a campaign card, a distinction the tab merge erased.
       className={`ovx-card tint-${card.module}${dragging ? " dragging" : ""}`}
       aria-label={`${card.title} — ${card.detail}`}
       draggable={canMove}
@@ -388,8 +430,10 @@ export default function OverviewPage() {
   const currency = org.currency || "GBP";
   const opsBase = `/dashboard/businesses/${orgId}/ops`;
   // A card for a module this vertical doesn't run would link to a tab that isn't
-  // in the console — drop those rather than render dead links.
-  const visibleCards = (board?.cards ?? []).filter((c) => cfg.modules.includes(c.module));
+  // in the console — drop those rather than render dead links. Compare against
+  // the module that owns the work TODAY (see MODULE_MOVES), not the RPC's
+  // historical name, or every renamed module's cards vanish from the board.
+  const visibleCards = (board?.cards ?? []).filter((c) => cfg.modules.includes(cardModule(c)));
 
   // The Operator pins below the console's own sticky header (breadcrumb, title,
   // tab bar). Two numbers drive it, and BOTH are measured rather than guessed:

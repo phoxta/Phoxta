@@ -182,17 +182,35 @@ export async function respondCore(
     return { conversationId, reply: "", actions: [], escalated: false, cards: [], media: [], paused: true };
   }
 
-  // This conversation's history.
+  // This conversation's history: the NEWEST turns, re-sorted chronologically.
+  // Ascending + limit returned the OPENING of the thread instead — and SMS /
+  // WhatsApp threads are reused indefinitely (resolveConversation re-attaches
+  // to the newest non-closed thread for a number, and nothing closes them), so
+  // a repeat customer's agent was reading a conversation from weeks ago and
+  // never what they had just said.
+  //
+  // Rows written in one batch share created_at (it defaults to the statement's
+  // now()), so role breaks the tie: descending, "agent" sorts before
+  // "customer", which reverses into the customer-then-agent pair.
   const { data: msgs } = await admin
     .from("conversation_messages")
     .select("role, body")
     .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
+    .order("role", { ascending: true })
     .limit(20);
-  const history = ((msgs as { role: string; body: string }[] | null) ?? []).map((m) => ({
-    role: (m.role === "customer" ? "user" : "assistant") as "user" | "assistant",
-    content: m.body,
-  }));
+  const history = ((msgs as { role: string; body: string }[] | null) ?? [])
+    .reverse()
+    .map((m) => ({
+      role: (m.role === "customer" ? "user" : "assistant") as "user" | "assistant",
+      content: m.body,
+    }));
+  // The Messages API requires the first turn to be `user`. An Engage flow that
+  // greets and hands off leaves an assistant-only thread (the hook deliberately
+  // leaves the customer row to us), and a 20-row window can also open on an
+  // agent turn — either way the call would 400 and the customer would get
+  // nothing back. Drop the leading assistant turns; the rest stays intact.
+  while (history.length && history[0].role === "assistant") history.shift();
 
   // Cost guardrail: enforce the plan's monthly token allowance. The public
   // endpoint is otherwise unbounded — degrade gracefully without spending.

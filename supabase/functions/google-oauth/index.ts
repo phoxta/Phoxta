@@ -9,8 +9,12 @@ const env = (k: string) => Deno.env.get(k) ?? "";
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
+  // Land on the page that actually READS ?google= and reports the outcome:
+  // /ops/google (Google Workspace → Configure). The old /ops/agent/configure is
+  // a bare redirect now, and a redirect that drops the query string swallows
+  // the result — the owner is never told whether the connection worked.
   const back = (q: string, org?: string) =>
-    Response.redirect(`${appBase()}${org ? `/dashboard/businesses/${org}/ops/agent/configure` : "/dashboard"}?google=${q}`, 302);
+    Response.redirect(`${appBase()}${org ? `/dashboard/businesses/${org}/ops/google` : "/dashboard"}?google=${q}`, 302);
   try {
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");

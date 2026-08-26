@@ -29,27 +29,39 @@ const ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "
 // --- Human takeover (console → widget) -------------------------------------
 // When the business takes a thread over, a send returns { human: true, reply: "" }
 // and the person's replies are fetched with { action: "poll", conversationId,
-// afterId? } → { messages: [{ id, role: "agent"|"human", body, created_at }],
-// human }. The conversation id + poll cursor live in sessionStorage so SPA
-// navigation doesn't orphan a live human conversation. Fail-soft everywhere:
-// blocked storage just loses resume, a failed poll just waits for the next one.
+// threadToken, afterId? } → { messages: [{ id, role: "agent"|"human", body,
+// created_at }], human }.
+//
+// threadToken is a per-thread capability returned by every send. The agent
+// public_key ships inside this bundle, so it proves a business and never a
+// visitor; the poll therefore answers 404 to anyone who cannot present the token
+// for the thread they ask about. It is stored and resumed beside the id and the
+// cursor. An entry written before tokens existed carries none: that thread can
+// still be sent on (the next send returns a fresh token) but must not be polled.
+// The conversation id + poll cursor live in sessionStorage so SPA navigation
+// doesn't orphan a live human conversation. Fail-soft everywhere: blocked
+// storage just loses resume, a failed poll just waits for the next one.
 const CONV_KEY = "phoxta:chat:conv";
-function loadStoredConv(): { id: string; lastSeenId: string | null } | null {
+function loadStoredConv(): { id: string; lastSeenId: string | null; token: string | null } | null {
     try {
         const raw = sessionStorage.getItem(CONV_KEY);
         if (!raw) return null;
-        const v = JSON.parse(raw) as { id?: unknown; lastSeenId?: unknown };
+        const v = JSON.parse(raw) as { id?: unknown; lastSeenId?: unknown; token?: unknown };
         if (v && typeof v.id === "string") {
-            return { id: v.id, lastSeenId: typeof v.lastSeenId === "string" ? v.lastSeenId : null };
+            return {
+                id: v.id,
+                lastSeenId: typeof v.lastSeenId === "string" ? v.lastSeenId : null,
+                token: typeof v.token === "string" ? v.token : null,
+            };
         }
     } catch {
         /* storage unavailable */
     }
     return null;
 }
-function storeConv(id: string | null, lastSeenId: string | null) {
+function storeConv(id: string | null, lastSeenId: string | null, token: string | null) {
     try {
-        if (id) sessionStorage.setItem(CONV_KEY, JSON.stringify({ id, lastSeenId }));
+        if (id) sessionStorage.setItem(CONV_KEY, JSON.stringify({ id, lastSeenId, token }));
         else sessionStorage.removeItem(CONV_KEY);
     } catch {
         /* storage unavailable */
@@ -109,6 +121,10 @@ export default function AIChat() {
     // ids already rendered (dedupe), whether the takeover notice has been shown,
     // and the last activity time that keeps the poll loop alive.
     const lastSeen = useRef<string | null>(null);
+    // The capability for THIS thread, from the last send that returned one.
+    // Without it the poll can only 404, so the receive loop stays quiet until a
+    // send hands one over.
+    const threadToken = useRef<string | null>(null);
     const seenIds = useRef<Set<string>>(new Set());
     const humanActive = useRef(false);
     const humanNoticed = useRef(false);
@@ -121,10 +137,11 @@ export default function AIChat() {
         if (s && !convRef.current) {
             convRef.current = s.id;
             lastSeen.current = s.lastSeenId;
+            threadToken.current = s.token; // null on an entry stored before tokens
         }
     }, []);
 
-    const persistConv = () => storeConv(convRef.current, lastSeen.current);
+    const persistConv = () => storeConv(convRef.current, lastSeen.current, threadToken.current);
 
     const scrollDown = () =>
         setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 50);
@@ -141,13 +158,13 @@ export default function AIChat() {
         humanActive.current = active;
     }
 
-    // One poll: POST { public_key, action: "poll", conversationId, afterId? } →
-    // { messages: [{ id, role: "agent"|"human", body, created_at }], human }.
-    // With no cursor yet the first poll is an ANCHOR: it swallows the history
-    // (those bubbles are already on screen from send responses) and only records
-    // the frontier; later polls deliver what comes after it.
+    // One poll: POST { public_key, action: "poll", conversationId, threadToken,
+    // afterId? } → { messages: [{ id, role: "agent"|"human", body, created_at }],
+    // human }. With no cursor yet the first poll is an ANCHOR: it swallows the
+    // history (those bubbles are already on screen from send responses) and only
+    // records the frontier; later polls deliver what comes after it.
     async function pollOnce(key: string) {
-        if (!AGENT_URL || !convRef.current) return;
+        if (!AGENT_URL || !convRef.current || !threadToken.current) return;
         const anchor = lastSeen.current === null;
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         if (ANON) { headers["Authorization"] = `Bearer ${ANON}`; headers["apikey"] = ANON; }
@@ -158,6 +175,7 @@ export default function AIChat() {
                 public_key: key,
                 action: "poll",
                 conversationId: convRef.current,
+                threadToken: threadToken.current,
                 ...(lastSeen.current ? { afterId: lastSeen.current } : {}),
             }),
         });
@@ -196,7 +214,10 @@ export default function AIChat() {
         let failures = 0;
         let timer: ReturnType<typeof setTimeout>;
         const tick = async () => {
-            if (AGENT_KEY && convRef.current && Date.now() - lastActivity.current <= POLL_IDLE_MS) {
+            // Every tick re-reads the refs, so a thread resumed without a token
+            // (one stored before tokens existed) starts polling the moment a send
+            // returns one — no token can never wedge the loop shut.
+            if (AGENT_KEY && convRef.current && threadToken.current && Date.now() - lastActivity.current <= POLL_IDLE_MS) {
                 try {
                     await pollOnce(AGENT_KEY);
                     failures = 0;
@@ -233,7 +254,13 @@ export default function AIChat() {
                     body: JSON.stringify({ public_key: AGENT_KEY, channel: "web", conversationId: convRef.current, message: q }),
                 });
                 const data = await res.json();
-                convRef.current = data.conversationId ?? convRef.current;
+                // Every reply that names a thread carries that thread's capability
+                // too — the normal, human-takeover and flow-suppressed paths alike.
+                // A different thread id invalidates the token held for the old one.
+                const nextConv = typeof data.conversationId === "string" ? data.conversationId : convRef.current;
+                if (nextConv !== convRef.current) threadToken.current = null;
+                if (typeof data.threadToken === "string" && data.threadToken) threadToken.current = data.threadToken;
+                convRef.current = nextConv;
                 reply = data.reply ?? "";
                 cards = Array.isArray(data.cards) ? data.cards : [];
                 humanTurn = data.human === true;

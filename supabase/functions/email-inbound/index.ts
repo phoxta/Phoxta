@@ -17,6 +17,7 @@
 // At least one must be configured; with neither, every request is rejected.
 import { dispatch } from "../_shared/dispatch.ts";
 import { verifySvixSignature, verifySharedSecret } from "../_shared/webhooks.ts";
+import { internalProofHeaders } from "../_shared/internalProof.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -101,7 +102,15 @@ Deno.serve(async (req) => {
 
     const res = await fetch(`${SUPABASE_URL}/functions/v1/agent-inbound`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${ANON}`, apikey: ANON, "Content-Type": "application/json" },
+      // See internalProof.ts: without this, agent-inbound would treat the sender
+      // address as an unproven claim and refuse to thread the email onto their
+      // contact — correct for a browser, wrong for a verified inbound email.
+      headers: {
+        Authorization: `Bearer ${ANON}`,
+        apikey: ANON,
+        "Content-Type": "application/json",
+        ...(await internalProofHeaders()),
+      },
       body: JSON.stringify({ public_key: key, channel: "email", message: text, customer: { email: from } }),
     });
     const data = (await res.json().catch(() => ({}))) as { reply?: string; throttled?: boolean };

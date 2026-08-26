@@ -24,6 +24,45 @@ const DAILY_LIMIT = 2;
 const MIN_IDEA = 10;
 const MAX_IDEA = 1200;
 
+// A whole-day ceiling on the endpoint, claimed through the same atomic
+// statement under a sentinel key. No header on an anonymous endpoint is fully
+// trustworthy, so the per-caller limit alone can never be the only thing
+// standing between a stranger and the model bill: whatever a caller does to
+// look new, the day's total generations stop here. Sized far above real
+// homepage traffic so an ordinary visitor never meets it; raise it with
+// VALIDATOR_DAILY_CEILING rather than editing this.
+//
+// The sentinel cannot collide with a caller: hashIp only ever returns 32 hex
+// characters.
+const GLOBAL_KEY = "all:homepage-validator";
+const envCeiling = Number(Deno.env.get("VALIDATOR_DAILY_CEILING"));
+const GLOBAL_DAILY_LIMIT = Number.isFinite(envCeiling) && envCeiling > 0 ? Math.floor(envCeiling) : 300;
+
+// 10/8, 127/8, 169.254/16, 172.16–31/12, 192.168/16, ::1, fc00::/7 — the hops a
+// load balancer writes about itself rather than about the visitor.
+const PRIVATE_HOP = /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|f[cd])/i;
+
+/**
+ * The visitor's address, as far as the infrastructure will vouch for it.
+ *
+ * `x-forwarded-for` is a list a caller can pre-seed: proxies APPEND, so the
+ * LEFTMOST entry is whatever the client sent and the rightmost entries are the
+ * ones our own infrastructure wrote. Keying the limit on the leftmost value —
+ * as this did — meant rotating a single header defeated it outright. So read
+ * from the right, skipping private hops to land on the real peer.
+ */
+function callerAddress(req: Request): string {
+  // Cloudflare replaces cf-connecting-ip with the true peer on every request,
+  // so when it is present it is the one value a caller cannot author.
+  const cf = req.headers.get("cf-connecting-ip")?.trim();
+  if (cf) return cf;
+  const chain = (req.headers.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  for (let i = chain.length - 1; i >= 0; i--) {
+    if (!PRIVATE_HOP.test(chain[i])) return chain[i];
+  }
+  return chain[chain.length - 1] ?? "unknown";
+}
+
 /**
  * The visitor's IP, hashed.
  *
@@ -32,10 +71,7 @@ const MAX_IDEA = 1200;
  * table a privacy liability for no extra function.
  */
 async function hashIp(req: Request): Promise<string> {
-  const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("cf-connecting-ip") ||
-    "unknown";
+  const raw = callerAddress(req);
   const salt = Deno.env.get("CRON_SECRET") ?? "phoxta";
   const bytes = new TextEncoder().encode(`${salt}:${raw}`);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -124,6 +160,30 @@ Deno.serve(async (req) => {
       return json(
         {
           error: `That is ${DAILY_LIMIT} validations today. Create a free account to keep going — you get the full ten-day programme with it.`,
+          limited: true,
+          remaining: 0,
+        },
+        429,
+      );
+    }
+
+    // Then the day's ceiling, claimed only for requests the per-caller limit
+    // already allowed — counting refused ones would let an abuser exhaust the
+    // whole endpoint for everyone else without spending a token.
+    const { data: ceiling, error: ceilingErr } = await admin.rpc("consume_homepage_validation_attempt", {
+      p_ip_hash: GLOBAL_KEY,
+      p_limit: GLOBAL_DAILY_LIMIT,
+    });
+    if (ceilingErr) return json({ error: "Could not start the validation just then." }, 500);
+    const ceilingClaim = (Array.isArray(ceiling) ? ceiling[0] : ceiling) as Json;
+    if (ceilingClaim && ceilingClaim.allowed === false) {
+      // Worth a log line: reaching this on a normal day means either real
+      // demand outgrew the ceiling or someone is working around the per-caller
+      // limit, and both want a human to look.
+      console.error(`[phoxta] idea-validate daily ceiling reached (${ceilingClaim.attempt_count}/${GLOBAL_DAILY_LIMIT})`);
+      return json(
+        {
+          error: "The validator is unusually busy today. Create a free account and you can run yours right away.",
           limited: true,
           remaining: 0,
         },

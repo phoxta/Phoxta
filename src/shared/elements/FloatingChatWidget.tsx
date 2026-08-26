@@ -30,7 +30,51 @@ const GREETING =
   "Hi — I can explain how Phoxta works, walk you through the businesses you can buy, and answer anything about running one. What are you looking to do?";
 const CHIPS = ["What can I buy?", "How does it work?", "What does it cost?", "Can I use my own domain?"];
 
-type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[]; media?: ChatMedia[] };
+type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[]; media?: ChatMedia[]; team?: boolean; note?: boolean };
+
+/**
+ * Receiving a human's replies.
+ *
+ * A Phoxta teammate can take this conversation over from the agent in the
+ * console — at which point the agent deliberately says nothing. Without a
+ * receive path the visitor would simply be met with silence, which on a sales
+ * conversation is the worst possible moment for it. So the widget polls its own
+ * thread while it is open.
+ *
+ * The thread is read with a capability, not with the public agent key: the key
+ * is in this bundle and identifies the business, so on its own it would let
+ * anyone read anyone's conversation. `threadToken` is minted per conversation
+ * and handed back only to the visitor whose message opened it.
+ */
+const CONV_KEY = "phoxta:site:chat";
+type StoredConv = { id: string; lastSeenId: string | null; token: string | null };
+
+function loadStoredConv(): StoredConv | null {
+  try {
+    const raw = sessionStorage.getItem(CONV_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<StoredConv>;
+    if (typeof v?.id !== "string") return null;
+    return {
+      id: v.id,
+      lastSeenId: typeof v.lastSeenId === "string" ? v.lastSeenId : null,
+      token: typeof v.token === "string" ? v.token : null,
+    };
+  } catch {
+    return null; // storage blocked — the chat still works, it just cannot resume
+  }
+}
+
+function storeConv(c: StoredConv | null): void {
+  try {
+    if (c?.id) sessionStorage.setItem(CONV_KEY, JSON.stringify(c));
+    else sessionStorage.removeItem(CONV_KEY);
+  } catch { /* storage blocked */ }
+}
+
+const POLL_MS = 5000;
+/** Stop polling a thread nobody is touching; any message re-arms it. */
+const IDLE_MS = 120_000;
 
 const CHAT_ICON = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
@@ -45,13 +89,104 @@ export default function FloatingChatWidget() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const conv = useRef<string | null>(null);
+  const token = useRef<string | null>(null);
+  const lastSeen = useRef<string | null>(null);
+  const seenIds = useRef<Set<string>>(new Set());
+  const humanNoticed = useRef(false);
+  const lastActivity = useRef(Date.now());
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Resume a thread a hard reload would otherwise orphan — including one a
+  // teammate is in the middle of answering.
+  useEffect(() => {
+    const stored = loadStoredConv();
+    if (!stored) return;
+    conv.current = stored.id;
+    lastSeen.current = stored.lastSeenId;
+    token.current = stored.token;
+  }, []);
+
+  const persist = () =>
+    storeConv(conv.current ? { id: conv.current, lastSeenId: lastSeen.current, token: token.current } : null);
 
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" }), 60);
     return () => clearTimeout(t);
   }, [open, msgs]);
+
+  /** Say once, and only once per takeover, that a person is now on the thread. */
+  function noteHuman(active: boolean) {
+    if (active && !humanNoticed.current) {
+      humanNoticed.current = true;
+      setMsgs((m) => [...m, { role: "bot", text: "A Phoxta teammate has joined the chat.", note: true }]);
+    }
+    if (!active) humanNoticed.current = false;
+  }
+
+  // One poll of this thread. With no cursor yet the first pass is an ANCHOR: the
+  // messages it sees are already on screen from the send responses, so it only
+  // records the frontier and shows nothing.
+  async function pollOnce() {
+    if (!AGENT_URL || !AGENT_KEY || !conv.current || !token.current) return;
+    const anchoring = lastSeen.current === null;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (ANON) {
+      headers["Authorization"] = `Bearer ${ANON}`;
+      headers["apikey"] = ANON;
+    }
+    const r = await fetch(AGENT_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        public_key: AGENT_KEY,
+        action: "poll",
+        conversationId: conv.current,
+        threadToken: token.current,
+        ...(lastSeen.current ? { afterId: lastSeen.current } : {}),
+      }),
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    const rows: { id: string; role: string; body: string }[] = Array.isArray(d.messages)
+      ? d.messages.filter((m: unknown) => {
+          const x = m as { id?: unknown; role?: unknown; body?: unknown } | null;
+          return !!x && typeof x.id === "string" && typeof x.role === "string" && typeof x.body === "string";
+        })
+      : [];
+    if (rows.length) {
+      lastSeen.current = rows[rows.length - 1].id;
+      persist();
+    }
+    noteHuman(d.human === true);
+    if (anchoring) {
+      rows.forEach((m) => seenIds.current.add(m.id));
+      return;
+    }
+    const fresh = rows.filter((m) => m.body.trim() && !seenIds.current.has(m.id));
+    if (!fresh.length) return;
+    fresh.forEach((m) => seenIds.current.add(m.id));
+    lastActivity.current = Date.now();
+    setMsgs((m) => [...m, ...fresh.map((f) => ({ role: "bot" as const, text: f.body, team: f.role === "human" }))]);
+  }
+
+  // Poll only while the panel is open and the thread is warm; failures stay
+  // silent (a visitor must never see plumbing).
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    let timer = 0;
+    const tick = async () => {
+      if (!alive) return;
+      if (conv.current && token.current && Date.now() - lastActivity.current < IDLE_MS) {
+        try { await pollOnce(); } catch { /* transient — the next tick retries */ }
+      }
+      if (alive) timer = window.setTimeout(tick, POLL_MS);
+    };
+    timer = window.setTimeout(tick, POLL_MS);
+    return () => { alive = false; window.clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   async function send(text: string) {
     const q = text.trim();
@@ -63,6 +198,7 @@ export default function FloatingChatWidget() {
     let reply = "";
     let cards: ChatCard[] = [];
     let media: ChatMedia[] = [];
+    let human = false;
     if (AGENT_URL && AGENT_KEY) {
       try {
         const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -76,18 +212,45 @@ export default function FloatingChatWidget() {
           body: JSON.stringify({ public_key: AGENT_KEY, channel: "web", conversationId: conv.current, message: q }),
         });
         const d = await r.json();
-        conv.current = d.conversationId ?? conv.current;
+        const nextId = typeof d.conversationId === "string" ? d.conversationId : conv.current;
+        // A new thread voids the old capability and the old read cursor.
+        if (nextId !== conv.current) {
+          token.current = null;
+          lastSeen.current = null;
+          seenIds.current.clear();
+        }
+        conv.current = nextId;
+        if (typeof d.threadToken === "string" && d.threadToken) token.current = d.threadToken;
         reply = (d.reply ?? "").trim();
+        human = d.human === true;
         cards = Array.isArray(d.cards) ? d.cards : [];
         media = Array.isArray(d.media) ? d.media : [];
+        // This reply is on screen already: re-anchor so the poll cannot repeat it.
+        if (reply) lastSeen.current = null;
+        persist();
       } catch (err) {
         console.error("[phoxta] chat agent unreachable:", err);
       }
     }
-    if (!reply) {
-      reply = "I couldn't reach the assistant just then — try again in a moment, or use the contact page and a person will pick it up.";
+    lastActivity.current = Date.now();
+    if (human) {
+      // A teammate owns this thread — the agent stays quiet on purpose, so the
+      // canned "couldn't reach the assistant" line would be a lie. Say who is
+      // answering instead and let the poll deliver their reply.
+      noteHuman(true);
+      if (reply) setMsgs((m) => [...m, { role: "bot", text: reply, cards, media }]);
+    } else {
+      noteHuman(false);
+      setMsgs((m) => [
+        ...m,
+        {
+          role: "bot",
+          text: reply || "I couldn't reach the assistant just then — try again in a moment, or use the contact page and a person will pick it up.",
+          cards,
+          media,
+        },
+      ]);
     }
-    setMsgs((m) => [...m, { role: "bot", text: reply, cards, media }]);
     setBusy(false);
   }
 
@@ -126,20 +289,32 @@ export default function FloatingChatWidget() {
           </div>
 
           <div className="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-2" ref={bodyRef} role="log" aria-busy={busy}>
-            {msgs.map((m, i) => (
-              <div
-                key={i}
-                className={m.role === "user" ? "align-self-end text-white" : "align-self-start"}
-                style={{
-                  maxWidth: "88%", padding: "10px 14px", borderRadius: 12, fontSize: 14, lineHeight: 1.5,
-                  background: m.role === "user" ? "var(--neutral-900, #111)" : "var(--neutral-100, #f1f2f4)",
-                }}
-              >
-                <RichText text={m.text} />
-                <MediaRow media={m.media} />
-                <ProductCards cards={m.cards} />
-              </div>
-            ))}
+            {msgs.map((m, i) =>
+              m.note ? (
+                // Not a message — a status line about who is answering.
+                <div key={i} className="align-self-center text-center" style={{ fontSize: 12, opacity: 0.6, padding: "2px 8px" }}>
+                  {m.text}
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className={m.role === "user" ? "align-self-end text-white" : "align-self-start"}
+                  style={{
+                    maxWidth: "88%", padding: "10px 14px", borderRadius: 12, fontSize: 14, lineHeight: 1.5,
+                    background: m.role === "user" ? "var(--neutral-900, #111)" : "var(--neutral-100, #f1f2f4)",
+                  }}
+                >
+                  {m.team && (
+                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", opacity: 0.55, marginBottom: 4 }}>
+                      Phoxta team
+                    </div>
+                  )}
+                  <RichText text={m.text} />
+                  <MediaRow media={m.media} />
+                  <ProductCards cards={m.cards} />
+                </div>
+              ),
+            )}
             {busy && (
               <div className="align-self-start" style={{ padding: "10px 14px", borderRadius: 12, background: "var(--neutral-100, #f1f2f4)", fontSize: 14 }}>
                 …

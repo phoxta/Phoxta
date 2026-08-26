@@ -12,13 +12,17 @@
 // Requires: TWILIO_AUTH_TOKEN (and TWILIO_WEBHOOK_BASE if a proxy rewrites the host).
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { verifyTwilioSignature } from "../_shared/webhooks.ts";
+import { internalProofHeaders } from "../_shared/internalProof.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
+/** TwiML for one reply. An EMPTY message means say nothing: a `<Response>` with
+ *  no `<Message>` is how Twilio is told to send no SMS/WhatsApp at all. */
 function twiml(message: string): Response {
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(message)}</Message></Response>`;
+  const body = message ? `<Message>${esc(message)}</Message>` : "";
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`;
   return new Response(xml, { headers: { "Content-Type": "text/xml" } });
 }
 
@@ -54,11 +58,29 @@ Deno.serve(async (req) => {
     const phone = from.replace(/^whatsapp:/, "");
     const res = await fetch(`${SUPABASE_URL}/functions/v1/agent-inbound`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${ANON}`, apikey: ANON, "Content-Type": "application/json" },
+      // The proof is what lets agent-inbound accept a channel and a phone number
+      // from us: this request demonstrably carries a message Twilio's signature
+      // already verified, whereas anything arriving with only the (public) agent
+      // key speaks as an anonymous web visitor and cannot claim to be anyone.
+      headers: {
+        Authorization: `Bearer ${ANON}`,
+        apikey: ANON,
+        "Content-Type": "application/json",
+        ...(await internalProofHeaders()),
+      },
       body: JSON.stringify({ public_key: key, channel, message: body, customer: { phone } }),
     });
-    const data = await res.json().catch(() => ({}));
-    return twiml((data as { reply?: string })?.reply || "Thanks for your message — we'll be in touch shortly.");
+    const data = (await res.json().catch(() => ({}))) as { reply?: string; human?: boolean };
+    // An empty reply is a DECISION, not a failure: when a human has taken the
+    // thread over agent-inbound answers reply:"" with human:true, and an Engage
+    // flow can likewise choose to say nothing this turn. Texting a canned bot
+    // line there is precisely what "Take over" promises won't happen, so only a
+    // genuine failure — the call errored, or came back without a reply at all —
+    // gets the fallback, where silence would be worse.
+    if (!res.ok || typeof data.reply !== "string") {
+      return twiml("Thanks for your message — we'll be in touch shortly.");
+    }
+    return twiml(data.reply);
   } catch {
     return twiml("Sorry, something went wrong. Please try again in a moment.");
   }

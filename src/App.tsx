@@ -176,22 +176,27 @@ export default function App() {
             {/* Google Workspace lives inside Settings now — the route stays valid
                 (Settings links into it) but it's no longer a top-level tab. */}
             <Route path="google" element={<GoogleWorkspacePage />} />
-            {/* IA redirects: old tab URLs keep working after the console reshuffle. */}
-            <Route path="helpdesk" element={<Navigate to="../inbox" replace />} />
+            {/* IA redirects: old tab URLs keep working after the console
+                reshuffle. Every one of them keeps the query string — the
+                result of a round trip rides in it (?google=connected) as often
+                as the record does (?c=<conversation>), and a hop that drops it
+                is indistinguishable from the round trip never happening. Aim
+                each at its FINAL destination too, so there is only one hop. */}
+            <Route path="helpdesk" element={<KeepSearch to="../engage/inbox" />} />
             <Route path="content" element={<Navigate to=".." replace />} />
             {/* The old AI Agent module: config/knowledge live in Engage now,
                 the Operator has its own tab. */}
             <Route path="agent">
-              <Route index element={<Navigate to="../engage/agent" replace />} />
-              <Route path="operator" element={<Navigate to="../../operator" replace />} />
-              <Route path="configure" element={<Navigate to="../../engage/agent" replace />} />
-              <Route path="knowledge" element={<Navigate to="../../engage/knowledge" replace />} />
-              <Route path="inbox" element={<Navigate to="../../engage/inbox" replace />} />
-              <Route path="snippets" element={<Navigate to="../../engage/inbox" replace />} />
-              <Route path="outbound" element={<Navigate to="../../engage/broadcasts" replace />} />
-              <Route path="proactive" element={<Navigate to="../../engage/broadcasts" replace />} />
-              <Route path="call-center" element={<Navigate to="../../settings" replace />} />
-              <Route path="test" element={<Navigate to="../../engage/agent" replace />} />
+              <Route index element={<KeepSearch to="../engage/agent" />} />
+              <Route path="operator" element={<KeepSearch to="../../operator" />} />
+              <Route path="configure" element={<KeepSearch to="../../engage/agent" />} />
+              <Route path="knowledge" element={<KeepSearch to="../../engage/knowledge" />} />
+              <Route path="inbox" element={<KeepSearch to="../../engage/inbox" />} />
+              <Route path="snippets" element={<KeepSearch to="../../engage/inbox" />} />
+              <Route path="outbound" element={<KeepSearch to="../../engage/broadcasts" />} />
+              <Route path="proactive" element={<KeepSearch to="../../engage/broadcasts" />} />
+              <Route path="call-center" element={<KeepSearch to="../../settings" />} />
+              <Route path="test" element={<KeepSearch to="../../engage/agent" />} />
             </Route>
           </Route>
           <Route path="/dashboard/billing" element={<BillingPage />} />

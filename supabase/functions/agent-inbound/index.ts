@@ -13,10 +13,45 @@ import { modelFor } from "../_shared/models.ts";
 import { meter } from "../_shared/meter.ts";
 import { phoneForStorage } from "../_shared/telephony.ts";
 import { engageHandleInbound, type EngageInboundParams } from "../engage-run/executor.ts";
+import { hmacToken, isTrustedTransport, safeEqual } from "../_shared/internalProof.ts";
 import type { AgentConfig } from "../_shared/agentCore.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
+
+// ---------------------------------------------------------------------------
+// Who is allowed to speak for whom.
+//
+// This endpoint is public by design: it is gated only by the agent public_key,
+// which ships inside every storefront's JS bundle AND is handed to anonymous
+// callers by app_storefront_agent_key. So the key proves a business, never a
+// person — every request carrying nothing else must be treated as hostile.
+//
+// That matters because identity is what threads a conversation. resolveConversation
+// re-attaches to an existing SMS/WhatsApp thread by phone number, and links a
+// contact by email/phone so the agent is fed "unified memory" — summaries of that
+// person's other conversations. A caller who can assert someone else's phone or
+// email therefore reads their history back out of the agent's own reply. Only the
+// server transports that actually received a message on a channel (twilio-inbound,
+// email-inbound) may assert one, and they prove it with a secret a browser cannot
+// hold: an HMAC keyed by the service-role key, which the platform injects into
+// every edge function and never exposes to a client.
+// ---------------------------------------------------------------------------
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A per-thread capability the widget proves it holds before reading a thread.
+ *  Derived rather than stored, so it needs no schema change and no lookup: only
+ *  this server can compute it, and it is handed back exactly to the visitor whose
+ *  message opened the conversation. */
+const threadToken = (conversationId: string) => hmacToken(`thread:${conversationId}`);
+
+/** Everything an untrusted caller is allowed to say about who they are. A name
+ *  is a display label; it resolves no identity and links no contact. */
+const publicCustomer = (customer: Json): Json => ({ name: String(customer?.name ?? "").slice(0, 120) });
+
+/** Channels that reach a person by an identifier they own, and therefore thread
+ *  by it. Only a proven transport may speak on one. */
+const IDENTITY_CHANNELS = new Set(["sms", "whatsapp", "email"]);
 
 // ---------------------------------------------------------------------------
 // Ingest classification: after the agent replies, tag the conversation with the
@@ -140,9 +175,18 @@ Deno.serve(async (req) => {
     //     can push the WAV straight to Storage — the service-role key never
     //     leaves the server, and multi-MB audio never transits this function. ---
     if (body?.recording_init && body?.conversationId) {
+      // The id lands in a storage path and mints an upload URL, so it is checked
+      // twice over: shaped like a uuid (a path segment must not be able to climb
+      // out of the org's prefix) and actually one of this org's conversations
+      // (otherwise the public key alone would mint unlimited upload URLs).
+      const convId = String(body.conversationId);
+      if (!UUID_RE.test(convId)) return json({ error: "recording_init_failed" }, 400);
+      const { data: owns } = await admin
+        .from("conversations").select("id").eq("id", convId).eq("organization_id", org.id).maybeSingle();
+      if (!owns) return json({ error: "recording_init_failed" }, 404);
       const bucket = "call-recordings";
       try { await admin.storage.createBucket(bucket, { public: true }); } catch (_) { /* already exists */ }
-      const path = `${org.id}/${body.conversationId}-${Date.now()}.wav`;
+      const path = `${org.id}/${convId}-${Date.now()}.wav`;
       const { data, error } = await admin.storage.from(bucket).createSignedUploadUrl(path);
       if (error || !data) return json({ error: "recording_init_failed" }, 500);
       const base = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
@@ -152,6 +196,7 @@ Deno.serve(async (req) => {
 
     // --- Call recording: attach the uploaded file to this call's log row(s). ---
     if (body?.recording_done && body?.conversationId && body?.recording_url) {
+      if (!UUID_RE.test(String(body.conversationId))) return json({ ok: true });
       await admin
         .from("call_logs")
         .update({ recording_url: body.recording_url })
@@ -168,11 +213,22 @@ Deno.serve(async (req) => {
     // key's own org; returns only what the thread shows anyway (no notes, no
     // meta, no author identity). `afterId` = last message id the widget has.
     if (body?.action === "poll" && body?.conversationId) {
+      // The public key proves a business, not a visitor, so it cannot be what
+      // authorises reading a thread: with the key alone anyone could walk a
+      // tenant's conversations. The widget must present the per-thread token it
+      // was handed when its own message opened the conversation, and only web
+      // threads are pollable at all — a phone thread is never the widget's.
+      const convId = String(body.conversationId);
+      const presented = String(body.threadToken ?? "");
+      if (!UUID_RE.test(convId) || !safeEqual(presented, await threadToken(convId))) {
+        return json({ error: "Unknown conversation." }, 404);
+      }
       const { data: conv } = await admin
         .from("conversations")
         .select("*")
-        .eq("id", body.conversationId)
+        .eq("id", convId)
         .eq("organization_id", org.id)
+        .eq("channel_type", "web")
         .maybeSingle();
       if (!conv) return json({ error: "Unknown conversation." }, 404);
       let q = admin
@@ -191,12 +247,17 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (anchor) q = q.gt("created_at", (anchor as Json).created_at);
       }
-      const { data: msgs } = await q;
+      const { data: msgs } = await q.eq("organization_id", org.id);
       return json({ messages: msgs ?? [], human: (conv as Json).ai_paused === true });
     }
 
     // --- Chatwoot Agent-Bot webhook ---
     if (body?.event) {
+      // This leg threads by the sender's phone, so a forged payload could append
+      // to a real customer's WhatsApp thread. Chatwoot itself is proven by the
+      // integration being configured at all; when it is not, an "event" can only
+      // be someone imitating one, and there is nothing to post a reply back to.
+      if (!Deno.env.get("CHATWOOT_URL") && !(await isTrustedTransport(req))) return json({ ok: true });
       if (body.event !== "message_created" || body.message_type !== "incoming") return json({ ok: true });
       const message = (body.content ?? "").toString().trim();
       if (!message) return json({ ok: true });
@@ -271,31 +332,87 @@ Deno.serve(async (req) => {
     const message = (body?.message ?? "").toString().trim();
     if (!message) return json({ error: "Type a message." }, 400);
     if (message.length > 4000) return json({ error: "Message too long." }, 400);
+    // Identity is a capability on this endpoint, not a field (see the header
+    // comment). An unproven caller speaks only as an anonymous web visitor: it
+    // cannot name a channel that threads by phone, and cannot assert an email or
+    // phone that would attach this conversation — and the agent's cross-channel
+    // memory of it — to someone else's contact record.
+    const trusted = await isTrustedTransport(req);
+    const customer = trusted ? (body?.customer ?? {}) : publicCustomer(body?.customer);
+
+    // A conversation id from an unproven caller is a claim, not a fact, and it is
+    // checked against the one thing an attacker cannot fake: what that row
+    // actually is. Threads on a channel that reaches a PERSON by their own
+    // identifier — their phone number, their email address — are exactly the ones
+    // a stranger must never be able to open, so those are refused outright and the
+    // turn starts a clean thread instead. A web or voice thread keeps its own
+    // channel, which is what lets the voice bridge continue a call it opened.
+    let threadId: string | undefined = body?.conversationId ? String(body.conversationId) : undefined;
+    let channel = trusted ? (body?.channel ?? "web") : "web";
+    if (threadId && !trusted) {
+      const { data: owned } = UUID_RE.test(threadId)
+        ? await admin.from("conversations").select("id, channel_type")
+            .eq("id", threadId).eq("organization_id", org.id).maybeSingle()
+        : { data: null };
+      const ownedChannel = String((owned as Json)?.channel_type ?? "");
+      if (!owned || IDENTITY_CHANNELS.has(ownedChannel)) threadId = undefined;
+      else channel = ownedChannel || "web";
+    }
+
     if (await overLimit(admin, org.id)) {
+      // The cap is a spend control, not a reason to lose what a person said —
+      // and this reply promises them a follow-up, so the message has to exist
+      // for someone to follow up ON. Recorded without a model call, and only
+      // onto a thread that already exists: a first message from an unknown
+      // sender past the cap would otherwise let anyone mint conversation rows
+      // without bound, which is the abuse this throttle is here to stop.
+      if (threadId) {
+        await admin.from("conversation_messages").insert({
+          organization_id: org.id,
+          conversation_id: threadId,
+          role: "customer",
+          channel_type: channel,
+          body: message.slice(0, 4000),
+          meta: { throttled: true },
+        });
+        await admin
+          .from("conversations")
+          .update({ last_message_at: new Date().toISOString(), unread: true })
+          .eq("id", threadId)
+          .eq("organization_id", org.id);
+      }
       // `throttled` lets transport adapters (e.g. email-inbound) tell this
       // courtesy line apart from a real agent reply, so the per-org cap also
       // caps outbound sends rather than only model spend.
       return json({
         throttled: true,
+        ...(threadId ? { conversationId: threadId } : {}),
         reply: "Thanks for your message! We're handling a lot of enquiries right now — a team member will follow up shortly.",
       });
     }
+
     // Engage flows get first claim on the turn (additive — null = unchanged path).
     const engaged = await tryEngage(admin, org, config, {
-      channel: body?.channel ?? "web",
-      conversationId: body?.conversationId,
-      customer: body?.customer ?? {},
+      channel,
+      conversationId: threadId,
+      customer,
       message,
       isTest: body?.test === true,
     });
     if (engaged?.suppressAi) {
       await classifyLater(classifyInbound(admin, org, engaged.conversationId, message));
-      return json({ conversationId: engaged.conversationId, reply: engaged.reply, cards: [], media: [] });
+      return json({
+        conversationId: engaged.conversationId,
+        ...(trusted ? {} : { threadToken: await threadToken(engaged.conversationId) }),
+        reply: engaged.reply,
+        cards: [],
+        media: [],
+      });
     }
     const result = await respondCore(admin, org, config, {
-      channel: body?.channel ?? "web",
-      conversationId: engaged?.conversationId ?? body?.conversationId, // keep the flow's thread on handoff_ai
-      customer: body?.customer ?? {},
+      channel,
+      conversationId: engaged?.conversationId ?? threadId, // keep the flow's thread on handoff_ai
+      customer,
       message,
       // Sandbox: test:true opens the conversation with is_test=true (subsequent
       // messages carry the conversationId, whose row already has the flag).
@@ -307,11 +424,21 @@ Deno.serve(async (req) => {
     // response shape is otherwise unchanged (older widgets fall back to their
     // canned line on an empty reply — honest silence from the AI either way).
     if (result.paused) {
-      return json({ conversationId: result.conversationId, reply: "", human: true, cards: [], media: [] });
+      return json({
+        conversationId: result.conversationId,
+        ...(trusted ? {} : { threadToken: await threadToken(result.conversationId) }),
+        reply: "",
+        human: true,
+        cards: [],
+        media: [],
+      });
     }
     await classifyLater(classifyInbound(admin, org, result.conversationId, message));
     return json({
       conversationId: result.conversationId,
+      // The visitor's capability for this thread: required to poll it for a
+      // human's replies. Handed only to the caller whose message opened it.
+      ...(trusted ? {} : { threadToken: await threadToken(result.conversationId) }),
       reply: engaged?.reply ? `${engaged.reply}\n\n${result.reply}` : result.reply,
       cards: result.cards ?? [],
       media: result.media ?? [],
