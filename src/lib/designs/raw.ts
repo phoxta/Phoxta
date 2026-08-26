@@ -20,7 +20,23 @@ export type RawLayer =
       lineHeight: number; tracking: number; align: string; textCase: string | null; fillHex: string;
     };
 
+/**
+ * A span of a text node whose styling differs from the node's own.
+ *
+ * Still in Figma's vocabulary: a literal hex rather than a palette role, an
+ * absolute point size rather than a multiplier. fromRaw converts both.
+ */
+export type RawRun = {
+  text: string;
+  fillHex?: string;
+  weight?: number;
+  size?: number;
+  font?: string;
+  italic?: boolean;
+};
+
 export type RawTemplate = {
   layers: RawLayer[];
-  content: Record<string, string>;
+  /** A plain string unless the node carries per-character styling. */
+  content: Record<string, string | RawRun[]>;
 };

@@ -23,6 +23,8 @@ export type StockImage = {
   alt: string;
   photographer: string;
   photographerUrl: string;
+  /** A small version, for a picker grid. */
+  thumb?: string;
   /** Where it came from, so a future second source stays distinguishable. */
   source: "pexels";
 };
@@ -77,5 +79,53 @@ export async function searchStock(query: string): Promise<StockImage | null> {
     };
   } catch {
     return null;
+  }
+}
+
+/**
+ * A page of results, for a picker.
+ *
+ * searchStock above answers "give me the one good photograph for this", which
+ * is what an automated slide needs. A person choosing for themselves needs the
+ * opposite: everything that matched, in relevance order, including the generic
+ * first hit that the automatic path deliberately skips — when someone is
+ * looking at the grid, the most obvious frame is a legitimate choice and
+ * hiding it would be second-guessing them.
+ *
+ * Both orientations are returned rather than forcing landscape: the pack's
+ * photo slots include tall cut-out figures, and a landscape-only search fills
+ * them with something that has to be cropped to nothing.
+ */
+export async function searchStockMany(query: string, perPage = 24): Promise<StockImage[]> {
+  const key = Deno.env.get("PEXELS_API_KEY");
+  const q = query.trim();
+  if (!key || !q) return [];
+
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?per_page=${Math.min(80, Math.max(1, perPage))}&query=${encodeURIComponent(q)}`,
+      { headers: { Authorization: key } },
+    );
+    if (!res.ok) return [];
+    const data = await res.json() as { photos?: PexelsPhoto[] };
+
+    return (data.photos ?? []).flatMap((p) => {
+      const src = p.src ?? {};
+      const url = src.large ?? src.original;
+      if (!url) return [];
+      return [{
+        url,
+        urlWide: src.landscape ?? url,
+        // A thumbnail for the grid: loading two dozen full-size photographs to
+        // draw them at 120px wastes the viewer's bandwidth and their time.
+        thumb: src.medium ?? src.small ?? url,
+        alt: (p.alt ?? q).slice(0, 200),
+        photographer: (p.photographer ?? "Pexels").slice(0, 120),
+        photographerUrl: p.photographer_url ?? "https://www.pexels.com",
+        source: "pexels" as const,
+      }];
+    });
+  } catch {
+    return [];
   }
 }

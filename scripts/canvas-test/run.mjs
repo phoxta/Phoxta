@@ -46,4 +46,13 @@ await build({
 });
 node([path.join(here, "gestures.test.mjs"), root, tmp]);
 
+console.log("\n── editing ─────────────────────────────────────────────────");
+await build({
+  entryPoints: [path.join(here, "editor-rig.tsx")],
+  bundle: true, outfile: path.join(tmp, "editor-rig.js"),
+  alias, logLevel: "error",
+  define: { "process.env.NODE_ENV": '"development"' },
+});
+node([path.join(here, "editor.test.mjs"), root, tmp]);
+
 fs.rmSync(tmp, { recursive: true, force: true });

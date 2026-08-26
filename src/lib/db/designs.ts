@@ -119,3 +119,45 @@ export async function generateDesign(
   if (d.error) return { data: null, error: d.error };
   return { data: d.design ?? null, error: null };
 }
+
+/* ── The image library ───────────────────────────────────────────────────── */
+
+export type LibraryImage = {
+  url: string;
+  thumb?: string;
+  alt?: string;
+  photographer?: string;
+  photographerUrl?: string;
+  source?: "pexels" | "generated" | "upload";
+};
+
+/** Unwrap an edge-function error into the message the function actually sent,
+ *  rather than the transport's "non-2xx status code". */
+async function reason(error: unknown, fallback: string): Promise<string> {
+  const e = error as { message?: string; context?: Response };
+  try {
+    const ctx = await e?.context?.json?.();
+    if (ctx?.error) return ctx.error;
+  } catch { /* keep the fallback */ }
+  return friendlyError(e?.message) ?? fallback;
+}
+
+export async function searchImages(
+  orgId: string, query: string,
+): Promise<{ data: LibraryImage[]; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("image-library", {
+    body: { orgId, action: "search", query },
+  });
+  if (error) return { data: [], error: await reason(error, "That search did not work.") };
+  return { data: (data?.photos as LibraryImage[]) ?? [], error: null };
+}
+
+export async function generateImage(
+  orgId: string, query: string, size?: string,
+): Promise<{ data: LibraryImage | null; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("image-library", {
+    body: { orgId, action: "generate", query, size },
+  });
+  if (error) return { data: null, error: await reason(error, "That image could not be generated.") };
+  return { data: (data?.image as LibraryImage) ?? null, error: null };
+}

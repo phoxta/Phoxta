@@ -154,6 +154,43 @@ export type ImageLayer = Base & {
   plate?: PaintRole;
 };
 
+/**
+ * One styled span inside a text layer.
+ *
+ * Only the differences from the layer are stored: a run with no properties is
+ * plain text in the layer's own font, size and colour. That keeps a headline
+ * that has one accent-coloured phrase to two runs rather than a full
+ * description of every character, and means changing the layer's size still
+ * moves the whole block.
+ */
+export type TextRun = {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  /** Overrides the layer's fill for this span. */
+  fill?: PaintRole;
+  /** A multiplier on the layer's size, not an absolute — so a run stays
+   *  proportional when the layer is scaled with the group. */
+  scale?: number;
+  /** Only set when a run deliberately breaks from the layer's face. */
+  font?: string;
+  weight?: number;
+};
+
+/** A sequence of styled spans. */
+export type Rich = TextRun[];
+
+/**
+ * What a content slot holds.
+ *
+ * A plain string is still valid and still renders — every design saved before
+ * runs existed holds one, and the AI generator writes them. `rich.ts` is the
+ * single place that turns either into runs.
+ */
+export type Copy = string | Rich;
+
 export type TextLayer = Base & {
   type: "text";
   slot: TextSlot;
@@ -216,7 +253,7 @@ export type Template = {
   /** Layers in paint order: first is furthest back. */
   layers: Layer[];
   /** Starting copy — the Figma file's own placeholder text. */
-  content: Partial<Record<TextSlot, string>>;
+  content: Partial<Record<TextSlot, Copy>>;
   /** What each photo slot should show, in words. Seeds the Pexels search when
    *  a design is generated, so slot 2 does not get slot 1's picture. */
   imageHints: Partial<Record<ImageSlot, string>>;
@@ -228,7 +265,9 @@ export type PlacedImage = {
   alt?: string;
   photographer?: string;
   photographerUrl?: string;
-  source?: "pexels" | "upload";
+  /** Where it came from. "generated" images live in the tenant's own storage
+   *  bucket; "upload" ones are inlined into the document as a data URI. */
+  source?: "pexels" | "upload" | "generated";
 };
 
 /**
@@ -251,7 +290,7 @@ export type PlacedImage = {
 export type DesignDoc = {
   templateId: string;
   layers?: Layer[];
-  content: Partial<Record<TextSlot, string>>;
+  content: Partial<Record<TextSlot, Copy>>;
   images: Partial<Record<ImageSlot, PlacedImage>>;
   /** Only the roles that differ from the template's default. */
   palette?: Partial<Palette>;

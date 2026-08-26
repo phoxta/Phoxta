@@ -15,8 +15,12 @@ import {
   pasteLayers, removeMany, renameLayer, scaleMany, sendBackward, sendToBack, toggle, updateLayer,
 } from "@/lib/designs/edit";
 import { centred, fitTo, zoomAt, type Viewport } from "@/lib/designs/snap";
+import { FloatingBar } from "./designs/FloatingBar";
+import { CanvasText } from "./designs/CanvasText";
+import { ImageLibrary } from "./designs/ImageLibrary";
+import type { LibraryImage } from "@/lib/db/designs";
 import {
-  CANVAS_H, CANVAS_W, DEFAULT_PALETTE, emptyDoc, paint,
+  CANVAS_H, CANVAS_W, DEFAULT_PALETTE, emptyDoc, 
   type DesignDoc, type Layer, type TextSlot,
 } from "@/lib/designs/types";
 import "./designs.css";
@@ -207,6 +211,10 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   const [busy, setBusy] = useState<"" | "saving" | "exporting" | "writing">("");
   const [view, setView] = useState<Viewport | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  /** The text layer with the caret in it, if any. */
+  const [editing, setEditing] = useState<string | null>(null);
+  /** The image slot the library was opened for. */
+  const [picking, setPicking] = useState<string | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const history = useRef(new History());
   const [, force] = useState(0);
@@ -442,6 +450,55 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   const stageRect = stage.current?.getBoundingClientRect();
   const patch = (p: Partial<Layer>, record = true) => one && apply((d) => updateLayer(d, one.id, p), record);
 
+  /** Open a layer for editing. Text gets a caret; a photo slot opens the
+   *  library, because "edit this photograph" means "choose a different one". */
+  const openLayer = (id: string) => {
+    const l = layers.find((x) => x.id === id);
+    if (!l || l.locked) return;
+    setSel([id]);
+    if (l.type === "text") setEditing(id);
+    else if (l.type === "image") setPicking(l.slot);
+  };
+
+  /** The floating bar's verbs. Kept here rather than in the bar so the undo
+   *  stack, the selection and the dirty flag stay owned by one component. */
+  const runCommand = (c: "front" | "back" | "duplicate" | "delete" | "lock") => {
+    if (!sel.length) return;
+    if (c === "delete") { apply((d) => removeMany(d, sel)); setSel([]); return; }
+    if (c === "duplicate") {
+      const made: string[] = [];
+      apply((d) => sel.reduce((acc, id) => {
+        const r = duplicateLayer(acc, id);
+        made.push(r.id);
+        return r.doc;
+      }, d));
+      setSel(made);
+      return;
+    }
+    if (c === "lock") { apply((d) => sel.reduce((acc, id) => toggle(acc, id, "locked"), d)); return; }
+    const move = c === "front" ? bringToFront : sendToBack;
+    apply((d) => sel.reduce((acc, id) => move(acc, id), d));
+  };
+
+  /** A chosen photograph lands in the slot the library was opened for. */
+  const placeImage = (im: LibraryImage) => {
+    if (!picking) return;
+    apply((d) => ({
+      ...d,
+      images: {
+        ...d.images,
+        [picking]: {
+          url: im.url,
+          alt: im.alt,
+          photographer: im.photographer,
+          photographerUrl: im.photographerUrl,
+          source: im.source,
+        },
+      },
+    }));
+    setPicking(null);
+  };
+
   return (
     <div className="d-flex flex-column" style={{ gap: 8 }}>
       {/* ── Top bar ──────────────────────────────────────────────────── */}
@@ -519,6 +576,15 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
         </span>
       </div>
 
+      {picking && (
+        <ImageLibrary
+          orgId={design.organization_id}
+          hint={template?.imageHints?.[picking as keyof typeof template.imageHints]}
+          onPick={placeImage}
+          onClose={() => setPicking(null)}
+        />
+      )}
+
       <div className="dsn-editor">
         <div className="dsn-stage dsn-stage--canvas" ref={stage}>
           {view && stageRect && (
@@ -533,11 +599,45 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
               onPan={(dx, dy) => setView((v) => (v ? { ...v, x: v.x + dx, y: v.y + dy } : v))}
               onGeometry={onGeometry}
               onTransform={onTransform}
+              onOpen={openLayer}
+              editingId={editing}
             />
           )}
+          {/* The properties panel travels with the selection. It is outside
+              the SVG because it is chrome, not artwork: putting it inside
+              would put it in the export. */}
+          {view && stageRect && !editing && (
+            <FloatingBar
+              layers={layers}
+              sel={sel}
+              content={content}
+              palette={palette}
+              view={view}
+              stage={{ width: stageRect.width, height: stageRect.height }}
+              editing={false}
+              onPatch={(pt, commit) => patch(pt, commit)}
+              onContent={(next) => one?.type === "text" && apply((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }))}
+              onCommand={runCommand}
+              onEditText={() => one && setEditing(one.id)}
+              onPickImage={() => one?.type === "image" && setPicking(one.slot)}
+            />
+          )}
+
+          {/* Editing happens on the artboard, in place. */}
+          {view && editing && one?.type === "text" && (
+            <CanvasText
+              layer={one}
+              value={content[one.slot]}
+              palette={palette}
+              view={view}
+              onChange={(next) => apply((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }), false)}
+              onDone={() => { setEditing(null); force((n) => n + 1); }}
+            />
+          )}
+
           <span className="dsn-hint">
-            Space + drag pans · Ctrl + scroll zooms · Ctrl + drag marquees over artwork ·
-            Shift keeps a corner proportional · Alt resizes from the centre
+            Double-click text to write in it · Space + drag pans · Ctrl + scroll zooms ·
+            Ctrl + drag marquees over artwork · Shift keeps a corner proportional
           </span>
         </div>
 
@@ -588,160 +688,12 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
           )}
 
           {one && (
-            <>
-              {/* ── Position ─────────────────────────────────────────── */}
-              <Section title="Position">
-                <div className="dsn-xy">
-                  {(["x", "y", "w", "h"] as const).map((k) => (
-                    <Field key={k} label={k.toUpperCase()}>
-                      <input className="hrx-input" type="number" value={Math.round(one[k])}
-                             onChange={(e) => patch({ [k]: Number(e.target.value) } as Partial<Layer>)} />
-                    </Field>
-                  ))}
-                </div>
-                <div className="dsn-xy">
-                  <Field label="Rotate">
-                    <input className="hrx-input" type="number" value={Math.round(one.rotation ?? 0)}
-                           onChange={(e) => patch({ rotation: Number(e.target.value) } as Partial<Layer>)} />
-                  </Field>
-                  {"radius" in one && (
-                    <Field label="Corner">
-                      <input className="hrx-input" type="number" value={Math.round((one as { radius?: number }).radius ?? 0)}
-                             onChange={(e) => patch({ radius: Number(e.target.value) } as Partial<Layer>)} />
-                    </Field>
-                  )}
-                </div>
-              </Section>
-
-              {/* ── Appearance ───────────────────────────────────────── */}
-              <Section title="Appearance">
-                <label className="dsn-slider">
-                  <span className="dsn-field__k">Opacity</span>
-                  <input type="range" min={0} max={100} value={Math.round((one.alpha ?? 1) * 100)}
-                         onChange={(e) => patch({ alpha: Number(e.target.value) / 100 } as Partial<Layer>, false)} />
-                  <code className="dsn-hex">{Math.round((one.alpha ?? 1) * 100)}%</code>
-                </label>
-              </Section>
-
-              {/* ── Fill / Stroke ────────────────────────────────────── */}
-              {(one.type === "rect" || one.type === "text" || one.type === "chip") && (
-                <Section title="Fill">
-                  <PaintField
-                    value={paint(one.type === "rect" ? one.fill : one.fill, palette)}
-                    onChange={(hex) => patch({ fill: hex } as Partial<Layer>, false)}
-                  />
-                </Section>
-              )}
-
-              {one.type === "rect" && (
-                <Section title="Stroke">
-                  <PaintField
-                    value={one.strokeColor ? paint(one.strokeColor, palette) : "#000000"}
-                    onChange={(hex) => patch({ strokeColor: hex } as Partial<Layer>, false)}
-                  />
-                  <Field label="Width">
-                    <input className="hrx-input" type="number" min={0} value={one.strokeWidth ?? 0}
-                           onChange={(e) => patch({ strokeWidth: Number(e.target.value) } as Partial<Layer>)} />
-                  </Field>
-                </Section>
-              )}
-
-              {/* ── Typography ───────────────────────────────────────── */}
-              {one.type === "text" && (
-                <Section title="Typography">
-                  <Field label="Text">
-                    <textarea className="hrx-input" rows={3} value={content[one.slot] ?? ""}
-                              onChange={(e) => apply((d) => ({ ...d, content: { ...d.content, [one.slot]: e.target.value } }), false)} />
-                  </Field>
-                  <div className="dsn-xy">
-                    <Field label="Size">
-                      <input className="hrx-input" type="number" value={one.size}
-                             onChange={(e) => patch({ size: Number(e.target.value) } as Partial<Layer>)} />
-                    </Field>
-                    <Field label="Weight">
-                      <select className="hrx-input" value={one.weight}
-                              onChange={(e) => patch({ weight: Number(e.target.value) } as Partial<Layer>)}>
-                        {[400, 500, 600, 700].map((w) => <option key={w} value={w}>{w}</option>)}
-                      </select>
-                    </Field>
-                    <Field label="Line">
-                      <input className="hrx-input" type="number" step={0.05} value={one.lineHeight}
-                             onChange={(e) => patch({ lineHeight: Number(e.target.value) } as Partial<Layer>)} />
-                    </Field>
-                    <Field label="Track">
-                      <input className="hrx-input" type="number" step={0.1} value={one.tracking}
-                             onChange={(e) => patch({ tracking: Number(e.target.value) } as Partial<Layer>)} />
-                    </Field>
-                  </div>
-                  <div className="dsn-swatches">
-                    {(["left", "center", "right"] as const).map((a) => (
-                      <button key={a} type="button"
-                              className={`dsn-layout${(one.align ?? "left") === a ? " is-on" : ""}`}
-                              onClick={() => patch({ align: a } as Partial<Layer>)}>{a}</button>
-                    ))}
-                  </div>
-                  <p className="dsn-note">Wrap words in *asterisks* to paint them in the accent colour.</p>
-                </Section>
-              )}
-
-              {one.type === "image" && (
-                <Section title="Photograph">
-                  <ImageField
-                    label="Source"
-                    value={doc.images[one.slot]?.url ?? ""}
-                    credit={doc.images[one.slot]?.photographer}
-                    onChange={(url) => apply((d) => ({
-                      ...d,
-                      images: url
-                        ? { ...d.images, [one.slot]: { url, source: "upload" as const } }
-                        : Object.fromEntries(Object.entries(d.images).filter(([k]) => k !== one.slot)),
-                    }))}
-                  />
-
-                  {/* The crop. "Cover" centres the photograph in its frame,
-                      and the centre of a photograph is very often not its
-                      subject — so without these three controls the only way to
-                      fix a badly-cropped portrait is to find another photo. */}
-                  {doc.images[one.slot] && (
-                    <>
-                      <div className="dsn-seg">
-                        {(["cover", "contain"] as const).map((f) => (
-                          <button
-                            key={f} type="button"
-                            className={`dsn-seg__b${(one.fit ?? "cover") === f ? " is-on" : ""}`}
-                            onClick={() => patch({ fit: f } as Partial<Layer>)}
-                          >
-                            {f === "cover" ? "Fill frame" : "Fit whole photo"}
-                          </button>
-                        ))}
-                      </div>
-                      <label className="dsn-slider">
-                        <span className="dsn-field__k">Zoom</span>
-                        <input type="range" min={100} max={300} value={Math.round((one.zoom ?? 1) * 100)}
-                               onChange={(e) => patch({ zoom: Number(e.target.value) / 100 } as Partial<Layer>, false)} />
-                        <code className="dsn-hex">{Math.round((one.zoom ?? 1) * 100)}%</code>
-                      </label>
-                      <div className="dsn-xy">
-                        <Field label="Pan X">
-                          <input className="hrx-input" type="number" step={1}
-                                 value={Math.round((one.panX ?? 0) * 100)}
-                                 onChange={(e) => patch({ panX: Number(e.target.value) / 100 } as Partial<Layer>)} />
-                        </Field>
-                        <Field label="Pan Y">
-                          <input className="hrx-input" type="number" step={1}
-                                 value={Math.round((one.panY ?? 0) * 100)}
-                                 onChange={(e) => patch({ panY: Number(e.target.value) / 100 } as Partial<Layer>)} />
-                        </Field>
-                      </div>
-                      <button type="button" className="dsn-btn dsn-btn--sm"
-                              onClick={() => patch({ zoom: undefined, panX: undefined, panY: undefined, fit: undefined } as Partial<Layer>)}>
-                        Reset crop
-                      </button>
-                    </>
-                  )}
-                </Section>
-              )}
-            </>
+            <Section title="Selected">
+              <p className="dsn-note">
+                {layerName(one)} — its properties are on the canvas, above the
+                layer itself. Double-click any text to write in it.
+              </p>
+            </Section>
           )}
 
           {/* ── Document ─────────────────────────────────────────────── */}
@@ -793,63 +745,3 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
   </section>
 );
 
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <label className="dsn-xy__f">
-    <span className="dsn-field__k">{label}</span>
-    {children}
-  </label>
-);
-
-/** A colour well plus its hex, for a single paint. */
-const PaintField = ({ value, onChange }: { value: string; onChange: (hex: string) => void }) => (
-  <label className="dsn-colour">
-    <input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#000000"}
-           onChange={(e) => onChange(e.target.value)} aria-label="Colour" />
-    <code className="dsn-hex" style={{ marginLeft: 0 }}>{value}</code>
-  </label>
-);
-
-/**
- * A photo field.
- *
- * A URL box and a file picker. The file is read to a data URI rather than
- * uploaded: it lands in the doc, which means it exports and it survives without
- * a storage bucket, at the cost of size — so it is capped, loudly, rather than
- * silently producing a row too big to save.
- */
-function ImageField({ label, value, credit, onChange }: {
-  label: string; value: string; credit?: string; onChange: (url: string) => void;
-}) {
-  const MAX = 1_500_000;
-  return (
-    <div className="dsn-field">
-      <span className="dsn-field__k">{label}</span>
-      <div className="dsn-img">
-        {value ? <img src={value} alt="" className="dsn-img__thumb" /> : <span className="dsn-img__empty">none</span>}
-        <div className="dsn-img__acts">
-          <label className="dsn-btn dsn-btn--sm">
-            Upload
-            <input
-              type="file" accept="image/*" hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                if (f.size > MAX) {
-                  toastError("That image is over 1.5 MB — please use a smaller one.");
-                  return;
-                }
-                const fr = new FileReader();
-                fr.onload = () => onChange(String(fr.result));
-                fr.readAsDataURL(f);
-              }}
-            />
-          </label>
-          {value && (
-            <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => onChange("")}>Clear</button>
-          )}
-        </div>
-      </div>
-      {credit && <span className="dsn-note">{credit} / Pexels</span>}
-    </div>
-  );
-}

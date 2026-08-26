@@ -342,3 +342,136 @@
     overflow: hidden; text-overflow: ellipsis;
 }
 .dsn-seg__b.is-on { background: var(--hrx-surface, #fff); color: var(--hrx-ink, #14194e); box-shadow: 0 1px 3px rgb(20 25 78 / 12%); }
+
+/* ── The properties panel, on the canvas ─────────────────────────────────
+   Absolutely positioned inside the stage, which is why the stage is a
+   containing block. It sits above whatever is selected and is clamped inside
+   the stage by the component, not by overflow — a toolbar cut in half by a
+   scroll container is no better than one off-screen. */
+.dsn-fb {
+    position: absolute;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border: 1px solid var(--hrx-border);
+    border-radius: 12px;
+    background: var(--hrx-card);
+    box-shadow: 0 10px 30px rgb(20 25 78 / 18%);
+    font-size: 13px;
+    white-space: nowrap;
+}
+.dsn-fb__n { padding: 0 8px; font-size: 12px; font-weight: 600; color: var(--hrx-muted); }
+.dsn-fb__sep { width: 1px; align-self: stretch; margin: 4px 3px; background: var(--hrx-border); }
+.dsn-fb__b {
+    display: inline-flex; align-items: center; gap: 5px;
+    min-width: 30px; height: 30px; padding: 0 8px;
+    border: 0; border-radius: 8px; background: transparent;
+    color: var(--hrx-ink); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.dsn-fb__b:hover { background: var(--hrx-soft); }
+.dsn-fb__b.is-on { background: var(--hrx-ink); color: #fff; }
+.dsn-fb__chip { width: 15px; height: 15px; border-radius: 4px; border: 1px solid rgb(20 25 78 / 25%); }
+.dsn-fb__sel {
+    max-width: 150px; height: 30px; padding: 0 9px;
+    border: 0; border-radius: 8px; background: var(--hrx-soft);
+    color: var(--hrx-ink); font-size: 12.5px; font-weight: 600; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis;
+}
+.dsn-fb__num {
+    width: 56px; height: 30px; padding: 0 6px;
+    border: 1px solid var(--hrx-border); border-radius: 8px;
+    background: var(--hrx-card); color: var(--hrx-ink); font-size: 12.5px; font-weight: 600;
+}
+
+/* Popovers hang below the bar. */
+.dsn-fb__pop {
+    position: absolute; top: calc(100% + 6px); left: 0;
+    min-width: 190px; max-width: 300px; padding: 10px;
+    border: 1px solid var(--hrx-border); border-radius: 12px;
+    background: var(--hrx-card); box-shadow: 0 14px 34px rgb(20 25 78 / 20%);
+    white-space: normal;
+}
+.dsn-fb__list { display: flex; flex-direction: column; gap: 2px; }
+.dsn-fb__list button, .dsn-fb__row button {
+    padding: 6px 8px; border: 0; border-radius: 7px; background: transparent;
+    color: var(--hrx-ink); font-size: 13px; text-align: left; cursor: pointer;
+}
+.dsn-fb__list button:hover, .dsn-fb__row button:hover { background: var(--hrx-soft); }
+.dsn-fb__list button.is-on, .dsn-fb__row button.is-on { background: var(--hrx-ink); color: #fff; }
+.dsn-fb__row { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 8px; }
+.dsn-fb__row button { flex: 1 1 auto; text-align: center; font-size: 12px; font-weight: 600; }
+.dsn-fb__field { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; font-size: 12.5px; color: var(--hrx-muted); }
+.dsn-fb__field input[type="number"] { width: 72px; padding: 4px 6px; border: 1px solid var(--hrx-border); border-radius: 7px; background: var(--hrx-card); color: var(--hrx-ink); }
+.dsn-fb__field input[type="range"] { flex: 1 1 auto; min-width: 0; }
+.dsn-fb__field--inline { margin: 0 4px 0 0; }
+.dsn-fb__sw { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.dsn-fb__sw button { width: 26px; height: 26px; border: 1px solid rgb(20 25 78 / 22%); border-radius: 7px; cursor: pointer; }
+.dsn-fb__hint { margin: 8px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--hrx-muted); }
+
+/* ── Editing text in place ───────────────────────────────────────────────
+   Scaled by the viewport with a transform so the browser wraps in canvas
+   units — the same units the SVG renderer measures in. Multiplying the font
+   size by the zoom instead would let the line breaks move as you zoom. */
+.dsn-textedit { position: absolute; z-index: 5; }
+.dsn-textedit > div {
+    outline: 2px solid var(--hrx-accent, #1c56fd);
+    outline-offset: 4px;
+    border-radius: 2px;
+    caret-color: var(--hrx-accent, #1c56fd);
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+/* ── The image library ───────────────────────────────────────────────────── */
+.dsn-lib { width: min(920px, 94vw); max-height: 88vh; display: flex; flex-direction: column; }
+.dsn-lib__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.dsn-lib__tabs { display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: var(--hrx-soft); }
+.dsn-lib__tabs button {
+    padding: 7px 13px; border: 0; border-radius: 8px; background: transparent;
+    color: var(--hrx-muted); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.dsn-lib__tabs button.is-on { background: var(--hrx-card); color: var(--hrx-ink); box-shadow: 0 1px 3px rgb(20 25 78 / 12%); }
+.dsn-lib__search { display: flex; gap: 8px; margin-bottom: 10px; }
+.dsn-lib__search .hrx-input { flex: 1 1 auto; min-width: 0; }
+.dsn-lib__drop { padding: 24px; border: 2px dashed var(--hrx-border); border-radius: 14px; text-align: center; }
+.dsn-lib__err { margin: 0 0 10px; font-size: 13px; color: var(--hrx-danger, #c0392b); }
+.dsn-lib__grid {
+    flex: 1 1 auto; overflow: auto; min-height: 0;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;
+}
+.dsn-lib__grid figure { margin: 0; }
+.dsn-lib__grid button { display: block; width: 100%; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--hrx-soft); cursor: pointer; }
+.dsn-lib__grid img { display: block; width: 100%; height: 170px; object-fit: cover; }
+.dsn-lib__grid button:hover img { opacity: .88; }
+.dsn-lib__grid figcaption { padding: 4px 2px 0; font-size: 11px; color: var(--hrx-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dsn-lib__grid figcaption a { color: inherit; }
+
+/* The stage clips, so a popover on a bar near the bottom has to open upward
+   rather than off the edge of the canvas. */
+.dsn-fb--low .dsn-fb__pop { top: auto; bottom: calc(100% + 6px); }
+
+/* ── Dialogs ─────────────────────────────────────────────────────────────── */
+.dsn-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgb(10 12 30 / 55%);
+    backdrop-filter: blur(2px);
+}
+.dsn-modal__box {
+    padding: 18px;
+    border: 1px solid var(--hrx-border);
+    border-radius: 18px;
+    background: var(--hrx-card);
+    box-shadow: 0 24px 60px rgb(10 12 30 / 35%);
+}
+.dsn-fb__list button { display: flex; align-items: center; gap: 8px; }
+.dsn-fb__list button.is-danger { color: var(--hrx-danger, #c0392b); }
+.dsn-fb__sel { max-width: 92px; }
+.dsn-fb__field code { font-size: 11.5px; color: var(--hrx-ink); }

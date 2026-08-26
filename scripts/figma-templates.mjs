@@ -158,11 +158,23 @@ function extract(frame) {
       }
     }
 
+    // Figma aligns strokes INSIDE, OUTSIDE or CENTER; SVG only strokes on the
+    // centre line. Half the weight is added or removed from the box so the
+    // painted edge lands where the file puts it -- a 4px inside stroke drawn
+    // centred sits 2px proud of the shape on every side.
+    const inset = n.strokeAlign === "INSIDE" ? (n.strokeWeight ?? 1) / 2
+      : n.strokeAlign === "OUTSIDE" ? -(n.strokeWeight ?? 1) / 2 : 0;
+    if (inset && p.strokes.length) {
+      for (const o of out) { o.x += inset; o.y += inset; o.w -= inset * 2; o.h -= inset * 2; }
+    }
+
     // Stroke-only (the outlined pills). A transparent rect carrying the border,
     // which is exactly what those frames are.
     if (!out.length && p.strokes.length) {
       out.push({
-        id: id("shape"), type: "rect", ...b, fillHex: "transparent", radius: r,
+        id: id("shape"), type: "rect",
+        x: b.x + inset, y: b.y + inset, w: b.w - inset * 2, h: b.h - inset * 2,
+        fillHex: "transparent", radius: r,
         strokeHex: hex(p.strokes[0].color), strokeWidth: n.strokeWeight ?? 1,
       });
     } else if (out.length && p.strokes.length) {
@@ -173,12 +185,57 @@ function extract(frame) {
     return out;
   }
 
+  /**
+   * A TEXT node's per-character styling, collapsed into runs.
+   *
+   * Figma stores this as one style id per character plus a lookup table. Two
+   * of the pack's headlines use it for the accent-coloured phrase that is the
+   * whole point of the layout, and reading only `node.style` flattened them to
+   * a single colour -- a loss that renders perfectly happily and so went
+   * unnoticed until the import was audited.
+   *
+   * Returns a plain string when nothing varies, because most copy does not
+   * vary and a run list would be noise in the generated file.
+   */
+  function richOf(n, base) {
+    const ov = n.characterStyleOverrides ?? [];
+    const table = n.styleOverrideTable ?? {};
+    const chars = n.characters ?? "";
+    if (!chars || !ov.some((v) => v !== 0)) return chars;
+
+    const runs = [];
+    for (let i = 0; i < chars.length; i++) {
+      const k = ov[i] ?? 0;
+      if (runs.length && runs[runs.length - 1].k === k) runs[runs.length - 1].text += chars[i];
+      else runs.push({ k, text: chars[i] });
+    }
+
+    const out = runs.map(({ k, text }) => {
+      const o = k ? (table[k] ?? {}) : {};
+      const run = { text };
+      const fill = visible(o.fills)[0];
+      if (fill?.type === "SOLID") run.fillHex = hex(fill.color);
+      if (o.fontWeight && o.fontWeight !== base.weight) run.weight = o.fontWeight;
+      if (o.fontSize && o.fontSize !== base.size) run.size = Math.round(o.fontSize * 100) / 100;
+      if (o.fontFamily && o.fontFamily !== base.font) run.font = o.fontFamily;
+      if (/italic/i.test(o.fontPostScriptName ?? "")) run.italic = true;
+      return run;
+    });
+    // Every run identical to the base is the same as no runs at all.
+    return out.every((r) => Object.keys(r).length === 1) ? chars : out;
+  }
+
   function textLayer(n) {
     const s = n.style ?? {};
     const fill = visible(n.fills)[0];
     const b = box(n);
     const slot = slotFor(n, content);
-    content[slot] = n.characters ?? "";
+    const base = {
+      font: s.fontFamily ?? "Plus Jakarta Sans",
+      size: Math.round((s.fontSize ?? 32) * 100) / 100,
+      weight: s.fontWeight ?? 500,
+    };
+    content[slot] = richOf(n, base);
     return {
       id: id("text"), type: "text", ...b, slot,
       font: s.fontFamily ?? "Plus Jakarta Sans",

@@ -1,5 +1,6 @@
 import { RAW_TEMPLATES } from "./generated";
-import type { RawLayer, RawTemplate } from "./raw";
+import type { RawLayer, RawRun, RawTemplate } from "./raw";
+import type { Copy, TextRun } from "./types";
 import { DEFAULT_PALETTE, type Layer, type Palette, type PaintRole, type Template, type TextSlot } from "./types";
 
 /**
@@ -141,6 +142,24 @@ function toLayer(l: RawLayer, p: Palette): Layer {
   }
 }
 
+/**
+ * A Figma character-style override becomes a run.
+ *
+ * Size is converted to a MULTIPLIER of the layer's own size rather than kept
+ * absolute, so scaling a layer — or scaling a whole group — carries its
+ * emphasised words along with it instead of leaving them behind at their
+ * original point size.
+ */
+function toRun(r: RawRun, p: Palette, layerSize?: number): TextRun {
+  const out: TextRun = { text: r.text };
+  if (r.fillHex) out.fill = role(r.fillHex, p);
+  if (r.weight) out.weight = r.weight;
+  if (r.size && layerSize) out.scale = Math.round((r.size / layerSize) * 1000) / 1000;
+  if (r.font) out.font = r.font;
+  if (r.italic) out.italic = true;
+  return out;
+}
+
 /* ── Names ───────────────────────────────────────────────────────────────
    Figma calls them V1…A6, which tells a founder nothing. These are written by
    hand because "what is this layout for" is a judgement, not something the
@@ -168,14 +187,53 @@ const META: Record<string, { name: string; purpose: string }> = {
   A6: { name: "Checklist", purpose: "Dark. Four ticked promises beside a speaker, with date and contact. Use to say what someone will walk away with." },
 };
 
+/* ── Two-tone headlines ──────────────────────────────────────────────────
+   Figma stores per-character style overrides, and the extractor that produced
+   `generated.ts` flattened them: it reads one style for a whole TEXT node. On
+   sixteen of the eighteen templates that loses nothing, because the copy is
+   uniform. On two it loses the accent-coloured phrase that is the entire point
+   of the headline — "Finding **Jeans Hard** Enough in Person" rendered as one
+   flat navy line.
+
+   These two are restored here as runs, from the file's own
+   characterStyleOverrides. They are applied only where the generated content
+   is still a plain string, so once the extractor emits runs itself (it now
+   does — see scripts/figma-templates.mjs) this table stops firing rather than
+   fighting it.
+
+   V1 also carries a second correction: its TEXT node reports weight 600 while
+   every one of its runs is Bold, so the flattened import rendered the headline
+   a step light. */
+
+const TWO_TONE: Record<string, Partial<Record<string, Copy>>> = {
+  V1: {
+    title: [
+      { text: "Finding ", weight: 700 },
+      { text: "Jeans Hard", weight: 700, fill: "accent" },
+      { text: " Enough in Person", weight: 700 },
+    ],
+  },
+  V3: {
+    title: [
+      { text: "What They say " },
+      { text: "about us", fill: "accent" },
+    ],
+  },
+};
+
 /* ── Build ───────────────────────────────────────────────────────────────── */
 
 function build(key: string, raw: RawTemplate): Template {
   const palette = paletteFor(raw);
   const meta = META[key] ?? { name: key, purpose: "A social post layout." };
 
-  const content: Partial<Record<TextSlot, string>> = {};
-  for (const [slot, value] of Object.entries(raw.content)) content[SLOT(slot)] = value;
+  const content: Partial<Record<TextSlot, Copy>> = {};
+  for (const [slot, value] of Object.entries(raw.content)) {
+    content[SLOT(slot)] = typeof value === "string" ? value : value.map((r) => toRun(r, palette));
+  }
+  for (const [slot, runs] of Object.entries(TWO_TONE[key] ?? {})) {
+    if (typeof content[SLOT(slot)] === "string" && runs) content[SLOT(slot)] = runs;
+  }
 
   const imageHints: Template["imageHints"] = {};
   for (const l of raw.layers) {

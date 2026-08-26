@@ -96,8 +96,13 @@ verify_jwt = false
 [functions.idea-run]
 verify_jwt = true
 
+# Finds a photograph (Pexels) or generates one (OpenAI) for a design's photo
+# slot. Signed-in only: it spends both quotas and writes to tenant storage.
+[functions.image-library]
+verify_jwt = true
+
 # Writes a social post from a brief: copy, Pexels photographs, brand colours.
-# Signed-in only — it spends model tokens and writes into a tenant's library.
+# Signed-in only, since it spends model tokens and writes into a tenant library.
 [functions.design-generate]
 verify_jwt = true
 

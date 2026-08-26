@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadAssets } from "./assets";
 import { getTemplate, layersOf } from "./templates";
 import { boundsOf, hitTest, snapMove, type Gap, type Guide, type Viewport } from "./snap";
+import { fontStack, layoutText, measure } from "./layout";
+import { plain } from "./rich";
 import {
   CANVAS_H, CANVAS_W, paint, resolvePalette,
-  type ChipLayer, type DesignDoc, type Layer, type Palette, type TextLayer,
+  type ChipLayer, type Copy, type DesignDoc, type Layer, type Palette, type TextLayer,
 } from "./types";
 
 /**
@@ -22,9 +24,7 @@ import {
  * broken here. That is also what makes the wrap identical in the export.
  */
 
-/* ── Measuring ───────────────────────────────────────────────────────────── */
-
-let ctx: CanvasRenderingContext2D | null = null;
+/* ── Measuring ──────────────────────────────────────────────────────── */
 
 /**
  * Re-measure once the real font has loaded.
@@ -53,125 +53,29 @@ function useFontsReady(): boolean {
   return ready;
 }
 
-const FALLBACK = '"Plus Jakarta Sans", sans-serif';
 
-/** The stack a layer paints with. The pack uses six families, so the face is
- *  part of the measurement, not a constant. */
-export const fontStack = (font?: string) => (font ? `"${font}", ${FALLBACK}` : FALLBACK);
-
-function measure(text: string, size: number, weight: number, tracking: number, font?: string, italic?: boolean): number {
-  if (typeof document === "undefined") {
-    // Server render (the prerender pass). No canvas — approximate, because a
-    // rough width here only affects markup that is replaced on hydration.
-    return text.length * size * 0.52 + text.length * tracking;
-  }
-  if (!ctx) ctx = document.createElement("canvas").getContext("2d");
-  if (!ctx) return text.length * size * 0.52;
-  ctx.font = `${italic ? "italic " : ""}${weight} ${size}px ${fontStack(font)}`;
-  // measureText knows nothing about letter-spacing, so it is added back per
-  // character — the same arithmetic the renderer then applies.
-  return ctx.measureText(text).width + text.length * tracking;
-}
-
-/** One run of text, and whether it takes the accent colour. */
-type Run = { text: string; accent: boolean };
-
-/**
- * Split on *asterisks* into accented and plain runs.
- *
- * This is how the pack's two-tone headline works — "Finding *Jeans Hard*
- * Enough". A string with no asterisks comes back as a single plain run, so
- * nothing pays for the feature unless it uses it.
- */
-function runsOf(text: string): Run[] {
-  const out: Run[] = [];
-  for (const part of text.split(/(\*[^*]+\*)/g)) {
-    if (!part) continue;
-    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
-      out.push({ text: part.slice(1, -1), accent: true });
-    } else {
-      out.push({ text: part, accent: false });
-    }
-  }
-  return out.length ? out : [{ text: "", accent: false }];
-}
-
-/** Greedy wrap that preserves which words were accented. */
-function wrap(text: string, width: number, size: number, weight: number, tracking: number, font?: string, italic?: boolean): Run[][] {
-  const words: Run[] = [];
-  for (const run of runsOf(text)) {
-    for (const w of run.text.split(/(\s+)/)) {
-      if (w === "") continue;
-      words.push({ text: w, accent: run.accent });
-    }
-  }
-
-  const lines: Run[][] = [];
-  let line: Run[] = [];
-  let lineText = "";
-
-  for (const word of words) {
-    if (/^\s+$/.test(word.text)) {
-      if (line.length) { line.push(word); lineText += word.text; }
-      continue;
-    }
-    const next = lineText + word.text;
-    if (line.length && measure(next, size, weight, tracking, font, italic) > width) {
-      lines.push(trimEnd(line));
-      line = [word];
-      lineText = word.text;
-    } else {
-      line.push(word);
-      lineText = next;
-    }
-  }
-  if (line.length) lines.push(trimEnd(line));
-  return lines.length ? lines : [[{ text: "", accent: false }]];
-}
-
-const trimEnd = (line: Run[]) => {
-  const out = [...line];
-  while (out.length && /^\s+$/.test(out[out.length - 1].text)) out.pop();
-  return out;
-};
-
-/**
- * Where the first baseline sits.
- *
- * Figma positions a text box by its top edge, then centres the line box inside
- * it and puts the glyphs on the baseline. Reproducing that is (leading / 2) plus
- * the ascender — without it every heading in the pack sits a few pixels high,
- * which is invisible on one layer and obvious once six of them stack up.
- */
-const ASCENDER = 0.74;
-const baselineOf = (y: number, size: number, lineHeight: number) =>
-  y + (size * lineHeight - size) / 2 + size * ASCENDER;
 
 /* ── Layer painters ──────────────────────────────────────────────────────── */
 
-function TextLayerView({ l, value, palette }: { l: TextLayer; value: string; palette: Palette }) {
-  const text = (l.uppercase ? value.toUpperCase() : value).trim();
-
+function TextLayerView({ l, value, palette }: { l: TextLayer; value: Copy | undefined; palette: Palette }) {
   // Both hooks run before the empty-text bail-out. Clearing a field is an
   // ordinary thing to do in this editor, and a hook called conditionally would
   // make the whole canvas throw the moment someone emptied one.
   const fontsReady = useFontsReady();
   const lines = useMemo(
-    () => wrap(text, l.w, l.size, l.weight, l.tracking, l.font, l.italic),
-    // fontsReady looks unused to the linter because wrap() reads the font off
-    // the canvas rather than taking it as an argument. It is exactly the
+    () => layoutText(l, value, fontsReady),
+    // fontsReady looks unused to the linter because measurement reads the font
+    // off a canvas rather than taking it as an argument. It is exactly the
     // dependency that matters: the same inputs measure differently once the
     // webfont lands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [text, l.w, l.size, l.weight, l.tracking, l.font, l.italic, fontsReady],
+    [l, value, fontsReady],
   );
 
-  if (!text) return null;
+  if (!lines.some((line) => line.pieces.length)) return null;
 
   const anchor = l.align === "center" ? "middle" : l.align === "right" ? "end" : "start";
   const x = l.align === "center" ? l.x + l.w / 2 : l.align === "right" ? l.x + l.w : l.x;
-  const base = baselineOf(l.y, l.size, l.lineHeight);
-  const accentColor = paint(l.accent ?? l.fill, palette);
 
   return (
     <text
@@ -186,10 +90,29 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: string; pal
       style={l.capitalize ? { textTransform: "capitalize" } : undefined}
     >
       {lines.map((line, i) => (
-        <tspan key={i} x={x} y={base + i * l.size * l.lineHeight}>
-          {line.map((run, j) => (
-            <tspan key={j} fill={run.accent ? accentColor : undefined}>{run.text}</tspan>
-          ))}
+        <tspan key={i} x={x} y={line.baseline}>
+          {line.pieces.map((piece, j) => {
+            const st = piece.style;
+            // Only differences from the parent <text> are emitted. Repeating
+            // every attribute on every span would multiply the size of an
+            // exported SVG for a document that mostly has no run styling at
+            // all — and that SVG is inlined into a data URI to be rasterised.
+            const deco = [st.underline && "underline", st.strike && "line-through"]
+              .filter(Boolean).join(" ");
+            return (
+              <tspan
+                key={j}
+                fill={piece.run.fill ? paint(st.fill, palette) : undefined}
+                fontWeight={st.weight !== l.weight ? st.weight : undefined}
+                fontSize={st.size !== l.size ? st.size : undefined}
+                fontStyle={st.italic !== Boolean(l.italic) ? (st.italic ? "italic" : "normal") : undefined}
+                fontFamily={piece.run.font ? fontStack(st.font) : undefined}
+                textDecoration={deco || undefined}
+              >
+                {piece.text}
+              </tspan>
+            );
+          })}
         </tspan>
       ))}
     </text>
@@ -197,15 +120,21 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: string; pal
 }
 
 function ChipLayerView({ l, value, palette, asset }: {
-  l: ChipLayer; value: string; palette: Palette; asset: (s: string) => string;
+  l: ChipLayer; value: Copy | undefined; palette: Palette; asset: (s: string) => string;
 }) {
-  const text = value.trim();
+  const text = plain(value).trim();
   if (!text) return null;
 
   const gradId = `chip-${l.id}`;
   const iconSize = l.iconSize ?? 0;
   const padX = l.icon ? 10 : 16;
-  const textW = measure(text, l.size, l.weight, 0);
+  // A chip is one line by definition, so it measures its own style directly
+  // rather than laying out runs — but through the same measure() the text
+  // painter uses, so the two never drift apart.
+  const textW = measure(text, {
+    size: l.size, weight: l.weight, italic: false,
+    fill: l.fill, underline: false, strike: false,
+  }, 0);
 
   // Centred chips centre the text within whatever the icon leaves; left-aligned
   // ones (the CTA) put the icon on the right, as the file does.
@@ -318,6 +247,18 @@ export type RenderOpts = {
     to: { x: number; y: number; w: number; h: number },
     commit: boolean,
   ) => void;
+  /**
+   * A layer was opened for editing — double-clicked, or Enter on the
+   * selection. The caller decides what that means; for text it puts a caret
+   * in it, which is why the id rather than a boolean travels.
+   */
+  onOpen?: (id: string) => void;
+  /**
+   * The layer currently being edited elsewhere, which this renderer must not
+   * paint. The inline text editor draws the copy itself while it has the
+   * caret, and painting both would double-strike every glyph.
+   */
+  editingId?: string | null;
   /** Pre-resolved assets, for export. Falls back to live loading. */
   assetMap?: Record<string, string>;
 };
@@ -458,7 +399,7 @@ function angleTo(box: Box, p: { x: number; y: number }) {
 
 export function DesignSvg({
   doc, width, height, viewport, selectedId, selectedIds, onSelect,
-  onMarquee, onPan, onGeometry, onTransform, assetMap,
+  onMarquee, onPan, onGeometry, onTransform, onOpen, editingId, assetMap,
 }: RenderOpts) {
   const template = getTemplate(doc.templateId);
   const palette = resolvePalette(doc, template?.palette);
@@ -470,6 +411,16 @@ export function DesignSvg({
   // because pointerup can arrive before React has re-rendered and the handler
   // would otherwise close over a box one frame old — or, on a fast drag, null.
   const marqueeBox = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  /**
+   * Double-press, timed rather than delegated to the browser.
+   *
+   * `dblclick` never fires here. Selecting a layer re-renders it, so the
+   * second press lands on a different DOM node from the first and Chrome
+   * restarts its click count -- both presses arrive with detail=1 and the
+   * event the editor is waiting for simply never happens. Timing the presses
+   * ourselves is immune to that, and to the pointer capture the drag needs.
+   */
+  const lastPress = useRef<{ id: string; at: number }>({ id: "", at: 0 });
   const [box, setBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [gaps, setGaps] = useState<Gap[]>([]);
@@ -520,6 +471,30 @@ export function DesignSvg({
     // layer is left halfway.
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const p = toCanvas(svg, e.clientX, e.clientY);
+
+    // A second press on the same layer within the double-click window opens
+    // it, and deliberately does not begin a drag: the hand always moves a
+    // little between two clicks, and starting one would nudge the layer by a
+    // few pixels every time someone edited its text.
+    if (handle === "move" && onOpen && lastPress.current.id === id && e.timeStamp - lastPress.current.at < 400) {
+      lastPress.current = { id: "", at: 0 };
+      // The press must be swallowed twice over.
+      //
+      // stopPropagation, because falling through to the canvas handler starts
+      // a marquee, and the zero-sized marquee that follows clears the
+      // selection -- unmounting the editor this press just opened.
+      //
+      // preventDefault, because the browser's own default action for a press
+      // is to move focus to whatever was pressed. That runs after this
+      // handler, so it would steal focus back from the text editor a moment
+      // after it was given it, and the editor would blur and close itself.
+      e.stopPropagation();
+      e.preventDefault();
+      onOpen(id);
+      return;
+    }
+    lastPress.current = { id, at: e.timeStamp };
+
     const box = { x: l.x, y: l.y, w: l.w, h: l.h };
     drag.current = {
       id, handle, startX: p.x, startY: p.y, box,
@@ -528,7 +503,7 @@ export function DesignSvg({
       group: false,
     };
     if (!chosen.includes(id)) onSelect?.(id, e.shiftKey);
-  }, [doc, onSelect, chosen]);
+  }, [doc, onSelect, chosen, onOpen]);
 
   /** A handle on the union box of a multi-selection. Scales the whole set. */
   const beginGroup = useCallback((e: React.PointerEvent, box: Box, handle: Handle) => {
@@ -699,9 +674,14 @@ export function DesignSvg({
   // shape, default colours — rather than a gap where the art should be.
   const asset = (s: string) => assetMap?.[s] ?? loaded[s] ?? s;
 
-  if (!template) return null;
+  // A design outlives the layout it was made from. Templates get renamed and
+  // repacked; a saved design that points at an id which no longer exists still
+  // holds its own materialised layers, and rendering nothing for it turned the
+  // library grid into a blank tile with no explanation. Layers first, template
+  // second, and only give up when there is genuinely nothing to draw.
+  if (!layers.length) return null;
 
-  const content = { ...template.content, ...doc.content };
+  const content = { ...(template?.content ?? {}), ...doc.content };
   const h = height ?? (CANVAS_H * width) / CANVAS_W;
   const vb = viewport
     ? `${viewport.x} ${viewport.y} ${width / viewport.zoom} ${h / viewport.zoom}`
@@ -721,7 +701,7 @@ export function DesignSvg({
         cursor: spaceDown ? "grab" : undefined,
       }}
       role="img"
-      aria-label={content.title ?? template.name}
+      aria-label={plain(content.title) || template?.name || "Design"}
       onPointerMove={editable ? onMove : undefined}
       onPointerUp={editable ? onUp : undefined}
       onPointerCancel={editable ? onUp : undefined}
@@ -756,7 +736,7 @@ export function DesignSvg({
         )}
       </defs>
 
-      {layers.filter((l) => !l.hidden).map((l) => (
+      {layers.filter((l) => !l.hidden && l.id !== editingId).map((l) => (
         <LayerView
           key={l.id}
           l={l}
@@ -825,7 +805,7 @@ export function DesignSvg({
 function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }: {
   l: Layer;
   doc: DesignDoc;
-  content: Record<string, string | undefined>;
+  content: Record<string, Copy | undefined>;
   palette: Palette;
   asset: (s: string) => string;
   editable: boolean;
@@ -1030,7 +1010,19 @@ function Frame({ box, rotation, zoom, handles, rotatable, onPointerDown }: {
         </>
       )}
 
-      {handles && HANDLES.map(({ h: hd, fx, fy, cursor }) => (
+      {/* On a short or narrow layer the mid-edge handles meet in the middle
+          and cover the layer itself: every press lands on a resize grip, so
+          the layer cannot be pressed, dragged from its centre, or opened for
+          editing. Below three handles' worth of room, only the corners are
+          offered — which is what leaves the middle free. */}
+      {handles && HANDLES.filter(({ fx, fy }) => {
+        // The north and south grips sit on the top and bottom edges, so what
+        // decides whether they collide is the box's HEIGHT; east and west are
+        // decided by its width.
+        if (fx === 0.5) return h > S * 3;
+        if (fy === 0.5) return w > S * 3;
+        return true;
+      }).map(({ h: hd, fx, fy, cursor }) => (
         <rect
           key={hd}
           x={x + w * fx - S / 2}
