@@ -38,10 +38,6 @@ const GLOBAL_KEY = "all:homepage-validator";
 const envCeiling = Number(Deno.env.get("VALIDATOR_DAILY_CEILING"));
 const GLOBAL_DAILY_LIMIT = Number.isFinite(envCeiling) && envCeiling > 0 ? Math.floor(envCeiling) : 300;
 
-// 10/8, 127/8, 169.254/16, 172.16–31/12, 192.168/16, ::1, fc00::/7 — the hops a
-// load balancer writes about itself rather than about the visitor.
-const PRIVATE_HOP = /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|f[cd])/i;
-
 /**
  * The visitor's address, as far as the infrastructure will vouch for it.
  *
@@ -56,11 +52,15 @@ function callerAddress(req: Request): string {
   // so when it is present it is the one value a caller cannot author.
   const cf = req.headers.get("cf-connecting-ip")?.trim();
   if (cf) return cf;
+  // Otherwise take the RIGHTMOST hop and nothing else. Everything to its left
+  // was written by whoever called us and is therefore forgeable — that was the
+  // original hole — while the rightmost entry is appended by the proxy actually
+  // in front of us. Walking leftwards past a private hop looks more thorough but
+  // is worse: on a chain that ends in infrastructure addresses it lands on a
+  // shared upstream and quietly buckets every visitor together, so one caller's
+  // usage would exhaust the allowance for everyone.
   const chain = (req.headers.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  for (let i = chain.length - 1; i >= 0; i--) {
-    if (!PRIVATE_HOP.test(chain[i])) return chain[i];
-  }
-  return chain[chain.length - 1] ?? "unknown";
+  return chain[chain.length - 1] ?? req.headers.get("x-real-ip")?.trim() ?? "unknown";
 }
 
 /**

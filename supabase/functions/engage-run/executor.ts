@@ -35,13 +35,22 @@ const MAX_STEPS = 25; // per advance — a cycle in the graph can't spin forever
  *  step. Three covers the honest shapes (a line or two of copy plus the prompt
  *  that parks the turn); anything past that is a runaway graph, not a
  *  conversation, and the run ends instead of spraying sends at a real person. */
-const MAX_SENDS_PER_ADVANCE = 3;
+// Hitting this does not trim the turn, it ENDS the run — so it has to sit well
+// clear of anything an author could legitimately write. A greeting, a line of
+// context and a prompt is three; eight leaves that room while still stopping a
+// runaway graph long before a customer notices. The visited-set below is the
+// real cycle guard; this is the belt to its braces.
+const MAX_SENDS_PER_ADVANCE = 8;
 /** Nodes one run may walk over its whole life. The per-advance guards can't see
  *  a loop that PARKS on a delay each lap — every wake is a fresh advance — so
  *  this is what stops the cron driving such a loop forever. Generous: a real
  *  journey walks a handful of nodes per wake, so even a weekly check-in loop
  *  runs for over a year before it trips. */
-const MAX_RUN_STEPS = 200;
+// Counts every node a run walks in its LIFETIME, not just loop laps — so a
+// deliberate long-running cadence (a nurture journey that waits, checks a
+// condition and sends, over and over for months) must not trip it. Only a graph
+// spinning without a delay reaches four figures.
+const MAX_RUN_STEPS = 2000;
 
 // ── graph helpers ────────────────────────────────────────────────────────────
 

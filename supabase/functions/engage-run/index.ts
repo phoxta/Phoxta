@@ -171,9 +171,18 @@ async function startJourneys(admin: SupabaseClient, budget: { left: number }): P
       // one tick. Normal ticks are minutes apart, so continuity is untouched.
       const cursorMs = Date.parse(String(flow.last_cursor));
       const floorMs = Date.now() - EVENT_LOOKBACK_MS;
-      const cursor = Number.isFinite(cursorMs) && cursorMs > floorMs
-        ? String(flow.last_cursor)
-        : new Date(floorMs).toISOString();
+      const clamped = !(Number.isFinite(cursorMs) && cursorMs > floorMs);
+      const cursor = clamped ? new Date(floorMs).toISOString() : String(flow.last_cursor);
+      // Clamping is a deliberate data-loss valve: anything older than the window
+      // is skipped for good. That is the right trade against mass-sending a
+      // backlog, but it must never happen quietly — this line is how an outage
+      // longer than the window is told apart from a journey that simply had
+      // nothing to do.
+      if (clamped && flow.last_cursor) {
+        console.warn(
+          `[engage] flow ${flow.id}: cursor ${flow.last_cursor} is older than the ${EVENT_LOOKBACK_MS / 60000}-minute window — enrolments in the gap are skipped`,
+        );
+      }
 
       const matches = await pollJourneyEvents(admin, flow, event, tag, cursor);
       let maxAt = cursor;
