@@ -45,6 +45,15 @@ export async function exportPng(
     if ((n as SVGRectElement).getAttribute("fill") === "none") n.remove();
   });
 
+  // THE WHOLE PAGE, NOT WHAT THE EDITOR HAPPENS TO BE LOOKING AT.
+  //
+  // The clone carries the editor's live viewBox, which is a window onto the
+  // artboard: pan and zoom live in it. Left alone, the exported file is
+  // whatever was on screen when Export was pressed -- the design shrunk into
+  // the middle of a 1080x1350 frame when fitted, or a crop of it when zoomed
+  // in. It looks right in the editor, and wrong only in the file, which is the
+  // worst place for a difference to appear.
+  clone.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
   clone.setAttribute("width", String(CANVAS_W));
   clone.setAttribute("height", String(CANVAS_H));
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");

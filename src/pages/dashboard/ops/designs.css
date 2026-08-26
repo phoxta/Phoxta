@@ -510,3 +510,24 @@
     transition: opacity .12s;
 }
 .dsn-layers li:hover .dsn-layer__grip { opacity: .65; }
+
+/* ── Previews scale, they do not sit at a fixed size ─────────────────────
+   The grid's columns are `minmax(230px, 1fr)`, so a cell is almost never
+   exactly the pixel width handed to DesignSvg. The SVG was rendering at that
+   fixed width and sitting in the corner of a wider grey box — the design
+   looked smaller than its own tile, and off-centre. Letting it fill the cell
+   costs nothing: an SVG scales by its viewBox, so the design is identical,
+   just bigger.
+
+   aspect-ratio keeps the box the artboard's shape before the SVG has painted,
+   which stops the whole grid reflowing as the tiles arrive. */
+.dsn-tile__art,
+.dsn-template__art {
+    aspect-ratio: 1080 / 1350;
+    background: #ffffff;
+}
+.dsn-tile__art > svg,
+.dsn-template__art > svg {
+    width: 100%;
+    height: 100%;
+}

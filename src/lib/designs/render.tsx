@@ -707,12 +707,26 @@ export function DesignSvg({
       onPointerCancel={editable ? onUp : undefined}
       onPointerDown={editable ? onDown : undefined}
     >
-      {/* The artboard, so the area outside it reads as off-canvas rather than
-          as an enormous white design. */}
+      {/*
+        The artboard: white paper, under everything.
+
+        Painted on EVERY surface, not just the editor. It used to be drawn only
+        when a viewport was given, which meant the editor composited the design
+        over white while the library tile composited it over whatever the page
+        behind it happened to be — a grey in light mode, something else in
+        dark. Any transparency in a design, and any layer opacity, therefore
+        looked different in the preview from the thing it was previewing. The
+        export had the third answer again: transparent.
+
+        The edge line stays editor-only. That is chrome — it says where the
+        page ends — and it has no business in a PNG.
+      */}
+      <rect x={0} y={0} width={CANVAS_W} height={CANVAS_H} fill="#ffffff" />
       {viewport && (
         <rect
+          data-editor-only="artboard-edge"
           x={0} y={0} width={CANVAS_W} height={CANVAS_H}
-          fill="#ffffff" stroke="rgba(0,0,0,0.14)" strokeWidth={1 / zoom}
+          fill="none" stroke="rgba(0,0,0,0.14)" strokeWidth={1 / zoom}
         />
       )}
       <defs>

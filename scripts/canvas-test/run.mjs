@@ -55,6 +55,15 @@ await build({
 });
 node([path.join(here, "gestures.test.mjs"), root, tmp]);
 
+console.log("\n── preview parity ───────────────────────────────────────────");
+await build({
+  entryPoints: [path.join(here, "parity-rig.tsx")],
+  bundle: true, outfile: path.join(tmp, "parity-rig.js"),
+  alias, logLevel: "error",
+  define: { "process.env.NODE_ENV": '"development"' },
+});
+node([path.join(here, "parity.test.mjs"), root, tmp]);
+
 console.log("\n── editing ─────────────────────────────────────────────────");
 await build({
   entryPoints: [path.join(here, "editor-rig.tsx")],
