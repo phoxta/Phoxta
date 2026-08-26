@@ -578,3 +578,33 @@
     background: rgb(20 25 78 / 80%); color: #fff;
     font-size: 11px; font-weight: 700; line-height: 1;
 }
+
+/* ── The layout picker ───────────────────────────────────────────────────
+   The eighteen layouts are the least-used thing on the graphics page: you
+   choose one once per post and never look at them again, and open on the page
+   they pushed the library of saved work below the fold. Behind a button, they
+   get the room to explain themselves instead. */
+.dsn-picker { width: min(1000px, 94vw); max-height: 88vh; display: flex; flex-direction: column; gap: 12px; }
+.dsn-picker__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.dsn-picker__t { margin: 0 0 2px; font-size: 17px; font-weight: 700; color: var(--hrx-ink); }
+.dsn-picker__none { margin: 8px 0 0; }
+.dsn-picker__grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    padding: 2px;
+}
+/* The sentence that says what a layout is FOR. "Proof" and "Statement" do not
+   tell you which one to reach for. */
+.dsn-picker__why {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--hrx-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

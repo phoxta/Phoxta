@@ -8,7 +8,7 @@ import {
 } from "@/lib/db/designs";
 import { DesignSvg } from "@/lib/designs/render";
 import { exportPng, downloadPng } from "@/lib/designs/export";
-import { TEMPLATES, getTemplate, layerName, layersOf } from "@/lib/designs/templates";
+import { getTemplate, layerName, layersOf } from "@/lib/designs/templates";
 import {
   History, addImage, addRect, addText, alignMany, bringForward, bringToFront, reorder,
   canPaste, copyLayers, cutLayers, distribute, duplicateLayer, moveMany, nudge,
@@ -20,6 +20,7 @@ import { CanvasText } from "./designs/CanvasText";
 import { ImageLibrary } from "./designs/ImageLibrary";
 import { LayersPanel } from "./designs/LayersPanel";
 import { SlideStrip } from "./designs/SlideStrip";
+import { TemplatePicker } from "./designs/TemplatePicker";
 import type { LibraryImage } from "@/lib/db/designs";
 import {
   CANVAS_H, CANVAS_W, DEFAULT_PALETTE, asDeck, emptyDoc, slidesOf, 
@@ -144,6 +145,9 @@ export default function DesignsPage() {
 function NewDesign({ orgId, onMade }: { orgId: string; onMade: (d: Design) => void }) {
   const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState(false);
+  /** The layout picker. Behind a button because eighteen layouts open on the
+   *  page pushed the library of saved work off the bottom of the screen. */
+  const [picking, setPicking] = useState(false);
 
   async function fromTemplate(templateId: string) {
     const t = getTemplate(templateId);
@@ -193,17 +197,19 @@ function NewDesign({ orgId, onMade }: { orgId: string; onMade: (d: Design) => vo
           {I_SPARK}{busy ? "Writing…" : "Write it for me"}
         </button>
       </div>
-      <p className="dsn-note">
+      <p className="dsn-note mb-0">
         Or start from a layout and fill it in yourself — the agent can still rewrite it later.
       </p>
-      <div className="dsn-templates">
-        {TEMPLATES.map((t) => (
-          <button key={t.id} type="button" className="dsn-template" onClick={() => void fromTemplate(t.id)}>
-            <span className="dsn-template__art"><DesignSvg doc={emptyDoc(t.id)} width={150} /></span>
-            <span className="dsn-template__name">{I_PLUS}{t.name}</span>
-          </button>
-        ))}
-      </div>
+      <button type="button" className="dsn-btn" onClick={() => setPicking(true)} disabled={busy}>
+        {I_PLUS}Templates
+      </button>
+
+      {picking && (
+        <TemplatePicker
+          onPick={(id) => { setPicking(false); void fromTemplate(id); }}
+          onClose={() => setPicking(false)}
+        />
+      )}
     </Card>
   );
 }
