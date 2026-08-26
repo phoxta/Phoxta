@@ -17,8 +17,21 @@ post() {
   echo "$fn -> HTTP $code"
 }
 
-post embed-worker   '{}'                 # drain the RAG embedding queue
-post agent-worker   '{}'                 # appointment reminders + outbound task queue
-post gmail-sync     '{}'                 # pull connected Gmail inboxes into the unified Inbox
-post automation-run '{"mode":"cron"}'    # run due scheduled AI automations (self-throttles)
+post embed-worker      '{}'              # drain the RAG embedding queue
+post agent-worker      '{}'              # appointment reminders + outbound task queue
+post gmail-sync        '{}'              # pull connected Gmail inboxes into the unified Inbox
+post automation-run    '{"mode":"cron"}' # run due scheduled AI automations (self-throttles)
+
+# Housekeeping that nothing was scheduling. ops-maintenance expires abandoned
+# pending orders and restores their stock, flags SLA breaches and spreads
+# unassigned conversations across the team -- all idempotent (SLA flagging
+# dedupes through sla_events), so a five-minute cadence is safe and makes the
+# SLA flag prompt rather than hourly.
+post ops-maintenance   '{}'
+
+# The autopilot tick: takes the objectives that are due, decides one next
+# action for each, and runs it through the governed tool path. It also records
+# the heartbeat that proves this whole script ran -- if cron_heartbeats stops
+# advancing, the background loop has stopped, wherever it is hosted.
+post objective-planner '{}'
 echo "worker-cron done"

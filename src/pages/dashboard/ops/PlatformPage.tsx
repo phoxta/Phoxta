@@ -13,6 +13,7 @@ import {
   type PlatformOverview, type PlatformTenant, type PlatformPurchase, type PlatformAdmin,
   listPaymentTests, startPaymentTest,
   listPlatformUsers, createPlatformUser, generateRecoveryLink, setUserBanned,
+  listHeartbeats, type Heartbeat,
   type PlatformLead, type PlatformBlueprint, type PlatformMargin, type PlatformAuditRow,
   type PaymentTest, type PlatformUser,
 } from "@/lib/db/platform";
@@ -57,7 +58,16 @@ const money = (cents: number, ccy = "GBP") => {
 const num = (n: number) => new Intl.NumberFormat().format(n);
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
-const SECTIONS = ["Overview", "Customers", "Users", "Blog", "Blueprints", "Leads", "Margin", "Payments", "Access"] as const;
+const SECTIONS = ["Overview", "Customers", "Users", "Scheduler", "Blog", "Blueprints", "Leads", "Margin", "Payments", "Access"] as const;
+
+/**
+ * How stale a worker's heartbeat has to be before it counts as a problem.
+ *
+ * The loop ticks every five minutes, so twelve is two missed ticks plus room
+ * for a slow one. Anything tighter cries wolf on an ordinary hiccup, and
+ * anything looser means an hour of silence looks healthy.
+ */
+const STALE_MINUTES = 12;
 type Section = (typeof SECTIONS)[number];
 
 /** Page-local styles on top of the shared .hrx kit. */
@@ -192,6 +202,10 @@ export default function OpsPlatformPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   /** The account whose business access is being edited. */
   const [access, setAccess] = useState<PlatformUser | null>(null);
+
+  // ── Scheduler tab ────────────────────────────────────────────────────────
+  const [beats, setBeats] = useState<Heartbeat[]>([]);
+  const [beatsLoading, setBeatsLoading] = useState(false);
   const [nEmail, setNEmail] = useState("");
   const [nName, setNName] = useState("");
   /** One-time credentials / recovery output. Shown once, never persisted. */
@@ -208,6 +222,14 @@ export default function OpsPlatformPage() {
 
   useEffect(() => {
     if (section === "Users") loadUsers(usersPage, usersQ);
+    if (section === "Scheduler") {
+      setBeatsLoading(true);
+      void listHeartbeats().then(({ data, error }) => {
+        setBeatsLoading(false);
+        if (error) return toastError(error);
+        setBeats(data);
+      });
+    }
     // usersQ intentionally not a dep — searching re-runs via the form submit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section, usersPage, loadUsers]);
@@ -601,6 +623,69 @@ export default function OpsPlatformPage() {
       )}
 
       {/* ── Users — every account on the platform ────────────────────────── */}
+      {section === "Scheduler" && (
+        <>
+          <Card title="The background loop">
+            <p className="opx-note">
+              Every scheduled worker records that it ran. This page exists because the loop moved hosts and
+              nothing in the product would have said so if it had simply stopped — the only signal was a
+              dashboard on the old host going quiet. A worker that has not reported for {STALE_MINUTES} minutes
+              is flagged here.
+            </p>
+            {beatsLoading ? (
+              <p className="opx-note mb-0" role="status">Loading…</p>
+            ) : beats.length === 0 ? (
+              <Empty title="No heartbeats yet">
+                Workers record one the first time they run after this was added. If this stays empty for more
+                than a few minutes, the loop is not running at all.
+              </Empty>
+            ) : (
+              <div className="hrx-tablewrap">
+                <table className="hrx-table">
+                  <thead>
+                    <tr><th>Worker</th><th>Last run</th><th>Status</th><th>Detail</th><th className="text-end">Runs</th></tr>
+                  </thead>
+                  <tbody>
+                    {beats.map((b) => {
+                      const mins = Math.round((Date.now() - new Date(b.last_run_at).getTime()) / 60000);
+                      const stale = mins > STALE_MINUTES;
+                      const bad = b.last_status !== "ok" || b.consecutive_failures > 0;
+                      return (
+                        <tr key={b.worker}>
+                          <td className="fw-semibold">{b.worker}</td>
+                          <td style={{ color: "var(--hrx-muted)" }}>
+                            {mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`}
+                          </td>
+                          <td>
+                            {stale
+                              ? <Chip tone="danger">Silent {mins}m</Chip>
+                              : bad
+                                ? <Chip tone="warn">Failing ×{b.consecutive_failures}</Chip>
+                                : <Chip tone="ok">Healthy</Chip>}
+                          </td>
+                          <td style={{ color: "var(--hrx-muted)", fontSize: 13 }}>{b.last_detail || "—"}</td>
+                          <td className="text-end" style={{ color: "var(--hrx-muted)" }}>{num(b.runs)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Card title="What runs, and how often">
+            <p className="opx-note mb-0">
+              Driven by cron on the Oracle host (<code>/etc/cron.d/phoxta-worker-cron</code>), which calls each
+              Supabase worker with the shared cron secret. Every five minutes: the embedding queue, the agent
+              task queue, Gmail sync, scheduled automations, housekeeping, and the autopilot tick. Daily:
+              renewal and trial-ending alerts. The autopilot tick is what writes the heartbeat above, so if it
+              is silent the whole loop is.
+            </p>
+          </Card>
+        </>
+      )}
+
       {section === "Users" && (
         <>
           <div className="hrx-statrow">

@@ -320,3 +320,29 @@ export async function revokeAccess(userId: string, orgId: string): Promise<{ err
   const { error } = await usersFn({ action: "revoke", userId, orgId });
   return { error };
 }
+
+/* ── The background loop ─────────────────────────────────────────────────── */
+
+/**
+ * Every scheduled worker records that it ran.
+ *
+ * This exists because the background loop moved hosts and the only thing that
+ * would have revealed it stopping was a dashboard on the old host going quiet.
+ * A loop meant to run unattended has to say so, in the product, where someone
+ * will actually look.
+ */
+export type Heartbeat = {
+  worker: string;
+  last_run_at: string;
+  last_ok_at: string | null;
+  last_status: string;
+  last_detail: string;
+  consecutive_failures: number;
+  runs: number;
+};
+
+export async function listHeartbeats(): Promise<{ data: Heartbeat[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("cron_heartbeats").select("*").order("worker");
+  return { data: (data as Heartbeat[] | null) ?? [], error: friendlyError(error?.message) };
+}

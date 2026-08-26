@@ -97,6 +97,12 @@ verify_jwt = false
 verify_jwt = true
 
 # Finds a photograph (Pexels) or generates one (OpenAI) for a design's photo
+# The autopilot tick: takes the objectives that are due, decides one next
+# action for each, and runs it through the same governed tool path the operator
+# uses. Cron only -- it authorises off x-cron-secret and refuses a user token.
+[functions.objective-planner]
+verify_jwt = false
+
 # slot. Signed-in only: it spends both quotas and writes to tenant storage.
 [functions.image-library]
 verify_jwt = true
@@ -221,6 +227,12 @@ verify_jwt = true
 # Help-center authoring for the operating console (org-member gated inside);
 # the public /help pages read help_articles directly under RLS, not this function.
 [functions.help-center]
+verify_jwt = true
+
+# The graphics studio's asset library (org-member gated inside): stored uploads,
+# AI image generation and the Pexels pass-through. Signed-in only — it writes to
+# tenant storage and spends the image-generation budget.
+[functions.design-assets]
 verify_jwt = true
 
 [functions.domain-checkout]

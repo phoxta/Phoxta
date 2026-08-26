@@ -28,6 +28,7 @@ import {
     type ToolPolicy,
     type MemoryNote,
 } from "@/lib/db/ops/operator";
+import { AutopilotPanel } from "./AutopilotPanel";
 
 // deno-style loose arg bag — action args come from the agent as free-form JSON.
 type Args = Record<string, unknown>;
@@ -483,6 +484,12 @@ export default function OperatorPage() {
                         <p className="mb-0" style={{ fontSize: 14, color: "var(--hrx-muted)" }}>Nothing waiting. Actions you&rsquo;ve set to &ldquo;Ask me&rdquo; appear here for approval.</p>
                     </Card>
                 ) : null}
+
+                {/* The same agent, working unprompted. It sits above the tool
+                    policy because the policy is exactly what governs it, and
+                    below the approval queue because that is where its
+                    "ask me" decisions arrive. */}
+                <AutopilotPanel orgId={orgId} />
 
                 <Card title="What the operator may do">
                     <p className="agx-note mb-3">Off = blocked · Ask me = queued for your approval · Auto = runs immediately.</p>
