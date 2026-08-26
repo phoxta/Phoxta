@@ -5,13 +5,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { DesignSvg } from "@/lib/designs/render";
-import { materialise, updateLayer, removeMany, duplicateLayer, toggle, bringToFront, sendToBack } from "@/lib/designs/edit";
+import { materialise, updateLayer, removeMany, duplicateLayer, toggle, bringToFront, sendToBack, reorder, renameLayer } from "@/lib/designs/edit";
 import { layersOf, getTemplate } from "@/lib/designs/templates";
 import { emptyDoc, resolvePalette, type DesignDoc, type Layer } from "@/lib/designs/types";
 import { plain } from "@/lib/designs/rich";
 import { fitTo, type Viewport } from "@/lib/designs/snap";
 import { FloatingBar } from "@/pages/dashboard/ops/designs/FloatingBar";
 import { CanvasText } from "@/pages/dashboard/ops/designs/CanvasText";
+import { LayersPanel } from "@/pages/dashboard/ops/designs/LayersPanel";
 
 declare global {
   interface Window { rig: Record<string, unknown> }
@@ -66,7 +67,13 @@ function Rig() {
 
   if (!view) return <div ref={stage} style={{ width: W, height: H }} />;
   return (
-    <div ref={stage} style={{ width: W, height: H, position: "relative", overflow: "hidden", background: "#1b1b1f" }}>
+    <div style={{ display: "flex", alignItems: "flex-start" }}>
+    {/* flexShrink:0 matters: as a flex item the stage would otherwise be
+        squeezed narrower than the width handed to DesignSvg, the SVG's
+        max-width:100% would scale it down, and every canvas coordinate in the
+        tests would be measured against a viewport that is not the one the
+        component was told about. */}
+    <div ref={stage} style={{ width: W, height: H, flex: "0 0 auto", position: "relative", overflow: "hidden", background: "#1b1b1f" }}>
       <DesignSvg
         doc={doc} width={W} height={H} viewport={view}
         selectedIds={sel}
@@ -109,6 +116,20 @@ function Rig() {
           onDone={() => { trail.current.push("done"); setEditing(null); }}
         />
       )}
+    </div>
+
+    {/* The real layers panel, so the drag-to-reorder test drives the shipped
+        component rather than a copy of it. */}
+    <aside style={{ width: 260, padding: 10 }}>
+      <LayersPanel
+        layers={layers}
+        sel={sel}
+        onSelect={(id, add) => setSel((s) => (add ? [...new Set([...s, id])] : [id]))}
+        onReorder={(id, to) => { trail.current.push(`reorder ${id} -> ${to}`); setDoc((d) => reorder(d, id, to)); }}
+        onToggle={(id, key) => setDoc((d) => toggle(d, id, key))}
+        onRename={(id, name) => setDoc((d) => renameLayer(d, id, name))}
+      />
+    </aside>
     </div>
   );
 }

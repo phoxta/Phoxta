@@ -29,7 +29,7 @@ await new Promise((r) => server.listen(0, r));
 
 const browser = await puppeteer.launch({ headless: "new", args: ["--no-sandbox"] });
 const page = await browser.newPage();
-await page.setViewport({ width: 1000, height: 700 });
+await page.setViewport({ width: 1320, height: 760 });
 const errs = [];
 page.on("pageerror", (e) => errs.push(String(e)));
 await page.goto(`http://localhost:${server.address().port}/`, { waitUntil: "networkidle0" });
@@ -165,6 +165,65 @@ await settle(200);
   }
 }
 
+// ── 8. Dragging a row in the layers panel reorders the document ──────────
+// Reordering is driven by pointer events rather than HTML5 drag-and-drop, so
+// this is an ordinary drag: press on a row, move, release.
+{
+  const rows = () => page.evaluate(() =>
+    [...document.querySelectorAll(".dsn-layers li")].map((li) => li.dataset.id));
+  const before = await rows();
+  const box = (n) => page.evaluate((n) => {
+    const li = document.querySelectorAll(".dsn-layers li")[n];
+    const b = li.getBoundingClientRect();
+    return { x: b.x + b.width / 2, y: b.y + b.height / 2, top: b.top };
+  }, n);
+
+  const from = await box(2);
+  const to = await box(0);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x, (from.y + to.y) / 2, { steps: 4 });
+  await page.mouse.move(to.x, to.top + 2, { steps: 4 });
+  await settle();
+  const indicator = await page.evaluate(() =>
+    Boolean(document.querySelector(".dsn-layers li.drop-above, .dsn-layers li.drop-below")));
+  await page.mouse.up();
+  await settle(200);
+
+  const after = await rows();
+  const moved = before[2];
+  check("an insertion line shows where the row would land", indicator, indicator ? "shown" : "none");
+  check("dragging a row to the top of the list reorders it",
+        after[0] === moved && after.length === before.length,
+        `${moved}: position 2 -> ${after.indexOf(moved)}`);
+
+  // The list is only a view; the document's paint order is what exports.
+  const paint = (await rig()).layers.map((l) => l.id);
+  const trail = (await rig()).trail.filter((t) => t.startsWith("reorder"));
+  check("the reorder reaches the document's paint order",
+        trail.length === 1 && paint[paint.length - 1] === moved,
+        `${trail.join(" | ") || "nothing recorded"}; front is now ${paint[paint.length - 1]}`);
+}
+
+// ── 9. A plain click still selects, rather than nudging the order ──────
+{
+  const before = await page.evaluate(() =>
+    [...document.querySelectorAll(".dsn-layers li")].map((li) => li.dataset.id));
+  const b = await page.evaluate(() => {
+    const li = document.querySelectorAll(".dsn-layers li")[3];
+    const r = li.querySelector(".dsn-layer").getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2, id: li.dataset.id };
+  });
+  await page.mouse.click(b.x, b.y);
+  await settle();
+  const after = await page.evaluate(() =>
+    [...document.querySelectorAll(".dsn-layers li")].map((li) => li.dataset.id));
+  const state = await rig();
+  check("a click on a row selects it and does not reorder",
+        state.sel[0] === b.id && after.join() === before.join(),
+        `clicked ${b.id}, selected ${state.sel[0]}, order ${after.join() === before.join() ? "unchanged" : "CHANGED"}`);
+}
+
 console.log("");
 for (const [ok, name, detail] of results) console.log(`${ok ? "PASS" : "FAIL"} ${name}  —  ${detail}`);
 if (errs.length) console.log("\nPAGE ERRORS:\n" + errs.slice(0, 5).join("\n"));
@@ -172,3 +231,4 @@ console.log(`\n${results.filter(([o]) => o).length}/${results.length} passing`);
 await browser.close();
 server.close();
 if (results.some(([o]) => !o)) process.exitCode = 1;
+

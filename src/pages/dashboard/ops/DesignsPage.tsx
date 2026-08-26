@@ -10,7 +10,7 @@ import { DesignSvg } from "@/lib/designs/render";
 import { exportPng, downloadPng } from "@/lib/designs/export";
 import { TEMPLATES, getTemplate, layerName, layersOf } from "@/lib/designs/templates";
 import {
-  History, addImage, addRect, addText, alignMany, bringForward, bringToFront,
+  History, addImage, addRect, addText, alignMany, bringForward, bringToFront, reorder,
   canPaste, copyLayers, cutLayers, distribute, duplicateLayer, moveMany, nudge,
   pasteLayers, removeMany, renameLayer, scaleMany, sendBackward, sendToBack, toggle, updateLayer,
 } from "@/lib/designs/edit";
@@ -18,6 +18,7 @@ import { centred, fitTo, zoomAt, type Viewport } from "@/lib/designs/snap";
 import { FloatingBar } from "./designs/FloatingBar";
 import { CanvasText } from "./designs/CanvasText";
 import { ImageLibrary } from "./designs/ImageLibrary";
+import { LayersPanel } from "./designs/LayersPanel";
 import type { LibraryImage } from "@/lib/db/designs";
 import {
   CANVAS_H, CANVAS_W, DEFAULT_PALETTE, emptyDoc, 
@@ -210,7 +211,6 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<"" | "saving" | "exporting" | "writing">("");
   const [view, setView] = useState<Viewport | null>(null);
-  const [renaming, setRenaming] = useState<string | null>(null);
   /** The text layer with the caret in it, if any. */
   const [editing, setEditing] = useState<string | null>(null);
   /** The image slot the library was opened for. */
@@ -644,37 +644,14 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
         <aside className="dsn-panel">
           {/* ── Layers ─────────────────────────────────────────────── */}
           <Section title={`Layers (${layers.length})`}>
-            <ul className="dsn-layers">
-              {[...layers].reverse().map((l) => (
-                <li key={l.id}>
-                  {renaming === l.id ? (
-                    <input
-                      className="hrx-input dsn-rename" autoFocus defaultValue={layerName(l)}
-                      onBlur={(e) => { apply((d) => renameLayer(d, l.id, e.target.value)); setRenaming(null); }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                        if (e.key === "Escape") setRenaming(null);
-                      }}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      className={`dsn-layer${sel.includes(l.id) ? " is-on" : ""}${l.hidden ? " is-off" : ""}`}
-                      onClick={(e) => select(l.id, e.shiftKey)}
-                      onDoubleClick={() => setRenaming(l.id)}
-                    >
-                      <span className="dsn-layer__k">{l.type}</span>
-                      <span className="dsn-layer__n">{layerName(l)}</span>
-                    </button>
-                  )}
-                  <button type="button" className="dsn-layer__i" title={l.hidden ? "Show" : "Hide"}
-                          onClick={() => apply((d) => toggle(d, l.id, "hidden"))}>{l.hidden ? "○" : "●"}</button>
-                  <button type="button" className="dsn-layer__i" title={l.locked ? "Unlock" : "Lock"}
-                          onClick={() => apply((d) => toggle(d, l.id, "locked"))}>{l.locked ? "🔒" : "🔓"}</button>
-                </li>
-              ))}
-            </ul>
-            <p className="dsn-note">Top of this list is the front. Double-click to rename.</p>
+            <LayersPanel
+              layers={layers}
+              sel={sel}
+              onSelect={select}
+              onReorder={(id, to) => apply((d) => reorder(d, id, to))}
+              onToggle={(id, key) => apply((d) => toggle(d, id, key))}
+              onRename={(id, name) => apply((d) => renameLayer(d, id, name))}
+            />
           </Section>
 
           {sel.length > 1 && (
@@ -708,22 +685,6 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
             ))}
             <button type="button" className="dsn-btn dsn-btn--sm"
                     onClick={() => apply((d) => ({ ...d, palette: undefined }))}>Reset to the pack's colours</button>
-          </Section>
-
-          <Section title="Layout">
-            <div className="dsn-swatches">
-              {TEMPLATES.map((t) => (
-                <button key={t.id} type="button"
-                        className={`dsn-layout${t.id === doc.templateId ? " is-on" : ""}`}
-                        title={t.purpose}
-                        onClick={() => {
-                          if (doc.layers?.length && !window.confirm("This replaces your arrangement with that layout. Your words and photos are kept.")) return;
-                          apply((d) => ({ ...d, templateId: t.id, layers: undefined }));
-                          setSel([]);
-                        }}>{t.name}</button>
-              ))}
-            </div>
-            <p className="dsn-note">{template.purpose}</p>
           </Section>
 
           <p className="dsn-note">Exports at 2160×2700 for {orgName}.</p>

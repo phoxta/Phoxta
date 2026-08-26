@@ -37,6 +37,15 @@ await build({
 fs.copyFileSync(path.join(here, "snap.test.mjs"), path.join(tmp, "snap.test.mjs"));
 node([path.join(tmp, "snap.test.mjs")]);
 
+console.log("\n── reordering ───────────────────────────────────────────────");
+await build({
+  entryPoints: [path.join(root, "src/lib/designs/edit.ts")],
+  bundle: true, format: "esm", outfile: path.join(tmp, "edit.bundle.mjs"),
+  alias, logLevel: "error",
+});
+fs.copyFileSync(path.join(here, "reorder.test.mjs"), path.join(tmp, "reorder.test.mjs"));
+node([path.join(tmp, "reorder.test.mjs")]);
+
 console.log("\n── gestures ─────────────────────────────────────────────────");
 await build({
   entryPoints: [path.join(here, "rig.tsx")],

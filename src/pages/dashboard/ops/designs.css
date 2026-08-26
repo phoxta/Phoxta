@@ -475,3 +475,38 @@
 .dsn-fb__list button.is-danger { color: var(--hrx-danger, #c0392b); }
 .dsn-fb__sel { max-width: 92px; }
 .dsn-fb__field code { font-size: 11.5px; color: var(--hrx-ink); }
+
+/* ── Reordering layers by dragging ───────────────────────────────────────
+   The insertion point is drawn as a line BETWEEN two rows rather than as a
+   highlight on one, because "drop onto this row" does not say which side of it
+   you meant — and getting that wrong silently sends a layer one place past
+   where it was aimed. */
+.dsn-layers li { position: relative; }
+.dsn-layers li[draggable="true"] { cursor: grab; }
+.dsn-layers li.is-dragging { opacity: 0.4; cursor: grabbing; }
+.dsn-layers li.drop-above::before,
+.dsn-layers li.drop-below::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--hrx-accent, #1c56fd);
+    pointer-events: none;
+}
+.dsn-layers li.drop-above::before { top: -1px; }
+.dsn-layers li.drop-below::after { bottom: -1px; }
+
+/* The grip is a hint, not a handle: the whole row drags. Kept quiet until the
+   row is hovered so the list still reads as a list. */
+.dsn-layer__grip {
+    flex: 0 0 auto;
+    width: 14px;
+    padding-left: 2px;
+    color: var(--hrx-muted);
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity .12s;
+}
+.dsn-layers li:hover .dsn-layer__grip { opacity: .65; }
