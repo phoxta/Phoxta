@@ -42,7 +42,8 @@ Return JSON: {
   "audience": { "who": string, "demographics": string, "behaviours": string },
   "painPoints": [{ "pain": string, "evidence": string, "severity": "Low"|"Medium"|"High" }] — 3 to 5,
   "currentSolutions": [{ "name": string, "shortfall": string }] — 2 to 4,
-  "whyNow": string — what changed that makes this solvable now
+  "whyNow": string — what changed that makes this solvable now,
+  "imageQuery": string — 3 to 6 words naming something PHOTOGRAPHABLE and specific to this business that illustrates this stage (e.g. "dark store order picking", "family eating dinner at home"). A concrete scene, never an abstract noun like "growth" or "strategy"
 }
 The idea: "${idea.idea_seed}"`,
   },
@@ -59,7 +60,8 @@ Return JSON: {
   "cagr": string,
   "trends": [{ "trend": string, "impact": "Supports"|"Threatens", "note": string }] — 3 to 4,
   "segments": [{ "name": string, "size": string, "willingnessToPay": string }] — 2 to 4,
-  "competitors": [{ "name": string, "positioning": string, "weakness": string }] — 3 to 5 real companies
+  "competitors": [{ "name": string, "positioning": string, "weakness": string }] — 3 to 5 real companies,
+  "imageQuery": string — 3 to 6 words naming something PHOTOGRAPHABLE and specific to this business that illustrates this stage (e.g. "dark store order picking", "family eating dinner at home"). A concrete scene, never an abstract noun like "growth" or "strategy"
 }
 The idea: "${idea.idea_seed}"`,
   },
@@ -73,7 +75,8 @@ Return JSON: {
   "statement": string — one sentence a customer would repeat,
   "advantages": [{ "advantage": string, "why": string }] — 3 to 4,
   "differentiators": [{ "differentiator": string, "moat": string }] — 2 to 3 that are hard to copy,
-  "positioningAgainst": [{ "competitor": string, "ourAngle": string }] — 2 to 3
+  "positioningAgainst": [{ "competitor": string, "ourAngle": string }] — 2 to 3,
+  "imageQuery": string — 3 to 6 words naming something PHOTOGRAPHABLE and specific to this business that illustrates this stage (e.g. "dark store order picking", "family eating dinner at home"). A concrete scene, never an abstract noun like "growth" or "strategy"
 }
 The idea: "${idea.idea_seed}"`,
   },
@@ -87,7 +90,8 @@ Return JSON: {
   "demandSignals": [{ "source": string, "signal": string, "strength": "Weak"|"Moderate"|"Strong" }] — 3 to 5,
   "willingnessToPay": { "evidence": string, "range": string },
   "risks": [{ "risk": string, "test": string }] — 2 to 3 with the cheapest way to test each,
-  "interviewQuestions": string[] — 5 questions that would disprove this idea fastest
+  "interviewQuestions": string[] — 5 questions that would disprove this idea fastest,
+  "imageQuery": string — 3 to 6 words naming something PHOTOGRAPHABLE and specific to this business that illustrates this stage (e.g. "dark store order picking", "family eating dinner at home"). A concrete scene, never an abstract noun like "growth" or "strategy"
 }
 The idea: "${idea.idea_seed}"`,
   },
@@ -102,7 +106,8 @@ Return JSON: {
   "tiers": [{ "name": string, "price": string, "includes": string }] — 2 to 3, benchmarked against real competitors,
   "unitEconomics": { "cac": string, "ltv": string, "ltvCacRatio": string, "grossMargin": string },
   "breakEven": { "customers": string, "timeline": string, "assumptions": string },
-  "costs": [{ "item": string, "monthly": string }] — the 4 to 6 that matter
+  "costs": [{ "item": string, "monthly": string }] — the 4 to 6 that matter,
+  "imageQuery": string — 3 to 6 words naming something PHOTOGRAPHABLE and specific to this business that illustrates this stage (e.g. "dark store order picking", "family eating dinner at home"). A concrete scene, never an abstract noun like "growth" or "strategy"
 }
 The idea: "${idea.idea_seed}"`,
   },
@@ -125,7 +130,8 @@ Return JSON: {
   "strengths": string[] — 4 to 5, each citing evidence,
   "weaknesses": string[] — 4 to 5, each citing a real gap,
   "recommendations": string[] — 4 to 6 concrete next actions,
-  "swot": { "strengths": string[], "weaknesses": string[], "opportunities": string[], "threats": string[] }
+  "swot": { "strengths": string[], "weaknesses": string[], "opportunities": string[], "threats": string[] },
+  "imageQuery": string — 3 to 6 words naming something PHOTOGRAPHABLE and specific to this business that illustrates this stage (e.g. "dark store order picking", "family eating dinner at home"). A concrete scene, never an abstract noun like "growth" or "strategy"
 }
 The idea: "${idea.idea_seed}"`,
   },
@@ -143,7 +149,8 @@ Return JSON: {
     "projection": [{ "period": string, "revenue": string, "costs": string, "net": string }] — 4 periods
   },
   "milestones": [{ "when": string, "target": string }] — 4 to 6, each with a number,
-  "fundingNeed": { "amount": string, "use": string }
+  "fundingNeed": { "amount": string, "use": string },
+  "imageQuery": string — 3 to 6 words naming something PHOTOGRAPHABLE and specific to this business that illustrates this stage (e.g. "dark store order picking", "family eating dinner at home"). A concrete scene, never an abstract noun like "growth" or "strategy"
 }
 The idea: "${idea.idea_seed}"`,
   },

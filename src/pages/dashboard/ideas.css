@@ -146,182 +146,369 @@
 
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Step slides
+   Step slides — in the Phoxta homepage's own design language
    ───────────────────────────────────────────────────────────────────────
-   Each step renders as a designed slide rather than a key/value dump: a
-   photographic band, then infographics shaped to that step's own data —
-   severity-ranked pain points, a TAM/SAM/SOM funnel, pricing tiers, a SWOT
-   quadrant, a scores panel, a milestone timeline.
+   Not a look invented for this screen. The homepage's identity is:
 
-   The chrome lives here; type, colour and spacing still come from main.css
-   utilities on the elements themselves.
+     · a dark photographic panel with white type over it, rounded-5, the
+       bg-linear-opacity gradient doing the legibility work (sec-5-home-4)
+     · large headings at tight tracking, close to their own line
+     · at-about-title / at-about-dec for card copy — 28px at -0.05em over a
+       162% measure, which is what makes the homepage read as calm
+     · a hairline rule opening a block, the way at-about-border does
+     · #F0460E, the theme primary, used sparingly and only to point
+     · photographs at 16px radius, cover-fitted
+     · generous vertical air — the homepage breathes at pt-120; a console
+       pane cannot, so the rhythm is scaled but the proportions are not
+
+   Everything below either reuses a main.css class or matches one. The tokens
+   are read from main.css rather than restated, so a theme change on the
+   homepage reaches these slides too.
    ═══════════════════════════════════════════════════════════════════════ */
 
 .idv-slide {
-  border: 1px solid rgba(15, 23, 42, 0.09);
-  border-radius: 18px;
-  overflow: hidden;
+  --idv-accent: var(--at-theme-primary, #f0460e);
+  --idv-ink: var(--at-common-black, #1e1e1e);
+  --idv-line: rgba(30, 30, 30, 0.1);
+  --idv-soft: var(--at-neutral-50, #f6f6f6);
+
+  border-radius: 24px;
   background: var(--at-neutral-0, #fff);
+  overflow: hidden;
 }
 
-/* Photographic band. The gradient is what keeps white type legible over an
-   image nobody has vetted for contrast. */
-.idv-slide__band {
+/* ── Hero panel ────────────────────────────────────────────────────────
+   The homepage's signature block, at pane scale. bg-linear-opacity and
+   bg-cover come from main.css; this only sets the size and the padding,
+   so the gradient that keeps white type readable is the same one the
+   homepage uses rather than a second copy of the idea. */
+
+.idv-hero {
   position: relative;
-  height: 190px;
-  background-size: cover;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 40px;
   background-position: center;
 }
 
-.idv-slide__band::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(10, 14, 30, 0.15) 0%, rgba(10, 14, 30, 0.82) 100%);
-}
+.idv-hero > * { position: relative; z-index: 1; }
 
-.idv-slide__bandtext {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: 22px 26px;
-  z-index: 1;
+.idv-hero__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 7px 14px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(6px);
 }
 
-.idv-slide__body { padding: 26px; }
-
-/* ── Stat tiles ───────────────────────────────────────────────────────── */
-.idv-stat {
-  border-radius: 14px;
-  padding: 18px;
-  background: var(--at-neutral-50);
+.idv-hero__tag i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--idv-accent);
+  display: inline-block;
 }
 
-.idv-stat__n {
-  font-size: 30px;
+.idv-hero__title {
+  font-size: 44px;
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: #fff;
+  margin: 0 0 12px;
+}
+
+.idv-hero__dec {
+  font-size: 16px;
+  line-height: 162%;
   letter-spacing: -0.02em;
-  color: var(--at-neutral-900);
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0;
+  max-width: 60ch;
+}
+
+@media (max-width: 767.98px) {
+  .idv-hero { min-height: 210px; padding: 26px; }
+  .idv-hero__title { font-size: 32px; }
+}
+
+/* ── Body ──────────────────────────────────────────────────────────────── */
+
+.idv-body { padding: 40px; }
+.idv-body > *:last-child { margin-bottom: 0; }
+
+@media (max-width: 767.98px) { .idv-body { padding: 26px; } }
+
+/* The lead line, set the way the homepage sets a section title: big, tight,
+   and sitting on its own line rather than in a paragraph of body copy. */
+.idv-statement {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.05em;
+  color: var(--idv-ink);
+  max-width: 22ch;
+}
+
+@media (max-width: 991.98px) { .idv-statement { font-size: 26px; max-width: none; } }
+
+/* at-about-dec, restated for elements that are not in an at-about-item. */
+.idv-dec {
+  font-size: 16px;
+  line-height: 162%;
+  letter-spacing: -0.02em;
+  color: var(--at-neutral-500);
+}
+
+/* ── Section opener ────────────────────────────────────────────────────
+   at-about-border's move: a hairline across the block with the label riding
+   the left end of it. It separates without shouting, which is the whole
+   reason the homepage uses a rule instead of a heading here. */
+
+.idv-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--idv-line);
+  padding-top: 18px;
+  margin: 0 0 24px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--at-neutral-500);
+}
+
+.idv-head::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  background: var(--idv-accent);
+  flex: none;
+}
+
+/* ── Inline photograph ─────────────────────────────────────────────────
+   The homepage's at-about-item: a picture and the words that belong to it,
+   side by side. Used where a stage is otherwise all prose — a slide with a
+   single paragraph and no visual is the one that looks unfinished. */
+
+.idv-shot {
+  border-radius: 16px;
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
   display: block;
+}
+
+/* ── Cards ─────────────────────────────────────────────────────────────── */
+
+.idv-tile {
+  background: var(--at-neutral-0);
+  border: 1px solid var(--idv-line);
+  border-radius: 16px;
+  padding: 26px;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.idv-tile:hover { box-shadow: 0 14px 34px rgba(30, 30, 30, 0.07); transform: translateY(-2px); }
+
+.idv-tile__title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.25;
+  color: var(--idv-ink);
+}
+
+.idv-tile__dec {
+  font-size: 15px;
+  line-height: 162%;
+  letter-spacing: -0.02em;
+  color: var(--at-neutral-500);
+}
+
+/* The one that matters on the slide gets the accent, as the homepage marks a
+   featured card. */
+.idv-tile--accent { border-color: rgba(240, 70, 14, 0.28); }
+
+@media (prefers-reduced-motion: reduce) {
+  .idv-tile { transition: none; }
+  .idv-tile:hover { transform: none; }
+}
+
+/* ── Figures ───────────────────────────────────────────────────────────
+   Soft ground, no border, big number. The homepage never puts a hairline box
+   around a statistic; it lets the neutral fill hold it. */
+
+/* No height here. A percentage height resolves against a stretched flex item,
+   which a Bootstrap column is — outside one it has nothing to resolve against
+   and the card grows to fill the viewport. The equal-height rule at the bottom
+   of this file is scoped to where it means something. */
+.idv-stat {
+  background: var(--idv-soft);
+  border-radius: 16px;
+  padding: 26px;
 }
 
 .idv-stat__k {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--at-neutral-500);
   display: block;
-  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--at-neutral-500);
+  margin-bottom: 10px;
 }
 
-.idv-stat--blue    { background: rgba(59, 130, 246, 0.08); }
-.idv-stat--amber   { background: rgba(245, 158, 11, 0.08); }
-.idv-stat--emerald { background: rgba(16, 185, 129, 0.08); }
-.idv-stat--purple  { background: rgba(168, 85, 247, 0.08); }
+.idv-stat__n {
+  display: block;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: var(--idv-ink);
+}
 
-/* ── Market funnel: TAM wider than SAM wider than SOM ─────────────────── */
+/* Step-downs for values that are phrases rather than figures. */
+.idv-stat__n--sm { font-size: 28px; letter-spacing: -0.04em; line-height: 1.12; }
+.idv-stat__n--xs { font-size: 21px; letter-spacing: -0.03em; line-height: 1.35; font-weight: 600; }
+
+.idv-stat--accent { background: var(--idv-ink); }
+.idv-stat--accent .idv-stat__k { color: rgba(255, 255, 255, 0.55); }
+.idv-stat--accent .idv-stat__n { color: #fff; }
+.idv-stat--accent .idv-dec, .idv-stat--accent .idv-tile__dec { color: rgba(255, 255, 255, 0.66); }
+
+/* ── Market funnel ─────────────────────────────────────────────────────── */
+
 .idv-funnel { display: flex; flex-direction: column; gap: 10px; }
 
 .idv-funnel__row {
-  border-radius: 12px;
-  padding: 14px 18px;
-  min-width: 0;
+  border-radius: 16px;
+  padding: 20px 26px;
   color: #fff;
-  margin-inline: auto;
+  min-width: 0;
 }
 
-.idv-funnel__row:nth-child(1) { width: 100%; background: #1e3a8a; }
-.idv-funnel__row:nth-child(2) { width: 78%;  background: #2563eb; }
-.idv-funnel__row:nth-child(3) { width: 56%;  background: #60a5fa; color: #0b1b3a; }
+.idv-funnel__row:nth-child(1) { width: 100%; background: var(--idv-ink); }
+.idv-funnel__row:nth-child(2) { width: 78%; background: #3a3a3a; }
+.idv-funnel__row:nth-child(3) { width: 56%; background: var(--idv-accent); }
 
-/* ── Severity / strength meter ────────────────────────────────────────── */
-.idv-meter { display: inline-flex; gap: 3px; vertical-align: middle; }
-.idv-meter i { width: 16px; height: 5px; border-radius: 999px; background: var(--at-neutral-200); display: inline-block; }
+.idv-funnel__k { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.66; }
+.idv-funnel__v { font-size: 26px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.1; }
+.idv-funnel__b { font-size: 13px; line-height: 1.5; opacity: 0.72; }
+
+/* ── Severity / strength meter ─────────────────────────────────────────── */
+
+.idv-meter { display: inline-flex; gap: 4px; vertical-align: middle; }
+.idv-meter i { width: 18px; height: 5px; border-radius: 999px; background: rgba(30, 30, 30, 0.14); display: inline-block; }
 .idv-meter i.on-low { background: #10b981; }
 .idv-meter i.on-med { background: #f59e0b; }
 .idv-meter i.on-high { background: #dc2626; }
 
-/* Severity and strength both run 1-3, but they mean opposite things: three bars
-   of pain is bad news and three bars of demand is good. Same widget, inverted
+/* Severity and strength both run 1-3 and mean opposite things: three bars of
+   pain is bad news and three bars of demand is good. Same widget, inverted
    palette, so a founder reads the colour rather than counting the bars. */
 .idv-meter i.on-good { background: #10b981; }
 .idv-meter i.on-weak { background: #dc2626; }
 
-/* ── Listed cards ─────────────────────────────────────────────────────── */
-.idv-tile {
-  border: 1px solid rgba(15, 23, 42, 0.09);
-  border-radius: 12px;
-  padding: 16px;
-  background: var(--at-neutral-0);
-}
+/* ── SWOT ──────────────────────────────────────────────────────────────── */
 
-.idv-tile--accent { border-left: 3px solid var(--idv-blue); }
-
-/* ── SWOT quadrant ────────────────────────────────────────────────────── */
 .idv-swot { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.idv-swot > div { border-radius: 12px; padding: 16px; }
-.idv-swot > div:nth-child(1) { background: rgba(16, 185, 129, 0.08); }
-.idv-swot > div:nth-child(2) { background: rgba(220, 38, 38, 0.07); }
-.idv-swot > div:nth-child(3) { background: rgba(59, 130, 246, 0.08); }
-.idv-swot > div:nth-child(4) { background: rgba(245, 158, 11, 0.08); }
+.idv-swot > div { border-radius: 16px; padding: 26px; background: var(--idv-soft); }
+.idv-swot > div:nth-child(2) { background: rgba(220, 38, 38, 0.06); }
+.idv-swot > div:nth-child(3) { background: rgba(37, 99, 235, 0.06); }
+.idv-swot > div:nth-child(4) { background: rgba(240, 70, 14, 0.06); }
 
 @media (max-width: 575.98px) { .idv-swot { grid-template-columns: 1fr; } }
 
-/* ── Score bars ───────────────────────────────────────────────────────── */
-.idv-score { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.idv-score__k { flex: 0 0 148px; font-size: 12.5px; color: var(--at-neutral-500); }
-.idv-score__track { flex: 1 1 auto; height: 8px; border-radius: 999px; background: var(--at-neutral-200); overflow: hidden; }
-.idv-score__fill { display: block; height: 100%; border-radius: 999px; background: var(--idv-blue); }
-.idv-score__n { flex: 0 0 34px; text-align: right; font-size: 12.5px; font-weight: 600; color: var(--at-neutral-900); }
+/* ── Score bars ────────────────────────────────────────────────────────── */
 
-/* ── Pricing tiers ────────────────────────────────────────────────────── */
-.idv-tier { border: 1px solid rgba(15, 23, 42, 0.09); border-radius: 14px; padding: 20px; }
-.idv-tier--mid { border-color: var(--idv-blue); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.12); }
-.idv-tier__price { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--at-neutral-900); }
+.idv-score { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.idv-score__k { flex: 0 0 clamp(110px, 16vw, 170px); font-size: 15px; letter-spacing: -0.02em; color: var(--at-neutral-500); }
+.idv-score__track { flex: 1 1 auto; height: 8px; border-radius: 999px; background: rgba(30, 30, 30, 0.09); overflow: hidden; }
+.idv-score__fill { display: block; height: 100%; border-radius: 999px; background: var(--idv-accent); }
+.idv-score__n { flex: 0 0 32px; text-align: right; font-size: 15px; font-weight: 700; color: var(--idv-ink); }
 
-/* ── Milestone timeline ───────────────────────────────────────────────── */
-.idv-timeline { position: relative; padding-left: 26px; }
+/* ── Pricing tiers ─────────────────────────────────────────────────────── */
+
+.idv-tier {
+  border: 1px solid var(--idv-line);
+  border-radius: 16px;
+  padding: 30px 26px;
+  background: var(--at-neutral-0);
+}
+
+.idv-tier--mid { background: var(--idv-ink); border-color: var(--idv-ink); }
+.idv-tier--mid .idv-stat__k { color: rgba(255, 255, 255, 0.55); }
+.idv-tier--mid .idv-tier__price { color: #fff; }
+.idv-tier--mid .idv-tile__dec { color: rgba(255, 255, 255, 0.66); }
+
+.idv-tier__price { font-size: 34px; font-weight: 700; letter-spacing: -0.05em; line-height: 1; color: var(--idv-ink); }
+
+/* ── Timeline ──────────────────────────────────────────────────────────── */
+
+.idv-timeline { position: relative; padding-left: 30px; }
 .idv-timeline::before {
   content: "";
   position: absolute;
-  left: 7px; top: 6px; bottom: 6px;
-  width: 2px;
-  background: var(--at-neutral-200);
+  left: 5px; top: 10px; bottom: 10px;
+  width: 1px;
+  background: var(--idv-line);
 }
-.idv-timeline__item { position: relative; padding-bottom: 18px; }
+.idv-timeline__item { position: relative; padding-bottom: 22px; }
+.idv-timeline__item:last-child { padding-bottom: 0; }
 .idv-timeline__item::before {
   content: "";
   position: absolute;
-  left: -23px; top: 5px;
-  width: 10px; height: 10px;
+  left: -30px; top: 7px;
+  width: 11px; height: 11px;
   border-radius: 999px;
-  background: var(--idv-blue);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  background: var(--idv-accent);
+  box-shadow: 0 0 0 4px rgba(240, 70, 14, 0.14);
 }
 
-/* ── Palette swatches ─────────────────────────────────────────────────── */
-.idv-swatch { width: 46px; height: 46px; border-radius: 10px; border: 1px solid rgba(15, 23, 42, 0.12); }
+/* ── Table ─────────────────────────────────────────────────────────────── */
 
-/* Opened inside a step row, the slide IS the card's lower half — it bleeds to
+.idv-slide .table { --bs-table-color: var(--idv-ink); margin-bottom: 0; }
+.idv-slide .table th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--at-neutral-500);
+  border-bottom-color: var(--idv-line);
+}
+.idv-slide .table td { border-color: var(--idv-line); letter-spacing: -0.02em; }
+
+/* Opened inside a step row the slide is the card's lower half, so it bleeds to
    the row's edges rather than sitting inside it as a second bordered box. */
 .idv-step .idv-slide {
-  margin: 20px -1.5rem -1.5rem;
-  border: 0;
-  border-top: 1px solid rgba(15, 23, 42, 0.09);
+  margin: 24px -1.5rem -1.5rem;
   border-radius: 0 0 var(--bs-border-radius-xxl, 2rem) var(--bs-border-radius-xxl, 2rem);
   background: transparent;
 }
 
-.idv-step .idv-slide__band { border-radius: 0; }
+.idv-step .idv-slide .idv-hero { border-radius: 0; }
 
-/* Equal-height cards, but only inside a grid column.
-   A percentage height resolves against a stretched flex item, which a Bootstrap
-   column is — outside one it has nothing to resolve against and the card grows
-   to fill the viewport. So the rule is scoped to where it means something. */
-.row > [class*="col"] > .idv-stat,
-.row > [class*="col"] > .idv-tile,
-.row > [class*="col"] > .idv-tier {
+/* Equal-height cards, but only inside a grid column. A percentage height
+   resolves against a stretched flex item, which a Bootstrap column is — outside
+   one it has nothing to resolve against and the card grows to fill the
+   viewport. So the rule is scoped to where it means something. */
+.idv-slide .row > [class*="col"] > .idv-stat,
+.idv-slide .row > [class*="col"] > .idv-tile,
+.idv-slide .row > [class*="col"] > .idv-tier {
   height: 100%;
 }
 
@@ -458,3 +645,7 @@
   height: 100%;
   border: 0;
 }
+
+/* The one place a competitor card says something in the theme colour: the gap
+   is the reason the card is on the slide at all. */
+.idv-gap { color: var(--at-theme-primary, #f0460e) !important; }
