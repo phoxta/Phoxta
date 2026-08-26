@@ -68,7 +68,16 @@ export type TextSlot =
 
 export type ImageSlot = "image1" | "image2" | "image3";
 
-type Base = { id: string; x: number; y: number; w: number; h: number };
+type Base = {
+  id: string;
+  /** Shown in the layers panel. Falls back to the layer's kind and slot. */
+  name?: string;
+  x: number; y: number; w: number; h: number;
+  /** Locked layers are skipped by click and drag — the backgrounds mostly, so
+   *  dragging across a design does not pick the canvas up by mistake. */
+  locked?: boolean;
+  hidden?: boolean;
+};
 
 /** A flat fill — backgrounds and solid cards. */
 export type RectLayer = Base & {
@@ -180,9 +189,26 @@ export type PlacedImage = {
   source?: "pexels" | "upload";
 };
 
-/** What a saved design actually is. */
+/**
+ * What a saved design actually is.
+ *
+ * `layers` is the change that turns this from a fill-in-the-blanks template
+ * into a design tool. Once anything is moved, resized, reordered, added or
+ * deleted, the document owns its own layer list and the template is only where
+ * it started — which is what every design tool does, and the only honest way to
+ * support "move this and send it behind that".
+ *
+ * The cost is real and worth naming: a design that owns its layers no longer
+ * inherits template fixes. That trade was made deliberately. A tool that
+ * silently re-flowed someone's hand-placed artwork because the template changed
+ * underneath them would be worse than one that does not.
+ *
+ * Documents saved before this keep `layers` undefined and fall back to the
+ * template, so nothing already made had to be migrated.
+ */
 export type DesignDoc = {
   templateId: string;
+  layers?: Layer[];
   content: Partial<Record<TextSlot, string>>;
   images: Partial<Record<ImageSlot, PlacedImage>>;
   /** Only the roles that differ from the template's default. */

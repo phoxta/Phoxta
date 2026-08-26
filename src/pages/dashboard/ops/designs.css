@@ -202,3 +202,92 @@
 }
 .dsn-colour .dsn-field__k { margin: 0; text-transform: capitalize; }
 .dsn-hex { margin-left: auto; font-size: 12px; color: var(--hrx-muted); }
+
+/* ── Canvas toolbar ─────────────────────────────────────────────────────── */
+
+.dsn-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--hrx-border);
+  border-radius: 12px;
+  background: var(--hrx-card);
+}
+
+.dsn-tools__g { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+
+/* Order and align buttons are glyphs, so they need a square-ish box or the
+   arrows sit off-centre in a button sized for a word. */
+.dsn-tools__g .dsn-btn--sm { min-width: 34px; justify-content: center; }
+
+/* The stage no longer scrolls with the panel: dragging a layer while the
+   canvas moves under the cursor is the fastest way to make a canvas feel
+   broken. */
+.dsn-stage { user-select: none; }
+
+/* ── Layers panel ───────────────────────────────────────────────────────── */
+
+.dsn-layers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--hrx-border);
+  border-radius: 10px;
+}
+
+.dsn-layers li { display: flex; align-items: center; border-bottom: 1px solid var(--hrx-border-soft, var(--hrx-border)); }
+.dsn-layers li:last-child { border-bottom: 0; }
+
+.dsn-layer {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--hrx-ink);
+}
+
+.dsn-layer:hover { background: var(--hrx-soft); }
+.dsn-layer.is-on { background: var(--hrx-ink); color: #fff; }
+.dsn-layer.is-off { opacity: 0.45; }
+
+.dsn-layer__k {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  flex: 0 0 44px;
+}
+
+.dsn-layer__n { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dsn-layer__i {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 7px;
+  color: var(--hrx-muted);
+  flex: none;
+}
+
+.dsn-layer__i:hover { background: var(--hrx-soft); }
+
+/* ── Geometry fields ────────────────────────────────────────────────────── */
+
+.dsn-xy { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
+.dsn-xy__f { display: block; min-width: 0; }
+.dsn-xy .hrx-input { padding: 6px 8px; font-size: 13px; }
+
+@media (max-width: 1300px) {
+  .dsn-xy { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

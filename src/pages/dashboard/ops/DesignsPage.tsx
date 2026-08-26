@@ -8,8 +8,12 @@ import {
 } from "@/lib/db/designs";
 import { DesignSvg } from "@/lib/designs/render";
 import { exportPng, downloadPng } from "@/lib/designs/export";
-import { TEMPLATES, getTemplate, imageSlotsOf, textSlotsOf } from "@/lib/designs/templates";
-import { DEFAULT_PALETTE, emptyDoc, type DesignDoc, type ImageSlot, type TextSlot } from "@/lib/designs/types";
+import { TEMPLATES, getTemplate, layerName, layersOf, textSlotsOf } from "@/lib/designs/templates";
+import {
+  History, addImage, addRect, addText, align, bringForward, bringToFront,
+  duplicateLayer, nudge, removeLayer, sendBackward, sendToBack, toggle, updateLayer,
+} from "@/lib/designs/edit";
+import { DEFAULT_PALETTE, emptyDoc, type DesignDoc, type Layer, type TextSlot } from "@/lib/designs/types";
 import "./designs.css";
 
 /**
@@ -21,9 +25,15 @@ import "./designs.css";
  * generated post be hand-corrected immediately instead of regenerated until it
  * happens to come out right.
  *
- * The canvas is the real artwork at 1080×1350, scaled by one transform. Click a
- * headline on the canvas to edit that headline; the fields and the canvas are
- * two views of one object, not a form that builds a picture.
+ * The canvas is the real artwork at 1080×1350, scaled by one transform. Every
+ * layer can be selected, dragged, resized, reordered, hidden, locked, duplicated
+ * and deleted; new text, shapes and photo frames can be added. The fields and
+ * the canvas are two views of one object, not a form that builds a picture.
+ *
+ * A design starts as content over a shared template. The first structural edit
+ * materialises the layers into the document — see designs/edit.ts — after which
+ * it owns its arrangement and stops inheriting template changes. That trade is
+ * the price of a real canvas and it is made deliberately.
  */
 
 const ln = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
@@ -47,10 +57,6 @@ const LABELS: Record<string, string> = {
   point3: "Tag 3",
   phone: "Phone",
   website: "Website",
-};
-
-const IMAGE_LABELS: Record<string, string> = {
-  image1: "Photo 1", image2: "Photo 2", image3: "Photo 3",
 };
 
 export default function DesignsPage() {
@@ -207,23 +213,110 @@ function NewDesign({ orgId, onMade }: { orgId: string; onMade: (d: Design) => vo
 function Editor({ design, orgName, onClose }: { design: Design; orgName: string; onClose: () => void }) {
   const [doc, setDoc] = useState<DesignDoc>(() => ({ ...emptyDoc(design.template_id), ...design.doc }));
   const [title, setTitle] = useState(design.title);
-  const [selected, setSelected] = useState<{ id: string; slot: string; kind: "text" | "image" } | null>(null);
+  const [sel, setSel] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<"" | "saving" | "exporting" | "writing">("");
   const stage = useRef<HTMLDivElement>(null);
+  const history = useRef(new History());
+  const [, force] = useState(0);
 
   const template = getTemplate(doc.templateId);
+  const layers = layersOf(doc);
+  const selected = layers.find((l) => l.id === sel) ?? null;
   const content = useMemo(() => ({ ...(template?.content ?? {}), ...doc.content }), [template, doc.content]);
 
-  const setText = (slot: string, value: string) => {
-    setDoc((d) => ({ ...d, content: { ...d.content, [slot]: value } }));
+  /**
+   * Every edit goes through here.
+   *
+   * One place that records history and marks the document dirty, so no new
+   * action can be added that forgets to be undoable — the commonest way an
+   * editor ends up with an undo stack that has holes in it.
+   */
+  const apply = useCallback((next: DesignDoc | ((d: DesignDoc) => DesignDoc), record = true) => {
+    setDoc((d) => {
+      const value = typeof next === "function" ? next(d) : next;
+      if (value === d) return d;
+      if (record) history.current.push(d);
+      return value;
+    });
     setDirty(true);
-  };
+    force((n) => n + 1);
+  }, []);
 
-  const setPalette = (role: string, value: string) => {
-    setDoc((d) => ({ ...d, palette: { ...(d.palette ?? {}), [role]: value } }));
+  const undo = useCallback(() => {
+    setDoc((d) => history.current.undo(d) ?? d);
     setDirty(true);
-  };
+    force((n) => n + 1);
+  }, []);
+
+  const redo = useCallback(() => {
+    setDoc((d) => history.current.redo(d) ?? d);
+    setDirty(true);
+    force((n) => n + 1);
+  }, []);
+
+  /**
+   * Geometry from the canvas.
+   *
+   * Live drags do not record history — only the release does. Otherwise
+   * dragging a headline across the canvas would bury the previous state under
+   * four hundred intermediate ones and undo would move it back a pixel.
+   */
+  const onGeometry = useCallback((id: string, box: { x: number; y: number; w: number; h: number }, commit: boolean) => {
+    if (commit) {
+      // The pre-drag document was pushed on the first move, so the commit only
+      // has to write the final box.
+      apply((d) => updateLayer(d, id, box), false);
+      setDirty(true);
+      return;
+    }
+    setDoc((d) => {
+      if (!dragging.current) { history.current.push(d); dragging.current = true; }
+      return updateLayer(d, id, box);
+    });
+  }, [apply]);
+
+  const dragging = useRef(false);
+  useEffect(() => {
+    const stop = () => { dragging.current = false; };
+    window.addEventListener("pointerup", stop);
+    return () => window.removeEventListener("pointerup", stop);
+  }, []);
+
+  /* ── Keyboard ─────────────────────────────────────────────────────────
+     The shortcuts a designer reaches for without thinking. Ignored while a
+     field has focus, or arrow keys would nudge a layer instead of moving the
+     caret through the word someone is typing. */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = document.activeElement;
+      const typing = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+      const meta = e.metaKey || e.ctrlKey;
+
+      if (meta && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
+      if (typing || !sel) return;
+
+      const step = e.shiftKey ? 10 : 1;
+      if (e.key === "ArrowLeft") { e.preventDefault(); apply((d) => nudge(d, sel, -step, 0)); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); apply((d) => nudge(d, sel, step, 0)); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); apply((d) => nudge(d, sel, 0, -step)); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); apply((d) => nudge(d, sel, 0, step)); }
+      else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); apply((d) => removeLayer(d, sel)); setSel(null); }
+      else if (meta && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        apply((d) => { const r = duplicateLayer(d, sel); setSel(r.id); return r.doc; });
+      }
+      else if (e.key === "]") { e.preventDefault(); apply((d) => bringForward(d, sel)); }
+      else if (e.key === "[") { e.preventDefault(); apply((d) => sendBackward(d, sel)); }
+      else if (e.key === "Escape") setSel(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sel, apply, undo, redo]);
 
   async function save() {
     setBusy("saving");
@@ -249,7 +342,6 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     }
   }
 
-  /** Rewrite the copy, keeping the layout the founder chose. */
   async function rewrite() {
     const brief = window.prompt("What should this post say?", design.brief ?? "");
     if (brief === null || !brief.trim()) return;
@@ -257,7 +349,7 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     const { data, error } = await generateDesign(design.organization_id, brief.trim(), doc.templateId);
     setBusy("");
     if (error || !data) return toastError(error ?? "The agent could not rewrite that.");
-    setDoc((d) => ({
+    apply((d) => ({
       ...d,
       content: data.content as Partial<Record<TextSlot, string>>,
       // Photos already chosen are kept: rewriting the words should not throw
@@ -265,15 +357,13 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
       images: { ...(data.images as DesignDoc["images"]), ...d.images },
       palette: (data.palette as DesignDoc["palette"]) ?? d.palette,
     }));
-    setDirty(true);
-    toast("Rewritten — the photos you chose were kept.");
+    toast("Rewritten — your photos and layout were kept.");
   }
 
   if (!template) return <p className="dsn-note">That template no longer exists.</p>;
 
-  const textSlots = textSlotsOf(template);
-  const imageSlots = imageSlotsOf(template);
   const palette = { ...DEFAULT_PALETTE, ...(doc.palette ?? {}) };
+  const textSlot = selected && (selected.type === "text" || selected.type === "chip") ? selected.slot : null;
 
   return (
     <div className="d-flex flex-column" style={{ gap: 8 }}>
@@ -284,13 +374,14 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
         }}>{I_BACK}Back</button>
 
         <input
-          className="hrx-input dsn-title"
-          value={title}
+          className="hrx-input dsn-title" value={title}
           onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
           aria-label="Post name"
         />
 
         <div className="dsn-bar__right">
+          <button type="button" className="dsn-btn" onClick={undo} disabled={!history.current.canUndo} title="Undo (Ctrl+Z)">↺</button>
+          <button type="button" className="dsn-btn" onClick={redo} disabled={!history.current.canRedo} title="Redo (Ctrl+Shift+Z)">↻</button>
           <button type="button" className="dsn-btn" onClick={() => void rewrite()} disabled={busy !== ""}>
             {I_SPARK}{busy === "writing" ? "Writing…" : "Rewrite"}
           </button>
@@ -303,112 +394,201 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
         </div>
       </div>
 
+      {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+      <div className="dsn-tools">
+        <span className="dsn-tools__g">
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addText(d); setSel(r.id); return r.doc; })}>+ Text</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addRect(d); setSel(r.id); return r.doc; })}>+ Shape</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => {
+            const r = addImage(d);
+            if (!r) { toastError("All three photo slots are already on the canvas."); return d; }
+            setSel(r.id);
+            return r.doc;
+          })}>+ Photo</button>
+        </span>
+
+        <span className="dsn-tools__g">
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel} onClick={() => sel && apply((d) => bringToFront(d, sel))} title="Bring to front">⤒</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel} onClick={() => sel && apply((d) => bringForward(d, sel))} title="Bring forward ( ] )">↑</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel} onClick={() => sel && apply((d) => sendBackward(d, sel))} title="Send backward ( [ )">↓</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel} onClick={() => sel && apply((d) => sendToBack(d, sel))} title="Send to back">⤓</button>
+        </span>
+
+        <span className="dsn-tools__g">
+          {([["left", "⇤"], ["hcentre", "⇔"], ["right", "⇥"], ["top", "⇡"], ["vcentre", "⇕"], ["bottom", "⇣"]] as const).map(([how, glyph]) => (
+            <button key={how} type="button" className="dsn-btn dsn-btn--sm" disabled={!sel}
+                    onClick={() => sel && apply((d) => align(d, sel, how))} title={`Align ${how}`}>{glyph}</button>
+          ))}
+        </span>
+
+        <span className="dsn-tools__g">
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel}
+                  onClick={() => sel && apply((d) => { const r = duplicateLayer(d, sel); setSel(r.id); return r.doc; })}
+                  title="Duplicate (Ctrl+D)">Duplicate</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel}
+                  onClick={() => { if (!sel) return; apply((d) => removeLayer(d, sel)); setSel(null); }}
+                  title="Delete">Delete</button>
+        </span>
+      </div>
+
       <div className="dsn-editor">
-        <div className="dsn-stage" ref={stage} onClick={() => setSelected(null)}>
+        <div className="dsn-stage" ref={stage}>
           <DesignSvg
             doc={doc}
             width={520}
-            selectedId={selected?.id ?? null}
-            onSelect={(id, slot, kind) => setSelected({ id, slot, kind })}
+            selectedId={sel}
+            onSelect={setSel}
+            onGeometry={onGeometry}
           />
         </div>
 
         <aside className="dsn-panel">
+          {/* ── Layers ──────────────────────────────────────────────────── */}
           <section className="dsn-sec">
-            <h4 className="dsn-sec__h">Layout</h4>
+            <h4 className="dsn-sec__h">Layers</h4>
+            <ul className="dsn-layers">
+              {[...layers].reverse().map((l) => (
+                <li key={l.id}>
+                  <button
+                    type="button"
+                    className={`dsn-layer${l.id === sel ? " is-on" : ""}${l.hidden ? " is-off" : ""}`}
+                    onClick={() => setSel(l.id)}
+                  >
+                    <span className="dsn-layer__k">{l.type}</span>
+                    <span className="dsn-layer__n">{layerName(l)}</span>
+                  </button>
+                  <button type="button" className="dsn-layer__i" title={l.hidden ? "Show" : "Hide"}
+                          onClick={() => apply((d) => toggle(d, l.id, "hidden"))}>{l.hidden ? "○" : "●"}</button>
+                  <button type="button" className="dsn-layer__i" title={l.locked ? "Unlock" : "Lock"}
+                          onClick={() => apply((d) => toggle(d, l.id, "locked"))}>{l.locked ? "🔒" : "🔓"}</button>
+                </li>
+              ))}
+            </ul>
+            <p className="dsn-note">Top of this list is the front of the design.</p>
+          </section>
+
+          {/* ── The selected layer ──────────────────────────────────────── */}
+          {selected && (
+            <section className="dsn-sec">
+              <h4 className="dsn-sec__h">{layerName(selected)}</h4>
+
+              <div className="dsn-xy">
+                {(["x", "y", "w", "h"] as const).map((k) => (
+                  <label key={k} className="dsn-xy__f">
+                    <span className="dsn-field__k">{k.toUpperCase()}</span>
+                    <input
+                      className="hrx-input" type="number" value={Math.round(selected[k])}
+                      onChange={(e) => apply((d) => updateLayer(d, selected.id, { [k]: Number(e.target.value) } as Partial<Layer>))}
+                    />
+                  </label>
+                ))}
+              </div>
+
+              {textSlot && (
+                <label className="dsn-field">
+                  <span className="dsn-field__k">{LABELS[textSlot] ?? textSlot}</span>
+                  <textarea
+                    className="hrx-input" rows={3}
+                    value={content[textSlot as TextSlot] ?? ""}
+                    onChange={(e) => apply((d) => ({ ...d, content: { ...d.content, [textSlot]: e.target.value } }), false)}
+                  />
+                </label>
+              )}
+
+              {selected.type === "text" && (
+                <div className="dsn-xy">
+                  <label className="dsn-xy__f">
+                    <span className="dsn-field__k">Size</span>
+                    <input className="hrx-input" type="number" value={selected.size}
+                           onChange={(e) => apply((d) => updateLayer(d, selected.id, { size: Number(e.target.value) } as Partial<Layer>))} />
+                  </label>
+                  <label className="dsn-xy__f">
+                    <span className="dsn-field__k">Weight</span>
+                    <select className="hrx-input" value={selected.weight}
+                            onChange={(e) => apply((d) => updateLayer(d, selected.id, { weight: Number(e.target.value) } as Partial<Layer>))}>
+                      <option value={500}>Medium</option>
+                      <option value={600}>Semibold</option>
+                      <option value={700}>Bold</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+
+              {selected.type === "image" && (
+                <ImageField
+                  label="Photograph"
+                  value={doc.images[selected.slot]?.url ?? ""}
+                  credit={doc.images[selected.slot]?.photographer}
+                  onChange={(url) => apply((d) => ({
+                    ...d,
+                    images: url
+                      ? { ...d.images, [selected.slot]: { url, source: "upload" as const } }
+                      : Object.fromEntries(Object.entries(d.images).filter(([k]) => k !== selected.slot)),
+                  }))}
+                />
+              )}
+            </section>
+          )}
+
+          {/* ── Words ───────────────────────────────────────────────────── */}
+          <section className="dsn-sec">
+            <h4 className="dsn-sec__h">All words</h4>
+            {textSlotsOf(template).map(({ slot, id, multiline }) => (
+              <label key={slot} className={`dsn-field${sel === id ? " is-on" : ""}`}>
+                <span className="dsn-field__k">{LABELS[slot] ?? slot}</span>
+                {multiline ? (
+                  <textarea className="hrx-input" rows={2} value={content[slot as TextSlot] ?? ""}
+                            onFocus={() => setSel(id)}
+                            onChange={(e) => apply((d) => ({ ...d, content: { ...d.content, [slot]: e.target.value } }), false)} />
+                ) : (
+                  <input className="hrx-input" value={content[slot as TextSlot] ?? ""}
+                         onFocus={() => setSel(id)}
+                         onChange={(e) => apply((d) => ({ ...d, content: { ...d.content, [slot]: e.target.value } }), false)} />
+                )}
+              </label>
+            ))}
+            <p className="dsn-note">Wrap words in *asterisks* to paint them in the accent colour.</p>
+          </section>
+
+          {/* ── Colours ─────────────────────────────────────────────────── */}
+          <section className="dsn-sec">
+            <h4 className="dsn-sec__h">Colours</h4>
+            {(["accent", "ink", "gradientFrom", "gradientTo", "canvas"] as const).map((role) => (
+              <label key={role} className="dsn-colour">
+                <input type="color" value={palette[role]} aria-label={role}
+                       onChange={(e) => apply((d) => ({ ...d, palette: { ...(d.palette ?? {}), [role]: e.target.value } }), false)} />
+                <span className="dsn-field__k">{role.replace(/([A-Z])/g, " $1").toLowerCase()}</span>
+                <code className="dsn-hex">{palette[role]}</code>
+              </label>
+            ))}
+            <button type="button" className="dsn-btn dsn-btn--sm"
+                    onClick={() => apply((d) => ({ ...d, palette: undefined }))}>Reset to the pack's colours</button>
+          </section>
+
+          {/* ── Layout ──────────────────────────────────────────────────── */}
+          <section className="dsn-sec">
+            <h4 className="dsn-sec__h">Start over from a layout</h4>
             <div className="dsn-swatches">
               {TEMPLATES.map((t) => (
-                <button
-                  key={t.id} type="button"
-                  className={`dsn-layout${t.id === doc.templateId ? " is-on" : ""}`}
-                  onClick={() => {
-                    // Content carries across: the slots are shared vocabulary,
-                    // and a layout swap that wiped the words would make trying
-                    // a second layout cost as much as starting again.
-                    setDoc((d) => ({ ...d, templateId: t.id }));
-                    setSelected(null);
-                    setDirty(true);
-                  }}
-                  title={t.purpose}
-                >{t.name}</button>
+                <button key={t.id} type="button"
+                        className={`dsn-layout${t.id === doc.templateId ? " is-on" : ""}`}
+                        title={t.purpose}
+                        onClick={() => {
+                          // Swapping layouts discards hand placement, because the
+                          // new template's layers ARE the new arrangement. Said
+                          // out loud rather than silently thrown away.
+                          if (doc.layers?.length && !window.confirm("This replaces your arrangement with that layout. Your words and photos are kept.")) return;
+                          apply((d) => ({ ...d, templateId: t.id, layers: undefined }));
+                          setSel(null);
+                        }}>{t.name}</button>
               ))}
             </div>
             <p className="dsn-note">{template.purpose}</p>
           </section>
 
-          <section className="dsn-sec">
-            <h4 className="dsn-sec__h">Words</h4>
-            {textSlots.map(({ slot, id, multiline }) => (
-              <label key={slot} className={`dsn-field${selected?.slot === slot ? " is-on" : ""}`}>
-                <span className="dsn-field__k">{LABELS[slot] ?? slot}</span>
-                {multiline ? (
-                  <textarea
-                    className="hrx-input" rows={3}
-                    value={content[slot as TextSlot] ?? ""}
-                    onFocus={() => setSelected({ id, slot, kind: "text" })}
-                    onChange={(e) => setText(slot, e.target.value)}
-                  />
-                ) : (
-                  <input
-                    className="hrx-input"
-                    value={content[slot as TextSlot] ?? ""}
-                    onFocus={() => setSelected({ id, slot, kind: "text" })}
-                    onChange={(e) => setText(slot, e.target.value)}
-                  />
-                )}
-              </label>
-            ))}
-            <p className="dsn-note">
-              Wrap words in *asterisks* in the headline to paint them in the accent colour.
-            </p>
-          </section>
-
-          {imageSlots.length > 0 && (
-            <section className="dsn-sec">
-              <h4 className="dsn-sec__h">Photos</h4>
-              {imageSlots.map((slot) => (
-                <ImageField
-                  key={slot}
-                  label={IMAGE_LABELS[slot] ?? slot}
-                  value={doc.images[slot as ImageSlot]?.url ?? ""}
-                  credit={doc.images[slot as ImageSlot]?.photographer}
-                  onChange={(url) => {
-                    setDoc((d) => ({
-                      ...d,
-                      images: url
-                        ? { ...d.images, [slot]: { url, source: "upload" as const } }
-                        : Object.fromEntries(Object.entries(d.images).filter(([k]) => k !== slot)),
-                    }));
-                    setDirty(true);
-                  }}
-                />
-              ))}
-            </section>
-          )}
-
-          <section className="dsn-sec">
-            <h4 className="dsn-sec__h">Colours</h4>
-            {(["accent", "ink", "gradientFrom", "gradientTo", "canvas"] as const).map((role) => (
-              <label key={role} className="dsn-colour">
-                <input
-                  type="color"
-                  value={palette[role]}
-                  onChange={(e) => setPalette(role, e.target.value)}
-                  aria-label={role}
-                />
-                <span className="dsn-field__k">{role.replace(/([A-Z])/g, " $1").toLowerCase()}</span>
-                <code className="dsn-hex">{palette[role]}</code>
-              </label>
-            ))}
-            <button
-              type="button" className="dsn-btn dsn-btn--sm"
-              onClick={() => { setDoc((d) => ({ ...d, palette: undefined })); setDirty(true); }}
-            >Reset to the pack's colours</button>
-          </section>
-
           <p className="dsn-note">
-            Exports at 2160×2700 for {orgName}. Photographs from Pexels carry their photographer's
-            credit on the design — that is the licence, not a caption.
+            Exports at 2160×2700 for {orgName}. Drag to move, drag a handle to resize, arrows to nudge,
+            <code> [ </code> and <code> ] </code> to send backward and forward.
           </p>
         </aside>
       </div>

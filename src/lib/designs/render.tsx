@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadAssets } from "./assets";
-import { getTemplate } from "./templates";
+import { getTemplate, layersOf } from "./templates";
 import {
   CANVAS_H, CANVAS_W, paint, resolvePalette,
   type ChipLayer, type DesignDoc, type Layer, type Palette, type TextLayer,
@@ -254,23 +254,30 @@ function ChipLayerView({ l, value, palette, asset }: {
 
 /* ── The design ──────────────────────────────────────────────────────────── */
 
+export type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "move";
+
 export type RenderOpts = {
   doc: DesignDoc;
   /** Rendered width in CSS pixels. The SVG scales; the layout does not. */
   width: number;
   /** Editor affordances. Omitted for thumbnails and export. */
   selectedId?: string | null;
-  onSelect?: (id: string, slot: string, kind: "text" | "image") => void;
+  onSelect?: (id: string | null) => void;
+  /**
+   * Live geometry while a drag is in flight, and once more on release.
+   * `commit` marks the end of a gesture — which is what the caller pushes onto
+   * the undo stack, so dragging a layer across the canvas is one undo step
+   * rather than four hundred.
+   */
+  onGeometry?: (id: string, box: { x: number; y: number; w: number; h: number }, commit: boolean) => void;
   /** Pre-resolved assets, for export. Falls back to live loading. */
   assetMap?: Record<string, string>;
 };
 
 /** Every asset path a document needs, for preloading. */
 export function assetsOf(doc: DesignDoc): string[] {
-  const t = getTemplate(doc.templateId);
-  if (!t) return [];
   const out: string[] = [];
-  for (const l of t.layers) {
+  for (const l of layersOf(doc)) {
     if (l.type === "asset") out.push(l.src);
     if (l.type === "image" && l.mask) out.push(l.mask);
     if (l.type === "chip" && l.icon) out.push(l.icon);
@@ -278,10 +285,58 @@ export function assetsOf(doc: DesignDoc): string[] {
   return [...new Set(out)];
 }
 
-export function DesignSvg({ doc, width, selectedId, onSelect, assetMap }: RenderOpts) {
+/**
+ * Client pixels → canvas pixels.
+ *
+ * getScreenCTM is the only conversion that survives everything the page can do
+ * to the SVG — the display scale, a sticky container, a scrolled panel, a
+ * zoomed browser. Doing the arithmetic by hand from boundingClientRect works
+ * until one of those changes and then puts the cursor a few pixels away from
+ * the thing it is dragging, which feels broken long before anyone works out
+ * why.
+ */
+function toCanvas(svg: SVGSVGElement, clientX: number, clientY: number) {
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return { x: clientX, y: clientY };
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const p = pt.matrixTransform(ctm.inverse());
+  return { x: p.x, y: p.y };
+}
+
+type Drag = {
+  id: string;
+  handle: Handle;
+  startX: number;
+  startY: number;
+  box: { x: number; y: number; w: number; h: number };
+};
+
+/** Apply a pointer delta to the box the gesture started from. */
+function resolveDrag(d: Drag, dx: number, dy: number) {
+  const { x, y, w, h } = d.box;
+  switch (d.handle) {
+    case "move": return { x: x + dx, y: y + dy, w, h };
+    case "n":  return { x, y: y + dy, w, h: h - dy };
+    case "s":  return { x, y, w, h: h + dy };
+    case "w":  return { x: x + dx, y, w: w - dx, h };
+    case "e":  return { x, y, w: w + dx, h };
+    case "nw": return { x: x + dx, y: y + dy, w: w - dx, h: h - dy };
+    case "ne": return { x, y: y + dy, w: w + dx, h: h - dy };
+    case "sw": return { x: x + dx, y, w: w - dx, h: h + dy };
+    case "se": return { x, y, w: w + dx, h: h + dy };
+  }
+}
+
+export function DesignSvg({ doc, width, selectedId, onSelect, onGeometry, assetMap }: RenderOpts) {
   const template = getTemplate(doc.templateId);
   const palette = resolvePalette(doc);
   const [loaded, setLoaded] = useState<Record<string, string>>({});
+  const svgRef = useRef<SVGSVGElement>(null);
+  const drag = useRef<Drag | null>(null);
+  const layers = layersOf(doc);
+  const editable = Boolean(onGeometry);
 
   const needed = useMemo(() => assetsOf(doc), [doc]);
 
@@ -295,6 +350,40 @@ export function DesignSvg({ doc, width, selectedId, onSelect, assetMap }: Render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needed, palette.ink, palette.accent, assetMap]);
 
+  const beginDrag = useCallback((e: React.PointerEvent, id: string, handle: Handle) => {
+    const svg = svgRef.current;
+    const l = layersOf(doc).find((x) => x.id === id);
+    if (!svg || !l || l.locked) return;
+    e.stopPropagation();
+    // Pointer capture is what keeps the gesture alive when the cursor leaves
+    // the SVG — without it a fast drag toward the panel simply stops, and the
+    // layer is left halfway.
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    const p = toCanvas(svg, e.clientX, e.clientY);
+    drag.current = { id, handle, startX: p.x, startY: p.y, box: { x: l.x, y: l.y, w: l.w, h: l.h } };
+    onSelect?.(id);
+  }, [doc, onSelect]);
+
+  const moveDrag = useCallback((e: React.PointerEvent) => {
+    const d = drag.current;
+    const svg = svgRef.current;
+    if (!d || !svg) return;
+    const p = toCanvas(svg, e.clientX, e.clientY);
+    onGeometry?.(d.id, resolveDrag(d, p.x - d.startX, p.y - d.startY), false);
+  }, [onGeometry]);
+
+  const endDrag = useCallback((e: React.PointerEvent) => {
+    const d = drag.current;
+    const svg = svgRef.current;
+    drag.current = null;
+    if (!d || !svg) return;
+    const p = toCanvas(svg, e.clientX, e.clientY);
+    // The commit carries the final box as well as the flag. Sending only the
+    // flag would rely on the last move event having landed, and the one that
+    // matters is exactly the one a fast release can skip.
+    onGeometry?.(d.id, resolveDrag(d, p.x - d.startX, p.y - d.startY), true);
+  }, [onGeometry]);
+
   // While the recoloured version is in flight the raw file renders — right
   // shape, default colours — rather than a gap where the art should be.
   const asset = (s: string) => assetMap?.[s] ?? loaded[s] ?? s;
@@ -306,16 +395,21 @@ export function DesignSvg({ doc, width, selectedId, onSelect, assetMap }: Render
 
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
       width={width}
       height={CANVAS_H * scale}
       xmlns="http://www.w3.org/2000/svg"
-      style={{ display: "block", maxWidth: "100%" }}
+      style={{ display: "block", maxWidth: "100%", touchAction: editable ? "none" : undefined }}
       role="img"
       aria-label={content.title ?? template.name}
+      onPointerMove={editable ? moveDrag : undefined}
+      onPointerUp={editable ? endDrag : undefined}
+      onPointerCancel={editable ? endDrag : undefined}
+      onPointerDown={editable ? () => onSelect?.(null) : undefined}
     >
       <defs>
-        {template.layers.map((l) =>
+        {layers.map((l) =>
           l.type === "gradient" ? (
             <linearGradient key={l.id} id={`grad-${l.id}`} gradientTransform={`rotate(${l.angle - 90} 0.5 0.5)`}>
               <stop offset="0%" stopColor={paint(l.from, palette)} />
@@ -323,7 +417,7 @@ export function DesignSvg({ doc, width, selectedId, onSelect, assetMap }: Render
             </linearGradient>
           ) : null,
         )}
-        {template.layers.map((l) =>
+        {layers.map((l) =>
           l.type === "image" && l.mask ? (
             <clipPath key={l.id} id={`mask-${l.id}`} clipPathUnits="objectBoundingBox">
               {/* objectBoundingBox keeps the mask tied to the slot rather than
@@ -335,7 +429,7 @@ export function DesignSvg({ doc, width, selectedId, onSelect, assetMap }: Render
         )}
       </defs>
 
-      {template.layers.map((l) => (
+      {layers.filter((l) => !l.hidden).map((l) => (
         <LayerView
           key={l.id}
           l={l}
@@ -343,26 +437,35 @@ export function DesignSvg({ doc, width, selectedId, onSelect, assetMap }: Render
           content={content}
           palette={palette}
           asset={asset}
-          selected={selectedId === l.id}
-          onSelect={onSelect}
+          editable={editable}
+          onPointerDown={beginDrag}
         />
       ))}
+
+      {/* Selection chrome paints last so it is never buried under a layer that
+          happens to sit above the selected one. */}
+      {editable && selectedId && (() => {
+        const l = layers.find((x) => x.id === selectedId);
+        if (!l || l.hidden) return null;
+        return <Selection l={l} onPointerDown={beginDrag} />;
+      })()}
     </svg>
   );
 }
 
-function LayerView({ l, doc, content, palette, asset, selected, onSelect }: {
+function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }: {
   l: Layer;
   doc: DesignDoc;
   content: Record<string, string | undefined>;
   palette: Palette;
   asset: (s: string) => string;
-  selected: boolean;
-  onSelect?: RenderOpts["onSelect"];
+  editable: boolean;
+  onPointerDown: (e: React.PointerEvent, id: string, handle: Handle) => void;
 }) {
-  const clickable = Boolean(onSelect) && (l.type === "text" || l.type === "chip" || l.type === "image");
-  const kind = l.type === "image" ? "image" : "text";
-  const slot = l.type === "text" || l.type === "chip" || l.type === "image" ? l.slot : "";
+  // Everything is grabbable now, not just the text and the photos — that is
+  // the difference between filling in a template and having a canvas. Locked
+  // layers stay out of it so the background does not come along for the ride.
+  const grabbable = editable && !l.locked;
 
   const body = (() => {
     switch (l.type) {
@@ -433,28 +536,59 @@ function LayerView({ l, doc, content, palette, asset, selected, onSelect }: {
     }
   })();
 
-  if (!clickable) return body;
+  if (!grabbable) return body;
 
   return (
-    <g
-      onClick={(e) => { e.stopPropagation(); onSelect?.(l.id, slot, kind); }}
-      style={{ cursor: "pointer" }}
-      tabIndex={0}
-      role="button"
-      aria-label={`Edit ${slot}`}
-      onKeyDown={(e) => { if (e.key === "Enter") onSelect?.(l.id, slot, kind); }}
-    >
+    <g style={{ cursor: "move" }}>
       {body}
-      {/* The hit area is the layer's box, not its glyphs — clicking the gap
-          between two words of a headline should still select the headline. */}
-      <rect x={l.x} y={l.y} width={l.w} height={l.h} fill="transparent" />
-      {selected && (
+      {/* The hit area is the layer's box, not its glyphs — grabbing the gap
+          between two words of a headline should still move the headline. */}
+      <rect
+        x={l.x} y={l.y} width={l.w} height={l.h} fill="transparent"
+        onPointerDown={(e) => onPointerDown(e, l.id, "move")}
+      />
+    </g>
+  );
+}
+
+/* ── Selection ───────────────────────────────────────────────────────────
+   Eight handles and an outline. Sized in canvas units and divided by nothing,
+   because the SVG scales them with everything else — which is also why they
+   are drawn relative to the layer rather than at fixed screen pixels. */
+
+const HANDLES: { h: Handle; fx: number; fy: number; cursor: string }[] = [
+  { h: "nw", fx: 0, fy: 0, cursor: "nwse-resize" },
+  { h: "n", fx: 0.5, fy: 0, cursor: "ns-resize" },
+  { h: "ne", fx: 1, fy: 0, cursor: "nesw-resize" },
+  { h: "e", fx: 1, fy: 0.5, cursor: "ew-resize" },
+  { h: "se", fx: 1, fy: 1, cursor: "nwse-resize" },
+  { h: "s", fx: 0.5, fy: 1, cursor: "ns-resize" },
+  { h: "sw", fx: 0, fy: 1, cursor: "nesw-resize" },
+  { h: "w", fx: 0, fy: 0.5, cursor: "ew-resize" },
+];
+
+function Selection({ l, onPointerDown }: {
+  l: Layer;
+  onPointerDown: (e: React.PointerEvent, id: string, handle: Handle) => void;
+}) {
+  const S = 22;
+  return (
+    <g data-editor-only="selection">
+      <rect
+        x={l.x} y={l.y} width={l.w} height={l.h}
+        fill="none" stroke="#1c56fd" strokeWidth={3} pointerEvents="none"
+      />
+      {!l.locked && HANDLES.map(({ h, fx, fy, cursor }) => (
         <rect
-          x={l.x - 6} y={l.y - 6} width={l.w + 12} height={l.h + 12}
-          fill="none" stroke="#1c56fd" strokeWidth={4} strokeDasharray="12 8" rx={8}
-          pointerEvents="none"
+          key={h}
+          x={l.x + l.w * fx - S / 2}
+          y={l.y + l.h * fy - S / 2}
+          width={S} height={S} rx={4}
+          fill="#ffffff" stroke="#1c56fd" strokeWidth={3}
+          style={{ cursor }}
+          onPointerDown={(e) => onPointerDown(e, l.id, h)}
         />
-      )}
+      ))}
     </g>
   );
 }

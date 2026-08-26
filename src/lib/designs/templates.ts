@@ -357,6 +357,27 @@ export const TEMPLATES: Template[] = [V1, V2, V3, V4, V5, V6];
 
 export const getTemplate = (id: string): Template | undefined => TEMPLATES.find((t) => t.id === id);
 
+/**
+ * The layers a document renders.
+ *
+ * Its own, once it has been edited structurally; the template's until then. One
+ * function so nothing else in the app has to know which of the two it is
+ * looking at.
+ */
+export function layersOf(doc: { templateId: string; layers?: Layer[] }): Layer[] {
+  if (doc.layers?.length) return doc.layers;
+  return getTemplate(doc.templateId)?.layers ?? [];
+}
+
+/** A readable name for the layers panel. */
+export function layerName(l: Layer): string {
+  if (l.name) return l.name;
+  if (l.type === "text" || l.type === "chip") return l.slot;
+  if (l.type === "image") return l.slot;
+  if (l.type === "asset") return l.src.split("/").pop()?.replace(".svg", "") ?? "shape";
+  return l.type;
+}
+
 /** Every text slot a template actually uses, in paint order — the editor's
  *  field list, derived from the layout so the two cannot drift apart. */
 export function textSlotsOf(t: Template): { slot: string; id: string; multiline: boolean }[] {
