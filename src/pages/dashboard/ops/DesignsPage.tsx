@@ -6,9 +6,9 @@ import type { OpsContext } from "@/layouts/OperatingLayout";
 import {
   listDesigns, createDesign, saveDesign, archiveDesign, generateDesign, type Design,
 } from "@/lib/db/designs";
-import { DesignSvg } from "@/lib/designs/render";
+import { DesignSvg, textTopOffset } from "@/lib/designs/render";
 import { exportPng, downloadPng } from "@/lib/designs/export";
-import { getTemplate, layerName, layersOf } from "@/lib/designs/templates";
+import { getTemplate, layersOf } from "@/lib/designs/templates";
 import {
   History, addImage, addRect, addText, alignMany, bringForward, bringToFront, reorder,
   canPaste, copyLayers, cutLayers, distribute, duplicateLayer, moveMany, nudge,
@@ -16,15 +16,17 @@ import {
 } from "@/lib/designs/edit";
 import { centred, fitTo, zoomAt, type Viewport } from "@/lib/designs/snap";
 import { FloatingBar } from "./designs/FloatingBar";
+import { Inspector } from "./designs/Inspector";
 import { CanvasText } from "./designs/CanvasText";
 import { ImageLibrary } from "./designs/ImageLibrary";
+import { ImageBackgroundAction } from "./designs/RemoveBackground";
 import { LayersPanel } from "./designs/LayersPanel";
 import { SlideStrip } from "./designs/SlideStrip";
 import { TemplatePicker } from "./designs/TemplatePicker";
 import type { LibraryImage } from "@/lib/db/designs";
 import {
-  CANVAS_H, CANVAS_W, DEFAULT_PALETTE, asDeck, emptyDoc, slidesOf, 
-  type Deck, type DesignDoc, type Layer, type TextSlot,
+  CANVAS_H, CANVAS_W, DEFAULT_PALETTE, asDeck, emptyDoc, slidesOf,
+  type Deck, type DesignDoc, type ImageSlot, type TextSlot,
 } from "@/lib/designs/types";
 import "./designs.css";
 
@@ -234,8 +236,11 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   const [view, setView] = useState<Viewport | null>(null);
   /** The text layer with the caret in it, if any. */
   const [editing, setEditing] = useState<string | null>(null);
-  /** The image slot the library was opened for. */
-  const [picking, setPicking] = useState<string | null>(null);
+  /** The image slot the library was opened for. Every route to a photograph
+   *  goes through it — the toolbar's "+ Photo", double-clicking a frame, the
+   *  quick bar and the Inspector — so an uploaded picture is always stored in
+   *  the business's library rather than inlined into this one design. */
+  const [picking, setPicking] = useState<ImageSlot | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   // The undo stack holds whole DECKS, not slides. Storing a slide would let
   // an undo restore one slide's old content into whichever slide happened to
@@ -270,23 +275,33 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   const content = useMemo(() => ({ ...(template?.content ?? {}), ...doc.content }), [template, doc.content]);
 
   /* ── Viewport ──────────────────────────────────────────────────────────
-     Fitted to the stage on mount and whenever the stage resizes, so opening
-     an editor never starts scrolled into a corner of the artboard. */
+     Fitted to the stage on mount, so opening an editor never starts scrolled
+     into a corner of the artboard.
+
+     The stage's SIZE is state rather than a rectangle read off the ref during
+     render. It has to be: the canvas is now docked beside a 272px Inspector,
+     so it changes width whenever the window does, and the quick bar positions
+     itself against that size. Reading the ref mid-render gave the previous
+     frame's number, which is invisible until the window is resized and then
+     leaves the bar hanging a panel's width away from its selection. */
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+
   useEffect(() => {
     const el = stage.current;
     if (!el) return;
-    const fit = () => {
+    const read = () => {
       const r = el.getBoundingClientRect();
-      if (r.width > 40 && r.height > 40) setView(fitTo(r.width, r.height));
+      if (r.width <= 40 || r.height <= 40) return;
+      setSize((s) => (s && Math.abs(s.width - r.width) < 0.5 && Math.abs(s.height - r.height) < 0.5 ? s : { width: r.width, height: r.height }));
+      setView((v) => v ?? fitTo(r.width, r.height));
     };
-    fit();
-    const ro = new ResizeObserver(() => { if (!view) fit(); });
+    read();
+    const ro = new ResizeObserver(read);
     ro.observe(el);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const stageBox = () => stage.current?.getBoundingClientRect() ?? { width: 800, height: 600 } as DOMRect;
+  const stageBox = () => size ?? { width: 800, height: 600 };
 
   const zoomBy = (f: number) => setView((v) => {
     if (!v) return v;
@@ -370,7 +385,14 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const el = document.activeElement;
-      const typing = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+      // A <select> and a contenteditable count as typing too. The Inspector
+      // put both on the page: without them, arrowing through the font menu
+      // also nudged the layer by a pixel per keypress, and Delete inside the
+      // inline text editor deleted the layer being edited.
+      const typing = el instanceof HTMLInputElement
+        || el instanceof HTMLTextAreaElement
+        || el instanceof HTMLSelectElement
+        || (el instanceof HTMLElement && el.isContentEditable);
       const meta = e.metaKey || e.ctrlKey;
 
       if (meta && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
@@ -528,8 +550,6 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   if (!template) return <p className="dsn-note">That template no longer exists.</p>;
 
   const palette = { ...DEFAULT_PALETTE, ...(template.palette ?? {}), ...(doc.palette ?? {}) };
-  const stageRect = stage.current?.getBoundingClientRect();
-  const patch = (p: Partial<Layer>, record = true) => one && apply((d) => updateLayer(d, one.id, p), record);
 
   /** Open a layer for editing. Text gets a caret; a photo slot opens the
    *  library, because "edit this photograph" means "choose a different one". */
@@ -661,14 +681,26 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
       {/* ── Tools ────────────────────────────────────────────────────── */}
       <div className="dsn-tools">
         <span className="dsn-tools__g">
-          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addText(d); setSel([r.id]); return r.doc; })}>+ Text</button>
-          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addRect(d); setSel([r.id]); return r.doc; })}>+ Shape</button>
-          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => {
-            const r = addImage(d);
-            if (!r) { toastError("All three photo slots are already on the canvas."); return d; }
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => {
+            const r = addText(doc);
+            if (!r) return toastError("Every text slot in this layout is already on the canvas — edit one, or duplicate it.");
+            apply(r.doc);
             setSel([r.id]);
-            return r.doc;
-          })}>+ Photo</button>
+          }}>+ Text</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addRect(d); setSel([r.id]); return r.doc; })}>+ Shape</button>
+          {/* Adding a photo frame opens the library straight away: an empty
+              frame that has to be double-clicked is a second step nobody
+              guesses, and routing it here is what keeps every picture in the
+              editor coming from — and going back into — the business's own
+              asset library. */}
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => {
+            const r = addImage(doc);
+            if (!r) return toastError("All three photo slots are already on the canvas.");
+            apply(r.doc);
+            setSel([r.id]);
+            const made = layersOf(r.doc).find((l) => l.id === r.id);
+            if (made?.type === "image") setPicking(made.slot);
+          }}>+ Photo</button>
         </span>
 
         <span className="dsn-tools__g">
@@ -711,66 +743,72 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
       {picking && (
         <ImageLibrary
           orgId={design.organization_id}
-          hint={template?.imageHints?.[picking as keyof typeof template.imageHints]}
+          hint={template.imageHints?.[picking]}
           onPick={placeImage}
           onClose={() => setPicking(null)}
         />
       )}
 
       <div className="dsn-editor">
-        <div className="dsn-stage dsn-stage--canvas" ref={stage}>
-          {view && stageRect && (
-            <DesignSvg
-              doc={doc}
-              width={stageRect.width}
-              height={stageRect.height}
-              viewport={view}
-              selectedIds={sel}
-              onSelect={select}
-              onMarquee={(ids, additive) => setSel((s) => (additive ? [...new Set([...s, ...ids])] : ids))}
-              onPan={(dx, dy) => setView((v) => (v ? { ...v, x: v.x + dx, y: v.y + dy } : v))}
-              onGeometry={onGeometry}
-              onTransform={onTransform}
-              onOpen={openLayer}
-              editingId={editing}
-            />
-          )}
-          {/* The properties panel travels with the selection. It is outside
-              the SVG because it is chrome, not artwork: putting it inside
-              would put it in the export. */}
-          {view && stageRect && !editing && (
-            <FloatingBar
-              layers={layers}
-              sel={sel}
-              content={content}
-              palette={palette}
-              view={view}
-              stage={{ width: stageRect.width, height: stageRect.height }}
-              editing={false}
-              onPatch={(pt, commit) => patch(pt, commit)}
-              onContent={(next) => one?.type === "text" && apply((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }))}
-              onCommand={runCommand}
-              onEditText={() => one && setEditing(one.id)}
-              onPickImage={() => one?.type === "image" && setPicking(one.slot)}
-            />
-          )}
+        {/* The stage is a column: the canvas viewport, then the slide strip.
+            The VIEWPORT is the measured element, not the whole stage — the
+            strip is chrome under the artboard, and measuring past it handed
+            DesignSvg a height that included it, so the artboard was drawn
+            behind the strip and the quick bar placed itself against a
+            rectangle taller than the one on screen. */}
+        <div className="dsn-stage dsn-stage--canvas">
+          <div className="dsn-stage__view" ref={stage}>
+            {view && size && (
+              <DesignSvg
+                doc={doc}
+                width={size.width}
+                height={size.height}
+                viewport={view}
+                selectedIds={sel}
+                onSelect={select}
+                onMarquee={(ids, additive) => setSel((s) => (additive ? [...new Set([...s, ...ids])] : ids))}
+                onPan={(dx, dy) => setView((v) => (v ? { ...v, x: v.x + dx, y: v.y + dy } : v))}
+                onGeometry={onGeometry}
+                onTransform={onTransform}
+                onOpen={openLayer}
+                editingId={editing}
+              />
+            )}
+            {/* Three or four verbs beside the selection — the rest is in the
+                Inspector. It is outside the SVG because it is chrome, not
+                artwork: putting it inside would put it in the export. */}
+            {view && size && !editing && (
+              <FloatingBar
+                layers={layers}
+                sel={sel}
+                view={view}
+                stage={size}
+                onCommand={runCommand}
+                onEditText={() => one && setEditing(one.id)}
+                onPickImage={() => one?.type === "image" && setPicking(one.slot)}
+              />
+            )}
 
-          {/* Editing happens on the artboard, in place. */}
-          {view && editing && one?.type === "text" && (
-            <CanvasText
-              layer={one}
-              value={content[one.slot]}
-              palette={palette}
-              view={view}
-              onChange={(next) => apply((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }), false)}
-              onDone={() => { setEditing(null); force((n) => n + 1); }}
-            />
-          )}
+            {/* Editing happens on the artboard, in place. The box is offset by
+                the layer's vertical alignment, so the caret lands on the glyphs
+                rather than where they would sit if the copy were top-aligned. */}
+            {view && editing && one?.type === "text" && (
+              <CanvasText
+                layer={{ ...one, y: one.y + textTopOffset(one, content[one.slot]) }}
+                value={content[one.slot]}
+                palette={palette}
+                view={view}
+                onChange={(next) => apply((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }), false)}
+                onDone={() => { setEditing(null); force((n) => n + 1); }}
+              />
+            )}
 
-          <span className="dsn-hint">
-            Double-click text to write in it · Space + drag pans · Ctrl + scroll zooms ·
-            Ctrl + drag marquees over artwork · Shift keeps a corner proportional
-          </span>
+            <span className="dsn-hint">
+              Double-click text to write in it · Space + drag pans · Ctrl + scroll zooms ·
+              Ctrl + drag marquees over artwork · Shift keeps a corner proportional
+            </span>
+          </div>
+
           <SlideStrip
             slides={deck.slides}
             current={index}
@@ -782,68 +820,73 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
           />
         </div>
 
-        <aside className="dsn-panel">
-          {/* ── Layers ─────────────────────────────────────────────── */}
-          <Section title={`Layers (${layers.length})`}>
-            <LayersPanel
-              layers={layers}
-              sel={sel}
-              onSelect={select}
-              onReorder={(id, to) => apply((d) => reorder(d, id, to))}
-              onToggle={(id, key) => apply((d) => toggle(d, id, key))}
-              onRename={(id, name) => apply((d) => renameLayer(d, id, name))}
-            />
-          </Section>
+        {/* ── The Inspector ───────────────────────────────────────────
+            DOCKED, not floating. It is a column of the editor's grid, so the
+            canvas beside it is narrower rather than partly hidden — which is
+            the whole point: the properties of a thing must never be standing
+            on the thing. Nothing in it is sticky; it scrolls on its own. */}
+        <aside className="dsn-rail" aria-label="Properties">
+          <Inspector
+            doc={doc}
+            layers={layers}
+            sel={sel}
+            content={content}
+            palette={palette}
+            templateName={template.name}
+            slideCount={deck.slides.length}
+            onEdit={apply}
+            onContent={(next) => one?.type === "text" && apply((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }))}
+            onSelect={select}
+            onCommand={runCommand}
+            onEditText={() => one && setEditing(one.id)}
+            onPickImage={() => one?.type === "image" && setPicking(one.slot)}
+            /* The Inspector's other seam, `assetActions`, is deliberately left
+               empty: it was designed as the asset library's entry point, and
+               the "Replace photo" button already beside it IS that entry point.
+               A second button opening the same dialog is the duplicate picker
+               this pass exists to remove.
 
-          {sel.length > 1 && (
-            <Section title={`${sel.length} selected`}>
-              <p className="dsn-note">
-                Drag to move them together, or pull a corner to scale the whole
-                group — type included. Shift frees the aspect ratio. Align and
-                distribute work between them rather than to the canvas.
-              </p>
-            </Section>
-          )}
-
-          {one && (
-            <Section title="Selected">
-              <p className="dsn-note">
-                {layerName(one)} — its properties are on the canvas, above the
-                layer itself. Double-click any text to write in it.
-              </p>
-            </Section>
-          )}
-
-          {/* ── Document ─────────────────────────────────────────────── */}
-          <Section title="Colours">
-            {(["accent", "ink", "gradientFrom", "gradientTo", "canvas"] as const).map((role) => (
-              <label key={role} className="dsn-colour">
-                <input type="color" value={palette[role]} aria-label={role}
-                       onChange={(e) => apply((d) => ({ ...d, palette: { ...(d.palette ?? {}), [role]: e.target.value } }), false)} />
-                <span className="dsn-field__k">{role.replace(/([A-Z])/g, " $1").toLowerCase()}</span>
-                <code className="dsn-hex">{palette[role]}</code>
-              </label>
-            ))}
-            <button type="button" className="dsn-btn dsn-btn--sm"
-                    onClick={() => apply((d) => ({ ...d, palette: undefined }))}>Reset to the pack's colours</button>
-          </Section>
-
-          <p className="dsn-note">Exports at 2160×2700 for {orgName}.</p>
+               Background removal, in the Photo section. The cut-out is stored
+               in the business's library and the slot is pointed at that stored
+               URL — never at a blob: address, which would render today and be
+               a broken picture the next time the design is opened. The
+               photographer's credit is carried across untouched: a cut-out of
+               a Pexels photograph is a derivative of it, and dropping the
+               attribution on the way through would be a licence breach nobody
+               would notice until it mattered. */
+            imageActions={one?.type === "image" ? (
+              <ImageBackgroundAction
+                orgId={design.organization_id}
+                url={doc.images[one.slot]?.url}
+                name={doc.images[one.slot]?.alt || `${title || "post"} photo`}
+                disabled={one.locked}
+                onCutout={(asset) => {
+                  apply((d) => ({
+                    ...d,
+                    images: {
+                      ...d.images,
+                      [one.slot]: { ...d.images[one.slot], url: asset.url, source: asset.source },
+                    },
+                  }));
+                  toast("Background removed — the cut-out is saved in your library.");
+                }}
+              />
+            ) : undefined}
+            layersSlot={
+              <LayersPanel
+                layers={layers}
+                sel={sel}
+                onSelect={select}
+                onReorder={(id, to) => apply((d) => reorder(d, id, to))}
+                onToggle={(id, key) => apply((d) => toggle(d, id, key))}
+                onRename={(id, name) => apply((d) => renameLayer(d, id, name))}
+              />
+            }
+          />
+          <p className="dsn-note dsn-rail__foot">Exports at 2160×2700 for {orgName}.</p>
         </aside>
       </div>
     </div>
   );
 }
-
-/* ── Panel furniture ─────────────────────────────────────────────────────
-   Named sections, the way a design tool's inspector is organised: position,
-   appearance, fill, stroke, typography. A flat list of every control is what
-   the previous version had, and it made finding one a scan of the whole panel. */
-
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <section className="dsn-sec">
-    <h4 className="dsn-sec__h">{title}</h4>
-    {children}
-  </section>
-);
 

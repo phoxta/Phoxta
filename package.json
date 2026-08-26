@@ -32,6 +32,7 @@
     "gsap": "^3.12.7",
     "isotope-layout": "^3.0.6",
     "lucide-react": "^1.33.0",
+    "onnxruntime-web": "^1.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-fast-marquee": "^1.6.5",

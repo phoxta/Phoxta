@@ -1,4 +1,25 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Mona+Sans:wght@400;500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=Poppins:wght@500;600&family=Inter:wght@400;500;600&display=swap");
+/* ── The pack's typefaces ────────────────────────────────────────────────
+   THESE QUERIES ARE PAIRED WITH `DESIGN_FONTS` IN src/lib/designs/types.ts.
+   Each line below is the `query` field of one entry, verbatim.
+
+   They have to agree, or the export lies. The editor measures and paints with
+   whatever the page has loaded — these imports; the exporter inlines the same
+   families into the serialised SVG, because a rasterised document cannot reach
+   the page's fonts. If the page loads a weight the exporter does not, the
+   canvas shows a real 800 and the file shows a synthesised one; if the reverse,
+   the wrap the editor computed is measured against the wrong face and the file
+   breaks its lines somewhere else. Adding a family means adding it in BOTH
+   places.
+
+   One @import per family rather than one combined request, for the same reason
+   the exporter fetches them one at a time: a family Google refuses should cost
+   that family, not all six. */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght@0,200..900;1,200..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap");
 
 /* ═══════════════════════════════════════════════════════════════════════
    Graphics studio (.dsn-*)
@@ -125,10 +146,15 @@
 .dsn-title { flex: 1 1 220px; min-width: 0; font-weight: 600; }
 .dsn-bar__right { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
 
+/* The canvas and the Inspector are two columns of ONE grid, which is the
+   structural reason the panel cannot cover the artwork: the canvas is sized by
+   what is left after the rail, so there is nothing for the rail to sit on top
+   of. A floating panel is the only way to get the overlap, and this layout
+   makes that impossible rather than merely unlikely. */
 .dsn-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 272px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -151,12 +177,31 @@
 
 @media (max-width: 1100px) { .dsn-stage { position: static; } }
 
-.dsn-panel {
+/* ── The Inspector rail ──────────────────────────────────────────────────
+   Its height matches the stage's so the editor is one rectangle rather than a
+   panel hanging below a canvas, and it scrolls INSIDE that height. Not sticky:
+   the console pins nothing but its top nav, and a sticky rail beside a canvas
+   that does not scroll would be a fixed thing pretending to be a floating one. */
+.dsn-rail {
+  display: flex;
+  flex-direction: column;
+  height: min(72vh, 760px);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--hrx-border);
   border-radius: 16px;
   background: var(--hrx-card);
-  padding: 4px 18px 18px;
 }
+
+/* Children keep their natural height. Without this the flex column shrinks the
+   panel to fit the rail and the last property in a long list is simply gone —
+   an overflow that scrolls is the point, an overflow that is squashed is not. */
+.dsn-rail > * { flex: 0 0 auto; }
+
+@media (max-width: 1100px) { .dsn-rail { height: auto; max-height: none; } }
+
+.dsn-rail__foot { padding: 0 14px 14px; margin-top: auto; }
 
 .dsn-sec { padding: 16px 0; border-bottom: 1px solid var(--hrx-border-soft, var(--hrx-border)); }
 .dsn-sec:last-of-type { border-bottom: 0; }
@@ -297,10 +342,33 @@
    artboard itself, so it needs a height of its own and a ground that reads
    as "outside the design". */
 
+/* A column: the artboard's viewport, then the slide strip under it. The strip
+   used to be a sibling of the SVG in a ROW — .dsn-stage is a centring flex
+   container — so it stood beside the canvas and squeezed it, and the artboard
+   was handed a width it did not have. It is chrome below the picture, and the
+   layout now says so. */
 .dsn-stage--canvas {
   position: relative;
+  flex-direction: column;
   height: min(72vh, 760px);
   padding: 0;
+  overflow: hidden;
+  background: var(--hrx-card);
+}
+
+/* The window onto the artboard, and the only thing measured: what DesignSvg is
+   told and what the quick bar positions itself inside must be the same
+   rectangle the artwork is actually drawn in. `min-height: 0` because a flex
+   child's default floor is its content, and without it a tall canvas would
+   push the strip off the bottom of the stage instead of scrolling under it. */
+.dsn-stage__view {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   background:
     repeating-conic-gradient(rgba(0, 0, 0, 0.035) 0% 25%, transparent 0% 50%) 50% / 22px 22px,
@@ -343,72 +411,47 @@
 }
 .dsn-seg__b.is-on { background: var(--hrx-surface, #fff); color: var(--hrx-ink, #14194e); box-shadow: 0 1px 3px rgb(20 25 78 / 12%); }
 
-/* ── The properties panel, on the canvas ─────────────────────────────────
+/* ── The quick bar, beside the selection ─────────────────────────────────
    Absolutely positioned inside the stage, which is why the stage is a
-   containing block. It sits above whatever is selected and is clamped inside
-   the stage by the component, not by overflow — a toolbar cut in half by a
-   scroll container is no better than one off-screen. */
+   containing block. Where it goes is decided in FloatingBar.tsx — above the
+   selection, else below, else left, else right, else not at all — because that
+   decision needs the selection's rectangle and CSS has no way to know it.
+
+   Deliberately small. Everything that needs room lives in the docked
+   Inspector; what is here is only what is faster with the cursor already on
+   the layer. A bar that grows is a bar that eventually has nowhere to stand.
+
+   The class name is kept from the panel this replaced. scripts/canvas-test
+   holds it, and the two assertions it holds it for — a bar appears, and it is
+   clear of the layer — are exactly the invariants worth keeping under test. */
 .dsn-fb {
     position: absolute;
     z-index: 6;
     display: flex;
     align-items: center;
     gap: 2px;
-    padding: 4px;
+    padding: 3px;
     border: 1px solid var(--hrx-border);
-    border-radius: 12px;
+    border-radius: 10px;
     background: var(--hrx-card);
-    box-shadow: 0 10px 30px rgb(20 25 78 / 18%);
-    font-size: 13px;
+    box-shadow: 0 8px 24px rgb(20 25 78 / 16%);
     white-space: nowrap;
 }
-.dsn-fb__n { padding: 0 8px; font-size: 12px; font-weight: 600; color: var(--hrx-muted); }
-.dsn-fb__sep { width: 1px; align-self: stretch; margin: 4px 3px; background: var(--hrx-border); }
+.dsn-fb__n {
+    padding: 0 7px;
+    font-size: 11px; font-weight: 700; color: var(--hrx-muted);
+    font-variant-numeric: tabular-nums;
+}
 .dsn-fb__b {
     display: inline-flex; align-items: center; gap: 5px;
-    min-width: 30px; height: 30px; padding: 0 8px;
-    border: 0; border-radius: 8px; background: transparent;
+    min-width: 28px; height: 28px; padding: 0 7px;
+    border: 0; border-radius: 7px; background: transparent;
     color: var(--hrx-ink); font-size: 12.5px; font-weight: 600; cursor: pointer;
 }
-.dsn-fb__b:hover { background: var(--hrx-soft); }
+.dsn-fb__b:hover:not(:disabled) { background: var(--hrx-soft); }
+.dsn-fb__b:disabled { opacity: .4; cursor: default; }
 .dsn-fb__b.is-on { background: var(--hrx-ink); color: #fff; }
-.dsn-fb__chip { width: 15px; height: 15px; border-radius: 4px; border: 1px solid rgb(20 25 78 / 25%); }
-.dsn-fb__sel {
-    max-width: 150px; height: 30px; padding: 0 9px;
-    border: 0; border-radius: 8px; background: var(--hrx-soft);
-    color: var(--hrx-ink); font-size: 12.5px; font-weight: 600; cursor: pointer;
-    overflow: hidden; text-overflow: ellipsis;
-}
-.dsn-fb__num {
-    width: 56px; height: 30px; padding: 0 6px;
-    border: 1px solid var(--hrx-border); border-radius: 8px;
-    background: var(--hrx-card); color: var(--hrx-ink); font-size: 12.5px; font-weight: 600;
-}
-
-/* Popovers hang below the bar. */
-.dsn-fb__pop {
-    position: absolute; top: calc(100% + 6px); left: 0;
-    min-width: 190px; max-width: 300px; padding: 10px;
-    border: 1px solid var(--hrx-border); border-radius: 12px;
-    background: var(--hrx-card); box-shadow: 0 14px 34px rgb(20 25 78 / 20%);
-    white-space: normal;
-}
-.dsn-fb__list { display: flex; flex-direction: column; gap: 2px; }
-.dsn-fb__list button, .dsn-fb__row button {
-    padding: 6px 8px; border: 0; border-radius: 7px; background: transparent;
-    color: var(--hrx-ink); font-size: 13px; text-align: left; cursor: pointer;
-}
-.dsn-fb__list button:hover, .dsn-fb__row button:hover { background: var(--hrx-soft); }
-.dsn-fb__list button.is-on, .dsn-fb__row button.is-on { background: var(--hrx-ink); color: #fff; }
-.dsn-fb__row { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 8px; }
-.dsn-fb__row button { flex: 1 1 auto; text-align: center; font-size: 12px; font-weight: 600; }
-.dsn-fb__field { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; font-size: 12.5px; color: var(--hrx-muted); }
-.dsn-fb__field input[type="number"] { width: 72px; padding: 4px 6px; border: 1px solid var(--hrx-border); border-radius: 7px; background: var(--hrx-card); color: var(--hrx-ink); }
-.dsn-fb__field input[type="range"] { flex: 1 1 auto; min-width: 0; }
-.dsn-fb__field--inline { margin: 0 4px 0 0; }
-.dsn-fb__sw { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
-.dsn-fb__sw button { width: 26px; height: 26px; border: 1px solid rgb(20 25 78 / 22%); border-radius: 7px; cursor: pointer; }
-.dsn-fb__hint { margin: 8px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--hrx-muted); }
+.dsn-fb__b.is-danger:hover:not(:disabled) { background: rgb(220 38 38 / 10%); color: #dc2626; }
 
 /* ── Editing text in place ───────────────────────────────────────────────
    Scaled by the viewport with a transform so the browser wraps in canvas
@@ -448,10 +491,6 @@
 .dsn-lib__grid figcaption { padding: 4px 2px 0; font-size: 11px; color: var(--hrx-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dsn-lib__grid figcaption a { color: inherit; }
 
-/* The stage clips, so a popover on a bar near the bottom has to open upward
-   rather than off the edge of the canvas. */
-.dsn-fb--low .dsn-fb__pop { top: auto; bottom: calc(100% + 6px); }
-
 /* ── Dialogs ─────────────────────────────────────────────────────────────── */
 .dsn-modal {
     position: fixed;
@@ -471,11 +510,6 @@
     background: var(--hrx-card);
     box-shadow: 0 24px 60px rgb(10 12 30 / 35%);
 }
-.dsn-fb__list button { display: flex; align-items: center; gap: 8px; }
-.dsn-fb__list button.is-danger { color: var(--hrx-danger, #c0392b); }
-.dsn-fb__sel { max-width: 92px; }
-.dsn-fb__field code { font-size: 11.5px; color: var(--hrx-ink); }
-
 /* ── Reordering layers by dragging ───────────────────────────────────────
    The insertion point is drawn as a line BETWEEN two rows rather than as a
    highlight on one, because "drop onto this row" does not say which side of it
@@ -608,3 +642,222 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   The Inspector (.dsni-*)
+   ───────────────────────────────────────────────────────────────────────
+   An editor's control kit, not the console's form kit: 26px rows, 12px
+   labels, everything on one line. The console is read at arm's length and
+   this is read while the other hand is on the canvas, so density is the
+   feature. Built on the same hrx tokens so it still belongs to the app.
+
+   Numbers are tabular everywhere. A column of proportional digits shifts
+   under its own value as you step it, and on a panel whose whole job is
+   nudging coordinates that reads as the layout twitching.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.dsni { display: flex; flex-direction: column; }
+
+.dsni-head {
+    display: flex; align-items: baseline; gap: 7px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--hrx-border-soft, var(--hrx-border));
+}
+.dsni-head__k {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--hrx-muted); flex: none;
+}
+.dsni-head__n {
+    font-size: 13px; font-weight: 600; color: var(--hrx-ink);
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dsni-head__lock {
+    margin-left: auto; flex: none;
+    padding: 1px 6px; border-radius: 999px;
+    background: var(--hrx-soft); color: var(--hrx-muted);
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+}
+
+.dsni-sec { padding: 11px 14px; border-bottom: 1px solid var(--hrx-border-soft, var(--hrx-border)); }
+.dsni-sec:last-child { border-bottom: 0; }
+.dsni-sec__h {
+    margin: 0 0 8px;
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--hrx-muted);
+}
+
+.dsni-note { margin: 0 0 8px; font-size: 11.5px; line-height: 1.45; color: var(--hrx-muted); }
+.dsni-foot { margin: 0; padding: 12px 14px; font-size: 11.5px; line-height: 1.45; color: var(--hrx-muted); }
+.dsni-read { font-size: 12px; color: var(--hrx-muted); font-variant-numeric: tabular-nums; }
+
+/* ── Rows ───────────────────────────────────────────────────────────────
+   Label on the left at a fixed width so every control in the panel starts at
+   the same x. A label column that flexes makes a stack of rows look like a
+   stack of unrelated widgets. */
+.dsni-row { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+.dsni-row + .dsni-row { margin-top: 4px; }
+.dsni-row__k {
+    flex: 0 0 76px; min-width: 0;
+    font-size: 11.5px; color: var(--hrx-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dsni-row__v { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 5px; }
+
+/* ── Fields ─────────────────────────────────────────────────────────────── */
+
+.dsni-num { position: relative; display: inline-flex; align-items: center; flex: 1 1 auto; min-width: 0; }
+.dsni-num input {
+    width: 100%; min-width: 0; height: 26px;
+    padding: 0 20px 0 7px;
+    border: 1px solid var(--hrx-border); border-radius: 7px;
+    background: var(--hrx-card); color: var(--hrx-ink);
+    font-size: 12px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.dsni-num input:focus-visible { outline: 2px solid var(--hrx-blue); outline-offset: -1px; }
+.dsni-num input:disabled { background: var(--hrx-soft); color: var(--hrx-muted); cursor: not-allowed; }
+.dsni-num__u {
+    position: absolute; right: 6px;
+    font-size: 10px; font-style: normal; color: var(--hrx-muted); pointer-events: none;
+}
+.dsni-num.is-off { opacity: .75; }
+
+.dsni-sel {
+    flex: 1 1 auto; min-width: 0; height: 26px;
+    padding: 0 6px;
+    border: 1px solid var(--hrx-border); border-radius: 7px;
+    background: var(--hrx-card); color: var(--hrx-ink);
+    font-size: 12px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.dsni-slide { display: flex; align-items: center; gap: 7px; flex: 1 1 auto; min-width: 0; }
+.dsni-slide input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--hrx-blue); }
+.dsni-slide__n {
+    flex: 0 0 auto; width: 34px; text-align: right;
+    font-size: 11px; font-style: normal; font-weight: 600; color: var(--hrx-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.dsni-seg {
+    display: inline-flex; gap: 2px; padding: 2px; flex: 1 1 auto; min-width: 0;
+    border-radius: 8px; background: var(--hrx-soft);
+    border: 1px solid var(--hrx-border-soft, var(--hrx-border));
+}
+.dsni-seg__b {
+    flex: 1 1 0; min-width: 0; height: 22px; padding: 0 6px;
+    border: 0; border-radius: 6px; background: transparent;
+    color: var(--hrx-muted); font-size: 11.5px; font-weight: 600; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dsni-seg__b:hover { color: var(--hrx-ink); }
+.dsni-seg__b.is-on { background: var(--hrx-card); color: var(--hrx-ink); box-shadow: 0 1px 2px rgb(20 25 78 / 14%); }
+
+.dsni-icons { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+.dsni-ico {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 26px; height: 26px; padding: 0 5px;
+    border: 1px solid var(--hrx-border); border-radius: 7px;
+    background: var(--hrx-card); color: var(--hrx-ink);
+    font-size: 11.5px; font-weight: 600; line-height: 1; cursor: pointer;
+}
+.dsni-ico:hover:not(:disabled) { background: var(--hrx-soft); }
+.dsni-ico:disabled { opacity: .4; cursor: not-allowed; }
+.dsni-ico.is-on { background: var(--hrx-ink); border-color: var(--hrx-ink); color: #fff; }
+
+.dsni-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; min-height: 28px; padding: 5px 10px; margin-top: 8px;
+    border: 1px solid var(--hrx-border); border-radius: 8px;
+    background: var(--hrx-card); color: var(--hrx-ink);
+    font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.dsni-btn:hover:not(:disabled) { background: var(--hrx-soft); }
+.dsni-btn:disabled { opacity: .5; cursor: not-allowed; }
+.dsni-btn.is-danger { color: #dc2626; }
+.dsni-btn.is-danger:hover:not(:disabled) { background: rgb(220 38 38 / 8%); }
+
+.dsni-btns { display: flex; gap: 6px; }
+.dsni-btns .dsni-btn { flex: 1 1 0; }
+
+/* X / Y / W / H. Two columns, not four: at 272px four fields leave room for
+   three digits, and a 1080 coordinate does not fit in three digits. */
+.dsni-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+.dsni-cell { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.dsni-cell > span {
+    flex: 0 0 12px;
+    font-size: 11px; font-weight: 600; color: var(--hrx-muted); text-align: center;
+}
+
+/* The seam another module fills. Kept visible and disabled rather than hidden,
+   so the panel says what is coming instead of silently lacking it. */
+.dsni-seam { margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--hrx-border); }
+.dsni-seam__k {
+    display: block; margin-bottom: 2px;
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--hrx-muted);
+}
+
+/* ── The colour control ─────────────────────────────────────────────────
+   The popover opens inside the rail, which is the second reason the rail is
+   docked: a colour picker that lives in a column can never be over the thing
+   whose colour it is picking. */
+.dsni-col { position: relative; flex: 1 1 auto; min-width: 0; }
+.dsni-col__b {
+    display: flex; align-items: center; gap: 7px;
+    width: 100%; height: 26px; padding: 0 7px;
+    border: 1px solid var(--hrx-border); border-radius: 7px;
+    background: var(--hrx-card); color: var(--hrx-ink);
+    font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.dsni-col__b:hover { background: var(--hrx-soft); }
+.dsni-col__sw {
+    flex: 0 0 14px; width: 14px; height: 14px; border-radius: 4px;
+    border: 1px solid rgb(20 25 78 / 22%);
+}
+.dsni-col__t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dsni-pop {
+    position: absolute; z-index: 8; top: calc(100% + 5px); right: 0;
+    width: 216px; padding: 9px;
+    border: 1px solid var(--hrx-border); border-radius: 11px;
+    background: var(--hrx-card);
+    box-shadow: 0 14px 34px rgb(20 25 78 / 22%);
+}
+.dsni-pop.is-up { top: auto; bottom: calc(100% + 5px); }
+.dsni-pop__h {
+    margin: 0 0 5px;
+    font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--hrx-muted);
+}
+.dsni-pop__h + .dsni-pop__sw { margin-bottom: 9px; }
+.dsni-pop__sw { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.dsni-pop__sw button {
+    height: 24px; padding: 0;
+    border: 1px solid rgb(20 25 78 / 20%); border-radius: 6px; cursor: pointer;
+}
+.dsni-pop__sw button.is-on { outline: 2px solid var(--hrx-blue); outline-offset: 1px; }
+.dsni-pop__hex { display: flex; align-items: center; gap: 5px; }
+.dsni-pop__hex input[type="color"] {
+    flex: 0 0 26px; width: 26px; height: 26px; padding: 0;
+    border: 1px solid var(--hrx-border); border-radius: 6px; background: none; cursor: pointer;
+}
+.dsni-pop__in {
+    flex: 1 1 auto; min-width: 0; height: 26px; padding: 0 7px;
+    border: 1px solid var(--hrx-border); border-radius: 6px;
+    background: var(--hrx-card); color: var(--hrx-ink);
+    font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.dsni-pop__eye {
+    flex: 0 0 26px; width: 26px; height: 26px;
+    border: 1px solid var(--hrx-border); border-radius: 6px;
+    background: var(--hrx-card); color: var(--hrx-ink);
+    font-size: 13px; line-height: 1; cursor: pointer;
+}
+.dsni-pop__eye:hover { background: var(--hrx-soft); }
+.dsni-pop__f { margin: 8px 0 0; font-size: 10.5px; line-height: 1.4; color: var(--hrx-muted); }
+
+/* The layers list is inside the rail now, so it takes the rail's width and its
+   own scroll rather than a second fixed height inside a scrolling column. */
+.dsni-sec .dsn-layers { max-height: 220px; }

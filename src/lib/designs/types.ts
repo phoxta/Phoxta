@@ -67,6 +67,70 @@ export const DEFAULT_PALETTE: Palette = {
  */
 export type PaintRole = keyof Palette | "white" | "black" | "transparent" | (string & {});
 
+/**
+ * The typefaces a design may be set in.
+ *
+ * ONE LIST, THREE CONSUMERS, OR THE FILE LIES. The editor measures and paints
+ * with whatever the page has loaded; the exporter inlines @font-face rules into
+ * the serialised SVG because a rasterised document cannot reach the page's
+ * fonts. If those two lists disagree, a headline set in PT Serif looks right on
+ * the canvas and comes out of the exporter in the rasteriser's default face —
+ * a difference that only appears in the file the customer posts.
+ *
+ * So `query` is the literal Google `css2?family=` fragment, and it is used by
+ * BOTH `designs.css` (which loads the face for the editor) and `export.ts`
+ * (which inlines it for the file). Adding a family means adding it here and
+ * adding the matching `@import` line to designs.css — the comment there says
+ * so, and says why.
+ *
+ * `weights` is what the Inspector offers, and every one of them is inside the
+ * range `query` asks for. Offering a weight the query does not load would show
+ * a synthesised bold on the canvas and a real one in the file, or the reverse.
+ */
+export type DesignFont = {
+  /** As written into a layer's `font`, and into the CSS font stack. */
+  name: string;
+  /** The css2 `family=` query fragment. */
+  query: string;
+  weights: number[];
+  /** A true italic face exists, rather than a synthesised slant. */
+  italic: boolean;
+};
+
+export const DESIGN_FONTS: DesignFont[] = [
+  { name: "Plus Jakarta Sans", query: "Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800", weights: [200, 300, 400, 500, 600, 700, 800], italic: true },
+  { name: "DM Sans", query: "DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000", weights: [300, 400, 500, 600, 700, 800, 900], italic: true },
+  { name: "Mona Sans", query: "Mona+Sans:ital,wght@0,200..900;1,200..900", weights: [200, 300, 400, 500, 600, 700, 800, 900], italic: true },
+  { name: "Poppins", query: "Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800", weights: [300, 400, 500, 600, 700, 800], italic: true },
+  { name: "Inter", query: "Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900", weights: [300, 400, 500, 600, 700, 800, 900], italic: true },
+  { name: "PT Serif", query: "PT+Serif:ital,wght@0,400;0,700;1,400;1,700", weights: [400, 700], italic: true },
+];
+
+/** The face a layer with no `font` of its own paints in. */
+export const DEFAULT_FONT = "Plus Jakarta Sans";
+
+export const fontNamed = (name?: string): DesignFont | undefined =>
+  DESIGN_FONTS.find((f) => f.name === (name ?? DEFAULT_FONT));
+
+/**
+ * A drop shadow.
+ *
+ * Rendered as an SVG `feDropShadow`, which is why `blur` is a radius rather
+ * than a spread and why there is no inset variant — the filter has no such
+ * thing, and a control whose value the renderer would have to approximate is a
+ * control that lies. Verified to rasterise through the export path (an SVG
+ * serialised into an <img>), which is the only test that matters here.
+ */
+export type Shadow = {
+  dx: number;
+  dy: number;
+  /** Blur radius in canvas pixels. Zero is a hard offset. */
+  blur: number;
+  color: PaintRole;
+  /** 0-1. Defaults to 0.35, which reads as a shadow rather than a second copy. */
+  opacity?: number;
+};
+
 export type TextSlot =
   | "title" | "subtitle" | "description" | "statistic"
   | "testimonial" | "quote" | "cta" | "phone" | "website"
@@ -87,6 +151,18 @@ type Base = {
    *  dragging across a design does not pick the canvas up by mistake. */
   locked?: boolean;
   hidden?: boolean;
+  /**
+   * Mirror about the layer's own centre.
+   *
+   * On Base rather than on the shapes, because it is one `scale(-1 1)` on the
+   * wrapper the renderer already puts rotation and opacity on — so a flipped
+   * photograph, a flipped vector and a flipped headline all cost the same
+   * nothing, and none of the painters has to know about it.
+   */
+  flipH?: boolean;
+  flipV?: boolean;
+  /** A drop shadow, applied to whatever the layer painted. */
+  shadow?: Shadow;
 };
 
 /** A flat fill — backgrounds and solid cards. */
@@ -98,6 +174,16 @@ export type RectLayer = Base & {
   /** The outlined pills carry their shape in a stroke rather than a fill. */
   strokeColor?: PaintRole;
   strokeWidth?: number;
+  /**
+   * Dash length in canvas pixels; the gap is drawn at two thirds of it.
+   * Absent or zero is a solid line.
+   *
+   * One number rather than a full dash array on purpose: an array is a
+   * typography-grade control that nobody making a social post needs, and it
+   * would have to be validated on every keystroke to avoid handing the
+   * renderer something that paints nothing.
+   */
+  strokeDash?: number;
 };
 
 /** The brand gradient, at the Figma file's own angle. */
@@ -206,6 +292,16 @@ export type TextLayer = Base & {
   /** Absolute px, negative in this pack. */
   tracking: number;
   align?: "left" | "center" | "right";
+  /**
+   * Where the copy sits inside the layer's box vertically.
+   *
+   * Absent means "top", which is what every design already saved does and what
+   * Figma exported — so this is additive and nothing had to be migrated. The
+   * renderer shifts the baselines by the slack between the laid-out height and
+   * the box; it is not a CSS property and it survives export because it is
+   * arithmetic on the same `y` the glyphs were always painted at.
+   */
+  valign?: "top" | "middle" | "bottom";
   uppercase?: boolean;
   capitalize?: boolean;
   /** Words wrapped in *asterisks* paint in this role — the pack's two-tone

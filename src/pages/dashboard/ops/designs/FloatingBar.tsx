@@ -1,309 +1,198 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { boundsOf, type Viewport } from "@/lib/designs/snap";
-import { hasMark, lengthOf, toRuns, toggleMark, setStyle, type Mark } from "@/lib/designs/rich";
-import type { Copy, Layer, Palette, PaintRole, TextLayer } from "@/lib/designs/types";
+import { useLayoutEffect, useState } from "react";
+import type { Viewport } from "@/lib/designs/snap";
+import type { Layer } from "@/lib/designs/types";
 
 /**
- * The properties panel, on the canvas.
+ * The quick bar: three or four verbs, beside the selection, never on top of it.
  *
- * A sidebar makes you look away from the thing you are changing, and on a
- * 1080×1350 artboard that is a long way across the screen. This follows the
- * selection instead: it sits just above whatever is selected and shows only
- * the controls that apply to it, which is both shorter and impossible to get
- * lost in.
+ * WHAT THIS USED TO BE, AND WHY IT ISN'T ANY MORE. This was the whole
+ * properties panel, floating over the artboard. The idea was sound — a sidebar
+ * makes you look away from the thing you are changing — but the execution has
+ * one failure it cannot design its way out of: a panel large enough to hold a
+ * font menu, four marks, a colour picker and an alignment popover is large
+ * enough to cover the layer it is editing, and on a tall selection there is
+ * nowhere on the artboard for it to go. Choosing a headline colour while
+ * unable to see the headline is worse than walking your eyes to a rail.
  *
- * It flips below the selection when there is no room above, and is clamped
- * inside the stage horizontally — a toolbar for a layer at the top-left corner
- * that renders off-screen is worse than no toolbar.
+ * So the properties live in the docked Inspector, which shrinks the canvas
+ * instead of covering it, and what is left here is only what is genuinely
+ * faster with the cursor already on the layer: open it, duplicate it, delete
+ * it.
+ *
+ * THE PLACEMENT RULE IS ABSOLUTE. The bar is tried above the selection, then
+ * below, then left, then right — the first position that fits inside the stage
+ * AND does not touch the selection's on-screen rectangle wins. If a selection
+ * is large enough that no such position exists, the bar does not render. That
+ * is deliberate: everything on it is in the Inspector and on the keyboard, so
+ * hiding it costs nothing, and covering the artwork is the one outcome the
+ * whole component exists to avoid.
  */
 
-const FONTS = ["Plus Jakarta Sans", "DM Sans", "Mona Sans", "Poppins", "Inter", "PT Serif"];
-const WEIGHTS = [300, 400, 500, 600, 700, 800];
+const ln = {
+  fill: "none", stroke: "currentColor", strokeWidth: 1.6,
+  strokeLinecap: "round", strokeLinejoin: "round",
+} as const;
 
-const I = {
-  bold: <path d="M4 2h4.5a3 3 0 0 1 0 6H4V2Zm0 6h5a3 3 0 0 1 0 6H4V8Z" />,
-  italic: <path d="M6 2h6M4 14h6M9.5 2 7 14" />,
-  under: <path d="M4 2v5a4 4 0 0 0 8 0V2M3 14h10" />,
-  strike: <path d="M3 8h10M11 5a3 3 0 0 0-6 0M5 11a3 3 0 0 0 6 0" />,
-  front: <path d="M8 2 2 5l6 3 6-3-6-3ZM2 11l6 3 6-3" />,
-  back: <path d="M2 5l6 3 6-3M8 11 2 8m6 3 6-3" />,
-  dup: <path d="M5 5h8v8H5zM3 11V3h8" />,
-  bin: <path d="M3 5h10M6 5V3h4v2M5 5l1 9h4l1-9" />,
-  lock: <path d="M4 7h8v7H4zM6 7V5a2 2 0 0 1 4 0v2" />,
-  more: <path d="M3 8h.01M8 8h.01M13 8h.01" />,
-  text: <path d="M3 4V3h10v1M8 3v10M6 13h4" />,
-  photo: <path d="M2 3h12v10H2zM2 10l3.5-3.5L9 10l2-2 3 3" />,
-  wand: <path d="M3 13 11 5M9 3l1 1M13 7l1 1M12 2l.5 1.5L14 4l-1.5.5L12 6l-.5-1.5L10 4l1.5-.5Z" />,
-};
+const I_TEXT = <svg viewBox="0 0 16 16" width="14" height="14" {...ln} aria-hidden="true"><path d="M3 4V3h10v1M8 3v10M6 13h4" /></svg>;
+const I_PHOTO = <svg viewBox="0 0 16 16" width="14" height="14" {...ln} aria-hidden="true"><path d="M2 3h12v10H2zM2 10l3.5-3.5L9 10l2-2 3 3" /></svg>;
+const I_DUP = <svg viewBox="0 0 16 16" width="14" height="14" {...ln} aria-hidden="true"><path d="M5.5 5.5h8v8h-8zM2.5 10.5v-8h8" /></svg>;
+const I_BIN = <svg viewBox="0 0 16 16" width="14" height="14" {...ln} aria-hidden="true"><path d="M3 5h10M6 5V3h4v2M5 5l1 9h4l1-9" /></svg>;
+const I_LOCK = <svg viewBox="0 0 16 16" width="14" height="14" {...ln} aria-hidden="true"><path d="M4 7h8v7H4zM6 7V5a2 2 0 0 1 4 0v2" /></svg>;
 
-const Ico = ({ d }: { d: React.ReactNode }) => (
-  <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor"
-       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
-);
+export type Cmd = "front" | "back" | "duplicate" | "delete" | "lock";
 
-type Cmd = "front" | "back" | "duplicate" | "delete" | "lock";
-
-export type BarProps = {
+export type QuickBarProps = {
   layers: Layer[];
   sel: string[];
-  content: Record<string, Copy | undefined>;
-  palette: Palette;
   view: Viewport;
+  /** The stage's size in CSS pixels. The bar is absolutely positioned inside
+   *  it, which is why page scroll needs no handling here: the bar and the
+   *  artwork move together because they share a containing block. */
   stage: { width: number; height: number };
-  /** True while the inline text editor has the caret. */
-  editing: boolean;
-  onPatch: (patch: Partial<Layer>, commit?: boolean) => void;
-  onContent: (next: Copy) => void;
   onCommand: (c: Cmd) => void;
   onEditText: () => void;
   onPickImage: () => void;
 };
 
-export function FloatingBar(p: BarProps) {
-  const chosen = p.layers.filter((l) => p.sel.includes(l.id));
-  const one = chosen.length === 1 ? chosen[0] : null;
-  const bar = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(0);
-  const [open, setOpen] = useState<string | null>(null);
+/** Gap between the bar and the selection, and between the bar and the stage. */
+const GAP = 12;
+const PAD = 8;
 
-  const selKey = p.sel.join(",");
+type Rect = { x: number; y: number; w: number; h: number };
 
-  // Measured after every render rather than on a dependency list, because the
-  // width depends on which controls this layer type shows, how long its font
-  // name is and what the size reads — all of which change without warning.
-  // Guarded so a stable width does not schedule another render.
-  useLayoutEffect(() => {
-    const next = bar.current?.offsetWidth ?? 0;
-    if (next !== w) setW(next);
-  }, [w]);
+const overlaps = (a: Rect, b: Rect) =>
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
-  // Any change of selection closes whatever popover was open, so a colour
-  // picker never ends up pointing at a layer that is no longer selected.
-  useEffect(() => { setOpen(null); }, [selKey]);
-
-  const b = boundsOf(chosen);
-  if (!b || !chosen.length) return null;
-
-  const H = 40;
-  const left = Math.min(
-    Math.max(8, (b.x + b.w / 2 - p.view.x) * p.view.zoom - w / 2),
-    Math.max(8, p.stage.width - w - 8),
-  );
-  const above = (b.y - p.view.y) * p.view.zoom - H - 14;
-  const below = (b.y + b.h - p.view.y) * p.view.zoom + 14;
-  const top = above >= 8 ? above : Math.min(below, p.stage.height - H - 8);
-  // Which way a popover opens.
-  //
-  // The bar normally sits above the selection, so a popover that always opened
-  // downward would cover the very layer being changed -- you would be picking
-  // a colour while unable to see the words it applies to. It opens upward
-  // whenever there is room for it above the bar, and downward only when the
-  // bar is near the top of the stage and there is nowhere else to go.
-  const low = top > 250;
-
-  const text = one?.type === "text" ? (one as TextLayer) : null;
-  const runs = text ? toRuns(p.content[text.slot], text.accent) : [];
-
-  /** A mark applies to the live selection while editing, and to the whole
-   *  layer otherwise — so the button does something useful either way. */
-  const mark = (m: Mark) => {
-    if (p.editing) { document.execCommand(m === "strike" ? "strikeThrough" : m); return; }
-    if (!text) return;
-    p.onContent(toggleMark(runs, 0, lengthOf(p.content[text.slot]), m));
-  };
-  const markOn = (m: Mark) => {
-    if (p.editing) {
-      try { return document.queryCommandState(m === "strike" ? "strikeThrough" : m); } catch { return false; }
+/**
+ * The selection's rectangle on screen, in stage pixels.
+ *
+ * A rotated layer covers more of the screen than its own box does, so the box
+ * is turned and re-bounded. Placing the bar against the untransformed box is
+ * how a toolbar ends up sitting on the corner of a tilted photograph.
+ */
+function screenRect(layers: Layer[], view: Viewport): Rect | null {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const l of layers) {
+    const deg = l.rotation ?? 0;
+    if (!deg) {
+      x0 = Math.min(x0, l.x); y0 = Math.min(y0, l.y);
+      x1 = Math.max(x1, l.x + l.w); y1 = Math.max(y1, l.y + l.h);
+      continue;
     }
-    return text ? hasMark(runs, 0, lengthOf(p.content[text.slot]), m) : false;
+    const r = (deg * Math.PI) / 180;
+    const c = Math.cos(r), s = Math.sin(r);
+    const cx = l.x + l.w / 2, cy = l.y + l.h / 2;
+    for (const [px, py] of [[l.x, l.y], [l.x + l.w, l.y], [l.x, l.y + l.h], [l.x + l.w, l.y + l.h]]) {
+      const dx = px - cx, dy = py - cy;
+      const rx = cx + dx * c - dy * s;
+      const ry = cy + dx * s + dy * c;
+      x0 = Math.min(x0, rx); y0 = Math.min(y0, ry);
+      x1 = Math.max(x1, rx); y1 = Math.max(y1, ry);
+    }
+  }
+  if (!Number.isFinite(x0)) return null;
+  return {
+    x: (x0 - view.x) * view.zoom,
+    y: (y0 - view.y) * view.zoom,
+    w: (x1 - x0) * view.zoom,
+    h: (y1 - y0) * view.zoom,
   };
-
-  const paintRun = (role: PaintRole) => {
-    if (!text) return;
-    p.onContent(setStyle(runs, 0, lengthOf(p.content[text.slot]), { fill: role }));
-  };
-
-  const Btn = ({ id, title, on, onClick, children }: {
-    id?: string; title: string; on?: boolean; onClick: () => void; children: React.ReactNode;
-  }) => (
-    <button
-      type="button" className={`dsn-fb__b${on ? " is-on" : ""}`} title={title} aria-label={title}
-      aria-pressed={on} data-pop={id}
-      onPointerDown={(e) => e.preventDefault()}
-      onClick={onClick}
-    >{children}</button>
-  );
-
-  const Pop = ({ id, children }: { id: string; children: React.ReactNode }) =>
-    open === id ? <div className="dsn-fb__pop" onPointerDown={(e) => e.stopPropagation()}>{children}</div> : null;
-
-  const toggle = (id: string) => setOpen((o) => (o === id ? null : id));
-
-  return (
-    <div ref={bar} className={`dsn-fb${low ? " dsn-fb--low" : ""}`} style={{ left, top }} onPointerDown={(e) => e.stopPropagation()}>
-      {chosen.length > 1 && <span className="dsn-fb__n">{chosen.length} selected</span>}
-
-      {/* ── Text ─────────────────────────────────────────────────────── */}
-      {text && (
-        <>
-          <button type="button" className="dsn-fb__sel" title={`Typeface — ${text.font ?? "Plus Jakarta Sans"}`}
-                  onClick={() => toggle("font")}>
-            {text.font ?? "Plus Jakarta Sans"}
-          </button>
-          <Pop id="font">
-            <div className="dsn-fb__list">
-              {FONTS.map((f) => (
-                <button key={f} type="button" className={text.font === f ? "is-on" : ""}
-                        style={{ fontFamily: `"${f}", sans-serif` }}
-                        onClick={() => { p.onPatch({ font: f } as Partial<Layer>); setOpen(null); }}>{f}</button>
-              ))}
-            </div>
-          </Pop>
-
-          <input
-            className="dsn-fb__num" type="number" min={4} max={400} value={Math.round(text.size)}
-            title="Size" aria-label="Font size"
-            onChange={(e) => p.onPatch({ size: Number(e.target.value) } as Partial<Layer>, false)}
-          />
-
-          <span className="dsn-fb__sep" />
-          <Btn title="Bold" on={markOn("bold")} onClick={() => mark("bold")}><Ico d={I.bold} /></Btn>
-          <Btn title="Italic" on={markOn("italic")} onClick={() => mark("italic")}><Ico d={I.italic} /></Btn>
-          <Btn title="Underline" on={markOn("underline")} onClick={() => mark("underline")}><Ico d={I.under} /></Btn>
-          <Btn title="Strikethrough" on={markOn("strike")} onClick={() => mark("strike")}><Ico d={I.strike} /></Btn>
-
-          <span className="dsn-fb__sep" />
-          <Btn id="colour" title="Text colour" on={open === "colour"} onClick={() => toggle("colour")}>
-            <span className="dsn-fb__chip" style={{ background: swatch(text.fill, p.palette) }} />
-          </Btn>
-          <Pop id="colour">
-            <div className="dsn-fb__sw">
-              {(["ink", "accent", "accentSoft", "canvas", "white", "black"] as PaintRole[]).map((r) => (
-                <button key={String(r)} type="button" title={String(r)} style={{ background: swatch(r, p.palette) }}
-                        onClick={() => { paintRun(r); setOpen(null); }} />
-              ))}
-            </div>
-            <p className="dsn-fb__hint">
-              {p.editing ? "Applies to the whole layer — select words first for part of it." : "Applies to every word in this layer."}
-            </p>
-          </Pop>
-
-          <Btn id="type" title="Alignment and spacing" on={open === "type"} onClick={() => toggle("type")}>Aa</Btn>
-          <Pop id="type">
-            <div className="dsn-fb__row">
-              {(["left", "center", "right"] as const).map((a) => (
-                <button key={a} type="button" className={text.align === a ? "is-on" : ""}
-                        onClick={() => p.onPatch({ align: a } as Partial<Layer>)}>{a}</button>
-              ))}
-            </div>
-            <div className="dsn-fb__row">
-              {WEIGHTS.map((n) => (
-                <button key={n} type="button" className={text.weight === n ? "is-on" : ""}
-                        onClick={() => p.onPatch({ weight: n } as Partial<Layer>)}>{n}</button>
-              ))}
-            </div>
-            <label className="dsn-fb__field">Line height
-              <input type="number" step={0.05} value={text.lineHeight}
-                     onChange={(e) => p.onPatch({ lineHeight: Number(e.target.value) } as Partial<Layer>, false)} />
-            </label>
-            <label className="dsn-fb__field">Letter spacing
-              <input type="number" step={0.5} value={text.tracking}
-                     onChange={(e) => p.onPatch({ tracking: Number(e.target.value) } as Partial<Layer>, false)} />
-            </label>
-            <div className="dsn-fb__row">
-              <button type="button" className={text.uppercase ? "is-on" : ""}
-                      onClick={() => p.onPatch({ uppercase: !text.uppercase || undefined } as Partial<Layer>)}>UPPER</button>
-              <button type="button" className={text.capitalize ? "is-on" : ""}
-                      onClick={() => p.onPatch({ capitalize: !text.capitalize || undefined } as Partial<Layer>)}>Title</button>
-            </div>
-          </Pop>
-
-          <Btn title="Edit the words" onClick={p.onEditText}><Ico d={I.text} /></Btn>
-        </>
-      )}
-
-      {/* ── Shapes ───────────────────────────────────────────────────── */}
-      {one && (one.type === "rect" || one.type === "gradient") && (
-        <>
-          <Btn id="fill" title="Fill" on={open === "fill"} onClick={() => toggle("fill")}>
-            <span className="dsn-fb__chip" style={{ background: one.type === "rect" ? swatch(one.fill, p.palette) : swatch(one.from, p.palette) }} />
-          </Btn>
-          <Pop id="fill">
-            <div className="dsn-fb__sw">
-              {(["ink", "accent", "accentSoft", "canvas", "white", "black", "transparent"] as PaintRole[]).map((r) => (
-                <button key={String(r)} type="button" title={String(r)}
-                        style={{ background: swatch(r, p.palette) }}
-                        onClick={() => { p.onPatch(one.type === "rect" ? { fill: r } as Partial<Layer> : { from: r } as Partial<Layer>); setOpen(null); }} />
-              ))}
-            </div>
-          </Pop>
-          <label className="dsn-fb__field dsn-fb__field--inline">Corner
-            <input type="number" min={0} value={Math.round(one.radius ?? 0)}
-                   onChange={(e) => p.onPatch({ radius: Number(e.target.value) } as Partial<Layer>, false)} />
-          </label>
-        </>
-      )}
-
-      {/* ── Photographs ──────────────────────────────────────────────── */}
-      {one?.type === "image" && (
-        <>
-          <Btn title="Choose a photograph" onClick={p.onPickImage}><Ico d={I.photo} /> Photo</Btn>
-          <Btn id="crop" title="Crop" on={open === "crop"} onClick={() => toggle("crop")}>Crop</Btn>
-          <Pop id="crop">
-            <div className="dsn-fb__row">
-              {(["cover", "contain"] as const).map((f) => (
-                <button key={f} type="button" className={(one.fit ?? "cover") === f ? "is-on" : ""}
-                        onClick={() => p.onPatch({ fit: f } as Partial<Layer>)}>
-                  {f === "cover" ? "Fill" : "Fit"}
-                </button>
-              ))}
-            </div>
-            <label className="dsn-fb__field">Zoom
-              <input type="range" min={100} max={300} value={Math.round((one.zoom ?? 1) * 100)}
-                     onChange={(e) => p.onPatch({ zoom: Number(e.target.value) / 100 } as Partial<Layer>, false)} />
-            </label>
-            <label className="dsn-fb__field">Pan X
-              <input type="range" min={-50} max={50} value={Math.round((one.panX ?? 0) * 100)}
-                     onChange={(e) => p.onPatch({ panX: Number(e.target.value) / 100 } as Partial<Layer>, false)} />
-            </label>
-            <label className="dsn-fb__field">Pan Y
-              <input type="range" min={-50} max={50} value={Math.round((one.panY ?? 0) * 100)}
-                     onChange={(e) => p.onPatch({ panY: Number(e.target.value) / 100 } as Partial<Layer>, false)} />
-            </label>
-          </Pop>
-        </>
-      )}
-
-      {/* ── Everything ───────────────────────────────────────────────── */}
-      {/* Everything that applies to any layer. Kept behind one button: a
-          dozen icons made the bar as wide as the artboard, which defeats the
-          point of putting it beside the selection. */}
-      <span className="dsn-fb__sep" />
-      <Btn id="more" title="More" on={open === "more"} onClick={() => toggle("more")}><Ico d={I.more} /></Btn>
-      <Pop id="more">
-        <label className="dsn-fb__field">Opacity
-          <input type="range" min={0} max={100} value={Math.round((one?.alpha ?? 1) * 100)}
-                 onChange={(e) => p.onPatch({ alpha: Number(e.target.value) / 100 } as Partial<Layer>, false)} />
-          <code>{Math.round((one?.alpha ?? 1) * 100)}%</code>
-        </label>
-        <div className="dsn-fb__list">
-          <button type="button" onClick={() => { p.onCommand("front"); setOpen(null); }}><Ico d={I.front} /> Bring to front</button>
-          <button type="button" onClick={() => { p.onCommand("back"); setOpen(null); }}><Ico d={I.back} /> Send to back</button>
-          <button type="button" onClick={() => { p.onCommand("duplicate"); setOpen(null); }}><Ico d={I.dup} /> Duplicate</button>
-          <button type="button" onClick={() => { p.onCommand("lock"); setOpen(null); }}>
-            <Ico d={I.lock} /> {one?.locked ? "Unlock" : "Lock"}
-          </button>
-          <button type="button" className="is-danger" onClick={() => { p.onCommand("delete"); setOpen(null); }}><Ico d={I.bin} /> Delete</button>
-        </div>
-      </Pop>
-    </div>
-  );
 }
 
-function swatch(role: PaintRole | undefined, palette: Palette): string {
-  if (!role || role === "transparent") return "repeating-conic-gradient(#ccc 0 25%, #fff 0 50%) 50%/8px 8px";
-  if (role === "white") return "#ffffff";
-  if (role === "black") return "#000000";
-  const known = (palette as unknown as Record<string, string>)[role as string];
-  return known ?? String(role);
+/** The first placement that is inside the stage and clear of the selection. */
+function place(sel: Rect, bar: { w: number; h: number }, stage: { width: number; height: number }): { left: number; top: number } | null {
+  const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+  const midX = clamp(sel.x + sel.w / 2 - bar.w / 2, PAD, Math.max(PAD, stage.width - bar.w - PAD));
+  const midY = clamp(sel.y + sel.h / 2 - bar.h / 2, PAD, Math.max(PAD, stage.height - bar.h - PAD));
+
+  const tries: { left: number; top: number }[] = [
+    { left: midX, top: sel.y - bar.h - GAP },           // above, the default
+    { left: midX, top: sel.y + sel.h + GAP },           // below
+    { left: sel.x - bar.w - GAP, top: midY },           // left
+    { left: sel.x + sel.w + GAP, top: midY },           // right
+  ];
+
+  for (const t of tries) {
+    if (t.left < PAD || t.top < PAD) continue;
+    if (t.left + bar.w > stage.width - PAD) continue;
+    if (t.top + bar.h > stage.height - PAD) continue;
+    if (overlaps({ x: t.left, y: t.top, w: bar.w, h: bar.h }, sel)) continue;
+    return t;
+  }
+  return null;
+}
+
+export function FloatingBar(p: QuickBarProps) {
+  const chosen = p.layers.filter((l) => p.sel.includes(l.id));
+  const one = chosen.length === 1 ? chosen[0] : null;
+  // A callback ref rather than useRef, so the measurement re-attaches whenever
+  // the node changes. The bar's width depends on which verbs this layer type
+  // shows and on how long its labels are, neither of which is a value a
+  // dependency list could watch — so the element watches itself.
+  const [el, setEl] = useState<HTMLDivElement | null>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!el) return;
+    const read = () => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      setSize((s) => (s && s.w === w && s.h === h ? s : { w, h }));
+    };
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [el]);
+
+  const rect = chosen.length ? screenRect(chosen, p.view) : null;
+  if (!rect) return null;
+
+  // Two cases park the bar off-screen rather than unmounting it: the first
+  // render, which has no measurement yet, and a selection so large that no
+  // placement clears it. Kept mounted so it stays measurable — and hidden
+  // rather than merely moved, so there is no frame in which it could flash
+  // over the artboard.
+  const at = size ? place(rect, size, p.stage) : null;
+  const locked = chosen.every((l) => l.locked);
+
+  return (
+    <div
+      ref={setEl}
+      className="dsn-fb"
+      style={at
+        ? { left: at.left, top: at.top }
+        : { left: -9999, top: -9999, visibility: "hidden", pointerEvents: "none" }}
+      aria-hidden={at ? undefined : true}
+      onPointerDown={(e) => e.stopPropagation()}
+      role="toolbar"
+      aria-label="Quick actions for the selection"
+    >
+      {chosen.length > 1 && <span className="dsn-fb__n">{chosen.length}</span>}
+
+      {one?.type === "text" && (
+        <button type="button" className="dsn-fb__b" onClick={p.onEditText} disabled={one.locked}
+                title={one.locked ? "This layer is locked" : "Write in this text"}>
+          {I_TEXT}<span>Edit text</span>
+        </button>
+      )}
+
+      {one?.type === "image" && (
+        <button type="button" className="dsn-fb__b" onClick={p.onPickImage} disabled={one.locked}
+                title={one.locked ? "This layer is locked" : "Choose a different photograph"}>
+          {I_PHOTO}<span>Photo</span>
+        </button>
+      )}
+
+      <button type="button" className="dsn-fb__b" onClick={() => p.onCommand("duplicate")}
+              title="Duplicate (Ctrl+D)" aria-label="Duplicate">{I_DUP}</button>
+
+      <button type="button" className={`dsn-fb__b${locked ? " is-on" : ""}`} onClick={() => p.onCommand("lock")}
+              title={locked ? "Unlock" : "Lock"} aria-label={locked ? "Unlock" : "Lock"}
+              aria-pressed={locked}>{I_LOCK}</button>
+
+      <button type="button" className="dsn-fb__b is-danger" onClick={() => p.onCommand("delete")}
+              title="Delete" aria-label="Delete">{I_BIN}</button>
+    </div>
+  );
 }

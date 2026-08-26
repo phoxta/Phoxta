@@ -114,17 +114,32 @@ const centred = (w: number, h: number) => ({
   w, h,
 });
 
-export function addText(doc: DesignDoc, slot: TextSlot = "description"): { doc: DesignDoc; id: string } {
+/** Every slot copy can live in, in the order a second text box should claim them. */
+const TEXT_SLOTS: TextSlot[] = [
+  "description", "subtitle", "title", "statistic", "quote", "testimonial",
+  "cta", "point1", "point2", "point3", "phone", "website", "score",
+];
+
+export function addText(doc: DesignDoc, slot?: TextSlot): { doc: DesignDoc; id: string } | null {
+  // Copy lives in doc.content KEYED BY SLOT, so two text layers on the same slot
+  // are literally the same words rendered twice — pressing "+ Text" again used
+  // to produce a box echoing the first one rather than a new empty one. A text
+  // layer therefore claims a FREE slot, exactly as a photo claims a free image
+  // slot, and the button says so when every slot is spoken for.
+  const base = materialise(doc);
+  const used = new Set(layersOf(base).filter((l) => l.type === "text").map((l) => l.slot));
+  const chosen = slot && !used.has(slot) ? slot : TEXT_SLOTS.find((s) => !used.has(s));
+  if (!chosen) return null;
   const id = freshId("text");
   const layer: Layer = {
-    id, name: "Text", type: "text", slot, ...centred(560, 160),
+    id, name: "Text", type: "text", slot: chosen, ...centred(560, 160),
     size: 48, weight: 600, fill: "ink", lineHeight: 1.2, tracking: -1.4, accent: "accent",
   };
-  const layers = [...layersOf(materialise(doc)), layer];
+  const layers = [...layersOf(base), layer];
   const next = withLayers(doc, layers);
   // A new text layer with no words is invisible, which looks like the button
   // did nothing — so it arrives with something to see and edit.
-  return { doc: { ...next, content: { ...next.content, [slot]: next.content[slot] ?? "New text" } }, id };
+  return { doc: { ...next, content: { ...next.content, [chosen]: next.content[chosen] ?? "New text" } }, id };
 }
 
 export function addRect(doc: DesignDoc): { doc: DesignDoc; id: string } {

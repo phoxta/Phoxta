@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { loadAssets } from "./assets";
 import { getTemplate, layersOf } from "./templates";
 import { boundsOf, hitTest, snapMove, type Gap, type Guide, type Viewport } from "./snap";
-import { fontStack, layoutText, measure } from "./layout";
+import { fontStack, heightOf, layoutText, measure, type Line } from "./layout";
 import { plain } from "./rich";
 import {
   CANVAS_H, CANVAS_W, paint, resolvePalette,
@@ -55,6 +55,37 @@ function useFontsReady(): boolean {
 
 
 
+/* ── Vertical alignment ──────────────────────────────────────────────────
+   Layout puts the first baseline just under the top of the box, because that
+   is what Figma exported and what every design saved so far expects. Vertical
+   alignment is therefore a SHIFT of the whole block rather than a different
+   layout: the slack between the copy's laid-out height and the box's height,
+   taken in half for middle and whole for bottom.
+
+   Doing it here rather than in layout.ts keeps the caret in the inline text
+   editor honest — the editor is positioned from the same number (see
+   `textTopOffset`), so the words do not jump when you click into them. */
+
+function valignOffset(l: TextLayer, lines: Line[]): number {
+  const how = l.valign ?? "top";
+  if (how === "top") return 0;
+  // Copy taller than its box overflows downward, as it always has. Pushing it
+  // further down to "centre" it would hide the first line off the top, which
+  // is a worse answer than the one the layout already gives.
+  const slack = l.h - heightOf(lines);
+  if (slack <= 0) return 0;
+  return how === "middle" ? slack / 2 : slack;
+}
+
+/**
+ * How far this layer's copy is pushed down by its vertical alignment.
+ *
+ * Exported so the inline text editor can be positioned over the glyphs rather
+ * than over where they would have been at the top of the box.
+ */
+export const textTopOffset = (l: TextLayer, value: Copy | undefined): number =>
+  valignOffset(l, layoutText(l, value));
+
 /* ── Layer painters ──────────────────────────────────────────────────────── */
 
 function TextLayerView({ l, value, palette }: { l: TextLayer; value: Copy | undefined; palette: Palette }) {
@@ -64,11 +95,12 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: Copy | unde
   const fontsReady = useFontsReady();
   const lines = useMemo(
     () => layoutText(l, value, fontsReady),
-    // fontsReady looks unused to the linter because measurement reads the font
-    // off a canvas rather than taking it as an argument. It is exactly the
+    // fontsReady is passed as an argument only so that it is honestly a
+    // dependency. Measurement reads the face off a canvas rather than taking
+    // it in, so nothing here consumes the value — but it is exactly the
     // dependency that matters: the same inputs measure differently once the
-    // webfont lands.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // webfont lands, and without re-running the block keeps the fallback
+    // face's line breaks.
     [l, value, fontsReady],
   );
 
@@ -76,6 +108,7 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: Copy | unde
 
   const anchor = l.align === "center" ? "middle" : l.align === "right" ? "end" : "start";
   const x = l.align === "center" ? l.x + l.w / 2 : l.align === "right" ? l.x + l.w : l.x;
+  const dy = valignOffset(l, lines);
 
   return (
     <text
@@ -90,7 +123,7 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: Copy | unde
       style={l.capitalize ? { textTransform: "capitalize" } : undefined}
     >
       {lines.map((line, i) => (
-        <tspan key={i} x={x} y={line.baseline}>
+        <tspan key={i} x={x} y={line.baseline + dy}>
           {line.pieces.map((piece, j) => {
             const st = piece.style;
             // Only differences from the parent <text> are emitted. Repeating
@@ -865,11 +898,17 @@ function LayerView({ l, doc, content, palette, asset, editable, uid, onPointerDo
       case "rect":
         return (
           <rect
+            /* Marked as the design's own, because the exporter strips dashed
+               outlines — that rule exists to kill the empty-photo-slot
+               placeholder, and without a mark it would also kill a dashed
+               border somebody chose on purpose. See export.ts. */
+            data-design="shape"
             x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0}
             fill={paint(l.fill, palette)}
             fillOpacity={l.opacity ?? 1}
             stroke={l.strokeColor ? paint(l.strokeColor, palette) : undefined}
             strokeWidth={l.strokeWidth ?? 0}
+            strokeDasharray={l.strokeDash ? `${l.strokeDash} ${Math.max(1, Math.round(l.strokeDash * 0.67))}` : undefined}
           />
         );
 
@@ -952,21 +991,58 @@ function LayerView({ l, doc, content, palette, asset, editable, uid, onPointerDo
     }
   })();
 
-  // Rotation, layer opacity and the page clip wrap whatever the layer
-  // painted, so every kind gets all three without each painter knowing about
-  // them. The clip is outermost: a rotated layer whose corner swings off the
-  // page has to be cut at the page edge, not at the edge it had before it
-  // turned.
+  // Rotation, mirroring, the drop shadow, layer opacity and the page clip all
+  // wrap whatever the layer painted, so every kind gets all five without any
+  // painter knowing about them. The clip is outermost: a rotated layer whose
+  // corner swings off the page has to be cut at the page edge, not at the edge
+  // it had before it turned — and a shadow must not fall outside the artboard
+  // either, because the artboard is the whole file.
+  const cx = l.x + l.w / 2;
+  const cy = l.y + l.h / 2;
+  const moves: string[] = [];
+  if (l.rotation) moves.push(`rotate(${l.rotation} ${cx} ${cy})`);
+  // The mirror is applied inside the rotation, about the layer's own centre, so
+  // "flip horizontal" mirrors the layer along the direction it is facing rather
+  // than along the screen — the same reason a rotated resize reads its drag in
+  // the layer's frame.
+  if (l.flipH || l.flipV) {
+    moves.push(`translate(${cx} ${cy}) scale(${l.flipH ? -1 : 1} ${l.flipV ? -1 : 1}) translate(${-cx} ${-cy})`);
+  }
+  const transform = moves.length ? moves.join(" ") : undefined;
+
+  // A shadow whose colour resolves to "none" is a transparent shadow, and
+  // flood-color="none" is not a colour the filter understands — it paints
+  // black. Dropping the filter is the honest reading of "no colour".
+  const shadowColour = l.shadow ? paint(l.shadow.color, palette) : "none";
+  const shadowId = l.shadow && shadowColour !== "none" ? `${uid}-sh-${l.id}` : null;
+
+  const painted = shadowId && l.shadow ? (
+    <>
+      <defs>
+        {/* The default filter region is 120% of the bounding box, which crops
+            any blur worth having. 200% about the centre is room for the
+            largest offset and blur the Inspector offers. */}
+        <filter id={shadowId} x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow
+            dx={l.shadow.dx}
+            dy={l.shadow.dy}
+            stdDeviation={Math.max(0, l.shadow.blur) / 2}
+            floodColor={shadowColour}
+            floodOpacity={l.shadow.opacity ?? 0.35}
+          />
+        </filter>
+      </defs>
+      <g filter={`url(#${shadowId})`}>{body}</g>
+    </>
+  ) : body;
+
   const wrapped = (
     <g clipPath={`url(#${uid}-page)`}>
-      {(l.rotation || l.alpha != null) ? (
-        <g
-          transform={l.rotation ? `rotate(${l.rotation} ${l.x + l.w / 2} ${l.y + l.h / 2})` : undefined}
-          opacity={l.alpha ?? 1}
-        >
-          {body}
+      {(transform || l.alpha != null) ? (
+        <g transform={transform} opacity={l.alpha ?? 1}>
+          {painted}
         </g>
-      ) : body}
+      ) : painted}
     </g>
   );
 

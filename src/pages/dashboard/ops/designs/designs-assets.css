@@ -1,0 +1,230 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Asset library (.dsn-as-*)
+   ───────────────────────────────────────────────────────────────────────
+   The four-tab picture library inside the graphics studio's dialog.
+
+   Lives in its own file rather than in designs.css: this is the only part
+   of the studio with a stored-asset grid, and keeping it separate means the
+   library can be worked on without touching the canvas chrome.
+
+   It EXTENDS the .dsn-lib__* rules in ../designs.css — the modal, the tab
+   strip, the search row and the base grid are all defined there and are
+   deliberately not repeated. Everything below either adds a piece those
+   rules do not have, or overrides one that is too broad for a card with
+   actions on it (.dsn-lib__grid button assumes every button in the grid is
+   the picture itself, which stopped being true here).
+
+   Built on the hrx tokens so it reads as part of the console.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── The asset grid ────────────────────────────────────────────────────── */
+
+/* With no assets the grid must not hold open the space the empty state
+   needs — an invitation pinned to the bottom of a tall blank box reads as an
+   error, not an invitation. */
+.dsn-as__grid:empty { display: none; }
+
+.dsn-as__card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* The picture itself keeps the grid's button treatment. */
+.dsn-as__pick {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--hrx-soft);
+  cursor: pointer;
+}
+
+/* A checkerboard behind transparent PNGs — a cut-out logo on a white card is
+   invisible, and someone will click it three times before working that out. */
+.dsn-as__pick::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(45deg, rgb(0 0 0 / 6%) 25%, transparent 25%, transparent 75%, rgb(0 0 0 / 6%) 75%),
+    linear-gradient(45deg, rgb(0 0 0 / 6%) 25%, transparent 25%, transparent 75%, rgb(0 0 0 / 6%) 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 7px 7px;
+}
+
+.dsn-as__pick img { position: relative; }
+.dsn-as__pick:hover img { opacity: 0.88; }
+
+.dsn-as__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dsn-as__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--hrx-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsn-as__acts {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+}
+
+/* Overrides .dsn-lib__grid button, which stretches every button in the grid
+   to the full card width on the assumption that it is the picture. */
+.dsn-lib__grid .dsn-as__act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 7px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--hrx-muted);
+  cursor: pointer;
+}
+
+.dsn-lib__grid .dsn-as__act:hover:not(:disabled) {
+  background: var(--hrx-soft);
+  border-color: var(--hrx-border);
+  color: var(--hrx-ink);
+}
+
+.dsn-lib__grid .dsn-as__act.is-danger:hover:not(:disabled) {
+  background: rgb(220 38 38 / 10%);
+  border-color: transparent;
+  color: #dc2626;
+}
+
+.dsn-lib__grid .dsn-as__act:disabled { opacity: 0.4; cursor: default; }
+
+/* ── Empty state ───────────────────────────────────────────────────────── */
+
+.dsn-as__empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.dsn-as__empty-h {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--hrx-ink);
+}
+
+.dsn-as__empty .dsn-note { max-width: 42ch; margin: 0; }
+.dsn-as__empty .dsn-btn { margin-top: 8px; }
+
+/* ── Upload ────────────────────────────────────────────────────────────── */
+
+.dsn-as__drop { transition: background-color 0.12s ease, border-color 0.12s ease; }
+.dsn-as__drop.is-over { border-color: var(--hrx-blue, #195ce5); background: var(--hrx-soft); }
+
+.dsn-as__drop-h {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--hrx-ink);
+}
+
+.dsn-as__drop input[type="file"] { max-width: 100%; }
+.dsn-as__drop .dsn-note { margin-top: 8px; }
+
+.dsn-as__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--hrx-muted);
+}
+
+.dsn-as__bar {
+  flex: 1 1 auto;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--hrx-soft);
+  border: 1px solid var(--hrx-border-soft, var(--hrx-border));
+  overflow: hidden;
+}
+
+.dsn-as__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--hrx-blue, #195ce5);
+  transition: width 0.2s ease;
+}
+
+/* ── Generate ──────────────────────────────────────────────────────────── */
+
+.dsn-as__gen { display: flex; flex-direction: column; gap: 8px; }
+.dsn-as__prompt { width: 100%; resize: vertical; min-height: 68px; }
+
+.dsn-as__genrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Same segmented affordance as the tab strip above it, one size down —
+   orientation is a choice between three fixed things, which is what a
+   segmented control is for and what a dropdown is not. */
+.dsn-as__segs {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--hrx-soft);
+}
+
+.dsn-as__segs button {
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--hrx-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dsn-as__segs button.is-on {
+  background: var(--hrx-card);
+  color: var(--hrx-ink);
+  box-shadow: 0 1px 3px rgb(20 25 78 / 12%);
+}
+
+.dsn-as__segs button:disabled { opacity: 0.5; cursor: default; }
+
+@media (max-width: 560px) {
+  .dsn-as__genrow { flex-direction: column; align-items: stretch; }
+  .dsn-as__genrow .dsn-btn { justify-content: center; }
+}
