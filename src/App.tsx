@@ -72,6 +72,7 @@ const BroadcastsPage = lazy(() => import("@/pages/dashboard/ops/engage/Broadcast
 const ChannelsPage = lazy(() => import("@/pages/dashboard/ops/engage/ChannelsPage"));
 const InsightsPage = lazy(() => import("@/pages/dashboard/ops/engage/InsightsPage"));
 const OpsHelpCenterPage = lazy(() => import("@/pages/dashboard/ops/HelpCenterPage"));
+const OpsDesignsPage = lazy(() => import("@/pages/dashboard/ops/DesignsPage"));
 const OpsInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
 const OpsSettingsPage = lazy(() => import("@/pages/dashboard/ops/SettingsPage"));
 const OpsPlatformPage = lazy(() => import("@/pages/dashboard/ops/PlatformPage"));
@@ -169,6 +170,8 @@ export default function App() {
             <Route path="marketing" element={<KeepSearch to="../engage/broadcasts" />} />
             {/* Public knowledge base — published articles appear at /help/:org. */}
             <Route path="help-center" element={<OpsHelpCenterPage />} />
+            {/* The graphics studio — social posts from the agency template pack. */}
+            <Route path="designs" element={<OpsDesignsPage />} />
             <Route path="settings" element={<OpsSettingsPage />} />
             {/* Google Workspace lives inside Settings now — the route stays valid
                 (Settings links into it) but it's no longer a top-level tab. */}

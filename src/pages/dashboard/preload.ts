@@ -35,6 +35,7 @@ export const OPS_PRELOADERS: Record<string, Loader> = {
   bookings: () => import("@/pages/dashboard/ops/BookingsPage"),
   reservations: () => import("@/pages/dashboard/ops/ReservationsPage"),
   "help-center": () => import("@/pages/dashboard/ops/HelpCenterPage"),
+  designs: () => import("@/pages/dashboard/ops/DesignsPage"),
   settings: () => import("@/pages/dashboard/ops/SettingsPage"),
   // Not tabs anymore, but still routed (redirects/links) — keep chunks warm.
   google: () => import("@/pages/dashboard/ops/google/GoogleWorkspacePage"),

@@ -1,0 +1,204 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&display=swap");
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Graphics studio (.dsn-*)
+   ───────────────────────────────────────────────────────────────────────
+   Console chrome only. The artwork inside the canvas is the Figma pack's
+   own design and is drawn by the SVG renderer — nothing here styles it,
+   because a rule that reached into the canvas would change the exported
+   PNG without appearing in the editor's own preview.
+
+   Built on the hrx kit's variables so this reads as part of the console.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.dsn-note {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--hrx-muted);
+  margin: 10px 0 0;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+
+.dsn-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--hrx-border);
+  background: var(--hrx-card);
+  color: var(--hrx-ink);
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dsn-btn:hover:not(:disabled) { background: var(--hrx-soft); }
+.dsn-btn:disabled { opacity: 0.5; cursor: default; }
+.dsn-btn--solid { background: var(--hrx-ink); border-color: var(--hrx-ink); color: #fff; }
+.dsn-btn--solid:hover:not(:disabled) { opacity: 0.86; background: var(--hrx-ink); }
+.dsn-btn--sm { padding: 6px 10px; font-size: 13px; border-radius: 8px; }
+
+/* ── New post ──────────────────────────────────────────────────────────── */
+
+.dsn-brief { display: flex; gap: 10px; flex-wrap: wrap; }
+.dsn-input { flex: 1 1 320px; min-width: 0; }
+
+.dsn-templates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.dsn-template {
+  border: 1px solid var(--hrx-border);
+  background: var(--hrx-card);
+  border-radius: 14px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dsn-template:hover { border-color: var(--hrx-ink); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07); }
+
+/* The preview is the real renderer at 150px, not a bitmap — so a template
+   change shows up in the picker without anyone re-exporting thumbnails. */
+.dsn-template__art { display: block; border-radius: 8px; overflow: hidden; background: var(--hrx-soft); }
+.dsn-template__name { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--hrx-ink); }
+
+/* ── Library ───────────────────────────────────────────────────────────── */
+
+.dsn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.dsn-tile { border: 1px solid var(--hrx-border); border-radius: 16px; overflow: hidden; background: var(--hrx-card); }
+
+.dsn-tile__art {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: var(--hrx-soft);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.dsn-tile__foot { display: flex; align-items: center; gap: 8px; padding: 12px 14px; }
+.dsn-tile__name { display: block; font-size: 14px; font-weight: 600; color: var(--hrx-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dsn-tile__meta { display: block; font-size: 12px; color: var(--hrx-muted); }
+
+.dsn-x {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--hrx-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  flex: none;
+}
+
+.dsn-x:hover { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+
+/* ── Editor ────────────────────────────────────────────────────────────── */
+
+.dsn-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+}
+
+.dsn-title { flex: 1 1 220px; min-width: 0; font-weight: 600; }
+.dsn-bar__right { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+
+.dsn-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .dsn-editor { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The canvas sits on a neutral ground so a white template still reads as a
+   sheet rather than as the page. */
+.dsn-stage {
+  background: var(--hrx-soft);
+  border: 1px solid var(--hrx-border);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  position: sticky;
+  top: 16px;
+}
+
+@media (max-width: 1100px) { .dsn-stage { position: static; } }
+
+.dsn-panel {
+  border: 1px solid var(--hrx-border);
+  border-radius: 16px;
+  background: var(--hrx-card);
+  padding: 4px 18px 18px;
+}
+
+.dsn-sec { padding: 16px 0; border-bottom: 1px solid var(--hrx-border-soft, var(--hrx-border)); }
+.dsn-sec:last-of-type { border-bottom: 0; }
+.dsn-sec__h { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hrx-muted); margin: 0 0 12px; }
+
+.dsn-field { display: block; margin-bottom: 12px; }
+.dsn-field__k { display: block; font-size: 12px; font-weight: 500; color: var(--hrx-muted); margin-bottom: 5px; }
+
+/* The field for the layer selected on the canvas, so clicking the artwork and
+   finding the right box are the same action. */
+.dsn-field.is-on .hrx-input { border-color: var(--hrx-blue, #1c56fd); box-shadow: 0 0 0 3px rgba(28, 86, 253, 0.14); }
+
+.dsn-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.dsn-layout {
+  border: 1px solid var(--hrx-border);
+  background: var(--hrx-card);
+  color: var(--hrx-ink);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dsn-layout:hover { background: var(--hrx-soft); }
+.dsn-layout.is-on { background: var(--hrx-ink); border-color: var(--hrx-ink); color: #fff; }
+
+.dsn-img { display: flex; align-items: center; gap: 10px; }
+.dsn-img__thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--hrx-border); }
+.dsn-img__empty {
+  width: 64px; height: 64px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--hrx-border); border-radius: 8px;
+  font-size: 11px; color: var(--hrx-muted);
+}
+.dsn-img__acts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.dsn-colour { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.dsn-colour input[type="color"] {
+  width: 34px; height: 30px; padding: 0;
+  border: 1px solid var(--hrx-border); border-radius: 7px;
+  background: none; cursor: pointer;
+}
+.dsn-colour .dsn-field__k { margin: 0; text-transform: capitalize; }
+.dsn-hex { margin-left: auto; font-size: 12px; color: var(--hrx-muted); }

@@ -96,6 +96,11 @@ verify_jwt = false
 [functions.idea-run]
 verify_jwt = true
 
+# Writes a social post from a brief: copy, Pexels photographs, brand colours.
+# Signed-in only — it spends model tokens and writes into a tenant's library.
+[functions.design-generate]
+verify_jwt = true
+
 # Fills in the photograph for stages generated before idea-run resolved one.
 # Signed-in only: it spends the Pexels quota and writes to an idea.
 [functions.idea-image]
