@@ -79,6 +79,10 @@ type Base = {
   /** Shown in the layers panel. Falls back to the layer's kind and slot. */
   name?: string;
   x: number; y: number; w: number; h: number;
+  /** Degrees, clockwise, about the layer's own centre. */
+  rotation?: number;
+  /** 0-1. Applies to the whole layer, on top of any fill opacity. */
+  alpha?: number;
   /** Locked layers are skipped by click and drag — the backgrounds mostly, so
    *  dragging across a design does not pick the canvas up by mistake. */
   locked?: boolean;
@@ -129,6 +133,23 @@ export type ImageLayer = Base & {
   radius?: number;
   /** An exported shape that clips the photo — the blobs and circles. */
   mask?: string;
+  /**
+   * The crop.
+   *
+   * `fit` chooses between filling the frame and cropping ("cover", the
+   * default) or fitting the whole photograph inside it ("contain"). `zoom`
+   * then scales the photo within the frame and `panX`/`panY` slide it, both as
+   * a fraction of the frame's size.
+   *
+   * This exists because "cover" picks the centre of the photograph, and the
+   * centre is very often not the subject — a portrait dropped into a wide
+   * frame gets cropped to a torso. Without a crop the only remedy is to go and
+   * find a differently-shaped photograph.
+   */
+  fit?: "cover" | "contain";
+  zoom?: number;
+  panX?: number;
+  panY?: number;
   /** Drawn under the photo, so a slot with no photo yet is still a shape. */
   plate?: PaintRole;
 };

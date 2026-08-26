@@ -199,3 +199,156 @@ export class History {
   get canUndo() { return this.past.length > 0; }
   get canRedo() { return this.future.length > 0; }
 }
+
+/* ── Many at once ────────────────────────────────────────────────────────── */
+
+/** Move a set of layers by the same delta — how a multi-selection drags. */
+export function moveMany(doc: DesignDoc, ids: string[], base: Record<string, { x: number; y: number }>, dx: number, dy: number): DesignDoc {
+  let next = materialise(doc);
+  for (const id of ids) {
+    const b = base[id];
+    if (!b) continue;
+    next = updateLayer(next, id, { x: b.x + dx, y: b.y + dy });
+  }
+  return next;
+}
+
+/**
+ * Align a set to its own bounds, not to the canvas.
+ *
+ * With one layer selected, aligning to the canvas is what someone means. With
+ * several, they mean align these to each other — aligning them all to the
+ * canvas edge would stack them on top of one another, which is never the
+ * intent and destroys the arrangement in one click.
+ */
+export function alignMany(doc: DesignDoc, ids: string[], how: "left" | "hcentre" | "right" | "top" | "vcentre" | "bottom"): DesignDoc {
+  const all = layersOf(doc);
+  const sel = all.filter((l) => ids.includes(l.id));
+  if (sel.length < 2) return ids[0] ? align(doc, ids[0], how) : doc;
+
+  const x0 = Math.min(...sel.map((l) => l.x));
+  const x1 = Math.max(...sel.map((l) => l.x + l.w));
+  const y0 = Math.min(...sel.map((l) => l.y));
+  const y1 = Math.max(...sel.map((l) => l.y + l.h));
+
+  let next = materialise(doc);
+  for (const l of sel) {
+    const patch =
+      how === "left" ? { x: x0 }
+        : how === "right" ? { x: x1 - l.w }
+          : how === "hcentre" ? { x: (x0 + x1) / 2 - l.w / 2 }
+            : how === "top" ? { y: y0 }
+              : how === "bottom" ? { y: y1 - l.h }
+                : { y: (y0 + y1) / 2 - l.h / 2 };
+    next = updateLayer(next, l.id, patch);
+  }
+  return next;
+}
+
+/** Even gaps along an axis. Needs three: two are already evenly spaced. */
+export function distribute(doc: DesignDoc, ids: string[], axis: "h" | "v"): DesignDoc {
+  const sel = layersOf(doc).filter((l) => ids.includes(l.id));
+  if (sel.length < 3) return doc;
+
+  const key = axis === "h" ? "x" : "y";
+  const size = axis === "h" ? "w" : "h";
+  const sorted = [...sel].sort((a, b) => a[key] - b[key]);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const span = (last[key] + last[size]) - first[key];
+  const used = sorted.reduce((n, l) => n + l[size], 0);
+  const gap = (span - used) / (sorted.length - 1);
+
+  let next = materialise(doc);
+  let at = first[key];
+  for (const l of sorted) {
+    next = updateLayer(next, l.id, { [key]: Math.round(at) } as Partial<Layer>);
+    at += l[size] + gap;
+  }
+  return next;
+}
+
+export function removeMany(doc: DesignDoc, ids: string[]): DesignDoc {
+  return withLayers(doc, layersOf(materialise(doc)).filter((l) => !ids.includes(l.id)));
+}
+
+/* ── Clipboard ───────────────────────────────────────────────────────────
+   Module-level rather than the system clipboard: these are layer objects, not
+   text, and writing JSON into the OS clipboard would mean anything the user
+   copied afterwards silently broke paste. It lives for the session, which is
+   the length of time a copied layer is useful for. */
+
+let clip: Layer[] = [];
+
+export const copyLayers = (doc: DesignDoc, ids: string[]) => {
+  clip = layersOf(doc).filter((l) => ids.includes(l.id)).map((l) => ({ ...l }));
+  return clip.length;
+};
+
+export const cutLayers = (doc: DesignDoc, ids: string[]): DesignDoc => {
+  copyLayers(doc, ids);
+  return removeMany(doc, ids);
+};
+
+export const canPaste = () => clip.length > 0;
+
+export function pasteLayers(doc: DesignDoc): { doc: DesignDoc; ids: string[] } {
+  if (!clip.length) return { doc, ids: [] };
+  const copies = clip.map((l) => ({ ...l, id: freshId(l.type), x: l.x + 24, y: l.y + 24 }));
+  return { doc: withLayers(doc, [...layersOf(materialise(doc)), ...copies]), ids: copies.map((c) => c.id) };
+}
+
+/** Rename, for the layers panel. */
+export const renameLayer = (doc: DesignDoc, id: string, name: string): DesignDoc =>
+  updateLayer(doc, id, { name: name.trim() || undefined } as Partial<Layer>);
+
+/**
+ * Scale a set of layers as though they were one object.
+ *
+ * `from` is the union box the gesture started with and `to` is where it ended;
+ * every layer's position and size is remapped between them. Type, corner radii
+ * and stroke weights scale too — a group resize that moved the boxes but left
+ * 96px headlines at 96px would produce something that has to be repaired by
+ * hand afterwards, which is worse than not offering the handle.
+ *
+ * Type scales by the GEOMETRIC MEAN of the two axes rather than by either one.
+ * A non-uniform stretch has no single correct answer for a font size; the mean
+ * is the one that keeps the block's area right and, more usefully, is the one
+ * that agrees with both axes when the drag was proportional — which is the
+ * common case, and the case where being wrong would be obvious.
+ */
+export function scaleMany(
+  doc: DesignDoc,
+  ids: string[],
+  from: { x: number; y: number; w: number; h: number },
+  to: { x: number; y: number; w: number; h: number },
+): DesignDoc {
+  // A zero-width union would divide by zero and send every layer to NaN, which
+  // renders as an empty canvas — a spectacular failure for a stray gesture.
+  if (from.w < 1 || from.h < 1) return doc;
+  const sx = to.w / from.w;
+  const sy = to.h / from.h;
+  const st = Math.sqrt(Math.abs(sx * sy));
+  const set = new Set(ids);
+
+  return {
+    ...doc,
+    layers: layersOf(doc).map((l) => {
+      if (!set.has(l.id)) return l;
+      const next: Layer = {
+        ...l,
+        x: to.x + (l.x - from.x) * sx,
+        y: to.y + (l.y - from.y) * sy,
+        w: Math.max(1, l.w * sx),
+        h: Math.max(1, l.h * sy),
+      };
+      if ("radius" in next && next.radius) next.radius = next.radius * st;
+      if ("strokeWidth" in next && next.strokeWidth) next.strokeWidth = next.strokeWidth * st;
+      if (next.type === "text") {
+        next.size = Math.max(4, next.size * st);
+        if (next.tracking) next.tracking = next.tracking * st;
+      }
+      return next;
+    }),
+  };
+}

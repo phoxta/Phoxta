@@ -8,12 +8,17 @@ import {
 } from "@/lib/db/designs";
 import { DesignSvg } from "@/lib/designs/render";
 import { exportPng, downloadPng } from "@/lib/designs/export";
-import { TEMPLATES, getTemplate, layerName, layersOf, textSlotsOf } from "@/lib/designs/templates";
+import { TEMPLATES, getTemplate, layerName, layersOf } from "@/lib/designs/templates";
 import {
-  History, addImage, addRect, addText, align, bringForward, bringToFront,
-  duplicateLayer, nudge, removeLayer, sendBackward, sendToBack, toggle, updateLayer,
+  History, addImage, addRect, addText, alignMany, bringForward, bringToFront,
+  canPaste, copyLayers, cutLayers, distribute, duplicateLayer, moveMany, nudge,
+  pasteLayers, removeMany, renameLayer, scaleMany, sendBackward, sendToBack, toggle, updateLayer,
 } from "@/lib/designs/edit";
-import { DEFAULT_PALETTE, emptyDoc, type DesignDoc, type Layer, type TextSlot } from "@/lib/designs/types";
+import { centred, fitTo, zoomAt, type Viewport } from "@/lib/designs/snap";
+import {
+  CANVAS_H, CANVAS_W, DEFAULT_PALETTE, emptyDoc, paint,
+  type DesignDoc, type Layer, type TextSlot,
+} from "@/lib/designs/types";
 import "./designs.css";
 
 /**
@@ -42,22 +47,6 @@ const I_DOWN = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidd
 const I_SPARK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>;
 const I_PLUS = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
 
-/** Field labels — slot names are storage, not language. */
-const LABELS: Record<string, string> = {
-  title: "Headline",
-  subtitle: "Sub-heading",
-  description: "Body",
-  statistic: "Big number",
-  testimonial: "Quote",
-  quote: "Attribution",
-  cta: "Button",
-  score: "Badge",
-  point1: "Tag 1",
-  point2: "Tag 2",
-  point3: "Tag 3",
-  phone: "Phone",
-  website: "Website",
-};
 
 export default function DesignsPage() {
   const { orgId, org } = useOutletContext<OpsContext>();
@@ -213,25 +202,52 @@ function NewDesign({ orgId, onMade }: { orgId: string; onMade: (d: Design) => vo
 function Editor({ design, orgName, onClose }: { design: Design; orgName: string; onClose: () => void }) {
   const [doc, setDoc] = useState<DesignDoc>(() => ({ ...emptyDoc(design.template_id), ...design.doc }));
   const [title, setTitle] = useState(design.title);
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSel] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<"" | "saving" | "exporting" | "writing">("");
+  const [view, setView] = useState<Viewport | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const history = useRef(new History());
   const [, force] = useState(0);
 
   const template = getTemplate(doc.templateId);
   const layers = layersOf(doc);
-  const selected = layers.find((l) => l.id === sel) ?? null;
+  const chosen = layers.filter((l) => sel.includes(l.id));
+  const one = chosen.length === 1 ? chosen[0] : null;
   const content = useMemo(() => ({ ...(template?.content ?? {}), ...doc.content }), [template, doc.content]);
 
-  /**
-   * Every edit goes through here.
-   *
-   * One place that records history and marks the document dirty, so no new
-   * action can be added that forgets to be undoable — the commonest way an
-   * editor ends up with an undo stack that has holes in it.
-   */
+  /* ── Viewport ──────────────────────────────────────────────────────────
+     Fitted to the stage on mount and whenever the stage resizes, so opening
+     an editor never starts scrolled into a corner of the artboard. */
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const fit = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 40 && r.height > 40) setView(fitTo(r.width, r.height));
+    };
+    fit();
+    const ro = new ResizeObserver(() => { if (!view) fit(); });
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const stageBox = () => stage.current?.getBoundingClientRect() ?? { width: 800, height: 600 } as DOMRect;
+
+  const zoomBy = (f: number) => setView((v) => {
+    if (!v) return v;
+    const r = stageBox();
+    return zoomAt(v, f, v.x + r.width / v.zoom / 2, v.y + r.height / v.zoom / 2);
+  });
+
+  const fitView = () => { const r = stageBox(); setView(fitTo(r.width, r.height)); };
+  const actualSize = () => { const r = stageBox(); setView(centred(1, r.width, r.height)); };
+
+  /* ── Edits ─────────────────────────────────────────────────────────────
+     One place that records history and marks the document dirty, so no new
+     action can be added that forgets to be undoable. */
   const apply = useCallback((next: DesignDoc | ((d: DesignDoc) => DesignDoc), record = true) => {
     setDoc((d) => {
       const value = typeof next === "function" ? next(d) : next;
@@ -243,80 +259,138 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     force((n) => n + 1);
   }, []);
 
-  const undo = useCallback(() => {
-    setDoc((d) => history.current.undo(d) ?? d);
-    setDirty(true);
-    force((n) => n + 1);
-  }, []);
+  const undo = useCallback(() => { setDoc((d) => history.current.undo(d) ?? d); setDirty(true); force((n) => n + 1); }, []);
+  const redo = useCallback(() => { setDoc((d) => history.current.redo(d) ?? d); setDirty(true); force((n) => n + 1); }, []);
 
-  const redo = useCallback(() => {
-    setDoc((d) => history.current.redo(d) ?? d);
-    setDirty(true);
-    force((n) => n + 1);
-  }, []);
+  /* ── Dragging ──────────────────────────────────────────────────────────
+     A multi-selection moves together. The positions every selected layer had
+     when the gesture began are captured on the first move — deriving the delta
+     from the previous frame instead would accumulate rounding, and a long drag
+     would visibly shear the selection apart. */
+  const dragBase = useRef<Record<string, { x: number; y: number }> | null>(null);
 
-  /**
-   * Geometry from the canvas.
-   *
-   * Live drags do not record history — only the release does. Otherwise
-   * dragging a headline across the canvas would bury the previous state under
-   * four hundred intermediate ones and undo would move it back a pixel.
-   */
-  const onGeometry = useCallback((id: string, box: { x: number; y: number; w: number; h: number }, commit: boolean) => {
-    if (commit) {
-      // The pre-drag document was pushed on the first move, so the commit only
-      // has to write the final box.
-      apply((d) => updateLayer(d, id, box), false);
-      setDirty(true);
-      return;
-    }
+  const onGeometry = useCallback((id: string, b: { x: number; y: number; w: number; h: number; rotation?: number }, commit: boolean) => {
     setDoc((d) => {
-      if (!dragging.current) { history.current.push(d); dragging.current = true; }
-      return updateLayer(d, id, box);
-    });
-  }, [apply]);
+      const current = layersOf(d);
+      // A rotation is always one layer, even when several are selected: the
+      // group frame offers no rotate grip. Routing it through the multi-move
+      // path would read the angle as a position and shove the selection.
+      const multi = b.rotation === undefined && sel.length > 1 && sel.includes(id);
 
-  const dragging = useRef(false);
-  useEffect(() => {
-    const stop = () => { dragging.current = false; };
-    window.addEventListener("pointerup", stop);
-    return () => window.removeEventListener("pointerup", stop);
+      if (!dragBase.current) {
+        history.current.push(d);
+        dragBase.current = Object.fromEntries(current.filter((l) => sel.includes(l.id)).map((l) => [l.id, { x: l.x, y: l.y }]));
+      }
+
+      if (multi) {
+        const base = dragBase.current[id];
+        return base ? moveMany(d, sel, dragBase.current, b.x - base.x, b.y - base.y) : d;
+      }
+      return updateLayer(d, id, b);
+    });
+    setDirty(true);
+    if (commit) { dragBase.current = null; force((n) => n + 1); }
+  }, [sel]);
+
+  /* A group resize is computed from the document as it was when the gesture
+     started, not from the last frame. Re-scaling an already-scaled document
+     sixty times a second compounds the factor and the selection races off the
+     artboard within half a drag. */
+  const scaleBase = useRef<DesignDoc | null>(null);
+
+  const onTransform = useCallback((
+    from: { x: number; y: number; w: number; h: number },
+    to: { x: number; y: number; w: number; h: number },
+    commit: boolean,
+  ) => {
+    setDoc((d) => {
+      if (!scaleBase.current) { history.current.push(d); scaleBase.current = d; }
+      return scaleMany(scaleBase.current, sel, from, to);
+    });
+    setDirty(true);
+    if (commit) { scaleBase.current = null; force((n) => n + 1); }
+  }, [sel]);
+
+  const select = useCallback((id: string | null, additive?: boolean) => {
+    if (!id) return setSel([]);
+    setSel((s) => (additive ? (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]) : [id]));
   }, []);
 
-  /* ── Keyboard ─────────────────────────────────────────────────────────
-     The shortcuts a designer reaches for without thinking. Ignored while a
-     field has focus, or arrow keys would nudge a layer instead of moving the
-     caret through the word someone is typing. */
+  /* ── Keyboard ───────────────────────────────────────────────────────── */
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const el = document.activeElement;
       const typing = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
       const meta = e.metaKey || e.ctrlKey;
 
-      if (meta && e.key.toLowerCase() === "z") {
+      if (meta && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+      if (typing) return;
+
+      if (meta && e.key === "0") { e.preventDefault(); return actualSize(); }
+      if (meta && (e.key === "=" || e.key === "+")) { e.preventDefault(); return zoomBy(1.2); }
+      if (meta && e.key === "-") { e.preventDefault(); return zoomBy(1 / 1.2); }
+      if (e.key === "1" && !meta) { e.preventDefault(); return fitView(); }
+      if (meta && e.key.toLowerCase() === "a") {
         e.preventDefault();
-        if (e.shiftKey) redo(); else undo();
+        return setSel(layersOf(doc).filter((l) => !l.locked).map((l) => l.id));
+      }
+
+      if (meta && e.key.toLowerCase() === "c") { e.preventDefault(); if (copyLayers(doc, sel)) toast(`${sel.length} copied.`); return; }
+      if (meta && e.key.toLowerCase() === "x") { e.preventDefault(); if (sel.length) { apply((d) => cutLayers(d, sel)); setSel([]); } return; }
+      if (meta && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        if (!canPaste()) return;
+        apply((d) => { const r = pasteLayers(d); setSel(r.ids); return r.doc; });
         return;
       }
-      if (typing || !sel) return;
 
+      if (!sel.length) return;
       const step = e.shiftKey ? 10 : 1;
-      if (e.key === "ArrowLeft") { e.preventDefault(); apply((d) => nudge(d, sel, -step, 0)); }
-      else if (e.key === "ArrowRight") { e.preventDefault(); apply((d) => nudge(d, sel, step, 0)); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); apply((d) => nudge(d, sel, 0, -step)); }
-      else if (e.key === "ArrowDown") { e.preventDefault(); apply((d) => nudge(d, sel, 0, step)); }
-      else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); apply((d) => removeLayer(d, sel)); setSel(null); }
-      else if (meta && e.key.toLowerCase() === "d") {
+      const nudgeAll = (dx: number, dy: number) => {
         e.preventDefault();
-        apply((d) => { const r = duplicateLayer(d, sel); setSel(r.id); return r.doc; });
+        apply((d) => sel.reduce((acc, id) => nudge(acc, id, dx, dy), d));
+      };
+      if (e.key === "ArrowLeft") return nudgeAll(-step, 0);
+      if (e.key === "ArrowRight") return nudgeAll(step, 0);
+      if (e.key === "ArrowUp") return nudgeAll(0, -step);
+      if (e.key === "ArrowDown") return nudgeAll(0, step);
+      if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); apply((d) => removeMany(d, sel)); setSel([]); return; }
+      if (meta && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        apply((d) => { const r = duplicateLayer(d, sel[0]); setSel([r.id]); return r.doc; });
+        return;
       }
-      else if (e.key === "]") { e.preventDefault(); apply((d) => bringForward(d, sel)); }
-      else if (e.key === "[") { e.preventDefault(); apply((d) => sendBackward(d, sel)); }
-      else if (e.key === "Escape") setSel(null);
+      if (e.key === "]") { e.preventDefault(); apply((d) => sel.reduce((a, id) => bringForward(a, id), d)); }
+      else if (e.key === "[") { e.preventDefault(); apply((d) => sel.reduce((a, id) => sendBackward(a, id), d)); }
+      else if (e.key === "Escape") setSel([]);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sel, apply, undo, redo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel, doc, apply, undo, redo]);
+
+  /* ── Wheel zoom ────────────────────────────────────────────────────────
+     Non-passive, because preventDefault on a passive listener is ignored and
+     the browser zooms the whole page instead of the canvas. React's onWheel is
+     passive, so this is attached by hand. */
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const svg = el.querySelector("svg");
+      const r = (svg ?? el).getBoundingClientRect();
+      setView((v) => {
+        if (!v) return v;
+        const cx = v.x + (e.clientX - r.left) / v.zoom;
+        const cy = v.y + (e.clientY - r.top) / v.zoom;
+        return zoomAt(v, e.deltaY < 0 ? 1.1 : 1 / 1.1, cx, cy);
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   async function save() {
     setBusy("saving");
@@ -332,7 +406,11 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     if (!svg) return toastError("The canvas is not ready yet.");
     setBusy("exporting");
     try {
-      const { blob } = await exportPng(svg as SVGSVGElement, doc);
+      // Exported from a clone with the whole artboard in view, so what lands in
+      // the file never depends on where the editor happens to be scrolled.
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
+      const { blob } = await exportPng(clone, doc);
       downloadPng(blob, title || "post");
       toast("Downloaded.");
     } catch (e) {
@@ -352,8 +430,6 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     apply((d) => ({
       ...d,
       content: data.content as Partial<Record<TextSlot, string>>,
-      // Photos already chosen are kept: rewriting the words should not throw
-      // away a picture someone picked on purpose.
       images: { ...(data.images as DesignDoc["images"]), ...d.images },
       palette: (data.palette as DesignDoc["palette"]) ?? d.palette,
     }));
@@ -363,21 +439,20 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   if (!template) return <p className="dsn-note">That template no longer exists.</p>;
 
   const palette = { ...DEFAULT_PALETTE, ...(template.palette ?? {}), ...(doc.palette ?? {}) };
-  const textSlot = selected && (selected.type === "text" || selected.type === "chip") ? selected.slot : null;
+  const stageRect = stage.current?.getBoundingClientRect();
+  const patch = (p: Partial<Layer>, record = true) => one && apply((d) => updateLayer(d, one.id, p), record);
 
   return (
     <div className="d-flex flex-column" style={{ gap: 8 }}>
+      {/* ── Top bar ──────────────────────────────────────────────────── */}
       <div className="dsn-bar">
         <button type="button" className="dsn-btn" onClick={() => {
           if (dirty && !window.confirm("Close without saving?")) return;
           onClose();
         }}>{I_BACK}Back</button>
 
-        <input
-          className="hrx-input dsn-title" value={title}
-          onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
-          aria-label="Post name"
-        />
+        <input className="hrx-input dsn-title" value={title}
+               onChange={(e) => { setTitle(e.target.value); setDirty(true); }} aria-label="Post name" />
 
         <div className="dsn-bar__right">
           <button type="button" className="dsn-btn" onClick={undo} disabled={!history.current.canUndo} title="Undo (Ctrl+Z)">↺</button>
@@ -394,69 +469,104 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
         </div>
       </div>
 
-      {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+      {/* ── Tools ────────────────────────────────────────────────────── */}
       <div className="dsn-tools">
         <span className="dsn-tools__g">
-          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addText(d); setSel(r.id); return r.doc; })}>+ Text</button>
-          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addRect(d); setSel(r.id); return r.doc; })}>+ Shape</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addText(d); setSel([r.id]); return r.doc; })}>+ Text</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addRect(d); setSel([r.id]); return r.doc; })}>+ Shape</button>
           <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => {
             const r = addImage(d);
             if (!r) { toastError("All three photo slots are already on the canvas."); return d; }
-            setSel(r.id);
+            setSel([r.id]);
             return r.doc;
           })}>+ Photo</button>
         </span>
 
         <span className="dsn-tools__g">
-          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel} onClick={() => sel && apply((d) => bringToFront(d, sel))} title="Bring to front">⤒</button>
-          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel} onClick={() => sel && apply((d) => bringForward(d, sel))} title="Bring forward ( ] )">↑</button>
-          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel} onClick={() => sel && apply((d) => sendBackward(d, sel))} title="Send backward ( [ )">↓</button>
-          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel} onClick={() => sel && apply((d) => sendToBack(d, sel))} title="Send to back">⤓</button>
-        </span>
-
-        <span className="dsn-tools__g">
-          {([["left", "⇤"], ["hcentre", "⇔"], ["right", "⇥"], ["top", "⇡"], ["vcentre", "⇕"], ["bottom", "⇣"]] as const).map(([how, glyph]) => (
-            <button key={how} type="button" className="dsn-btn dsn-btn--sm" disabled={!sel}
-                    onClick={() => sel && apply((d) => align(d, sel, how))} title={`Align ${how}`}>{glyph}</button>
+          {([["⤒", "Bring to front", bringToFront], ["↑", "Forward ( ] )", bringForward],
+             ["↓", "Backward ( [ )", sendBackward], ["⤓", "Send to back", sendToBack]] as const).map(([g, t, fn]) => (
+            <button key={t} type="button" className="dsn-btn dsn-btn--sm" disabled={!sel.length} title={t}
+                    onClick={() => apply((d) => sel.reduce((a, id) => fn(a, id), d))}>{g}</button>
           ))}
         </span>
 
         <span className="dsn-tools__g">
-          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel}
-                  onClick={() => sel && apply((d) => { const r = duplicateLayer(d, sel); setSel(r.id); return r.doc; })}
-                  title="Duplicate (Ctrl+D)">Duplicate</button>
-          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel}
-                  onClick={() => { if (!sel) return; apply((d) => removeLayer(d, sel)); setSel(null); }}
-                  title="Delete">Delete</button>
+          {([["left", "⇤"], ["hcentre", "⇔"], ["right", "⇥"], ["top", "⇡"], ["vcentre", "⇕"], ["bottom", "⇣"]] as const).map(([how, g]) => (
+            <button key={how} type="button" className="dsn-btn dsn-btn--sm" disabled={!sel.length}
+                    title={sel.length > 1 ? `Align ${how} to each other` : `Align ${how} to the canvas`}
+                    onClick={() => apply((d) => alignMany(d, sel, how))}>{g}</button>
+          ))}
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={sel.length < 3} title="Distribute horizontally"
+                  onClick={() => apply((d) => distribute(d, sel, "h"))}>⇹</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={sel.length < 3} title="Distribute vertically"
+                  onClick={() => apply((d) => distribute(d, sel, "v"))}>⇳</button>
+        </span>
+
+        <span className="dsn-tools__g">
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel.length} title="Duplicate (Ctrl+D)"
+                  onClick={() => apply((d) => { const r = duplicateLayer(d, sel[0]); setSel([r.id]); return r.doc; })}>Duplicate</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" disabled={!sel.length} title="Delete"
+                  onClick={() => { apply((d) => removeMany(d, sel)); setSel([]); }}>Delete</button>
+        </span>
+
+        <span className="dsn-tools__g dsn-tools__zoom">
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => zoomBy(1 / 1.2)} title="Zoom out (Ctrl+−)">−</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={actualSize} title="100% (Ctrl+0)">
+            {Math.round((view?.zoom ?? 1) * 100)}%
+          </button>
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => zoomBy(1.2)} title="Zoom in (Ctrl++)">+</button>
+          <button type="button" className="dsn-btn dsn-btn--sm" onClick={fitView} title="Fit (1)">Fit</button>
         </span>
       </div>
 
       <div className="dsn-editor">
-        <div className="dsn-stage" ref={stage}>
-          <DesignSvg
-            doc={doc}
-            width={520}
-            selectedId={sel}
-            onSelect={setSel}
-            onGeometry={onGeometry}
-          />
+        <div className="dsn-stage dsn-stage--canvas" ref={stage}>
+          {view && stageRect && (
+            <DesignSvg
+              doc={doc}
+              width={stageRect.width}
+              height={stageRect.height}
+              viewport={view}
+              selectedIds={sel}
+              onSelect={select}
+              onMarquee={(ids, additive) => setSel((s) => (additive ? [...new Set([...s, ...ids])] : ids))}
+              onPan={(dx, dy) => setView((v) => (v ? { ...v, x: v.x + dx, y: v.y + dy } : v))}
+              onGeometry={onGeometry}
+              onTransform={onTransform}
+            />
+          )}
+          <span className="dsn-hint">
+            Space + drag pans · Ctrl + scroll zooms · Ctrl + drag marquees over artwork ·
+            Shift keeps a corner proportional · Alt resizes from the centre
+          </span>
         </div>
 
         <aside className="dsn-panel">
-          {/* ── Layers ──────────────────────────────────────────────────── */}
-          <section className="dsn-sec">
-            <h4 className="dsn-sec__h">Layers</h4>
+          {/* ── Layers ─────────────────────────────────────────────── */}
+          <Section title={`Layers (${layers.length})`}>
             <ul className="dsn-layers">
               {[...layers].reverse().map((l) => (
                 <li key={l.id}>
-                  <button
-                    type="button"
-                    className={`dsn-layer${l.id === sel ? " is-on" : ""}${l.hidden ? " is-off" : ""}`}
-                    onClick={() => setSel(l.id)}
-                  >
-                    <span className="dsn-layer__k">{l.type}</span>
-                    <span className="dsn-layer__n">{layerName(l)}</span>
-                  </button>
+                  {renaming === l.id ? (
+                    <input
+                      className="hrx-input dsn-rename" autoFocus defaultValue={layerName(l)}
+                      onBlur={(e) => { apply((d) => renameLayer(d, l.id, e.target.value)); setRenaming(null); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                        if (e.key === "Escape") setRenaming(null);
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className={`dsn-layer${sel.includes(l.id) ? " is-on" : ""}${l.hidden ? " is-off" : ""}`}
+                      onClick={(e) => select(l.id, e.shiftKey)}
+                      onDoubleClick={() => setRenaming(l.id)}
+                    >
+                      <span className="dsn-layer__k">{l.type}</span>
+                      <span className="dsn-layer__n">{layerName(l)}</span>
+                    </button>
+                  )}
                   <button type="button" className="dsn-layer__i" title={l.hidden ? "Show" : "Hide"}
                           onClick={() => apply((d) => toggle(d, l.id, "hidden"))}>{l.hidden ? "○" : "●"}</button>
                   <button type="button" className="dsn-layer__i" title={l.locked ? "Unlock" : "Lock"}
@@ -464,95 +574,178 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
                 </li>
               ))}
             </ul>
-            <p className="dsn-note">Top of this list is the front of the design.</p>
-          </section>
+            <p className="dsn-note">Top of this list is the front. Double-click to rename.</p>
+          </Section>
 
-          {/* ── The selected layer ──────────────────────────────────────── */}
-          {selected && (
-            <section className="dsn-sec">
-              <h4 className="dsn-sec__h">{layerName(selected)}</h4>
-
-              <div className="dsn-xy">
-                {(["x", "y", "w", "h"] as const).map((k) => (
-                  <label key={k} className="dsn-xy__f">
-                    <span className="dsn-field__k">{k.toUpperCase()}</span>
-                    <input
-                      className="hrx-input" type="number" value={Math.round(selected[k])}
-                      onChange={(e) => apply((d) => updateLayer(d, selected.id, { [k]: Number(e.target.value) } as Partial<Layer>))}
-                    />
-                  </label>
-                ))}
-              </div>
-
-              {textSlot && (
-                <label className="dsn-field">
-                  <span className="dsn-field__k">{LABELS[textSlot] ?? textSlot}</span>
-                  <textarea
-                    className="hrx-input" rows={3}
-                    value={content[textSlot as TextSlot] ?? ""}
-                    onChange={(e) => apply((d) => ({ ...d, content: { ...d.content, [textSlot]: e.target.value } }), false)}
-                  />
-                </label>
-              )}
-
-              {selected.type === "text" && (
-                <div className="dsn-xy">
-                  <label className="dsn-xy__f">
-                    <span className="dsn-field__k">Size</span>
-                    <input className="hrx-input" type="number" value={selected.size}
-                           onChange={(e) => apply((d) => updateLayer(d, selected.id, { size: Number(e.target.value) } as Partial<Layer>))} />
-                  </label>
-                  <label className="dsn-xy__f">
-                    <span className="dsn-field__k">Weight</span>
-                    <select className="hrx-input" value={selected.weight}
-                            onChange={(e) => apply((d) => updateLayer(d, selected.id, { weight: Number(e.target.value) } as Partial<Layer>))}>
-                      <option value={500}>Medium</option>
-                      <option value={600}>Semibold</option>
-                      <option value={700}>Bold</option>
-                    </select>
-                  </label>
-                </div>
-              )}
-
-              {selected.type === "image" && (
-                <ImageField
-                  label="Photograph"
-                  value={doc.images[selected.slot]?.url ?? ""}
-                  credit={doc.images[selected.slot]?.photographer}
-                  onChange={(url) => apply((d) => ({
-                    ...d,
-                    images: url
-                      ? { ...d.images, [selected.slot]: { url, source: "upload" as const } }
-                      : Object.fromEntries(Object.entries(d.images).filter(([k]) => k !== selected.slot)),
-                  }))}
-                />
-              )}
-            </section>
+          {sel.length > 1 && (
+            <Section title={`${sel.length} selected`}>
+              <p className="dsn-note">
+                Drag to move them together, or pull a corner to scale the whole
+                group — type included. Shift frees the aspect ratio. Align and
+                distribute work between them rather than to the canvas.
+              </p>
+            </Section>
           )}
 
-          {/* ── Words ───────────────────────────────────────────────────── */}
-          <section className="dsn-sec">
-            <h4 className="dsn-sec__h">All words</h4>
-            {textSlotsOf(template).map(({ slot, id, multiline }) => (
-              <label key={slot} className={`dsn-field${sel === id ? " is-on" : ""}`}>
-                <span className="dsn-field__k">{LABELS[slot] ?? slot}</span>
-                {multiline ? (
-                  <textarea className="hrx-input" rows={2} value={content[slot as TextSlot] ?? ""}
-                            onFocus={() => setSel(id)}
-                            onChange={(e) => apply((d) => ({ ...d, content: { ...d.content, [slot]: e.target.value } }), false)} />
-                ) : (
-                  <input className="hrx-input" value={content[slot as TextSlot] ?? ""}
-                         onFocus={() => setSel(id)}
-                         onChange={(e) => apply((d) => ({ ...d, content: { ...d.content, [slot]: e.target.value } }), false)} />
-                )}
-              </label>
-            ))}
-            <p className="dsn-note">Wrap words in *asterisks* to paint them in the accent colour.</p>
-          </section>
+          {one && (
+            <>
+              {/* ── Position ─────────────────────────────────────────── */}
+              <Section title="Position">
+                <div className="dsn-xy">
+                  {(["x", "y", "w", "h"] as const).map((k) => (
+                    <Field key={k} label={k.toUpperCase()}>
+                      <input className="hrx-input" type="number" value={Math.round(one[k])}
+                             onChange={(e) => patch({ [k]: Number(e.target.value) } as Partial<Layer>)} />
+                    </Field>
+                  ))}
+                </div>
+                <div className="dsn-xy">
+                  <Field label="Rotate">
+                    <input className="hrx-input" type="number" value={Math.round(one.rotation ?? 0)}
+                           onChange={(e) => patch({ rotation: Number(e.target.value) } as Partial<Layer>)} />
+                  </Field>
+                  {"radius" in one && (
+                    <Field label="Corner">
+                      <input className="hrx-input" type="number" value={Math.round((one as { radius?: number }).radius ?? 0)}
+                             onChange={(e) => patch({ radius: Number(e.target.value) } as Partial<Layer>)} />
+                    </Field>
+                  )}
+                </div>
+              </Section>
 
-          {/* ── Colours ─────────────────────────────────────────────────── */}
-          <section className="dsn-sec">
-            <h4 className="dsn-sec__h">Colours</h4>
+              {/* ── Appearance ───────────────────────────────────────── */}
+              <Section title="Appearance">
+                <label className="dsn-slider">
+                  <span className="dsn-field__k">Opacity</span>
+                  <input type="range" min={0} max={100} value={Math.round((one.alpha ?? 1) * 100)}
+                         onChange={(e) => patch({ alpha: Number(e.target.value) / 100 } as Partial<Layer>, false)} />
+                  <code className="dsn-hex">{Math.round((one.alpha ?? 1) * 100)}%</code>
+                </label>
+              </Section>
+
+              {/* ── Fill / Stroke ────────────────────────────────────── */}
+              {(one.type === "rect" || one.type === "text" || one.type === "chip") && (
+                <Section title="Fill">
+                  <PaintField
+                    value={paint(one.type === "rect" ? one.fill : one.fill, palette)}
+                    onChange={(hex) => patch({ fill: hex } as Partial<Layer>, false)}
+                  />
+                </Section>
+              )}
+
+              {one.type === "rect" && (
+                <Section title="Stroke">
+                  <PaintField
+                    value={one.strokeColor ? paint(one.strokeColor, palette) : "#000000"}
+                    onChange={(hex) => patch({ strokeColor: hex } as Partial<Layer>, false)}
+                  />
+                  <Field label="Width">
+                    <input className="hrx-input" type="number" min={0} value={one.strokeWidth ?? 0}
+                           onChange={(e) => patch({ strokeWidth: Number(e.target.value) } as Partial<Layer>)} />
+                  </Field>
+                </Section>
+              )}
+
+              {/* ── Typography ───────────────────────────────────────── */}
+              {one.type === "text" && (
+                <Section title="Typography">
+                  <Field label="Text">
+                    <textarea className="hrx-input" rows={3} value={content[one.slot] ?? ""}
+                              onChange={(e) => apply((d) => ({ ...d, content: { ...d.content, [one.slot]: e.target.value } }), false)} />
+                  </Field>
+                  <div className="dsn-xy">
+                    <Field label="Size">
+                      <input className="hrx-input" type="number" value={one.size}
+                             onChange={(e) => patch({ size: Number(e.target.value) } as Partial<Layer>)} />
+                    </Field>
+                    <Field label="Weight">
+                      <select className="hrx-input" value={one.weight}
+                              onChange={(e) => patch({ weight: Number(e.target.value) } as Partial<Layer>)}>
+                        {[400, 500, 600, 700].map((w) => <option key={w} value={w}>{w}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Line">
+                      <input className="hrx-input" type="number" step={0.05} value={one.lineHeight}
+                             onChange={(e) => patch({ lineHeight: Number(e.target.value) } as Partial<Layer>)} />
+                    </Field>
+                    <Field label="Track">
+                      <input className="hrx-input" type="number" step={0.1} value={one.tracking}
+                             onChange={(e) => patch({ tracking: Number(e.target.value) } as Partial<Layer>)} />
+                    </Field>
+                  </div>
+                  <div className="dsn-swatches">
+                    {(["left", "center", "right"] as const).map((a) => (
+                      <button key={a} type="button"
+                              className={`dsn-layout${(one.align ?? "left") === a ? " is-on" : ""}`}
+                              onClick={() => patch({ align: a } as Partial<Layer>)}>{a}</button>
+                    ))}
+                  </div>
+                  <p className="dsn-note">Wrap words in *asterisks* to paint them in the accent colour.</p>
+                </Section>
+              )}
+
+              {one.type === "image" && (
+                <Section title="Photograph">
+                  <ImageField
+                    label="Source"
+                    value={doc.images[one.slot]?.url ?? ""}
+                    credit={doc.images[one.slot]?.photographer}
+                    onChange={(url) => apply((d) => ({
+                      ...d,
+                      images: url
+                        ? { ...d.images, [one.slot]: { url, source: "upload" as const } }
+                        : Object.fromEntries(Object.entries(d.images).filter(([k]) => k !== one.slot)),
+                    }))}
+                  />
+
+                  {/* The crop. "Cover" centres the photograph in its frame,
+                      and the centre of a photograph is very often not its
+                      subject — so without these three controls the only way to
+                      fix a badly-cropped portrait is to find another photo. */}
+                  {doc.images[one.slot] && (
+                    <>
+                      <div className="dsn-seg">
+                        {(["cover", "contain"] as const).map((f) => (
+                          <button
+                            key={f} type="button"
+                            className={`dsn-seg__b${(one.fit ?? "cover") === f ? " is-on" : ""}`}
+                            onClick={() => patch({ fit: f } as Partial<Layer>)}
+                          >
+                            {f === "cover" ? "Fill frame" : "Fit whole photo"}
+                          </button>
+                        ))}
+                      </div>
+                      <label className="dsn-slider">
+                        <span className="dsn-field__k">Zoom</span>
+                        <input type="range" min={100} max={300} value={Math.round((one.zoom ?? 1) * 100)}
+                               onChange={(e) => patch({ zoom: Number(e.target.value) / 100 } as Partial<Layer>, false)} />
+                        <code className="dsn-hex">{Math.round((one.zoom ?? 1) * 100)}%</code>
+                      </label>
+                      <div className="dsn-xy">
+                        <Field label="Pan X">
+                          <input className="hrx-input" type="number" step={1}
+                                 value={Math.round((one.panX ?? 0) * 100)}
+                                 onChange={(e) => patch({ panX: Number(e.target.value) / 100 } as Partial<Layer>)} />
+                        </Field>
+                        <Field label="Pan Y">
+                          <input className="hrx-input" type="number" step={1}
+                                 value={Math.round((one.panY ?? 0) * 100)}
+                                 onChange={(e) => patch({ panY: Number(e.target.value) / 100 } as Partial<Layer>)} />
+                        </Field>
+                      </div>
+                      <button type="button" className="dsn-btn dsn-btn--sm"
+                              onClick={() => patch({ zoom: undefined, panX: undefined, panY: undefined, fit: undefined } as Partial<Layer>)}>
+                        Reset crop
+                      </button>
+                    </>
+                  )}
+                </Section>
+              )}
+            </>
+          )}
+
+          {/* ── Document ─────────────────────────────────────────────── */}
+          <Section title="Colours">
             {(["accent", "ink", "gradientFrom", "gradientTo", "canvas"] as const).map((role) => (
               <label key={role} className="dsn-colour">
                 <input type="color" value={palette[role]} aria-label={role}
@@ -563,38 +756,58 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
             ))}
             <button type="button" className="dsn-btn dsn-btn--sm"
                     onClick={() => apply((d) => ({ ...d, palette: undefined }))}>Reset to the pack's colours</button>
-          </section>
+          </Section>
 
-          {/* ── Layout ──────────────────────────────────────────────────── */}
-          <section className="dsn-sec">
-            <h4 className="dsn-sec__h">Start over from a layout</h4>
+          <Section title="Layout">
             <div className="dsn-swatches">
               {TEMPLATES.map((t) => (
                 <button key={t.id} type="button"
                         className={`dsn-layout${t.id === doc.templateId ? " is-on" : ""}`}
                         title={t.purpose}
                         onClick={() => {
-                          // Swapping layouts discards hand placement, because the
-                          // new template's layers ARE the new arrangement. Said
-                          // out loud rather than silently thrown away.
                           if (doc.layers?.length && !window.confirm("This replaces your arrangement with that layout. Your words and photos are kept.")) return;
                           apply((d) => ({ ...d, templateId: t.id, layers: undefined }));
-                          setSel(null);
+                          setSel([]);
                         }}>{t.name}</button>
               ))}
             </div>
             <p className="dsn-note">{template.purpose}</p>
-          </section>
+          </Section>
 
-          <p className="dsn-note">
-            Exports at 2160×2700 for {orgName}. Drag to move, drag a handle to resize, arrows to nudge,
-            <code> [ </code> and <code> ] </code> to send backward and forward.
-          </p>
+          <p className="dsn-note">Exports at 2160×2700 for {orgName}.</p>
         </aside>
       </div>
     </div>
   );
 }
+
+/* ── Panel furniture ─────────────────────────────────────────────────────
+   Named sections, the way a design tool's inspector is organised: position,
+   appearance, fill, stroke, typography. A flat list of every control is what
+   the previous version had, and it made finding one a scan of the whole panel. */
+
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <section className="dsn-sec">
+    <h4 className="dsn-sec__h">{title}</h4>
+    {children}
+  </section>
+);
+
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <label className="dsn-xy__f">
+    <span className="dsn-field__k">{label}</span>
+    {children}
+  </label>
+);
+
+/** A colour well plus its hex, for a single paint. */
+const PaintField = ({ value, onChange }: { value: string; onChange: (hex: string) => void }) => (
+  <label className="dsn-colour">
+    <input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#000000"}
+           onChange={(e) => onChange(e.target.value)} aria-label="Colour" />
+    <code className="dsn-hex" style={{ marginLeft: 0 }}>{value}</code>
+  </label>
+);
 
 /**
  * A photo field.

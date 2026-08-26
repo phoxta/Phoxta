@@ -291,3 +291,54 @@
 @media (max-width: 1300px) {
   .dsn-xy { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ── Canvas viewport ────────────────────────────────────────────────────
+   The stage is now a window onto a 1080×1350 artboard rather than the
+   artboard itself, so it needs a height of its own and a ground that reads
+   as "outside the design". */
+
+.dsn-stage--canvas {
+  position: relative;
+  height: min(72vh, 760px);
+  padding: 0;
+  overflow: hidden;
+  background:
+    repeating-conic-gradient(rgba(0, 0, 0, 0.035) 0% 25%, transparent 0% 50%) 50% / 22px 22px,
+    var(--hrx-soft);
+}
+
+/* Space-drag is invisible until you try it, so it is written down. */
+.dsn-hint {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: var(--hrx-muted);
+  background: color-mix(in srgb, var(--hrx-card) 88%, transparent);
+  border-radius: 6px;
+  padding: 4px 8px;
+  pointer-events: none;
+}
+
+.dsn-tools__zoom { margin-left: auto; }
+
+/* ── Inspector ─────────────────────────────────────────────────────────── */
+
+.dsn-slider { display: flex; align-items: center; gap: 10px; }
+.dsn-slider input[type="range"] { flex: 1 1 auto; min-width: 0; }
+
+.dsn-rename { flex: 1 1 auto; min-width: 0; padding: 5px 8px; font-size: 13px; }
+
+/* A colour well with its hex beside it, used for both fill and stroke. */
+.dsn-colour code.dsn-hex { margin-left: auto; }
+
+/* A two-way choice that is a choice, not a checkbox with a label that has to
+   be read to work out which way round it is. */
+.dsn-seg { display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--hrx-surface-2, #f1f2f6); }
+.dsn-seg__b {
+    flex: 1 1 0; min-width: 0; padding: 6px 8px; border: 0; border-radius: 7px;
+    background: transparent; color: var(--hrx-ink-2, #5b6172);
+    font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+}
+.dsn-seg__b.is-on { background: var(--hrx-surface, #fff); color: var(--hrx-ink, #14194e); box-shadow: 0 1px 3px rgb(20 25 78 / 12%); }

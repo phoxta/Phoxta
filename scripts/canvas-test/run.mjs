@@ -1,0 +1,49 @@
+/**
+ * The canvas tests.
+ *
+ * Two halves. `snap.test.mjs` exercises the snapping arithmetic as plain
+ * functions. `gestures.test.mjs` drives the real renderer in a real browser
+ * with a real pointer, because the interesting failures in a canvas are not
+ * arithmetic — they are a handle that swallows a press, a guide that is never
+ * cleared, a commit frame that disagrees with the frame before it. None of
+ * those show up in a unit test of the maths, and all three have happened here.
+ *
+ * Run with `npm run test:canvas`.
+ *
+ * esbuild is driven through its JS API rather than its CLI: this repo lives
+ * under a path with a space in it, and shelling out on Windows turns the
+ * --define flag's nested quotes into something cmd mangles.
+ */
+import { build } from "esbuild";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import os from "node:os";
+import fs from "node:fs";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, "..", "..");
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "phoxta-canvas-"));
+const node = (args) => execFileSync(process.execPath, args, { cwd: root, stdio: "inherit" });
+
+const alias = { "@": path.join(root, "src") };
+
+console.log("\n── snapping ─────────────────────────────────────────────────");
+await build({
+  entryPoints: [path.join(root, "src/lib/designs/snap.ts")],
+  bundle: true, format: "esm", outfile: path.join(tmp, "snap.bundle.mjs"),
+  alias, logLevel: "error",
+});
+fs.copyFileSync(path.join(here, "snap.test.mjs"), path.join(tmp, "snap.test.mjs"));
+node([path.join(tmp, "snap.test.mjs")]);
+
+console.log("\n── gestures ─────────────────────────────────────────────────");
+await build({
+  entryPoints: [path.join(here, "rig.tsx")],
+  bundle: true, outfile: path.join(tmp, "rig.js"),
+  alias, logLevel: "error",
+  define: { "process.env.NODE_ENV": '"development"' },
+});
+node([path.join(here, "gestures.test.mjs"), root, tmp]);
+
+fs.rmSync(tmp, { recursive: true, force: true });

@@ -89,8 +89,19 @@ const SLOT = (s: string) => s as TextSlot;
 
 /* ── Layers ──────────────────────────────────────────────────────────────── */
 
+/**
+ * A layer that covers the whole artboard is the background.
+ *
+ * Locked by default, so pressing on it starts a marquee or clears the
+ * selection the way it does in every design tool — rather than picking the
+ * background up and dragging the entire design sideways, which is what happens
+ * when the biggest layer on the canvas is also the easiest one to grab. It can
+ * still be selected from the layers panel to change its colour.
+ */
+const isBackdrop = (l: RawLayer) => l.x <= 0 && l.y <= 0 && l.w >= 1080 && l.h >= 1350;
+
 function toLayer(l: RawLayer, p: Palette): Layer {
-  const base = { id: l.id, x: l.x, y: l.y, w: l.w, h: l.h };
+  const base = { id: l.id, x: l.x, y: l.y, w: l.w, h: l.h, locked: isBackdrop(l) || undefined };
 
   switch (l.type) {
     case "rect":
