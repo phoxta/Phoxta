@@ -26,46 +26,40 @@ import { searchStock } from "../_shared/stock.ts";
 type Json = any;
 
 /**
- * The slots each template actually has, and how much room each one has.
+ * The layouts, as the client knows them.
  *
- * This mirrors src/lib/designs/templates.ts. It is duplicated rather than
- * imported because an edge function cannot reach into the Vite app — so the
- * risk is drift, and the mitigation is that the client validates what comes
- * back against the real template and drops anything that does not belong.
- * A slot invented here cannot reach the canvas.
+ * This used to be a hand-written table in this file. It listed six templates
+ * while the pack had eighteen, so the agent could only pick from a third of
+ * them and nothing said so — the failure of a duplicated list is that it keeps
+ * working, just wrongly. The catalogue now arrives with the brief, computed
+ * from the same templates the canvas renders, so it cannot fall behind.
+ *
+ * It is client-supplied, and that is fine here: it only shapes copy written
+ * into that same client's own design. Nothing is trusted across a privilege
+ * boundary, and every string that comes back is still cut to the budget below.
  */
-const TEMPLATES: Record<string, { purpose: string; slots: Record<string, number>; images: Record<string, string> }> = {
-  v1: {
-    purpose: "Light, typographic. One big two-tone statement and a short supporting line. Best when there is one thing to say.",
-    slots: { title: 46, description: 130 },
-    images: { image1: "a scene from the business", image2: "a person, portrait orientation" },
-  },
-  v2: {
-    purpose: "Gradient, evidence-led. Built around one number, with three one-word chips and a small score.",
-    slots: { title: 34, subtitle: 30, statistic: 6, score: 6, description: 60, point1: 12, point2: 12, point3: 12 },
-    images: { image1: "a person, cut out or on a plain background" },
-  },
-  v3: {
-    purpose: "Centred testimonial. A customer quote in their own words, plus a wider photograph.",
-    slots: { title: 30, testimonial: 60, quote: 110 },
-    images: { image1: "a real customer or the product in use" },
-  },
-  v4: {
-    purpose: "One full-bleed photograph with the headline read out of it. Use when the picture is the message.",
-    slots: { title: 44, description: 120, subtitle: 30, statistic: 6 },
-    images: { image1: "a striking lifestyle photograph" },
-  },
-  v5: {
-    purpose: "Three portraits over three labelled pills. Names who the offer is for, or introduces a team.",
-    slots: { title: 46, description: 120, point1: 18, point2: 18, point3: 18 },
-    images: { image1: "portrait on a plain background", image2: "portrait on a plain background", image3: "portrait on a plain background" },
-  },
-  v6: {
-    purpose: "Gradient with a call to action and a big success number. Use when you want a click.",
-    slots: { title: 34, subtitle: 40, description: 110, cta: 24, quote: 30, statistic: 5 },
-    images: { image1: "a tall portrait of someone at work" },
-  },
-};
+const NL = String.fromCharCode(10);
+
+type Slot = { slot: string; max: number };
+type Layout = { id: string; purpose: string; slots: Slot[]; images: Record<string, string> };
+
+function readCatalogue(v: unknown): Layout[] {
+  if (!Array.isArray(v)) return [];
+  const out: Layout[] = [];
+  for (const t of v) {
+    if (!t || typeof t.id !== "string" || !Array.isArray(t.slots)) continue;
+    out.push({
+      id: String(t.id).slice(0, 20),
+      purpose: String(t.purpose ?? "").slice(0, 300),
+      slots: t.slots
+        .filter((s: Json) => s && typeof s.slot === "string")
+        .slice(0, 24)
+        .map((s: Json) => ({ slot: String(s.slot).slice(0, 30), max: Math.max(3, Math.min(400, Number(s.max) || 60)) })),
+      images: typeof t.images === "object" && t.images ? t.images : {},
+    });
+  }
+  return out.slice(0, 40);
+}
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -79,10 +73,12 @@ Deno.serve(async (req) => {
     const orgId = String(body?.orgId ?? "");
     const brief = String(body?.brief ?? "").trim();
     const pinned = body?.templateId ? String(body.templateId) : "";
+    const layouts = readCatalogue(body?.catalogue);
 
     if (!orgId) return json({ error: "Which business is this for?" }, 400);
     if (!brief) return json({ error: "Say what the post should be about." }, 400);
-    if (pinned && !TEMPLATES[pinned]) return json({ error: "That template does not exist." }, 400);
+    if (!layouts.length) return json({ error: "No layouts were offered to choose from." }, 400);
+    if (pinned && !layouts.some((l) => l.id === pinned)) return json({ error: "That template does not exist." }, 400);
 
     const admin = adminClient();
 
@@ -100,10 +96,12 @@ Deno.serve(async (req) => {
     const orgName = String((org as Json)?.name ?? "the business");
 
     // ── 1. Copy ──────────────────────────────────────────────────────────
-    const choices = pinned ? { [pinned]: TEMPLATES[pinned] } : TEMPLATES;
-    const menu = Object.entries(choices).map(([id, t]) =>
-      `- ${id}: ${t.purpose}\n  slots: ${Object.entries(t.slots).map(([s, n]) => `${s} (max ${n} chars)`).join(", ")}\n  photos: ${Object.entries(t.images).map(([s, d]) => `${s} — ${d}`).join("; ")}`,
-    ).join("\n");
+    const choices = pinned ? layouts.filter((l) => l.id === pinned) : layouts;
+    const menu = choices.map((t) =>
+      `- ${t.id}: ${t.purpose}
+  slots: ${t.slots.map((s) => `${s.slot} (max ${s.max} chars)`).join(", ")}
+  photos: ${Object.entries(t.images).map(([s, d]) => `${s} — ${d}`).join("; ") || "none"}`,
+    ).join(NL);
 
     const { data: written } = await callJson<Json>({
       model: modelFor("balanced"),
@@ -129,14 +127,15 @@ Statistics must be short and plausible — "12+", "98%", "4.5". Never invent a s
       maxTokens: 1600,
     });
 
-    const templateId = pinned || String(written?.templateId ?? "v1");
-    const spec = TEMPLATES[templateId] ?? TEMPLATES.v1;
+    const wantedId = pinned || String(written?.templateId ?? "");
+    const spec = choices.find((l) => l.id === wantedId) ?? choices[0];
+    const templateId = spec.id;
 
     // Keep only slots this template really has, and cut anything over budget.
     // The model is asked for limits, not bound to them, and a headline that
     // overflows its box is the one failure a reader always notices.
     const content: Record<string, string> = {};
-    for (const [slot, max] of Object.entries(spec.slots)) {
+    for (const { slot, max } of spec.slots) {
       const raw = String((written?.content ?? {})[slot] ?? "").trim();
       if (!raw) continue;
       content[slot] = raw.length > max ? `${raw.slice(0, max - 1).trimEnd()}…` : raw;
@@ -144,8 +143,8 @@ Statistics must be short and plausible — "12+", "98%", "4.5". Never invent a s
 
     // ── 2. Photographs ───────────────────────────────────────────────────
     const images: Record<string, Json> = {};
-    for (const slot of Object.keys(spec.images)) {
-      const q = String((written?.imageQueries ?? {})[slot] ?? "").trim() || spec.images[slot];
+    for (const slot of Object.keys(spec.images ?? {})) {
+      const q = String((written?.imageQueries ?? {})[slot] ?? "").trim() || String(spec.images[slot] ?? "");
       const image = await searchStock(q);
       if (image) images[slot] = image;
     }

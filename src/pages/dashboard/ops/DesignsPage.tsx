@@ -362,7 +362,7 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
 
   if (!template) return <p className="dsn-note">That template no longer exists.</p>;
 
-  const palette = { ...DEFAULT_PALETTE, ...(doc.palette ?? {}) };
+  const palette = { ...DEFAULT_PALETTE, ...(template.palette ?? {}), ...(doc.palette ?? {}) };
   const textSlot = selected && (selected.type === "text" || selected.type === "chip") ? selected.slot : null;
 
   return (

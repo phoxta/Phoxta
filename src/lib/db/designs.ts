@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { friendlyError } from "@/lib/friendlyError";
 import type { DesignDoc } from "@/lib/designs/types";
+import { catalogue } from "@/lib/designs/templates";
 
 /**
  * Designs: the graphics studio's data layer.
@@ -98,8 +99,11 @@ export async function generateDesign(
   brief: string,
   templateId?: string,
 ): Promise<{ data: GeneratedDesign | null; error: string | null }> {
+  // The catalogue travels with the brief so the function never holds a stale
+  // copy of the pack. It is the client's own template list, used only to fill
+  // the client's own design, so nothing is trusted across a privilege boundary.
   const { data, error } = await supabase.functions.invoke("design-generate", {
-    body: { orgId, brief, templateId },
+    body: { orgId, brief, templateId, catalogue: catalogue() },
   });
   if (error) {
     let msg = error.message;

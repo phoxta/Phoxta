@@ -52,7 +52,13 @@ function useFontsReady(): boolean {
   return ready;
 }
 
-function measure(text: string, size: number, weight: number, tracking: number): number {
+const FALLBACK = '"Plus Jakarta Sans", sans-serif';
+
+/** The stack a layer paints with. The pack uses six families, so the face is
+ *  part of the measurement, not a constant. */
+export const fontStack = (font?: string) => (font ? `"${font}", ${FALLBACK}` : FALLBACK);
+
+function measure(text: string, size: number, weight: number, tracking: number, font?: string, italic?: boolean): number {
   if (typeof document === "undefined") {
     // Server render (the prerender pass). No canvas — approximate, because a
     // rough width here only affects markup that is replaced on hydration.
@@ -60,7 +66,7 @@ function measure(text: string, size: number, weight: number, tracking: number): 
   }
   if (!ctx) ctx = document.createElement("canvas").getContext("2d");
   if (!ctx) return text.length * size * 0.52;
-  ctx.font = `${weight} ${size}px "Plus Jakarta Sans", sans-serif`;
+  ctx.font = `${italic ? "italic " : ""}${weight} ${size}px ${fontStack(font)}`;
   // measureText knows nothing about letter-spacing, so it is added back per
   // character — the same arithmetic the renderer then applies.
   return ctx.measureText(text).width + text.length * tracking;
@@ -90,7 +96,7 @@ function runsOf(text: string): Run[] {
 }
 
 /** Greedy wrap that preserves which words were accented. */
-function wrap(text: string, width: number, size: number, weight: number, tracking: number): Run[][] {
+function wrap(text: string, width: number, size: number, weight: number, tracking: number, font?: string, italic?: boolean): Run[][] {
   const words: Run[] = [];
   for (const run of runsOf(text)) {
     for (const w of run.text.split(/(\s+)/)) {
@@ -109,7 +115,7 @@ function wrap(text: string, width: number, size: number, weight: number, trackin
       continue;
     }
     const next = lineText + word.text;
-    if (line.length && measure(next, size, weight, tracking) > width) {
+    if (line.length && measure(next, size, weight, tracking, font, italic) > width) {
       lines.push(trimEnd(line));
       line = [word];
       lineText = word.text;
@@ -150,13 +156,13 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: string; pal
   // make the whole canvas throw the moment someone emptied one.
   const fontsReady = useFontsReady();
   const lines = useMemo(
-    () => wrap(text, l.w, l.size, l.weight, l.tracking),
+    () => wrap(text, l.w, l.size, l.weight, l.tracking, l.font, l.italic),
     // fontsReady looks unused to the linter because wrap() reads the font off
     // the canvas rather than taking it as an argument. It is exactly the
     // dependency that matters: the same inputs measure differently once the
     // webfont lands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [text, l.w, l.size, l.weight, l.tracking, fontsReady],
+    [text, l.w, l.size, l.weight, l.tracking, l.font, l.italic, fontsReady],
   );
 
   if (!text) return null;
@@ -172,7 +178,8 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: string; pal
       fill={paint(l.fill, palette)}
       fontSize={l.size}
       fontWeight={l.weight}
-      fontFamily='"Plus Jakarta Sans", sans-serif'
+      fontFamily={fontStack(l.font)}
+      fontStyle={l.italic ? "italic" : undefined}
       letterSpacing={l.tracking}
       textAnchor={anchor}
       style={l.capitalize ? { textTransform: "capitalize" } : undefined}
@@ -331,7 +338,7 @@ function resolveDrag(d: Drag, dx: number, dy: number) {
 
 export function DesignSvg({ doc, width, selectedId, onSelect, onGeometry, assetMap }: RenderOpts) {
   const template = getTemplate(doc.templateId);
-  const palette = resolvePalette(doc);
+  const palette = resolvePalette(doc, template?.palette);
   const [loaded, setLoaded] = useState<Record<string, string>>({});
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<Drag | null>(null);
@@ -470,7 +477,15 @@ function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }:
   const body = (() => {
     switch (l.type) {
       case "rect":
-        return <rect x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0} fill={paint(l.fill, palette)} />;
+        return (
+          <rect
+            x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0}
+            fill={paint(l.fill, palette)}
+            fillOpacity={l.opacity ?? 1}
+            stroke={l.strokeColor ? paint(l.strokeColor, palette) : undefined}
+            strokeWidth={l.strokeWidth ?? 0}
+          />
+        );
 
       case "gradient":
         return <rect x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0} fill={`url(#grad-${l.id})`} />;
@@ -498,17 +513,21 @@ function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }:
                 </mask>
               )}
             </defs>
-            {/* An empty slot is drawn, not skipped: a designer needs to see
-                where the photograph goes before there is one. */}
+            {/* An empty slot is outlined, not filled.
+                Several templates place a cut-out figure over the headline on
+                purpose, so an opaque placeholder hides the very copy someone is
+                trying to write. The outline shows where the photograph goes
+                without pretending to be one. */}
             {!placed && (
-              <g>
+              <g data-editor-only="placeholder">
                 <rect
                   x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0}
-                  fill="#e9edf5" stroke="#c9d2e6" strokeWidth={3} strokeDasharray="14 10"
+                  fill="rgba(125,140,175,0.10)" stroke="rgba(125,140,175,0.85)"
+                  strokeWidth={3} strokeDasharray="14 10"
                 />
                 <text
-                  x={l.x + l.w / 2} y={l.y + l.h / 2} textAnchor="middle"
-                  fontSize={26} fontWeight={600} fill="#7c89a8"
+                  x={l.x + l.w / 2} y={l.y + 34} textAnchor="middle"
+                  fontSize={24} fontWeight={600} fill="rgba(90,105,140,0.95)"
                   fontFamily='"Plus Jakarta Sans", sans-serif'
                 >
                   Add a photo

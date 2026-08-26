@@ -57,9 +57,15 @@ export const DEFAULT_PALETTE: Palette = {
   gradientTo: "#689fff",
 };
 
-/** Which palette role a layer paints with. Resolved at render, so a palette
- *  override reaches every layer without the template naming hex twice. */
-export type PaintRole = keyof Palette | "white" | "black" | "transparent";
+/**
+ * What a layer paints with.
+ *
+ * A palette role where the colour is one of the template's brand colours, so an
+ * override reaches it; a literal `#rrggbb` otherwise. The pack has one-off
+ * colours — a lime highlight, a pale card tint — that are not brand roles and
+ * should not move when someone changes their accent, so they stay literal.
+ */
+export type PaintRole = keyof Palette | "white" | "black" | "transparent" | (string & {});
 
 export type TextSlot =
   | "title" | "subtitle" | "description" | "statistic"
@@ -84,6 +90,10 @@ export type RectLayer = Base & {
   type: "rect";
   fill: PaintRole;
   radius?: number;
+  opacity?: number;
+  /** The outlined pills carry their shape in a stroke rather than a fill. */
+  strokeColor?: PaintRole;
+  strokeWidth?: number;
 };
 
 /** The brand gradient, at the Figma file's own angle. */
@@ -126,8 +136,12 @@ export type ImageLayer = Base & {
 export type TextLayer = Base & {
   type: "text";
   slot: TextSlot;
+  /** The pack uses six families — Plus Jakarta Sans, DM Sans, Mona Sans,
+   *  PT Serif, Poppins, Inter — so the face is per-layer, not global. */
+  font?: string;
+  italic?: boolean;
   size: number;
-  weight: 500 | 600 | 700;
+  weight: number;
   fill: PaintRole;
   /** Multiplier, as Figma reports it. */
   lineHeight: number;
@@ -147,7 +161,7 @@ export type ChipLayer = Base & {
   type: "chip";
   slot: TextSlot;
   size: number;
-  weight: 500 | 600 | 700;
+  weight: number;
   fill: PaintRole;
   /** Chips on the dark templates are a white wash rather than a solid. */
   fillAlpha?: number;
@@ -171,6 +185,13 @@ export type Template = {
   /** What this layout is for, shown in the picker and given to the model so it
    *  writes copy that fits the shape rather than copy that has to be cut. */
   purpose: string;
+  /**
+   * This template's own default colours.
+   *
+   * The pack is three families with three different brand colours. One global
+   * palette would render the violet templates blue.
+   */
+  palette: Palette;
   /** Layers in paint order: first is furthest back. */
   layers: Layer[];
   /** Starting copy — the Figma file's own placeholder text. */
@@ -221,15 +242,22 @@ export const emptyDoc = (templateId: string): DesignDoc => ({
   images: {},
 });
 
-/** The palette a design actually paints with. */
-export function resolvePalette(doc: DesignDoc): Palette {
-  return { ...DEFAULT_PALETTE, ...(doc.palette ?? {}) };
+/**
+ * The palette a design actually paints with.
+ *
+ * The template's own colours underneath, the design's overrides on top. Taking
+ * the pack default as the base instead would repaint every violet template blue
+ * the moment a design overrode a single unrelated role.
+ */
+export function resolvePalette(doc: DesignDoc, templatePalette?: Palette): Palette {
+  return { ...DEFAULT_PALETTE, ...(templatePalette ?? {}), ...(doc.palette ?? {}) };
 }
 
-/** Resolve a paint role to a colour. */
+/** Resolve a paint role to a colour. A literal hex passes straight through. */
 export function paint(role: PaintRole | undefined, palette: Palette): string {
   if (!role || role === "transparent") return "none";
   if (role === "white") return "#ffffff";
   if (role === "black") return "#000000";
-  return palette[role];
+  if (role.startsWith("#")) return role;
+  return (palette as Record<string, string>)[role] ?? role;
 }
