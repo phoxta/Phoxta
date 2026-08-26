@@ -46,6 +46,14 @@ await build({
 fs.copyFileSync(path.join(here, "reorder.test.mjs"), path.join(tmp, "reorder.test.mjs"));
 node([path.join(tmp, "reorder.test.mjs")]);
 
+await build({
+  entryPoints: [path.join(root, "src/lib/designs/types.ts")],
+  bundle: true, format: "esm", outfile: path.join(tmp, "types.bundle.mjs"),
+  alias, logLevel: "error",
+});
+fs.copyFileSync(path.join(here, "deck.test.mjs"), path.join(tmp, "deck.test.mjs"));
+node([path.join(tmp, "deck.test.mjs")]);
+
 console.log("\n── gestures ─────────────────────────────────────────────────");
 await build({
   entryPoints: [path.join(here, "rig.tsx")],

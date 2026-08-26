@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { loadAssets } from "./assets";
 import { getTemplate, layersOf } from "./templates";
 import { boundsOf, hitTest, snapMove, type Gap, type Guide, type Viewport } from "./snap";
@@ -119,13 +119,13 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: Copy | unde
   );
 }
 
-function ChipLayerView({ l, value, palette, asset }: {
-  l: ChipLayer; value: Copy | undefined; palette: Palette; asset: (s: string) => string;
+function ChipLayerView({ l, value, palette, asset, uid }: {
+  l: ChipLayer; value: Copy | undefined; palette: Palette; asset: (s: string) => string; uid: string;
 }) {
   const text = plain(value).trim();
   if (!text) return null;
 
-  const gradId = `chip-${l.id}`;
+  const gradId = `${uid}-chip-${l.id}`;
   const iconSize = l.iconSize ?? 0;
   const padX = l.icon ? 10 : 16;
   // A chip is one line by definition, so it measures its own style directly
@@ -424,6 +424,17 @@ export function DesignSvg({
   const [box, setBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [gaps, setGaps] = useState<Gap[]>([]);
+  /**
+   * A namespace for this design's element ids.
+   *
+   * Gradients, masks and clip paths are referenced by url(#id), and an id is
+   * global to the DOCUMENT, not to the SVG it sits in. Two designs built from
+   * the same template define the same ids -- `grad-grad11`, `clip-image2` --
+   * so in the library grid every reference resolved to whichever tile the
+   * browser saw first, and the second one painted in the first one's brand
+   * colours. It looks like the design is wrong rather than like the page is.
+   */
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const layers = layersOf(doc);
   const editable = Boolean(onGeometry);
   const zoom = viewport?.zoom ?? 1;
@@ -730,9 +741,25 @@ export function DesignSvg({
         />
       )}
       <defs>
+        {/*
+          The page clips its contents.
+
+          A layer can be dragged off the artboard, and an SVG clips only to its
+          own viewport — so the editor, which shows margin around the page,
+          painted the stray layer out in that margin while the library tile and
+          the exported file did not. Three surfaces, three answers, and the one
+          that mattered was invisible until the file was opened.
+
+          The clip goes on the painted body of each layer, never on its hit
+          area: a layer dragged mostly off the page must still be grabbable to
+          be dragged back.
+        */}
+        <clipPath id={`${uid}-page`}>
+          <rect x={0} y={0} width={CANVAS_W} height={CANVAS_H} />
+        </clipPath>
         {layers.map((l) =>
           l.type === "gradient" ? (
-            <linearGradient key={l.id} id={`grad-${l.id}`} gradientTransform={`rotate(${l.angle - 90} 0.5 0.5)`}>
+            <linearGradient key={l.id} id={`${uid}-grad-${l.id}`} gradientTransform={`rotate(${l.angle - 90} 0.5 0.5)`}>
               <stop offset="0%" stopColor={paint(l.from, palette)} />
               <stop offset="100%" stopColor={paint(l.to, palette)} />
             </linearGradient>
@@ -740,7 +767,7 @@ export function DesignSvg({
         )}
         {layers.map((l) =>
           l.type === "image" && l.mask ? (
-            <clipPath key={l.id} id={`mask-${l.id}`} clipPathUnits="objectBoundingBox">
+            <clipPath key={l.id} id={`${uid}-mask-${l.id}`} clipPathUnits="objectBoundingBox">
               {/* objectBoundingBox keeps the mask tied to the slot rather than
                   to canvas coordinates, so the same mask works if the slot
                   moves. */}
@@ -759,6 +786,7 @@ export function DesignSvg({
           palette={palette}
           asset={asset}
           editable={editable}
+          uid={uid}
           onPointerDown={beginDrag}
         />
       ))}
@@ -816,13 +844,15 @@ export function DesignSvg({
   );
 }
 
-function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }: {
+function LayerView({ l, doc, content, palette, asset, editable, uid, onPointerDown }: {
   l: Layer;
   doc: DesignDoc;
   content: Record<string, Copy | undefined>;
   palette: Palette;
   asset: (s: string) => string;
   editable: boolean;
+  /** This design's id namespace. See DesignSvg. */
+  uid: string;
   onPointerDown: (e: React.PointerEvent, id: string, handle: Handle) => void;
 }) {
   // Everything is grabbable now, not just the text and the photos — that is
@@ -844,7 +874,7 @@ function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }:
         );
 
       case "gradient":
-        return <rect x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0} fill={`url(#grad-${l.id})`} />;
+        return <rect x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0} fill={`url(#${uid}-grad-${l.id})`} />;
 
       case "asset":
         return (
@@ -856,7 +886,7 @@ function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }:
 
       case "image": {
         const placed = doc.images[l.slot];
-        const clip = `clip-${l.id}`;
+        const clip = `${uid}-clip-${l.id}`;
         return (
           <>
             <defs>
@@ -864,7 +894,7 @@ function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }:
                 <rect x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0} />
               </clipPath>
               {l.mask && (
-                <mask id={`m-${l.id}`}>
+                <mask id={`${uid}-m-${l.id}`}>
                   <image href={asset(l.mask)} x={l.x} y={l.y} width={l.w} height={l.h} />
                 </mask>
               )}
@@ -906,7 +936,7 @@ function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }:
                   width={cw} height={ch}
                   preserveAspectRatio={l.fit === "contain" ? "xMidYMid meet" : "xMidYMid slice"}
                   clipPath={`url(#${clip})`}
-                  mask={l.mask ? `url(#m-${l.id})` : undefined}
+                  mask={l.mask ? `url(#${uid}-m-${l.id})` : undefined}
                 />
               );
             })()}
@@ -918,20 +948,27 @@ function LayerView({ l, doc, content, palette, asset, editable, onPointerDown }:
         return <TextLayerView l={l} value={content[l.slot] ?? ""} palette={palette} />;
 
       case "chip":
-        return <ChipLayerView l={l} value={content[l.slot] ?? ""} palette={palette} asset={asset} />;
+        return <ChipLayerView l={l} value={content[l.slot] ?? ""} palette={palette} asset={asset} uid={uid} />;
     }
   })();
 
-  // Rotation and layer opacity wrap whatever the layer painted, so every kind
-  // gets both without each painter knowing about them.
-  const wrapped = (l.rotation || l.alpha != null) ? (
-    <g
-      transform={l.rotation ? `rotate(${l.rotation} ${l.x + l.w / 2} ${l.y + l.h / 2})` : undefined}
-      opacity={l.alpha ?? 1}
-    >
-      {body}
+  // Rotation, layer opacity and the page clip wrap whatever the layer
+  // painted, so every kind gets all three without each painter knowing about
+  // them. The clip is outermost: a rotated layer whose corner swings off the
+  // page has to be cut at the page edge, not at the edge it had before it
+  // turned.
+  const wrapped = (
+    <g clipPath={`url(#${uid}-page)`}>
+      {(l.rotation || l.alpha != null) ? (
+        <g
+          transform={l.rotation ? `rotate(${l.rotation} ${l.x + l.w / 2} ${l.y + l.h / 2})` : undefined}
+          opacity={l.alpha ?? 1}
+        >
+          {body}
+        </g>
+      ) : body}
     </g>
-  ) : body;
+  );
 
   if (!grabbable) return wrapped;
 

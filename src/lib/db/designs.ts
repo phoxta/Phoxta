@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import { friendlyError } from "@/lib/friendlyError";
-import type { DesignDoc } from "@/lib/designs/types";
+import type { Deck, DesignDoc } from "@/lib/designs/types";
 import { catalogue } from "@/lib/designs/templates";
 
 /**
@@ -17,7 +17,8 @@ export type Design = {
   organization_id: string;
   title: string;
   template_id: string;
-  doc: DesignDoc;
+  /** One design, or a carousel of them. See asDeck in designs/types. */
+  doc: DesignDoc | Deck;
   status: DesignStatus;
   brief: string | null;
   created_at: string;
@@ -42,7 +43,7 @@ export async function getDesign(id: string): Promise<{ data: Design | null; erro
 
 export async function createDesign(
   orgId: string,
-  input: { title: string; templateId: string; doc: DesignDoc; brief?: string },
+  input: { title: string; templateId: string; doc: DesignDoc | Deck; brief?: string },
 ): Promise<{ data: Design | null; error: string | null }> {
   const { data: session } = await supabase.auth.getUser();
   const { data, error } = await supabase

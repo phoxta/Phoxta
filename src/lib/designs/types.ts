@@ -303,6 +303,35 @@ export const emptyDoc = (templateId: string): DesignDoc => ({
 });
 
 /**
+ * A carousel: several designs posted as one.
+ *
+ * Stored in the same `doc` column as a single design, because a carousel is
+ * not a different kind of thing — it is a post with more than one page, and
+ * every slide is an ordinary DesignDoc that the same canvas, the same
+ * renderer and the same exporter already handle.
+ *
+ * Every design saved before carousels existed holds a bare DesignDoc, so the
+ * column carries EITHER shape and `asDeck` is the one place that knows it.
+ * Nothing had to be migrated, and a one-slide deck saved back as a deck still
+ * opens correctly in an older build, because slides[0] is a whole document.
+ */
+export type Deck = { slides: DesignDoc[] };
+
+export const isDeck = (v: DesignDoc | Deck | null | undefined): v is Deck =>
+  Boolean(v) && Array.isArray((v as Deck).slides);
+
+/** Whatever was stored, as a deck. Never returns an empty one: a design with
+ *  no slides has nothing to edit and nothing to show. */
+export function asDeck(v: DesignDoc | Deck | null | undefined, templateId = "v1"): Deck {
+  if (isDeck(v)) return v.slides.length ? v : { slides: [emptyDoc(templateId)] };
+  return { slides: [{ ...emptyDoc(templateId), ...(v ?? {}) }] };
+}
+
+/** The slides, for anything that only needs to read them. */
+export const slidesOf = (v: DesignDoc | Deck | null | undefined, templateId?: string) =>
+  asDeck(v, templateId).slides;
+
+/**
  * The palette a design actually paints with.
  *
  * The template's own colours underneath, the design's overrides on top. Taking

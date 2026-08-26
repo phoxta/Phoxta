@@ -49,8 +49,16 @@ function saved(): DesignDoc {
   return JSON.parse(JSON.stringify(d));
 }
 
+/** A design with one layer dragged clean off the page. */
+function spill(): DesignDoc {
+  const d = materialise(emptyDoc("v2"));
+  const l = d.layers!.find((x) => x.type === "rect" && !x.locked)!;
+  return updateLayer(d, l.id, { x: -260, y: 40, w: 220, h: 220 });
+}
+
 function App() {
   const [row] = useState(saved);
+  const [spilled] = useState(spill);
   // The editor's construction, verbatim.
   const editorDoc: DesignDoc = { ...emptyDoc("v2"), ...row };
   const view = fitTo(W, H, 0);
@@ -77,6 +85,22 @@ function App() {
       </div>
       <div id="zoomed" style={{ width: W, height: H, overflow: "hidden" }}>
         <DesignSvg doc={editorDoc} width={W} height={H} viewport={zoomed} />
+      </div>
+
+      {/* Two designs from the SAME template, in different brand colours, on
+          one page — the library grid's ordinary case. Their gradients, masks
+          and clip paths are referenced by id, and an id is global to the
+          document. */}
+      <div id="twinA" style={{ width: 200 }}>
+        <DesignSvg doc={{ ...emptyDoc("v6"), palette: { accent: "#e0432f", gradientFrom: "#e0432f", gradientTo: "#7a1d10" } }} width={200} />
+      </div>
+      <div id="twinB" style={{ width: 200 }}>
+        <DesignSvg doc={{ ...emptyDoc("v6"), palette: { accent: "#12a150", gradientFrom: "#12a150", gradientTo: "#04431f" } }} width={200} />
+      </div>
+
+      {/* A layer dragged well outside the page. Nothing should paint there. */}
+      <div id="spill" style={{ width: 200 }}>
+        <DesignSvg doc={spilled} width={200} />
       </div>
     </div>
   );

@@ -19,10 +19,11 @@ import { FloatingBar } from "./designs/FloatingBar";
 import { CanvasText } from "./designs/CanvasText";
 import { ImageLibrary } from "./designs/ImageLibrary";
 import { LayersPanel } from "./designs/LayersPanel";
+import { SlideStrip } from "./designs/SlideStrip";
 import type { LibraryImage } from "@/lib/db/designs";
 import {
-  CANVAS_H, CANVAS_W, DEFAULT_PALETTE, emptyDoc, 
-  type DesignDoc, type Layer, type TextSlot,
+  CANVAS_H, CANVAS_W, DEFAULT_PALETTE, asDeck, emptyDoc, slidesOf, 
+  type Deck, type DesignDoc, type Layer, type TextSlot,
 } from "@/lib/designs/types";
 import "./designs.css";
 
@@ -103,7 +104,12 @@ export default function DesignsPage() {
               <article key={d.id} className="dsn-tile">
                 <button type="button" className="dsn-tile__art" onClick={() => setOpen(d)}
                         aria-label={`Open ${d.title}`}>
-                  <DesignSvg doc={d.doc} width={260} />
+                  <DesignSvg doc={slidesOf(d.doc, d.template_id)[0]} width={260} />
+                  {slidesOf(d.doc, d.template_id).length > 1 && (
+                    <span className="dsn-tile__count">
+                      {slidesOf(d.doc, d.template_id).length} slides
+                    </span>
+                  )}
                 </button>
                 <div className="dsn-tile__foot">
                   <div style={{ minWidth: 0 }}>
@@ -205,7 +211,16 @@ function NewDesign({ orgId, onMade }: { orgId: string; onMade: (d: Design) => vo
 /* ── The editor ──────────────────────────────────────────────────────────── */
 
 function Editor({ design, orgName, onClose }: { design: Design; orgName: string; onClose: () => void }) {
-  const [doc, setDoc] = useState<DesignDoc>(() => ({ ...emptyDoc(design.template_id), ...design.doc }));
+  /**
+   * The whole post, and which slide is on the canvas.
+   *
+   * Everything below this line still works on ONE document — `doc` is the
+   * current slide and `setDoc` writes back into it. That is deliberate: the
+   * canvas, the floating bar, the layers panel and every edit operation are
+   * unchanged by carousels, because a slide is an ordinary design.
+   */
+  const [deck, setDeck] = useState<Deck>(() => asDeck(design.doc, design.template_id));
+  const [slide, setSlide] = useState(0);
   const [title, setTitle] = useState(design.title);
   const [sel, setSel] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -216,8 +231,31 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   /** The image slot the library was opened for. */
   const [picking, setPicking] = useState<string | null>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const history = useRef(new History());
+  // The undo stack holds whole DECKS, not slides. Storing a slide would let
+  // an undo restore one slide's old content into whichever slide happened to
+  // be open, which is worse than not having undo at all.
+  const history = useRef(new History<Deck>());
   const [, force] = useState(0);
+
+  // Clamped rather than trusted: deleting the last slide leaves the index
+  // past the end for one render, and reading undefined there takes the whole
+  // editor down.
+  const index = Math.min(slide, deck.slides.length - 1);
+  const doc = deck.slides[index];
+
+  /** Write back into the slide on the canvas. `record` pushes the WHOLE deck
+   *  onto the undo stack, so undo cannot resurrect one slide's old content
+   *  into a different slide. */
+  const setDoc = useCallback((fn: (d: DesignDoc) => DesignDoc, record = false) => {
+    setDeck((k) => {
+      const at = Math.min(index, k.slides.length - 1);
+      const cur = k.slides[at];
+      const next = fn(cur);
+      if (next === cur) return k;
+      if (record) history.current.push(k);
+      return { ...k, slides: k.slides.map((sl, i) => (i === at ? next : sl)) };
+    });
+  }, [index]);
 
   const template = getTemplate(doc.templateId);
   const layers = layersOf(doc);
@@ -257,18 +295,13 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
      One place that records history and marks the document dirty, so no new
      action can be added that forgets to be undoable. */
   const apply = useCallback((next: DesignDoc | ((d: DesignDoc) => DesignDoc), record = true) => {
-    setDoc((d) => {
-      const value = typeof next === "function" ? next(d) : next;
-      if (value === d) return d;
-      if (record) history.current.push(d);
-      return value;
-    });
+    setDoc((d) => (typeof next === "function" ? next(d) : next), record);
     setDirty(true);
     force((n) => n + 1);
-  }, []);
+  }, [setDoc]);
 
-  const undo = useCallback(() => { setDoc((d) => history.current.undo(d) ?? d); setDirty(true); force((n) => n + 1); }, []);
-  const redo = useCallback(() => { setDoc((d) => history.current.redo(d) ?? d); setDirty(true); force((n) => n + 1); }, []);
+  const undo = useCallback(() => { setDeck((k) => history.current.undo(k) ?? k); setDirty(true); force((n) => n + 1); }, []);
+  const redo = useCallback(() => { setDeck((k) => history.current.redo(k) ?? k); setDirty(true); force((n) => n + 1); }, []);
 
   /* ── Dragging ──────────────────────────────────────────────────────────
      A multi-selection moves together. The positions every selected layer had
@@ -278,6 +311,9 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   const dragBase = useRef<Record<string, { x: number; y: number }> | null>(null);
 
   const onGeometry = useCallback((id: string, b: { x: number; y: number; w: number; h: number; rotation?: number }, commit: boolean) => {
+    // The first frame of a gesture is the one that goes on the undo stack, so
+    // a drag across the canvas is one step rather than four hundred.
+    const first = !dragBase.current;
     setDoc((d) => {
       const current = layersOf(d);
       // A rotation is always one layer, even when several are selected: the
@@ -286,7 +322,6 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
       const multi = b.rotation === undefined && sel.length > 1 && sel.includes(id);
 
       if (!dragBase.current) {
-        history.current.push(d);
         dragBase.current = Object.fromEntries(current.filter((l) => sel.includes(l.id)).map((l) => [l.id, { x: l.x, y: l.y }]));
       }
 
@@ -295,10 +330,10 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
         return base ? moveMany(d, sel, dragBase.current, b.x - base.x, b.y - base.y) : d;
       }
       return updateLayer(d, id, b);
-    });
+    }, first);
     setDirty(true);
     if (commit) { dragBase.current = null; force((n) => n + 1); }
-  }, [sel]);
+  }, [sel, setDoc]);
 
   /* A group resize is computed from the document as it was when the gesture
      started, not from the last frame. Re-scaling an already-scaled document
@@ -311,13 +346,14 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     to: { x: number; y: number; w: number; h: number },
     commit: boolean,
   ) => {
+    const firstFrame = !scaleBase.current;
     setDoc((d) => {
-      if (!scaleBase.current) { history.current.push(d); scaleBase.current = d; }
+      if (!scaleBase.current) scaleBase.current = d;
       return scaleMany(scaleBase.current, sel, from, to);
-    });
+    }, firstFrame);
     setDirty(true);
     if (commit) { scaleBase.current = null; force((n) => n + 1); }
-  }, [sel]);
+  }, [sel, setDoc]);
 
   const select = useCallback((id: string | null, additive?: boolean) => {
     if (!id) return setSel([]);
@@ -402,7 +438,7 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
 
   async function save() {
     setBusy("saving");
-    const { error } = await saveDesign(design.id, { title, doc, template_id: doc.templateId });
+    const { error } = await saveDesign(design.id, { title, doc: deck, template_id: deck.slides[0].templateId });
     setBusy("");
     if (error) return toastError(error);
     setDirty(false);
@@ -419,11 +455,50 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
       const clone = svg.cloneNode(true) as SVGSVGElement;
       clone.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
       const { blob } = await exportPng(clone, doc);
-      downloadPng(blob, title || "post");
+      downloadPng(blob, deck.slides.length > 1 ? `${title || "post"}-${index + 1}` : (title || "post"));
       toast("Downloaded.");
     } catch (e) {
       toastError((e as Error).message);
     } finally {
+      setBusy("");
+    }
+  }
+
+  /**
+   * Export every slide, numbered in posting order.
+   *
+   * Each slide is put on the canvas in turn and rasterised from what is
+   * actually there, rather than from a second renderer built for export — the
+   * whole point of one renderer is that the file is the thing that was
+   * approved. A frame is yielded between slides so React has painted the new
+   * one before it is read, and browsers drop downloads fired in the same tick,
+   * so they are spaced.
+   */
+  async function downloadAll() {
+    if (deck.slides.length === 1) return download();
+    setBusy("exporting");
+    const was = index;
+    try {
+      for (let i = 0; i < deck.slides.length; i++) {
+        setSlide(i);
+        setSel([]);
+        // Two frames: one for React to commit the new slide, one for the
+        // browser to paint it. Reading after a single frame catches the
+        // previous slide about a third of the time.
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const svg = stage.current?.querySelector("svg");
+        if (!svg) throw new Error("The canvas is not ready yet.");
+        const clone = svg.cloneNode(true) as SVGSVGElement;
+        clone.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
+        const { blob } = await exportPng(clone, deck.slides[i]);
+        downloadPng(blob, `${title || "post"}-${i + 1}`);
+        await new Promise((r) => setTimeout(r, 350));
+      }
+      toast(`Downloaded ${deck.slides.length} slides.`);
+    } catch (e) {
+      toastError((e as Error).message);
+    } finally {
+      setSlide(was);
       setBusy("");
     }
   }
@@ -480,6 +555,51 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     apply((d) => sel.reduce((acc, id) => move(acc, id), d));
   };
 
+  /* ── Slides ────────────────────────────────────────────────────────────
+     A carousel is a post with more than one page. "Add" copies the current
+     slide rather than starting blank: the slides of a carousel share a look,
+     and copying then editing is far less work than rebuilding it. A deep copy,
+     because slides must not share layer arrays — editing one would silently
+     edit the other. */
+  const slideOps = {
+    select: (i: number) => { setSlide(i); setSel([]); setEditing(null); },
+    add: () => {
+      setDeck((k) => {
+        history.current.push(k);
+        const copy = JSON.parse(JSON.stringify(k.slides[index])) as DesignDoc;
+        return { ...k, slides: [...k.slides.slice(0, index + 1), copy, ...k.slides.slice(index + 1)] };
+      });
+      setSlide(index + 1); setSel([]); setDirty(true); force((n) => n + 1);
+    },
+    blank: () => {
+      setDeck((k) => {
+        history.current.push(k);
+        const fresh = emptyDoc(k.slides[index].templateId);
+        return { ...k, slides: [...k.slides.slice(0, index + 1), fresh, ...k.slides.slice(index + 1)] };
+      });
+      setSlide(index + 1); setSel([]); setDirty(true); force((n) => n + 1);
+    },
+    remove: () => {
+      if (deck.slides.length === 1) return toastError("A post needs at least one slide.");
+      setDeck((k) => {
+        history.current.push(k);
+        return { ...k, slides: k.slides.filter((_, i) => i !== index) };
+      });
+      setSlide(Math.max(0, index - 1)); setSel([]); setDirty(true); force((n) => n + 1);
+    },
+    move: (to: number) => {
+      if (to < 0 || to >= deck.slides.length || to === index) return;
+      setDeck((k) => {
+        history.current.push(k);
+        const next = [...k.slides];
+        const [moved] = next.splice(index, 1);
+        next.splice(to, 0, moved);
+        return { ...k, slides: next };
+      });
+      setSlide(to); setDirty(true); force((n) => n + 1);
+    },
+  };
+
   /** A chosen photograph lands in the slot the library was opened for. */
   const placeImage = (im: LibraryImage) => {
     if (!picking) return;
@@ -518,8 +638,14 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
             {I_SPARK}{busy === "writing" ? "Writing…" : "Rewrite"}
           </button>
           <button type="button" className="dsn-btn" onClick={() => void download()} disabled={busy !== ""}>
-            {I_DOWN}{busy === "exporting" ? "Rendering…" : "PNG"}
+            {I_DOWN}{busy === "exporting" ? "Rendering…" : deck.slides.length > 1 ? `PNG (slide ${index + 1})` : "PNG"}
           </button>
+          {deck.slides.length > 1 && (
+            <button type="button" className="dsn-btn" onClick={() => void downloadAll()} disabled={busy !== ""}
+                    title="One PNG per slide, numbered in posting order">
+              {I_DOWN}All {deck.slides.length}
+            </button>
+          )}
           <button type="button" className="dsn-btn dsn-btn--solid" onClick={() => void save()} disabled={busy !== "" || !dirty}>
             {busy === "saving" ? "Saving…" : dirty ? "Save" : "Saved"}
           </button>
@@ -639,6 +765,15 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
             Double-click text to write in it · Space + drag pans · Ctrl + scroll zooms ·
             Ctrl + drag marquees over artwork · Shift keeps a corner proportional
           </span>
+          <SlideStrip
+            slides={deck.slides}
+            current={index}
+            onSelect={slideOps.select}
+            onAdd={slideOps.add}
+            onBlank={slideOps.blank}
+            onRemove={slideOps.remove}
+            onMove={slideOps.move}
+          />
         </div>
 
         <aside className="dsn-panel">

@@ -47,7 +47,14 @@ const m = await page.evaluate(() => {
   const norm = (sel) => {
     const el = document.querySelector(sel).cloneNode(true);
     el.querySelectorAll("[data-editor-only]").forEach((n) => n.remove());
-    return el.outerHTML.replace(/viewBox="[^"]*"/, "").replace(/\s+/g, " ");
+    return el.outerHTML
+      .replace(/viewBox="[^"]*"/, "")
+      // Element ids are namespaced per rendered design so two tiles from one
+      // template cannot capture each other's gradients. Two instances
+      // therefore differ by that namespace, and only by it.
+      .replace(/(id|clip-path|mask|fill)="((?:url\(#)?)[A-Za-z0-9_-]*?(-(?:page|grad|mask|clip|m|chip)-)/g, '$1="$2NS$3')
+      .replace(/(id|clip-path|mask|fill)="((?:url\(#)?)[A-Za-z0-9_-]*?(-page)/g, '$1="$2NS$3')
+      .replace(/\s+/g, " ");
   };
   return { tile: norm("#tile svg"), canvas: norm("#canvas svg") };
 });
@@ -145,6 +152,63 @@ check("both surfaces paint an opaque artboard first", opaque.tile && opaque.canv
   const opaqueCorners = png.corners.every((c) => c.endsWith(",255"));
   check("the export fills the frame rather than exporting the viewport",
         opaqueCorners, png.corners.join("  "));
+}
+
+// ── 5. Two designs from one template keep their own colours ──────────
+// Gradients, masks and clip paths are referenced by id, and an id is global to
+// the document -- so two tiles built from the same template define the same
+// ids, every reference resolves to whichever came first, and the second tile
+// silently paints in the first one's brand colours.
+{
+  const twins = await page.evaluate(() => {
+    const ids = (sel) => [...document.querySelectorAll(`${sel} [id]`)].map((n) => n.id);
+    // Every url(#x) must resolve to an element inside its OWN design. The
+    // browser resolves an id to the first match in the whole document, so a
+    // reference that leaves its tile is painting with a neighbour's colours.
+    const escapes = (sel) => {
+      const root = document.querySelector(sel);
+      const out = [];
+      for (const n of root.querySelectorAll("*")) {
+        for (const a of n.attributes) {
+          const m = /^url\(#(.+)\)$/.exec(a.value);
+          if (!m) continue;
+          if (!root.querySelector(`[id="${CSS.escape(m[1])}"]`)) out.push(`${n.tagName}.${a.name}`);
+          else if (document.getElementById(m[1]) !== root.querySelector(`[id="${CSS.escape(m[1])}"]`)) {
+            out.push(`${n.tagName}.${a.name} -> another design`);
+          }
+        }
+      }
+      return out;
+    };
+    return { idsA: ids("#twinA"), idsB: ids("#twinB"), escA: escapes("#twinA"), escB: escapes("#twinB") };
+  });
+  const shared = twins.idsA.filter((id) => twins.idsB.includes(id));
+  check("two designs on one page do not share element ids", shared.length === 0,
+        shared.length ? `${shared.length} shared, e.g. ${shared.slice(0, 3).join(", ")}` : "all unique");
+  const escaped = [...twins.escA, ...twins.escB];
+  check("no design paints with another design's gradients or masks", escaped.length === 0,
+        escaped.length ? `${escaped.length} stray reference(s): ${escaped.slice(0, 3).join(", ")}` : "all local");
+}
+
+// ── 6. Nothing paints outside the page ─────────────────────────
+// A layer can be dragged off the artboard. The artboard is the design: an SVG
+// clips to its own viewport, so the editor -- which shows margin around the
+// page -- would paint the stray layer in that margin, and the tile and the
+// export would not. Three surfaces, three answers.
+{
+  const spill = await page.evaluate(() => {
+    const svg = document.querySelector("#spill svg");
+    const painted = [...svg.querySelectorAll("rect, image, text")].filter((n) => !n.closest("[data-editor-only]"));
+    // Anything whose box starts left of the page must be clipped by something.
+    const strays = painted.filter((n) => Number(n.getAttribute("x")) < -1);
+    return {
+      strays: strays.length,
+      clipped: strays.every((n) => n.closest("[clip-path]") !== null),
+    };
+  });
+  check("a layer dragged off the page is clipped to it",
+        spill.strays === 0 || spill.clipped,
+        `${spill.strays} layer(s) outside, clipped: ${spill.clipped}`);
 }
 
 console.log("");

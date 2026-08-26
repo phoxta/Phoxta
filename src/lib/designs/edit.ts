@@ -170,26 +170,26 @@ export function align(doc: DesignDoc, id: string, how: "left" | "hcentre" | "rig
    plus a layer list — so keeping fifty is cheaper than reasoning about how to
    invert "send to back" after the layer above it was deleted. */
 
-export class History {
-  private past: DesignDoc[] = [];
-  private future: DesignDoc[] = [];
+export class History<T = DesignDoc> {
+  private past: T[] = [];
+  private future: T[] = [];
   private limit = 50;
 
-  push(doc: DesignDoc) {
+  push(doc: T) {
     this.past.push(doc);
     if (this.past.length > this.limit) this.past.shift();
     // Any new edit invalidates the redo branch, as in every editor.
     this.future = [];
   }
 
-  undo(current: DesignDoc): DesignDoc | null {
+  undo(current: T): T | null {
     const prev = this.past.pop();
     if (!prev) return null;
     this.future.push(current);
     return prev;
   }
 
-  redo(current: DesignDoc): DesignDoc | null {
+  redo(current: T): T | null {
     const next = this.future.pop();
     if (!next) return null;
     this.past.push(current);
