@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inconsolata:wght@400&display=swap");
+
 /* ═══════════════════════════════════════════════════════════════════════
    Idea Validator  (.idv-*)
    ───────────────────────────────────────────────────────────────────────
@@ -146,366 +148,471 @@
 
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Step slides — in the Phoxta homepage's own design language
+   Step slides — the Webflow design system
    ───────────────────────────────────────────────────────────────────────
-   Not a look invented for this screen. The homepage's identity is:
+   Built to VoltAgent/awesome-design-md · design-md/webflow (MIT).
 
-     · a dark photographic panel with white type over it, rounded-5, the
-       bg-linear-opacity gradient doing the legibility work (sec-5-home-4)
-     · large headings at tight tracking, close to their own line
-     · at-about-title / at-about-dec for card copy — 28px at -0.05em over a
-       162% measure, which is what makes the homepage read as calm
-     · a hairline rule opening a block, the way at-about-border does
-     · #F0460E, the theme primary, used sparingly and only to point
-     · photographs at 16px radius, cover-fitted
-     · generous vertical air — the homepage breathes at pt-120; a console
-       pane cannot, so the rhythm is scaled but the proportions are not
+   The system in its own words: a generous white canvas holding a deep
+   near-black #080808 that carries every heading and every primary action,
+   with a five-stop chromatic accent — purple, pink, blue, orange, green —
+   that appears ONLY as full-saturation card fills, never as a button.
+   One family across every role at 400-600, never heavier. Tight geometry:
+   4px on buttons, 8px on cards, and no pills anywhere. Elevation is a
+   five-stop layered drop-shadow, used on featured cards only.
 
-   Everything below either reuses a main.css class or matches one. The tokens
-   are read from main.css rather than restated, so a theme change on the
-   homepage reaches these slides too.
+   HOW IT MAPS ONTO A VALIDATION RUN. The category card is the brand's
+   signature, and seven stages is exactly the shape it wants: each stage
+   head is a full-fill accent card in one of the five, so the run reads as
+   a set of categories rather than seven identical white panels. The
+   accents stay where the system puts them — a surface, never an action,
+   never a text colour.
+
+   TWO ADAPTATIONS, STATED:
+
+   1. WF Visual Sans Variable is proprietary. The system's own fallback
+      chain names Inter next, so Inter is what loads, with WF Visual Sans
+      still first so a licence later needs no code change. Inconsolata is
+      the named mono fallback and carries the table captions.
+
+   2. Tokens are scoped to .idv-slide. Phoxta's palette and DM Sans still
+      own every other pixel of the dashboard; a design system applied to
+      one surface has to stop at that surface's edge or it has leaked
+      rather than been applied.
+
+   3. The category cards do not all take white text. The system specifies
+      on-primary white on purple, pink, blue and orange, which works on
+      the marketing site because those cards carry 32px display copy at
+      the 3:1 large-text threshold. Ours carry 14px lists, where the bar
+      is 4.5:1 — and white measures 3.15 on pink, 3.38 on blue and 2.86
+      on orange, so it fails at both sizes. Each fill is paired with
+      whichever of ink or white actually measures, which is the pairing
+      the system itself already uses on green. Purple keeps white (5.33).
    ═══════════════════════════════════════════════════════════════════════ */
 
 .idv-slide {
-  --idv-accent: var(--at-theme-primary, #f0460e);
-  --idv-ink: var(--at-common-black, #1e1e1e);
-  --idv-line: rgba(30, 30, 30, 0.1);
-  --idv-soft: var(--at-neutral-50, #f6f6f6);
+  /* ── Colour ── */
+  --wf-canvas: #ffffff;
+  --wf-primary: #080808;
+  --wf-on-primary: #ffffff;
+  --wf-ink: #080808;
+  --wf-ink-strong: #222222;
+  --wf-body: #363636;
+  --wf-body-mid: #5a5a5a;
+  --wf-mute: #898989;
+  --wf-mute-soft: #ababab;
+  --wf-hairline: #d8d8d8;
 
-  border-radius: 24px;
-  background: var(--at-neutral-0, #fff);
+  --wf-purple: #7a3dff;
+  --wf-pink: #ed52cb;
+  --wf-blue: #3b89ff;
+  --wf-blue-deep: #006acc;
+  --wf-blue-info: #146ef5;
+  --wf-orange: #ff6b00;
+  --wf-green: #00d722;
+  --wf-yellow: #ffae13;
+  --wf-red: #ee1d36;
+
+  /* ── Type ── */
+  --wf-font: "WF Visual Sans Variable", "Inter", system-ui, -apple-system, sans-serif;
+  --wf-mono: "WFVisualSans-Mono", "Inconsolata", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ── Shape ── */
+  --wf-r-sm: 4px;   /* buttons — never a pill */
+  --wf-r-md: 8px;   /* cards */
+
+  /* Level 2: the brand's only atmospheric effect, five stops at very low
+     individual opacity. Reserved for featured cards, as specified. */
+  --wf-lift:
+    0 84px 24px rgba(0, 0, 0, 0),
+    0 54px 22px rgba(0, 0, 0, 0.01),
+    0 30px 18px rgba(0, 0, 0, 0.04),
+    0 13px 13px rgba(0, 0, 0, 0.08),
+    0 3px 7px rgba(0, 0, 0, 0.09);
+
+  background: var(--wf-canvas);
+  color: var(--wf-ink);
+  font-family: var(--wf-font);
+  border-radius: var(--wf-r-md);
   overflow: hidden;
 }
 
-/* ── Hero panel ────────────────────────────────────────────────────────
-   The homepage's signature block, at pane scale. bg-linear-opacity and
-   bg-cover come from main.css; this only sets the size and the padding,
-   so the gradient that keeps white type readable is the same one the
-   homepage uses rather than a second copy of the idea. */
+/* ── Display type ────────────────────────────────────────────────────────
+   Weight ceiling 600, floor 400 — the system is explicit that it never
+   goes heavier than semibold and never lighter than regular. Negative
+   tracking only at the top of the scale, as the token table has it. */
 
-.idv-hero {
-  position: relative;
-  min-height: 260px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 40px;
-  background-position: center;
+.idv-display-xl,
+.idv-display-lg,
+.idv-display-md,
+.idv-display-sm {
+  font-family: var(--wf-font);
+  color: var(--wf-ink);
+  margin: 0;
 }
 
-.idv-hero > * { position: relative; z-index: 1; }
+.idv-display-xl { font-size: 56px; font-weight: 600; line-height: 1.04; letter-spacing: -0.8px; }
+.idv-display-lg { font-size: 44.8px; font-weight: 600; line-height: 1.04; letter-spacing: -0.45px; }
+.idv-display-md { font-size: 32px; font-weight: 500; line-height: 1.3; letter-spacing: -0.32px; }
+.idv-display-sm { font-size: 24px; font-weight: 500; line-height: 1.3; }
 
-.idv-hero__tag {
+@media (max-width: 991.98px) {
+  .idv-display-xl { font-size: 40px; letter-spacing: -0.5px; }
+  .idv-display-lg { font-size: 32px; }
+  .idv-display-md { font-size: 26px; }
+}
+
+@media (max-width: 575.98px) {
+  .idv-display-xl { font-size: 32px; }
+  .idv-display-md { font-size: 22px; }
+}
+
+/* ── Body type ── */
+.idv-body-md { font-size: 16px; font-weight: 400; line-height: 1.6; letter-spacing: -0.16px; color: var(--wf-body); }
+.idv-body-md-strong { font-size: 16px; font-weight: 500; line-height: 1.6; letter-spacing: -0.16px; color: var(--wf-ink); }
+.idv-body-sm { font-size: 14px; font-weight: 400; line-height: 1.6; color: var(--wf-body); }
+.idv-title-md { font-size: 20px; font-weight: 500; line-height: 1.4; color: var(--wf-ink); }
+.idv-title-sm { font-size: 16px; font-weight: 500; line-height: 1.6; letter-spacing: -0.16px; color: var(--wf-ink); }
+.idv-caption { font-size: 12.8px; font-weight: 550; line-height: 1.2; color: var(--wf-body-mid); }
+.idv-mono { font-family: var(--wf-mono); font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--wf-body-mid); }
+
+/* The uppercase eyebrow that marks every section header, at the system's
+   positive tracking — the one place it tracks out rather than in. */
+.idv-eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--wf-mute);
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────
+   4px, not a pill. The system reserves 9999px for circular icon
+   containers and says so twice. */
+
+.idv-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  align-self: flex-start;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  padding: 7px 14px;
-  margin-bottom: 20px;
-  backdrop-filter: blur(6px);
+  border-radius: var(--wf-r-sm);
+  padding: 4px 8px;
+  font-size: 12.8px;
+  font-weight: 550;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: var(--wf-blue-info);
+  color: var(--wf-on-primary);
 }
 
-.idv-hero__tag i {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--idv-accent);
-  display: inline-block;
+.idv-badge--soft { background: transparent; color: var(--wf-blue-info); box-shadow: inset 0 0 0 1px currentColor; }
+.idv-badge--good { background: var(--wf-green); color: var(--wf-primary); }
+.idv-badge--warn { background: var(--wf-red); color: var(--wf-on-primary); }
+.idv-badge--ink { background: var(--wf-primary); color: var(--wf-on-primary); }
+.idv-badge--onfill { background: rgba(255, 255, 255, 0.22); color: #fff; }
+
+/* ── Stage head: the category card ───────────────────────────────────────
+   Full-saturation accent fill, white display type, no image behind the
+   words. This is the brand's signature surface and the only place the
+   chromatic palette is allowed to appear at full strength. */
+
+.idv-hero {
+  padding: 48px 40px;
+  background: var(--wf-cat, var(--wf-primary));
 }
 
-.idv-hero__title {
-  font-size: 44px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.05em;
-  color: #fff;
-  margin: 0 0 12px;
+.idv-hero .idv-display-xl { color: inherit; }
+.idv-hero__lede { color: var(--wf-on-cat-soft); max-width: 52ch; }
+
+/* Each fill carries whichever of ink or white measures against it — see the
+   note at the top. --wf-on-cat is the pair; --wf-on-cat-soft is the same
+   colour at reading-secondary strength. */
+.idv-slide[data-cat="purple"] {
+  --wf-cat: var(--wf-purple); --wf-on-cat: #ffffff; --wf-on-cat-soft: rgba(255, 255, 255, 0.78);
+}
+.idv-slide[data-cat="pink"] {
+  --wf-cat: var(--wf-pink); --wf-on-cat: var(--wf-primary); --wf-on-cat-soft: rgba(8, 8, 8, 0.72);
+}
+.idv-slide[data-cat="blue"] {
+  --wf-cat: var(--wf-blue); --wf-on-cat: var(--wf-primary); --wf-on-cat-soft: rgba(8, 8, 8, 0.72);
+}
+.idv-slide[data-cat="orange"] {
+  --wf-cat: var(--wf-orange); --wf-on-cat: var(--wf-primary); --wf-on-cat-soft: rgba(8, 8, 8, 0.72);
+}
+.idv-slide[data-cat="green"] {
+  --wf-cat: var(--wf-green); --wf-on-cat: var(--wf-primary); --wf-on-cat-soft: rgba(8, 8, 8, 0.7);
 }
 
-.idv-hero__dec {
-  font-size: 16px;
-  line-height: 162%;
-  letter-spacing: -0.02em;
-  color: rgba(255, 255, 255, 0.72);
-  margin: 0;
-  max-width: 60ch;
+.idv-hero { color: var(--wf-on-cat, var(--wf-on-primary)); }
+
+/* The badge sits on the fill, so it borrows the fill's own pairing. */
+.idv-badge--onfill { background: rgba(255, 255, 255, 0.24); color: #fff; }
+.idv-slide[data-cat="pink"] .idv-badge--onfill,
+.idv-slide[data-cat="blue"] .idv-badge--onfill,
+.idv-slide[data-cat="orange"] .idv-badge--onfill,
+.idv-slide[data-cat="green"] .idv-badge--onfill {
+  background: rgba(8, 8, 8, 0.14);
+  color: var(--wf-primary);
 }
 
-@media (max-width: 767.98px) {
-  .idv-hero { min-height: 210px; padding: 26px; }
-  .idv-hero__title { font-size: 32px; }
-}
+@media (max-width: 767.98px) { .idv-hero { padding: 32px 24px; } }
 
-/* ── Body ──────────────────────────────────────────────────────────────── */
-
-.idv-body { padding: 40px; }
+/* ── Body ── */
+.idv-body { padding: 32px; background: var(--wf-canvas); }
 .idv-body > *:last-child { margin-bottom: 0; }
 
-@media (max-width: 767.98px) { .idv-body { padding: 26px; } }
+@media (max-width: 767.98px) { .idv-body { padding: 24px; } }
 
-/* The lead line, set the way the homepage sets a section title: big, tight,
-   and sitting on its own line rather than in a paragraph of body copy. */
-.idv-statement {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.05em;
-  color: var(--idv-ink);
-  max-width: 22ch;
-}
-
-@media (max-width: 991.98px) { .idv-statement { font-size: 26px; max-width: none; } }
-
-/* at-about-dec, restated for elements that are not in an at-about-item. */
-.idv-dec {
-  font-size: 16px;
-  line-height: 162%;
-  letter-spacing: -0.02em;
-  color: var(--at-neutral-500);
-}
-
-/* ── Section opener ────────────────────────────────────────────────────
-   at-about-border's move: a hairline across the block with the label riding
-   the left end of it. It separates without shouting, which is the whole
-   reason the homepage uses a rule instead of a heading here. */
-
+/* ── Section opener ── */
 .idv-head {
   display: flex;
   align-items: center;
-  gap: 16px;
-  border-top: 1px solid var(--idv-line);
-  padding-top: 18px;
-  margin: 0 0 24px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  gap: 12px;
+  border-top: 1px solid var(--wf-hairline);
+  padding-top: 20px;
+  margin: 0 0 20px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: var(--at-neutral-500);
+  color: var(--wf-mute);
 }
 
+/* The stage's own accent, as a 4px tick at the head of the rule. The only
+   place an accent appears outside a fill — small enough to mark, not
+   large enough to read as a second brand colour. */
 .idv-head::before {
   content: "";
-  width: 22px;
-  height: 2px;
-  background: var(--idv-accent);
+  width: 12px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--wf-cat, var(--wf-primary));
   flex: none;
 }
 
-/* ── Inline photograph ─────────────────────────────────────────────────
-   The homepage's at-about-item: a picture and the words that belong to it,
-   side by side. Used where a stage is otherwise all prose — a slide with a
-   single paragraph and no visual is the one that looks unfinished. */
-
+/* ── Photography ── */
 .idv-shot {
-  border-radius: 16px;
+  border-radius: var(--wf-r-md);
   width: 100%;
-  height: 260px;
+  height: 280px;
   object-fit: cover;
   display: block;
 }
 
-/* ── Cards ─────────────────────────────────────────────────────────────── */
+.idv-shot--tall { height: 340px; }
+
+/* ── Cards ───────────────────────────────────────────────────────────────
+   Level 1 by default: hairline on canvas, 8px, 32px padding. Level 2 —
+   the layered lift — only on the featured card, per the elevation table. */
 
 .idv-tile {
-  background: var(--at-neutral-0);
-  border: 1px solid var(--idv-line);
-  border-radius: 16px;
-  padding: 26px;
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  background: var(--wf-canvas);
+  border: 1px solid var(--wf-hairline);
+  border-radius: var(--wf-r-md);
+  padding: 24px;
 }
 
-.idv-tile:hover { box-shadow: 0 14px 34px rgba(30, 30, 30, 0.07); transform: translateY(-2px); }
+.idv-tile--lift { box-shadow: var(--wf-lift); border-color: transparent; }
 
-.idv-tile__title {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1.25;
-  color: var(--idv-ink);
-}
-
-.idv-tile__dec {
-  font-size: 15px;
-  line-height: 162%;
-  letter-spacing: -0.02em;
-  color: var(--at-neutral-500);
-}
-
-/* The one that matters on the slide gets the accent, as the homepage marks a
-   featured card. */
-.idv-tile--accent { border-color: rgba(240, 70, 14, 0.28); }
-
-@media (prefers-reduced-motion: reduce) {
-  .idv-tile { transition: none; }
-  .idv-tile:hover { transform: none; }
-}
-
-/* ── Figures ───────────────────────────────────────────────────────────
-   Soft ground, no border, big number. The homepage never puts a hairline box
-   around a statistic; it lets the neutral fill hold it. */
-
-/* No height here. A percentage height resolves against a stretched flex item,
-   which a Bootstrap column is — outside one it has nothing to resolve against
-   and the card grows to fill the viewport. The equal-height rule at the bottom
-   of this file is scoped to where it means something. */
+/* ── Figures ── */
 .idv-stat {
-  background: var(--idv-soft);
-  border-radius: 16px;
-  padding: 26px;
+  background: var(--wf-canvas);
+  border: 1px solid var(--wf-hairline);
+  border-radius: var(--wf-r-md);
+  padding: 24px;
 }
 
 .idv-stat__k {
   display: block;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: var(--at-neutral-500);
-  margin-bottom: 10px;
+  color: var(--wf-mute);
+  margin-bottom: 12px;
 }
 
 .idv-stat__n {
   display: block;
-  font-size: 38px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.05em;
-  color: var(--idv-ink);
+  font-size: 44.8px;
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.45px;
+  color: var(--wf-ink);
 }
 
-/* Step-downs for values that are phrases rather than figures. */
-.idv-stat__n--sm { font-size: 28px; letter-spacing: -0.04em; line-height: 1.12; }
-.idv-stat__n--xs { font-size: 21px; letter-spacing: -0.03em; line-height: 1.35; font-weight: 600; }
+.idv-stat__n--sm { font-size: 32px; font-weight: 500; letter-spacing: -0.32px; line-height: 1.2; }
+.idv-stat__n--xs { font-size: 20px; font-weight: 500; letter-spacing: -0.2px; line-height: 1.4; }
 
-.idv-stat--accent { background: var(--idv-ink); }
-.idv-stat--accent .idv-stat__k { color: rgba(255, 255, 255, 0.55); }
-.idv-stat--accent .idv-stat__n { color: #fff; }
-.idv-stat--accent .idv-dec, .idv-stat--accent .idv-tile__dec { color: rgba(255, 255, 255, 0.66); }
+/* Polarity flip, which is how this system marks its featured surface. */
+.idv-stat--dark {
+  background: var(--wf-primary);
+  border-color: var(--wf-primary);
+  box-shadow: var(--wf-lift);
+}
+.idv-stat--dark .idv-stat__k { color: rgba(255, 255, 255, 0.6); }
+.idv-stat--dark .idv-stat__n { color: var(--wf-on-primary); }
+.idv-stat--dark .idv-body-sm,
+.idv-stat--dark .idv-caption { color: rgba(255, 255, 255, 0.72); }
 
-/* ── Market funnel ─────────────────────────────────────────────────────── */
+/* ── Market funnel ───────────────────────────────────────────────────────
+   Ink for the whole market, then the stage's accent for the reachable
+   slice — a surface fill, which is what the accents are for. */
 
-.idv-funnel { display: flex; flex-direction: column; gap: 10px; }
+.idv-funnel { display: flex; flex-direction: column; gap: 8px; }
 
 .idv-funnel__row {
-  border-radius: 16px;
-  padding: 20px 26px;
-  color: #fff;
+  border-radius: var(--wf-r-md);
+  padding: 20px 24px;
   min-width: 0;
 }
 
-.idv-funnel__row:nth-child(1) { width: 100%; background: var(--idv-ink); }
-.idv-funnel__row:nth-child(2) { width: 78%; background: #3a3a3a; }
-.idv-funnel__row:nth-child(3) { width: 56%; background: var(--idv-accent); }
+.idv-funnel__row:nth-child(1) { width: 100%; background: var(--wf-primary); color: var(--wf-on-primary); }
+.idv-funnel__row:nth-child(2) { width: 78%; background: #3a3a3a; color: var(--wf-on-primary); }
+.idv-funnel__row:nth-child(3) { width: 56%; background: var(--wf-cat, var(--wf-blue)); color: var(--wf-on-cat, var(--wf-on-primary)); }
 
-.idv-funnel__k { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.66; }
-.idv-funnel__v { font-size: 26px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.1; }
-.idv-funnel__b { font-size: 13px; line-height: 1.5; opacity: 0.72; }
+.idv-funnel__k { font-size: 12px; font-weight: 500; letter-spacing: 0.6px; text-transform: uppercase; opacity: 0.66; }
+.idv-funnel__v { font-size: 32px; font-weight: 600; line-height: 1.2; letter-spacing: -0.32px; }
+.idv-funnel__b { font-size: 14px; line-height: 1.5; opacity: 0.76; }
 
-/* ── Severity / strength meter ─────────────────────────────────────────── */
+/* ── Severity / strength meter ───────────────────────────────────────────
+   Green, yellow and red are three of the system's own accents and are
+   named for exactly this: status, warning, error. */
 
-.idv-meter { display: inline-flex; gap: 4px; vertical-align: middle; }
-.idv-meter i { width: 18px; height: 5px; border-radius: 999px; background: rgba(30, 30, 30, 0.14); display: inline-block; }
-.idv-meter i.on-low { background: #10b981; }
-.idv-meter i.on-med { background: #f59e0b; }
-.idv-meter i.on-high { background: #dc2626; }
+.idv-meter { display: inline-flex; gap: 3px; vertical-align: middle; }
+.idv-meter i { width: 18px; height: 4px; border-radius: 2px; background: var(--wf-hairline); display: inline-block; }
+.idv-meter i.on-low { background: var(--wf-green); }
+.idv-meter i.on-med { background: var(--wf-yellow); }
+.idv-meter i.on-high { background: var(--wf-red); }
 
-/* Severity and strength both run 1-3 and mean opposite things: three bars of
-   pain is bad news and three bars of demand is good. Same widget, inverted
-   palette, so a founder reads the colour rather than counting the bars. */
-.idv-meter i.on-good { background: #10b981; }
-.idv-meter i.on-weak { background: #dc2626; }
+/* Severity and strength run the same 1-3 and mean opposite things: three
+   bars of pain is bad news and three bars of demand is good. Same widget,
+   inverted palette, so the colour is read rather than the count. */
+.idv-meter i.on-good { background: var(--wf-green); }
+.idv-meter i.on-weak { background: var(--wf-red); }
 
-/* ── SWOT ──────────────────────────────────────────────────────────────── */
+/* ── SWOT ────────────────────────────────────────────────────────────────
+   Four category cards, one per quadrant, in four of the five accents. The
+   fifth is held back for the stage head so the grid never repeats the
+   colour that is already on screen above it. */
 
-.idv-swot { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.idv-swot > div { border-radius: 16px; padding: 26px; background: var(--idv-soft); }
-.idv-swot > div:nth-child(2) { background: rgba(220, 38, 38, 0.06); }
-.idv-swot > div:nth-child(3) { background: rgba(37, 99, 235, 0.06); }
-.idv-swot > div:nth-child(4) { background: rgba(240, 70, 14, 0.06); }
+.idv-swot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.idv-swot > div { border-radius: var(--wf-r-md); padding: 24px; color: var(--wf-primary); }
+.idv-swot > div:nth-child(1) { background: var(--wf-green); }
+.idv-swot > div:nth-child(2) { background: var(--wf-red); }
+.idv-swot > div:nth-child(3) { background: var(--wf-blue); }
+.idv-swot > div:nth-child(4) { background: var(--wf-orange); }
+
+.idv-swot .idv-stat__k { color: inherit; opacity: 0.7; }
+.idv-swot .idv-list li { color: inherit; }
+.idv-swot .idv-list li::before { background: currentColor; opacity: 0.55; }
 
 @media (max-width: 575.98px) { .idv-swot { grid-template-columns: 1fr; } }
 
-/* ── Score bars ────────────────────────────────────────────────────────── */
-
+/* ── Score bars ── */
 .idv-score { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
-.idv-score__k { flex: 0 0 clamp(110px, 16vw, 170px); font-size: 15px; letter-spacing: -0.02em; color: var(--at-neutral-500); }
-.idv-score__track { flex: 1 1 auto; height: 8px; border-radius: 999px; background: rgba(30, 30, 30, 0.09); overflow: hidden; }
-.idv-score__fill { display: block; height: 100%; border-radius: 999px; background: var(--idv-accent); }
-.idv-score__n { flex: 0 0 32px; text-align: right; font-size: 15px; font-weight: 700; color: var(--idv-ink); }
+.idv-score__k { flex: 0 0 clamp(110px, 16vw, 180px); font-size: 14px; color: var(--wf-body); }
+.idv-score__track { flex: 1 1 auto; height: 8px; border-radius: var(--wf-r-sm); background: #ececec; overflow: hidden; }
+.idv-score__fill { display: block; height: 100%; border-radius: var(--wf-r-sm); background: var(--wf-primary); }
+.idv-score__n { flex: 0 0 30px; text-align: right; font-size: 16px; font-weight: 600; color: var(--wf-ink); }
 
-/* ── Pricing tiers ─────────────────────────────────────────────────────── */
+/* ── Pricing tiers ───────────────────────────────────────────────────────
+   Straight from the system: hairline tier cards, and the featured one
+   polarity-flipped onto the ink surface with the layered lift. */
 
 .idv-tier {
-  border: 1px solid var(--idv-line);
-  border-radius: 16px;
-  padding: 30px 26px;
-  background: var(--at-neutral-0);
+  background: var(--wf-canvas);
+  border: 1px solid var(--wf-hairline);
+  border-radius: var(--wf-r-md);
+  padding: 32px;
 }
 
-.idv-tier--mid { background: var(--idv-ink); border-color: var(--idv-ink); }
-.idv-tier--mid .idv-stat__k { color: rgba(255, 255, 255, 0.55); }
-.idv-tier--mid .idv-tier__price { color: #fff; }
-.idv-tier--mid .idv-tile__dec { color: rgba(255, 255, 255, 0.66); }
+.idv-tier--featured {
+  background: var(--wf-primary);
+  border-color: var(--wf-primary);
+  color: var(--wf-on-primary);
+  box-shadow: var(--wf-lift);
+}
+.idv-tier--featured .idv-stat__k { color: rgba(255, 255, 255, 0.6); }
+.idv-tier--featured .idv-tier__price { color: var(--wf-on-primary); }
+.idv-tier--featured .idv-body-sm { color: rgba(255, 255, 255, 0.72); }
 
-.idv-tier__price { font-size: 34px; font-weight: 700; letter-spacing: -0.05em; line-height: 1; color: var(--idv-ink); }
+.idv-tier__price {
+  display: block;
+  font-size: 44.8px;
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.45px;
+  color: var(--wf-ink);
+}
 
-/* ── Timeline ──────────────────────────────────────────────────────────── */
-
-.idv-timeline { position: relative; padding-left: 30px; }
+/* ── Timeline ── */
+.idv-timeline { position: relative; padding-left: 28px; }
 .idv-timeline::before {
   content: "";
   position: absolute;
-  left: 5px; top: 10px; bottom: 10px;
+  left: 3px; top: 9px; bottom: 9px;
   width: 1px;
-  background: var(--idv-line);
+  background: var(--wf-hairline);
 }
-.idv-timeline__item { position: relative; padding-bottom: 22px; }
+.idv-timeline__item { position: relative; padding-bottom: 20px; }
 .idv-timeline__item:last-child { padding-bottom: 0; }
 .idv-timeline__item::before {
   content: "";
   position: absolute;
-  left: -30px; top: 7px;
-  width: 11px; height: 11px;
-  border-radius: 999px;
-  background: var(--idv-accent);
-  box-shadow: 0 0 0 4px rgba(240, 70, 14, 0.14);
+  left: -28px; top: 6px;
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  background: var(--wf-cat, var(--wf-primary));
 }
 
-/* ── Table ─────────────────────────────────────────────────────────────── */
-
-.idv-slide .table { --bs-table-color: var(--idv-ink); margin-bottom: 0; }
+/* ── Table ── */
+.idv-slide .table { --bs-table-color: var(--wf-ink); color: var(--wf-ink); margin-bottom: 0; }
 .idv-slide .table th {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: var(--at-neutral-500);
-  border-bottom-color: var(--idv-line);
+  color: var(--wf-body-mid);
+  border-bottom-color: var(--wf-hairline);
 }
-.idv-slide .table td { border-color: var(--idv-line); letter-spacing: -0.02em; }
+.idv-slide .table td { border-color: var(--wf-hairline); font-size: 14px; line-height: 1.6; }
+.idv-slide .table td.idv-num { font-weight: 500; letter-spacing: -0.16px; }
 
-/* Opened inside a step row the slide is the card's lower half, so it bleeds to
-   the row's edges rather than sitting inside it as a second bordered box. */
+/* ── Lists ── */
+.idv-slide ul.idv-list { list-style: none; padding: 0; margin: 0; }
+.idv-slide ul.idv-list li {
+  position: relative;
+  padding-left: 18px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--wf-body);
+}
+.idv-slide ul.idv-list li:last-child { margin-bottom: 0; }
+.idv-slide ul.idv-list li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 9px;
+  width: 5px; height: 5px;
+  border-radius: 1px;
+  background: var(--wf-mute-soft);
+}
+.idv-stat--dark ul.idv-list li { color: rgba(255, 255, 255, 0.72); }
+
+/* Opened inside a step row the slide is the card's lower half, so it bleeds
+   to the row's edges rather than sitting inside it as a second card. */
 .idv-step .idv-slide {
   margin: 24px -1.5rem -1.5rem;
   border-radius: 0 0 var(--bs-border-radius-xxl, 2rem) var(--bs-border-radius-xxl, 2rem);
-  background: transparent;
 }
 
-.idv-step .idv-slide .idv-hero { border-radius: 0; }
-
 /* Equal-height cards, but only inside a grid column. A percentage height
-   resolves against a stretched flex item, which a Bootstrap column is — outside
-   one it has nothing to resolve against and the card grows to fill the
-   viewport. So the rule is scoped to where it means something. */
+   resolves against a stretched flex item, which a Bootstrap column is —
+   outside one it has nothing to resolve against and the card grows to fill
+   the viewport. So the rule is scoped to where it means something. */
 .idv-slide .row > [class*="col"] > .idv-stat,
 .idv-slide .row > [class*="col"] > .idv-tile,
 .idv-slide .row > [class*="col"] > .idv-tier {
@@ -646,6 +753,3 @@
   border: 0;
 }
 
-/* The one place a competitor card says something in the theme colour: the gap
-   is the reason the card is on the slide at all. */
-.idv-gap { color: var(--at-theme-primary, #f0460e) !important; }
