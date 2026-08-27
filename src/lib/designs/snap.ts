@@ -214,13 +214,13 @@ export const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)
 
 /** Fit the whole artboard into a viewport of this pixel size, with a margin. */
 /**
- * Fit the artboard into the stage.
+ * Fit the artboard into a box, keeping a margin.
  *
- * The margin is breathing room the artwork is deliberately NOT drawn into: the
- * resize handles sit on the artboard's own edge, so with none of it the corner
- * handles would be half off the stage and unusable. 20px is enough for that at
- * every zoom, and no more — the stage now takes the artboard's own proportions,
- * so anything left over reads as the design being small rather than as space.
+ * KEPT FOR THE HARNESSES, NOT FOR THE EDITOR. The editor sizes its canvas to
+ * the artboard exactly — see `fitCanvas` below — so it has no margin to fit
+ * inside. The canvas-test rigs still mount a fixed-size stage and fit into it,
+ * and `parity-rig` already asks for a marginless fit, so the default stays 20
+ * rather than being changed under them.
  */
 export function fitTo(width: number, height: number, margin = 20): Viewport {
   const zoom = clampZoom(Math.min((width - margin * 2) / CANVAS_W, (height - margin * 2) / CANVAS_H));
@@ -234,6 +234,78 @@ export function centred(zoom: number, width: number, height: number): Viewport {
     x: (CANVAS_W - width / zoom) / 2,
     y: (CANVAS_H - height / zoom) / 2,
   };
+}
+
+/* ── The canvas is the artboard ───────────────────────────────────────────
+   The editor's canvas element is not a window with the design floating in it;
+   it IS the design, at whatever size it is currently drawn. Three functions
+   say so, and everything the editor does to the viewport goes through them.
+
+   The measurement loop that used to be circular — measure the element, fit
+   into it, draw into the same element — is broken by measuring an OUTER
+   element (`avail`, the room the canvas has) and sizing an INNER one
+   (`canvasBox`, the artboard's rendered size). The inner never feeds the
+   measurement, so there is no loop to oscillate. */
+
+/** How far outside the canvas box the SVG is allowed to paint, in CSS pixels.
+ *
+ *  The selection handles sit ON the artboard's edge and the rotation grip
+ *  above it, so a canvas clipped exactly at the artboard would cut them in
+ *  half. The old fit kept a 20px margin of ground for them; the canvas has no
+ *  ground any more, so the SVG is drawn this much larger than the box and
+ *  pulled back over its edges instead. PAIRED WITH `--dsn-bleed` in
+ *  designs.css — they have to agree, or the artboard lands off-centre.
+ *
+ *  32 rather than 24 because the rotation grip is the thing that reaches
+ *  furthest: its arm floors at 20px above the artboard and the circle is
+ *  another ~8px of radius and stroke on top of that. At 24 the grip on a
+ *  top-flush layer came back clipped. */
+export const CANVAS_BLEED = 32;
+
+/**
+ * The artboard's rendered size, never larger than the room it has.
+ *
+ * Below the fit zoom the artboard is smaller than the room, so the box IS the
+ * artboard and there is no ground on either axis. Above it the artboard is
+ * larger, so the box takes all the room there is and the artboard pans inside
+ * it — still no ground. Per axis, because the artboard is portrait and the
+ * room rarely is.
+ */
+export function canvasBox(zoom: number, avail: { width: number; height: number }) {
+  return {
+    width: Math.min(zoom * CANVAS_W, avail.width),
+    height: Math.min(zoom * CANVAS_H, avail.height),
+  };
+}
+
+/** The zoom at which the whole artboard fits the room, with nothing to spare.
+ *  It is also the floor: zooming further out would shrink the artboard inside
+ *  its own canvas, which is the empty space this whole arrangement removes. */
+export function fitZoomFor(avail: { width: number; height: number }): number {
+  return clampZoom(Math.min(avail.width / CANVAS_W, avail.height / CANVAS_H));
+}
+
+/**
+ * Pin the viewport so the artboard always fills the canvas box.
+ *
+ * On an axis where the artboard is the smaller of the two, the only position
+ * with no ground showing is flush — `centred` on a box that is exactly
+ * `zoom × CANVAS` returns 0, which is that. On an axis where the artboard is
+ * larger, any position inside its own bounds is fine, so the viewport is
+ * clamped rather than pinned and panning still means something.
+ */
+export function clampView(v: Viewport, avail: { width: number; height: number }): Viewport {
+  const box = canvasBox(v.zoom, avail);
+  const vw = box.width / v.zoom;
+  const vh = box.height / v.zoom;
+  const x = vw >= CANVAS_W ? (CANVAS_W - vw) / 2 : Math.min(Math.max(v.x, 0), CANVAS_W - vw);
+  const y = vh >= CANVAS_H ? (CANVAS_H - vh) / 2 : Math.min(Math.max(v.y, 0), CANVAS_H - vh);
+  return x === v.x && y === v.y ? v : { zoom: v.zoom, x, y };
+}
+
+/** The whole artboard, as large as the room allows, with no ground anywhere. */
+export function fitCanvas(avail: { width: number; height: number }): Viewport {
+  return clampView({ zoom: fitZoomFor(avail), x: 0, y: 0 }, avail);
 }
 
 /**

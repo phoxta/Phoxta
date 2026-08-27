@@ -1130,8 +1130,16 @@ function Frame({ box, rotation, zoom, handles, rotatable, onPointerDown }: {
   const S = 11 / zoom;
   const W = 2 / zoom;
   const { x, y, w, h } = box;
-  // Far enough above the top edge to clear the corner handles at any zoom.
-  const armY = y - 26 / zoom;
+  // Far enough above the top edge to clear the corner handles at any zoom, and
+  // allowed OUTSIDE the artboard to get there — which is what the canvas bleed
+  // is for. Clamping it to y >= 0 instead put the grip on top of the north
+  // resize handle for any layer near the top of the page: the handle is painted
+  // after the grip and won a press, so those layers could not be rotated at all,
+  // and on a full-bleed background the grip sat on the artwork. The floor is
+  // therefore ABOVE the artboard (negative), far enough up to clear the handle
+  // and still inside the bleed. Kept directly over the box's centre either way,
+  // so the angle a drag starts from does not depend on where the grip landed.
+  const armY = Math.max(y - 26 / zoom, -20 / zoom);
 
   return (
     <g

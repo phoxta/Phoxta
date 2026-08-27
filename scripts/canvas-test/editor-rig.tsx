@@ -7,9 +7,9 @@ import { createRoot } from "react-dom/client";
 import { DesignSvg } from "@/lib/designs/render";
 import { materialise, updateLayer, removeMany, duplicateLayer, toggle, bringToFront, sendToBack, reorder, renameLayer } from "@/lib/designs/edit";
 import { layersOf, getTemplate } from "@/lib/designs/templates";
-import { emptyDoc, resolvePalette, type DesignDoc, type Layer } from "@/lib/designs/types";
+import { CANVAS_H, CANVAS_W, emptyDoc, resolvePalette, type DesignDoc } from "@/lib/designs/types";
 import { plain } from "@/lib/designs/rich";
-import { fitTo, type Viewport } from "@/lib/designs/snap";
+import { CANVAS_BLEED, canvasBox, fitCanvas, type Viewport } from "@/lib/designs/snap";
 import { FloatingBar } from "@/pages/dashboard/ops/designs/FloatingBar";
 import { CanvasText } from "@/pages/dashboard/ops/designs/CanvasText";
 import { LayersPanel } from "@/pages/dashboard/ops/designs/LayersPanel";
@@ -19,7 +19,13 @@ declare global {
   interface Window { rig: Record<string, unknown> }
 }
 
-const W = 900, H = 640;
+/* The room the canvas has, in the shape DesignsPage gives it: the stage takes
+   the artboard's own proportions, so the fitted artboard fills it exactly and
+   there is no ground. A square-ish stage here would test a layout that no
+   longer ships. */
+const H = 640;
+const W = (H * CANVAS_W) / CANVAS_H;
+const AVAIL = { width: W, height: H };
 
 function Rig() {
   const [doc, setDoc] = useState<DesignDoc>(() => materialise(emptyDoc("v1")));
@@ -32,7 +38,7 @@ function Rig() {
   const [view, setView] = useState<Viewport | null>(null);
   const stage = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { setView(fitTo(W, H)); }, []);
+  useEffect(() => { setView(fitCanvas(AVAIL)); }, []);
 
   const template = getTemplate(doc.templateId);
   const palette = resolvePalette(doc, template?.palette);
@@ -52,10 +58,6 @@ function Rig() {
       raw: doc.content,
     };
   });
-
-  const patch = useCallback((p: Partial<Layer>) => {
-    setDoc((d) => (one ? updateLayer(d, one.id, p) : d));
-  }, [one]);
 
   /** One command handler, shared by the bar and the rail exactly as the page
    *  shares it — two copies would let the two surfaces drift apart. */
@@ -83,44 +85,60 @@ function Rig() {
   };
 
   if (!view) return <div ref={stage} style={{ width: W, height: H }} />;
+  /* The two rectangles the page keeps apart: the room, and the artboard's own
+     size inside it. Everything that positions itself in stage pixels is given
+     the BOX and lives inside it, because the box's top-left is the canvas
+     point (view.x, view.y). */
+  const box = canvasBox(view.zoom, AVAIL);
   return (
     <div style={{ display: "flex", alignItems: "flex-start" }}>
     {/* flexShrink:0 matters: as a flex item the stage would otherwise be
-        squeezed narrower than the width handed to DesignSvg, the SVG's
-        max-width:100% would scale it down, and every canvas coordinate in the
-        tests would be measured against a viewport that is not the one the
-        component was told about. */}
-    <div ref={stage} style={{ width: W, height: H, flex: "0 0 auto", position: "relative", overflow: "hidden", background: "#1b1b1f" }}>
-      <DesignSvg
-        doc={doc} width={W} height={H} viewport={view}
-        selectedIds={sel}
-        onSelect={(id, add) => setSel((s) => (!id ? [] : add ? [...new Set([...s, id])] : [id]))}
-        onMarquee={(ids) => setSel(ids)}
-        onPan={(dx, dy) => setView((v) => v && { ...v, x: v.x + dx, y: v.y + dy })}
-        onGeometry={(id, b) => setDoc((d) => updateLayer(d, id, b))}
-        onOpen={openLayer}
-        editingId={editing}
-      />
-
-      {!editing && (
-        <FloatingBar
-          layers={layers} sel={sel} content={content} palette={palette} view={view}
-          stage={{ width: W, height: H }} editing={false}
-          onPatch={patch}
-          onContent={(next) => one?.type === "text" && setDoc((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }))}
-          onCommand={command}
-          onEditText={() => one && setEditing(one.id)}
-          onPickImage={() => setPicked((n) => n + 1)}
+        squeezed narrower than the room the viewport was fitted to, and every
+        canvas coordinate in the tests would be measured against a viewport
+        that is not the one the components were told about. The real class is
+        used so the rig exercises the shipped stylesheet rather than a copy of
+        it — designs.css is served to this page. */}
+    <div ref={stage} className="dsn-stage__view"
+         style={{ width: W, height: H, flex: "0 0 auto", background: "#1b1b1f" }}>
+      <div className="dsn-stage__canvas" style={{ width: box.width, height: box.height }}>
+        {/* Drawn a bleed larger on every side and pulled back over the box's
+            edges by the stylesheet, so the handles that sit ON the artboard's
+            edge are painted rather than clipped by the SVG's own viewport. */}
+        <DesignSvg
+          doc={doc}
+          width={box.width + CANVAS_BLEED * 2}
+          height={box.height + CANVAS_BLEED * 2}
+          viewport={{
+            zoom: view.zoom,
+            x: view.x - CANVAS_BLEED / view.zoom,
+            y: view.y - CANVAS_BLEED / view.zoom,
+          }}
+          selectedIds={sel}
+          onSelect={(id, add) => setSel((s) => (!id ? [] : add ? [...new Set([...s, id])] : [id]))}
+          onMarquee={(ids) => setSel(ids)}
+          onPan={(dx, dy) => setView((v) => v && { ...v, x: v.x + dx, y: v.y + dy })}
+          onGeometry={(id, b) => setDoc((d) => updateLayer(d, id, b))}
+          onOpen={openLayer}
+          editingId={editing}
         />
-      )}
 
-      {editing && one?.type === "text" && (
-        <CanvasText
-          layer={one} value={content[one.slot]} palette={palette} view={view}
-          onChange={(next) => setDoc((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }))}
-          onDone={() => { trail.current.push("done"); setEditing(null); }}
-        />
-      )}
+        {!editing && (
+          <FloatingBar
+            layers={layers} sel={sel} view={view} stage={box}
+            onCommand={command}
+            onEditText={() => one && setEditing(one.id)}
+            onPickImage={() => setPicked((n) => n + 1)}
+          />
+        )}
+
+        {editing && one?.type === "text" && (
+          <CanvasText
+            layer={one} value={content[one.slot]} palette={palette} view={view}
+            onChange={(next) => setDoc((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }))}
+            onDone={() => { trail.current.push("done"); setEditing(null); }}
+          />
+        )}
+      </div>
     </div>
 
     {/* The real properties rail, holding the real layers panel — the same

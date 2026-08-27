@@ -62,6 +62,44 @@ const text = scene.layers.find((l) => l.type === "text" && !l.locked && l.w > 20
 const centre = await toClient(text.x + text.w / 2, text.y + text.h / 2);
 console.log(`text layer ${text.id} slot=${text.slot} ${Math.round(text.w)}x${Math.round(text.h)} size=${text.size}`);
 
+// ── 0. The canvas element IS the artboard ────────────────────────────────
+// The whole sizing rewrite is this one claim: the element the design is drawn
+// into is the design's own rectangle, so there is no ground to leave over. It
+// is checked against getScreenCTM rather than against the numbers the rig
+// passed in, because the failure mode being guarded is exactly the case where
+// the two disagree — a max-width or a stray margin scaling the SVG.
+{
+  const canvas = await page.evaluate(() => {
+    const el = document.querySelector(".dsn-stage__canvas");
+    if (!el) return null;
+    const b = el.getBoundingClientRect();
+    return { x: b.x, y: b.y, r: b.right, b: b.bottom };
+  });
+  const tl = await toClient(0, 0);
+  const br = await toClient(1080, 1350);
+  const off = canvas
+    ? Math.max(Math.abs(canvas.x - tl.x), Math.abs(canvas.y - tl.y),
+               Math.abs(canvas.r - br.x), Math.abs(canvas.b - br.y))
+    : Infinity;
+  check("the canvas element is the artboard exactly, with no ground", off < 1,
+        canvas ? `worst edge off by ${off.toFixed(2)}px` : "no canvas element");
+
+  // And the SVG is drawn past that edge on every side, or the resize handles —
+  // which sit ON the artboard's edge — are cut in half by the SVG's own
+  // viewport, which no CSS on a parent can undo.
+  const svg = await page.evaluate(() => {
+    const el = document.querySelector(".dsn-stage__canvas > svg");
+    if (!el) return null;
+    const b = el.getBoundingClientRect();
+    return { x: b.x, y: b.y, r: b.right, b: b.bottom };
+  });
+  const bleed = svg && canvas
+    ? Math.min(canvas.x - svg.x, canvas.y - svg.y, svg.r - canvas.r, svg.b - canvas.b)
+    : -1;
+  check("the handles have a bleed to be drawn in", bleed >= 20,
+        `${bleed.toFixed(1)}px past the artboard on the tightest side`);
+}
+
 // ── 1. Selecting shows the properties bar, above the layer ───────────────
 await page.mouse.click(centre.x, centre.y);
 await settle();

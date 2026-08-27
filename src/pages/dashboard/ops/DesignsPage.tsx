@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
 import { Card, Empty, PageHeader } from "@/components/dash/Ui";
@@ -14,7 +14,9 @@ import {
   canPaste, copyLayers, cutLayers, distribute, duplicateLayer, moveMany, nudge,
   pasteLayers, removeMany, renameLayer, scaleMany, sendBackward, sendToBack, toggle, updateLayer,
 } from "@/lib/designs/edit";
-import { centred, fitTo, zoomAt, type Viewport } from "@/lib/designs/snap";
+import {
+  CANVAS_BLEED, canvasBox, clampView, clampZoom, fitCanvas, fitZoomFor, zoomAt, type Viewport,
+} from "@/lib/designs/snap";
 import { FloatingBar } from "./designs/FloatingBar";
 import { Inspector } from "./designs/Inspector";
 import { CanvasText } from "./designs/CanvasText";
@@ -57,6 +59,11 @@ const I_BACK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidd
 const I_DOWN = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
 const I_SPARK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>;
 const I_PLUS = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
+
+/** What the canvas does that no control on it says. Lives in the toolbar: the
+ *  canvas is the artboard exactly now, so there is nowhere on it for a note to
+ *  sit that is not on top of somebody's design. */
+const HINT = "Double-click text to write in it · Ctrl + scroll zooms · Space + drag pans once you are zoomed in · Ctrl + drag marquees over artwork · Shift keeps a corner proportional";
 
 
 export default function DesignsPage() {
@@ -258,7 +265,12 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
   }, [shapeMenu]);
+  /** The OUTER element: the room the canvas has, and the only thing measured. */
   const stage = useRef<HTMLDivElement>(null);
+  /** The INNER element: the artboard's own rectangle, sized from the viewport.
+   *  Everything that positions itself in stage pixels lives inside it, because
+   *  its top-left is the canvas point (view.x, view.y). */
+  const canvas = useRef<HTMLDivElement>(null);
   // The undo stack holds whole DECKS, not slides. Storing a slide would let
   // an undo restore one slide's old content into whichever slide happened to
   // be open, which is worse than not having undo at all.
@@ -292,25 +304,63 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
   const content = useMemo(() => ({ ...(template?.content ?? {}), ...doc.content }), [template, doc.content]);
 
   /* ── Viewport ──────────────────────────────────────────────────────────
-     Fitted to the stage on mount, so opening an editor never starts scrolled
-     into a corner of the artboard.
+     TWO RECTANGLES, NOT ONE.
 
-     The stage's SIZE is state rather than a rectangle read off the ref during
-     render. It has to be: the canvas is now docked beside a 272px Inspector,
-     so it changes width whenever the window does, and the quick bar positions
-     itself against that size. Reading the ref mid-render gave the previous
-     frame's number, which is invisible until the window is resized and then
-     leaves the bar hanging a panel's width away from its selection. */
+     `avail` is the room the canvas has and is the only thing measured. The
+     canvas element itself is sized from the viewport — `canvasBox` — to the
+     artboard's rendered size, clamped to the room. At the fit zoom that is the
+     artboard exactly, so its edge IS the canvas's edge and there is no ground
+     to leave over; zoomed in, the box takes all the room and the artboard pans
+     inside it. Measuring the element that is also being sized is the loop this
+     splitting exists to break.
+
+     `avail` is a ref as well as state. Every viewport command needs it at the
+     moment it runs — the keyboard shortcuts capture their closures once per
+     selection change, so a window resize with nothing selected used to leave
+     Fit and 100% working on a stage size two resizes old. */
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const avail = useRef<{ width: number; height: number }>({ width: 800, height: 1000 });
+  /** Whether the view is still the one Fit produced. The canvas box is derived
+   *  from the zoom, so a window that grows while the zoom stays put would leave
+   *  the box smaller than the room and the ground would come back. */
+  const atFit = useRef(true);
+  const measured = useRef(false);
 
-  useEffect(() => {
+  // BEFORE the browser paints, not after. Until the first measurement lands the
+  // canvas cannot be rendered at all, so an ordinary effect would let one frame
+  // of empty stage reach the screen every time a design is opened — a flash of
+  // exactly the ground this whole layout exists to remove. `read` only measures
+  // and sets state, which is what makes it safe to run in the layout phase.
+  useLayoutEffect(() => {
     const el = stage.current;
     if (!el) return;
     const read = () => {
       const r = el.getBoundingClientRect();
       if (r.width <= 40 || r.height <= 40) return;
-      setSize((s) => (s && Math.abs(s.width - r.width) < 0.5 && Math.abs(s.height - r.height) < 0.5 ? s : { width: r.width, height: r.height }));
-      setView((v) => v ?? fitTo(r.width, r.height));
+      const prev = avail.current;
+      // A half-pixel dead band. The canvas element is sized from this number,
+      // so anything finer than that would be a state update per frame for a
+      // rectangle nobody could see change.
+      if (measured.current && Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5) return;
+      const next = { width: r.width, height: r.height };
+      measured.current = true;
+      avail.current = next;
+      setSize(next);
+      setView((v) => {
+        if (!v) return fitCanvas(next);
+        // Fit is the FLOOR, not just a starting point, and a window that grows
+        // raises it. Clamping alone only moves the viewport — it cannot make the
+        // artboard bigger — so a zoom the user set at a smaller window can end up
+        // below the new fit, leaving the artboard smaller than the box it is
+        // drawn in and the ground back on all four sides. Snapping to fit is the
+        // right answer rather than merely raising the zoom, because a zoom that
+        // has been overtaken by the fit is no longer a zoom the user chose.
+        if (atFit.current || v.zoom <= fitZoomFor(next)) {
+          atFit.current = true;
+          return fitCanvas(next);
+        }
+        return clampView(v, next);
+      });
     };
     read();
     const ro = new ResizeObserver(read);
@@ -318,16 +368,37 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     return () => ro.disconnect();
   }, []);
 
-  const stageBox = () => size ?? { width: 800, height: 600 };
+  /** Zoom about a canvas point, floored at the fit — below it the artboard
+   *  would float inside its own canvas, which is the space this removes. */
+  const zoomTo = (v: Viewport, factor: number, cx: number, cy: number): Viewport => {
+    const room = avail.current;
+    const want = Math.max(fitZoomFor(room), clampZoom(v.zoom * factor));
+    atFit.current = want <= fitZoomFor(room) + 1e-9;
+    return clampView(zoomAt(v, want / v.zoom, cx, cy), room);
+  };
+
+  /** The middle of what is on screen, in canvas units. */
+  const centreOf = (v: Viewport) => {
+    const b = canvasBox(v.zoom, avail.current);
+    return { cx: v.x + b.width / v.zoom / 2, cy: v.y + b.height / v.zoom / 2 };
+  };
 
   const zoomBy = (f: number) => setView((v) => {
     if (!v) return v;
-    const r = stageBox();
-    return zoomAt(v, f, v.x + r.width / v.zoom / 2, v.y + r.height / v.zoom / 2);
+    const { cx, cy } = centreOf(v);
+    return zoomTo(v, f, cx, cy);
   });
 
-  const fitView = () => { const r = stageBox(); setView(fitTo(r.width, r.height)); };
-  const actualSize = () => { const r = stageBox(); setView(centred(1, r.width, r.height)); };
+  const fitView = () => { atFit.current = true; setView(fitCanvas(avail.current)); };
+  const actualSize = () => setView((v) => {
+    if (!v) return v;
+    const { cx, cy } = centreOf(v);
+    return zoomTo(v, 1 / v.zoom, cx, cy);
+  });
+
+  /** The artboard's rectangle on screen: what the canvas element is sized to,
+   *  what DesignSvg draws into, and what the quick bar is placed inside. */
+  const box = view && size ? canvasBox(view.zoom, size) : null;
 
   /* ── Edits ─────────────────────────────────────────────────────────────
      One place that records history and marks the document dirty, so no new
@@ -468,17 +539,22 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     const onWheel = (e: WheelEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
-      const svg = el.querySelector("svg");
-      const r = (svg ?? el).getBoundingClientRect();
+      // Measured against the CANVAS element, not the SVG: the SVG is drawn a
+      // bleed wider on every side so the selection handles are not clipped, so
+      // its own top-left is a couple of dozen pixels outside the artboard's.
+      const r = (canvas.current ?? el).getBoundingClientRect();
       setView((v) => {
         if (!v) return v;
         const cx = v.x + (e.clientX - r.left) / v.zoom;
         const cy = v.y + (e.clientY - r.top) / v.zoom;
-        return zoomAt(v, e.deltaY < 0 ? 1.1 : 1 / 1.1, cx, cy);
+        return zoomTo(v, e.deltaY < 0 ? 1.1 : 1 / 1.1, cx, cy);
       });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
+    // Attached exactly once. `zoomTo` reads the available room from a ref and
+    // is otherwise pure, so the copy captured here is never stale in a way
+    // that matters.
   }, []);
 
   async function save() {
@@ -772,6 +848,14 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
                   onClick={() => { apply((d) => removeMany(d, sel)); setSel([]); }}>Delete</button>
         </span>
 
+        {/* The gestures, written down. Space-drag and Ctrl+scroll are invisible
+            until you try them, and they used to be written on the artboard's
+            bottom-left corner — over the artwork, which is the one place in
+            this editor nothing is allowed to stand. Here it is above the
+            canvas, on one line, with the whole sentence on the title for the
+            widths where it does not fit. */}
+        <span className="dsn-tools__hint" title={HINT}>{HINT}</span>
+
         <span className="dsn-tools__g dsn-tools__zoom">
           <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => zoomBy(1 / 1.2)} title="Zoom out (Ctrl+−)">−</button>
           <button type="button" className="dsn-btn dsn-btn--sm" onClick={actualSize} title="100% (Ctrl+0)">
@@ -792,74 +876,106 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
       )}
 
       <div className="dsn-editor">
-        {/* The stage is a column: the canvas viewport, then the slide strip.
-            The VIEWPORT is the measured element, not the whole stage — the
-            strip is chrome under the artboard, and measuring past it handed
-            DesignSvg a height that included it, so the artboard was drawn
-            behind the strip and the quick bar placed itself against a
-            rectangle taller than the one on screen. */}
+        {/* The pages, down the left. They used to sit under the canvas, which
+            cost a portrait artboard the one dimension it is always short of
+            and put chrome across the bottom of the design. */}
+        <SlideStrip
+          slides={deck.slides}
+          current={index}
+          onSelect={slideOps.select}
+          onAdd={slideOps.add}
+          onBlank={slideOps.blank}
+          onRemove={slideOps.remove}
+          onMove={slideOps.move}
+        />
+
+        {/* THE CANVAS IS THE ARTBOARD.
+            Two elements, and the difference between them is the whole point.
+            `.dsn-stage__view` is the room — it fills the column, and it is the
+            only thing measured. `.dsn-stage__canvas` is the artboard's own
+            rectangle, sized here in pixels from the viewport, so at the fit
+            zoom its edge and the artboard's edge are the same line and there is
+            no ground left over on either axis. Measuring the element that is
+            also being sized would be a loop; measuring the one outside it is
+            not.
+
+            The SVG is drawn a bleed larger on all four sides and pulled back
+            over the box's edges by a negative margin, because the resize
+            handles sit ON the artboard's edge and the canvas has no margin
+            left to keep for them. Everything else in here positions itself
+            from the BOX's top-left, which is the canvas point (view.x, view.y)
+            — so they all share one origin, which is why the box, not the SVG,
+            is what they are given. */}
         <div className="dsn-stage dsn-stage--canvas">
           <div className="dsn-stage__view" ref={stage}>
-            {view && size && (
-              <DesignSvg
-                doc={doc}
-                width={size.width}
-                height={size.height}
-                viewport={view}
-                selectedIds={sel}
-                onSelect={select}
-                onMarquee={(ids, additive) => setSel((s) => (additive ? [...new Set([...s, ...ids])] : ids))}
-                onPan={(dx, dy) => setView((v) => (v ? { ...v, x: v.x + dx, y: v.y + dy } : v))}
-                onGeometry={onGeometry}
-                onTransform={onTransform}
-                onOpen={openLayer}
-                editingId={editing}
-              />
-            )}
-            {/* Three or four verbs beside the selection — the rest is in the
-                Inspector. It is outside the SVG because it is chrome, not
-                artwork: putting it inside would put it in the export. */}
-            {view && size && !editing && (
-              <FloatingBar
-                layers={layers}
-                sel={sel}
-                view={view}
-                stage={size}
-                onCommand={runCommand}
-                onEditText={() => one && setEditing(one.id)}
-                onPickImage={() => one?.type === "image" && setPicking(one.slot)}
-              />
-            )}
+            {view && box && (
+              <div
+                className="dsn-stage__canvas"
+                ref={canvas}
+                style={{ width: box.width, height: box.height }}
+              >
+                <DesignSvg
+                  doc={doc}
+                  width={box.width + CANVAS_BLEED * 2}
+                  height={box.height + CANVAS_BLEED * 2}
+                  viewport={{
+                    zoom: view.zoom,
+                    x: view.x - CANVAS_BLEED / view.zoom,
+                    y: view.y - CANVAS_BLEED / view.zoom,
+                  }}
+                  selectedIds={sel}
+                  onSelect={select}
+                  onMarquee={(ids, additive) => setSel((s) => (additive ? [...new Set([...s, ...ids])] : ids))}
+                  // At fit the artboard already fills its canvas, so there is
+                  // nothing to pan to and the clamp pins it. Returning the SAME
+                  // viewport object then matters: the clamp is handed an already
+                  // offset copy, so it can only compare against that copy and
+                  // hands back a fresh object every pointermove — which React
+                  // commits, re-rendering every layer sixty times a second for a
+                  // canvas that has not moved a pixel.
+                  onPan={(dx, dy) => setView((v) => {
+                    if (!v) return v;
+                    const next = clampView({ ...v, x: v.x + dx, y: v.y + dy }, avail.current);
+                    return next.x === v.x && next.y === v.y && next.zoom === v.zoom ? v : next;
+                  })}
+                  onGeometry={onGeometry}
+                  onTransform={onTransform}
+                  onOpen={openLayer}
+                  editingId={editing}
+                />
 
-            {/* Editing happens on the artboard, in place. The box is offset by
-                the layer's vertical alignment, so the caret lands on the glyphs
-                rather than where they would sit if the copy were top-aligned. */}
-            {view && editing && one?.type === "text" && (
-              <CanvasText
-                layer={{ ...one, y: one.y + textTopOffset(one, content[one.slot]) }}
-                value={content[one.slot]}
-                palette={palette}
-                view={view}
-                onChange={(next) => apply((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }), false)}
-                onDone={() => { setEditing(null); force((n) => n + 1); }}
-              />
-            )}
+                {/* Three or four verbs beside the selection — the rest is in
+                    the Inspector. It is outside the SVG because it is chrome,
+                    not artwork: putting it inside would put it in the export. */}
+                {!editing && (
+                  <FloatingBar
+                    layers={layers}
+                    sel={sel}
+                    view={view}
+                    stage={box}
+                    onCommand={runCommand}
+                    onEditText={() => one && setEditing(one.id)}
+                    onPickImage={() => one?.type === "image" && setPicking(one.slot)}
+                  />
+                )}
 
-            <span className="dsn-hint">
-              Double-click text to write in it · Space + drag pans · Ctrl + scroll zooms ·
-              Ctrl + drag marquees over artwork · Shift keeps a corner proportional
-            </span>
+                {/* Editing happens on the artboard, in place. The box is offset
+                    by the layer's vertical alignment, so the caret lands on the
+                    glyphs rather than where they would sit if the copy were
+                    top-aligned. */}
+                {editing && one?.type === "text" && (
+                  <CanvasText
+                    layer={{ ...one, y: one.y + textTopOffset(one, content[one.slot]) }}
+                    value={content[one.slot]}
+                    palette={palette}
+                    view={view}
+                    onChange={(next) => apply((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }), false)}
+                    onDone={() => { setEditing(null); force((n) => n + 1); }}
+                  />
+                )}
+              </div>
+            )}
           </div>
-
-          <SlideStrip
-            slides={deck.slides}
-            current={index}
-            onSelect={slideOps.select}
-            onAdd={slideOps.add}
-            onBlank={slideOps.blank}
-            onRemove={slideOps.remove}
-            onMove={slideOps.move}
-          />
         </div>
 
         {/* ── The Inspector ───────────────────────────────────────────

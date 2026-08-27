@@ -153,32 +153,36 @@
    makes that impossible rather than merely unlikely. */
 .dsn-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 272px;
+  /* Pages · canvas · properties. The pages rail is on the left because the
+     canvas is the artboard exactly and there is nothing under it to stand on,
+     and because a portrait artboard is always height-bound — a strip along the
+     bottom costs the design size, a rail beside it costs nothing. */
+  grid-template-columns: 96px minmax(0, 1fr) 272px;
   gap: 16px;
   align-items: start;
-  /* One height for the canvas and the rail, so the editor reads as a single
-     rectangle rather than a panel hanging beside a shorter box. Both read it. */
+  /* One height for the pages, the canvas and the rail, so the editor reads as a
+     single rectangle rather than panels hanging beside a shorter box. */
   --dsn-stage-h: min(80vh, 920px);
+  /* How far outside the canvas box the SVG may paint, so the resize handles on
+     the artboard's own edge are drawn rather than cut in half. PAIRED WITH
+     `CANVAS_BLEED` in src/lib/designs/snap.ts — they must agree. */
+  --dsn-bleed: 32px;
 }
 
 @media (max-width: 1100px) {
   .dsn-editor { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* The canvas sits on a neutral ground so a white template still reads as a
-   sheet rather than as the page. */
+/* The stage's only job now is to be a column that the canvas sits at the top of.
+   It used to be a bordered card on a neutral ground, holding the artboard with
+   24px of padding around it — every one of those declarations is gone rather
+   than overridden, because the canvas IS the artboard: a border would be a frame
+   the design does not have, a 16px radius would crop the corners of a full-bleed
+   layout, and the padding was the empty space itself. */
 .dsn-stage {
-  background: var(--hrx-soft);
-  border: 1px solid var(--hrx-border);
-  border-radius: 16px;
-  padding: 24px;
   display: flex;
   justify-content: center;
-  position: sticky;
-  top: 16px;
 }
-
-@media (max-width: 1100px) { .dsn-stage { position: static; } }
 
 /* ── The Inspector rail ──────────────────────────────────────────────────
    Its height matches the stage's so the editor is one rectangle rather than a
@@ -195,6 +199,11 @@
   border: 1px solid var(--hrx-border);
   border-radius: 16px;
   background: var(--hrx-card);
+  /* Above the canvas in paint order. The canvas SVG is allowed to bleed past
+     the artboard so its handles survive, and a few of those pixels reach into
+     the gutter; the rails are the things that must not be painted over. */
+  position: relative;
+  z-index: 1;
 }
 
 /* Children keep their natural height. Without this the flex column shrinks the
@@ -256,14 +265,38 @@
 .dsn-tools {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px 18px;
   padding: 10px 12px;
   border: 1px solid var(--hrx-border);
   border-radius: 12px;
   background: var(--hrx-card);
+  /* Above the canvas: the SVG bleeds a little past the artboard so its handles
+     are drawn, and the toolbar sits eight pixels above the stage.
+     ABOVE THE RAILS TOO, and that is not cosmetic. `position: relative` with a
+     z-index makes this a stacking context, so the shape picker's own z-index is
+     resolved INSIDE the toolbar rather than against the page — at z-index 1 the
+     pages rail, which carries the same 1 but comes later in tree order, painted
+     over the popover's left edge and took its clicks, so pressing the first
+     shape switched slide instead of inserting it. */
+  position: relative;
+  z-index: 3;
 }
 
 .dsn-tools__g { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+
+/* The gesture note. One line that ellipsises rather than a paragraph that
+   wraps: it must never be the reason the toolbar grows a row, and the whole
+   sentence is on the title for the widths where it does not fit. */
+.dsn-tools__hint {
+  flex: 1 1 240px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--hrx-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── Shape picker ────────────────────────────────────────────────────────
    Anchored to its own button rather than the toolbar, because the toolbar
@@ -385,57 +418,50 @@
   .dsn-xy { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* ── Canvas viewport ────────────────────────────────────────────────────
-   The stage is now a window onto a 1080×1350 artboard rather than the
-   artboard itself, so it needs a height of its own and a ground that reads
-   as "outside the design". */
+/* ── The canvas ─────────────────────────────────────────────────────────
+   THE CANVAS IS THE ARTBOARD, NOT A BOX WITH THE ARTBOARD IN IT.
 
-/* A column: the artboard's viewport, then the slide strip under it. The strip
-   used to be a sibling of the SVG in a ROW — .dsn-stage is a centring flex
-   container — so it stood beside the canvas and squeezed it, and the artboard
-   was handed a width it did not have. It is chrome below the picture, and the
-   layout now says so. */
-/* THE GROUND HUGS THE ARTWORK.
-   The artboard is portrait and the column it sits in is wide, so a stage that
-   stretched to the column was mostly empty ground with a small design floating
-   in the middle — which reads as the design being small rather than the box
-   being wide, and wastes the height that would have made it bigger. Sizing the
-   stage from its height through the artboard's own ratio means the only space
-   left over is the breathing room `fitTo` deliberately keeps, and the artwork
-   is drawn as large as the screen allows.
+   Three elements, and each one's job is exactly one sentence.
 
-   `justify-self` matters: a grid item stretches by default, which would make
-   both dimensions definite and silently drop the aspect ratio. */
+   `.dsn-stage--canvas` is the room, and it is the artboard's own shape so
+   there is nothing for a design to fail to fill. ONE definite dimension: the
+   width is the artboard's share of the stage height, or the column if that is
+   narrower, and the height follows from the ratio. Giving both would silently
+   drop `aspect-ratio` — that bug has been here twice.
+
+   `.dsn-stage__view` is the same rectangle from the inside, and it is the ONLY
+   thing measured. Its size comes from the grid and the ratio, never from its
+   child, which is what stops the observer from watching a box it is sizing.
+
+   `.dsn-stage__canvas` is the artboard itself. Its width and height are set in
+   pixels from JavaScript — `canvasBox` in snap.ts — so at the fit zoom its
+   edge is the artboard's edge and there is no leftover pixel on either axis. */
 .dsn-stage--canvas {
   position: relative;
   flex-direction: column;
   justify-self: center;
-  width: auto;
-  max-width: 100%;
+  width: min(calc(var(--dsn-stage-h, min(80vh, 920px)) * 1080 / 1350), 100%);
+  height: auto;
   aspect-ratio: 1080 / 1350;
-  height: var(--dsn-stage-h, min(80vh, 920px));
+  /* A grid item's automatic minimum size is its content. Left at auto, a
+     canvas element one pixel taller than the ratio allows would push the box
+     open, the observer would report the larger box, and the two would chase
+     each other a pixel at a time. */
+  min-width: 0;
+  min-height: 0;
   padding: 0;
-  overflow: hidden;
-  background: var(--hrx-card);
+  /* No card of its own any more. A border would be two pixels the artboard
+     could not have, and a 16px radius on a box that IS the artboard crops the
+     corners of every full-bleed design in the pack. The artboard draws its own
+     hairline edge; that is the sheet. */
+  border: 0;
+  border-radius: 0;
+  background: var(--hrx-soft);
+  /* Visible, so the bleed can be seen. How far it may reach is decided on
+     `.dsn-stage__view`. */
+  overflow: visible;
 }
 
-/* Below the breakpoint the rail drops under the canvas and the column is
-   narrow, so the width is the binding constraint rather than the height — let
-   the box take the width it is given and derive its height from the ratio. */
-/* Only on a phone does the width become the binding constraint — above that,
-   the height rule above already produces a box narrower than the column, so
-   overriding it there would make both dimensions definite and silently drop the
-   ratio, which is the bug this replaced. Below it the driver has to swap or the
-   `max-width` clamp does the same thing. */
-@media (max-width: 640px) {
-  .dsn-stage--canvas { width: 100%; height: auto; }
-}
-
-/* The window onto the artboard, and the only thing measured: what DesignSvg is
-   told and what the quick bar positions itself inside must be the same
-   rectangle the artwork is actually drawn in. `min-height: 0` because a flex
-   child's default floor is its content, and without it a tall canvas would
-   push the strip off the bottom of the stage instead of scrolling under it. */
 .dsn-stage__view {
   position: relative;
   flex: 1 1 auto;
@@ -444,23 +470,49 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  background:
-    repeating-conic-gradient(rgba(0, 0, 0, 0.035) 0% 25%, transparent 0% 50%) 50% / 22px 22px,
-    var(--hrx-soft);
+  /* Visible out to the bleed, and not one pixel further. `overflow` cannot
+     express "clip a little OUTSIDE my own box", so the clip is a negative
+     inset instead. Without it the in-place text editor — which grows with
+     whatever is being typed into it — could run down the page under the
+     canvas, and the chrome of a layer dragged off the artboard could reach
+     the rails. With it, "nothing renders below the canvas" is a rule the
+     layout enforces rather than a property it happens to have.
+     `clip-path` paints; it does not change the measured rectangle. */
+  overflow: visible;
+  clip-path: inset(calc(var(--dsn-bleed, 32px) * -1));
+  /* Seen for one frame, before the first measurement lands and the artboard
+     covers it exactly. There is no checkerboard any more: it meant "outside
+     the design", and outside the design is not on the canvas. */
+  background: var(--hrx-soft);
 }
 
-/* Space-drag is invisible until you try it, so it is written down. */
-.dsn-hint {
-  position: absolute;
-  left: 10px;
-  bottom: 8px;
-  font-size: 11px;
-  color: var(--hrx-muted);
-  background: color-mix(in srgb, var(--hrx-card) 88%, transparent);
-  border-radius: 6px;
-  padding: 4px 8px;
-  pointer-events: none;
+.dsn-stage__canvas {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: visible;
+  background: #ffffff;
+}
+
+/* The bleed.
+   The eight resize handles are drawn centred ON the layer's edge and the
+   rotation grip above it, in canvas units inside the SVG — so the thing that
+   clips them is the SVG's own viewport, which no amount of `overflow` on a
+   parent can undo. The old fit kept 20px of ground for exactly this. There is
+   no ground now, so the SVG is drawn a bleed larger on all four sides and
+   pulled back over the box's edges instead: the artboard still lands flush,
+   and the handles have somewhere to be.
+
+   `max-width` has to go with it, and `!important` is the only thing that can
+   take it: the renderer writes `max-width: 100%` into the SVG's inline style
+   as a safety net for the tiles, which are laid out by a grid rather than
+   sized in pixels. Here it would scale the deliberately-oversized SVG back
+   down to the box — silently, by a few per cent — and break the one-to-one
+   canvas-to-screen mapping the quick bar and the in-place text editor both
+   compute against. Nothing on this canvas needs the net: the box and the SVG
+   are two numbers from one expression. */
+.dsn-stage__canvas > svg {
+  max-width: none !important;
+  margin: calc(var(--dsn-bleed, 32px) * -1) 0 0 calc(var(--dsn-bleed, 32px) * -1);
 }
 
 .dsn-tools__zoom { margin-left: auto; }
@@ -642,25 +694,66 @@
 }
 
 /* ── Carousel slides ─────────────────────────────────────────────────────
-   A row of the pages themselves rather than a list of names: you pick the
+   A column of the pages themselves rather than a list of names: you pick the
    slide you can see. Shown even for a one-slide post, because otherwise the
-   way to make a carousel is invisible until you already have one. */
+   way to make a carousel is invisible until you already have one.
+
+   A RAIL, NOT A STRIP. It used to run along the bottom of the stage, which
+   spent about 135px of a portrait artboard's only scarce dimension and put
+   chrome across the base of the design. The column beside the canvas has width
+   going spare, so this costs the artwork nothing. */
 .dsn-slides {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 8px 10px;
-    border-top: 1px solid var(--hrx-border);
+    padding: 8px;
+    height: var(--dsn-stage-h, min(80vh, 920px));
+    min-height: 0;
+    border: 1px solid var(--hrx-border);
+    border-radius: 16px;
     background: var(--hrx-card);
+    /* Above the canvas, whose SVG bleeds a little past the artboard. */
+    position: relative;
+    z-index: 1;
 }
-.dsn-slides__row { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
-.dsn-slides__add { display: flex; gap: 4px; flex: 0 0 auto; padding-left: 4px; }
-.dsn-slides__ops { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.dsn-slides__ops .dsn-note { flex: 1 1 auto; }
+.dsn-slides__h {
+    margin: 0;
+    padding: 2px 2px 2px 4px;
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--hrx-muted);
+}
+/* The pages scroll; the add buttons scroll with them, so "add" is always under
+   the last page rather than somewhere fixed that has nothing to do with it. */
+.dsn-slides__row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 2px;
+}
+.dsn-slides__add { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; padding-top: 2px; }
+.dsn-slides__add .dsn-btn { width: 100%; justify-content: center; padding: 6px 4px; font-size: 12px; }
+/* Pinned to the foot, out of the scroller: below a dozen pages these would be
+   at the end of a list they are not part of. */
+.dsn-slides__ops {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    margin-top: auto;
+    padding-top: 6px;
+    border-top: 1px solid var(--hrx-border);
+}
+.dsn-slides__ops .dsn-btn { flex: 1 1 0; min-width: 0; justify-content: center; padding: 5px 0; }
 
 .dsn-slide {
     position: relative;
     flex: 0 0 auto;
+    width: 100%;
     padding: 0;
     border: 2px solid transparent;
     border-radius: 8px;
@@ -669,7 +762,7 @@
     line-height: 0;
 }
 .dsn-slide.is-on { border-color: var(--hrx-accent, #1c56fd); }
-.dsn-slide__art { display: block; width: 64px; aspect-ratio: 1080 / 1350; border-radius: 6px; overflow: hidden; background: #fff; }
+.dsn-slide__art { display: block; width: 100%; aspect-ratio: 1080 / 1350; border-radius: 6px; overflow: hidden; background: #fff; }
 .dsn-slide__art > svg { width: 100%; height: 100%; }
 .dsn-slide__n {
     position: absolute; left: 3px; bottom: 3px;
@@ -677,6 +770,32 @@
     border-radius: 5px;
     background: rgb(20 25 78 / 78%); color: #fff;
     font-size: 10px; font-weight: 700; line-height: 15px; text-align: center;
+}
+
+/* Below the breakpoint the editor is one column, so the rail has no side to be
+   on — it goes back to a row, ABOVE the canvas rather than under it. Which is
+   the same rule as before, not an exception to it: the canvas keeps its base. */
+@media (max-width: 1100px) {
+    .dsn-slides { height: auto; }
+    .dsn-slides__row {
+        flex-direction: row;
+        align-items: center;
+        /* Both axes named, and neither is `visible`: CSS resolves a `visible`
+           paired with a non-`visible` sibling to `auto`, so asking for
+           "scroll sideways, never up" the obvious way gets a vertical
+           scrollbar inside a 100px strip — eating thumbnail height at exactly
+           the widths where there is least of it. */
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-right: 0;
+        padding-bottom: 2px;
+    }
+    .dsn-slide { width: auto; }
+    .dsn-slide__art { width: 64px; }
+    .dsn-slides__add { flex-direction: row; padding-top: 0; padding-left: 4px; }
+    .dsn-slides__add .dsn-btn { width: auto; padding: 6px 10px; font-size: 13px; }
+    .dsn-slides__ops { margin-top: 0; justify-content: flex-start; }
+    .dsn-slides__ops .dsn-btn { flex: 0 0 auto; min-width: 34px; padding: 5px 10px; }
 }
 
 /* How many pages a post has, on its library tile. */
