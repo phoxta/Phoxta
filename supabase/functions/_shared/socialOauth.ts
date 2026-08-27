@@ -37,20 +37,28 @@ type Spec = {
 };
 
 export const SPECS: Record<Platform, Spec> = {
-  // Instagram posting runs through the Facebook Login/Graph pair: the token is
-  // a Facebook user token, and the thing posted to is the Instagram
-  // professional account linked to a Page.
+  /**
+   * Instagram Login, not Facebook Login.
+   *
+   * The Facebook-Login route wanted instagram_basic, instagram_content_publish,
+   * pages_show_list and pages_read_engagement, and Meta rejected all four as
+   * "Invalid Scopes" — because those names were DEPRECATED on 27 January 2025.
+   * An app created after that date cannot use them at all, which is why every
+   * one came back invalid rather than just the wrong ones.
+   *
+   * The replacement is a different flow, not a rename: Instagram's own OAuth
+   * host, its own token host, and graph.instagram.com for the API. It is also
+   * the better fit — it needs NO linked Facebook Page, which removes the whole
+   * "professional account attached to a Page you also administer" requirement
+   * that made the old path so easy to get wrong.
+   */
   instagram: {
-    authUrl: "https://www.facebook.com/v21.0/dialog/oauth",
-    tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    // Meta lists exactly these for publishing through Facebook Login:
-    // instagram_basic, instagram_content_publish and pages_read_engagement.
-    // pages_show_list is what /me/accounts needs to find the Page the account
-    // hangs off. business_management was in here and is NOT required — it is a
-    // heavyweight permission that App Review will ask you to justify, and
-    // pages_read_engagement, which IS required, was missing: without it the
-    // publish fails after a connection that looked fine.
-    scopes: "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
+    authUrl: "https://www.instagram.com/oauth/authorize",
+    tokenUrl: "https://api.instagram.com/oauth/access_token",
+    scopes: "instagram_business_basic,instagram_business_content_publish",
+    // The Instagram App ID, from the Instagram product's settings — NOT the
+    // Facebook app id on Settings → Basic. They are different numbers on the
+    // same app, and using the wrong one fails the same way a bad key does.
     clientId: () => env("META_APP_ID"),
     clientSecret: () => env("META_APP_SECRET"),
   },
@@ -230,15 +238,16 @@ export async function identify(p: Platform, t: Exchanged): Promise<Identity> {
         displayName: u.display_name ?? "", avatarUrl: u.avatar_url ?? "",
       };
     }
-    // Instagram: token → the Pages this person manages → the IG account on one.
-    const pages = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=instagram_business_account{id,username,profile_picture_url},name&access_token=${t.accessToken}`);
-    const d = await pages.json();
-    const withIg = (d?.data ?? []).find((x: Record<string, unknown>) => x.instagram_business_account);
-    const ig = withIg?.instagram_business_account;
-    if (!ig) throw new Error("That Facebook account has no Instagram professional account linked to a Page.");
+    // Instagram Login: the token IS the account's, so this is one hop rather
+    // than the old walk through the Pages the person administers.
+    const me = await fetch(`https://graph.instagram.com/v21.0/me?fields=user_id,username,profile_picture_url&access_token=${t.accessToken}`);
+    const d = await me.json();
+    if (!d?.user_id && !d?.id) throw new Error(d?.error?.message ?? "Instagram returned no account.");
     return {
-      externalId: ig.id, handle: ig.username ? `@${ig.username}` : "",
-      displayName: withIg.name ?? "", avatarUrl: ig.profile_picture_url ?? "",
+      externalId: String(d.user_id ?? d.id),
+      handle: d.username ? `@${d.username}` : "",
+      displayName: d.username ?? "",
+      avatarUrl: d.profile_picture_url ?? "",
     };
   } catch (e) {
     // A named failure beats an account row with an empty id that silently

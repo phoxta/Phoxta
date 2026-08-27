@@ -52,13 +52,18 @@ async function reason(res: Response): Promise<string> {
 }
 
 // ── Instagram ───────────────────────────────────────────────────────────────
-// Graph API, two steps: create a media container pointing at a PUBLIC image
-// URL, then publish it. Instagram fetches the picture itself, which is why the
-// asset store has to be public — a signed URL that expires before Meta pulls it
+// Two steps: create a media container pointing at a PUBLIC image URL, then
+// publish it. Instagram fetches the picture itself, which is why the asset
+// store has to be public — a signed URL that expires before Instagram pulls it
 // is the classic failure here.
+//
+// graph.instagram.com, not graph.facebook.com: the connection now uses
+// Instagram Login, whose token is the account's own and is not valid against
+// the Facebook host. Posting to the wrong host with a good token fails in a way
+// that reads like a permissions problem, so it is worth being explicit.
 async function instagram(a: SocialAccount, caption: string, media: string): Promise<PublishResult> {
-  if (!env("META_APP_ID") || !a.access_token) return simulated("No Meta app configured.");
-  const base = `https://graph.facebook.com/v21.0/${a.external_id}`;
+  if (!env("META_APP_ID") || !a.access_token) return simulated("No Instagram app configured.");
+  const base = `https://graph.instagram.com/v21.0/${a.external_id}`;
   try {
     const create = await fetch(`${base}/media`, {
       method: "POST",
@@ -214,7 +219,7 @@ export function publish(a: SocialAccount, caption: string, media: string): Promi
 
 /** What each platform will not accept, checked before anything is queued. */
 export const LIMITS: Record<SocialAccount["platform"], { caption: number; note: string }> = {
-  instagram: { caption: 2200, note: "Needs a Business or Creator account linked to a Facebook Page." },
+  instagram: { caption: 2200, note: "Needs a professional (Business or Creator) account." },
   linkedin: { caption: 3000, note: "Posts as the person or the company page the token was issued for." },
   x: { caption: 280, note: "Long posts need a paid tier; 280 is what a free app can rely on." },
   tiktok: { caption: 2200, note: "Until the app is audited, TikTok only allows private posts." },
