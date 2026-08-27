@@ -16,7 +16,7 @@ const NOTIFY_TO = Deno.env.get("PLATFORM_LEAD_EMAIL") ?? "femi@phoxta.com";
 // Shares RESEND_REPLY_TO with _shared/dispatch so one change moves every
 // reply address, and keeps PLATFORM_REPLY_EMAIL as an override for the one
 // case that might reasonably differ.
-const REPLY_TO = Deno.env.get("PLATFORM_REPLY_EMAIL") ?? Deno.env.get("RESEND_REPLY_TO") ?? "femi@phoxta.com";
+const REPLY_TO = Deno.env.get("PLATFORM_REPLY_EMAIL") ?? Deno.env.get("RESEND_REPLY_TO") ?? "hello@phoxta.com";
 
 // Keep in step with STARTUP_SCHOOL in src/lib/db/platformLead.ts. A Deno
 // function cannot import from src/, so the price lives in two places; a price
