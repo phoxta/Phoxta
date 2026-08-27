@@ -176,8 +176,14 @@ export function automatedMailReason(p: AutomationProbe): AutomationVerdict | nul
 
   if (!from || !from.includes("@")) return sure("no usable sender address");
 
+  // NAME THE ADDRESS. "sent from this business's own address" next to a message
+  // visibly from a customer reads as a malfunction, and leaves the owner nothing
+  // to check. Saying WHICH address it matched turns it into a one-glance
+  // diagnosis — it is either the connected mailbox (a genuine echo of our own
+  // outbound) or the billing address on the org record, and if it is the latter
+  // that record is almost certainly set to the address customers write to.
   const self = (p.selfAddresses ?? []).map((a) => String(a ?? "").trim().toLowerCase()).filter(Boolean);
-  if (self.includes(from)) return sure("sent from this business's own address");
+  if (self.includes(from)) return sure(`it was sent from ${from}, which is one of this business's own addresses`);
 
   for (const label of p.labelIds ?? []) {
     if (ROBOT_LABELS.has(String(label))) return sure(`Gmail classified it as ${String(label).toLowerCase().replace(/_/g, " ")}`);
@@ -931,86 +937,47 @@ export async function notifyBudgetSpent(admin: SupabaseClient, orgId: string, re
   }
 }
 
+/* orgMemberEmails lived here.
+ *
+ * It resolved every member's login address through the auth Admin API so that
+ * staff mail could be classified as "our own". Removed with its only caller:
+ * a member's login address is a PERSON, not one of the business's sending
+ * identities, and treating it as one settled real customer mail forever. It
+ * also cost up to a hundred Admin API calls on email-inbound's synchronous
+ * webhook path, with the provider holding the request open. See selfAddresses
+ * below for the reasoning. */
+
 /**
- * Every member of this business, with the address they actually log in with.
+ * The addresses the BUSINESS ITSELF sends from — the identities the agent's own
+ * outbound can arrive back under. Mail from one of these is our own message
+ * coming home (a forwarding rule that copies our outbound to the inbound-parse
+ * address is exactly this shape), and answering it is a loop.
  *
- * Member emails are NOT in user_profiles — that table holds full_name, phone,
- * company and so on, and never had an email column (0001_tenancy.sql). The
- * address lives on auth.users, which PostgREST does not expose and which
- * organization_memberships has no embeddable relationship to. The query this
- * replaces, `.select("user_profiles(email)")`, therefore returned an ERROR that
- * was never thrown — only returned — so `data` was null, the loop body never
- * ran, and the caller silently got an empty list. Every consumer of it was inert.
+ * A MEMBER'S LOGIN ADDRESS IS NOT ONE OF THESE, and used to be. That was wrong
+ * in two directions and it buried real mail:
  *
- * The service-role client can read auth.users through the Admin API, which is
- * how billing-alerts, stripe-checkout and automation-run already resolve an
- * owner's address. Bounded to 100 members, which no real business exceeds.
+ *   - It is a PERSON, not the business. The agent has never sent from it, so it
+ *     cannot be the agent hearing itself. The loop this guards against is the
+ *     mailbox, and the mailbox is already here.
+ *   - Every customer who happens to hold an account on this platform, and every
+ *     owner testing by mailing their own business, matched it — and the verdict
+ *     is DEFINITIVE, so the message was settled forever: never answered, never
+ *     retried, and in the Inbox under the baffling line "sent from this
+ *     business's own address" about a mail from a customer.
  *
- * LATENCY MATTERS HERE. selfAddresses runs on email-inbound's SYNCHRONOUS
- * webhook path — the provider is holding the request open waiting for a 200 —
- * and this used to be one sequential round trip per member, so a business with
- * thirty people added roughly thirty of them to every single inbound mail before
- * the classifier had even run. The calls are now issued in parallel batches, and
- * the answer is cached in the isolate for a few minutes: memberships change
- * rarely, and the worst case of a stale entry is that a staff member's mail is
- * classified as staff mail (or not) a few minutes late.
+ * Staff mailing their own support address is now answered like anything else,
+ * which is right: it is a real message, and a colleague taking a thread over is
+ * a human-takeover question (ai_paused, and a human reply row) rather than
+ * something for the robot classifier to decide.
  */
-const MEMBER_CACHE_MS = num("ORG_MEMBER_EMAIL_CACHE_SECONDS", 300) * 1000;
-const MEMBER_LOOKUP_CONCURRENCY = 10;
-const memberCache = new Map<string, { at: number; emails: string[] }>();
-
-export async function orgMemberEmails(admin: SupabaseClient, orgId: string): Promise<string[]> {
-  const cached = memberCache.get(orgId);
-  if (cached && Date.now() - cached.at < MEMBER_CACHE_MS) return cached.emails;
-
-  const out = new Set<string>();
-  const { data, error } = await admin
-    .from("organization_memberships")
-    .select("user_id")
-    .eq("organization_id", orgId)
-    .limit(100);
-  if (error) {
-    // NOT cached: a transient failure must not blind the "is this our own staff?"
-    // check for the next five minutes.
-    console.warn("[phoxta] org members unreadable:", error.message);
-    return [];
-  }
-  const ids = ((data as Json[] | null) ?? []).map((m) => String(m.user_id));
-  for (let i = 0; i < ids.length; i += MEMBER_LOOKUP_CONCURRENCY) {
-    const batch = ids.slice(i, i + MEMBER_LOOKUP_CONCURRENCY);
-    const found = await Promise.all(batch.map(async (id) => {
-      try {
-        const { data: u } = await admin.auth.admin.getUserById(id);
-        return String(u?.user?.email ?? "").trim().toLowerCase();
-      } catch {
-        return ""; // one unreadable member must not blind the whole check
-      }
-    }));
-    for (const email of found) if (email.includes("@")) out.add(email);
-  }
-  const emails = [...out];
-  memberCache.set(orgId, { at: Date.now(), emails });
-  // The isolate is long-lived and serves every organisation on the platform.
-  if (memberCache.size > 200) {
-    for (const [k, v] of memberCache) if (Date.now() - v.at > MEMBER_CACHE_MS) memberCache.delete(k);
-  }
-  return emails;
-}
-
-/** Every address that belongs to the business itself — the connected mailbox,
- *  every member's login address and the billing address on the org record. Mail
- *  from any of them is staff mail, and the agent answering its own colleagues is
- *  both useless and a loop risk (a forwarding rule that copies our own outbound
- *  back to the inbound-parse address is exactly this shape). */
 export async function selfAddresses(admin: SupabaseClient, orgId: string, mailbox: string): Promise<string[]> {
   const out = new Set<string>();
   if (mailbox && mailbox.includes("@")) out.add(mailbox.trim().toLowerCase());
-  for (const e of await orgMemberEmails(admin, orgId)) out.add(e);
   try {
     const { data } = await admin.from("organizations").select("billing_email").eq("id", orgId).maybeSingle();
     const billing = String((data as Json)?.billing_email ?? "").trim().toLowerCase();
     if (billing.includes("@")) out.add(billing);
-  } catch { /* the rest of the list still stands */ }
+  } catch { /* the mailbox still stands, and it is the one that matters */ }
   return [...out];
 }
 
