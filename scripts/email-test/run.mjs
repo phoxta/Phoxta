@@ -112,6 +112,54 @@ for (const [type, spec] of Object.entries(m.SPECS)) {
   }
 }
 
+// ── 7: a sliced design — one picture, several links ────────────────────────
+{
+  const r = (b) => m.renderBrochure({ subject: "s", preheader: "p", strap: "x", blocks: [b] }).html;
+
+  const plain = r({ type: "image", src: "https://x/one.png", alt: "A design", href: "https://a" });
+  // Counting every <img> would also count the masthead wordmark.
+  const imgs = (h) => h.split('<img src="https://x/').length - 1;
+  ok("image: one picture is one img", imgs(plain) === 1);
+  ok("image: its link wraps it", plain.includes('href="https://a"'));
+
+  const sliced = r({
+    type: "image", src: "https://x/one.png", alt: "A design",
+    cuts: [40, 70],
+    slices: [
+      { src: "https://x/a.png", href: "https://one" },
+      { src: "https://x/b.png", href: "https://two" },
+      { src: "https://x/c.png" },
+    ],
+  });
+  ok("slices: one img per part", imgs(sliced) === 3);
+  ok("slices: first link", sliced.includes('href="https://one"'));
+  ok("slices: second link", sliced.includes('href="https://two"'));
+  // A band with no link of its own must not silently borrow the one above it.
+  ok("slices: an unlinked band does not reuse the link above",
+     (sliced.match(/https:\/\/two/g) || []).length === 1);
+  // Seams are what give a sliced picture away, and they come from a text
+  // baseline sitting under each img.
+  ok("slices: no baseline gap", (sliced.match(/line-height:0;font-size:0/g) || []).length >= 3);
+  // Rounded corners belong to the silhouette, not to every band.
+  ok("slices: only the outer corners are rounded",
+     sliced.includes("border-radius:8px 8px 0 0") && sliced.includes("border-radius:0 0 8px 8px"));
+  // Alt text on every band would have a screen reader say it three times.
+  ok("slices: alt text appears once", (sliced.match(/alt="A design"/g) || []).length === 1);
+
+  const text = m.renderBrochure({
+    subject: "s", preheader: "p", strap: "x",
+    blocks: [{
+      type: "image", src: "https://x/one.png", alt: "A design",
+      slices: [{ src: "https://x/a.png", href: "https://one" }, { src: "https://x/b.png", href: "https://two" }],
+    }],
+  }).text;
+  ok("slices: every link reaches the text part", text.includes("https://one") && text.includes("https://two"));
+
+  // One band is not a slice; it should render as the plain picture.
+  const single = r({ type: "image", src: "https://x/one.png", alt: "A", slices: [{ src: "https://x/a.png" }] });
+  ok("slices: a single band is just the picture", single.includes("https://x/one.png"));
+}
+
 fs.rmSync(TMP, { recursive: true, force: true });
 console.log(`\nemail: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

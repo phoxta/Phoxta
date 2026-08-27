@@ -31,10 +31,25 @@ export type ArticleBlock =
   /** Two side-by-side sub-points; one above the other on a phone. */
   | { type: "duo"; left: { h: string; p: string }; right: { h: string; p: string } }
   | { type: "table"; caption?: string; head: string[]; rows: string[][] }
-  /** A picture made in the design studio, dropped into the email whole.
-   *  Optional link, because a designed banner that is not clickable is a
-   *  wasted banner. */
-  | { type: "image"; src: string; alt: string; href?: string; caption?: string }
+  /** A picture made in the design studio.
+   *
+   *  ONE PICTURE CAN CARRY MANY LINKS, and this is how. An email cannot put a
+   *  clickable region anywhere it likes: image maps are stripped by Gmail, and
+   *  absolutely-positioned overlays do not survive a single client. What every
+   *  ESP does instead is SLICE — cut the picture into horizontal bands, stack
+   *  them with no gap so they read as one image, and give each band its own
+   *  link. That works everywhere, Outlook included.
+   *
+   *  `slices` are those bands, top to bottom. `cuts` are where they were cut
+   *  (percentages down the image), kept so the same cuts can be re-applied
+   *  after the design is edited. `designId` is the design they came from, so
+   *  the picture can be refreshed rather than re-imported. */
+  | {
+      type: "image"; src: string; alt: string; href?: string; caption?: string;
+      designId?: string;
+      cuts?: number[];
+      slices?: Array<{ src: string; href?: string }>;
+    }
   /** Byline row under the title: author, date, reading time. */
   | { type: "byline"; author: string; date: string; note?: string };
 
@@ -105,10 +120,24 @@ export function articleBlock(b: ArticleBlock, { FONT, esc, c }: Ctx): string {
       </table>`;
 
     case "image": {
-      const img = `<img src="${esc(b.src)}" alt="${esc(b.alt)}" width="538"
-             style="display:block;width:100%;max-width:538px;height:auto;border:0;border-radius:8px;font-family:${FONT};font-size:12px;color:${c.soft}">`;
+      const bands = b.slices && b.slices.length > 1 ? b.slices : null;
+      const one = (src: string, href: string | undefined, first: boolean, last: boolean) => {
+        // The radius goes on the outer corners only, so a stack of bands has
+        // the silhouette of one rounded picture rather than four.
+        const radius = bands
+          ? `${first ? "8px 8px" : "0 0"} ${last ? "8px 8px" : "0 0"}`
+          : "8px";
+        const img = `<img src="${esc(src)}" alt="${esc(first ? b.alt : "")}" width="538"
+             style="display:block;width:100%;max-width:538px;height:auto;border:0;border-radius:${radius};font-family:${FONT};font-size:12px;color:${c.soft}">`;
+        // line-height and font-size zeroed, or clients insert a text baseline
+        // gap between the bands and the seams show as white lines.
+        return `<tr><td style="line-height:0;font-size:0">${href ? `<a href="${esc(href)}">${img}</a>` : img}</td></tr>`;
+      };
+      const body = bands
+        ? bands.map((s, i) => one(s.src, s.href || b.href, i === 0, i === bands.length - 1)).join("")
+        : one(b.src, b.href, true, true);
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:6px 0 24px">
-        <tr><td style="line-height:0;font-size:0">${b.href ? `<a href="${esc(b.href)}">${img}</a>` : img}</td></tr>
+        ${body}
         ${b.caption ? `<tr><td style="padding-top:9px;font-family:${FONT};font-size:12.5px;color:${c.soft};text-align:center">${esc(b.caption)}</td></tr>` : ""}
       </table>`;
     }
@@ -132,7 +161,11 @@ export function articlePlain(b: ArticleBlock): string {
     case "figure": return b.caption ? "[" + b.alt + " — " + b.caption + "]" : "[" + b.alt + "]";
     case "duo": return b.left.h + NL + b.left.p + NL + NL + b.right.h + NL + b.right.p;
     case "table": return [b.head.join(" | "), ...b.rows.map((r) => r.join(" | "))].join(NL) + (b.caption ? NL + b.caption : "");
-    case "image": return "[" + b.alt + "]" + (b.href ? " " + b.href : "");
+    case "image": {
+      const links = (b.slices ?? []).map((s) => s.href).filter(Boolean) as string[];
+      const all = links.length ? links : (b.href ? [b.href] : []);
+      return "[" + b.alt + "]" + (all.length ? NL + all.join(NL) : "");
+    }
     case "byline": return b.author + " · " + b.date + (b.note ? " · " + b.note : "");
   }
 }

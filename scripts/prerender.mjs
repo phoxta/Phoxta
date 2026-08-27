@@ -120,15 +120,31 @@ async function run() {
     }
 
     let ok = 0;
-    let failed = 0;
+    const failedRoutes = [];
+
+    /**
+     * Prerendering is a network-shaped job on a shared build machine, and one
+     * route occasionally takes longer than the timeout for no reason to do with
+     * the route. A single flake used to fail the build and throw away a whole
+     * deploy — which is what happened on 27 Aug 2026, on a blog page that
+     * rendered in under two seconds on the retry.
+     *
+     * So each route gets three goes with a longer patience each time, and only
+     * a route that fails all three counts. It still fails the build then:
+     * shipping a page with no prerendered head is a silent SEO regression, and
+     * that is worth a red build. What is not worth a red build is one timeout.
+     */
+    const ATTEMPTS = 3;
 
     for (const route of ROUTES) {
+      let lastErr = null;
+      for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
         const page = await browser.newPage();
         try {
             await page.setViewport({ width: 1366, height: 900 });
             await page.goto(`${base}${route}`, {
                 waitUntil: "networkidle0",
-                timeout: 45000,
+                timeout: 45000 * attempt,
             });
             // PageMeta (per route) always emits a canonical link once mounted —
             // use it as the "head is ready" signal.
@@ -174,20 +190,27 @@ async function run() {
             mkdirSync(dirname(file), { recursive: true });
             writeFileSync(file, html, "utf8");
             ok += 1;
-            console.log(`  ✓ ${route.padEnd(22)} → ${file.replace(DIST, "dist")}`);
+            console.log(`  ✓ ${route.padEnd(22)} → ${file.replace(DIST, "dist")}${attempt > 1 ? `  (attempt ${attempt})` : ""}`);
+            lastErr = null;
+            break;
         } catch (err) {
-            failed += 1;
-            console.error(`  ✗ ${route.padEnd(22)} ${err.message}`);
+            lastErr = err;
+            console.error(`  ${attempt < ATTEMPTS ? "…" : "✗"} ${route.padEnd(22)} ${err.message}${attempt < ATTEMPTS ? " — retrying" : ""}`);
         } finally {
             await page.close();
         }
+      }
+      if (lastErr) failedRoutes.push(route);
     }
 
     await browser.close();
     await new Promise((res) => server.httpServer.close(res));
 
-    console.log(`\nPrerender complete: ${ok} ok, ${failed} failed (of ${ROUTES.length}).`);
-    if (failed > 0) process.exitCode = 1;
+    console.log(`\nPrerender complete: ${ok} ok, ${failedRoutes.length} failed (of ${ROUTES.length}).`);
+    if (failedRoutes.length > 0) {
+      console.error(`Failed after ${ATTEMPTS} attempts each: ${failedRoutes.join(", ")}`);
+      process.exitCode = 1;
+    }
 }
 
 run().catch((err) => {

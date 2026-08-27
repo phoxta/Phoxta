@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
-import { Card, Empty, PageHeader } from "@/components/dash/Ui";
+import { Card, Empty } from "@/components/dash/Ui";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import {
   listDesigns, createDesign, saveDesign, archiveDesign, generateDesign, type Design,
@@ -101,15 +101,9 @@ export default function DesignsPage() {
 
   return (
     <div className="d-flex flex-column" style={{ gap: 8 }}>
-      <PageHeader
-        crumb="Console"
-        title="Studio"
-        note={mode === "graphics"
-          ? "Social posts from the agency template pack. Edit them by hand, or describe one and let the agent write it."
-          : "Email built from blocks and previewed by the same template the platform sends through. Import a design to drop a picture in."}
-        stat={{ label: mode === "graphics" ? "Posts" : "Emails", value: mode === "graphics" ? rows.length : 0 }}
-      />
-
+      {/* No page header. The tabs and the two start buttons say what this is,
+          and a crumb, a title, a paragraph and a counter above them pushed the
+          work itself below the fold. */}
       <div className="d-flex gap-2">
         {(["graphics", "email"] as const).map((m) => (
           <button key={m} type="button" className={`hrx-seeall${mode === m ? " opx-solid" : ""}`}

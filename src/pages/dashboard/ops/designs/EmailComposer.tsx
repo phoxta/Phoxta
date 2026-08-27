@@ -9,6 +9,7 @@ import {
   type EmailTemplate, saveEmail, sendEmail, sendTest,
 } from "@/lib/db/emailStudio";
 import { DesignPicker } from "./DesignPicker";
+import { DesignLinks } from "./DesignLinks";
 
 /**
  * The email composer.
@@ -299,6 +300,13 @@ export function EmailComposer({
                 </div>
               }
             >
+              {selected.type === "image" && selected.src && (
+                <DesignLinks
+                  block={selected}
+                  orgId={orgId}
+                  onChange={(b) => update(sel, b)}
+                />
+              )}
               <BlockForm block={selected} onChange={(b) => update(sel, b)} />
               {selected.type === "band" && (
                 <button type="button" className="hrx-seeall mt-2"
@@ -475,12 +483,6 @@ const CSS = `
 .emc__stage{flex:1;display:flex;justify-content:center;padding:14px;background:#ececee;border-radius:14px;overflow:auto}
 .emc__stage iframe{border:0;border-radius:10px;background:#fff;box-shadow:0 6px 24px rgb(0 0 0 / 12%)}
 .emc__text{flex:1;margin:0;padding:18px;background:var(--hrx-soft);border:1px solid var(--hrx-border);border-radius:12px;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow:auto}
-.emc__f{display:block;margin-bottom:12px}
-.emc__f--tight{margin-bottom:7px}
-.emc__f > span{display:block;font-size:12px;font-weight:600;color:var(--hrx-ink);margin-bottom:4px}
-.emc__f > em{display:block;font-size:11.5px;color:var(--hrx-muted);font-style:normal;margin-top:4px;line-height:1.45}
-.emc__f input:not([type=checkbox]),.emc__f textarea{width:100%;padding:8px 10px;border:1px solid var(--hrx-border);border-radius:9px;font-size:13.5px;color:var(--hrx-ink);background:var(--hrx-card);font-family:inherit}
-.emc__f textarea{resize:vertical;line-height:1.5}
 .emc__item{border:1px solid var(--hrx-border);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--hrx-soft)}
 .emc__list{display:flex;flex-direction:column;gap:4px;margin-top:10px;max-height:46vh;overflow-y:auto}
 .emc__row{display:block;width:100%;text-align:left;padding:8px 10px;border:1px solid transparent;border-radius:9px;background:var(--hrx-soft);cursor:grab}

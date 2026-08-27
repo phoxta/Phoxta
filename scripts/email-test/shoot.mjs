@@ -53,7 +53,7 @@ await build({
 // The console's own variables, so the rig is not a grey box of unset tokens.
 const theme = fs.readFileSync(path.join(ROOT, "src/styles/dashboard-theme.css"), "utf8");
 fs.writeFileSync(path.join(TMP, "index.html"), `<!doctype html><html><head><meta charset="utf-8">
-<style>${theme}
+<style>${theme}${fs.readFileSync(path.join(ROOT, "src/pages/dashboard/ops/designs.css"), "utf8")}
   body{margin:0;font-family:'DM Sans',system-ui,sans-serif;background:var(--hrx-bg)}
   .hrx-seeall{padding:7px 12px;border:1px solid var(--hrx-border);border-radius:8px;background:var(--hrx-card);font-size:13px;cursor:pointer;color:var(--hrx-ink)}
   .opx-solid{background:var(--hrx-ink);color:#fff;border-color:var(--hrx-ink)}
@@ -117,6 +117,90 @@ await pg2.evaluate(() => {
 });
 await new Promise((r) => setTimeout(r, 400));
 await pg2.screenshot({ path: path.join(OUT, "start-dialog.png") });
+
+await pg2.close();
+
+// ── the email tab: the same two buttons, and the Templates dialog ──────────
+fs.writeFileSync(path.join(TMP, "posts-stub.ts"), `
+export const listPlatformPosts = async () => ({ posts: [
+  { id: "1", slug: "buy-dont-build", title: "Buy, don't build", excerpt: "Why assembling the software first is the slowest way to start.", status: "published" },
+  { id: "2", slug: "what-an-ai-agent-does-at-3am", title: "What an AI agent does at 3am", excerpt: "The enquiries that arrive after everyone has gone home.", status: "published" },
+], error: null });
+`);
+await build({
+  entryPoints: [path.join(ROOT, "scripts/email-test/index-rig.tsx")],
+  bundle: true, format: "esm", outfile: path.join(TMP, "index-rig.js"),
+  jsx: "automatic", logLevel: "error",
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("development"),
+    "import.meta.env": JSON.stringify({ VITE_SUPABASE_URL: "http://rig.invalid", VITE_SUPABASE_ANON_KEY: "rig", DEV: true, MODE: "development" }),
+  },
+  alias: {
+    "@": path.join(ROOT, "src"),
+    "@email": path.join(ROOT, "packages/email/src/render.ts"),
+    "@email/brochure": path.join(ROOT, "packages/email/src/brochure.ts"),
+    "@/lib/db/emailStudio": path.join(TMP, "db-stub.ts"),
+    "@/lib/db/platformPosts": path.join(TMP, "posts-stub.ts"),
+  },
+});
+fs.writeFileSync(path.join(TMP, "idx.html"), `<!doctype html><html><head><meta charset="utf-8">
+<style>${theme}${designsCss}
+  body{margin:0;font-family:'DM Sans',system-ui,sans-serif;background:var(--hrx-bg)}
+</style></head><body><div id="root"></div><script type="module" src="./index-rig.js"></script></body></html>`);
+
+const pg3 = await br.newPage();
+await pg3.setViewport({ width: 1200, height: 760 });
+pg3.on("pageerror", (e) => console.log("  PAGE ERROR: " + e.message));
+await pg3.goto(pathToFileURL(path.join(TMP, "idx.html")).href, { waitUntil: "networkidle0" });
+await new Promise((r) => setTimeout(r, 800));
+const emailBtns = await pg3.evaluate(() => [...document.querySelectorAll(".dsn-start button")].map((b) => b.textContent?.trim()));
+console.log("  email buttons: " + emailBtns.join(" | "));
+await pg3.screenshot({ path: path.join(OUT, "email-index.png") });
+await pg3.evaluate(() => {
+  [...document.querySelectorAll("button")].find((b) => b.textContent?.includes("Templates"))?.click();
+});
+await new Promise((r) => setTimeout(r, 500));
+const groups = await pg3.evaluate(() => [...document.querySelectorAll(".emt-group")].map((g) => g.textContent));
+console.log("  template groups: " + groups.join(" | "));
+await pg3.screenshot({ path: path.join(OUT, "email-templates.png") });
+
+await pg3.close();
+
+// ── cutting an imported design into linkable parts ────────────────────────
+await build({
+  entryPoints: [path.join(ROOT, "scripts/email-test/links-rig.tsx")],
+  bundle: true, format: "esm", outfile: path.join(TMP, "links-rig.js"),
+  jsx: "automatic", logLevel: "error",
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("development"),
+    "import.meta.env": JSON.stringify({ VITE_SUPABASE_URL: "http://rig.invalid", VITE_SUPABASE_ANON_KEY: "rig", DEV: true, MODE: "development" }),
+  },
+  alias: { "@": path.join(ROOT, "src"), "@email": path.join(ROOT, "packages/email/src/render.ts") },
+});
+fs.writeFileSync(path.join(TMP, "links.html"), `<!doctype html><html><head><meta charset="utf-8">
+<style>${theme}${designsCss}
+  body{margin:0;font-family:'DM Sans',system-ui,sans-serif;background:var(--hrx-bg)}
+</style></head><body><div id="root"></div><script type="module" src="./links-rig.js"></script></body></html>`);
+
+const pg4 = await br.newPage();
+await pg4.setViewport({ width: 520, height: 900 });
+pg4.on("pageerror", (e) => console.log("  PAGE ERROR: " + e.message));
+await pg4.goto(pathToFileURL(path.join(TMP, "links.html")).href, { waitUntil: "networkidle0" });
+await new Promise((r) => setTimeout(r, 500));
+
+// Click a third and two thirds down: the boundaries between the three bands.
+const box = await (await pg4.$(".dlk__img")).boundingBox();
+await pg4.mouse.click(box.x + box.width / 2, box.y + box.height / 3);
+await new Promise((r) => setTimeout(r, 200));
+await pg4.mouse.click(box.x + box.width / 2, box.y + (box.height * 2) / 3);
+await new Promise((r) => setTimeout(r, 300));
+const cut = await pg4.evaluate(() => ({
+  cuts: window.block.cuts ?? [],
+  parts: document.querySelectorAll(".dlk .emc__f--tight").length,
+  lines: document.querySelectorAll(".dlk__cut").length,
+}));
+console.log(`  cuts at ${cut.cuts.join("% and ")}% · ${cut.parts} link fields · ${cut.lines} cut lines`);
+await pg4.screenshot({ path: path.join(OUT, "design-links.png"), fullPage: true });
 
 await br.close();
 fs.rmSync(TMP, { recursive: true, force: true });

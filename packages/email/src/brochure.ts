@@ -1,4 +1,4 @@
-import { renderBrochure } from "./render.ts";
+import { type PageOpts, renderBrochure } from "./render.ts";
 
 /**
  * The Phoxta brochure — everything the company does, in one email.
@@ -50,8 +50,13 @@ const SHOP = site("/marketplace");
 
 export const BROCHURE_SUBJECT = "Skip the build. Own the business.";
 
-export function phoxtaBrochure() {
-  return renderBrochure({
+/**
+ * The brochure as blocks rather than as html, so the studio can open it and
+ * edit it like anything else. The shipped copy stays the default; a saved
+ * edit becomes a row in email_templates and leaves this one alone.
+ */
+export function brochureTemplate(): PageOpts {
+  return {
     subject: BROCHURE_SUBJECT,
     strap: "Businesses that already work",
     // The second line in the inbox. It is the only other thing a reader sees
@@ -166,5 +171,9 @@ export function phoxtaBrochure() {
       { type: "text", text: "Or reply to this email and tell us what you are trying to build. It comes straight to a person." },
     ],
     footnote: "Phoxta Holdings Ltd., London. You are receiving this because you asked us about Phoxta.",
-  });
+  };
+}
+
+export function phoxtaBrochure() {
+  return renderBrochure(brochureTemplate());
 }

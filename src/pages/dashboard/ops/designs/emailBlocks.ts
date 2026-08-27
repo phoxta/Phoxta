@@ -159,6 +159,9 @@ export const SPECS: Record<string, Spec> = {
     summary: (b) => t(b, "alt") || t(b, "img"),
   },
   image: {
+    // designId, cuts and slices are deliberately absent: they are managed by
+    // DesignLinks, which shows the picture itself. A text box containing a
+    // JSON array of slice URLs would be an editor nobody could use.
     label: "Design or banner", group: "Media",
     fields: [
       { key: "src", label: "Image URL", kind: "url" },
