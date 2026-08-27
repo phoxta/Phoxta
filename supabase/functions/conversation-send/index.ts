@@ -6,7 +6,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { twilioSend } from "../_shared/dispatch.ts";
-import { dispatch } from "../_shared/dispatch.ts";
+import { sendConversationEmail } from "../_shared/conversationEmail.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 
     const a = await authorize(req, orgId);
     if (a.error) return a.error;
-    const { admin, userId, org } = a.ok;
+    const { admin, userId } = a.ok;
 
     const { data: conv } = await admin
       .from("conversations")
@@ -84,9 +84,25 @@ Deno.serve(async (req) => {
       }
     } else if (channel === "email") {
       if (!c.customer_email) return json({ error: "No email on file for this contact." }, 400);
-      const r = await dispatch("email", c.customer_email, subject || `Reply from ${org.name}`, text);
+      // The same sender the AI uses, for the same reason: a thread that arrived
+      // in the business's connected mailbox is answered FROM that mailbox and
+      // inside that thread. Replying through the platform's own domain meant the
+      // customer saw a reply from an address they had never written to, on a new
+      // thread, with their next reply landing in Phoxta's mailbox rather than
+      // the business's.
+      const r = await sendConversationEmail(admin, orgId, {
+        conversationId,
+        to: c.customer_email,
+        // No subject typed in the composer means "carry on this thread": the
+        // helper uses the thread's own subject, so a customer whose email was
+        // "Order #4471 — wrong size delivered" gets a reply with that subject
+        // rather than a bare "Reply from <business>" opening a new thread.
+        subject: subject || undefined,
+        text,
+      });
       delivery_status = r.status;
-      if (r.status === "failed") return json({ ok: false, error: "Email could not be sent." }, 200);
+      provider_sid = r.id;
+      if (r.status === "failed") return json({ ok: false, error: r.error ?? "Email could not be sent." }, 200);
     } else {
       // web (chat widget) — recorded here; the widget renders it on next poll.
       delivery_status = "sent";

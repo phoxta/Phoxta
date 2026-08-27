@@ -54,7 +54,7 @@ project_id = "ktgleoqvdikngocygdkn"
 [functions.agent-inbound]
 verify_jwt = false
 
-# Cron workers — pinged by the Railway worker-cron service with x-cron-secret.
+# Cron workers — pinged by the worker-cron tick (Oracle Cloud VM) with x-cron-secret.
 [functions.agent-worker]
 verify_jwt = false
 
@@ -68,6 +68,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.gmail-sync]
+verify_jwt = false
+
+# Answers customer messages that were never answered. Dual-mode: an owner runs
+# one now (authorize(requireAdmin) in-body) OR the scheduler sweeps every org
+# with x-cron-secret. The cron leg has no JWT.
+[functions.agent-catchup]
 verify_jwt = false
 
 [functions.ops-maintenance]

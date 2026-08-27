@@ -5,6 +5,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { requireUser } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
+import { orgReplyTo } from "../_shared/conversationEmail.ts";
 import { renderSimple } from "../_shared/email.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -25,15 +26,27 @@ async function loadSource(admin: SupabaseClient, trigger: string, id: string): P
   return data;
 }
 
-async function sendEmail(to: string, subject: string, body: string): Promise<{ status: string }> {
+/**
+ * One automation email, from the BUSINESS.
+ *
+ * `replyTo` is not optional. This mail is sent to a tenant's customer and its
+ * default body literally says "just reply to this email" — and it set no
+ * Reply-To at all, so a reply went to RESEND_FROM, whose subdomain has no MX and
+ * hard-bounces. Where it did reach a mailbox it reached PHOXTA's, which
+ * dogfoods gmail-sync, so another company's customer ended up in a threaded
+ * exchange with the wrong business. The caller resolves the tenant's own address
+ * and does not send without one.
+ */
+async function sendEmail(to: string, subject: string, body: string, replyTo: string): Promise<{ status: string }> {
   const key = Deno.env.get("RESEND_API_KEY");
   const from = Deno.env.get("RESEND_FROM");
   if (!key || !from || !to) return { status: "simulated" };
+  if (!replyTo) return { status: "no-reply-address" };
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, ...(() => {
+      body: JSON.stringify({ from, to, subject, reply_to: replyTo, ...(() => {
         const m = renderSimple(subject, body);
         return { html: m.html, text: m.text };
       })() }),
@@ -105,7 +118,7 @@ Deno.serve(async (req) => {
           const bodyText = fill(
             String(cfg?.body ?? "").trim() || `Hi ${who}, thanks for being a customer of ${business}. This is a quick automated update from us — just reply to this email if you have any questions.`,
           );
-          const res = await sendEmail(recipient, subject, bodyText);
+          const res = await sendEmail(recipient, subject, bodyText, await orgReplyTo(admin, r.organization_id));
           steps.push({ type: "send_email", to: recipient, status: res.status });
         } else if (action === "add_tag") {
           const tag = (automation?.config?.tag as string) || "automation";

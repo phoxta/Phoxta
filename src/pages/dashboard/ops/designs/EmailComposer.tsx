@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/dash/Ui";
-import { toast, toastError } from "@/lib/ops/feedback";
+import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
 import { renderBrochure, type Block } from "@email";
 import {
   ADD_GROUPS, SPECS, blockLabel, blockSummary, fromField, readField, toField, writeField,
@@ -190,12 +190,23 @@ export function EmailComposer({
     toast("Test sent to " + to + ".");
   };
 
-  const send = async () => {
+  const send = async (force = false) => {
     if (!to.includes("@")) return toastError("Put an address in first.");
     setBusy("sending");
-    const { data, error } = await sendEmail(draft as EmailTemplate, to);
+    const { data, error } = await sendEmail(draft as EmailTemplate, to, force);
     setBusy("");
     if (error) return toastError(error);
+    // A duplicate inside the short window is a QUESTION, not a refusal — the
+    // server says so with `resendable`. Asking beats blocking: the honest
+    // reasons to send the same thing twice (a corrected typo, a recipient who
+    // asked again, testing) all look identical to a double-click from here, and
+    // only the person at the keyboard can tell them apart.
+    if (data?.skipped && data.resendable) {
+      const when = data.at ? new Date(data.at).toLocaleTimeString() : "a moment ago";
+      if (!confirmDanger(`You sent this to ${to} at ${when}. Send it again?`)) return;
+      return send(true);
+    }
+    // Anything else — the opt-out list — is a hard no with no override.
     if (data?.skipped) return toastError(`Not sent — ${data.skipped}.`);
     if (!data?.ok) return toastError("Resend refused it.");
     toast("Sent to " + to + ".");

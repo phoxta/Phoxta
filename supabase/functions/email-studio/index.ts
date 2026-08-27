@@ -188,11 +188,36 @@ Deno.serve(async (req) => {
         if (goneErr) return json({ error: "Could not check the opt-out list." }, 500);
         if (gone && gone.length) return json({ ok: false, skipped: "opted out" }, 200);
 
+        // A GUARD AGAINST A DOUBLE-CLICK, NOT AGAINST EVER SENDING AGAIN.
+        //
+        // This used to refuse any (address, kind, subject) that appeared in the
+        // ledger at all, with no time bound — so the first send of a design
+        // permanently barred every later one, and the only way back was a
+        // `force` flag no screen ever set. Re-sending is an ordinary thing to
+        // want: you fix a typo, the recipient asks for it again, you are testing
+        // against your own address.
+        //
+        // What is actually worth preventing is the same mail going twice from
+        // one intent — a double-clicked button, a retried request. That happens
+        // within seconds, so the window is minutes and the ledger keeps its full
+        // history for everything else. Past the window there is no prompt at all.
+        const windowMs = Number(Deno.env.get("EMAIL_RESEND_WINDOW_MS")) || 2 * 60_000;
+        const since = new Date(Date.now() - windowMs).toISOString();
         const { data: already } = await admin
           .from("platform_email_sends").select("sent_at")
-          .eq("email", to).eq("kind", kind).eq("subject", String(body.subject ?? "")).limit(1);
+          .eq("email", to).eq("kind", kind).eq("subject", String(body.subject ?? ""))
+          .gte("sent_at", since)
+          .order("sent_at", { ascending: false }).limit(1);
         if (!body.force && already && already.length) {
-          return json({ ok: false, skipped: "already sent", at: already[0].sent_at }, 200);
+          // `resendable` tells the screen this is a question, not a refusal:
+          // it asks, and sends with force if the answer is yes. Contrast the
+          // opt-out check above, which is a hard no and carries no such flag.
+          return json({
+            ok: false,
+            skipped: "already sent",
+            at: already[0].sent_at,
+            resendable: true,
+          }, 200);
         }
 
         const { html, text, subject } = renderRow(body);

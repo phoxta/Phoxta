@@ -9,6 +9,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/dispatch.ts";
+import { orgReplyTo } from "../_shared/conversationEmail.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -197,7 +198,15 @@ Deno.serve(async (req) => {
       text.split("\n").map((l) => (l ? `<p style="margin:0 0 4px">${esc(l)}</p>` : "<br/>")).join("")
     }</div>`;
 
-    const r = await sendEmail({ to: [to], subject, html, text });
+    // WHERE THE CUSTOMER'S REPLY LANDS. This mail is signed "— <business>" and
+    // the invoice reminder says "Reply to this email if you have any questions",
+    // yet sendEmail's default Reply-To is hello@phoxta.com — so those questions
+    // went to Phoxta, whose own agent then answers another company's customer.
+    // No tenant address, no send: an order or invoice mail the customer cannot
+    // answer is worse than one the console reports as undeliverable.
+    const replyTo = await orgReplyTo(admin, org.id);
+    if (!replyTo) return json({ ok: true, delivery: "no-reply-address" });
+    const r = await sendEmail({ to: [to], subject, html, text, replyTo });
     // "simulated" (no email keys configured) counts as sent so the console
     // flow stays exercisable in development.
     return json({ ok: true, delivery: r.ok || r.status === "simulated" ? "sent" : "failed" });

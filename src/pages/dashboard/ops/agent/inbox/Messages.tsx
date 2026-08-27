@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { StickyNote } from "lucide-react";
+import { StickyNote, MessageSquareOff } from "lucide-react";
 import { Letter } from "react-letter";
 import { RichText } from "@shared-chat/chatRich";
 import type { TimelineMessage } from "@/lib/db/ops/agent";
@@ -120,6 +120,62 @@ function PlainBody({ text }: { text: string }) {
 /** Two messages group when the same author sent them within five minutes. */
 const GROUP_MS = 5 * 60 * 1000;
 
+/**
+ * Why the agent did not answer this message.
+ *
+ * Every ingress path writes `meta.auto_reply = { answered, reason, retryable }`
+ * onto the customer's own row precisely so this question has an answer without
+ * database access — and nothing rendered it, so an unanswered email sat in the
+ * Inbox looking like any other unread one. A skip is often correct (a bounce, a
+ * mailing list, "ask me first"); the point is that the owner can tell.
+ */
+type AutoReplyNote = { reason: string; retryable: boolean; pending: boolean };
+
+/** How long a worker's claim on a message is honoured before another one may
+ *  take it — CLAIM_TTL_MS in supabase/functions/_shared/autoReply.ts. Past it,
+ *  the claim means nothing and neither does "composing a reply". */
+const CLAIM_TTL_MS = 10 * 60 * 1000;
+
+function autoReplyNote(meta: Record<string, unknown>): AutoReplyNote | null {
+  const raw = meta.auto_reply;
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as Record<string, unknown>;
+  if (a.answered !== false) return null;
+  const reason = typeof a.reason === "string" ? a.reason.trim() : "";
+  if (!reason) return null;
+  // A claim taken by whichever worker is composing right now — but only while it
+  // is still LIVE. `pending` was any claimed_at at all, with no expiry, so a
+  // function killed mid-turn left "The agent is composing a reply…" on the
+  // message for ever, hiding from the owner that it needs a person.
+  const claimedAt = typeof a.claimed_at === "string" ? Date.parse(a.claimed_at) : NaN;
+  const pending = Number.isFinite(claimedAt) && Date.now() - claimedAt < CLAIM_TTL_MS;
+  return { reason, retryable: a.retryable === true, pending };
+}
+
+function NotAnswered({ note }: { note: AutoReplyNote }) {
+  if (note.pending) {
+    return (
+      <span className="ibx-msg__why">
+        <MessageSquareOff aria-hidden="true" />
+        <span>The agent is composing a reply&hellip;</span>
+      </span>
+    );
+  }
+  return (
+    <span className="ibx-msg__why">
+      <MessageSquareOff aria-hidden="true" />
+      <span>
+        <b>Not answered automatically</b> — {note.reason}.
+        {/* Honest about the shape of the queue: the catch-up worker reaches back
+            six hours every five minutes and 48 hours once a day, so "it will be
+            tried again" is a promise with an edge to it. Saying so is what lets
+            an owner decide to answer it themselves. */}
+        {note.retryable ? " The agent will try again — reply yourself if it still hasn't within a day." : ""}
+      </span>
+    </span>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Conversation timeline
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,6 +245,17 @@ function MessageBubble({
   const subject = typeof meta.subject === "string" && meta.subject.trim() ? meta.subject : null;
   const failed = m.delivery_status === "failed";
   const delivery = m.delivery_status ? DELIVERY_LABEL[m.delivery_status] : undefined;
+  // Only on the customer's own row: that is where the skip reason is written,
+  // and it is the message a human is deciding what to do about.
+  const why = m.role === "customer" ? autoReplyNote(meta) : null;
+  // What actually went wrong on the wire, when a send failed — otherwise "Failed"
+  // is a red word with nothing behind it.
+  const deliveryError = (() => {
+    const d = meta.delivery;
+    if (!d || typeof d !== "object") return "";
+    const e = (d as Record<string, unknown>).error;
+    return typeof e === "string" ? e : "";
+  })();
   const label = m.role === "customer" ? customerName : AUTHOR_LABEL[m.role] ?? m.role;
   const tone = m.role === "agent" ? " is-ai" : m.role === "system" ? " is-system" : "";
   // The AI writes markdown ("**bold**", bullet lists) whether or not anything
@@ -218,12 +285,14 @@ function MessageBubble({
             <span>{sentAt(m.created_at)}</span>
             {showChannel && m.channel_type && <span>· {channelLabel(m.channel_type)}</span>}
             {mine && delivery && (
-              <span className={failed ? "is-failed" : undefined} title={delivery}>
+              <span className={failed ? "is-failed" : undefined} title={deliveryError || delivery}>
                 · {failed ? delivery : <DeliveryTick status={m.delivery_status} />}
               </span>
             )}
           </span>
         )}
+
+        {why && <NotAnswered note={why} />}
       </span>
     </div>
   );

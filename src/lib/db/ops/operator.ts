@@ -179,6 +179,12 @@ export const WRITE_TOOL_LABELS: Record<string, string> = {
   create_blog_post: "Publish a blog post",
   publish_page: "Publish a content page",
   // Inbox
+  // Governs every ingress path the agent has — the connected mailbox, the inbound
+  // email webhook, SMS, WhatsApp, web chat, Chatwoot and voice — because it is
+  // enforced in _shared/autoReply.ts and in agent-inbound, which all of them go
+  // through. A switch that reported Off while four channels kept replying would
+  // be worse than no switch.
+  auto_reply: "Answer new customer messages automatically — email, SMS, WhatsApp, chat and voice (Ask me = stay silent and flag them for you)",
   reply_conversation: "Reply in a conversation",
   set_conversation_status: "Change a conversation's status",
   assign_conversation: "Assign a conversation",
@@ -208,13 +214,28 @@ export const WRITE_TOOL_GROUPS: { label: string; tools: string[] }[] = [
   { label: "Invoicing", tools: ["create_invoice", "set_invoice_status"] },
   { label: "Bookings & reservations", tools: ["create_service", "create_booking", "set_booking_status", "set_reservation_status", "block_availability"] },
   { label: "Content", tools: ["create_blog_post", "publish_page"] },
-  { label: "Inbox", tools: ["reply_conversation", "set_conversation_status", "assign_conversation"] },
+  { label: "Inbox", tools: ["auto_reply", "reply_conversation", "set_conversation_status", "assign_conversation"] },
   { label: "Helpdesk", tools: ["create_ticket", "reply_ticket", "set_ticket_status"] },
   { label: "Marketing", tools: ["create_campaign", "send_campaign"] },
   { label: "Call center", tools: ["add_location"] },
   { label: "Reaching customers", tools: ["send_message", "place_call"] },
   { label: "Google Workspace", tools: ["google_send_email", "google_create_doc", "google_create_event", "google_append_sheet"] },
 ];
+
+/**
+ * What a tool does when the business has never touched its switch.
+ *
+ * Every WRITE tool defaults to "approve" — the operator agent asks first, which
+ * is the right posture for changing a price or fulfilling an order. Answering a
+ * customer is the opposite case: a business that connects its mailbox to an AI
+ * agent is asking for its mail to be answered, and a fix that ships switched off
+ * does not fix "the agent did not reply". Mirrors the server-side default in
+ * supabase/functions/_shared/autoReply.ts — the two must agree, or the console
+ * would show "Ask me" while the agent was replying.
+ */
+export const WRITE_TOOL_DEFAULTS: Record<string, ToolPolicy["mode"]> = { auto_reply: "auto" };
+
+export const defaultToolMode = (tool: string): ToolPolicy["mode"] => WRITE_TOOL_DEFAULTS[tool] ?? "approve";
 
 export async function listToolPolicies(orgId: string): Promise<{ data: ToolPolicy[]; error: string | null }> {
   const { data, error } = await supabase.from("agent_tool_policy").select("tool, mode").eq("organization_id", orgId);

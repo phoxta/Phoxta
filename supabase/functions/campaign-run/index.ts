@@ -9,6 +9,7 @@ import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { sendEmail, twilioSend } from "../_shared/dispatch.ts";
+import { orgReplyTo } from "../_shared/conversationEmail.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -59,6 +60,19 @@ Deno.serve(async (req) => {
 
     let sent = 0, failed = 0, skipped = 0;
     const touched = new Set<string>();
+    // WHOSE ADDRESS DOES A REPLY REACH? sendEmail defaults Reply-To to
+    // hello@phoxta.com, so a tenant's campaign put PHOXTA's mailbox on mail sent
+    // to THEIR customers — and Phoxta dogfoods gmail-sync, so a reply arriving
+    // there is ingested and answered by Phoxta's own agent. Resolved once per
+    // organisation across the batch rather than per row.
+    const replyToCache = new Map<string, string>();
+    const replyToFor = async (org: string): Promise<string> => {
+      const hit = replyToCache.get(org);
+      if (hit !== undefined) return hit;
+      const v = await orgReplyTo(admin, org);
+      replyToCache.set(org, v);
+      return v;
+    };
 
     for (const row of rows) {
       touched.add(row.campaign_id);
@@ -124,10 +138,16 @@ Deno.serve(async (req) => {
           const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#222">${
             esc(campaign.body).replace(/\n/g, "<br/>")
           }${unsubLink ? `<p style="margin:16px 0 0;font-size:12px;color:#888">—<br/><a href="${unsubLink}">Unsubscribe</a></p>` : ""}</div>`;
+          const replyTo = await replyToFor(String(row.organization_id));
+          if (!replyTo) {
+            await finish("failed", "no address for this business could be found to receive replies — add a billing email in Settings, or connect Google");
+            failed++;
+            continue;
+          }
           const r = await sendEmail({
             to: [address],
             subject: campaign.subject || campaign.name || "A message from us",
-            html, text,
+            html, text, replyTo,
             headers: oneClick
               ? { "List-Unsubscribe": `<${oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" }
               : undefined,

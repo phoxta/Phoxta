@@ -25,6 +25,8 @@
 import { type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { sendEmail, twilioSend } from "../_shared/dispatch.ts";
 import { phoneForStorage } from "../_shared/telephony.ts";
+import { autoReplyAllowed, deliverAutoReply } from "../_shared/autoReply.ts";
+import { orgReplyTo } from "../_shared/conversationEmail.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -456,11 +458,19 @@ export function makeJourneyDeliver(admin: SupabaseClient, flow: Json, run: Json,
       const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#222">${
         escHtml(text).replace(/\n/g, "<br/>")
       }<p style="margin:16px 0 0;font-size:12px;color:#888">—<br/><a href="${unsubLink}">Unsubscribe</a></p></div>`;
+      // The BUSINESS's own return address. sendEmail defaults Reply-To to
+      // hello@phoxta.com, so a journey send put PHOXTA's mailbox on mail to a
+      // tenant's customer — and Phoxta dogfoods gmail-sync, so a reply arriving
+      // there is ingested and answered by Phoxta's own agent, in thread, as the
+      // wrong company. Nothing resolvable means nothing sent.
+      const replyTo = await orgReplyTo(admin, String(run.organization_id));
+      if (!replyTo) return false;
       const r = await sendEmail({
         to: [email],
         subject: subject || flow.name || "A message from us",
         html,
         text: `${text}\n\n—\nUnsubscribe: ${unsubLink}`,
+        replyTo,
         headers: { "List-Unsubscribe": `<${oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
       });
       if (r.ok || r.status === "simulated") {
@@ -492,24 +502,48 @@ export function makeConversationDeliver(admin: SupabaseClient, flow: Json, run: 
     const { data: fresh } = await admin.from("conversations").select("*").eq("id", conversation.id).maybeSingle();
     if (fresh && (fresh as Json).ai_paused === true) return false;
     const channel = String(conversation.channel_type ?? "web");
-    await admin.from("conversation_messages").insert({
-      organization_id: run.organization_id,
+    const orgId = String(run.organization_id);
+    const to = channel === "email" ? String(conversation.customer_email ?? "") : String(conversation.customer_phone ?? "");
+    const wired = (channel === "email" || channel === "sms" || channel === "whatsapp") && !!to;
+
+    // A flow waking from a delay answers INSIDE a live conversation, which makes
+    // it an automatic reply like any other: it must not talk over a human, must
+    // not answer a closed thread, must count against the per-thread ceiling and
+    // the org's daily budget, and — for email — must go out on the identity the
+    // thread came in on. It used to call sendEmail directly, which sends from the
+    // platform's domain with Reply-To hello@phoxta.com, so a tenant's customer
+    // replying landed in PHOXTA's mailbox. The pre-flight runs before the row is
+    // written, so a refusal does not leave a bubble on the thread claiming the
+    // agent spoke.
+    if (wired) {
+      const pre = await autoReplyAllowed(admin, orgId, { conversationId: String(conversation.id), channel, mode: "auto" });
+      if (!pre.ok) return false;
+    }
+
+    const { data: row } = await admin.from("conversation_messages").insert({
+      organization_id: orgId,
       conversation_id: conversation.id,
       role: "agent",
       channel_type: channel,
       body: text,
       meta: { engage: { flow_id: flow.id, run_id: run.id } },
-    });
+    }).select("id").maybeSingle();
     await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conversation.id);
-    if ((channel === "sms" || channel === "whatsapp") && conversation.customer_phone) {
-      await twilioSend(channel as "sms" | "whatsapp", conversation.customer_phone, text);
-    } else if (channel === "email" && conversation.customer_email) {
-      await sendEmail({
-        to: [conversation.customer_email],
-        subject: _subject || flow.name || "A message from us",
-        html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#222">${escHtml(text).replace(/\n/g, "<br/>")}</div>`,
+    if (wired) {
+      const delivered = await deliverAutoReply(admin, orgId, {
+        channel,
+        trigger: "engage",
+        conversationId: String(conversation.id),
+        to,
         text,
+        ...(channel === "email" ? { subject: _subject || flow.name || undefined } : {}),
+        agentMessageId: (row as Json)?.id ? String((row as Json).id) : null,
+        // Not gated on the auto_reply switch: an Engage journey is something the
+        // owner built and switched on itself. Every other gate applies.
+        mode: "auto",
+        stampExtra: { engage: { flow_id: flow.id, run_id: run.id } },
       });
+      if (!delivered.sent && !delivered.outcome) return false; // gated — nothing stamped
     }
     await stampTouch(admin, {
       organization_id: run.organization_id,
@@ -541,6 +575,12 @@ export type EngageInboundOutcome = {
   /** true → do NOT run the AI; false → fall through to respondCore with conversationId. */
   suppressAi: boolean;
   escalated: boolean;
+  /** The rows this turn wrote, when the flow claimed it — so a caller that has to
+   *  PUSH the reply (Chatwoot) can run it through deliverAutoReply and stamp what
+   *  happened on the wire. Null when the AI owns the turn (respondCore writes
+   *  them) or when the insert failed. */
+  customerMessageId: string | null;
+  agentMessageId: string | null;
 } | null;
 
 /** Flow runtime for one inbound customer message. Returns null whenever the
@@ -756,9 +796,19 @@ export async function engageHandleInbound(
       meta: { engage: { flow_id: flow.id, run_id: run.id } },
     });
   }
+  // The ids come back so the CALLER can put the flow's reply through
+  // deliverAutoReply: agent-inbound's Chatwoot branch pushes a flow's answer to a
+  // live WhatsApp customer, and without a row to stamp there is nowhere to record
+  // whether that push actually landed.
+  let customerMessageId: string | null = null;
+  let agentMessageId: string | null = null;
   if (msgRows.length) {
-    const { error: msgErr } = await admin.from("conversation_messages").insert(msgRows);
+    const { data: written, error: msgErr } = await admin.from("conversation_messages").insert(msgRows).select("id, role");
     if (msgErr) console.error("[phoxta] engage conversation_messages insert failed:", msgErr.message);
+    for (const r of ((written as Json[] | null) ?? [])) {
+      if (r?.role === "customer" && !customerMessageId) customerMessageId = String(r.id);
+      if (r?.role === "agent") agentMessageId = String(r.id); // the LAST thing the flow said
+    }
   }
   if (flowOwnsTurn) {
     await admin.from("conversations").update({ last_message_at: now }).eq("id", conv.id);
@@ -783,5 +833,5 @@ export async function engageHandleInbound(
   const reply = texts.join("\n\n") ||
     (out.escalated && flowOwnsTurn ? "Thanks — a member of the team will take it from here." : "");
 
-  return { conversationId: conv.id, reply, suppressAi: flowOwnsTurn, escalated: out.escalated };
+  return { conversationId: conv.id, reply, suppressAi: flowOwnsTurn, escalated: out.escalated, customerMessageId, agentMessageId };
 }

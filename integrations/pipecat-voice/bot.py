@@ -214,8 +214,25 @@ class PhoxtaAgentBridge(FrameProcessor):
         if turn != self._turn:
             logger.debug(f"[phoxta] dropping stale reply for turn {turn} (now {self._turn})")
             return
-        reply = data.get("reply") or "Sorry, could you say that again?"
-        await self.push_frame(TTSSpeakFrame(reply))
+        reply = (data.get("reply") or "").strip()
+        # An EMPTY reply is a DECISION, not a failure. agent-inbound answers
+        # reply:"" with human:true when somebody has pressed "Take over" on the
+        # thread, or when the owner has set "Answer new customer messages
+        # automatically" to Off / Ask me. Speaking a canned line there is exactly
+        # what those settings promise will not happen — the caller must hear
+        # silence from the agent, and a person picks it up. Only a genuine
+        # failure (the call errored, or came back with no `reply` key at all)
+        # gets the "could you say that again?" fallback, where silence is worse.
+        if reply:
+            await self.push_frame(TTSSpeakFrame(reply))
+            return
+        if data.get("human") or data.get("autoReply") in ("off", "approve"):
+            logger.info("[phoxta] staying silent: a human owns this conversation")
+            return
+        if "reply" in data:
+            logger.info("[phoxta] the agent chose to say nothing this turn")
+            return
+        await self.push_frame(TTSSpeakFrame("Sorry, could you say that again?"))
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)

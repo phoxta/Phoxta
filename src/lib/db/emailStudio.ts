@@ -63,5 +63,14 @@ export const emailFromPost = (slug: string) =>
 export const sendTest = (t: Partial<EmailTemplate> & { blocks: Block[] }, to: string) =>
   call<{ ok: boolean; id?: string; error?: unknown }>("test", { ...t, to });
 
+/**
+ * Send it for real.
+ *
+ * `force` overrides the short double-send window — NOT the opt-out list, which
+ * has no override and never will. A refusal that carries `resendable` is the
+ * window asking a question; one without it is a hard no.
+ */
 export const sendEmail = (t: Partial<EmailTemplate> & { blocks: Block[] }, to: string, force = false) =>
-  call<{ ok: boolean; id?: string; skipped?: string; at?: string }>("send", { ...t, to, force });
+  call<{ ok: boolean; id?: string; skipped?: string; at?: string; resendable?: boolean }>(
+    "send", { ...t, to, force },
+  );

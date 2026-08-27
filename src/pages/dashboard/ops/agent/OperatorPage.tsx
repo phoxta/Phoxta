@@ -20,6 +20,7 @@ import {
     removeMemory,
     WRITE_TOOL_LABELS,
     WRITE_TOOL_GROUPS,
+    defaultToolMode,
     signOperatorFiles,
     type OperatorAttachment,
     type OperatorMsg,
@@ -334,7 +335,11 @@ export default function OperatorPage() {
         }
     }
 
-    const modeOf = (tool: string) => policies.find((p) => p.tool === tool)?.mode ?? "approve";
+    // No row means the business has never touched this switch, and the default
+    // is not the same for every tool — see defaultToolMode. Showing "Ask me"
+    // where the server actually answers would be a lie in the one place an owner
+    // goes to check what their agent is allowed to do.
+    const modeOf = (tool: string) => policies.find((p) => p.tool === tool)?.mode ?? defaultToolMode(tool);
     async function changeMode(tool: string, mode: ToolPolicy["mode"]) {
         await reportMutation(setToolPolicy(orgId, tool, mode), "Saved — permission updated.");
         refresh();
@@ -492,7 +497,18 @@ export default function OperatorPage() {
                 <AutopilotPanel orgId={orgId} />
 
                 <Card title="What the operator may do">
-                    <p className="agx-note mb-3">Off = blocked · Ask me = queued for your approval · Auto = runs immediately.</p>
+                    {/* One legend covers every row, so it has to be true of every
+                        row. "Ask me = queued for your approval" is right for the
+                        operator's write tools and wrong for answering messages:
+                        that one composes nothing and queues nothing — it stays
+                        quiet and notifies you — so an owner who chose it went
+                        looking for drafts in an empty approval list and concluded
+                        the feature was broken. */}
+                    <p className="agx-note mb-3">
+                        Off = blocked · Ask me = held for your approval above · Auto = runs immediately.
+                        <br />
+                        Answering customer messages is the exception: <b>Ask me</b> there means the agent stays silent and notifies you instead of drafting anything.
+                    </p>
                     <div className="d-flex flex-column gap-3">
                         {WRITE_TOOL_GROUPS.map((group) => (
                             <div key={group.label}>

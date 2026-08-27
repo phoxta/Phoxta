@@ -43,7 +43,13 @@ const dialable = (to: string) => toE164(to, env("DEFAULT_COUNTRY_CODE"));
 // is why nothing was arriving. It is a real alias on femi@ now.
 const replyAddress = () => env("RESEND_REPLY_TO") || "hello@phoxta.com";
 
-async function dispatchEmail(to: string, subject: string, message: string): Promise<DispatchResult> {
+async function dispatchEmail(to: string, subject: string, message: string, replyTo?: string): Promise<DispatchResult> {
+  // An explicit replyTo always wins over the platform default. It is how a
+  // TENANT's reply to their own customer keeps that customer's next message
+  // coming back to the business rather than into Phoxta's mailbox — see
+  // conversationEmail.ts, which is the only thing allowed to answer inside a
+  // conversation and which resolves that address itself.
+  const reply = replyTo?.trim() || replyAddress();
   if (env("RESEND_API_KEY") && env("RESEND_FROM")) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
@@ -52,7 +58,7 @@ async function dispatchEmail(to: string, subject: string, message: string): Prom
         // Was a bare <p>. Every notification the platform sends goes through
         // here, so this one line is most of what people actually receive.
         body: JSON.stringify({
-          from: env("RESEND_FROM"), to, subject, reply_to: replyAddress(),
+          from: env("RESEND_FROM"), to, subject, reply_to: reply,
           ...(() => { const m = renderSimple(subject, message); return { html: m.html, text: m.text }; })(),
         }),
       });
@@ -66,7 +72,7 @@ async function dispatchEmail(to: string, subject: string, message: string): Prom
       const res = await fetch("https://api.postmarkapp.com/email", {
         method: "POST",
         headers: { "X-Postmark-Server-Token": env("POSTMARK_TOKEN")!, "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ From: env("POSTMARK_FROM"), To: to, Subject: subject, HtmlBody: `<p>${message}</p>` }),
+        body: JSON.stringify({ From: env("POSTMARK_FROM"), To: to, Subject: subject, HtmlBody: `<p>${message}</p>`, ReplyTo: reply }),
       });
       return { status: res.ok ? "sent" : "failed", provider: "postmark" };
     } catch {
@@ -79,21 +85,34 @@ async function dispatchEmail(to: string, subject: string, message: string): Prom
 // Detailed Twilio send (SMS or WhatsApp) — returns the message SID and any
 // Twilio error code so callers can react (e.g. 63016 = outside the WhatsApp
 // 24-hour window → a template is required). WhatsApp uses the `whatsapp:` prefix
-// on both From and To. From: TWILIO_FROM (SMS) / TWILIO_WHATSAPP_FROM||TWILIO_FROM (WA).
+// on both From and To.
+//
+// `opts.from` IS THE TENANT'S OWN NUMBER, and it exists because the env fallback
+// below is one number for the whole platform (telephony.ts:3 — "Every tenant
+// dials through ONE shared Twilio account"). Answering a business's customer
+// from it tells them a different company wrote, and their reply lands on the
+// PHOXTA line, where Phoxta's own agent picks it up and answers another
+// company's customer in thread. Every automatic reply therefore passes the
+// number the customer actually texted (twilio-inbound records it on the
+// message), and _shared/autoReply.ts refuses to send at all rather than fall
+// back to the shared sender. The env default is left for the transports that
+// legitimately speak AS the platform — outbound campaigns and journey sends the
+// owner configured themselves.
 export type TwilioSendResult = { ok: boolean; status: DispatchResult["status"]; sid?: string; errorCode?: number; errorMessage?: string };
 
 export async function twilioSend(
   channel: "sms" | "whatsapp",
   to: string,
   message: string,
-  opts?: { contentSid?: string; contentVariables?: Record<string, string> },
+  opts?: { contentSid?: string; contentVariables?: Record<string, string>; from?: string },
 ): Promise<TwilioSendResult> {
   const accountSid = env("TWILIO_ACCOUNT_SID");
   // Authenticate with an API Key (SK SID + secret) when present, else the
   // Account SID + Auth Token. The REST URL always uses the Account SID.
   const authUser = env("TWILIO_API_KEY_SID") || accountSid;
   const authPass = env("TWILIO_API_KEY_SECRET") || env("TWILIO_AUTH_TOKEN");
-  const fromRaw = channel === "whatsapp" ? (env("TWILIO_WHATSAPP_FROM") || env("TWILIO_FROM")) : env("TWILIO_FROM");
+  const fromRaw = String(opts?.from ?? "").trim() ||
+    (channel === "whatsapp" ? (env("TWILIO_WHATSAPP_FROM") || env("TWILIO_FROM")) : env("TWILIO_FROM"));
   if (!accountSid || !fromRaw || !authUser || !authPass) return { ok: false, status: "simulated" };
   const dest = dialable(to);
   if (!dest) {
@@ -295,9 +314,16 @@ async function dispatchVoice(to: string, message: string): Promise<DispatchResul
   return { status: "simulated", provider: "none" };
 }
 
-export async function dispatch(channel: string, to: string, subject: string, message: string): Promise<DispatchResult> {
+export async function dispatch(
+  channel: string,
+  to: string,
+  subject: string,
+  message: string,
+  /** Email only: where the recipient's reply must land. Omit for platform mail. */
+  opts?: { replyTo?: string },
+): Promise<DispatchResult> {
   if (!to) return { status: "simulated", provider: "none" };
-  if (channel === "email") return dispatchEmail(to, subject, message);
+  if (channel === "email") return dispatchEmail(to, subject, message, opts?.replyTo);
   if (channel === "sms") return dispatchSms(to, message);
   if (channel === "whatsapp") return dispatchWhatsApp(to, message);
   if (channel === "call") return dispatchVoice(to, message);

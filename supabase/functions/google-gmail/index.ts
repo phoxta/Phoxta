@@ -2,7 +2,7 @@
 // Gmail API (uses the org's stored OAuth token, auto-refreshed). Member-authed.
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
-import { getAccessToken } from "../_shared/google.ts";
+import { getAccessToken, gmailSendMessage } from "../_shared/google.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -12,12 +12,6 @@ const b64urlDecode = (s: string): string => {
   const b = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
   const bytes = Uint8Array.from(b, (c) => c.charCodeAt(0));
   return new TextDecoder().decode(bytes);
-};
-const b64urlEncode = (s: string): string => {
-  const bytes = new TextEncoder().encode(s);
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 };
 const headerMap = (payload: Json): Record<string, string> =>
   Object.fromEntries((payload?.headers ?? []).map((h: Json) => [String(h.name).toLowerCase(), h.value]));
@@ -72,13 +66,24 @@ Deno.serve(async (req) => {
       const subject = String(body.subject ?? "").trim();
       const text = String(body.text ?? "");
       if (!to || !text) return json({ error: "Recipient and message required." }, 400);
-      const headers = [`To: ${to}`, `Subject: ${subject}`, "Content-Type: text/plain; charset=UTF-8"];
-      if (body.inReplyTo) headers.push(`In-Reply-To: ${body.inReplyTo}`, `References: ${body.inReplyTo}`);
-      const raw = b64urlEncode(`${headers.join("\r\n")}\r\n\r\n${text}`);
-      const r = await gf(`/messages/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ raw, threadId: body.threadId }) });
-      const d = (await r.json()) as Json;
-      if (d?.id) return json({ ok: true, id: d.id });
-      return json({ ok: false, error: d?.error?.message || "Send failed." }, 200);
+      // One implementation of "compose an RFC 822 message and send it as this
+      // mailbox" (_shared/google.ts), shared with the agent's reply path. The
+      // copy that used to live here folded the References chain down to a single
+      // id, sent no MIME-Version, and wrote header values straight from caller
+      // input — a newline in a subject would have injected a header.
+      try {
+        const sent = await gmailSendMessage(token, {
+          to,
+          subject,
+          text,
+          threadId: body.threadId ? String(body.threadId) : undefined,
+          inReplyTo: body.inReplyTo ? String(body.inReplyTo) : undefined,
+          references: body.references ? String(body.references) : undefined,
+        });
+        return json({ ok: true, id: sent.id, threadId: sent.threadId });
+      } catch (e) {
+        return json({ ok: false, error: String((e as Error)?.message || e) }, 200);
+      }
     }
 
     if (action === "import") {
@@ -93,8 +98,16 @@ Deno.serve(async (req) => {
       const admin = a.ok.admin;
       const orgId = a.ok.org.id;
       let convId: string;
+      // `is_test` matters here for the same reason it does in gmail-sync,
+      // email-inbound and agentCore.resolveConversation: an owner who has ever
+      // exercised the Playground on the email channel with this address has a
+      // SANDBOX thread that is the newest open email conversation for it, and an
+      // imported message would be filed onto a conversation the console labels as
+      // a test — where agent-catchup then marks everything else on the thread
+      // "a sandbox conversation", permanently.
       const { data: existing } = await admin.from("conversations").select("id")
-        .eq("organization_id", orgId).eq("channel_type", "email").eq("customer_email", fromEmail).neq("status", "closed")
+        .eq("organization_id", orgId).eq("channel_type", "email").eq("customer_email", fromEmail)
+        .eq("is_test", false).neq("status", "closed")
         .order("last_message_at", { ascending: false }).limit(1).maybeSingle();
       if (existing) convId = (existing as Json).id;
       else {
@@ -103,9 +116,43 @@ Deno.serve(async (req) => {
           .select("id").single();
         convId = (conv as Json).id;
       }
-      const { data: dup } = await admin.from("conversation_messages").select("id").eq("conversation_id", convId).eq("provider_sid", md.id).maybeSingle();
+      // Scoped by ORGANISATION, not by conversation: one Gmail message belongs
+      // to the business once, and the uniqueness index added in 0114 is
+      // (organization_id, provider_sid) — a per-conversation check would let a
+      // second insert through and the constraint would then reject it.
+      const { data: dup } = await admin.from("conversation_messages").select("id").eq("organization_id", orgId).eq("provider_sid", md.id).maybeSingle();
       if (!dup) {
-        await admin.from("conversation_messages").insert({ organization_id: orgId, conversation_id: convId, role: "customer", channel_type: "email", body: text, provider_sid: md.id, meta: { subject, source: "gmail" } });
+        await admin.from("conversation_messages").insert({
+          organization_id: orgId, conversation_id: convId, role: "customer", channel_type: "email",
+          body: text, provider_sid: md.id,
+          // The threading keys, so a reply to a hand-imported message lands in
+          // the same Gmail thread rather than opening a new one.
+          meta: {
+            subject, source: "gmail",
+            gmail_thread_id: String(md.threadId ?? ""),
+            message_id: String(h["message-id"] ?? ""),
+            references: String(h["references"] ?? ""),
+            internal_date: Number(md.internalDate ?? 0),
+            imported_by_hand: true,
+            // IMPORT IS A READING ACTION, NOT AN ANSWERING ONE.
+            //
+            // Storing the threading keys and source 'gmail' is exactly the shape
+            // agent-catchup looks for, so without this a person browsing Sent,
+            // Archive, Spam or a label and pressing Import could cause the agent
+            // to mail a reply within five minutes — to a message that may be the
+            // business's OWN outbound (the row is written role 'customer'
+            // whatever its real direction, and the conversation is keyed on the
+            // From header). Nothing in the console warns that Import can send.
+            // Settled here, so it never becomes a candidate; a human who wants a
+            // reply writes one, or presses reply in the Inbox.
+            auto_reply: {
+              answered: false,
+              reason: "it was imported from Gmail by hand — import files a message, it does not answer it",
+              retryable: false,
+              at: new Date().toISOString(),
+            },
+          },
+        });
         await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", convId);
       }
       return json({ ok: true, conversationId: convId });

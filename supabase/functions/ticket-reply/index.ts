@@ -5,6 +5,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/dispatch.ts";
+import { orgReplyTo } from "../_shared/conversationEmail.ts";
 import { renderSimple } from "../_shared/email.ts";
 
 Deno.serve(async (req) => {
@@ -39,17 +40,31 @@ Deno.serve(async (req) => {
     let delivery = "no-email";
     if (ticket.customer_email) {
       const subject = ticket.subject ? `Re: ${ticket.subject}` : `Update from ${org.name}`;
-      const r = await sendEmail({
-        to: [ticket.customer_email],
-        subject,
-        // Rendered under the BUSINESS's name, not Phoxta's: the customer
-        // raised a ticket with them and has never heard of us.
-        ...(() => {
-          const m = renderSimple(subject, `${message}\n\n— ${org.name}`, { brand: org.name });
-          return { html: m.html, text: m.text };
-        })(),
-      });
-      delivery = r.ok ? "sent" : r.status;
+      // WHERE THE CUSTOMER'S REPLY GOES. sendEmail defaults Reply-To to
+      // hello@phoxta.com, and this mail is rendered under the BUSINESS's own
+      // name and brand — so the mismatch was invisible: the customer replied to
+      // what looked like their supplier and reached PHOXTA's mailbox instead,
+      // which Phoxta's own agent then answers. orgReplyTo resolves the tenant's
+      // address; when none can be found the reply is stored but NOT mailed,
+      // because a helpdesk reply the customer cannot answer is worse than one
+      // they have to be told about.
+      const replyTo = await orgReplyTo(admin, org.id);
+      if (!replyTo) {
+        delivery = "no-reply-address";
+      } else {
+        const r = await sendEmail({
+          to: [ticket.customer_email],
+          subject,
+          replyTo,
+          // Rendered under the BUSINESS's name, not Phoxta's: the customer
+          // raised a ticket with them and has never heard of us.
+          ...(() => {
+            const m = renderSimple(subject, `${message}\n\n— ${org.name}`, { brand: org.name });
+            return { html: m.html, text: m.text };
+          })(),
+        });
+        delivery = r.ok ? "sent" : r.status;
+      }
     }
 
     if (resolve) {

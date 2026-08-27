@@ -5,6 +5,8 @@ import type { SupabaseClient } from "./supabaseAdmin.ts";
 import type { Tool } from "./anthropic.ts";
 import { getAccessToken, gmailSendRaw, createDoc, createEvent, appendSheet } from "./google.ts";
 import { dispatch, placeAiCall } from "./dispatch.ts";
+import { autoReplyAllowed, deliverAutoReply } from "./autoReply.ts";
+import { orgReplyTo } from "./conversationEmail.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -347,7 +349,17 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     const channel = ["sms", "whatsapp", "email"].includes(a.channel) ? a.channel : "sms";
     const dest = await destinationFor(admin, orgId, String(a.to), channel);
     if (!dest) throw new Error(`No ${channel === "email" ? "email address" : "phone number"} found for "${a.to}".`);
-    const r = await dispatch(channel, dest, a.subject ? String(a.subject) : "A message for you", String(a.message));
+    // The autopilot can run this tool on its own, so the mail it sends must come
+    // back to THIS business. Without a Reply-To of its own, dispatch() stamps
+    // Phoxta's hello@ on it — the customer's reply then lands in the platform's
+    // mailbox instead of the tenant's, which is a cross-tenant disclosure and,
+    // if that mailbox is connected, gets them answered by the wrong company.
+    let replyTo = "";
+    if (channel === "email") {
+      replyTo = await orgReplyTo(admin, orgId);
+      if (!replyTo) throw new Error("This business has no email address on file for replies — add a billing email in Settings, or connect Google.");
+    }
+    const r = await dispatch(channel, dest, a.subject ? String(a.subject) : "A message for you", String(a.message), replyTo ? { replyTo } : undefined);
     if (r.status === "failed") throw new Error("Message could not be delivered.");
     return `Sent ${channel} to ${dest}${r.status === "simulated" ? " (simulated — no provider configured)" : ""}.`;
   }
@@ -373,16 +385,67 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
       ? String((c as Json).channel_type) : "email";
     const dest = channel === "email" ? (c as Json).customer_email : (c as Json).customer_phone;
     if (!dest) throw new Error(`That conversation has no ${channel === "email" ? "email address" : "phone number"} to reply to.`);
-    const r = await dispatch(channel, String(dest), "Re: your message", String(a.body));
-    if (r.status === "failed") throw new Error("The reply could not be delivered.");
-    // Recorded on the thread either way, so the Inbox shows what the agent said.
-    await admin.from("conversation_messages").insert({
-      organization_id: orgId, conversation_id: (c as Json).id, role: "assistant",
-      channel_type: channel, body: String(a.body), delivery_status: r.status,
+    const conversationId = String((c as Json).id);
+
+    // THE GATES FIRST, then the row.
+    //
+    // The insert used to be unconditional, so a reply the funnel then refused —
+    // because a human had pressed "Take over", because the thread was closed,
+    // because the per-thread ceiling was reached — still put an agent bubble on
+    // the conversation carrying the operator's words. Nothing was sent, which is
+    // the important half, but the person reading the thread saw the AI talking
+    // over the human who had just claimed it. A cheap pre-flight settles that
+    // before anything is written; deliverAutoReply re-runs every gate anyway.
+    const pre = await autoReplyAllowed(admin, orgId, { conversationId, channel, mode: "auto" });
+    if (!pre.ok) throw new Error(pre.reason);
+
+    // Recorded before the send, so the thread shows what was said even if the
+    // send then fails, and so deliverAutoReply has a row to stamp with the real
+    // delivery status. The role was 'assistant', which the CHECK constraint does
+    // not allow — so every reply this tool sent was delivered to a real customer
+    // and then silently rejected by Postgres, leaving no trace on the thread and
+    // nothing in the history the agent reads on its next turn.
+    const { data: row, error: recErr } = await admin.from("conversation_messages").insert({
+      organization_id: orgId, conversation_id: conversationId, role: "agent",
+      channel_type: channel, body: String(a.body), provider_sid: "",
+      // A marker, so this row is distinguishable from an automatic reply by
+      // anything reading the thread later.
+      meta: { source: "agent-operator", tool: "reply_conversation" },
+    }).select("id").maybeSingle();
+    if (recErr) console.error("[phoxta] reply_conversation could not be recorded:", recErr.message);
+
+    // Everything else goes through the SAME funnel as an automatic reply, for the
+    // same reasons: it must not speak over a human who pressed "Take over" (this
+    // tool read nothing about ai_paused, so an autopilot objective could answer
+    // a thread a person had promised to own), it must not answer a closed
+    // thread, it counts against the per-thread ceiling and the daily cap, it is
+    // written to the audit trail, and — for email — it answers from the
+    // conversation's OWN identity in its own thread with its own subject, rather
+    // than from the platform's sending domain under "Re: your message".
+    const sent = await deliverAutoReply(admin, orgId, {
+      channel,
+      trigger: "agent-operator",
+      conversationId,
+      to: String(dest),
+      text: String(a.body),
+      agentMessageId: (row as Json)?.id ? String((row as Json).id) : null,
+      // NOT gated on the auto_reply switch: this tool has its own policy row
+      // (WRITE_TOOL_GROUPS → Inbox → reply_conversation), which runWrite has
+      // already enforced before getting here. Applying "answer new customer
+      // messages automatically" on top of it would refuse an owner who asked
+      // the operator, in words, to reply to somebody. Every other gate — the
+      // take-over, the closed thread, the per-thread ceiling, the spacing, the
+      // hourly throttle, the daily cap — still applies.
+      mode: "auto",
     });
+    // "Simulated" is a development environment with no provider wired up, not a
+    // failure — the same distinction dispatch() has always drawn.
+    const simulated = sent.outcome?.status === "simulated";
+    if (!sent.sent && !simulated) throw new Error(sent.reason);
+
     await admin.from("conversations").update({ last_message_at: new Date().toISOString(), unread: false })
-      .eq("id", (c as Json).id);
-    return `Replied to ${(c as Json).customer_name || "the customer"} over ${channel}${r.status === "simulated" ? " (simulated — no provider configured)" : ""}.`;
+      .eq("id", conversationId).eq("organization_id", orgId);
+    return `Replied to ${(c as Json).customer_name || "the customer"} over ${channel}${simulated ? " (simulated — no provider configured)" : ""}.`;
   }
   if (tool === "set_conversation_status") {
     const allowed = ["open", "handled", "escalated", "closed"];
@@ -406,19 +469,39 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
       return `Unassigned the conversation with ${(c as Json).customer_name || "the customer"}.`;
     }
     // Only members of THIS business can be assigned work in it.
+    //
+    // The query here was `.select("user_id, user_profiles(full_name, email)")` —
+    // user_profiles has no `email` column and organization_memberships has no
+    // embeddable relationship to it (its foreign key points at auth.users), so
+    // PostgREST returned an ERROR that was never thrown, `members` was null, and
+    // this tool could never match anybody. Names come from user_profiles by
+    // user_id; login addresses come from the Admin API, the same place the rest
+    // of the platform reads them.
     const { data: members } = await admin
       .from("organization_memberships")
-      .select("user_id, user_profiles(full_name, email)")
+      .select("user_id")
       .eq("organization_id", orgId);
-    const hit = (members ?? []).find((m: Json) => {
-      const p = m.user_profiles ?? {};
-      return [p.full_name, p.email].filter(Boolean)
-        .some((v: string) => v.toLowerCase().includes(who.toLowerCase()));
-    }) as Json | undefined;
-    if (!hit) throw new Error(`No teammate in this business matching "${who}".`);
-    const { error } = await admin.from("conversations").update({ assigned_to: hit.user_id }).eq("id", (c as Json).id);
+    const ids = ((members ?? []) as Json[]).map((m) => String(m.user_id));
+    if (ids.length === 0) throw new Error(`No teammate in this business matching "${who}".`);
+    const { data: profiles } = await admin
+      .from("user_profiles")
+      .select("user_id, full_name")
+      .in("user_id", ids);
+    const nameOf = new Map(((profiles ?? []) as Json[]).map((p) => [String(p.user_id), String(p.full_name ?? "")]));
+    const needle = who.toLowerCase();
+    let hitId = ids.find((id) => (nameOf.get(id) ?? "").toLowerCase().includes(needle));
+    if (!hitId && needle.includes("@")) {
+      for (const id of ids) {
+        try {
+          const { data: u } = await admin.auth.admin.getUserById(id);
+          if (String(u?.user?.email ?? "").toLowerCase().includes(needle)) { hitId = id; break; }
+        } catch { /* an unreadable member is simply not a match */ }
+      }
+    }
+    if (!hitId) throw new Error(`No teammate in this business matching "${who}".`);
+    const { error } = await admin.from("conversations").update({ assigned_to: hitId }).eq("id", (c as Json).id);
     if (error) throw new Error(error.message);
-    return `Assigned the conversation to ${hit.user_profiles?.full_name || who}.`;
+    return `Assigned the conversation to ${nameOf.get(hitId) || who}.`;
   }
 
   throw new Error(`Unknown action ${tool}.`);
