@@ -17,7 +17,8 @@
     "shared:sync": "node scripts/sync-shared.mjs",
     "shared:check": "node scripts/sync-shared.mjs --check",
     "test:canvas": "node scripts/canvas-test/run.mjs",
-    "test:email": "node scripts/email-test/run.mjs"
+    "test:email": "node scripts/email-test/run.mjs",
+    "demo:tiktok": "node scripts/tiktok-demo/record.mjs"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
