@@ -24,6 +24,10 @@ __pycache__
 
 # scratch / diagnostics
 diag-tmp.mjs
+# Working scratch: screenshots, probe scripts, dev logs. Committed once by a
+# `git add -A` from a parallel session, which is exactly why it is named here.
+.rig/
+scripts/.tmp-*.py
 
 # logs
 npm-debug.log*

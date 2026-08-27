@@ -91,7 +91,16 @@ Deno.serve(async (req) => {
       return json({ ok: true }); // silently accept; nothing stored
     }
 
-    await admin.from("platform_leads").insert({ source, name, email, phone, message });
+    // The row IS the lead. If it does not land there is nothing to follow up,
+    // so this is the one step that must not fail quietly -- telling someone
+    // "you're on the list" when no list exists is worse than an error, because
+    // they stop trying.
+    const { error: saveError } = await admin
+      .from("platform_leads").insert({ source, name, email, phone, message });
+    if (saveError) {
+      console.error("platform-lead insert failed", saveError.message);
+      return json({ error: "We could not record that just now — please email hello@phoxta.com and we'll sort it." }, 500);
+    }
 
     // Best-effort notification — the row is the source of truth.
     await sendEmail({
@@ -100,7 +109,7 @@ Deno.serve(async (req) => {
       html: `<p><b>Source:</b> ${source}</p><p><b>Name:</b> ${name}</p><p><b>Email:</b> ${email}</p><p><b>Phone:</b> ${phone}</p><p><b>Message:</b></p><p>${message.replace(/</g, "&lt;")}</p>`,
       text: `Source: ${source}\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\n\n${message}`,
       replyTo: email,
-    }).catch(() => {});
+    }).catch((e) => console.error("team notification failed", e));
 
     // The applicant's own confirmation. Best effort, exactly like the team
     // notification: the row is the source of truth, and a mail provider having
@@ -115,7 +124,13 @@ Deno.serve(async (req) => {
         // Replies go to a person, not to the no-reply sender the rest of the
         // platform's transactional mail uses.
         replyTo: REPLY_TO,
-      }).catch(() => {});
+      })
+        // Best effort by design: the lead is already saved and a mail provider
+        // having a bad minute must not cost us it. Logged, though, because a
+        // confirmation that silently never sends looks to the applicant exactly
+        // like a form that silently never worked.
+        .then((r) => { if (!r?.ok) console.error("confirmation not sent", email, r?.status); })
+        .catch((e) => console.error("confirmation threw", email, e));
     }
 
     return json({ ok: true });
