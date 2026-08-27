@@ -1029,3 +1029,22 @@ a.ibx-rail__row:hover .ibx-rail__go {
     transform: none;
   }
 }
+
+/* ── Channel health, said where the owner is looking ────────────────────────
+   The queue used to render one calm empty state whether email was arriving or
+   not, under copy asserting that it does. These two rules carry the notice that
+   replaces that claim: a link styled as a button, and a link inside a panel that
+   keeps the panel's own colour. */
+.ibx-linkbtn {
+  text-decoration: none;
+}
+
+.ibx-linkbtn:hover {
+  text-decoration: none;
+}
+
+.oc-panel .ibx-panel-link {
+  color: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+}

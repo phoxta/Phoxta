@@ -15,7 +15,17 @@
 // spend. Accepted proofs, in order:
 //   1. RESEND_WEBHOOK_SECRET  → Svix signature headers (Resend).
 //   2. INBOUND_WEBHOOK_SECRET → ?token=… or x-webhook-secret (any provider).
+//   3. A PER-BUSINESS token derived from INBOUND_WEBHOOK_SECRET, valid only for
+//      the organisation the `key` resolves to (webhooks.ts → orgInboundToken).
 // At least one must be configured; with neither, every request is rejected.
+//
+// (3) exists so the console can finally SHOW an owner their webhook URL. Until
+// now this route was undiscoverable — nothing in the whole client mentioned it —
+// because the only token it accepted was the platform-wide secret, and handing
+// that to one business's owner would let them post mail into every other
+// business's Inbox (the `key` half is public by design). A token bound to one
+// organisation is safe to display. The platform-wide secret still works, so
+// anything already pointed here keeps working.
 //
 // SAFETY: EVERY gate in _shared/autoReply.ts runs here, and the send itself goes
 // through deliverAutoReply — the one funnel. This path used to run the header
@@ -28,7 +38,7 @@
 // The identical scenario on the connected-mailbox path stopped after six.
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { getConnection } from "../_shared/google.ts";
-import { verifySvixSignature, verifySharedSecret } from "../_shared/webhooks.ts";
+import { verifySvixSignature, verifySharedSecret, presentedSecret, orgInboundToken, timingSafeEqual } from "../_shared/webhooks.ts";
 import { internalProofHeaders } from "../_shared/internalProof.ts";
 import {
   addressOf,
@@ -140,12 +150,22 @@ async function fallbackMessageKey(from: string, subject: string, date: string, t
   return `sha256:${hex.slice(0, 48)}`;
 }
 
-async function authenticate(req: Request, rawBody: string): Promise<boolean> {
+/** The proofs that do not need to know which business this is. */
+async function authenticateGlobal(req: Request, rawBody: string): Promise<boolean> {
   const svixSecret = Deno.env.get("RESEND_WEBHOOK_SECRET");
   if (svixSecret && req.headers.get("svix-signature")) {
     return await verifySvixSignature(req, rawBody, svixSecret);
   }
   return verifySharedSecret(req, "INBOUND_WEBHOOK_SECRET");
+}
+
+/** The per-business proof, checkable only once the `key` has named an org. */
+async function authenticateOrg(req: Request, orgId: string): Promise<boolean> {
+  const expected = await orgInboundToken(orgId);
+  if (!expected) return false;
+  const presented = presentedSecret(req);
+  if (!presented) return false;
+  return timingSafeEqual(presented, expected);
 }
 
 /** One POST to agent-inbound, carrying the proof that lets it trust the sender
@@ -172,8 +192,38 @@ Deno.serve(async (req) => {
 
     // Read the body once as text so the Svix HMAC sees the exact bytes signed.
     const rawBody = await req.text();
-    if (!(await authenticate(req, rawBody))) {
-      return new Response("Forbidden", { status: 403 });
+    const admin = adminClient();
+
+    // --- Who is calling, and for which business? ---
+    // The org-independent proofs first. If none of them holds, the caller may
+    // still be presenting a token bound to ONE organisation — which cannot be
+    // checked until the public key has named that organisation.
+    //
+    // That lookup is the only thing that can happen before authentication, so it
+    // is reached ONLY when it is the one remaining way to authenticate: a
+    // request carrying no secret at all can never pass, and is refused with zero
+    // database work. This endpoint is internet-reachable and its `key` is public
+    // by design (it ships in the chat widget's client JS), so an anonymous POST
+    // must not be able to turn one HTTP request into an indexed read.
+    const lookupOrg = async (): Promise<string> => {
+      if (!key) return "";
+      const { data: cfgRow } = await admin
+        .from("agent_config")
+        .select("organization_id")
+        .eq("public_key", key)
+        .maybeSingle();
+      return String((cfgRow as { organization_id?: string } | null)?.organization_id ?? "");
+    };
+    const authed = await authenticateGlobal(req, rawBody);
+    let orgId = "";
+    if (authed) {
+      orgId = await lookupOrg();
+    } else {
+      if (!presentedSecret(req)) return new Response("Forbidden", { status: 403 });
+      orgId = await lookupOrg();
+      if (!orgId || !(await authenticateOrg(req, orgId))) {
+        return new Response("Forbidden", { status: 403 });
+      }
     }
 
     let payload: Json = null;
@@ -220,18 +270,10 @@ Deno.serve(async (req) => {
       meta.message_id.trim() ||
       (await fallbackMessageKey(from, subject, String(headers["date"] ?? ""), message || text));
 
-    const admin = adminClient();
-
-    // Which business this is, BEFORE anything is decided. The gates are per-org
-    // and so is "are we talking to ourselves?", and this path used to learn the
-    // organisation only from agent-inbound's reply — i.e. after the model had
-    // already run and a send was one line away.
-    const { data: cfgRow } = await admin
-      .from("agent_config")
-      .select("organization_id")
-      .eq("public_key", key)
-      .maybeSingle();
-    const orgId = String((cfgRow as { organization_id?: string } | null)?.organization_id ?? "");
+    // Which business this is was resolved up front, together with authentication
+    // — the gates are per-org and so is "are we talking to ourselves?", and this
+    // path used to learn the organisation only from agent-inbound's reply, i.e.
+    // after the model had already run and a send was one line away.
     if (!orgId) return new Response("ok", { status: 200 });
 
     // --- Machine-generated? File it, answer nothing. ---

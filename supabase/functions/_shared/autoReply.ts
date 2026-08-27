@@ -266,15 +266,48 @@ export function automatedMailReason(p: AutomationProbe): AutomationVerdict | nul
  *  endpoint, so they enforce the same number here rather than escaping it. */
 const MAX_MSGS_PER_HOUR = 200;
 
+/**
+ * The stamp a transport puts on a customer message it pulled out of HISTORY
+ * rather than received as it arrived — `meta.ingest`.
+ *
+ * This exists because of one specific harm. The throttle below counts every
+ * inbound customer message in the trailing hour, ORG-WIDE, and autoReplyAllowed
+ * consults it for EVERY channel. gmail-sync now reads a business's whole mailbox
+ * rather than only what is still in its Gmail inbox, so its first ticks after a
+ * connection import archived and already-filed mail — up to sixty a tick. None
+ * of it can be auto-answered (it was filed away by a person, or it is older than
+ * the reply window), so it costs nothing in model spend and there is no abuse to
+ * throttle. But counted as arriving traffic it would put a busy mailbox past two
+ * hundred within twenty minutes, and for the next hour every genuine web-chat,
+ * SMS and WhatsApp customer would be refused with "this business is over its
+ * hourly message limit". Widening what email READS must never narrow what the
+ * other channels ANSWER.
+ *
+ * Only mail that could never have been answered on arrival grounds carries it.
+ * Live mail still counts, so the ceiling that protects a business from a real
+ * flood is untouched.
+ */
+export const INGEST_BACKFILL = "backfill";
+
 export async function orgHourlyThrottled(admin: SupabaseClient, orgId: string): Promise<boolean> {
   const since = new Date(Date.now() - 3600_000).toISOString();
-  const { count } = await admin
-    .from("conversation_messages")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", orgId)
-    .eq("role", "customer")
-    .gte("created_at", since);
-  return (count ?? 0) >= MAX_MSGS_PER_HOUR;
+  const inTheHour = () =>
+    admin
+      .from("conversation_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .eq("role", "customer")
+      .gte("created_at", since);
+  const [all, historical] = await Promise.all([
+    inTheHour(),
+    inTheHour().eq("meta->>ingest", INGEST_BACKFILL),
+  ]);
+  // Fail TOWARDS the throttle: if the exemption count cannot be read, nothing is
+  // subtracted and the gate behaves exactly as it did before the exemption
+  // existed. A throttle that fails open is not a throttle.
+  const exempt = historical.error ? 0 : (historical.count ?? 0);
+  const live = Math.max(0, (all.count ?? 0) - exempt);
+  return live >= MAX_MSGS_PER_HOUR;
 }
 
 export type Gate = { ok: true } | { ok: false; reason: string; retryable: boolean };

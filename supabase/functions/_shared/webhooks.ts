@@ -13,7 +13,10 @@
 //   Generic : a shared secret on the webhook URL (?token=…) or an
 //             x-webhook-secret header — works with every provider, since they
 //             all let you choose an arbitrary URL (Postmark, SendGrid,
-//             Cloudflare Email Routing, …).
+//             Cloudflare Email Routing, …). Two secrets are accepted there: the
+//             platform-wide INBOUND_WEBHOOK_SECRET, and the per-business token
+//             derived from it by orgInboundToken() below — the one a business
+//             owner is shown in their own console.
 //
 // All comparisons are constant-time.
 
@@ -105,7 +108,40 @@ export async function verifySvixSignature(req: Request, rawBody: string, secret:
 export function verifySharedSecret(req: Request, envName: string): boolean {
   const secret = Deno.env.get(envName);
   if (!secret) return false;
-  const presented = new URL(req.url).searchParams.get("token") ?? req.headers.get("x-webhook-secret") ?? "";
+  const presented = presentedSecret(req);
   if (!presented) return false;
   return timingSafeEqual(presented, secret);
+}
+
+/** The secret a caller put on the request, wherever they put it. */
+export function presentedSecret(req: Request): string {
+  return new URL(req.url).searchParams.get("token") ?? req.headers.get("x-webhook-secret") ?? "";
+}
+
+/**
+ * A per-business inbound-webhook token, derived from the platform secret.
+ *
+ * The inbound-parse endpoint has only ever accepted INBOUND_WEBHOOK_SECRET —
+ * ONE secret, shared by every tenant. That is why no console screen has ever
+ * shown an owner their webhook URL: handing a business owner the platform-wide
+ * secret would let them post mail into any other business's Inbox, since the
+ * `key` half of the URL is a genuinely public value that ships in the chat
+ * widget's client JS.
+ *
+ * This is the token an owner may safely hold. It is an HMAC of their own
+ * organisation id, so it authenticates exactly one tenant, it needs no storage
+ * and no rotation bookkeeping, and it is invalidated for everyone at once by
+ * rotating INBOUND_WEBHOOK_SECRET. The platform-wide secret still works, so
+ * nothing already pointed at the endpoint breaks.
+ *
+ * Returns null when INBOUND_WEBHOOK_SECRET is unset — there is no key to derive
+ * from, and a made-up token would be an authentication bypass wearing a hat.
+ */
+export async function orgInboundToken(orgId: string): Promise<string | null> {
+  const secret = Deno.env.get("INBOUND_WEBHOOK_SECRET") ?? "";
+  const org = String(orgId ?? "").trim();
+  if (!secret || !org) return null;
+  const sig = await hmac("SHA-256", secret, `email-inbound:v1:${org}`);
+  // base64url, unpadded: it travels in a query string.
+  return b64(sig).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }

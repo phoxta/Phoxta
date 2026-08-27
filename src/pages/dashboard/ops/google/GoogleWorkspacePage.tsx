@@ -4,6 +4,7 @@ import GmailApp from "./GmailApp";
 import DriveApp from "./DriveApp";
 import CalendarApp from "./CalendarApp";
 import GoogleConfigure from "./GoogleConfigure";
+import EmailDelivery from "./EmailDelivery";
 
 const CSS = `
 .ggx-crumb { font-size: 13px; font-weight: 500; color: var(--hrx-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
@@ -40,6 +41,16 @@ const APPS = [
   { key: "calendar", name: "Calendar", icon: "📅", desc: "Events & scheduling" },
 ];
 
+type Tab = "apps" | "configure" | "email";
+const TABS: { key: Tab; label: string }[] = [
+  { key: "apps", label: "Apps" },
+  // Its own tab, not a corner of Configure: "why is my email not arriving?" is
+  // the question this console gets asked, and the answer should not be somewhere
+  // an owner has to already know about.
+  { key: "email", label: "Email delivery" },
+  { key: "configure", label: "Configure" },
+];
+
 export default function GoogleWorkspacePage() {
   const { orgId } = useOutletContext<OpsContext>();
   // Which app / tab is open lives in the URL, so Settings can deep-link
@@ -50,10 +61,14 @@ export default function GoogleWorkspacePage() {
   const app = APPS.some((a) => a.key === wanted) ? wanted : null;
   // Returning from the Google OAuth round-trip lands on ?google=connected —
   // show the Configure tab so the result is visible where it was started.
-  const tab: "apps" | "configure" = params.get("tab") === "configure" || params.has("google") ? "configure" : "apps";
+  // ?tab=email is the deep link every "email is not arriving" surface points at:
+  // the Inbox banner, the Channels card and the Configure card all send an owner
+  // straight to the screen that explains why.
+  const wantedTab = params.get("tab");
+  const tab: Tab = wantedTab === "configure" || params.has("google") ? "configure" : wantedTab === "email" ? "email" : "apps";
 
   const openApp = (key: string | null) => setParams(key ? { app: key } : {}, { replace: false });
-  const openTab = (next: "apps" | "configure") => setParams(next === "configure" ? { tab: "configure" } : {}, { replace: false });
+  const openTab = (next: Tab) => setParams(next === "apps" ? {} : { tab: next }, { replace: false });
 
   const openedApp = APPS.find((a) => a.key === app);
 
@@ -71,12 +86,23 @@ export default function GoogleWorkspacePage() {
       <p className="ggx-lede">Your business Gmail, Drive and Calendar, inside the console.</p>
 
       <div className="hrx-tabbar mb-4" role="group" aria-label="Google Workspace sections">
-        <button type="button" className={`hrx-tab${tab === "apps" ? " active" : ""}`} aria-pressed={tab === "apps"} onClick={() => openTab("apps")}>Apps</button>
-        <button type="button" className={`hrx-tab${tab === "configure" ? " active" : ""}`} aria-pressed={tab === "configure"} onClick={() => openTab("configure")}>Configure</button>
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`hrx-tab${tab === t.key ? " active" : ""}`}
+            aria-pressed={tab === t.key}
+            onClick={() => openTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {tab === "configure" ? (
         <GoogleConfigure orgId={orgId} />
+      ) : tab === "email" ? (
+        <EmailDelivery orgId={orgId} />
       ) : openedApp ? (
         <div>
           <div className="ggx-apphead">

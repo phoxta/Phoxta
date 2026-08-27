@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext, useSearchParams } from "react-router-dom";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ChevronDown,
@@ -70,6 +70,7 @@ import {
   listCallsForConversation,
   type ConversationCall,
 } from "@/lib/db/ops/inbox";
+import { getEmailIngressHealth, ingressVerdict, type EmailIngressHealth } from "@/lib/db/ops/emailHealth";
 import { invokeAction, drainEmbeddings } from "@/lib/db/ops/ai";
 import { getServicePolicies } from "@/lib/db/ops/policies";
 import type { SlaPolicy } from "@/lib/ops/sla";
@@ -204,6 +205,17 @@ export default function InboxPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE_SIZE);
+  /**
+   * Is email actually reaching this business?
+   *
+   * This page used to import nothing from the Google side at all, so a missing
+   * connection, a revoked token, a mailbox whose mail is filtered out of the
+   * sync's reach and a genuinely quiet day rendered the SAME screen — under copy
+   * that states, unconditionally, that email lands here. A business owner read
+   * that sentence and waited. Nothing is guessed here: the read is one RPC that
+   * returns status, never a token.
+   */
+  const [emailHealth, setEmailHealth] = useState<EmailIngressHealth | null>(null);
 
   // Selection + thread
   const [selected, setSelected] = useState<QueueItem | null>(null);
@@ -410,6 +422,21 @@ export default function InboxPage() {
     load();
   }, [load]);
 
+  // Read once per business. Cheap, fail-soft, and deliberately NOT on the live
+  // poll — this is a state that changes when somebody connects or disconnects
+  // Google, not something that needs a heartbeat.
+  useEffect(() => {
+    let live = true;
+    // A FAILED READ IS NOT AN ANSWER. getEmailIngressHealth returns its empty
+    // value alongside the error, and that value says connected:false — so
+    // dropping the error made a transient 500 (or the RPC's own "Not a member of
+    // that business") tell a business with a perfectly good mailbox that no
+    // mailbox was connected, under a "Set up email" button. Health stays null,
+    // and every branch below requires a real read.
+    getEmailIngressHealth(orgId).then(({ data, error }) => { if (live) setEmailHealth(error ? null : data); });
+    return () => { live = false; };
+  }, [orgId]);
+
   // Refs so realtime/keyboard callbacks always see the latest state.
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
@@ -583,6 +610,31 @@ export default function InboxPage() {
 
   // "Nothing matches this filter" and "nothing here yet" are different problems.
   const filtersActive = !!search || !!fChannel || fQueue !== "all" || fAi;
+
+  /**
+   * What to say about email, and whether to say it unprompted.
+   *
+   * A business that has never connected a mailbox and never wanted one must not
+   * be nagged with a red banner forever — so a MISSING connection is explained
+   * only in the empty state, where the old copy was actively misleading. A
+   * connection that exists and is BROKEN is a different matter: something the
+   * owner set up has stopped working, and they will not find out any other way.
+   *
+   * `setupPending` is the third case and it is why this is not simply
+   * `tone !== "ok"`. When Phoxta has not finished setting a piece of this up on
+   * the project, EVERY connected business would otherwise carry a permanent
+   * amber banner in the queue it works out of, about a mailbox that is working
+   * perfectly and a state nobody in that business can do anything about. Those
+   * still show on the screens an owner opens on purpose to investigate.
+   */
+  const emailVerdict = useMemo(() => (emailHealth ? ingressVerdict(emailHealth) : null), [emailHealth]);
+  const emailBroken = Boolean(
+    emailHealth?.connected && emailVerdict && emailVerdict.tone !== "ok" && !emailVerdict.setupPending,
+  );
+  /** The read succeeded and said no mailbox is connected. Never true on a failed
+   *  read: `emailHealth` is null then. */
+  const emailAbsent = Boolean(emailHealth && !emailHealth.connected);
+  const emailSetupHref = `/dashboard/businesses/${orgId}/ops/google?tab=email`;
   const clearFilters = useCallback(() => {
     setSearchInput("");
     setSearch("");
@@ -1519,6 +1571,18 @@ export default function InboxPage() {
               </div>
             </div>
           )}
+          {/* A connected mailbox that has stopped working, said where the owner
+              is actually looking. This used to be visible only in a Supabase
+              function log and a platform-admin heartbeat table. */}
+          {emailBroken && emailVerdict && (
+            <div className="p-3 pb-0">
+              <div className={`oc-panel oc-panel--${emailVerdict.tone === "danger" ? "danger" : "warn"}`} role="status">
+                <div className="oc-panel__head">{emailVerdict.title}</div>
+                {emailVerdict.detail}{" "}
+                <Link to={emailSetupHref} className="ibx-panel-link">Check email delivery →</Link>
+              </div>
+            </div>
+          )}
           {loading ? (
             <SkeletonRows />
           ) : visible.length === 0 ? (
@@ -1534,9 +1598,50 @@ export default function InboxPage() {
               >
                 Try a different status or channel.
               </EmptyState>
+            ) : emailAbsent ? (
+              // The old copy promised, unconditionally, that email lands here.
+              // With no mailbox connected that sentence was simply untrue, and
+              // it is the sentence an owner waiting for an email was reading.
+              <EmptyState
+                icon={<InboxIcon />}
+                title="No conversations yet"
+                action={
+                  <Link to={emailSetupHref} className="oc-btn ibx-linkbtn">
+                    Set up email
+                  </Link>
+                }
+              >
+                Messages from your website chat, SMS, WhatsApp and calls land here. Email does not yet — no mailbox is
+                connected to this business.
+              </EmptyState>
+            ) : emailBroken && emailVerdict ? (
+              <EmptyState
+                icon={<InboxIcon />}
+                title="No conversations yet"
+                action={
+                  <Link to={emailSetupHref} className="oc-btn ibx-linkbtn">
+                    Check email delivery
+                  </Link>
+                }
+              >
+                {emailVerdict.detail}
+              </EmptyState>
             ) : (
-              <EmptyState icon={<InboxIcon />} title="No conversations yet">
-                Messages from your website chat, SMS, WhatsApp, email and calls all land here.
+              // Still no promise. Email lands here WHEN it is set up and working,
+              // and this state cannot tell whether it is — so it offers the one
+              // screen that can rather than asserting either way.
+              <EmptyState
+                icon={<InboxIcon />}
+                title="No conversations yet"
+                action={
+                  <Link to={emailSetupHref} className="oc-btn ibx-linkbtn">
+                    Check email delivery
+                  </Link>
+                }
+              >
+                Messages from your website chat, SMS, WhatsApp and calls land here, and so does email once your mailbox
+                is connected and delivering. If a customer has emailed you and it is not here, check email delivery — it
+                says exactly where that mail went.
               </EmptyState>
             )
           ) : (

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { useEngageOps, getChannelSnapshot, type ChannelSnapshot } from "@/lib/db/ops/engageAreas";
+import { getEmailIngressHealth, ingressVerdict, type EmailIngressHealth } from "@/lib/db/ops/emailHealth";
 import { Chip } from "@/components/dash/Ui";
 
 /**
@@ -28,7 +29,7 @@ const CSS = `
 .chx-note { font-size: 13px; color: var(--hrx-muted); margin: 14px 0 0; }
 `;
 
-type Tone = "ok" | "warn" | "line" | "plain" | "blue";
+type Tone = "ok" | "warn" | "danger" | "line" | "plain" | "blue";
 type ChannelDef = {
   key: string;
   name: string;
@@ -39,7 +40,57 @@ type ChannelDef = {
   soon?: boolean;
 };
 
-function buildCards(snapshot: ChannelSnapshot | undefined, orgId: string): ChannelDef[] {
+/**
+ * The Email card's state, from the connection's real health rather than the mere
+ * existence of a row.
+ *
+ * This card used to read "Connected" whenever google_connections held a row for
+ * the business — so a revoked grant, a mailbox that had never once been synced,
+ * and a working connection were the same green chip. It is the map of where
+ * customers can reach a business; a channel that has silently stopped receiving
+ * is exactly what it exists to show.
+ */
+function emailCard(
+  health: EmailIngressHealth | null,
+  snapshot: ChannelSnapshot | undefined,
+  traffic: (ch: string) => string,
+  count: (ch: string) => number,
+  base: string,
+): ChannelDef {
+  const verdict = health ? ingressVerdict(health) : null;
+  const manageEmail = { to: `${base}/google?tab=email`, label: "Email delivery" };
+
+  // No mailbox connected, but mail is arriving anyway — the inbound webhook, or
+  // history from a connection since removed. Saying "Not connected" there would
+  // be its own lie.
+  if (health && !health.connected) {
+    return {
+      key: "email",
+      name: "Email",
+      blurb: "Broadcast campaigns, Inbox replies and receipts. Connect Google Workspace to send from your own address.",
+      state: count("email") > 0 ? { label: "No mailbox", tone: "warn" } : { label: "Not connected", tone: "warn" },
+      detail: count("email") > 0 ? `${traffic("email")}, but no mailbox is connected` : "No mailbox is connected",
+      manage: manageEmail,
+    };
+  }
+  // Straight through, danger included. This used to collapse danger into warn,
+  // so on the map of where customers can reach a business "Reconnect needed" and
+  // "Failing" read with exactly the urgency of "Stale" — the label carried the
+  // meaning and the colour contradicted it.
+  const tone: Tone = verdict ? verdict.tone : "line";
+  return {
+    key: "email",
+    name: "Email",
+    blurb: "Broadcast campaigns, Inbox replies and receipts. Connect Google Workspace to send from your own address.",
+    state: verdict ? { label: verdict.label, tone } : { label: "Checking…", tone: "line" },
+    // The verdict's own sentence, not just an address: a card reading
+    // "femi@phoxta.com" beside an amber chip says nothing about what is wrong.
+    detail: verdict && !verdict.healthy ? verdict.title : health?.mailbox || snapshot?.googleEmail || traffic("email"),
+    manage: manageEmail,
+  };
+}
+
+function buildCards(snapshot: ChannelSnapshot | undefined, orgId: string, health: EmailIngressHealth | null): ChannelDef[] {
   const base = `/dashboard/businesses/${orgId}/ops`;
   const s = snapshot;
   const count = (ch: string) => s?.counts[ch] ?? 0;
@@ -68,18 +119,7 @@ function buildCards(snapshot: ChannelSnapshot | undefined, orgId: string): Chann
       detail: traffic("whatsapp"),
       manage: { to: `${base}/settings`, label: "Manage in Settings" },
     },
-    {
-      key: "email",
-      name: "Email",
-      blurb: "Broadcast campaigns, Inbox replies and receipts. Connect Google Workspace to send from your own address.",
-      state: s?.googleEmail
-        ? { label: "Connected", tone: "ok" }
-        : count("email") > 0
-          ? { label: "Active", tone: "ok" }
-          : { label: "Not connected", tone: "warn" },
-      detail: s?.googleEmail ?? traffic("email"),
-      manage: { to: `${base}/google?tab=configure`, label: "Manage Google" },
-    },
+    emailCard(health, s, traffic, count, base),
     {
       key: "web",
       name: "Web chat",
@@ -130,8 +170,32 @@ export default function ChannelsPage() {
     { ttl: DASHBOARD_TTL },
   );
 
-  const cards = useMemo(() => buildCards(snapshot, orgId), [snapshot, orgId]);
-  const inUse = cards.filter((c) => !c.soon && (c.state.label === "Active" || c.state.label === "Connected" || (c.key === "web" && c.state.label === "Ready"))).length;
+  // Real health, not row existence — see emailCard. Fail-soft: the map still
+  // draws if this read cannot complete, and a FAILED read is never mistaken for
+  // "no mailbox is connected" — the health module returns its empty value
+  // alongside the error, and that value says connected:false.
+  const { data: emailHealth } = useCachedData(
+    `ops:engage:email-health:${orgId}`,
+    async () => {
+      const { data, error } = await getEmailIngressHealth(orgId);
+      if (error) return null;
+      return data;
+    },
+    { ttl: DASHBOARD_TTL },
+  );
+
+  const cards = useMemo(() => buildCards(snapshot, orgId, emailHealth ?? null), [snapshot, orgId, emailHealth]);
+  // Email counts as in use on the VERDICT, not on the chip's wording — otherwise
+  // a business whose mail is arriving fine drops out of the count the moment
+  // Phoxta is mid-setup and the chip stops reading exactly "Working".
+  const emailVerdict = useMemo(() => (emailHealth ? ingressVerdict(emailHealth) : null), [emailHealth]);
+  const inUse = cards.filter((c) =>
+    !c.soon && (
+      c.key === "email"
+        ? Boolean(emailVerdict?.healthy)
+        : c.state.label === "Active" || (c.key === "web" && c.state.label === "Ready")
+    ),
+  ).length;
 
   if (loading) return <div className="hrx-card hrx-pad text-center" style={{ color: "var(--hrx-muted)" }} role="status">Loading…</div>;
 

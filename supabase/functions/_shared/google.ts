@@ -6,25 +6,71 @@ import { messageIdOf, referenceIds } from "./mailText.ts";
 type Json = any;
 const env = (k: string) => Deno.env.get(k) ?? "";
 
-/** Return a valid Google access token for the org, refreshing it if expired. */
-export async function getAccessToken(admin: SupabaseClient, orgId: string): Promise<string | null> {
+/**
+ * Why there is no usable access token — the four states the old getAccessToken
+ * collapsed into one `null`.
+ *
+ * "Google is not connected", "the grant was revoked", "the row has no refresh
+ * token so this access token is the last one we will ever have" and "the network
+ * failed" are four different problems with four different fixes, and returning
+ * null for all of them is why a dead mailbox has been indistinguishable from a
+ * quiet one. The reason is written in words an owner can act on, because it ends
+ * up on a console screen, not only in a log line.
+ */
+export type TokenState = "ok" | "not_connected" | "no_refresh_token" | "refresh_denied" | "network_error";
+export type AccessTokenResult = { token: string | null; state: TokenState; detail: string };
+
+/** Return a valid Google access token for the org, refreshing it if expired,
+ *  together with the reason when there is none. */
+export async function getAccessTokenDetailed(admin: SupabaseClient, orgId: string): Promise<AccessTokenResult> {
   const { data } = await admin.from("google_connections").select("access_token, refresh_token, token_expiry").eq("organization_id", orgId).maybeSingle();
   // deno-lint-ignore no-explicit-any
   const c = data as any;
-  if (!c) return null;
+  if (!c) {
+    return { token: null, state: "not_connected", detail: "No Google account is connected to this business — connect one in Settings → Google Workspace." };
+  }
   const exp = c.token_expiry ? new Date(c.token_expiry).getTime() : 0;
-  if (c.access_token && exp > Date.now() + 60_000) return c.access_token; // still valid (>1 min)
-  if (!c.refresh_token) return c.access_token || null;
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ client_id: env("GOOGLE_CLIENT_ID"), client_secret: env("GOOGLE_CLIENT_SECRET"), refresh_token: c.refresh_token, grant_type: "refresh_token" }),
-  });
+  if (c.access_token && exp > Date.now() + 60_000) return { token: c.access_token, state: "ok", detail: "" }; // still valid (>1 min)
+  if (!c.refresh_token) {
+    // Handing back a token we know is stale is deliberate — it may still work for
+    // a minute and a real Gmail 401 is a better diagnosis than a guess — but the
+    // state says plainly that this connection cannot renew itself.
+    return {
+      token: c.access_token || null,
+      state: "no_refresh_token",
+      detail: "Google was connected without a refresh token, so access cannot be renewed — disconnect and reconnect Google in Settings → Google Workspace.",
+    };
+  }
+  let res: Response;
+  try {
+    res = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ client_id: env("GOOGLE_CLIENT_ID"), client_secret: env("GOOGLE_CLIENT_SECRET"), refresh_token: c.refresh_token, grant_type: "refresh_token" }),
+    });
+  } catch (e) {
+    return { token: null, state: "network_error", detail: `Google could not be reached to renew access: ${String((e as Error)?.message || e)}` };
+  }
   // deno-lint-ignore no-explicit-any
   const tok: any = await res.json().catch(() => ({}));
-  if (!tok?.access_token) return null;
+  if (!tok?.access_token) {
+    // Google's own words. `invalid_grant` is the one that matters: the person who
+    // connected changed their password, removed Phoxta from their Google account,
+    // or left the Workspace. It never fixes itself.
+    const why = String(tok?.error_description || tok?.error || `HTTP ${res.status}`);
+    return {
+      token: null,
+      state: "refresh_denied",
+      detail: `Google refused to renew access (${why}) — reconnect Google in Settings → Google Workspace.`,
+    };
+  }
   await admin.from("google_connections").update({ access_token: tok.access_token, token_expiry: new Date(Date.now() + (tok.expires_in ?? 3600) * 1000).toISOString() }).eq("organization_id", orgId);
-  return tok.access_token;
+  return { token: tok.access_token, state: "ok", detail: "" };
+}
+
+/** Return a valid Google access token for the org, refreshing it if expired. */
+export async function getAccessToken(admin: SupabaseClient, orgId: string): Promise<string | null> {
+  return (await getAccessTokenDetailed(admin, orgId)).token;
 }
 
 export const GOOGLE_SCOPES = [
@@ -262,16 +308,152 @@ export async function gmailHasNewerSentTo(token: string, email: string, afterMs:
   }
 }
 
+// ---------------------------------------------------------------------------
+// Read-only mailbox diagnostics.
+//
+// Every one of these exists to answer a question an owner asks out loud —
+// "is my Google connection actually alive?", "which mailbox is Phoxta reading?",
+// "is hello@ an alias on this account or something else?", "where did my mail
+// go?" — from the console, without a database and without sending anything.
+// ---------------------------------------------------------------------------
+
+/** Google's own explanation of a failed call. The status code alone ("gmail api
+ *  403") has been the entire diagnosis until now, and 403 covers a missing
+ *  scope, the Gmail API being switched off on the Cloud project, and a Workspace
+ *  admin policy blocking the app — three different fixes. */
+export async function gmailErrorText(res: Response): Promise<string> {
+  try {
+    const d = (await res.json()) as Json;
+    const msg = String(d?.error?.message ?? d?.error_description ?? d?.error ?? "").trim();
+    return msg.slice(0, 400);
+  } catch {
+    return "";
+  }
+}
+
+export type GmailProfile = { emailAddress: string; messagesTotal: number; threadsTotal: number };
+
+/** The mailbox `users/me` actually resolves to. This is the single most useful
+ *  fact on the whole diagnostic screen: it names the account gmail-sync reads,
+ *  which is how an owner discovers they connected the wrong one. */
+export async function gmailProfile(token: string): Promise<{ ok: boolean; profile: GmailProfile | null; status: number; error: string }> {
+  const r = await fetch(`${GMAIL_API}/profile`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) return { ok: false, profile: null, status: r.status, error: await gmailErrorText(r) };
+  const d = (await r.json().catch(() => ({}))) as Json;
+  return {
+    ok: true,
+    status: 200,
+    error: "",
+    profile: {
+      emailAddress: String(d?.emailAddress ?? "").trim().toLowerCase(),
+      messagesTotal: Number(d?.messagesTotal ?? 0),
+      threadsTotal: Number(d?.threadsTotal ?? 0),
+    },
+  };
+}
+
+export type GmailSendAs = { address: string; isPrimary: boolean; isDefault: boolean; verified: boolean; displayName: string };
+
+/**
+ * Every address this mailbox can send as — i.e. its ALIASES.
+ *
+ * This is the alias-versus-group test, and it needs no mail to exist and no
+ * database. An address that is an alias of the connected account appears here,
+ * and mail to it lands in this account's own INBOX where the sync can see it.
+ * An address that is a Google GROUP does not appear here — a group is a separate
+ * object with its own archive that the Gmail API cannot read at all, and the only
+ * way its mail reaches us is as a delivered copy to a member.
+ *
+ * gmail.modify is enough for settings.sendAs.list, so no new consent is needed.
+ */
+export async function gmailSendAsList(token: string): Promise<{ ok: boolean; addresses: GmailSendAs[]; status: number; error: string }> {
+  const r = await fetch(`${GMAIL_API}/settings/sendAs`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) return { ok: false, addresses: [], status: r.status, error: await gmailErrorText(r) };
+  const d = (await r.json().catch(() => ({}))) as Json;
+  const addresses = ((d?.sendAs ?? []) as Json[]).map((s) => ({
+    address: String(s?.sendAsEmail ?? "").trim().toLowerCase(),
+    isPrimary: Boolean(s?.isPrimary),
+    isDefault: Boolean(s?.isDefault),
+    verified: String(s?.verificationStatus ?? "") !== "pending",
+    displayName: String(s?.displayName ?? ""),
+  })).filter((s) => s.address);
+  return { ok: true, addresses, status: 200, error: "" };
+}
+
+export type GmailSearchResult = { ok: boolean; ids: string[]; capped: boolean; status: number; error: string };
+
+/** Count and sample what a Gmail query matches. One page only — this is a
+ *  diagnostic, not an ingest, and "at least 50" answers the question. */
+export async function gmailSearch(token: string, q: string, max = 50): Promise<GmailSearchResult> {
+  const r = await fetch(`${GMAIL_API}/messages?maxResults=${Math.max(1, Math.min(max, 100))}&q=${encodeURIComponent(q)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return { ok: false, ids: [], capped: false, status: r.status, error: await gmailErrorText(r) };
+  const d = (await r.json().catch(() => ({}))) as Json;
+  const ids = ((d?.messages ?? []) as Json[]).map((m) => String(m?.id ?? "")).filter(Boolean);
+  return { ok: true, ids, capped: ids.length >= max, status: 200, error: "" };
+}
+
+export type GmailMessagePeek = {
+  id: string;
+  labels: string[];
+  from: string;
+  to: string;
+  subject: string;
+  date: string;
+  deliveredTo: string;
+  listId: string;
+  internalDate: number;
+};
+
+/** The headers that say HOW a message got here, without downloading the body.
+ *  Delivered-To and List-Id together settle "was this delivered to me directly,
+ *  or fanned out to me by a Google Group?" — the question the console has never
+ *  been able to answer. */
+export async function gmailMessagePeek(token: string, id: string): Promise<GmailMessagePeek | null> {
+  const wanted = ["From", "To", "Subject", "Date", "Delivered-To", "List-Id"];
+  const qs = wanted.map((h) => `metadataHeaders=${encodeURIComponent(h)}`).join("&");
+  const r = await fetch(`${GMAIL_API}/messages/${encodeURIComponent(id)}?format=metadata&${qs}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return null;
+  const d = (await r.json().catch(() => ({}))) as Json;
+  const h: Record<string, string> = {};
+  for (const item of (d?.payload?.headers ?? []) as Json[]) h[String(item?.name ?? "").toLowerCase()] = String(item?.value ?? "");
+  return {
+    id: String(d?.id ?? id),
+    labels: ((d?.labelIds ?? []) as string[]).map(String),
+    from: h["from"] ?? "",
+    to: h["to"] ?? "",
+    subject: h["subject"] ?? "",
+    date: h["date"] ?? "",
+    deliveredTo: h["delivered-to"] ?? "",
+    listId: h["list-id"] ?? "",
+    internalDate: Number(d?.internalDate ?? 0),
+  };
+}
+
 /** The org's Google connection row. `select("*")` on purpose: auto_reply_from
- *  arrives with migration 0114 and a named select of a not-yet-applied column
- *  errors into `null`, which would read as "no connection at all".
+ *  arrives with migration 0114, and sync_window_days / sync_scope with 0117, and
+ *  a named select of a not-yet-applied column errors into `null`, which would
+ *  read as "no connection at all".
  *
  *  `autoReplyFrom` is null when the COLUMN itself is absent — a deploy that ran
  *  before the migration. That is not the same as "no watermark": treating it as
  *  0 let the first tick auto-answer up to two days of correspondence the owner
  *  had already handled, from the owner's own address. The callers refuse to
- *  answer anything until the column exists. */
-export type GoogleConnection = { email: string; scope: string; autoReplyFrom: number | null };
+ *  answer anything until the column exists. `syncWindowDays` / `syncScope` are
+ *  null on the same rule, and the sync falls back to its built-in defaults. */
+export type GoogleConnection = {
+  email: string;
+  scope: string;
+  autoReplyFrom: number | null;
+  syncWindowDays: number | null;
+  syncScope: string | null;
+  /** Status only. The tokens themselves never leave this module. */
+  tokenExpiry: string | null;
+  hasRefreshToken: boolean;
+};
 
 export async function getConnection(admin: SupabaseClient, orgId: string): Promise<GoogleConnection | null> {
   const { data } = await admin.from("google_connections").select("*").eq("organization_id", orgId).maybeSingle();
@@ -279,10 +461,15 @@ export async function getConnection(admin: SupabaseClient, orgId: string): Promi
   const c = data as Json;
   const hasColumn = Object.prototype.hasOwnProperty.call(c, "auto_reply_from");
   const from = c.auto_reply_from ? Date.parse(String(c.auto_reply_from)) : NaN;
+  const days = Number(c.sync_window_days);
   return {
     email: String(c.email ?? "").trim().toLowerCase(),
     scope: String(c.scope ?? ""),
     autoReplyFrom: hasColumn ? (Number.isFinite(from) ? from : 0) : null,
+    syncWindowDays: Number.isFinite(days) && days > 0 ? Math.trunc(days) : null,
+    syncScope: c.sync_scope ? String(c.sync_scope) : null,
+    tokenExpiry: c.token_expiry ? String(c.token_expiry) : null,
+    hasRefreshToken: String(c.refresh_token ?? "").trim() !== "",
   };
 }
 

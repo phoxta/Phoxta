@@ -57,16 +57,20 @@ export async function gmailImport(orgId: string, id: string): Promise<{ ok: bool
   const { data, error } = await gmail<{ ok: boolean; conversationId: string }>(orgId, { action: "import", id });
   return { ok: !!data?.ok, conversationId: data?.conversationId ?? null, error };
 }
-/** Pull recent inbox mail into the unified Inbox (deduped). */
-export async function gmailSync(orgId: string): Promise<{ imported: number; error: string | null }> {
-  const { data, error } = await supabase.functions.invoke("gmail-sync", { body: { organizationId: orgId } });
-  if (error) {
-    let msg = error.message;
-    try { const ctx = await (error as { context?: Response }).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* keep */ }
-    return { imported: 0, error: friendlyError(msg) };
-  }
-  return { imported: (data as { imported?: number })?.imported ?? 0, error: null };
-}
+/**
+ * Pulling mail into the unified Inbox lives in @/lib/db/ops/emailHealth
+ * (`runEmailSync`), with the rest of the ingress machinery, and it returns the
+ * WHOLE run rather than a count.
+ *
+ * The `gmailSync` that used to be here dropped the function's own `error` field
+ * on the floor: gmail-sync answers HTTP **200** with `{ ok:false, imported:0,
+ * error:"…" }` — deliberately, so the cron does not retry — and
+ * `supabase.functions.invoke` only populates its `error` on a non-2xx, so the
+ * `if (error)` branch never fired and the string was discarded. A revoked Google
+ * token, a 403 for a missing scope and a genuinely quiet mailbox all produced
+ * the identical toast, "Synced 0 new message(s) to the unified Inbox." That one
+ * dropped string is most of why nobody noticed email had stopped arriving.
+ */
 
 /**
  * Recover the HTML for mail imported before the sync kept it.
@@ -102,7 +106,18 @@ export async function gmailBackfillHtml(orgId: string, limit = 100): Promise<Bac
 
 // --- Workspace: email provisioning (Groups) + Drive + Calendar -------------
 export type WsGroup = { email: string; name: string; members: number };
-export type ProvisionResult = { email: string; created: boolean; forwarded: boolean; note: string };
+/**
+ * One address from a provisioning run.
+ *
+ * `created` (we made it just now) and `exists` (it is there, whether we made it
+ * or it was already there) are separate because the remedies are opposite. A
+ * group that exists but does not deliver to the connected mailbox collects mail
+ * in an archive Phoxta cannot read — fix the membership. An address that could
+ * not be created does not exist at all, so mail to it bounces at Google — and
+ * telling that owner to fix a group's membership sends them after a group that
+ * was never made.
+ */
+export type ProvisionResult = { email: string; created: boolean; exists: boolean; forwarded: boolean; note: string };
 export type DriveFile = { id: string; name: string; mimeType: string; modifiedTime: string; webViewLink: string; iconLink?: string };
 export type CalEvent = { id: string; summary: string; start: string; end: string; link: string; location: string };
 

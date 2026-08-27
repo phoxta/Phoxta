@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { toast, toastError } from "@/lib/ops/feedback";
-import { gmailList, gmailGet, gmailSend, gmailImport, gmailSync, gmailBackfillHtml, type GmailMsg, type GmailFull } from "@/lib/db/ops/google";
+import { gmailList, gmailGet, gmailSend, gmailImport, gmailBackfillHtml, type GmailMsg, type GmailFull } from "@/lib/db/ops/google";
+import { runEmailSync } from "@/lib/db/ops/emailHealth";
 import { Card, Empty, InitialAvatar } from "@/components/dash/Ui";
 
 const CSS = `
@@ -113,10 +114,21 @@ export default function GmailApp({ orgId }: { orgId: string }) {
             disabled={syncing}
             onClick={async () => {
               setSyncing(true);
-              const { imported, error } = await gmailSync(orgId);
+              const { data, error } = await runEmailSync(orgId);
               setSyncing(false);
-              if (error) toastError(error);
-              else toast(`Synced ${imported} new message(s) to the unified Inbox.`);
+              // "Synced 0 new message(s)" used to be the answer for a revoked
+              // token, a 403, a mailbox whose mail is filtered out of the sync's
+              // reach AND a quiet Tuesday — because the client dropped the
+              // function's own error string. Each of those now says what it is.
+              if (error) { toastError(error); return; }
+              if (!data) { toastError("The sync did not report a result."); return; }
+              if (data.imported > 0) {
+                toast(`Added ${data.imported} new message(s) to the unified Inbox${data.replied ? `, ${data.replied} answered automatically` : ""}.`);
+              } else if (data.listed === 0) {
+                toast(`Gmail matched nothing for "${data.query}". Open Email delivery to find out where your mail is.`, "info");
+              } else {
+                toast(`Checked ${data.listed} message(s) — all ${data.alreadyHad} of the matches were already in the Inbox.`, "info");
+              }
             }}
           >
             {syncing ? "…" : "↻ Sync to Inbox"}
