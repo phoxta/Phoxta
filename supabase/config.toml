@@ -99,12 +99,6 @@ verify_jwt = true
 # Finds a photograph (Pexels) or generates one (OpenAI) for a design's photo
 # The autopilot tick: takes the objectives that are due, decides one next
 # action for each, and runs it through the same governed tool path the operator
-# Temporary: a narrow window onto Resend's domains API for the sending-identity
-# cutover, gated on the cron secret so RESEND_API_KEY never leaves Supabase.
-# Delete once hello@phoxta.com is verified and live.
-[functions.resend-admin]
-verify_jwt = false
-
 # uses. Cron only -- it authorises off x-cron-secret and refuses a user token.
 [functions.objective-planner]
 verify_jwt = false
