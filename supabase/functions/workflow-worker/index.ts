@@ -5,6 +5,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { requireUser } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
+import { renderSimple } from "../_shared/email.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -32,7 +33,10 @@ async function sendEmail(to: string, subject: string, body: string): Promise<{ s
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, html: `<p>${body}</p>` }),
+      body: JSON.stringify({ from, to, subject, ...(() => {
+        const m = renderSimple(subject, body);
+        return { html: m.html, text: m.text };
+      })() }),
     });
     return { status: res.ok ? "sent" : "failed" };
   } catch (_) {

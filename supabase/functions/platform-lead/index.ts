@@ -10,6 +10,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { sendEmail } from "../_shared/dispatch.ts";
+import { renderEmail } from "../_shared/email.ts";
 
 const NOTIFY_TO = Deno.env.get("PLATFORM_LEAD_EMAIL") ?? "femi@phoxta.com";
 // Shares RESEND_REPLY_TO with _shared/dispatch so one change moves every
@@ -23,47 +24,43 @@ const REPLY_TO = Deno.env.get("PLATFORM_REPLY_EMAIL") ?? Deno.env.get("RESEND_RE
 // mistake the customer finds rather than we do.
 const SCHOOL = { price: "£500", duration: "2 weeks" };
 
-const esc = (v: string) =>
-  v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SOURCES = new Set(["contact", "startup-school", "careers", "other"]);
 
 /**
  * What an applicant receives the moment they sign up.
  *
- * Deliberately plain: what they asked for, what it costs, what happens next,
- * and that nothing has been charged. The last line matters most — a signup that
- * states a price and then goes quiet reads like a payment they cannot find.
+ * Structured rather than prose: the price and the length are the two things
+ * they will come back to look for, and a facts table survives being skimmed on
+ * a phone in a way a paragraph does not. The last row says nothing has been
+ * charged, because a signup that states a price and then goes quiet reads like
+ * a payment someone cannot find.
  */
 function schoolConfirmation(name: string) {
-  const hi = name ? `Hi ${esc(name.split(/\s+/)[0])},` : "Hi,";
-  const lines = [
-    `You're on the list for Phoxta Startup School.`,
-    `<b>${SCHOOL.price} for ${SCHOOL.duration}.</b> Live sessions with mentors who have built and sold companies, covering strategy, finance, marketing and the AI tools that actually matter now — and you finish with a real business running, not a certificate.`,
-    `<b>What happens next.</b> One of us will be in touch within one working day with the dates for the next cohort and how to pay. Nothing has been charged, and your place is held until you confirm.`,
-    `If anything has changed, or you have a question first, just reply to this email — it comes straight to us.`,
-  ];
-  return {
-    subject: "Your place at Phoxta Startup School",
-    html: `<div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#14194e;max-width:560px">
-      <p>${hi}</p>
-      ${lines.map((l) => `<p>${l}</p>`).join("")}
-      <p style="margin-top:24px">— The Phoxta team</p>
-    </div>`,
-    text: [
-      hi, "",
-      "You're on the list for Phoxta Startup School.",
-      "",
-      `${SCHOOL.price} for ${SCHOOL.duration}. Live sessions with mentors who have built and sold companies, covering strategy, finance, marketing and the AI tools that actually matter now - and you finish with a real business running, not a certificate.`,
-      "",
-      "What happens next. One of us will be in touch within one working day with the dates for the next cohort and how to pay. Nothing has been charged, and your place is held until you confirm.",
-      "",
-      "If anything has changed, or you have a question first, just reply to this email - it comes straight to us.",
-      "",
-      "- The Phoxta team",
-    ].join("\n"),
-  };
+  const first = name.trim().split(/\s+/)[0];
+  return renderEmail({
+    preheader: `${SCHOOL.price} for ${SCHOOL.duration}. We'll confirm your place within one working day.`,
+    heading: "Your place at Phoxta Startup School",
+    blocks: [
+      { type: "text", text: first ? `Hi ${first},` : "Hi," },
+      { type: "text", text: "You're on the list for Phoxta Startup School." },
+      { type: "facts", rows: [
+        ["Programme", "Startup School"],
+        ["Length", SCHOOL.duration],
+        ["Cost", SCHOOL.price],
+        ["Paid today", "Nothing"],
+      ] },
+      { type: "html",
+        html: "<b>What happens next.</b> One of us will be in touch within one working day with the dates for the next cohort and how to pay. Your place is held until you confirm.",
+        text: "What happens next. One of us will be in touch within one working day with the dates for the next cohort and how to pay. Your place is held until you confirm." },
+      { type: "text", text: "Live sessions with mentors who have built and sold companies, covering strategy, finance, marketing and the AI tools that actually matter now — and you finish with a real business running, not a certificate." },
+      { type: "button", label: "See what's covered", href: "https://www.phoxta.com/startup-school" },
+      { type: "divider" },
+      { type: "text", text: "If anything has changed, or you have a question first, just reply — it comes straight to us." },
+    ],
+    footnote: "You received this because you signed up at phoxta.com/startup-school.",
+  });
 }
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SOURCES = new Set(["contact", "startup-school", "careers", "other"]);
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -106,11 +103,20 @@ Deno.serve(async (req) => {
     }
 
     // Best-effort notification — the row is the source of truth.
+    const brief = renderEmail({
+      preheader: `${name || email} — ${source}`,
+      heading: `New ${source.replace("-", " ")} lead`,
+      blocks: [
+        { type: "facts", rows: [["Source", source], ["Name", name || "—"], ["Email", email], ["Phone", phone || "—"]] },
+        ...(message ? [{ type: "text" as const, text: message }] : []),
+        { type: "button", label: "Open the console", href: "https://www.phoxta.com/dashboard/businesses" },
+      ],
+    });
     await sendEmail({
       to: [NOTIFY_TO],
       subject: `New ${source} lead: ${name || email}`,
-      html: `<p><b>Source:</b> ${source}</p><p><b>Name:</b> ${name}</p><p><b>Email:</b> ${email}</p><p><b>Phone:</b> ${phone}</p><p><b>Message:</b></p><p>${message.replace(/</g, "&lt;")}</p>`,
-      text: `Source: ${source}\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\n\n${message}`,
+      html: brief.html,
+      text: brief.text,
       replyTo: email,
     }).catch((e) => console.error("team notification failed", e));
 
@@ -121,7 +127,7 @@ Deno.serve(async (req) => {
       const mail = schoolConfirmation(name);
       await sendEmail({
         to: [email],
-        subject: mail.subject,
+        subject: "Your place at Phoxta Startup School",
         html: mail.html,
         text: mail.text,
         // Replies go to a person, not to the no-reply sender the rest of the

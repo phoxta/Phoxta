@@ -5,6 +5,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/dispatch.ts";
+import { renderSimple } from "../_shared/email.ts";
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -41,8 +42,12 @@ Deno.serve(async (req) => {
       const r = await sendEmail({
         to: [ticket.customer_email],
         subject,
-        html: `<p>${message.replace(/</g, "&lt;").replace(/\n/g, "<br/>")}</p><p>— ${org.name}</p>`,
-        text: `${message}\n\n— ${org.name}`,
+        // Rendered under the BUSINESS's name, not Phoxta's: the customer
+        // raised a ticket with them and has never heard of us.
+        ...(() => {
+          const m = renderSimple(subject, `${message}\n\n— ${org.name}`, { brand: org.name });
+          return { html: m.html, text: m.text };
+        })(),
       });
       delivery = r.ok ? "sent" : r.status;
     }

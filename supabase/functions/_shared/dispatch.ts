@@ -7,6 +7,7 @@
 //   call  : Vapi (VAPI_API_KEY + VAPI_PHONE_NUMBER_ID) or Retell (RETELL_API_KEY + RETELL_FROM)
 //           — managed voice AI; self-host alternative is LiveKit Agents / Pipecat.
 import { toE164 } from "./telephony.ts";
+import { renderSimple } from "./email.ts";
 
 export type DispatchResult = { status: "sent" | "dialing" | "simulated" | "failed"; provider: string };
 
@@ -43,7 +44,12 @@ async function dispatchEmail(to: string, subject: string, message: string): Prom
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: env("RESEND_FROM"), to, subject, html: `<p>${message}</p>`, reply_to: replyAddress() }),
+        // Was a bare <p>. Every notification the platform sends goes through
+        // here, so this one line is most of what people actually receive.
+        body: JSON.stringify({
+          from: env("RESEND_FROM"), to, subject, reply_to: replyAddress(),
+          ...(() => { const m = renderSimple(subject, message); return { html: m.html, text: m.text }; })(),
+        }),
       });
       return { status: res.ok ? "sent" : "failed", provider: "resend" };
     } catch {
