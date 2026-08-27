@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEv
 import { Link } from "react-router-dom";
 import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
 import { AccessDialog } from "./platform/AccessDialog";
+import { EmailStudio } from "./platform/EmailStudio";
 import { Card, Chip, Empty, InitialAvatar, stageTone } from "@/components/dash/Ui";
 import {
   fetchPlatformOverview, fetchPlatformTenants, fetchPlatformRevenue,
@@ -58,7 +59,7 @@ const money = (cents: number, ccy = "GBP") => {
 const num = (n: number) => new Intl.NumberFormat().format(n);
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
-const SECTIONS = ["Overview", "Customers", "Users", "Scheduler", "Blog", "Blueprints", "Leads", "Margin", "Payments", "Access"] as const;
+const SECTIONS = ["Overview", "Customers", "Users", "Scheduler", "Email", "Blog", "Blueprints", "Leads", "Margin", "Payments", "Access"] as const;
 
 /**
  * How stale a worker's heartbeat has to be before it counts as a problem.
@@ -623,6 +624,8 @@ export default function OpsPlatformPage() {
       )}
 
       {/* ── Users — every account on the platform ────────────────────────── */}
+      {section === "Email" && <EmailStudio />}
+
       {section === "Scheduler" && (
         <>
           <Card title="The background loop">

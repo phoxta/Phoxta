@@ -11,6 +11,12 @@ export default defineConfig({
       // from their own folder and cannot see the repo root); the platform SPA
       // builds FROM the root, so it imports the original instead of a copy.
       "@shared-chat": path.resolve(__dirname, "./packages/shared-chat/src"),
+      // The email renderer, imported by BOTH the edge functions that send mail
+      // and the console that previews it. Same module, so a preview cannot
+      // drift from what a customer receives — the two-renderer problem this
+      // codebase has been bitten by before. It has no imports and no Deno
+      // globals, which is what makes sharing it possible.
+      "@email": path.resolve(__dirname, "./supabase/functions/_shared/email.ts"),
     },
   },
   server: {

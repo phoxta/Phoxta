@@ -14,10 +14,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@shared-chat/*": ["packages/shared-chat/src/*"]
+      "@shared-chat/*": ["packages/shared-chat/src/*"],
+      "@email": ["supabase/functions/_shared/email.ts"]
     },
     "types": ["vite/client"]
   },
-  "include": ["src", "packages/shared-chat/src", "vite.config.ts"]
+  "include": ["src", "packages/shared-chat/src", "supabase/functions/_shared/email.ts", "vite.config.ts"]
 }
 
