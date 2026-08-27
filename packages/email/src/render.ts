@@ -79,10 +79,15 @@ export type Block =
   | { type: "panel"; big: string; small: string }
   /** Numbered steps. The discs are table cells, not images. */
   | { type: "steps"; items: string[] }
-  /** A section rule with a label — the spine of a long brochure. */
-  | { type: "section"; label: string; title: string }
-  /** Product cards: picture, name, price, one line, one link. */
-  | { type: "cards"; items: Array<{ img: string; alt: string; name: string; price: string; blurb: string; href: string }> }
+  /** A numbered section head — the spine of a long brochure. */
+  | { type: "section"; n?: string; label: string; title: string }
+  /** Three product tiles to a row, one to a row on a phone. */
+  | { type: "grid"; items: Array<{ img: string; alt: string; name: string; price: string; blurb: string; href: string }> }
+  /** The cover: one photograph, the promise, one button. */
+  | { type: "cover"; src: string; alt: string; title: string; sub: string; cta: { label: string; href: string }; note?: string }
+  /** A run of blocks lifted out of the white page onto full-bleed ink. Used
+   *  once, for the money — the page needs one moment that stops the scroll. */
+  | { type: "band"; blocks: Block[] }
   /** A horizontal bar chart drawn entirely in table cells — no image and no
    *  script, so it renders everywhere including Outlook with images off. */
   | { type: "chart"; title: string; bars: Array<{ label: string; value: number; note: string }> }
@@ -105,15 +110,27 @@ export type EmailOpts = {
   brand?: string;
 };
 
-const p = (html: string) =>
-  `<p style="margin:0 0 16px;font-family:${FONT};font-size:15px;line-height:1.6;color:${INK}">${html}</p>`;
+/** Which ground a block is sitting on. Threaded rather than global: a band
+ *  can appear anywhere, and blocks are rendered by more than one shell. */
+type Tone = "paper" | "ink";
+const on = (t: Tone) => ({
+  text: t === "ink" ? "#ffffff" : INK,
+  body: t === "ink" ? "#c2cbf0" : INK,
+  soft: t === "ink" ? "#9aa6d8" : MUTED,
+  line: t === "ink" ? "#2b3170" : LINE,
+  accent: t === "ink" ? "#8ea6ff" : ACCENT,
+});
 
-function block(b: Block): string {
+const p = (html: string, colour: string = INK) =>
+  `<p style="margin:0 0 16px;font-family:${FONT};font-size:15.5px;line-height:1.62;color:${colour}">${html}</p>`;
+
+function block(b: Block, tone: Tone = "paper"): string {
+  const c = on(tone);
   switch (b.type) {
     case "text":
-      return p(esc(b.text));
+      return p(esc(b.text), c.body);
     case "html":
-      return p(b.html);
+      return p(b.html, c.body);
     case "quote":
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 16px">
         <tr><td style="border-left:3px solid ${ACCENT};padding:2px 0 2px 14px;font-family:${FONT};font-size:15px;line-height:1.6;color:${MUTED}">${esc(b.text)}</td></tr>
@@ -136,12 +153,14 @@ function block(b: Block): string {
     case "steps":
       return graphic(b);
     case "section":
-    case "cards":
+    case "grid":
+    case "cover":
+    case "band":
     case "chart":
     case "video":
     case "plans":
     case "chips":
-      return brochure(b);
+      return brochure(b, tone);
     case "button":
       // A padded table cell, not a styled <a>: Outlook ignores padding on an
       // anchor, so a plain link button collapses to bare text there.
@@ -197,50 +216,93 @@ function graphic(b: Extract<Block, { type: "hero" | "panel" | "steps" }>): strin
    it is unsolicited, and it goes to people who have never written to us — so
    if it collapses without pictures it does not work at all. */
 
-function brochure(b: Extract<Block, { type: "section" | "cards" | "chart" | "video" | "plans" | "chips" }>): string {
+function brochure(
+  b: Extract<Block, { type: "section" | "grid" | "cover" | "band" | "chart" | "video" | "plans" | "chips" }>,
+  tone: Tone,
+): string {
+  const c = on(tone);
   switch (b.type) {
-    case "section":
-      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:34px 0 18px">
-        <tr><td style="border-top:2px solid ${INK};padding-top:14px">
-          <div style="font-family:${FONT};font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${ACCENT}">${esc(b.label)}</div>
-          <div style="font-family:${FONT};font-size:21px;font-weight:700;letter-spacing:-0.02em;color:${INK};margin-top:5px">${esc(b.title)}</div>
+    case "cover":
+      // The photograph and the promise are one object: image, then the words
+      // on ink directly beneath it with no gap. Text over a photograph would
+      // need a background-image, which Outlook does not load at all.
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr><td bgcolor="${INK}" style="line-height:0;font-size:0">
+          <img src="${esc(b.src)}" alt="${esc(b.alt)}" width="600" height="270"
+               style="display:block;width:100%;max-width:600px;height:auto;border:0;font-family:${FONT};font-size:13px;color:#ffffff">
+        </td></tr>
+        <tr><td bgcolor="${INK}" style="padding:30px 30px 34px">
+          <div style="font-family:${FONT};font-size:33px;line-height:1.1;font-weight:700;letter-spacing:-0.03em;color:#ffffff">${esc(b.title)}</div>
+          <div style="font-family:${FONT};font-size:16px;line-height:1.55;color:#b3bdea;margin:12px 0 22px">${esc(b.sub)}</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td bgcolor="#ffffff" style="border-radius:8px">
+              <a href="${esc(b.cta.href)}" style="display:inline-block;padding:14px 26px;font-family:${FONT};font-size:15px;font-weight:700;color:${INK};text-decoration:none">${esc(b.cta.label)}</a>
+            </td>
+          </tr></table>
+          ${b.note ? `<div style="font-family:${FONT};font-size:12.5px;color:#8b97cf;margin-top:16px">${esc(b.note)}</div>` : ""}
         </td></tr></table>`;
 
-    case "cards":
-      // One card per row, not two across. Outlook has no flexbox, so a
-      // two-column grid becomes two rigid columns that cannot stack on a
-      // phone — and most of these are read on a phone.
-      return b.items.map((c) => `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 14px;border:1px solid ${LINE};border-radius:12px">
-        <tr><td bgcolor="${INK}" style="border-radius:12px 12px 0 0;line-height:0">
-          <a href="${esc(c.href)}"><img src="${esc(c.img)}" alt="${esc(c.alt)}" width="538" height="193"
-             style="display:block;width:100%;max-width:538px;height:auto;border:0;font-family:${FONT};font-size:13px;color:#ffffff;border-radius:12px 12px 0 0"></a>
+    case "section":
+      // A rule, a numeral and a kicker. The numeral is what turns a long email
+      // from a scroll into a document you can find your place in.
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:36px 0 20px">
+        <tr><td style="padding-bottom:14px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td width="34" bgcolor="${c.accent}" style="height:3px;font-size:0;line-height:0;border-radius:2px">&nbsp;</td>
+        </tr></table></td></tr>
+        <tr><td style="font-family:${FONT};font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:${c.soft}">
+          ${b.n ? `<span style="color:${c.accent}">${esc(b.n)}</span>&nbsp;&nbsp;` : ""}${esc(b.label)}
         </td></tr>
-        <tr><td style="padding:16px 18px 18px">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-            <td style="font-family:${FONT};font-size:16px;font-weight:700;color:${INK}">${esc(c.name)}</td>
-            <td align="right" style="font-family:${FONT};font-size:15px;font-weight:700;color:${ACCENT};white-space:nowrap">${esc(c.price)}</td>
-          </tr></table>
-          <div style="font-family:${FONT};font-size:14px;line-height:1.55;color:${MUTED};margin:7px 0 12px">${esc(c.blurb)}</div>
-          <a href="${esc(c.href)}" style="font-family:${FONT};font-size:14px;font-weight:600;color:${ACCENT};text-decoration:none">See it running &rarr;</a>
-        </td></tr></table>`).join("");
+        <tr><td style="padding-top:7px;font-family:${FONT};font-size:25px;line-height:1.2;font-weight:700;letter-spacing:-0.025em;color:${c.text}">${esc(b.title)}</td></tr>
+      </table>`;
+
+    case "grid": {
+      // Three to a row on a desktop, one to a row on a phone, and no media
+      // query involved — inline-block with a max-width simply wraps when the
+      // column gets narrow. Outlook ignores inline-block, so it gets a real
+      // table through conditional comments; every other client ignores that.
+      const cells = b.items.map((t, i) => `${i % 3 === 0 && i > 0 ? "<!--[if mso]></tr><tr><![endif]-->" : ""}<!--[if mso]><td width="180" valign="top"><![endif]-->
+        <div class="pxtile" style="display:inline-block;width:100%;max-width:168px;vertical-align:top;margin:0 4px 20px;text-align:left">
+          <a href="${esc(t.href)}" style="text-decoration:none">
+            <img src="${esc(t.img)}" alt="${esc(t.alt)}" width="168" height="126"
+                 style="display:block;width:100%;height:auto;border:0;border-radius:10px;font-family:${FONT};font-size:11px;color:${c.soft}">
+          </a>
+          <div style="font-family:${FONT};font-size:14.5px;font-weight:700;color:${c.text};margin:11px 0 2px;line-height:1.3">${esc(t.name)}</div>
+          <div style="font-family:${FONT};font-size:13px;font-weight:700;color:${c.accent};margin-bottom:5px">${esc(t.price)}</div>
+          <div style="font-family:${FONT};font-size:12.5px;line-height:1.45;color:${c.soft}">${esc(t.blurb)}</div>
+        </div>
+        <!--[if mso]></td><![endif]-->`).join("");
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 6px">
+        <tr><td align="center" style="font-size:0;line-height:0">
+          <!--[if mso]><table role="presentation" width="540" cellpadding="0" cellspacing="0" border="0"><tr><![endif]-->
+          ${cells}
+          <!--[if mso]></tr></table><![endif]-->
+        </td></tr></table>`;
+    }
+
+    case "band":
+      // Full-bleed: the row has no side padding of its own, and the blocks
+      // inside carry it, so the colour runs edge to edge.
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:34px 0 0">
+        <tr><td bgcolor="${INK}" style="padding:6px 30px 30px">
+          ${b.blocks.map((x) => block(x, "ink")).join("\n")}
+        </td></tr></table>`;
 
     case "chart": {
       const max = Math.max(...b.bars.map((x) => x.value), 1);
-      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 22px;border:1px solid ${LINE};border-radius:12px">
-        <tr><td style="padding:18px 18px 4px;font-family:${FONT};font-size:14px;font-weight:700;color:${INK}">${esc(b.title)}</td></tr>
-        <tr><td style="padding:0 18px 18px">
-          ${b.bars.map((x) => `<div style="font-family:${FONT};font-size:12.5px;color:${INK};margin:12px 0 6px">${esc(x.label)} <span style="color:${MUTED}">— ${esc(x.note)}</span></div>
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:4px 0 22px;border:1px solid ${c.line};border-radius:12px">
+        <tr><td style="padding:18px 18px 4px;font-family:${FONT};font-size:13.5px;font-weight:700;color:${c.text}">${esc(b.title)}</td></tr>
+        <tr><td style="padding:0 18px 20px">
+          ${b.bars.map((x) => `<div style="font-family:${FONT};font-size:12.5px;color:${c.text};margin:13px 0 6px">${esc(x.label)} <span style="color:${c.soft}">— ${esc(x.note)}</span></div>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-              <td bgcolor="${ACCENT}" width="${Math.max(4, Math.round((x.value / max) * 100))}%" style="height:10px;border-radius:5px;font-size:0;line-height:0">&nbsp;</td>
+              <td bgcolor="${c.accent}" width="${Math.max(4, Math.round((x.value / max) * 100))}%" style="height:9px;border-radius:5px;font-size:0;line-height:0">&nbsp;</td>
               <td width="${100 - Math.max(4, Math.round((x.value / max) * 100))}%" style="font-size:0;line-height:0">&nbsp;</td>
             </tr></table>`).join("")}
         </td></tr></table>`;
     }
 
     case "video":
-      // No mail client plays video. A poster with a drawn play badge linking
-      // out is the honest version, and the badge is a table cell so it is
-      // still there when the poster is blocked.
+      // No client plays video. Poster, a drawn play badge and a link out — the
+      // badge is a table cell, so it is still there when the poster is blocked.
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 22px">
         <tr><td bgcolor="${INK}" style="border-radius:12px 12px 0 0;line-height:0">
           <a href="${esc(b.href)}"><img src="${esc(b.poster)}" alt="${esc(b.alt)}" width="538" height="193"
@@ -256,21 +318,21 @@ function brochure(b: Extract<Block, { type: "section" | "cards" | "chart" | "vid
         </td></tr></table>`;
 
     case "plans":
-      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 22px;border:1px solid ${LINE};border-radius:12px">
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 18px;border:1px solid ${c.line};border-radius:12px">
         ${b.items.map((pl, i) => `<tr>
-          <td style="padding:14px 18px;${i ? `border-top:1px solid ${LINE};` : ""}${pl.best ? "background:#f2f5ff;" : ""}">
+          <td style="padding:16px 18px;${i ? `border-top:1px solid ${c.line};` : ""}${pl.best ? (tone === "ink" ? "background:#1c2266;" : "background:#f2f5ff;") : ""}">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-              <td style="font-family:${FONT};font-size:15px;font-weight:700;color:${INK}">${esc(pl.name)}${pl.best ? ` <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:${ACCENT}">MOST POPULAR</span>` : ""}</td>
-              <td align="right" style="font-family:${FONT};font-size:16px;font-weight:700;color:${INK};white-space:nowrap">${esc(pl.price)}<span style="font-size:12px;font-weight:400;color:${MUTED}">${esc(pl.per)}</span></td>
+              <td style="font-family:${FONT};font-size:15.5px;font-weight:700;color:${c.text}">${esc(pl.name)}${pl.best ? ` <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:${c.accent}">&nbsp;MOST POPULAR</span>` : ""}</td>
+              <td align="right" style="font-family:${FONT};font-size:17px;font-weight:700;color:${c.text};white-space:nowrap">${esc(pl.price)}<span style="font-size:12px;font-weight:400;color:${c.soft}">${esc(pl.per)}</span></td>
             </tr></table>
-            <div style="font-family:${FONT};font-size:13px;line-height:1.5;color:${MUTED};margin-top:5px">${esc(pl.line)}</div>
+            <div style="font-family:${FONT};font-size:13px;line-height:1.5;color:${c.soft};margin-top:6px">${esc(pl.line)}</div>
           </td></tr>`).join("")}
       </table>`;
 
     case "chips":
-      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 22px">
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px">
         <tr><td style="font-family:${FONT};font-size:0;line-height:0">
-          ${b.items.map((t) => `<span style="display:inline-block;margin:0 6px 8px 0;padding:7px 12px;border:1px solid ${LINE};border-radius:16px;font-family:${FONT};font-size:13px;line-height:1;color:${INK};background:#f7f8fd">${esc(t)}</span>`).join("")}
+          ${b.items.map((t) => `<span style="display:inline-block;margin:0 6px 8px 0;padding:8px 13px;border:1px solid ${c.line};border-radius:16px;font-family:${FONT};font-size:13px;line-height:1;color:${c.text};background:${tone === "ink" ? "#1b2059" : "#f7f8fd"}">${esc(t)}</span>`).join("")}
         </td></tr></table>`;
   }
 }
@@ -285,8 +347,10 @@ function plain(b: Block): string {
     case "hero": return "";
     case "panel": return `${b.big} — ${b.small}`;
     case "steps": return b.items.map((t, i) => `${i + 1}. ${t}`).join("\n");
-    case "section": return "\n" + b.label.toUpperCase() + "\n" + b.title;
-    case "cards": return b.items.map((c) => c.name + " — " + c.price + "\n" + c.blurb + "\n" + c.href).join("\n\n");
+    case "section": return "\n" + (b.n ? b.n + " " : "") + b.label.toUpperCase() + "\n" + b.title;
+    case "grid": return b.items.map((c) => c.name + " — " + c.price + "\n" + c.blurb + "\n" + c.href).join("\n\n");
+    case "cover": return b.title + "\n" + b.sub + "\n" + b.cta.label + ": " + b.cta.href + (b.note ? "\n" + b.note : "");
+    case "band": return b.blocks.map(plain).filter(Boolean).join("\n\n");
     case "chart": return b.title + "\n" + b.bars.map((x) => "- " + x.label + ": " + x.note).join("\n");
     case "video": return b.title + ": " + b.href;
     case "plans": return b.items.map((pl) => pl.name + " " + pl.price + pl.per + " — " + pl.line).join("\n");
@@ -331,7 +395,7 @@ export function renderEmail(o: EmailOpts): { html: string; text: string } {
 
     <tr><td style="background:#ffffff;border:1px solid ${LINE};border-radius:14px;padding:32px 30px">
       <h1 style="margin:0 0 18px;font-family:${FONT};font-size:22px;line-height:1.25;font-weight:700;letter-spacing:-0.02em;color:${INK}">${esc(o.heading)}</h1>
-      ${o.blocks.map(block).join("\n")}
+      ${o.blocks.map((b) => block(b)).join("\n")}
     </td></tr>
 
     <tr><td style="padding:20px 4px 0;font-family:${FONT};font-size:12px;line-height:1.6;color:${MUTED}">
@@ -351,6 +415,91 @@ export function renderEmail(o: EmailOpts): { html: string; text: string } {
     "",
     o.footnote ?? "",
     `Sent by ${brand}. Reply to this email and it reaches a person.`,
+  ].filter((l) => l !== undefined).join("\n\n").replace(/\n{3,}/g, "\n\n");
+
+  return { html, text };
+}
+
+/**
+ * The brochure shell.
+ *
+ * A receipt and a brochure are not the same object and should not wear the same
+ * clothes. The transactional shell above is deliberately quiet: a wordmark, a
+ * white card, one heading. That restraint is right for an invoice and wrong for
+ * the one email whose whole job is to make someone want something.
+ *
+ * So the brochure gets its own chrome — a masthead, a full-bleed cover, and a
+ * page that alternates white and ink so it reads as a document rather than a
+ * scroll — while using exactly the same blocks, escaping and plain-text pass as
+ * everything else. One vocabulary, two voices.
+ */
+export function renderBrochure(o: {
+  preheader: string; subject: string; strap: string; blocks: Block[]; footnote?: string;
+}): { html: string; text: string } {
+  // Blocks between bands sit on the white page and need side padding; a band
+  // paints edge to edge and carries its own. So the page is assembled as a run
+  // of rows rather than one padded cell.
+  const rows = o.blocks.map((b) => (b.type === "cover" || b.type === "band")
+    ? `<tr><td style="padding:0">${block(b)}</td></tr>`
+    : `<tr><td style="padding:0 30px">${block(b)}</td></tr>`).join("\n");
+
+  const html = `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>${esc(o.subject)}</title>
+<style>
+  /* The ONLY stylesheet in any of these emails, and it does one thing: let a
+     tile fill the column on a phone instead of sitting at 168px in the middle
+     of it. Clients that strip <style> — and several do — simply keep the
+     inline max-width, which is the layout without this rule rather than a
+     broken one. Outlook ignores it too, and should: at 600px three across is
+     right. */
+  @media only screen and (max-width: 480px) {
+    .pxtile { max-width: 100% !important; margin: 0 0 24px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:${PAPER};font-family:${FONT};-webkit-font-smoothing:antialiased">
+<div style="display:none;font-size:1px;color:${PAPER};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden">${esc(o.preheader)}${"&#847;&zwnj;&nbsp;".repeat(60)}</div>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PAPER}">
+<tr><td align="center" style="padding:28px 16px 40px">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden">
+
+    <tr><td bgcolor="${INK}" style="padding:20px 30px 18px">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+        <td style="font-family:${FONT};font-size:19px;font-weight:700;letter-spacing:.02em;color:#ffffff">PHOXTA</td>
+        <td align="right" style="font-family:${FONT};font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8291d6">${esc(o.strap)}</td>
+      </tr></table>
+    </td></tr>
+    <tr><td bgcolor="${ACCENT}" style="height:4px;font-size:0;line-height:0">&nbsp;</td></tr>
+
+${rows}
+
+    <tr><td style="padding:8px 30px 34px">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr><td style="border-top:1px solid ${LINE};padding-top:18px;font-family:${FONT};font-size:12.5px;line-height:1.65;color:${MUTED}">
+          ${o.footnote ? `${esc(o.footnote)}<br><br>` : ""}Sent by Phoxta. Reply to this email and it reaches a person.
+        </td></tr>
+      </table>
+    </td></tr>
+
+  </table>
+</td></tr></table>
+</body></html>`;
+
+  const text = [
+    o.subject,
+    "=".repeat(Math.min(o.subject.length, 60)),
+    "",
+    ...o.blocks.map(plain).filter(Boolean),
+    "",
+    o.footnote ?? "",
+    "Sent by Phoxta. Reply to this email and it reaches a person.",
   ].filter((l) => l !== undefined).join("\n\n").replace(/\n{3,}/g, "\n\n");
 
   return { html, text };
