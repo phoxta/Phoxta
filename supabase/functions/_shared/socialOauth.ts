@@ -92,11 +92,19 @@ export const SPECS: Record<Platform, Spec> = {
 
 export const configured = (p: Platform) => Boolean(SPECS[p].clientId() && SPECS[p].clientSecret());
 
-/** The one URL every platform must have whitelisted. */
-export const callbackUrl = () => `${env("SUPABASE_URL")}/functions/v1/social-callback`;
-
 /** Where to land the person afterwards. */
 export const appBase = () => env("APP_BASE_URL") || "https://www.phoxta.com";
+
+/**
+ * The one URL every platform must have whitelisted.
+ *
+ * On our own domain, not the Supabase one. A callback on a subdomain we do not
+ * own cannot be declared as ours — Meta rejected the redirect outright with
+ * "the domain of this URL isn't included in the app's domains" — and it reads
+ * as somebody else's infrastructure to a reviewer. Vercel proxies this path
+ * straight through to the same function, so only the address changes.
+ */
+export const callbackUrl = () => `${appBase()}/oauth/social/callback`;
 
 async function hmac(data: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(

@@ -5,6 +5,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/oauth/social/callback",
+      "destination": "https://ktgleoqvdikngocygdkn.supabase.co/functions/v1/social-callback"
+    },
+    {
       "source": "/((?!.*\\.).*)",
       "destination": "/index.html"
     }
