@@ -36,7 +36,12 @@ const dialable = (to: string) => toE164(to, env("DEFAULT_COUNTRY_CODE"));
  * An explicit replyTo always wins -- the lead notification deliberately points
  * replies at the person who filled the form.
  */
-const replyAddress = () => env("RESEND_REPLY_TO") || "hello@phoxta.com";
+// The fallback has to be a mailbox that EXISTS. hello@phoxta.com is published
+// across the site but was never created in Google Workspace: replies to it
+// bounce with "address not found", and mail claiming to come from it is mail
+// Workspace knows is fake at a domain it hosts — which is a strong spam signal
+// and the most likely reason nothing was arriving.
+const replyAddress = () => env("RESEND_REPLY_TO") || "femi@phoxta.com";
 
 async function dispatchEmail(to: string, subject: string, message: string): Promise<DispatchResult> {
   if (env("RESEND_API_KEY") && env("RESEND_FROM")) {

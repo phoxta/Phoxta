@@ -16,7 +16,7 @@ export default defineConfig({
       // drift from what a customer receives — the two-renderer problem this
       // codebase has been bitten by before. It has no imports and no Deno
       // globals, which is what makes sharing it possible.
-      "@email": path.resolve(__dirname, "./supabase/functions/_shared/email.ts"),
+      "@email": path.resolve(__dirname, "./packages/email/src/render.ts"),
     },
   },
   server: {

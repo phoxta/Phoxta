@@ -16,7 +16,7 @@ const NOTIFY_TO = Deno.env.get("PLATFORM_LEAD_EMAIL") ?? "femi@phoxta.com";
 // Shares RESEND_REPLY_TO with _shared/dispatch so one change moves every
 // reply address, and keeps PLATFORM_REPLY_EMAIL as an override for the one
 // case that might reasonably differ.
-const REPLY_TO = Deno.env.get("PLATFORM_REPLY_EMAIL") ?? Deno.env.get("RESEND_REPLY_TO") ?? "hello@phoxta.com";
+const REPLY_TO = Deno.env.get("PLATFORM_REPLY_EMAIL") ?? Deno.env.get("RESEND_REPLY_TO") ?? "femi@phoxta.com";
 
 // Keep in step with STARTUP_SCHOOL in src/lib/db/platformLead.ts. A Deno
 // function cannot import from src/, so the price lives in two places; a price
@@ -40,20 +40,27 @@ function schoolConfirmation(name: string) {
   const first = name.trim().split(/\s+/)[0];
   return renderEmail({
     preheader: `${SCHOOL.price} for ${SCHOOL.duration}. We'll confirm your place within one working day.`,
-    heading: "Your place at Phoxta Startup School",
+    heading: "Your place at Startup School",
     blocks: [
+      // A real photograph, sized explicitly and on a brand-coloured backdrop:
+      // most clients block remote images until asked, and a blocked hero should
+      // read as a deliberate band of colour rather than a white hole.
+      { type: "hero", src: "https://www.phoxta.com/assets/imgs/pages/Startup%20School%20Hero.jpeg",
+        alt: "Founders working together at Phoxta Startup School", height: 200 },
       { type: "text", text: first ? `Hi ${first},` : "Hi," },
-      { type: "text", text: "You're on the list for Phoxta Startup School." },
-      { type: "facts", rows: [
-        ["Programme", "Startup School"],
-        ["Length", SCHOOL.duration],
-        ["Cost", SCHOOL.price],
-        ["Paid today", "Nothing"],
+      { type: "text", text: "You're on the list. Here's what you've signed up for." },
+      // The offer as a filled panel rather than a table row. It is the one
+      // thing they will come back to look for, and it renders with images off.
+      { type: "panel", big: `${SCHOOL.price} for ${SCHOOL.duration}`, small: "Nothing to pay today — we'll confirm your place first." },
+      { type: "steps", items: [
+        "Strategy, finance and marketing, taught against your own business rather than a case study.",
+        "The AI tools that actually matter now, and where they earn their keep.",
+        "Live sessions with mentors who have built and sold companies.",
+        "You finish with a real business running, not a certificate.",
       ] },
       { type: "html",
         html: "<b>What happens next.</b> One of us will be in touch within one working day with the dates for the next cohort and how to pay. Your place is held until you confirm.",
         text: "What happens next. One of us will be in touch within one working day with the dates for the next cohort and how to pay. Your place is held until you confirm." },
-      { type: "text", text: "Live sessions with mentors who have built and sold companies, covering strategy, finance, marketing and the AI tools that actually matter now — and you finish with a real business running, not a certificate." },
       { type: "button", label: "See what's covered", href: "https://www.phoxta.com/startup-school" },
       { type: "divider" },
       { type: "text", text: "If anything has changed, or you have a question first, just reply — it comes straight to us." },

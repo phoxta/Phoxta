@@ -15,10 +15,10 @@
     "paths": {
       "@/*": ["src/*"],
       "@shared-chat/*": ["packages/shared-chat/src/*"],
-      "@email": ["supabase/functions/_shared/email.ts"]
+      "@email": ["packages/email/src/render.ts"]
     },
     "types": ["vite/client"]
   },
-  "include": ["src", "packages/shared-chat/src", "supabase/functions/_shared/email.ts", "vite.config.ts"]
+  "include": ["src", "packages/shared-chat/src", "packages/email/src", "vite.config.ts"]
 }
 
