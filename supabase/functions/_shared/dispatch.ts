@@ -108,7 +108,11 @@ export async function twilioSend(
   const To = channel === "whatsapp" ? wa(dest) : dest;
   // A pre-approved template is sent via ContentSid (+ variables) — required to
   // message outside WhatsApp's 24h window; otherwise send a free-form Body.
-  const params = opts?.contentSid
+  // Typed explicitly: without it the union of the two branches gives each side
+  // the other's keys as `undefined`, which URLSearchParams' Record<string,string>
+  // signature rejects — a long-standing `deno check` failure in this file that
+  // the deploy bundler never surfaced because it does not type-check.
+  const params: Record<string, string> = opts?.contentSid
     ? { From, To, ContentSid: opts.contentSid, ContentVariables: JSON.stringify(opts.contentVariables ?? {}) }
     : { From, To, Body: message };
   try {
@@ -227,7 +231,7 @@ async function voiceServerUp(host: string): Promise<boolean> {
 export async function placeAiCall(agentKey: string, to: string, opening = ""): Promise<CallResult> {
   if (!agentKey || !to) return { ok: false, status: "simulated" };
   // Fallback only matters if VOICE_WS_HOST is ever unset — it previously named
-  // a Railway host that no longer exists, which meant a missing secret failed
+  // a hosting provider we no longer use, which meant a missing secret failed
   // silently into a dead endpoint (Twilio 31920) instead of anywhere useful.
   const host = env("VOICE_WS_HOST") || "voice.phoxta.com";
   if (!(await voiceServerUp(host))) {

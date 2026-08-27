@@ -62,7 +62,7 @@ export async function authorize(
  *  autonomously without a user session. Normal user auth is unchanged when the
  *  header/secret is absent. */
 export async function requireUser(req: Request): Promise<{ userId: string } | { error: Response }> {
-  // Two accepted scheduler secrets: CRON_SECRET (Railway worker-cron) and
+  // Two accepted scheduler secrets: CRON_SECRET (the worker-cron tick) and
   // BILLING_CRON_SECRET (pg_cron jobs) — both drive the same worker drains,
   // letting pg_cron replace the external scheduler without a breaking cutover.
   const presented = req.headers.get("x-cron-secret");

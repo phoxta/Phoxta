@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
   // requireUser also admits the trusted scheduler via x-cron-secret
   // (CRON_SECRET / BILLING_CRON_SECRET) — same drain either way, so pg_cron
-  // and the Railway worker-cron can keep this queue moving without a session.
+  // and the worker-cron tick can keep this queue moving without a session.
   const auth = await requireUser(req);
   if ("error" in auth) return auth.error;
 

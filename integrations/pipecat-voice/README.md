@@ -40,7 +40,7 @@ python launch.py
 ```
 Needs `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` in `.env`.
 For a *permanently fixed* URL, use a named Cloudflare tunnel with your own domain,
-or deploy `server.py` to Fly.io/Render and drop the tunnel.
+or deploy `server.py` to the Oracle VM (see `deploy/oracle/`) and drop the tunnel.
 
 `setup_phoxta.py` is a one-off that points the agent's business at **Phoxta itself**
 (renames the org, writes a Phoxta sales/support persona with the offering + pricing
@@ -50,25 +50,24 @@ also index those pages into RAG.
 ## Production — a stable URL (no tunnel)
 The voice bridge is a long-running **WebSocket** server, so it needs a host that
 runs persistent processes — **not** Vercel/Netlify (serverless, no long-lived
-sockets). Vercel is for the *front-end*; host this on **Fly.io** (recommended),
-**Render**, or **Railway**. A `Dockerfile` is included.
+sockets). Vercel is for the *front-end*.
 
-**Fly.io** (uses `fly.toml`):
-```bash
-fly apps create phoxta-voice            # or: fly launch --no-deploy --copy-config
-fly secrets set DEEPGRAM_API_KEY=... CARTESIA_API_KEY=... CARTESIA_VOICE_ID=... \
-  PHOXTA_AGENT_URL=https://<ref>.supabase.co/functions/v1/agent-inbound \
-  SUPABASE_ANON_KEY=... PHOXTA_AGENT_KEY=... \
-  TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_PHONE_NUMBER=+44...
-fly deploy
-```
-Set `PUBLIC_HOST` in `fly.toml` to your app domain (e.g. `phoxta-voice.fly.dev`),
-then point the Twilio number's Voice webhook at `https://phoxta-voice.fly.dev/`
-**once** — it never changes. On a host, the container runs `server.py` directly
-(no `launch.py`/cloudflared).
+**This runs on the Oracle Cloud Always Free VM, and that is the only supported
+deployment.** Follow [`deploy/oracle/README.md`](deploy/oracle/README.md) — it is
+the real runbook: `docker-compose.yml`, the env file, Caddy for TLS, and the
+worker-cron install that lives on the same box.
 
-**Render**: New → Web Service → Docker → root `integrations/pipecat-voice`; set the
-same env vars (incl. `PUBLIC_HOST=<service>.onrender.com`); health check `/health`.
+Live at **https://voice.phoxta.com** (`/health` returns `{"ok":true}`).
+
+Two things must agree with that hostname or voice fails in a way the server logs
+never show, because the browser refuses the connection before it is made:
+  - `VITE_VOICE_SERVER_URL` in the front-end env, and
+  - the `connect-src` list in the repo root `vercel.json` CSP, which needs BOTH
+    `https://voice.phoxta.com` and `wss://voice.phoxta.com`.
+
+> Historical note: this ran on Railway until 2026-08. That host is gone, and its
+> `railway.json` / `.railwayignore` are deleted. If you find a
+> `phoxta-voice-production.up.railway.app` anywhere, it is stale and wrong.
 
 > The front-end SPA deploys separately to **Vercel** (see `vercel.json` in the repo
 > root) with `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` env vars.

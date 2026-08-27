@@ -80,8 +80,16 @@ supabase secrets set VOICE_WS_HOST=voice.phoxta.com
 ```
 
 Without this, [`dispatch.ts`](../../../../supabase/functions/_shared/dispatch.ts)
-falls back to the old hardcoded Railway hostname. Also update
-`VITE_VOICE_SERVER_URL` (in `.env.local` and Vercel) for the browser widget.
+falls back to its built-in default of `voice.phoxta.com`, which is right today but
+is a default, not a setting — set the secret so the two cannot disagree later.
+
+Two more places name this host, and BOTH must match or voice breaks:
+  - `VITE_VOICE_SERVER_URL` (in `.env.local` and Vercel) for the browser widget;
+  - `connect-src` in the repo-root [`vercel.json`](../../../../vercel.json) CSP,
+    which needs `https://voice.phoxta.com` **and** `wss://voice.phoxta.com`.
+    Miss this one and the server is healthy, the front-end is correct, and the
+    browser still refuses the connection before it is made — the failure appears
+    in no server log. It is exactly what happened after the move off Railway.
 
 ## 7. Verify
 

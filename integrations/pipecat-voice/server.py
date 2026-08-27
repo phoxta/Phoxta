@@ -119,7 +119,7 @@ async def incoming_call(request: Request):
 
 
 async def _fetch_ice() -> list[dict]:
-    """ICE servers (STUN + Twilio TURN) as plain dicts. Railway exposes no public
+    """ICE servers (STUN + Twilio TURN) as plain dicts. The VM exposes no public
     UDP, so a direct peer connection can't form — TURN relays the media (incl.
     TCP/TLS 443) via the same Twilio account as the phone line. These are returned
     to the browser via /ice AND used server-side; the browser MUST get them too,
