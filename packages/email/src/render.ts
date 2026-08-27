@@ -110,7 +110,10 @@ export type Block =
   | { type: "cover"; src: string; alt: string; title: string; sub: string; cta: { label: string; href: string }; note?: string }
   /** A run of blocks lifted out of the white page onto full-bleed ink. Used
    *  once, for the money — the page needs one moment that stops the scroll. */
-  | { type: "band"; blocks: Block[] }
+  /** `flush` is set by the shell for a band that opens the email, not by
+   *  whoever wrote the blocks — a leading band with a top margin shows a
+   *  white strip under the masthead. */
+  | { type: "band"; blocks: Block[]; flush?: boolean }
   /** A horizontal bar chart drawn entirely in table cells — no image and no
    *  script, so it renders everywhere including Outlook with images off. */
   | { type: "chart"; title: string; bars: Array<{ label: string; value: number; note: string }> }
@@ -207,8 +210,8 @@ function block(b: Block, tone: Tone = "paper"): string {
       // too. A padded table cell, not a styled <a>: Outlook ignores padding on
       // an anchor, so a plain link button collapses to bare text there.
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px">
-        <tr><td bgcolor="${INK}" style="border-radius:50px">
-          <a href="${esc(b.href)}" style="display:inline-block;padding:15px 30px;font-family:${FONT};font-size:15px;font-weight:600;line-height:1;color:${PAPER};text-decoration:none;border-radius:50px">${esc(b.label)}</a>
+        <tr><td bgcolor="${tone === "ink" ? PAPER : INK}" style="border-radius:50px">
+          <a href="${esc(b.href)}" style="display:inline-block;padding:15px 30px;font-family:${FONT};font-size:15px;font-weight:600;line-height:1;color:${tone === "ink" ? INK : PAPER};text-decoration:none;border-radius:50px">${esc(b.label)}</a>
         </td></tr></table>`;
   }
 }
@@ -324,8 +327,8 @@ function brochure(
     case "band":
       // Full-bleed: the row has no side padding of its own, and the blocks
       // inside carry it, so the colour runs edge to edge.
-      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:34px 0 0">
-        <tr><td bgcolor="${INK}" style="padding:6px 30px 30px">
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:${b.flush ? "0" : "34px"} 0 0">
+        <tr><td bgcolor="${INK}" style="padding:${b.flush ? "26px" : "6px"} 30px 30px">
           ${b.blocks.map((x) => block(x, "ink")).join("\n")}
         </td></tr></table>`;
 
@@ -497,8 +500,8 @@ export function renderBrochure(o: PageOpts): { html: string; text: string } {
   // Blocks between bands sit on the white page and need side padding; a band
   // paints edge to edge and carries its own. So the page is assembled as a run
   // of rows rather than one padded cell.
-  const rows = o.blocks.map((b) => (b.type === "cover" || b.type === "band")
-    ? `<tr><td style="padding:0">${block(b)}</td></tr>`
+  const rows = o.blocks.map((b, i) => (b.type === "cover" || b.type === "band")
+    ? `<tr><td style="padding:0">${block(b.type === "band" ? { ...b, flush: i === 0 } : b)}</td></tr>`
     : `<tr><td style="padding:0 30px">${block(b)}</td></tr>`).join("\n");
 
   const html = `<!doctype html>

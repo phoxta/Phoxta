@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Card, Chip } from "@/components/dash/Ui";
+import { Card } from "@/components/dash/Ui";
 import { toast, toastError } from "@/lib/ops/feedback";
 import { renderBrochure, type Block } from "@email";
 import {
@@ -370,6 +370,15 @@ export function EmailComposer({
             setPicking(false);
             setDraft((d) => ({ ...d, blocks: [...d.blocks, img] }));
             setSel([draft.blocks.length]);
+          }}
+          onConverted={(blocks, lost) => {
+            setPicking(false);
+            setDraft((d) => ({ ...d, blocks: [...d.blocks, ...blocks] }));
+            setSel([draft.blocks.length]);
+            // What a conversion drops has to be said out loud. A silent loss is
+            // the entire problem with importing a design into a different
+            // medium and calling it done.
+            if (lost.length) toast("Brought in as words. " + lost.join(" "));
           }}
         />
       )}

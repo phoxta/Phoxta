@@ -160,6 +160,51 @@ for (const [type, spec] of Object.entries(m.SPECS)) {
   ok("slices: a single band is just the picture", single.includes("https://x/one.png"));
 }
 
+// ── 8: every shipped design converts to blocks the renderer accepts ────────
+{
+  const all = m.convertTemplates();
+  ok("convert: every template produced blocks", all.every((r) => r.blocks.length > 0),
+     all.filter((r) => !r.blocks.length).map((r) => r.id).join(", "));
+
+  for (const r of all) {
+    let html = "";
+    try {
+      html = m.renderBrochure({ subject: "s", preheader: "p", strap: "x", blocks: r.blocks }).html;
+    } catch (e) {
+      ok(`convert ${r.id}: renders`, false, String(e));
+      continue;
+    }
+    ok(`convert ${r.id}: renders`, html.length > 0);
+    // The point of converting rather than rasterising is that the words are
+    // words. If the copy is not in the html, the conversion did nothing.
+    ok(`convert ${r.id}: the copy is in the html`, html.includes("Copy for"));
+    // And it must survive images being off, which a picture does not.
+    ok(`convert ${r.id}: survives images off`, html.replace(/<img[^>]*>/g, "").includes("Copy for"));
+  }
+
+  // No shipped template has a chip layer yet — the Figma pack has not been
+  // re-imported — so the button, list, quote and dark-ground mappings are
+  // checked against a hand-made design instead of asserting that one of the
+  // eighteen happens to contain them.
+  const hand = m.convertHandMade();
+  const flat = hand.blocks.flatMap((b) => (b.type === "band" ? b.blocks : [b]));
+  ok("convert: a dark ground becomes a dark section", hand.blocks[0]?.type === "band");
+  const btn = flat.find((b) => b.type === "button");
+  ok("convert: a chip becomes a real button", Boolean(btn));
+  ok("convert: the button carries the link", btn?.href === "https://example.com/go");
+  const list = flat.find((b) => b.type === "list");
+  ok("convert: the point slots become one list", list?.items?.length === 2);
+  ok("convert: a quote slot becomes a quote", flat.some((b) => b.type === "quote"));
+  ok("convert: the title becomes a heading", flat.some((b) => b.type === "section" && b.title === "A headline"));
+  ok("convert: rotation is called out as lost", hand.lost.some((l) => /[Rr]otat/.test(l)));
+  const handHtml = m.renderBrochure({ subject: "s", preheader: "p", strap: "x", blocks: hand.blocks }).html;
+  ok("convert: the button is an anchor, not an image",
+     handHtml.includes(">Press me<") && handHtml.includes('href="https://example.com/go"'));
+
+  // Nothing may be dropped quietly.
+  ok("convert: losses are reported", all.every((r) => Array.isArray(r.lost)));
+}
+
 fs.rmSync(TMP, { recursive: true, force: true });
 console.log(`\nemail: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

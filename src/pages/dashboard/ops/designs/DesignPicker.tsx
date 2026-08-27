@@ -4,6 +4,7 @@ import { slidesOf } from "@/lib/designs/types";
 import { listDesigns, type Design } from "@/lib/db/designs";
 import { toastError } from "@/lib/ops/feedback";
 import type { Block } from "@email";
+import { designToBlocks } from "@/lib/designs/toEmail";
 import { rasterise } from "./rasterise";
 
 /**
@@ -23,14 +24,27 @@ import { rasterise } from "./rasterise";
  * A slide deck contributes its FIRST slide. Five slides as five stacked
  * pictures is a worse email than one picture and a sentence.
  */
-export function DesignPicker({ orgId, onClose, onPicked }: {
+export function DesignPicker({ orgId, onClose, onPicked, onConverted }: {
   orgId: string;
   onClose: () => void;
   onPicked: (block: Block) => void;
+  onConverted: (blocks: Block[], lost: string[]) => void;
 }) {
   const [rows, setRows] = useState<Design[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  /**
+   * Two honest ways in, and the difference is worth the extra click.
+   *
+   * As words: real HTML — every line editable, readable at any width, readable
+   * with images off, and the design's button becomes a button with a link.
+   * What it gives up is the design's exact typography and placement.
+   *
+   * As a picture: pixel-for-pixel what you drew, and then a flat image that
+   * says nothing when images are blocked. Right when the typography IS the
+   * message.
+   */
+  const [mode, setMode] = useState<"blocks" | "picture">("blocks");
 
   useEffect(() => {
     void (async () => {
@@ -42,6 +56,15 @@ export function DesignPicker({ orgId, onClose, onPicked }: {
   }, [orgId]);
 
   const use = async (d: Design) => {
+    if (mode === "blocks") {
+      const { blocks, lost } = designToBlocks(slidesOf(d.doc, d.template_id)[0]);
+      if (blocks.length === 0) {
+        toastError("There are no words in that design to convert — bring it in as a picture.");
+        return;
+      }
+      onConverted(blocks, lost);
+      return;
+    }
     setBusy(d.id);
     try {
       const url = await rasterise(orgId, d);
@@ -69,9 +92,16 @@ export function DesignPicker({ orgId, onClose, onPicked }: {
           <div style={{ minWidth: 0 }}>
             <h3 className="dsn-picker__t">Import a design</h3>
             <p className="dsn-note">
-              It comes in as a picture with alt text. Afterwards you can cut it into parts and give each
-              one its own link, and refresh it whenever the design changes.
+              {mode === "blocks"
+                ? "The words, the button and the pictures come across as real HTML — every line still editable, and it reads at any width and with images switched off. The design's own typefaces and exact placement do not survive: no mail client loads a webfont, and Outlook cannot position anything."
+                : "Exactly what you drew, as one picture. You can then cut it into parts, give each part its own link, and refresh it whenever the design changes. With images blocked there is nothing but the alt text."}
             </p>
+            <div className="d-flex gap-2 mt-2">
+              {([["blocks", "As words"], ["picture", "As a picture"]] as const).map(([m, label]) => (
+                <button key={m} type="button" className={`hrx-seeall${mode === m ? " opx-solid" : ""}`}
+                        onClick={() => setMode(m)}>{label}</button>
+              ))}
+            </div>
           </div>
         </header>
         {loading ? (

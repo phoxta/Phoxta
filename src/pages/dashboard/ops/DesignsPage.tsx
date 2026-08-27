@@ -26,7 +26,6 @@ import { ImageLibrary } from "./designs/ImageLibrary";
 import { ImageBackgroundAction } from "./designs/RemoveBackground";
 import { LayersPanel } from "./designs/LayersPanel";
 import { SlideStrip } from "./designs/SlideStrip";
-import { TemplatePicker } from "./designs/TemplatePicker";
 import type { LibraryImage } from "@/lib/db/designs";
 import {
   CANVAS_H, CANVAS_W, DEFAULT_PALETTE, asDeck, emptyDoc, slidesOf,
@@ -60,7 +59,6 @@ const ln = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinec
 const I_BACK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>;
 const I_DOWN = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
 const I_SPARK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>;
-const I_PLUS = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
 
 /** What the canvas does that no control on it says. Lives in the toolbar: the
  *  canvas is the artboard exactly now, so there is nowhere on it for a note to
