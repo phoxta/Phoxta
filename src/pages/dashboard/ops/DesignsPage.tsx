@@ -20,6 +20,7 @@ import {
 import { EmailIndex } from "./designs/EmailIndex";
 import { NewDesign } from "./designs/NewDesign";
 import { ScheduleDialog } from "./designs/ScheduleDialog";
+import { SocialAccounts } from "./designs/SocialAccounts";
 import { SocialQueue } from "./designs/SocialQueue";
 import { FloatingBar } from "./designs/FloatingBar";
 import { Inspector } from "./designs/Inspector";
@@ -169,6 +170,8 @@ export default function DesignsPage() {
           </div>
         )}
       </Card>
+
+      <SocialAccounts orgId={orgId} />
 
       <SocialQueue orgId={orgId} />
 

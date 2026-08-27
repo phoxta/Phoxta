@@ -62,6 +62,43 @@ async function call<T>(orgId: string, action: string, payload: Record<string, un
   }
 }
 
+/**
+ * Ask for the consent URL.
+ *
+ * Returns `needs` and `redirectUri` rather than only an error when the platform
+ * has no developer app: those are the two things whoever sets it up has to
+ * know, and burying them in a log helps nobody.
+ */
+export async function connectSocial(orgId: string, platform: SocialPlatform) {
+  try {
+    const { data, error } = await supabase.functions.invoke("social-connect", {
+      body: { action: "connect", organizationId: orgId, platform },
+    });
+    // A 400 from the function arrives as an error with the body attached; the
+    // body is where the useful part is.
+    const payload = (data ?? {}) as { url?: string; error?: string; needs?: string[]; redirectUri?: string };
+    if (payload.error) {
+      return { data: null, error: payload.error, needs: payload.needs, redirectUri: payload.redirectUri };
+    }
+    if (error) {
+      const body = await readFunctionError(error);
+      return { data: null, error: body.error ?? friendlyError(String(error)), needs: body.needs, redirectUri: body.redirectUri };
+    }
+    return { data: payload, error: null, needs: undefined, redirectUri: undefined };
+  } catch (e) {
+    return { data: null, error: friendlyError(String((e as Error)?.message ?? e)), needs: undefined, redirectUri: undefined };
+  }
+}
+
+/** supabase-js hands back a FunctionsHttpError whose body holds the reason. */
+async function readFunctionError(error: unknown): Promise<{ error?: string; needs?: string[]; redirectUri?: string }> {
+  try {
+    const res = (error as { context?: Response })?.context;
+    if (res && typeof res.json === "function") return await res.json();
+  } catch { /* the body was not json; the generic message stands */ }
+  return {};
+}
+
 export const listSocialAccounts = (orgId: string) =>
   call<{ accounts: SocialAccount[]; limits: Limits }>(orgId, "accounts");
 

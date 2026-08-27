@@ -271,6 +271,14 @@ verify_jwt = true
 # reach it through supabase-js, which sends the anon key — that satisfies the
 # gateway, so `true` costs nothing and blocks keyless spam.
 # The cron leg carries no user JWT; the shared secret is the gate.
+[functions.social-connect]
+verify_jwt = true
+
+# The platforms redirect a browser here, and a browser mid-OAuth carries no
+# Supabase JWT. The signed state is what authorises the write.
+[functions.social-callback]
+verify_jwt = false
+
 [functions.social-publish]
 verify_jwt = false
 
