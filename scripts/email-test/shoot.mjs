@@ -76,6 +76,68 @@ const seen = await pg.evaluate(() => ({
 }));
 console.log(`  ${seen.rows} block rows · preview ${seen.hasPreview ? "mounted" : "MISSING"} · first is “${seen.firstRow}”`);
 
+// ── editing on the canvas ─────────────────────────────────────────────────
+// Click a paragraph in the PREVIEW (not the sidebar), type into it, click away,
+// and the block behind it must have changed. That is the whole feature; if the
+// caret lands in a wrapper or the frame is rewritten mid-keystroke, this fails.
+{
+  const f = await pg.$("iframe");
+  const doc = await f.contentFrame();
+  // The standfirst: a plain paragraph, deep in the article.
+  const target = await doc.$('[data-px="3"]');
+  if (!target) {
+    console.log("  CANVAS: no block marker found — editing on the canvas is not wired");
+  } else {
+    await target.click();
+    await new Promise((r) => setTimeout(r, 350));
+    const outlined = await doc.$eval('[data-px="3"]', (el) => el.style.outline);
+    const editable = await doc.$$eval('[contenteditable="true"]', (n) => n.length);
+    const before = await pg.evaluate(() => document.querySelector('.emc__row.is-on .emc__rowText')?.textContent ?? "");
+    // Type into it the way a person does.
+    const caret = await doc.$('[contenteditable="true"]');
+    if (caret) {
+      // Select the paragraph the way a person does — triple-click — rather
+      // than Ctrl+A, which in an iframe can select the whole document.
+      await caret.click({ clickCount: 3 });
+      const focus = await doc.evaluate(() => ({
+        active: document.activeElement?.tagName ?? "none",
+        editable: document.activeElement?.getAttribute?.("contenteditable") ?? "no",
+        sel: (document.getSelection?.()?.toString() ?? "").slice(0, 24),
+        design: document.designMode,
+      }));
+      console.log(`  canvas: focus=${focus.active} editable=${focus.editable} selection="${focus.sel}"`);
+      // Put the caret in explicitly. A triple-click reported an empty
+      // selection, which is what led here: the click focuses the element but
+      // leaves no range, so keystrokes have nowhere to land.
+      await doc.evaluate(() => {
+        const el = document.querySelector('[contenteditable="true"]');
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        const s = document.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+      });
+      await pg.keyboard.type("Edited straight on the canvas.");
+      const typed = await doc.$eval('[contenteditable="true"]', (el) => el.innerText);
+      console.log(`  canvas: after typing the element reads "${typed.slice(0, 40)}"`);
+      // Blur by clicking the paper margin inside the frame: outside the card,
+      // so it is not another block.
+      const fbox = await f.boundingBox();
+      await pg.mouse.click(fbox.x + 8, fbox.y + 8);
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    const toolbar = await pg.evaluate(() => {
+      const b = document.querySelector(".emq");
+      return b ? (b.querySelector(".emq__t")?.textContent ?? "?") : null;
+    });
+    console.log(`  canvas: toolbar ${toolbar ? 'over the block, reading "' + toolbar + '"' : "MISSING"}`);
+    const after = await pg.evaluate(() => document.querySelector('.emc__row.is-on .emc__rowText')?.textContent ?? "");
+    console.log(`  canvas: outline ${outlined ? "on" : "MISSING"} · ${editable} caret field(s)`);
+    console.log(`  canvas: sidebar said "${before.slice(0, 28)}…" then "${after.slice(0, 34)}…"`);
+    if (!after.startsWith("Edited straight on the canvas")) console.log("  CANVAS: the edit did NOT reach the block");
+  }
+}
+
 await pg.screenshot({ path: path.join(OUT, "composer.png") });
 // And with the add menu open, since that is the other half of the surface.
 await pg.evaluate(() => {

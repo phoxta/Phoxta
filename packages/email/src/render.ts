@@ -156,8 +156,23 @@ const on = (t: Tone) => ({
 const p = (html: string, colour: string = INK) =>
   `<p style="margin:0 0 16px;font-family:${FONT};font-size:15.5px;line-height:1.62;color:${colour}">${html}</p>`;
 
-function block(b: Block, tone: Tone = "paper"): string {
+/**
+ * When the console is previewing rather than sending, every block is wrapped in
+ * a marker carrying its path. That is the whole mechanism behind editing on the
+ * canvas: the preview can say which block was clicked, and the editor can find
+ * the element holding a given field.
+ *
+ * Never present in a sent message — `editable` is only set by the composer.
+ */
+type Edit = { path: string };
+const mark = (html: string, e?: Edit) =>
+  e ? `<div data-px="${e.path}" style="position:relative">${html}</div>` : html;
+
+function block(b: Block, tone: Tone = "paper", edit?: Edit): string {
   const c = on(tone);
+  return mark(paint(), edit);
+
+  function paint(): string {
   switch (b.type) {
     case "text":
       return p(esc(b.text), c.body);
@@ -195,7 +210,7 @@ function block(b: Block, tone: Tone = "paper"): string {
     case "video":
     case "plans":
     case "chips":
-      return brochure(b, tone);
+      return brochure(b, tone, edit);
     case "lead":
     case "subhead":
     case "list":
@@ -213,6 +228,7 @@ function block(b: Block, tone: Tone = "paper"): string {
         <tr><td bgcolor="${tone === "ink" ? PAPER : INK}" style="border-radius:50px">
           <a href="${esc(b.href)}" style="display:inline-block;padding:15px 30px;font-family:${FONT};font-size:15px;font-weight:600;line-height:1;color:${tone === "ink" ? INK : PAPER};text-decoration:none;border-radius:50px">${esc(b.label)}</a>
         </td></tr></table>`;
+  }
   }
 }
 
@@ -264,6 +280,7 @@ function graphic(b: Extract<Block, { type: "hero" | "panel" | "steps" }>): strin
 function brochure(
   b: Extract<Block, { type: "section" | "grid" | "cover" | "band" | "chart" | "video" | "plans" | "chips" }>,
   tone: Tone,
+  edit?: Edit,
 ): string {
   const c = on(tone);
   switch (b.type) {
@@ -329,7 +346,7 @@ function brochure(
       // inside carry it, so the colour runs edge to edge.
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:${b.flush ? "0" : "34px"} 0 0">
         <tr><td bgcolor="${INK}" style="padding:${b.flush ? "26px" : "6px"} 30px 30px">
-          ${b.blocks.map((x) => block(x, "ink")).join("\n")}
+          ${b.blocks.map((x, j) => block(x, "ink", edit ? { path: `${edit.path}.${j}` } : undefined)).join("\n")}
         </td></tr></table>`;
 
     case "chart": {
@@ -488,6 +505,9 @@ export function renderEmail(o: EmailOpts): { html: string; text: string } {
  * everything else. One vocabulary, two voices.
  */
 export type PageOpts = {
+  /** Set by the console only. Wraps each block in a marker so the preview can
+   *  be clicked into and edited in place. Never set when sending. */
+  editable?: boolean;
   preheader: string;
   subject: string;
   /** The tracked line opposite the wordmark in the masthead. */
@@ -500,9 +520,10 @@ export function renderBrochure(o: PageOpts): { html: string; text: string } {
   // Blocks between bands sit on the white page and need side padding; a band
   // paints edge to edge and carries its own. So the page is assembled as a run
   // of rows rather than one padded cell.
+  const ed = (i: number) => (o.editable ? { path: String(i) } : undefined);
   const rows = o.blocks.map((b, i) => (b.type === "cover" || b.type === "band")
-    ? `<tr><td style="padding:0">${block(b.type === "band" ? { ...b, flush: i === 0 } : b)}</td></tr>`
-    : `<tr><td style="padding:0 30px">${block(b)}</td></tr>`).join("\n");
+    ? `<tr><td style="padding:0">${block(b.type === "band" ? { ...b, flush: i === 0 } : b, "paper", ed(i))}</td></tr>`
+    : `<tr><td style="padding:0 30px">${block(b, "paper", ed(i))}</td></tr>`).join("\n");
 
   const html = `<!doctype html>
 <html lang="en"><head>

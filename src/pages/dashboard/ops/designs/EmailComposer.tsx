@@ -10,6 +10,7 @@ import {
 } from "@/lib/db/emailStudio";
 import { DesignPicker } from "./DesignPicker";
 import { DesignLinks } from "./DesignLinks";
+import { EmailCanvas } from "./EmailCanvas";
 
 /**
  * The email composer.
@@ -73,6 +74,7 @@ export function EmailComposer({
   const rendered = useMemo(() => {
     try {
       return renderBrochure({
+        editable: true,
         subject: draft.subject || draft.name || "Phoxta",
         preheader: draft.preheader,
         strap: draft.strap || "Phoxta",
@@ -352,8 +354,21 @@ export function EmailComposer({
             <pre className="emc__text">{rendered.text}</pre>
           ) : (
             <div className="emc__stage">
-              <iframe title="Preview" srcDoc={rendered.html} sandbox=""
-                      style={{ width: width === "phone" ? 390 : 720, height: "100%" }} />
+              <EmailCanvas
+                html={rendered.html}
+                width={width === "phone" ? 390 : 720}
+                selected={sel}
+                blockAt={(p) => getAt(draft.blocks, p)}
+                // Re-selecting what is already selected must not produce a new
+                // array: it would re-run the canvas effect and blur the caret.
+                onSelect={(p) => setSel((cur) => (samePath(cur, p) ? cur : p))}
+                onEdit={(p, key, value) => {
+                  const b = getAt(draft.blocks, p);
+                  if (b) update(p, writeField(b, key, value));
+                }}
+                onMove={nudge}
+                onDelete={remove}
+              />
             </div>
           )}
         </div>
