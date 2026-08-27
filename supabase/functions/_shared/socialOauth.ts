@@ -59,7 +59,11 @@ export const SPECS: Record<Platform, Spec> = {
   tiktok: {
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    scopes: "user.info.basic,video.publish,video.upload",
+    // video.upload is for putting content into the user's DRAFTS, which this
+    // never does — it direct-posts. Asking for a scope the app has not been
+    // granted makes TikTok refuse the whole authorize call, and a scope you
+    // cannot justify is also something app review bounces you for.
+    scopes: "user.info.basic,video.publish",
     clientId: () => env("TIKTOK_CLIENT_KEY"),
     clientSecret: () => env("TIKTOK_CLIENT_SECRET"),
     // TikTok is the odd one: it calls the id client_key, not client_id.
