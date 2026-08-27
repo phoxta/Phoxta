@@ -4,6 +4,7 @@ import { getTemplate, layersOf } from "./templates";
 import { boundsOf, hitTest, snapMove, type Gap, type Guide, type Viewport } from "./snap";
 import { fontStack, heightOf, layoutText, measure, type Line } from "./layout";
 import { plain } from "./rich";
+import { STROKE_ONLY, geometryOf } from "./shapes";
 import {
   CANVAS_H, CANVAS_W, paint, resolvePalette,
   type ChipLayer, type Copy, type DesignDoc, type Layer, type Palette, type TextLayer,
@@ -895,22 +896,36 @@ function LayerView({ l, doc, content, palette, asset, editable, uid, onPointerDo
 
   const body = (() => {
     switch (l.type) {
-      case "rect":
-        return (
-          <rect
-            /* Marked as the design's own, because the exporter strips dashed
-               outlines — that rule exists to kill the empty-photo-slot
-               placeholder, and without a mark it would also kill a dashed
-               border somebody chose on purpose. See export.ts. */
-            data-design="shape"
-            x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0}
-            fill={paint(l.fill, palette)}
-            fillOpacity={l.opacity ?? 1}
-            stroke={l.strokeColor ? paint(l.strokeColor, palette) : undefined}
-            strokeWidth={l.strokeWidth ?? 0}
-            strokeDasharray={l.strokeDash ? `${l.strokeDash} ${Math.max(1, Math.round(l.strokeDash * 0.67))}` : undefined}
-          />
-        );
+      case "rect": {
+        const geo = geometryOf(l, l.shape, l);
+        const stroked = STROKE_ONLY.has(l.shape ?? "rect");
+        const common = {
+          /* Marked as the design's own, because the exporter strips dashed
+             outlines — that rule exists to kill the empty-photo-slot
+             placeholder, and without a mark it would also kill a dashed
+             border somebody chose on purpose. See export.ts. */
+          "data-design": "shape",
+          // A line has no interior, so its colour has to come out of the stroke
+          // or it paints nothing at all — `fill` is the only colour the layer is
+          // guaranteed to carry, so it stands in when no stroke was chosen.
+          fill: stroked ? "none" : paint(l.fill, palette),
+          fillOpacity: stroked ? undefined : (l.opacity ?? 1),
+          stroke: l.strokeColor ? paint(l.strokeColor, palette) : stroked ? paint(l.fill, palette) : undefined,
+          strokeWidth: l.strokeWidth ?? (stroked ? 6 : 0),
+          strokeOpacity: stroked ? (l.opacity ?? 1) : undefined,
+          strokeLinecap: stroked ? ("round" as const) : undefined,
+          // Mitres on a star's points run to a spike many times the stroke width
+          // at sharp angles; rounding the joins keeps the drawn outline inside
+          // the box the handles claim it occupies.
+          strokeLinejoin: "round" as const,
+          strokeDasharray: l.strokeDash ? `${l.strokeDash} ${Math.max(1, Math.round(l.strokeDash * 0.67))}` : undefined,
+        };
+        if (geo.el === "ellipse") return <ellipse {...common} cx={geo.cx} cy={geo.cy} rx={geo.rx} ry={geo.ry} />;
+        if (geo.el === "polygon") return <polygon {...common} points={geo.points} />;
+        if (geo.el === "path") return <path {...common} d={geo.d} />;
+        if (geo.el === "line") return <line {...common} x1={geo.x1} y1={geo.y1} x2={geo.x2} y2={geo.y2} />;
+        return <rect {...common} x={l.x} y={l.y} width={l.w} height={l.h} rx={geo.rx} />;
+      }
 
       case "gradient":
         return <rect x={l.x} y={l.y} width={l.w} height={l.h} rx={l.radius ?? 0} fill={`url(#${uid}-grad-${l.id})`} />;

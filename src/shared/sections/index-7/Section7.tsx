@@ -1,3 +1,7 @@
+import { onAnchorClick } from "@/shared/effects/scrollToId";
+// The "Join the school" buttons went to /contact -- a generic enquiry form on
+// another page, reached after nine sections of selling. They go to the signup
+// on this page now. (index-7 is only ever this page: /index-7 redirects here.)
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 
@@ -64,20 +68,20 @@ export default function Section7() {
                             </ul>
 
                             <div className="sec-7-home-7__cta d-inline-flex align-items-stretch at_fade_anim">
-                                <Link to="/contact" className="at-btn sec-7-home-7__cta-btn">
+                                <a href="#enroll" onClick={onAnchorClick("enroll", 80)} className="at-btn sec-7-home-7__cta-btn">
                                     <span>
-                                        <span className="text-1">Join the school</span>
-                                        <span className="text-2">Join the school</span>
+                                        <span className="text-1">Reserve my place</span>
+                                        <span className="text-2">Reserve my place</span>
                                     </span>
-                                </Link>
-                                <Link to="/contact" className="sec-7-home-7__cta-circle" aria-label="Join the school">
+                                </a>
+                                <a href="#enroll" onClick={onAnchorClick("enroll", 80)} className="sec-7-home-7__cta-circle" aria-label="Reserve my place">
                                     <img
                                         src="/assets/imgs/pages/home-7/sec-7-btn-arrow.svg"
                                         alt=""
                                         width={24}
                                         height={24}
                                         aria-hidden="true" loading="lazy" />
-                                </Link>
+                                </a>
                             </div>
                         </div>
                     </div>

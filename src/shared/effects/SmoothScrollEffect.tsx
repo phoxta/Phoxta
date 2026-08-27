@@ -75,6 +75,12 @@ export default function SmoothScrollEffect() {
           create: (opts: object) => ScrollSmootherInstance;
         };
         gsap.registerPlugin(ScrollSmoother as never);
+        // Exposed so an in-page link can ask the smoother to scroll. The
+        // browser's own anchor jump lands in the wrong place here: the page is
+        // moved by a transform on #smooth-content, so every native measurement
+        // is against geometry the reader is not looking at. See
+        // shared/effects/scrollToId.
+        (window as unknown as { ScrollSmoother?: unknown }).ScrollSmoother = ScrollSmoother;
         if (!mounted) return;
         scrollSmootherRef.current = ScrollSmoother.create({
           wrapper: smoothWrapper,

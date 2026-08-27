@@ -156,6 +156,9 @@
   grid-template-columns: minmax(0, 1fr) 272px;
   gap: 16px;
   align-items: start;
+  /* One height for the canvas and the rail, so the editor reads as a single
+     rectangle rather than a panel hanging beside a shorter box. Both read it. */
+  --dsn-stage-h: min(80vh, 920px);
 }
 
 @media (max-width: 1100px) {
@@ -185,7 +188,7 @@
 .dsn-rail {
   display: flex;
   flex-direction: column;
-  height: min(72vh, 760px);
+  height: var(--dsn-stage-h, min(80vh, 920px));
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -261,6 +264,51 @@
 }
 
 .dsn-tools__g { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+
+/* ── Shape picker ────────────────────────────────────────────────────────
+   Anchored to its own button rather than the toolbar, because the toolbar
+   wraps at narrow widths and a popover pinned to the row would detach from
+   the control that opened it. */
+.dsn-shapemenu { position: relative; display: inline-flex; }
+
+.dsn-shapemenu__pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--hrx-border);
+  border-radius: 12px;
+  background: var(--hrx-card);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.16);
+}
+
+.dsn-shapemenu__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 74px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--hrx-text);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dsn-shapemenu__item:hover,
+.dsn-shapemenu__item:focus-visible { background: var(--hrx-hover, rgb(0 0 0 / 0.05)); }
+
+/* The glyph inherits `color`, so it picks up the muted tone here and the full
+   text colour on hover without a second rule for the SVG. */
+.dsn-shapemenu__item svg { width: 26px; height: 26px; color: var(--hrx-muted); }
+.dsn-shapemenu__item:hover svg { color: var(--hrx-accent, currentColor); }
 
 /* Order and align buttons are glyphs, so they need a square-ish box or the
    arrows sit off-centre in a button sized for a word. */
@@ -347,13 +395,40 @@
    container — so it stood beside the canvas and squeezed it, and the artboard
    was handed a width it did not have. It is chrome below the picture, and the
    layout now says so. */
+/* THE GROUND HUGS THE ARTWORK.
+   The artboard is portrait and the column it sits in is wide, so a stage that
+   stretched to the column was mostly empty ground with a small design floating
+   in the middle — which reads as the design being small rather than the box
+   being wide, and wastes the height that would have made it bigger. Sizing the
+   stage from its height through the artboard's own ratio means the only space
+   left over is the breathing room `fitTo` deliberately keeps, and the artwork
+   is drawn as large as the screen allows.
+
+   `justify-self` matters: a grid item stretches by default, which would make
+   both dimensions definite and silently drop the aspect ratio. */
 .dsn-stage--canvas {
   position: relative;
   flex-direction: column;
-  height: min(72vh, 760px);
+  justify-self: center;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 1080 / 1350;
+  height: var(--dsn-stage-h, min(80vh, 920px));
   padding: 0;
   overflow: hidden;
   background: var(--hrx-card);
+}
+
+/* Below the breakpoint the rail drops under the canvas and the column is
+   narrow, so the width is the binding constraint rather than the height — let
+   the box take the width it is given and derive its height from the ratio. */
+/* Only on a phone does the width become the binding constraint — above that,
+   the height rule above already produces a box narrower than the column, so
+   overriding it there would make both dimensions definite and silently drop the
+   ratio, which is the bug this replaced. Below it the driver has to swap or the
+   `max-width` clamp does the same thing. */
+@media (max-width: 640px) {
+  .dsn-stage--canvas { width: 100%; height: auto; }
 }
 
 /* The window onto the artboard, and the only thing measured: what DesignSvg is
@@ -753,6 +828,52 @@
 }
 .dsni-seg__b:hover { color: var(--hrx-ink); }
 .dsni-seg__b.is-on { background: var(--hrx-card); color: var(--hrx-ink); box-shadow: 0 1px 2px rgb(20 25 78 / 14%); }
+
+/* ── Shape kind ───────────────────────────────────────────────────────────
+   A grid of the outlines themselves rather than a dropdown of their names: the
+   rail is 272px, nine thumbnails fit in three rows, and a shape is recognised
+   faster than the word for it. */
+.dsni-shapes {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
+}
+.dsni-shapes__b {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 34px; padding: 0;
+    border: 1px solid var(--hrx-border); border-radius: 7px;
+    background: var(--hrx-card); color: var(--hrx-muted);
+    cursor: pointer;
+}
+.dsni-shapes__b:hover { background: var(--hrx-soft); color: var(--hrx-ink); }
+.dsni-shapes__b.is-on {
+    border-color: var(--hrx-primary, var(--hrx-ink));
+    color: var(--hrx-primary, var(--hrx-ink));
+    box-shadow: inset 0 0 0 1px var(--hrx-primary, var(--hrx-ink));
+}
+
+/* The four corner fields sit under their row, indented to the same gutter the
+   row values start at so they read as belonging to it rather than as a new
+   control. */
+.dsni-corners {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 4px;
+    padding-left: 84px;
+}
+@media (max-width: 1200px) {
+    .dsni-corners { padding-left: 0; }
+}
+
+.dsni-mini {
+    flex: 0 0 auto; height: 26px; padding: 0 8px;
+    border: 1px solid var(--hrx-border); border-radius: 7px;
+    background: var(--hrx-card); color: var(--hrx-muted);
+    font-size: 11px; font-weight: 600; line-height: 1; cursor: pointer;
+}
+.dsni-mini:hover { background: var(--hrx-soft); color: var(--hrx-ink); }
+.dsni-mini.is-on { background: var(--hrx-ink); border-color: var(--hrx-ink); color: var(--hrx-card); }
 
 .dsni-icons { display: inline-flex; flex-wrap: wrap; gap: 3px; }
 .dsni-ico {

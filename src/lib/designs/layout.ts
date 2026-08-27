@@ -87,10 +87,32 @@ export function styleOf(l: TextLayer, r: TextRun): Style {
   };
 }
 
-/** The layer's own case transform, applied before anything is measured. */
-export function cased(l: TextLayer, s: string) {
+/**
+ * The layer's own case transform, applied before anything is measured.
+ *
+ * It has to happen here because the transform is CSS — `text-transform` on the
+ * rendered element — and CSS changes the glyphs AFTER we have decided where the
+ * lines break. Measure "modern kitchen worktops" and paint "Modern Kitchen
+ * Worktops" and every capital is wider than the lowercase letter it replaced,
+ * so a line the wrapper thought fit does not. Both transforms are reproduced
+ * here so the string we measure is the string that gets painted.
+ *
+ * `capitalize` follows the CSS rule rather than a title-case style guide: it
+ * uppercases the first letter of each word and leaves the rest of the word
+ * alone, so "iPhone" stays "iPhone". Word boundaries match the browser's —
+ * hyphens and punctuation start a new word ("built-in" → "Built-In") but an
+ * apostrophe does not ("don't" → "Don't", never "Don'T").
+ */
+const FIRST_LETTER = /(^|[^\p{L}\p{N}'’])(\p{L})/gu;
+
+export function cased(l: TextLayer, s: string, prev = "") {
   if (l.uppercase) return s.toUpperCase();
-  return s;
+  if (!l.capitalize) return s;
+  // Styled runs split words apart — "Find**ing**" is two of them — but CSS
+  // transforms the whole element, so a run starting mid-word must not be read
+  // as a new word or it paints "FindIng". Prefixing the character that came
+  // before lets the boundary rule see the truth; it is sliced back off after.
+  return (prev + s).replace(FIRST_LETTER, (_m, sep: string, c: string) => sep + c.toUpperCase()).slice(prev.length);
 }
 
 export function measure(text: string, s: Style, tracking: number): number {
@@ -147,9 +169,11 @@ type Token = { text: string; run: TextRun; style: Style; w: number; at: number; 
 function tokenise(l: TextLayer, runs: TextRun[]): Token[] {
   const out: Token[] = [];
   let at = 0;
+  let prev = "";
   for (const run of runs) {
     const style = styleOf(l, run);
-    const text = cased(l, run.text);
+    const text = cased(l, run.text, prev);
+    prev = run.text.slice(-1) || prev;
     let i = 0;
     // Newlines are split out before spaces. A run of " \n " is one whitespace
     // match, so splitting on \s+ alone would swallow a deliberate line break

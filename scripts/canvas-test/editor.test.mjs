@@ -79,14 +79,34 @@ await settle();
         bar ? `bar bottom ${Math.round(bar.y + bar.h)} vs layer top ${Math.round(box.y)}` : "-");
 }
 
-// ── 2. The bar carries the text controls ─────────────────────────────────
+// ── 2. The rail carries the text controls, and does not cover the layer ──
+// These used to live on the floating bar, which meant the controls sat on top
+// of the words being styled. They are in the docked rail now, so this asserts
+// two things: that every control survived the move, and that the rail is beside
+// the artwork rather than over it — the reason the move happened at all.
 {
-  const titles = await page.evaluate(() =>
-    [...document.querySelectorAll(".dsn-fb [title]")].map((b) => b.getAttribute("title")));
+  const labels = await page.evaluate(() =>
+    [...document.querySelectorAll(".dsni [title], .dsni [aria-label]")]
+      .map((b) => b.getAttribute("title") ?? b.getAttribute("aria-label")));
   const want = ["Bold", "Italic", "Underline", "Strikethrough", "Text colour", "Typeface"];
-  const missing = want.filter((w) => !titles.some((t) => t?.startsWith(w)));
-  check("rich text controls are on the bar", missing.length === 0,
-        missing.length ? `missing ${missing.join(", ")}` : titles.length + " controls");
+  const missing = want.filter((w) => !labels.some((t) => t?.startsWith(w)));
+  check("rich text controls are in the properties rail", missing.length === 0,
+        missing.length ? `missing ${missing.join(", ")}` : labels.length + " controls");
+
+  const rail = await page.evaluate(() => {
+    const el = document.querySelector(".dsni");
+    if (!el) return null;
+    const b = el.getBoundingClientRect();
+    return { x: b.x, y: b.y, w: b.width, h: b.height };
+  });
+  const tl = await toClient(text.x, text.y);
+  const br = await toClient(text.x + text.w, text.y + text.h);
+  // Horizontal separation is the whole claim: the rail is docked to one side,
+  // so it clears the layer when it starts after the layer ends or ends before
+  // it starts. A pixel of slack absorbs sub-pixel transform rounding.
+  const clear = Boolean(rail) && (rail.x >= br.x - 1 || rail.x + rail.w <= tl.x + 1);
+  check("the properties rail does not cover the selected layer", clear,
+        rail ? `rail x ${Math.round(rail.x)}–${Math.round(rail.x + rail.w)} vs layer ${Math.round(tl.x)}–${Math.round(br.x)}` : "no rail");
 }
 
 // ── 3. Double-click opens the editor in place, with the copy in it ───────
@@ -169,6 +189,13 @@ await settle(200);
 // Reordering is driven by pointer events rather than HTML5 drag-and-drop, so
 // this is an ordinary drag: press on a row, move, release.
 {
+  // The panel lives inside the properties rail, which scrolls. A row below the
+  // fold still reports a bounding rect, so measuring it looks fine while the
+  // synthetic mouse lands on whatever is actually at that point on screen —
+  // bring the list into view first and measure after it has settled.
+  await page.evaluate(() => document.querySelector(".dsn-layers")?.scrollIntoView({ block: "center" }));
+  await settle(160);
+
   const rows = () => page.evaluate(() =>
     [...document.querySelectorAll(".dsn-layers li")].map((li) => li.dataset.id));
   const before = await rows();

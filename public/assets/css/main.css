@@ -13772,6 +13772,133 @@ input.footer-15__form-input:focus {
   }
 }
 
+/* --- sec-1-home-7 on a phone -------------------------------------------
+   The hero is a two-column split on desktop: the photograph is absolutely
+   positioned across the left half and the copy sits in the right column. Below
+   992px the rules above switch the photograph back into normal flow, but they
+   never released `max-width: 50%` -- so on a phone it stayed pinned to half
+   the screen, leaving a tall empty band of background beside it and the proof
+   overlay (the avatar stack and its scrim) floating over that emptiness rather
+   than over the picture.
+
+   Three things are needed, and all three are load-bearing:
+     - the wrapper spans the screen
+     - the zoom-animation div inside it takes the wrapper's height, or the
+       image falls back to its intrinsic ratio and fills a third of the box
+     - the empty left column stops reserving space it no longer holds
+   anything in. */
+@media (max-width: 991.98px) {
+  .sec-1-home-7__img-wrap {
+    max-width: 100%;
+  }
+  /* The animation wrapper is a plain div, so `height: 100%` on the image
+     resolves against nothing and the photograph collapses. */
+  .sec-1-home-7__img-wrap > .anim-zoomin {
+    height: 100%;
+  }
+  /* Its only job was to reserve the left half of the split, which does not
+     exist at this width. */
+  .sec-1-home-7__left {
+    display: none;
+  }
+  /* A long uppercase word in a narrow column has nowhere to go; without this
+     it runs under the edge of the screen rather than wrapping. */
+  .sec-1-home-7__headline {
+    overflow-wrap: break-word;
+  }
+  /* The arrow is positioned off the headline's top-right corner and only makes
+     sense beside a wide block of type. */
+  .sec-1-home-7__headline-arrow-cover {
+    display: none !important;
+  }
+}
+@media (max-width: 574.98px) {
+  /* Shorter than the 520px the tablet rule gives it: a phone screen is mostly
+     hero otherwise, and the copy below is the part that sells. */
+  .sec-1-home-7__img-wrap {
+    height: 340px;
+  }
+}
+
+.sec-1-home-7__price {
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  opacity: 0.92;
+}
+.sec-1-home-7__price strong {
+  font-weight: 700;
+}
+@media (max-width: 574.98px) {
+  .sec-1-home-7__price { font-size: 15px; }
+}
+
+/* --- Startup School signup ---------------------------------------------
+   The offer restated beside the form, and the state that replaces the form
+   once it has been sent. A submitted form left on screen with a banner over it
+   invites a second submission and leaves the person unsure the first one
+   worked. */
+.ss-offer {
+  border-left: 3px solid currentColor;
+  padding-left: 18px;
+}
+.ss-offer__price {
+  font-family: var(--at-ff-heading);
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.ss-offer__per {
+  font-size: 18px;
+  font-weight: 400;
+  opacity: 0.75;
+  letter-spacing: 0;
+}
+.ss-offer__list li {
+  position: relative;
+  padding-left: 18px;
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+.ss-offer__list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+@media (max-width: 767.98px) {
+  .ss-offer__price { font-size: 34px; }
+  .ss-offer__per { font-size: 16px; }
+  .ss-offer { margin-bottom: 32px; }
+}
+
+.ss-done {
+  border: 1px solid currentColor;
+  border-radius: 18px;
+  padding: 28px 30px;
+}
+.ss-done__h {
+  font-family: var(--at-ff-heading);
+  font-size: 28px;
+  line-height: 1.15;
+  margin: 0 0 12px;
+}
+.ss-done__p {
+  font-size: 15px;
+  line-height: 1.6;
+  opacity: 0.85;
+  margin: 0 0 10px;
+}
+@media (max-width: 767.98px) {
+  .ss-done { padding: 22px 20px; }
+  .ss-done__h { font-size: 24px; }
+}
+
 /*----------------------------------------*/
 /*  sec-2-home-7 (We Power the World's Fastest Growing Startups)
 /*----------------------------------------*/

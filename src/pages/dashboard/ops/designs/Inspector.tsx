@@ -6,9 +6,11 @@ import { layerName } from "@/lib/designs/templates";
 import { hasMark, lengthOf, toggleMark, toRuns, type Mark } from "@/lib/designs/rich";
 import {
   CANVAS_H, CANVAS_W, DEFAULT_FONT, DESIGN_FONTS, fontNamed, paint,
-  type ChipLayer, type Copy, type DesignDoc, type GradientLayer, type ImageLayer, type Layer,
+  type ChipLayer, type Copy, type Corners, type DesignDoc, type GradientLayer, type ImageLayer, type Layer,
   type Palette, type PaintRole, type RectLayer, type Shadow, type TextLayer,
 } from "@/lib/designs/types";
+import { ROUNDABLE, SHAPE_KINDS } from "@/lib/designs/shapes";
+import { ShapeGlyph } from "./ShapeGlyph";
 import type { Cmd } from "./FloatingBar";
 
 /**
@@ -719,6 +721,53 @@ export function Inspector(p: InspectorProps) {
         </Sec>
       )}
 
+      {/* ── Shape ────────────────────────────────────────────────────────
+          The kind is changed in place rather than by deleting and re-adding,
+          so the box, colours, rotation and shadow already arranged survive the
+          change — swapping a rectangle for an ellipse should keep everything
+          about it except the outline. */}
+      {rect && (
+        <Sec title="Shape">
+          <div className="dsni-shapes" role="radiogroup" aria-label="Shape">
+            {SHAPE_KINDS.map(({ kind, label }) => (
+              <button
+                key={kind} type="button" role="radio" title={label}
+                aria-checked={(rect.shape ?? "rect") === kind}
+                aria-label={label}
+                className={`dsni-shapes__b${(rect.shape ?? "rect") === kind ? " is-on" : ""}`}
+                onClick={() => set({
+                  // "rect" is the absent value, so choosing it clears the field
+                  // rather than writing the string — that keeps a plain
+                  // rectangle byte-identical to one saved before shapes existed.
+                  shape: kind === "rect" ? undefined : kind,
+                  // A star with no points saved would paint as the default five
+                  // and then show empty spinners; give it its numbers on arrival.
+                  ...(kind === "star" && rect.points == null ? { points: 5, innerRatio: 0.42 } : {}),
+                  // A line has nothing to fill, so without a stroke it would
+                  // vanish the moment it was chosen and read as a broken button.
+                  ...(kind === "line" && !rect.strokeColor ? { strokeColor: rect.fill, strokeWidth: rect.strokeWidth || 8 } : {}),
+                } as Partial<Layer>, "shape")}
+              >
+                <ShapeGlyph kind={kind} size={22} />
+              </button>
+            ))}
+          </div>
+          {rect.shape === "star" && (
+            <>
+              <Row label="Points">
+                <Num value={rect.points ?? 5} min={3} max={20} ariaLabel="Star points"
+                     onCommit={(v) => set({ points: v } as Partial<Layer>, "points")} />
+              </Row>
+              <Row label="Depth">
+                <Slide value={Math.round((rect.innerRatio ?? 0.42) * 100)} min={10} max={90} suffix="%"
+                       ariaLabel="Star depth"
+                       onChange={(v, rec) => setAt({ innerRatio: v / 100 } as Partial<Layer>, rec)} />
+              </Row>
+            </>
+          )}
+        </Sec>
+      )}
+
       {/* ── Fill and stroke ──────────────────────────────────────────── */}
       {rect && (
         <Sec title="Fill &amp; stroke">
@@ -755,11 +804,57 @@ export function Inspector(p: InspectorProps) {
                    onCommit={(v) => set({ strokeDash: v } as Partial<Layer>, "dashLen")} />
             </Row>
           )}
-          <Row label="Corner">
-            <Num value={Math.round(rect.radius ?? 0)} min={0} max={Math.round(Math.min(rect.w, rect.h) / 2)}
-                 suffix="px" ariaLabel="Corner radius"
-                 onCommit={(v) => set({ radius: v } as Partial<Layer>, "radius")} />
-          </Row>
+          {/* Corners belong to rectangles. A rounded pentagon is a different
+              shape rather than a softer one, so the control is hidden instead
+              of shown doing nothing. */}
+          {ROUNDABLE.has(rect.shape ?? "rect") && (() => {
+            const cap = Math.round(Math.min(rect.w, rect.h) / 2);
+            const uneven = rect.radii != null;
+            const four: Corners = rect.radii ?? [rect.radius ?? 0, rect.radius ?? 0, rect.radius ?? 0, rect.radius ?? 0];
+            const setCorner = (i: number, v: number) => {
+              const next = [...four] as Corners;
+              next[i] = v;
+              set({ radii: next } as Partial<Layer>, `corner${i}`);
+            };
+            return (
+              <>
+                <Row label="Corner">
+                  <Num
+                    value={Math.round(uneven ? Math.max(...four) : (rect.radius ?? 0))} min={0} max={cap}
+                    suffix="px" ariaLabel="Corner radius" disabled={uneven}
+                    title={uneven ? "Corners are set individually" : undefined}
+                    onCommit={(v) => set({ radius: v } as Partial<Layer>, "radius")}
+                  />
+                  <button
+                    type="button"
+                    className={`dsni-mini${uneven ? " is-on" : ""}`}
+                    title={uneven ? "Use one radius for all four corners" : "Set each corner separately"}
+                    aria-pressed={uneven}
+                    // Switching back collapses to the largest of the four rather
+                    // than to whatever `radius` held before — that number is
+                    // stale by then, and restoring it would silently undo the
+                    // corner work the user just did.
+                    onClick={() => set(
+                      uneven
+                        ? { radii: undefined, radius: Math.round(Math.max(...four)) } as Partial<Layer>
+                        : { radii: four } as Partial<Layer>,
+                      "cornerMode",
+                    )}
+                  >{uneven ? "One" : "Each"}</button>
+                </Row>
+                {uneven && (
+                  <div className="dsni-corners">
+                    {(["Top left", "Top right", "Bottom right", "Bottom left"] as const).map((label, i) => (
+                      <Num
+                        key={label} value={Math.round(four[i])} min={0} max={cap} suffix="px" ariaLabel={label}
+                        title={label} onCommit={(v) => setCorner(i, v)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </Sec>
       )}
 

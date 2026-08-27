@@ -111,6 +111,21 @@ function readName(file: string): { source: Asset["source"]; name: string } {
 let bucketReady = false;
 async function ensureBucket(admin: Json) {
   if (bucketReady) return;
+  // PUBLIC, deliberately, and the editor says so where people upload.
+  //
+  // A design references its pictures by URL and is re-opened, re-exported and
+  // re-rendered for months; a signed URL expires, so every design older than
+  // the expiry would reopen with its photographs missing. Re-signing on load
+  // does not fix it either — the exporter inlines what the SVG points at, and a
+  // URL that dies is a design that cannot be reproduced.
+  //
+  // What that costs is understood: anyone holding the URL can fetch the file
+  // without signing in. Nothing is guessable — paths are prefixed by the
+  // organisation's UUID and a random token — but a leaked link stays good, so
+  // this bucket is for artwork, not for documents. LISTING is still gated:
+  // every action below checks the caller's membership of the org, so one
+  // business cannot enumerate another's library.
+  //
   // Idempotent: createBucket throws (or errors) when it already exists, which
   // is the normal case on every request after the first in a cold instance.
   try { await admin.storage.createBucket(BUCKET, { public: true }); } catch (_) { /* already exists */ }

@@ -330,6 +330,16 @@ export function ImageLibrary({ orgId, hint, onPick, onClose }: {
                 PNG, JPEG, WebP, GIF or AVIF, up to 10MB each. They are stored in this business's
                 library, so the same logo never has to be uploaded twice.
               </p>
+              {/* Said here rather than buried in settings: the file gets a
+                  permanent link so designs that use it keep working for as long
+                  as they exist, and the honest consequence is that the link
+                  works for anyone who has it. Only this business can see the
+                  library itself. */}
+              <p className="dsn-note">
+                Only this business can browse the library. Each picture does get its own permanent
+                link, so a design never loses its artwork — treat this as a place for images you are
+                happy to publish, not for private documents.
+              </p>
             </div>
             {progress && (
               <p className="dsn-as__progress" role="status">

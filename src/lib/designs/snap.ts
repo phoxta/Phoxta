@@ -213,7 +213,16 @@ export const MAX_ZOOM = 8;
 export const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 /** Fit the whole artboard into a viewport of this pixel size, with a margin. */
-export function fitTo(width: number, height: number, margin = 32): Viewport {
+/**
+ * Fit the artboard into the stage.
+ *
+ * The margin is breathing room the artwork is deliberately NOT drawn into: the
+ * resize handles sit on the artboard's own edge, so with none of it the corner
+ * handles would be half off the stage and unusable. 20px is enough for that at
+ * every zoom, and no more — the stage now takes the artboard's own proportions,
+ * so anything left over reads as the design being small rather than as space.
+ */
+export function fitTo(width: number, height: number, margin = 20): Viewport {
   const zoom = clampZoom(Math.min((width - margin * 2) / CANVAS_W, (height - margin * 2) / CANVAS_H));
   return centred(zoom, width, height);
 }

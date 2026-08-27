@@ -1,5 +1,6 @@
-import { CANVAS_H, CANVAS_W, type DesignDoc, type ImageSlot, type Layer, type TextSlot } from "./types";
+import { CANVAS_H, CANVAS_W, type DesignDoc, type ImageSlot, type Layer, type ShapeKind, type TextSlot } from "./types";
 import { layersOf } from "./templates";
+import { SHAPE_KINDS } from "./shapes";
 
 /**
  * Document edits.
@@ -142,9 +143,25 @@ export function addText(doc: DesignDoc, slot?: TextSlot): { doc: DesignDoc; id: 
   return { doc: { ...next, content: { ...next.content, [chosen]: next.content[chosen] ?? "New text" } }, id };
 }
 
-export function addRect(doc: DesignDoc): { doc: DesignDoc; id: string } {
+export function addRect(doc: DesignDoc, kind: ShapeKind = "rect"): { doc: DesignDoc; id: string } {
   const id = freshId("rect");
-  const layer: Layer = { id, name: "Rectangle", type: "rect", ...centred(420, 300), fill: "accent", radius: 24 };
+  const label = SHAPE_KINDS.find((s) => s.kind === kind)?.label ?? "Shape";
+  // A line and an arrow are read along their length, so they arrive wide and
+  // short; a star or a polygon reads as itself only in a roughly square box, and
+  // arriving stretched would look like a mistake the user then has to correct.
+  const box = kind === "line" || kind === "arrow" ? centred(460, 120)
+    : kind === "rect" ? centred(420, 300)
+    : centred(360, 360);
+  const layer: Layer = {
+    id, name: label, type: "rect", ...box, fill: "accent",
+    ...(kind === "rect" ? { radius: 24 } : { shape: kind }),
+    // Stars need their two defining numbers present from the start: the
+    // inspector edits what the layer carries, and spinners bound to an absent
+    // value read as empty until they are touched.
+    ...(kind === "star" ? { points: 5, innerRatio: 0.42 } : {}),
+    // A line has no fill to see, so it needs a stroke to exist at all.
+    ...(kind === "line" ? { strokeColor: "accent" as const, strokeWidth: 8 } : {}),
+  };
   return { doc: withLayers(doc, [...layersOf(materialise(doc)), layer]), id };
 }
 

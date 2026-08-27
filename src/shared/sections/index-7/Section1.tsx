@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { onAnchorClick } from "@/shared/effects/scrollToId";
+import { STARTUP_SCHOOL } from "@/lib/db/platformLead";
 {/* Home 7 Section 1 (Hero - Advancing Startup Innovation) */}
 
 const BRACKET_ITEMS = [
@@ -127,13 +128,23 @@ export default function Section1() {
                             </p>
 
                             {/* Primary CTA + icon bubble */}
+                            {/* The price belongs beside the ask. A CTA that
+                                hides what it costs until nine sections later
+                                gets clicked by people who then leave. */}
+                            <p className="sec-1-home-7__price text-white mb-20 at_fade_anim" data-start="100%" data-delay="0.55">
+                                <strong>{STARTUP_SCHOOL.price}</strong> for {STARTUP_SCHOOL.duration} &middot; next cohort forming now
+                            </p>
+
+                            {/* Goes to the signup on this page rather than to
+                                the generic contact form — the page has already
+                                done the selling by the time anyone presses it. */}
                             <div className="sec-1-home-7__cta d-flex align-items-center flex-wrap gap-2 mb-10">
-                                <Link to="/contact" className="sec-1-home-7__cta-btn at_fade_anim" data-start="100%" data-delay="0.3">
-                                    <span>Join the school</span>
-                                </Link>
-                                <Link to="/contact" className="sec-1-home-7__cta-arrow" aria-label="Join the school">
+                                <a href="#enroll" onClick={onAnchorClick("enroll", 80)} className="sec-1-home-7__cta-btn at_fade_anim" data-start="100%" data-delay="0.3">
+                                    <span>Reserve my place</span>
+                                </a>
+                                <a href="#enroll" onClick={onAnchorClick("enroll", 80)} className="sec-1-home-7__cta-arrow" aria-label="Reserve my place">
                                     {CTA_ARROW_SVG}
-                                </Link>
+                                </a>
                             </div>
 
                         </div>

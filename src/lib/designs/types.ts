@@ -165,11 +165,48 @@ type Base = {
   shadow?: Shadow;
 };
 
-/** A flat fill — backgrounds and solid cards. */
+/**
+ * What geometry a shape layer paints.
+ *
+ * Absent means "rect", which is what every design saved before this existed
+ * is — so the whole set is additive and nothing had to be migrated. They all
+ * share one layer type rather than becoming six of them because they are the
+ * same object to everything that is not the painter: the same box, fill,
+ * stroke, shadow, rotation and inspector, differing only in the outline drawn
+ * inside the box. Splitting them would have duplicated that surface six ways.
+ */
+export type ShapeKind =
+  | "rect" | "ellipse" | "triangle" | "diamond"
+  | "pentagon" | "hexagon" | "star" | "line" | "arrow";
+
+/** Corner radii clockwise from the top-left, when they differ from each other. */
+export type Corners = [number, number, number, number];
+
+/** A flat fill — backgrounds, solid cards, and every drawn shape. */
 export type RectLayer = Base & {
   type: "rect";
   fill: PaintRole;
+  /** Which outline to paint. Absent is a rectangle. */
+  shape?: ShapeKind;
+  /**
+   * Points on a star, or sides on a polygon drawn as one.
+   *
+   * Only `star` reads it. Clamped by the painter rather than trusted, because
+   * a spinner is one keystroke away from a value that paints nothing.
+   */
+  points?: number;
+  /** How deep a star's valleys cut, 0–1 of the outer radius. */
+  innerRatio?: number;
   radius?: number;
+  /**
+   * Per-corner radii, when the four differ. Takes precedence over `radius`,
+   * which stays the one-number control most designs only ever need — and stays
+   * the thing every existing document carries.
+   *
+   * Rectangles only. A rounded pentagon is a different shape, not a rounder
+   * one, and offering the control on shapes that ignore it would read as a bug.
+   */
+  radii?: Corners;
   opacity?: number;
   /** The outlined pills carry their shape in a stroke rather than a fill. */
   strokeColor?: PaintRole;

@@ -28,6 +28,8 @@ import {
   CANVAS_H, CANVAS_W, DEFAULT_PALETTE, asDeck, emptyDoc, slidesOf,
   type Deck, type DesignDoc, type ImageSlot, type TextSlot,
 } from "@/lib/designs/types";
+import { SHAPE_KINDS } from "@/lib/designs/shapes";
+import { ShapeGlyph } from "./designs/ShapeGlyph";
 import "./designs.css";
 
 /**
@@ -241,6 +243,21 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
    *  quick bar and the Inspector — so an uploaded picture is always stored in
    *  the business's library rather than inlined into this one design. */
   const [picking, setPicking] = useState<ImageSlot | null>(null);
+  /** Whether the shape picker is open. */
+  const [shapeMenu, setShapeMenu] = useState(false);
+  // Dismissed by anything that is not a shape in it. Bound on pointerdown
+  // rather than click so it closes on the same gesture that starts a drag on
+  // the canvas, instead of staying open over the shape being dragged.
+  useEffect(() => {
+    if (!shapeMenu) return;
+    const away = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement | null)?.closest?.(".dsn-shapemenu")) setShapeMenu(false);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setShapeMenu(false); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [shapeMenu]);
   const stage = useRef<HTMLDivElement>(null);
   // The undo stack holds whole DECKS, not slides. Storing a slide would let
   // an undo restore one slide's old content into whichever slide happened to
@@ -687,7 +704,32 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
             apply(r.doc);
             setSel([r.id]);
           }}>+ Text</button>
-          <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => apply((d) => { const r = addRect(d); setSel([r.id]); return r.doc; })}>+ Shape</button>
+          {/* Nine shapes behind one button rather than nine buttons: the tools
+              row is already the widest thing on the page, and a shape is chosen
+              once and then edited for the rest of the session. */}
+          <span className="dsn-shapemenu">
+            <button
+              type="button" className="dsn-btn dsn-btn--sm"
+              aria-haspopup="menu" aria-expanded={shapeMenu}
+              onClick={() => setShapeMenu((v) => !v)}
+            >+ Shape</button>
+            {shapeMenu && (
+              <div className="dsn-shapemenu__pop" role="menu">
+                {SHAPE_KINDS.map(({ kind, label }) => (
+                  <button
+                    key={kind} type="button" role="menuitem" className="dsn-shapemenu__item" title={label}
+                    onClick={() => {
+                      setShapeMenu(false);
+                      apply((d) => { const r = addRect(d, kind); setSel([r.id]); return r.doc; });
+                    }}
+                  >
+                    <ShapeGlyph kind={kind} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </span>
           {/* Adding a photo frame opens the library straight away: an empty
               frame that has to be double-clicked is a second step nobody
               guesses, and routing it here is what keeps every picture in the

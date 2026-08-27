@@ -13,6 +13,7 @@ import { fitTo, type Viewport } from "@/lib/designs/snap";
 import { FloatingBar } from "@/pages/dashboard/ops/designs/FloatingBar";
 import { CanvasText } from "@/pages/dashboard/ops/designs/CanvasText";
 import { LayersPanel } from "@/pages/dashboard/ops/designs/LayersPanel";
+import { Inspector } from "@/pages/dashboard/ops/designs/Inspector";
 
 declare global {
   interface Window { rig: Record<string, unknown> }
@@ -56,6 +57,22 @@ function Rig() {
     setDoc((d) => (one ? updateLayer(d, one.id, p) : d));
   }, [one]);
 
+  /** One command handler, shared by the bar and the rail exactly as the page
+   *  shares it — two copies would let the two surfaces drift apart. */
+  const command = useCallback((c: "delete" | "duplicate" | "lock" | "front" | "back") => {
+    if (!sel.length) return;
+    if (c === "delete") { setDoc((d) => removeMany(d, sel)); setSel([]); return; }
+    if (c === "duplicate") {
+      const made: string[] = [];
+      setDoc((d) => sel.reduce((acc, id) => { const r = duplicateLayer(acc, id); made.push(r.id); return r.doc; }, d));
+      setSel(made);
+      return;
+    }
+    if (c === "lock") { setDoc((d) => sel.reduce((acc, id) => toggle(acc, id, "locked"), d)); return; }
+    const move = c === "front" ? bringToFront : sendToBack;
+    setDoc((d) => sel.reduce((acc, id) => move(acc, id), d));
+  }, [sel]);
+
   const openLayer = (id: string) => {
     const l = layers.find((x) => x.id === id);
     trail.current.push(`open ${id} ${l?.type ?? "?"}${l?.locked ? " LOCKED" : ""}`);
@@ -91,19 +108,7 @@ function Rig() {
           stage={{ width: W, height: H }} editing={false}
           onPatch={patch}
           onContent={(next) => one?.type === "text" && setDoc((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }))}
-          onCommand={(c) => {
-            if (!sel.length) return;
-            if (c === "delete") { setDoc((d) => removeMany(d, sel)); setSel([]); return; }
-            if (c === "duplicate") {
-              const made: string[] = [];
-              setDoc((d) => sel.reduce((acc, id) => { const r = duplicateLayer(acc, id); made.push(r.id); return r.doc; }, d));
-              setSel(made);
-              return;
-            }
-            if (c === "lock") { setDoc((d) => sel.reduce((acc, id) => toggle(acc, id, "locked"), d)); return; }
-            const move = c === "front" ? bringToFront : sendToBack;
-            setDoc((d) => sel.reduce((acc, id) => move(acc, id), d));
-          }}
+          onCommand={command}
           onEditText={() => one && setEditing(one.id)}
           onPickImage={() => setPicked((n) => n + 1)}
         />
@@ -118,16 +123,36 @@ function Rig() {
       )}
     </div>
 
-    {/* The real layers panel, so the drag-to-reorder test drives the shipped
-        component rather than a copy of it. */}
-    <aside style={{ width: 260, padding: 10 }}>
-      <LayersPanel
+    {/* The real properties rail, holding the real layers panel — the same
+        nesting DesignsPage uses. Mounted here so the tests assert against the
+        shipped components rather than copies of them: that every text control
+        survived the move off the floating bar, and that the rail is beside the
+        artwork rather than over it, which is the reason it was docked. */}
+    <aside style={{ width: 272, flex: "0 0 auto", height: H, overflow: "auto" }}>
+      <Inspector
+        doc={doc}
         layers={layers}
         sel={sel}
-        onSelect={(id, add) => setSel((s) => (add ? [...new Set([...s, id])] : [id]))}
-        onReorder={(id, to) => { trail.current.push(`reorder ${id} -> ${to}`); setDoc((d) => reorder(d, id, to)); }}
-        onToggle={(id, key) => setDoc((d) => toggle(d, id, key))}
-        onRename={(id, name) => setDoc((d) => renameLayer(d, id, name))}
+        content={content}
+        palette={palette}
+        templateName={template?.name ?? "Test"}
+        slideCount={1}
+        onEdit={(next) => setDoc((d) => next(d))}
+        onContent={(next) => one?.type === "text" && setDoc((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }))}
+        onSelect={(id, add) => setSel((s) => (!id ? [] : add ? [...new Set([...s, id])] : [id]))}
+        onCommand={command}
+        onEditText={() => one && setEditing(one.id)}
+        onPickImage={() => setPicked((n) => n + 1)}
+        layersSlot={
+          <LayersPanel
+            layers={layers}
+            sel={sel}
+            onSelect={(id, add) => setSel((s) => (add ? [...new Set([...s, id])] : [id]))}
+            onReorder={(id, to) => { trail.current.push(`reorder ${id} -> ${to}`); setDoc((d) => reorder(d, id, to)); }}
+            onToggle={(id, key) => setDoc((d) => toggle(d, id, key))}
+            onRename={(id, name) => setDoc((d) => renameLayer(d, id, name))}
+          />
+        }
       />
     </aside>
     </div>
