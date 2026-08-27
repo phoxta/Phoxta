@@ -18,13 +18,32 @@ const env = (k: string) => Deno.env.get(k);
  *  than trusting each of the five call sites to have done it. */
 const dialable = (to: string) => toE164(to, env("DEFAULT_COUNTRY_CODE"));
 
+/**
+ * Where a reply should go.
+ *
+ * Mail is sent from RESEND_FROM, which is on the subdomain Resend is verified
+ * against -- and that subdomain has no MX, no A and no CNAME. So a reply to the
+ * From address has nowhere to go and hard-bounces: the receiving side looks for
+ * an MX, finds none, falls back to the implicit MX (the A record), and finds
+ * none of those either.
+ *
+ * Every outbound email therefore carries a Reply-To that reaches a real
+ * mailbox. Defaulted here rather than left to each call site, because nine of
+ * the ten places that send mail had no Reply-To at all and there is no reason
+ * to expect the eleventh to remember.
+ *
+ * An explicit replyTo always wins -- the lead notification deliberately points
+ * replies at the person who filled the form.
+ */
+const replyAddress = () => env("RESEND_REPLY_TO") || "hello@phoxta.com";
+
 async function dispatchEmail(to: string, subject: string, message: string): Promise<DispatchResult> {
   if (env("RESEND_API_KEY") && env("RESEND_FROM")) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: env("RESEND_FROM"), to, subject, html: `<p>${message}</p>` }),
+        body: JSON.stringify({ from: env("RESEND_FROM"), to, subject, html: `<p>${message}</p>`, reply_to: replyAddress() }),
       });
       return { status: res.ok ? "sent" : "failed", provider: "resend" };
     } catch {
@@ -116,7 +135,7 @@ export async function sendEmail(opts: {
   if (opts.text) body.text = opts.text;
   if (opts.cc?.length) body.cc = opts.cc;
   if (opts.bcc?.length) body.bcc = opts.bcc;
-  if (opts.replyTo) body.reply_to = opts.replyTo;
+  body.reply_to = opts.replyTo || replyAddress();
   if (opts.attachments?.length) body.attachments = opts.attachments;
   if (opts.headers && Object.keys(opts.headers).length) body.headers = opts.headers;
   try {
