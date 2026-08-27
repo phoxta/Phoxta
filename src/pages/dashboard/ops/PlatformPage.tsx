@@ -957,6 +957,11 @@ export default function OpsPlatformPage() {
                         {live && (
                           <button type="button" className="hrx-seeall opx-btn" onClick={() => setShare({ slug, title })}>Share</button>
                         )}
+                        {p && live && (
+                          <Link className="hrx-seeall opx-btn" to={`/dashboard/ops/designs?email=post&slug=${slug}`}>
+                            Send as email
+                          </Link>
+                        )}
                         {live && (
                           <a className="hrx-seeall opx-btn" href={postUrl(slug)} target="_blank" rel="noreferrer">View</a>
                         )}

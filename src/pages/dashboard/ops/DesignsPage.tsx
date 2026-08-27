@@ -17,6 +17,8 @@ import {
 import {
   CANVAS_BLEED, canvasBox, clampView, clampZoom, fitCanvas, fitZoomFor, zoomAt, type Viewport,
 } from "@/lib/designs/snap";
+import { EmailIndex } from "./designs/EmailIndex";
+import { NewDesign } from "./designs/NewDesign";
 import { FloatingBar } from "./designs/FloatingBar";
 import { Inspector } from "./designs/Inspector";
 import { CanvasText } from "./designs/CanvasText";
@@ -72,6 +74,11 @@ export default function DesignsPage() {
   const [rows, setRows] = useState<Design[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<Design | null>(null);
+  // Two things are made in this studio: pictures and email. They share the
+  // library, the asset store and the person doing the work, and they do not
+  // share a canvas — see the note at the top of EmailComposer for why an SVG
+  // artboard cannot be one.
+  const [mode, setMode] = useState<"graphics" | "email">("graphics");
 
   const load = useCallback(async () => {
     const { data, error } = await listDesigns(orgId);
@@ -96,10 +103,23 @@ export default function DesignsPage() {
     <div className="d-flex flex-column" style={{ gap: 8 }}>
       <PageHeader
         crumb="Console"
-        title="Graphics"
-        note="Social posts from the agency template pack. Edit them by hand, or describe one and let the agent write it."
-        stat={{ label: "Posts", value: rows.length }}
+        title="Studio"
+        note={mode === "graphics"
+          ? "Social posts from the agency template pack. Edit them by hand, or describe one and let the agent write it."
+          : "Email built from blocks and previewed by the same template the platform sends through. Import a design to drop a picture in."}
+        stat={{ label: mode === "graphics" ? "Posts" : "Emails", value: mode === "graphics" ? rows.length : 0 }}
       />
+
+      <div className="d-flex gap-2">
+        {(["graphics", "email"] as const).map((m) => (
+          <button key={m} type="button" className={`hrx-seeall${mode === m ? " opx-solid" : ""}`}
+                  onClick={() => setMode(m)}>
+            {m === "graphics" ? "Graphics" : "Email"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "email" ? <EmailIndex orgId={orgId} /> : <>
 
       <NewDesign orgId={orgId} onMade={(d) => setOpen(d)} />
 
@@ -147,83 +167,13 @@ export default function DesignsPage() {
           </div>
         )}
       </Card>
+    </>}
     </div>
   );
 }
 
 /* ── Starting a post ─────────────────────────────────────────────────────── */
 
-function NewDesign({ orgId, onMade }: { orgId: string; onMade: (d: Design) => void }) {
-  const [brief, setBrief] = useState("");
-  const [busy, setBusy] = useState(false);
-  /** The layout picker. Behind a button because eighteen layouts open on the
-   *  page pushed the library of saved work off the bottom of the screen. */
-  const [picking, setPicking] = useState(false);
-
-  async function fromTemplate(templateId: string) {
-    const t = getTemplate(templateId);
-    const { data, error } = await createDesign(orgId, {
-      title: t ? `${t.name} post` : "New post",
-      templateId,
-      doc: emptyDoc(templateId),
-    });
-    if (error || !data) return toastError(error ?? "Could not create that post.");
-    onMade(data);
-  }
-
-  async function fromBrief() {
-    const text = brief.trim();
-    if (!text) return toastError("Say what the post should be about.");
-    setBusy(true);
-    const { data, error } = await generateDesign(orgId, text);
-    if (error || !data) { setBusy(false); return toastError(error ?? "The agent could not write that."); }
-
-    const doc: DesignDoc = {
-      templateId: data.templateId,
-      content: data.content as Partial<Record<TextSlot, string>>,
-      images: data.images as DesignDoc["images"],
-      palette: data.palette as DesignDoc["palette"],
-    };
-    const { data: row, error: err2 } = await createDesign(orgId, {
-      title: data.title, templateId: data.templateId, doc, brief: text,
-    });
-    setBusy(false);
-    if (err2 || !row) return toastError(err2 ?? "Could not save that post.");
-    setBrief("");
-    onMade(row);
-  }
-
-  return (
-    <Card title="New post">
-      <div className="dsn-brief">
-        <input
-          className="hrx-input dsn-input"
-          placeholder="Describe the post — e.g. “we cut delivery times to 15 minutes, aimed at busy parents”"
-          value={brief}
-          onChange={(e) => setBrief(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") void fromBrief(); }}
-          disabled={busy}
-        />
-        <button type="button" className="dsn-btn dsn-btn--solid" onClick={() => void fromBrief()} disabled={busy}>
-          {I_SPARK}{busy ? "Writing…" : "Write it for me"}
-        </button>
-      </div>
-      <p className="dsn-note mb-0">
-        Or start from a layout and fill it in yourself — the agent can still rewrite it later.
-      </p>
-      <button type="button" className="dsn-btn" onClick={() => setPicking(true)} disabled={busy}>
-        {I_PLUS}Templates
-      </button>
-
-      {picking && (
-        <TemplatePicker
-          onPick={(id) => { setPicking(false); void fromTemplate(id); }}
-          onClose={() => setPicking(false)}
-        />
-      )}
-    </Card>
-  );
-}
 
 /* ── The editor ──────────────────────────────────────────────────────────── */
 

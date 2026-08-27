@@ -1101,3 +1101,13 @@
 /* The layers list is inside the rail now, so it takes the rail's width and its
    own scroll rather than a second fixed height inside a scrolling column. */
 .dsni-sec .dsn-layers { max-height: 220px; }
+
+/* The two ways to start a post, side by side. Both open a dialog: the brief
+   box and the layout grid are each used once per post and were both taking up
+   the top of a page whose real content is the work already saved. */
+.dsn-start { display: flex; flex-wrap: wrap; gap: 8px; }
+.dsn-brief-dlg { width: min(560px, 94vw); display: flex; flex-direction: column; gap: 10px; }
+/* A flex child with no basis takes the whole dialog; a brief is one sentence
+   and the box should look like it wants one. */
+.dsn-brief-dlg__in { width: 100%; flex: 0 0 auto; min-height: 84px; max-height: 200px; resize: vertical; line-height: 1.5; }
+.dsn-brief-dlg__acts { display: flex; justify-content: flex-end; gap: 8px; }

@@ -52,6 +52,8 @@
  * darkened one at 4.6:1. Against the near-black ground the brand orange clears
  * it on its own (4.5:1) and is used directly.
  */
+import { type ArticleBlock, articleBlock, articlePlain } from "./blocks-article.ts";
+
 const INK = "#1D1D1D";          // --at-neutral-900
 const PAPER = "#F2F2F2";        // --at-neutral-50
 const LINE = "#DFDFDF";         // --at-neutral-100
@@ -92,7 +94,7 @@ export type Block =
   | { type: "html"; html: string; text: string }
   | { type: "button"; label: string; href: string }
   | { type: "facts"; rows: Array<[string, string]> }
-  | { type: "quote"; text: string }
+  | { type: "quote"; text: string; cite?: string }
   | { type: "divider" }
   /** A photograph across the top of the card. */
   | { type: "hero"; src: string; alt: string; height?: number }
@@ -118,7 +120,9 @@ export type Block =
   /** Plans, stacked, with the recommended one marked. */
   | { type: "plans"; items: Array<{ name: string; price: string; per: string; line: string; best?: boolean }> }
   /** A tight grid of capability chips. */
-  | { type: "chips"; items: string[] };
+  | { type: "chips"; items: string[] }
+  /** Everything a blog post is made of — see blocks-article.ts. */
+  | ArticleBlock;
 
 export type EmailOpts = {
   /** The inbox preview line. Say what the mail is, not "view in browser". */
@@ -158,7 +162,10 @@ function block(b: Block, tone: Tone = "paper"): string {
       return p(b.html, c.body);
     case "quote":
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 16px">
-        <tr><td style="border-left:3px solid ${ACCENT};padding:2px 0 2px 14px;font-family:${FONT};font-size:15px;line-height:1.6;color:${MUTED}">${esc(b.text)}</td></tr>
+        <tr><td style="border-left:3px solid ${ACCENT};padding:2px 0 2px 16px">
+          <div style="font-family:${FONT};font-size:17px;line-height:1.55;font-weight:500;font-style:italic;color:${c.text}">${esc(b.text)}</div>
+          ${b.cite ? `<div style="margin-top:7px;font-family:${FONT};font-size:13px;color:${c.soft}">${esc(b.cite)}</div>` : ""}
+        </td></tr>
       </table>`;
     case "divider":
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:8px 0 20px">
@@ -186,6 +193,15 @@ function block(b: Block, tone: Tone = "paper"): string {
     case "plans":
     case "chips":
       return brochure(b, tone);
+    case "lead":
+    case "subhead":
+    case "list":
+    case "figure":
+    case "duo":
+    case "table":
+    case "image":
+    case "byline":
+      return articleBlock(b, { FONT, esc, c });
     case "button":
       // The site's call to action is a full pill in near-black, so this is
       // too. A padded table cell, not a styled <a>: Outlook ignores padding on
@@ -381,6 +397,15 @@ function plain(b: Block): string {
     case "video": return b.title + ": " + b.href;
     case "plans": return b.items.map((pl) => pl.name + " " + pl.price + pl.per + " — " + pl.line).join("\n");
     case "chips": return b.items.join(" · ");
+    case "lead":
+    case "subhead":
+    case "list":
+    case "figure":
+    case "duo":
+    case "table":
+    case "image":
+    case "byline":
+      return articlePlain(b);
     case "button": return `${b.label}: ${b.href}`;
   }
 }
@@ -459,9 +484,16 @@ export function renderEmail(o: EmailOpts): { html: string; text: string } {
  * scroll — while using exactly the same blocks, escaping and plain-text pass as
  * everything else. One vocabulary, two voices.
  */
-export function renderBrochure(o: {
-  preheader: string; subject: string; strap: string; blocks: Block[]; footnote?: string;
-}): { html: string; text: string } {
+export type PageOpts = {
+  preheader: string;
+  subject: string;
+  /** The tracked line opposite the wordmark in the masthead. */
+  strap: string;
+  blocks: Block[];
+  footnote?: string;
+};
+
+export function renderBrochure(o: PageOpts): { html: string; text: string } {
   // Blocks between bands sit on the white page and need side padding; a band
   // paints edge to edge and carries its own. So the page is assembled as a run
   // of rows rather than one padded cell.
@@ -489,6 +521,7 @@ export function renderBrochure(o: {
      right. */
   @media only screen and (max-width: 480px) {
     .pxtile { max-width: 100% !important; margin: 0 0 24px !important; }
+    .pxduo  { max-width: 100% !important; margin: 0 0 18px !important; }
   }
 </style>
 </head>

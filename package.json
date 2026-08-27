@@ -16,7 +16,8 @@
     "sitemap": "node ./scripts/generate-sitemap.mjs",
     "shared:sync": "node scripts/sync-shared.mjs",
     "shared:check": "node scripts/sync-shared.mjs --check",
-    "test:canvas": "node scripts/canvas-test/run.mjs"
+    "test:canvas": "node scripts/canvas-test/run.mjs",
+    "test:email": "node scripts/email-test/run.mjs"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
