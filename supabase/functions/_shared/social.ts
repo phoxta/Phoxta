@@ -62,7 +62,7 @@ async function reason(res: Response): Promise<string> {
 // the Facebook host. Posting to the wrong host with a good token fails in a way
 // that reads like a permissions problem, so it is worth being explicit.
 async function instagram(a: SocialAccount, caption: string, media: string): Promise<PublishResult> {
-  if (!env("META_APP_ID") || !a.access_token) return simulated("No Instagram app configured.");
+  if (!(env("INSTAGRAM_APP_ID") || env("META_APP_ID")) || !a.access_token) return simulated("No Instagram app configured.");
   const base = `https://graph.instagram.com/v21.0/${a.external_id}`;
   try {
     const create = await fetch(`${base}/media`, {

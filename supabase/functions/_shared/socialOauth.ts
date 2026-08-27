@@ -56,11 +56,21 @@ export const SPECS: Record<Platform, Spec> = {
     authUrl: "https://www.instagram.com/oauth/authorize",
     tokenUrl: "https://api.instagram.com/oauth/access_token",
     scopes: "instagram_business_basic,instagram_business_content_publish",
-    // The Instagram App ID, from the Instagram product's settings — NOT the
-    // Facebook app id on Settings → Basic. They are different numbers on the
-    // same app, and using the wrong one fails the same way a bad key does.
-    clientId: () => env("META_APP_ID"),
-    clientSecret: () => env("META_APP_SECRET"),
+    /**
+     * The INSTAGRAM app id, not the Facebook one.
+     *
+     * They are different numbers on the same app — the Facebook id is on
+     * Settings → Basic, the Instagram one is inside the Instagram product's
+     * own "API setup with Instagram business login" panel. Sending the
+     * Facebook id here gets "Invalid Request: Request parameters are invalid:
+     * Invalid platform app", which names neither the parameter nor the id it
+     * wanted, and cost a round trip to work out.
+     *
+     * So the variable is named for what it holds. META_APP_ID still works, for
+     * anything already configured under the old name.
+     */
+    clientId: () => env("INSTAGRAM_APP_ID") || env("META_APP_ID"),
+    clientSecret: () => env("INSTAGRAM_APP_SECRET") || env("META_APP_SECRET"),
   },
   linkedin: {
     authUrl: "https://www.linkedin.com/oauth/v2/authorization",

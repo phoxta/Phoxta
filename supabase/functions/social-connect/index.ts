@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
       // up needs to whitelist exactly this.
       return json({
         error: `${platform} is not set up yet. Create the developer app, then set its id and secret as function secrets.`,
-        needs: platform === "instagram" ? ["META_APP_ID", "META_APP_SECRET"]
+        needs: platform === "instagram" ? ["INSTAGRAM_APP_ID", "INSTAGRAM_APP_SECRET"]
           : platform === "linkedin" ? ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"]
             : platform === "tiktok" ? ["TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"]
               : ["X_CLIENT_ID", "X_CLIENT_SECRET"],
