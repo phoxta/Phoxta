@@ -264,6 +264,9 @@ verify_jwt = true
 # Marketing-site lead capture (/contact, /startup-school). Anonymous visitors
 # reach it through supabase-js, which sends the anon key — that satisfies the
 # gateway, so `true` costs nothing and blocks keyless spam.
+[functions.brochure-send]
+verify_jwt = true
+
 [functions.platform-lead]
 verify_jwt = true
 

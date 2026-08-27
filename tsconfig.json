@@ -11,10 +11,12 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@shared-chat/*": ["packages/shared-chat/src/*"],
+      "@email/brochure": ["packages/email/src/brochure.ts"],
       "@email": ["packages/email/src/render.ts"]
     },
     "types": ["vite/client"]

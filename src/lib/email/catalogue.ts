@@ -1,4 +1,5 @@
 import { renderEmail, type Block } from "@email";
+import { phoxtaBrochure, BROCHURE_SUBJECT } from "@email/brochure";
 
 /**
  * Every email Phoxta sends, in one place, with the copy written out.
@@ -33,6 +34,7 @@ import { renderEmail, type Block } from "@email";
  */
 
 export type MessageId =
+  | "brochure"
   | "school-application" | "school-lead" | "invoice" | "receipt" | "order"
   | "ticket-reply" | "renewal" | "trial-ending" | "payment-failed"
   | "booking-reminder" | "account-created" | "password-reset";
@@ -74,6 +76,18 @@ function make(
 }
 
 export const MESSAGES: Message[] = [
+  // The one email that is not transactional. It is the long one, it is the only
+  // one someone did not ask for, and it is built from the same blocks as the
+  // rest so it cannot drift into looking like a different company.
+  {
+    id: "brochure",
+    sentBy: "brochure-send",
+    audience: "Someone who has heard the name and nothing else",
+    brandedAs: "Phoxta",
+    subject: BROCHURE_SUBJECT,
+    render: phoxtaBrochure,
+  },
+
   // ── Phoxta's own ────────────────────────────────────────────────────────
   make(
     "school-application", "platform-lead", "Someone who just signed up for Startup School", "Phoxta",
