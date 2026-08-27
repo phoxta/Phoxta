@@ -226,6 +226,11 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
   }, [shapeMenu]);
+  /** Where this design's last published cover is stored, so the next save can
+   *  replace it rather than leaving a near-identical file behind in the
+   *  business's picture library on every single save. Seeded from the row and
+   *  kept current in this session, because the row is not re-read between saves. */
+  const publishedPng = useRef<string | null>(design.png_path ?? null);
   /** The OUTER element: the room the canvas has, and the only thing measured. */
   const stage = useRef<HTMLDivElement>(null);
   /** The INNER element: the artboard's own rectangle, sized from the viewport.
@@ -518,13 +523,39 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     // that matters.
   }, []);
 
+  /**
+   * Save the document, then publish the picture the SERVER can send.
+   *
+   * The second half is what lets a customer ask for the menu and get the menu.
+   * A design is JSON plus a browser renderer, so until it has a stored PNG there
+   * is literally nothing for the agent to attach to a WhatsApp reply — see
+   * publishDesignPng. It runs after the save and never fails it: the document is
+   * safe the moment saveDesign returns, and a picture that could not be rendered
+   * is reported as exactly that rather than as a lost save.
+   */
   async function save() {
     setBusy("saving");
     const { error } = await saveDesign(design.id, { title, doc: deck, template_id: deck.slides[0].templateId });
-    setBusy("");
-    if (error) return toastError(error);
+    if (error) {
+      setBusy("");
+      return toastError(error);
+    }
     setDirty(false);
-    toast("Saved.");
+    const { publishDesignPng } = await import("./designs/rasterise");
+    const published = await publishDesignPng(design.organization_id, {
+      id: design.id,
+      title,
+      templateId: deck.slides[0].templateId,
+      doc: deck,
+      previousPath: publishedPng.current,
+    });
+    setBusy("");
+    if (published.error) {
+      toast("Saved. The sharable picture could not be refreshed, so your agent will still send the last one it has.");
+      return;
+    }
+    publishedPng.current = published.path;
+    toast("Saved — and ready for your agent to send.");
   }
 
   async function download() {

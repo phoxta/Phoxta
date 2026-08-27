@@ -256,6 +256,27 @@ export default function FloatingChatWidget() {
 
   return (
     <>
+      {/* Scoped to a `fcw-` prefix, and local to the component because this
+          widget mounts on the marketing site, where the stylesheet is a large
+          hand-tuned file that nothing imports from JS. Keyframes cannot be
+          expressed as inline styles, which is why the old indicator was static. */}
+      <style>{`
+        .fcw-typing { display: inline-flex; align-items: center; gap: 4px; }
+        .fcw-typing__dot {
+          width: 6px; height: 6px; border-radius: 999px;
+          background: var(--neutral-500, #8a8f98);
+          animation: fcw-bounce 1.2s infinite ease-in-out both;
+        }
+        .fcw-typing__dot:nth-child(2) { animation-delay: .16s; }
+        .fcw-typing__dot:nth-child(3) { animation-delay: .32s; }
+        @keyframes fcw-bounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: .45; }
+          40%           { transform: translateY(-4px); opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .fcw-typing__dot { animation: none; opacity: .7; }
+        }
+      `}</style>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -315,9 +336,23 @@ export default function FloatingChatWidget() {
                 </div>
               ),
             )}
+            {/* A REAL typing indicator, not a static ellipsis.
+                On a channel where the answer can take several seconds, a motionless
+                "…" is indistinguishable from a widget that has hung — the visitor
+                cannot tell waiting from broken, and leaves. Movement is the whole
+                signal, so this animates; `role="status"` carries the same fact to a
+                screen reader, and the animation is dropped for anyone who has asked
+                for reduced motion, leaving three visible dots rather than nothing. */}
             {busy && (
-              <div className="align-self-start" style={{ padding: "10px 14px", borderRadius: 12, background: "var(--neutral-100, #f1f2f4)", fontSize: 14 }}>
-                …
+              <div
+                className="align-self-start fcw-typing"
+                role="status"
+                aria-label="The assistant is typing"
+                style={{ padding: "12px 14px", borderRadius: 12, background: "var(--neutral-100, #f1f2f4)" }}
+              >
+                <span className="fcw-typing__dot" />
+                <span className="fcw-typing__dot" />
+                <span className="fcw-typing__dot" />
               </div>
             )}
           </div>

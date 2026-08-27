@@ -415,6 +415,9 @@ Deno.serve(async (req) => {
       customerMessageId: data?.customerMessageId ?? null,
       customerMeta: meta,
       template: data?.template ?? null,
+      // A picture the agent chose. Mail carries no attachment from the agent, so
+      // the funnel puts a link to it in the body rather than dropping it.
+      media: Array.isArray(data?.media) ? data.media : [],
       thread: { messageId: meta.message_id, references: meta.references, subject },
       stampExtra: { source: "email-inbound", in_reply_to: meta.message_id },
     });

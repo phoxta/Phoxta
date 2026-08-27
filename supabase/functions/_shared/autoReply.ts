@@ -14,9 +14,13 @@
 // answer straight out of agent-inbound's JSON with no ceiling and no cap at all;
 // agent-inbound's Chatwoot branch; agent-catchup; the operator's
 // reply_conversation tool; and an Engage flow answering inside a live thread.
-// Two of those own their own last step — a TwiML reply rides back in Twilio's
-// own webhook response, a Chatwoot reply is a post to Chatwoot — so they hand
-// `transport` to deliverAutoReply and it calls them AFTER every gate has passed.
+// ONE of those owns its own last step — a Chatwoot reply is a post back to
+// Chatwoot — so it hands `transport` to deliverAutoReply and it is called AFTER
+// every gate has passed. (twilio-inbound used to be the other: it answered with
+// TwiML inside Twilio's own webhook response, which meant Twilio held the
+// request open for the whole model turn and abandoned it at ~15 seconds. It now
+// answers the webhook immediately and sends here, over the REST API, from the
+// number the customer texted.)
 //
 // Four independent classes of harm it exists to prevent:
 //
@@ -42,9 +46,10 @@
 // and the Inbox renders them beside the message (see Messages.tsx).
 import type { SupabaseClient } from "./supabaseAdmin.ts";
 import { sendConversationEmail, type ThreadContext } from "./conversationEmail.ts";
-import { twilioSend } from "./dispatch.ts";
+import { twilioSend, twilioStatusCallback } from "./dispatch.ts";
 import { normalizeE164 } from "./telephony.ts";
 import { replySubject } from "./mailText.ts";
+import { checkWhatsappImage, withMediaLink, type MediaVerdict, type OutboundMedia } from "./media.ts";
 
 // Re-exported so the transports keep one import for "everything about answering
 // automatically", while agentCore can take the pure text helpers on their own.
@@ -338,23 +343,45 @@ const isChat = (channel: string) => CHAT_CHANNELS.has(channel);
 // There is exactly one Twilio sender in the environment (TWILIO_FROM /
 // TWILIO_WHATSAPP_FROM) and no per-organisation number anywhere in the schema —
 // telephony.ts says so out loud: "Every tenant dials through ONE shared Twilio
-// account". twilio-inbound's LIVE reply is correct because it rides back as
-// TwiML inside Twilio's own webhook response, which Twilio sends from the number
-// the customer texted. Every OTHER texting send would go through the REST API
-// from the platform number, and that is a cross-tenant identity failure with
-// teeth: the customer of business A is answered from the PHOXTA number, and when
-// they reply it hits the Phoxta platform line, whose webhook is
+// account". EVERY texting send now goes through the REST API, including the live
+// reply to an inbound text (which used to ride back as TwiML inside Twilio's own
+// webhook response, and was abandoned unsent whenever the model turn ran past
+// Twilio's ~15-second deadline). The REST API sends from whatever `From` it is
+// given, and giving it the platform number is a cross-tenant identity failure
+// with teeth: the customer of business A is answered from the PHOXTA number, and
+// when they reply it hits the Phoxta platform line, whose webhook is
 // twilio-inbound?key=<Phoxta's own agent key> — so Phoxta's agent opens a Phoxta
 // conversation and answers another company's customer, as Phoxta, in thread.
 //
 // The tenant's own number IS knowable: it is the `To` on the inbound Twilio
-// webhook, which twilio-inbound now records as meta.twilio_to on the customer's
-// message. So a deferred or retried text is sent from the number it arrived on,
-// and when no such number is on the thread the reply is REFUSED and left for a
-// person. A message not sent beats a message sent from the wrong company.
+// webhook, signed by Twilio. twilio-inbound hands it straight to this funnel for
+// the live reply AND records it as meta.twilio_to on the customer's message, so
+// a deferred or retried text is sent from the number it arrived on. When no such
+// number can be resolved the reply is REFUSED and left for a person: a message
+// not sent beats a message sent from the wrong company.
 // ---------------------------------------------------------------------------
 export const TENANT_SENDER_MISSING =
   "this text can only be answered from the business's own number, and that number is not recorded on this conversation — a person needs to reply";
+
+/**
+ * A Twilio sender we may legitimately speak as, in the form twilioSend wants —
+ * or "" when the value is not one.
+ *
+ * The input is always the `To` of an inbound webhook Twilio SIGNED, so the
+ * question is only what shape it is, never whether it is ours. E.164 is the
+ * normal case. A SHORT CODE is the exception that matters: it is 3–8 digits
+ * with no country code, normalizeE164 rejects it, and requiring E.164 would
+ * silently refuse every reply for a business texting from one. WhatsApp has no
+ * short codes, so there it is E.164 or nothing.
+ */
+export function tenantSenderFrom(rawTo: unknown, channel: string): string {
+  const bare = String(rawTo ?? "").trim().replace(/^whatsapp:/i, "");
+  const e164 = normalizeE164(bare);
+  if (channel === "whatsapp") return e164 ? `whatsapp:${e164}` : "";
+  if (e164) return e164;
+  const digits = bare.replace(/[\s()\-.]/g, "");
+  return /^\d{3,8}$/.test(digits) ? digits : "";
+}
 
 /** The business's own texting number for this thread, in the form twilioSend
  *  wants, or "" when the thread carries none. */
@@ -380,12 +407,414 @@ export async function tenantSmsFrom(
     return "";
   }
   for (const r of ((data as Json[] | null) ?? [])) {
-    const raw = String((r?.meta ?? {}).twilio_to ?? "").trim();
-    if (!raw) continue;
-    const e164 = normalizeE164(raw.replace(/^whatsapp:/i, ""));
-    if (e164) return channel === "whatsapp" ? `whatsapp:${e164}` : e164;
+    const sender = tenantSenderFrom((r?.meta ?? {}).twilio_to, channel);
+    if (sender) return sender;
   }
   return "";
+}
+
+// ---------------------------------------------------------------------------
+// WHATSAPP'S 24-HOUR RULE.
+//
+// WhatsApp lets a business send FREE TEXT only within 24 hours of the
+// customer's last inbound message. Outside that window Meta refuses the message
+// and Twilio reports error 63016 with status `undelivered` — the reply is
+// composed, billed, stamped 'sent' by everything that does not look at the error
+// code, and thrown away. The account log shows exactly that: two agent replies
+// undelivered, both 63016, neither visible to anyone as a failure.
+//
+// The agent did not know the rule, so it could not act on it. Now the funnel
+// does, and it does it in ONE place — deliverAutoReply — so every path that can
+// answer a WhatsApp customer obeys it: the live webhook, the catch-up worker,
+// the operator's reply tool and an Engage flow waking from a delay.
+//
+// Inside the window: answer normally.
+// Outside it: send one of the business's OWN approved templates, if it has one
+// that can be sent truthfully. If it has none, send NOTHING — a free-form
+// message there is a certain rejection — record why on the message, put a note
+// on the thread and tell a person. Silence with an explanation beats an
+// undelivered message nobody knows about.
+// ---------------------------------------------------------------------------
+export const WA_WINDOW_MS = 24 * 3600_000;
+
+export type WhatsappWindow = {
+  open: boolean;
+  /** When the customer last wrote on this thread, or 0 when they never have. */
+  lastInboundAt: number;
+  /** What they last wrote — used to choose between the business's templates. */
+  lastInboundText: string;
+};
+
+/**
+ * Is the 24-hour window open on this thread?
+ *
+ * Measured from the newest INBOUND message on this conversation and channel,
+ * which is the thing WhatsApp actually measures. (conversation-send's human
+ * composer measures the same thing; agent-catchup used to measure the age of
+ * the candidate row instead, which is a different and usually older number.)
+ *
+ * A thread with no inbound message at all — an outbound-only conversation the
+ * business started — is CLOSED, because there has been no customer message to
+ * open a service window.
+ */
+export async function whatsappWindow(
+  admin: SupabaseClient,
+  orgId: string,
+  conversationId: string,
+): Promise<WhatsappWindow> {
+  const shut: WhatsappWindow = { open: false, lastInboundAt: 0, lastInboundText: "" };
+  if (!conversationId) return shut;
+  const { data, error } = await admin
+    .from("conversation_messages")
+    .select("created_at, body")
+    .eq("organization_id", orgId)
+    .eq("conversation_id", conversationId)
+    .eq("channel_type", "whatsapp")
+    .eq("role", "customer")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    // Fail towards SENDING: Twilio itself is the authority on the window, and a
+    // 63016 comes back as an honest failure on the row. Refusing a deliverable
+    // reply because one read hiccupped would be the worse of the two mistakes.
+    console.error("[phoxta] WhatsApp window lookup failed:", error.message);
+    return { open: true, lastInboundAt: 0, lastInboundText: "" };
+  }
+  const at = Date.parse(String((data as Json)?.created_at ?? ""));
+  if (!Number.isFinite(at)) return shut;
+  return { open: Date.now() - at < WA_WINDOW_MS, lastInboundAt: at, lastInboundText: String((data as Json)?.body ?? "") };
+}
+
+/** "3 hours ago" / "6 days ago" — for copy an owner reads, not a timestamp. */
+export function agoInWords(ms: number): string {
+  const hours = Math.floor(ms / 3600_000);
+  if (hours < 1) return "less than an hour ago";
+  if (hours < 48) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  return `${Math.floor(hours / 24)} days ago`;
+}
+
+/** One of the business's approved WhatsApp templates, ready to send. */
+export type WhatsappTemplateSend = {
+  id: string;
+  title: string;
+  contentSid: string;
+  /** Twilio ContentVariables — positional, exactly as the template was approved. */
+  variables: Record<string, string>;
+  /** The text those variables produce, for the thread and the audit line. */
+  rendered: string;
+  /** Why this one was chosen, in words — written into the audit line so "the
+   *  agent sent my customer THAT?" has an answer without database access. */
+  because: string;
+};
+
+// ---------------------------------------------------------------------------
+// WHAT KIND OF TEMPLATE IS THIS, AND MAY IT ANSWER A QUESTION?
+//
+// Meta classifies every approved template as UTILITY, MARKETING or
+// AUTHENTICATION, and the three are not interchangeable:
+//
+//   UTILITY         follows up on a transaction or a request the customer made.
+//                   This is the only kind that can ever BE an answer.
+//   MARKETING       promotions, offers, re-engagement — "Just following up on
+//                   your recent enquiry". Sending one in reply to a service
+//                   question is a category error, and in the UK and EU it is a
+//                   consent question rather than a style question: a marketing
+//                   message needs opt-in, and "they asked us where their order
+//                   is" is not opt-in to marketing.
+//   AUTHENTICATION  a one-time-code shell. There is no code to put in it here.
+//
+// A prover executed a fixture where this account's MARKETING template was
+// auto-sent as the answer to a service question, because the old rule admitted a
+// template on ONE coincidental body word. Category is now the first gate and it
+// is absolute: no score can promote a marketing template into an answer.
+//
+// The column is read defensively because it arrives with 0120 and edge functions
+// deploy independently of migrations — before it lands, every template reads as
+// unclassified and is judged on the shape of its own words plus the much
+// stricter relevance test below.
+// ---------------------------------------------------------------------------
+export type TemplateCategory = "utility" | "marketing" | "authentication" | "unclassified";
+
+export function templateCategory(row: Json): TemplateCategory {
+  const raw = String(row?.whatsapp_template_category ?? "").trim().toLowerCase();
+  if (raw === "utility" || raw === "marketing" || raw === "authentication") return raw;
+  return "unclassified";
+}
+
+/**
+ * Words that make a message promotional whatever anybody labelled it.
+ *
+ * The floor under the category column, and it holds in both directions: for the
+ * templates saved before 0120 exists, and for the owner who saves a promotion
+ * and leaves the category on its default. It reads the TEMPLATE's own words —
+ * not a guess about the customer — so it is a statement about the message, which
+ * is the only thing here that can be checked.
+ */
+const PROMOTIONAL =
+  /\b(sale|sales|discount|discounted|offer|offers|promo|promotion|promotional|deal|deals|voucher|coupon|% ?off|percent off|limited time|last chance|don'?t miss|new arrival|newsletter|subscribe|unsubscribe|book now|shop now|order now|special price|black friday|clearance|free (?:gift|trial)|refer a friend|following up on your recent|checking in to see if)\b/i;
+
+/** Templates that may never be sent automatically, and why — in the owner's
+ *  own words, because this reason is what a person reads on the thread. */
+// Exported so it can be executed directly against fixtures. It decides whether a
+// template may be put in front of a customer, which is exactly the kind of rule
+// that should be provable rather than argued about — and it has already been
+// wrong twice in opposite directions.
+export function templateRefusal(row: Json, category: TemplateCategory, body: string): string | null {
+  if (category === "marketing") {
+    return "it is a marketing template, and a marketing message is not an answer to a customer's question";
+  }
+  if (category === "authentication") {
+    return "it is an authentication template, and there is no verification code to put in it";
+  }
+  // The word test runs on 'utility' as well as 'unclassified'. A template that
+  // opens "Don't miss out — 20% off this weekend" is a promotion whoever ticked
+  // the box, and the box is one click in a drawer most owners will never open.
+  // A genuine utility template ("Your order has shipped") contains none of these
+  // words, so nothing legitimate is lost by holding both to it.
+  if ((category === "unclassified" || category === "utility") && PROMOTIONAL.test(body)) {
+    return category === "utility"
+      ? "it is marked as a utility template but reads as a promotion, so it is not sent as an answer"
+      : "it reads as a promotional message rather than an answer, and it has not been classified as a utility template";
+  }
+  return null;
+}
+
+/** The customer's name on this thread, or "". Only ever used to fill a template
+ *  greeting — and a template that needs a name we do not have is simply not
+ *  usable, rather than sent with a guess in it. */
+async function customerNameFor(admin: SupabaseClient, orgId: string, conversationId: string): Promise<string> {
+  if (!conversationId) return "";
+  const { data } = await admin
+    .from("conversations")
+    .select("customer_name")
+    .eq("id", conversationId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  return String((data as Json)?.customer_name ?? "").trim();
+}
+
+/** The meaningful words of a piece of text, for overlap scoring. Deliberately
+ *  small and local: this file must not pull in the agent's model stack. */
+const TEMPLATE_STOPWORDS = new Set([
+  "the", "and", "for", "you", "your", "our", "with", "that", "this", "have", "has", "was", "were", "are",
+  "can", "could", "would", "will", "want", "need", "please", "hello", "there", "thanks", "thank", "from",
+  "about", "them", "they", "what", "when", "where", "how", "any", "all", "not", "but", "get", "got", "let",
+]);
+
+function meaningfulWords(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const w of String(text ?? "").toLowerCase().match(/[a-z][a-z0-9'-]{2,}/g) ?? []) {
+    if (!TEMPLATE_STOPWORDS.has(w)) out.add(w.replace(/(ies|es|s)$/, ""));
+  }
+  return out;
+}
+
+/**
+ * A template's placeholders, filled — or null when we would have to GUESS.
+ *
+ * An approved template is fixed text with numbered slots (`{{1}}`, `{{2}}`) and
+ * nothing records what each slot means. Putting the wrong value in one sends a
+ * message from the business that says something untrue — "your order Jane has
+ * shipped" — which is worse than sending nothing at all.
+ *
+ * So exactly two shapes are fillable without guessing:
+ *   • no placeholders — the template says the same thing every time;
+ *   • a single `{{1}}` immediately after a greeting ("Hi {{1}},"), which can
+ *     only be the customer's name, and only when we know their name.
+ * Everything else is left to a person, who fills the slots themselves in the
+ * Inbox composer — that screen already exists and already does exactly this.
+ */
+const GREETING_SLOT = /^\s*(hi|hello|hey|dear|good\s+(morning|afternoon|evening))\b[\s,]*\{\{1\}\}/i;
+
+export function fillWhatsappTemplate(
+  body: string,
+  customerName: string,
+): { variables: Record<string, string>; rendered: string } | null {
+  const text = String(body ?? "");
+  const slots = [...new Set([...text.matchAll(/\{\{(\d+)\}\}/g)].map((m) => m[1]))];
+  if (slots.length === 0) return text.trim() ? { variables: {}, rendered: text } : null;
+  const first = String(customerName ?? "").trim().split(/\s+/)[0] ?? "";
+  if (slots.length === 1 && slots[0] === "1" && first && GREETING_SLOT.test(text)) {
+    return { variables: { "1": first }, rendered: text.replace(/\{\{1\}\}/g, first) };
+  }
+  return null;
+}
+
+/**
+ * The business's approved WhatsApp templates, as rows.
+ *
+ * `select("*")` rather than a named list for the reason resolveConversation uses
+ * it: whatsapp_template_category arrives with migration 0120 and edge functions
+ * deploy independently of migrations, so naming the column would turn every
+ * WhatsApp template read into an error on a project where the migration has not
+ * been applied yet — and an error here means a customer is not answered.
+ */
+async function whatsappTemplateRows(admin: SupabaseClient, orgId: string): Promise<Json[] | null> {
+  const { data, error } = await admin
+    .from("canned_responses")
+    .select("*")
+    .eq("organization_id", orgId)
+    .eq("is_whatsapp_template", true)
+    .in("channel", ["any", "whatsapp"])
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) {
+    console.error("[phoxta] WhatsApp templates unreadable:", error.message);
+    return null;
+  }
+  return (data as Json[] | null) ?? [];
+}
+
+/**
+ * Does this business have a template the AGENT could send? Read before a model
+ * turn is spent on a thread whose window has closed.
+ *
+ * "Could send" is the whole point: this used to answer yes for any approved
+ * template at all, including a marketing one the funnel will now always refuse,
+ * so agent-catchup paid for a full tool-using model turn and then found there
+ * was nothing to send after all. It now counts only what could legitimately
+ * answer a customer.
+ */
+export async function hasWhatsappTemplates(admin: SupabaseClient, orgId: string): Promise<boolean> {
+  const rows = await whatsappTemplateRows(admin, orgId);
+  if (!rows) return false;
+  // The approval code is filtered HERE rather than in the query: a PostgREST
+  // "not equal to the empty string" filter is ambiguous enough that it is not
+  // worth resting a customer's reply on. A template with no code is a draft —
+  // the console already shows it in red — and cannot be sent.
+  return rows.some((r) => {
+    if (!String(r?.whatsapp_template_sid ?? "").trim()) return false;
+    const body = String(r?.body ?? "");
+    return !templateRefusal(r, templateCategory(r), body);
+  });
+}
+
+/**
+ * How much of a template's own words have to be on topic before it counts as an
+ * answer rather than a change of subject.
+ *
+ * A third was too strict to be reachable, and being unreachable is not the safe
+ * side of this trade — it means every out-of-window WhatsApp conversation
+ * escalates to a human, which is the feature not existing. A real approved
+ * template, "Delivery update", against a real question — "I ordered a jacket
+ * last week and it has not arrived, where is my order?" — was refused, because
+ * a template is mostly scaffolding: a greeting, a placeholder, a sign-off, a
+ * courtesy line. Only a handful of its words can ever be the topic.
+ *
+ * A sixth still stops a refunds template answering a question about opening
+ * hours, which is what this floor is actually for. The protection against
+ * sending the WRONG KIND of message lives in templateRefusal — category plus the
+ * promotional word test — and that is the gate that matters; this one only
+ * decides between templates that are already allowed to answer.
+ */
+const TEMPLATE_MIN_COVERAGE = 0.17;
+
+/** How many of the template's body words must appear in the CUSTOMER'S OWN
+ *  message before a title-less match is allowed. Two, because one is a
+ *  coincidence — which is precisely how a marketing template was sent as the
+ *  answer to a service question. */
+const TEMPLATE_MIN_BODY_HITS = 2;
+
+const overlap = (a: Set<string>, b: Set<string>): number => {
+  let n = 0;
+  for (const w of a) if (b.has(w)) n++;
+  return n;
+};
+
+/**
+ * The business's own approved template that genuinely ANSWERS what was asked —
+ * or null, which means "send nothing and tell a person".
+ *
+ * The bar this replaces was `score < 1`, i.e. one coincidental body word, scored
+ * against the agent's composed reply and the customer's last message mashed
+ * together. That is far too loose in the one direction that hurts: the agent's
+ * reply is generated prose full of ordinary service vocabulary, so almost any
+ * template shares a word with it, and a prover duly got this account's MARKETING
+ * template sent as the answer to a service question.
+ *
+ * Three things have to hold now, and they are requirements rather than points:
+ *
+ *   1. CATEGORY. Marketing and authentication templates are never an answer, and
+ *      no amount of word overlap promotes them. See templateRefusal above.
+ *   2. IT IS ABOUT WHAT THEY ASKED. Either the template's TITLE matches both the
+ *      customer's own words and the reply the agent meant to send — a title is
+ *      the topic, and agreeing with both ends is the strongest signal available
+ *      — or its BODY shares at least two meaningful words with what the CUSTOMER
+ *      actually wrote. Overlap with the agent's reply alone is not enough,
+ *      because that is where the coincidences live.
+ *   3. IT IS MOSTLY ABOUT THAT. At least a third of the template's own
+ *      meaningful words are on topic, so a long template that happens to mention
+ *      "delivery" once cannot answer a delivery question.
+ *
+ * A thread where the customer has never written has no words to match, so
+ * nothing qualifies and the reply goes to a person. That is correct: a template
+ * sent to somebody who has said nothing is an unsolicited message.
+ */
+export async function pickWhatsappTemplate(
+  admin: SupabaseClient,
+  orgId: string,
+  o: { reply: string; customerMessage: string; customerName: string },
+): Promise<WhatsappTemplateSend | null> {
+  const rows = await whatsappTemplateRows(admin, orgId);
+  if (!rows) return null;
+
+  const askedByCustomer = meaningfulWords(o.customerMessage);
+  const intended = meaningfulWords(o.reply);
+  // Nothing to be relevant TO. Silence and a person, rather than a guess.
+  if (askedByCustomer.size === 0) {
+    console.warn(`[phoxta] no WhatsApp template chosen for ${orgId}: the customer has never written on this thread`);
+    return null;
+  }
+
+  let best: { score: number; hit: WhatsappTemplateSend } | null = null;
+  for (const r of rows) {
+    const contentSid = String(r.whatsapp_template_sid ?? "").trim();
+    if (!contentSid) continue;
+    const body = String(r.body ?? "");
+    const category = templateCategory(r);
+    const refused = templateRefusal(r, category, body);
+    const title = String(r.title ?? "").trim() || "Approved WhatsApp template";
+    if (refused) {
+      console.warn(`[phoxta] WhatsApp template "${title}" not eligible for an automatic reply: ${refused}`);
+      continue;
+    }
+    const filled = fillWhatsappTemplate(body, o.customerName);
+    if (!filled) continue;
+
+    const titleWords = meaningfulWords(title);
+    const bodyWords = meaningfulWords(body);
+    if (bodyWords.size === 0) continue;
+
+    const titleAsked = overlap(titleWords, askedByCustomer);
+    const titleMeant = overlap(titleWords, intended);
+    const bodyAsked = overlap(bodyWords, askedByCustomer);
+    const bodyMeant = overlap(bodyWords, intended);
+
+    const onTopic = new Set<string>();
+    for (const w of bodyWords) if (askedByCustomer.has(w) || intended.has(w)) onTopic.add(w);
+    const coverage = onTopic.size / bodyWords.size;
+
+    const titleMatch = titleAsked >= 1 && titleMeant >= 1;
+    const bodyMatch = bodyAsked >= TEMPLATE_MIN_BODY_HITS && bodyMeant >= 1;
+    if (!titleMatch && !bodyMatch) continue;
+    if (coverage < TEMPLATE_MIN_COVERAGE) continue;
+
+    // Ranked only among templates that already qualify, so the score decides
+    // WHICH answer, never WHETHER to answer.
+    const score = titleAsked * 3 + titleMeant * 2 + bodyAsked * 2 + bodyMeant;
+    const because = titleMatch
+      ? `its title matches what the customer asked about${category === "utility" ? " and it is a utility template" : ""}`
+      : `${bodyAsked} of the customer's own words appear in it, and ${Math.round(coverage * 100)}% of the template is about this`;
+    // Rows arrive newest first, so a tie keeps the most recently written one.
+    if (!best || score > best.score) {
+      best = {
+        score,
+        hit: { id: String(r.id), title, contentSid, variables: filled.variables, rendered: filled.rendered, because },
+      };
+    }
+  }
+  return best?.hit ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -749,6 +1178,8 @@ export type AutoReplyTrigger =
   | "agent-catchup"
   | "agent-operator"
   | "twilio-inbound"
+  /** Not a send: Twilio reporting, minutes later, that a send never arrived. */
+  | "twilio-status"
   | "chatwoot"
   | "engage";
 
@@ -806,6 +1237,16 @@ export type SendOutcome = {
   status: "sent" | "failed" | "simulated";
   error?: string;
   threadId?: string;
+  /**
+   * This send will never succeed on a retry, so the message must not stay in the
+   * queue re-composing a model turn every five minutes for the rest of the day.
+   *
+   * Only for refusals that are ABOUT the destination rather than about us: the
+   * customer replied STOP, or WhatsApp's 24-hour window has closed and no
+   * template fitted. The message is handed to a person instead — which is the
+   * outcome that actually helps the customer.
+   */
+  permanent?: boolean;
 };
 
 /**
@@ -816,6 +1257,12 @@ export type SendOutcome = {
  * tell a sent reply from one that never left the building. `provider_sid` is the
  * provider's id for the message we SENT — for Gmail that is also the dedupe key
  * that stops the next sync ingesting our own reply as new mail.
+ *
+ * RETURNS false for exactly one reason: the row already carried a carrier
+ * verdict of failed/undelivered and this call was about to overwrite it with a
+ * success. Nothing else — a write that errors still returns true, because the
+ * caller uses this to decide whether the CUSTOMER's message may be settled, and
+ * a transient PostgREST failure is not evidence about delivery.
  */
 export async function stampDelivery(
   admin: SupabaseClient,
@@ -823,7 +1270,7 @@ export async function stampDelivery(
   messageRowId: string,
   sent: SendOutcome,
   extra: Json = {},
-): Promise<void> {
+): Promise<boolean> {
   const { data } = await admin
     .from("conversation_messages")
     .select("meta")
@@ -831,6 +1278,32 @@ export async function stampDelivery(
     .eq("organization_id", orgId)
     .maybeSingle();
   const meta = ((data as Json)?.meta ?? {}) as Json;
+
+  // A VERDICT THAT HAS ALREADY ARRIVED BEATS THIS ONE.
+  //
+  // This write happens a moment after the send returns, and Twilio's own
+  // delivery callback is a separate HTTP request that can — narrowly — land
+  // inside that gap. If it already reported the message as failed or
+  // undelivered, that is the truth: it is what the CARRIER said, where `sent`
+  // here only ever meant "Twilio accepted it". Overwriting it would put the
+  // reply back in the Inbox looking delivered and re-settle the customer's
+  // message, which is precisely the defect twilio-status exists to fix.
+  //
+  // The extra keys are still merged, because they describe what was sent (the
+  // subject, the template that went instead, the picture) and remain true.
+  const already = String(((meta.delivery ?? {}) as Json).status ?? "");
+  const alreadyFailed = already === "failed" || already === "undelivered";
+  if (alreadyFailed && sent.ok) {
+    const { error: mergeErr } = await admin
+      .from("conversation_messages")
+      .update({ provider_sid: sent.id ?? "", meta: { ...meta, ...extra } })
+      .eq("id", messageRowId)
+      .eq("organization_id", orgId);
+    if (mergeErr) console.error("[phoxta] could not record delivery:", mergeErr.message);
+    console.warn(`[phoxta] keeping the carrier's '${already}' verdict on ${messageRowId} rather than the send's own 'sent'`);
+    return false; // …and ONLY here: see the return contract above.
+  }
+
   const { error } = await admin
     .from("conversation_messages")
     .update({
@@ -844,7 +1317,14 @@ export async function stampDelivery(
     })
     .eq("id", messageRowId)
     .eq("organization_id", orgId);
+  // TRUE even when the write failed. This value answers exactly one question —
+  // "did a carrier verdict already on the row override what you were told to
+  // record?" — and a transient PostgREST failure is not that. Returning false
+  // here would make deliverAutoReply believe the message had been reported
+  // undelivered and leave the customer's row untouched over a write it should
+  // simply have logged.
   if (error) console.error("[phoxta] could not record delivery:", error.message);
+  return true;
 }
 
 /**
@@ -1073,12 +1553,13 @@ export async function autoReplyAllowed(
     /**
      * How the reply would physically leave, when the caller knows.
      *
-     * `ownTransport` means the caller replies inside the channel's own inbound
-     * request — TwiML in Twilio's webhook response, a post back to the Chatwoot
-     * conversation — so the identity is already the right one and no platform
-     * sender is involved. `smsFrom` is the tenant's own number when it has
-     * already been resolved. Absent both, a texting reply would have to go out
-     * through the shared platform number, and that is refused: see
+     * `ownTransport` means the caller pushes the reply out itself, inside the
+     * channel's own connection — a post back to the Chatwoot conversation — so
+     * the identity is already the right one and no platform sender is involved.
+     * `smsFrom` is the tenant's own number when it has already been resolved
+     * (twilio-inbound holds it: it is the signature-proven `To` of the message
+     * being answered). Absent both, a texting reply would have to go out through
+     * the shared platform number, and that is refused: see
      * TENANT_SENDER_MISSING.
      */
     outbound?: { ownTransport?: boolean; smsFrom?: string };
@@ -1147,19 +1628,32 @@ export type AutoReplySend = {
    *  is refused rather than sent from the shared platform number. */
   smsFrom?: string;
   /**
+   * A picture the agent deliberately chose to show this customer.
+   *
+   * respondCore has always returned `media` and, until now, only the web chat
+   * widget read it — so an agent that decided a photograph of the part, the menu
+   * or the price list was the answer had no way to send one over WhatsApp. It
+   * comes through the funnel rather than round it because attaching a picture is
+   * a send like any other: it is metered, it is capped, and a bad attachment
+   * fails the WHOLE message rather than just the attachment.
+   *
+   * At most ONE travels. WhatsApp carries one image per message, and an agent
+   * that attaches a gallery to a text reply is decorating, not answering.
+   */
+  media?: OutboundMedia[];
+  /**
    * The transport, when the CALLER owns it.
    *
-   * Two channels reply inside the HTTP request the customer's message arrived
-   * on rather than through an outbound API: Twilio, where the reply is TwiML in
-   * the webhook's own response (which is also what keeps a tenant's reply coming
-   * from the number the customer texted, instead of the platform's TWILIO_FROM),
-   * and Chatwoot, where it is a post back to the Chatwoot conversation. Before
-   * this, those two answered straight out of agent-inbound's JSON and never met
-   * this file at all — no per-thread ceiling, no burst window, no daily cap, no
-   * audit line.
+   * One channel still pushes its own reply out rather than through a provider
+   * API this file knows: Chatwoot, where it is a post back to the Chatwoot
+   * conversation. It used to answer straight out of agent-inbound's JSON and
+   * never met this file at all — no per-thread ceiling, no burst window, no
+   * daily cap, no audit line.
    *
    * It is called ONLY after every gate has passed and the budget has been
    * claimed. Supplying it does not skip anything; it replaces the last step.
+   * It also opts OUT of the WhatsApp 24-hour handling below, because a Chatwoot
+   * inbox has its own WhatsApp connection and polices its own window.
    */
   transport?: () => Promise<SendOutcome>;
 };
@@ -1188,7 +1682,96 @@ async function priorSendFailures(admin: SupabaseClient, orgId: string, messageRo
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-async function transportSend(admin: SupabaseClient, orgId: string, o: AutoReplySend): Promise<SendOutcome> {
+/**
+ * What a Twilio error code MEANS, in the owner's own words, and whether trying
+ * again could ever help.
+ *
+ * One table for both halves of the send, because they are the same question
+ * asked twice. The REST call answers a handful of these immediately (a number
+ * Twilio will not dial, a template rejected outright); the rest — carrier spam
+ * filtering, an unreachable handset, a landline, WhatsApp's window — arrive
+ * minutes later on the StatusCallback, which is what twilio-status feeds back
+ * through here.
+ *
+ * Deliberately short of exhaustive. An unlisted code is treated as a transient
+ * wire failure and stays retryable, which is the safer default for a customer
+ * who is waiting; inventing meanings for codes we have not verified would put
+ * fiction on a business's own message thread.
+ */
+export type TwilioFailure = { words: string; permanent: boolean };
+
+export function twilioFailure(code: number | undefined, channel: string): TwilioFailure | null {
+  const permanent = (words: string): TwilioFailure => ({ words, permanent: true });
+  const transient = (words: string): TwilioFailure => ({ words, permanent: false });
+  switch (code) {
+    // ── The window, and consent ──────────────────────────────────────────────
+    case 63016:
+      return permanent(
+        channel === "whatsapp"
+          ? "WhatsApp refused it: more than 24 hours had passed since the customer's last message, so only an approved template can be sent"
+          : "the message was refused as outside the messaging window",
+      );
+    case 21610:
+      return permanent("this customer has replied STOP, so we are not allowed to text them again");
+    case 21408:
+    case 21606:
+      return permanent("this Twilio number cannot send to that country or that destination");
+
+    // ── Reported LATE, on the message resource. Every one of these used to be
+    //    invisible: the row said 'sent' and the customer had nothing. ─────────
+    case 30003:
+      return permanent("the handset could not be reached, so it may be switched off, out of coverage or no longer in service");
+    case 30004:
+      return permanent("the carrier has blocked messages to this number");
+    case 30005:
+      return permanent("that number is not a working mobile number");
+    case 30006:
+      return permanent("that is a landline, or a carrier that cannot receive text messages");
+    case 30007:
+      return permanent(
+        "the mobile carrier filtered it as spam, so it never reached the customer. Rewording the reply, or registering this number for business messaging, is what fixes that",
+      );
+    case 30002:
+      return permanent("the Twilio account is suspended, so nothing can be sent until that is resolved");
+    case 63003:
+      return permanent("that number is not reachable on WhatsApp");
+    case 63024:
+      return permanent("WhatsApp rejected the message as invalid");
+    case 30001:
+      return transient("Twilio's queue for this number overflowed");
+    case 30008:
+      return transient("the carrier reported an unknown delivery error");
+
+    // ── The picture, specifically ────────────────────────────────────────────
+    case 11751:
+      return permanent("the picture was larger than the carrier would accept, so the message could not be delivered");
+    case 12300:
+      return permanent("the picture was not a file type the carrier would accept");
+    default:
+      return null;
+  }
+}
+
+/** What actually happened to the picture the agent chose. Recorded on the
+ *  agent's own row so the Inbox can show the owner exactly what their customer
+ *  received — the picture itself, or the link that went instead of it. */
+export type MediaOutcome =
+  | { kind: "attached"; url: string; alt: string; contentType: string; bytes: number }
+  | { kind: "linked"; url: string; alt: string; why: string }
+  | { kind: "none" };
+
+async function transportSend(
+  admin: SupabaseClient,
+  orgId: string,
+  o: AutoReplySend,
+  /** Set when WhatsApp's window has closed and one of the business's own
+   *  approved templates is going out in place of the composed reply. */
+  waTemplate: WhatsappTemplateSend | null = null,
+  /** Already decided by deliverAutoReply, because the decision needs the
+   *  channel, the window and a network check — none of which belong inside a
+   *  function whose job is to put bytes on a wire. */
+  media: MediaOutcome = { kind: "none" },
+): Promise<SendOutcome> {
   if (o.transport) {
     try {
       return await o.transport();
@@ -1196,19 +1779,44 @@ async function transportSend(admin: SupabaseClient, orgId: string, o: AutoReplyS
       return { ok: false, provider: "caller", id: "", status: "failed", error: String((e as Error)?.message || e) };
     }
   }
+  // The picture as a link in the words, for every route where it cannot be
+  // attached: all of SMS, the WhatsApp cases the check refused, and email.
+  const text = media.kind === "linked" ? withMediaLink(o.text, { url: media.url, alt: media.alt }) : o.text;
+
   if (o.channel === "sms" || o.channel === "whatsapp") {
     // The last line of defence on the identity gate. deliverAutoReply resolves
     // the tenant's own number and refuses before spending anything; if a future
     // caller reaches here without one, it still must not borrow the platform's.
     const from = String(o.smsFrom ?? "").trim();
     if (!from) return { ok: false, provider: "twilio", id: "", status: "failed", error: TENANT_SENDER_MISSING };
-    const r = await twilioSend(o.channel, o.to, o.text, { from });
+    // Twilio's real verdict arrives minutes later, on this URL. Without it a
+    // carrier-filtered reply reads as delivered for ever — see twilio-status.
+    const statusCallback = twilioStatusCallback({
+      orgId,
+      messageId: o.agentMessageId ?? null,
+      customerMessageId: o.customerMessageId ?? null,
+      channel: o.channel,
+    });
+    const r = waTemplate
+      ? await twilioSend(o.channel, o.to, waTemplate.rendered, {
+        from,
+        contentSid: waTemplate.contentSid,
+        contentVariables: waTemplate.variables,
+        statusCallback,
+      })
+      : await twilioSend(o.channel, o.to, text, {
+        from,
+        statusCallback,
+        ...(media.kind === "attached" ? { mediaUrls: [media.url] } : {}),
+      });
+    const failure = r.ok ? null : twilioFailure(r.errorCode, o.channel);
     return {
       ok: r.ok,
-      provider: "twilio",
+      provider: waTemplate ? "twilio_template" : "twilio",
       id: r.sid ?? "",
       status: r.status === "dialing" ? "sent" : r.status,
-      error: r.errorMessage,
+      error: failure?.words ?? r.errorMessage,
+      ...(failure?.permanent ? { permanent: true } : {}),
     };
   }
   const r = await sendConversationEmail(admin, orgId, {
@@ -1219,11 +1827,58 @@ async function transportSend(admin: SupabaseClient, orgId: string, o: AutoReplyS
     // thread is "Order #4471 — wrong size delivered" does not get "Re: your
     // message" back.
     subject: o.subject,
-    text: o.text,
+    text,
     autoReplied: true,
     thread: o.thread,
   });
   return { ok: r.ok, provider: r.provider, id: r.id, status: r.status, error: r.error, threadId: r.threadId };
+}
+
+/**
+ * Can the picture the agent chose actually travel on this channel — and if not,
+ * what is the honest thing to do with it?
+ *
+ * Decided BEFORE the budget is claimed and before anything is sent, because on
+ * WhatsApp a URL Twilio cannot fetch fails the WHOLE message: the customer gets
+ * no picture AND no words. Three outcomes, and every one of them still delivers
+ * the reply:
+ *
+ *   attached  WhatsApp, inside the window, and the file passed every check.
+ *   linked    everything else. On SMS always, because MMS is a US/Canada-only
+ *             product on Twilio and promising an attachment on a channel that
+ *             reaches the rest of the world would be a promise we cannot keep;
+ *             on email, which composes its own body elsewhere; and on any
+ *             WhatsApp send where the file itself was refused.
+ *   none      no picture was chosen.
+ */
+async function decideMedia(o: AutoReplySend, windowOpen: boolean): Promise<MediaOutcome> {
+  // A caller that owns its own transport (the Chatwoot post) sends whatever it
+  // sends; deciding anything about a picture here would put a claim on the row
+  // that this file cannot make good on.
+  if (o.transport) return { kind: "none" };
+  const first = (o.media ?? []).find((m) => String(m?.url ?? "").trim());
+  if (!first) return { kind: "none" };
+  const url = String(first.url).trim();
+  const alt = String(first.alt ?? "").trim();
+
+  if (o.channel === "sms") {
+    return { kind: "linked", url, alt, why: "MMS only works for US and Canadian numbers on this account, so the picture went as a link" };
+  }
+  if (o.channel !== "whatsapp") {
+    return { kind: "linked", url, alt, why: "this channel does not carry attachments from the agent, so the picture went as a link" };
+  }
+  if (!windowOpen) {
+    // Never reached: deliverAutoReply refuses a media reply outright once the
+    // window has shut, because the account's approved templates are text-only.
+    // Kept as the honest fallback rather than a silent attach.
+    return { kind: "linked", url, alt, why: "WhatsApp's 24-hour window had closed, so the picture could not be attached" };
+  }
+  const verdict: MediaVerdict = await checkWhatsappImage({ url, alt });
+  if (verdict.ok) {
+    return { kind: "attached", url: verdict.url, alt: verdict.alt, contentType: verdict.contentType, bytes: verdict.bytes };
+  }
+  console.warn(`[phoxta] picture not attached to a WhatsApp reply: ${verdict.reason} (${url})`);
+  return { kind: "linked", url, alt, why: verdict.reason };
 }
 
 /**
@@ -1282,9 +1937,11 @@ export async function deliverAutoReply(
   };
 
   // WHOSE NUMBER. Resolved once, before the gate, so the pre-flight refuses on
-  // exactly what the send would use. A caller that owns its own transport (the
-  // TwiML reply, the Chatwoot post) needs none: its reply leaves on the identity
-  // the message arrived on by construction.
+  // exactly what the send would use — the caller's own value first (for a live
+  // inbound text that is the signature-proven `To` of the message being
+  // answered), the thread's recorded number otherwise. A caller that owns its
+  // own transport (the Chatwoot post) needs none: its reply leaves on the
+  // identity the message arrived on by construction.
   let smsFrom = "";
   if (!o.transport && (o.channel === "sms" || o.channel === "whatsapp")) {
     smsFrom = String(o.smsFrom ?? "").trim() ||
@@ -1304,6 +1961,58 @@ export async function deliverAutoReply(
   // access.
   if (!gate.ok) return refuse(gate.reason, gate.retryable, gate.needsHuman, gate.needsHuman);
 
+  // --- WHATSAPP'S 24-HOUR RULE. Decided BEFORE the budget is claimed, so a
+  //     refusal here costs the business nothing. Skipped when the caller owns
+  //     its own transport: a Chatwoot reply goes out through Chatwoot's own
+  //     WhatsApp connection, which polices its own window. ---
+  let waTemplate: WhatsappTemplateSend | null = null;
+  let waClosedFor = "";
+  let waWindowOpen = true;
+  const chosenPicture = (o.media ?? []).find((m) => String(m?.url ?? "").trim());
+  if (o.channel === "whatsapp" && !o.transport) {
+    const win = await whatsappWindow(admin, orgId, o.conversationId);
+    waWindowOpen = win.open;
+    if (!win.open) {
+      waClosedFor = win.lastInboundAt ? agoInWords(Date.now() - win.lastInboundAt) : "";
+      const lastWrote = waClosedFor ? `they last wrote ${waClosedFor}` : "they have never written on this thread";
+      // A PICTURE CANNOT GO TO A COLD CONTACT, AND SAYING SO IS THE ONLY HONEST
+      // OPTION. Outside the window WhatsApp accepts nothing but an approved
+      // template, and a template can only carry media if it was APPROVED with a
+      // media header — every template on this account is text-only. The agent
+      // attached a picture because the picture is the answer, so substituting a
+      // text template would send the customer a message that is not the answer
+      // and quietly drop the part that was. A person is told instead.
+      if (chosenPicture) {
+        return refuse(
+          `the agent's answer was a picture, and WhatsApp only allows an approved template more than 24 hours after a customer's last ` +
+            `message — ${lastWrote}. This business's approved templates carry text only, so the picture could not be sent and nothing ` +
+            `was: a person needs to pick this up`,
+          false,
+          true,
+          true,
+        );
+      }
+      waTemplate = await pickWhatsappTemplate(admin, orgId, {
+        reply: o.text,
+        customerMessage: win.lastInboundText,
+        customerName: await customerNameFor(admin, orgId, o.conversationId),
+      });
+      if (!waTemplate) {
+        // NOT retryable: the window only ever gets further away, and a retryable
+        // refusal here would re-compose a full model turn every five minutes
+        // until midnight. A person is told instead — they can send an approved
+        // template from the Inbox, where they fill its blanks themselves.
+        return refuse(
+          `WhatsApp only allows a free-text reply within 24 hours of the customer's last message and ${lastWrote}, ` +
+            `and none of this business's approved WhatsApp templates fits this reply — nothing was sent, and a person needs to pick it up`,
+          false,
+          true,
+          true,
+        );
+      }
+    }
+  }
+
   // The authoritative daily ceiling — an increment and a check in one statement,
   // so two ticks cannot both pass it with one action left. autoReplyAllowed has
   // already read the same budget, which is what makes this the rare case rather
@@ -1317,24 +2026,136 @@ export async function deliverAutoReply(
     return refuse(budget.reason, budget.retryable, false, true);
   }
 
-  const outcome = await transportSend(admin, orgId, { ...o, subject, smsFrom });
+  // THE PICTURE, CHECKED BEFORE ANYTHING IS SENT. On WhatsApp a URL Twilio
+  // cannot fetch fails the whole message, so a file that is the wrong type, too
+  // large or unreachable becomes a link in the words rather than an attachment
+  // that would cost the customer the reply as well.
+  const media = await decideMedia(o, waWindowOpen);
+  const outcome = await transportSend(admin, orgId, { ...o, subject, smsFrom }, waTemplate, media);
 
+  // What actually went on the wire, when it was not what the agent composed.
+  // Recorded on the agent's own row so the Inbox never shows a reply as
+  // delivered when a template went out in its place.
+  const waStamp = waTemplate && outcome.ok
+    ? {
+      whatsapp: {
+        window: "closed",
+        customer_last_wrote: waClosedFor || "unknown",
+        template: { id: waTemplate.id, title: waTemplate.title, content_sid: waTemplate.contentSid, chosen_because: waTemplate.because },
+        sent_text: waTemplate.rendered,
+      },
+    }
+    : {};
+
+  // WHAT THE CUSTOMER ACTUALLY SAW. `media` is what the Inbox renders inside the
+  // agent's own bubble, so an owner can look at the thread and see the picture
+  // their customer received; `media_link` says the picture went as a link and
+  // why, which is the answer to "it said it was attaching a photo — where is it?"
+  const mediaStamp = media.kind === "attached"
+    ? { media: [{ type: "image", url: media.url, alt: media.alt }], media_delivery: { attached: true, bytes: media.bytes, content_type: media.contentType } }
+    : media.kind === "linked"
+      ? { media: [{ type: "image", url: media.url, alt: media.alt }], media_delivery: { attached: false, reason: media.why } }
+      : {};
+
+  // False when Twilio's own delivery callback beat this write and reported the
+  // message as never having arrived. The send believes it succeeded; the carrier
+  // says otherwise, and the carrier is right — so the customer's row below is
+  // left exactly as twilio-status left it rather than being stamped answered.
+  let recordedAsSent = true;
   if (o.agentMessageId) {
-    await stampDelivery(admin, orgId, o.agentMessageId, outcome, {
+    recordedAsSent = await stampDelivery(admin, orgId, o.agentMessageId, outcome, {
       ...(o.stampExtra ?? {}),
       ...(o.channel === "email" && subject ? { subject } : {}),
       ...(outcome.threadId ? { gmail_thread_id: outcome.threadId } : {}),
+      ...waStamp,
+      ...(outcome.ok ? mediaStamp : {}),
     });
   }
-  if (o.customerMessageId) {
+
+  // A note on the thread when the picture could not be attached. The customer
+  // got the reply and the link, so nobody needs alerting — but the owner opening
+  // the conversation should be able to see, in words, why a photograph they can
+  // see in their own library arrived as a URL.
+  if (media.kind === "linked" && outcome.ok && o.channel !== "email") {
+    const { error: linkNoteErr } = await admin.from("conversation_messages").insert({
+      organization_id: orgId,
+      conversation_id: o.conversationId,
+      role: "note",
+      channel_type: o.channel,
+      body:
+        `The agent chose to show this customer "${media.alt || "a picture"}", but it could not be attached: ${media.why}. ` +
+        `The reply went out with a link to it instead, so they can still see it.`,
+      provider_sid: "",
+      meta: { source: "auto-reply", media_link: media.url },
+    });
+    if (linkNoteErr) console.error("[phoxta] could not note the picture fallback:", linkNoteErr.message);
+  }
+
+  // A note on the thread, in plain words, when a template was sent instead of
+  // the answer. It is not a notification: the customer DID hear from the
+  // business, and the one person who needs the detail is whoever opens the
+  // conversation — which is exactly where a note lives.
+  if (waTemplate && outcome.ok) {
+    const { error: noteErr } = await admin.from("conversation_messages").insert({
+      organization_id: orgId,
+      conversation_id: o.conversationId,
+      role: "note",
+      channel_type: o.channel,
+      body:
+        `WhatsApp only allows a free-text reply within 24 hours of a customer's last message, and this customer last wrote ` +
+        `${waClosedFor || "more than a day ago"}. The agent's reply above could not be sent as written, so your approved template ` +
+        `"${waTemplate.title}" went out instead: "${waTemplate.rendered}". As soon as they reply, the 24 hours restart and the ` +
+        `agent can answer them in full.`,
+      provider_sid: "",
+      meta: { source: "auto-reply", whatsapp_template: waTemplate.title },
+    });
+    if (noteErr) console.error("[phoxta] could not note the WhatsApp template substitution:", noteErr.message);
+  }
+
+  // THE CARRIER HAS ALREADY RULED ON THIS ONE.
+  //
+  // `recordedAsSent` is false only when Twilio's own delivery callback beat this
+  // code and reported that the message never arrived. twilio-status has already
+  // put the carrier's reason back on the customer's row and re-queued it, so
+  // every branch below would be writing over a better answer: `answered: true`
+  // would settle it forever for a reply nobody received, and the failure
+  // branches would count a send failure the send itself did not have.
+  const carrierAlreadyRuled = outcome.ok && !recordedAsSent;
+
+  if (o.customerMessageId && !carrierAlreadyRuled) {
     if (outcome.ok) {
       const clean = { ...((o.customerMeta ?? {}) as Json) };
       delete clean.auto_reply;
       await admin
         .from("conversation_messages")
-        .update({ meta: { ...clean, auto_reply: { answered: true, at: new Date().toISOString() } } })
+        .update({
+          meta: {
+            ...clean,
+            auto_reply: {
+              answered: true,
+              at: new Date().toISOString(),
+              // Answered, but not in the agent's own words — so the row says which
+              // approved template the customer actually received.
+              ...(waTemplate ? { via_whatsapp_template: waTemplate.title } : {}),
+            },
+          },
+        })
         .eq("id", o.customerMessageId)
         .eq("organization_id", orgId);
+    } else if (outcome.permanent) {
+      // A refusal a retry cannot fix (the customer replied STOP; WhatsApp's
+      // window shut between the check above and the send). Settled for the
+      // machine, handed to a person — not left to burn a model turn every five
+      // minutes until midnight.
+      await markNotAnswered(
+        admin,
+        orgId,
+        o.customerMessageId,
+        o.customerMeta ?? {},
+        `the reply could not be sent: ${outcome.error ?? "unknown error"} — it needs a person`,
+        false,
+      );
+      await notifyNeedsHuman(admin, orgId, o.conversationId, `${o.to}: ${o.inboundSubject ?? o.text}`);
     } else {
       // The send is what failed, not the decision — so this stays retryable and
       // agent-catchup picks the message up again rather than losing it.
@@ -1380,16 +2201,250 @@ export async function deliverAutoReply(
     messageId: o.agentMessageId ?? null,
     reason: outcome.error,
     summary: outcome.ok
-      ? `Answered ${o.to}${o.inboundSubject ? ` about "${o.inboundSubject}"` : ""}${o.template ? ` — adapted from the saved reply "${o.template.title}"` : " (no saved reply matched)"}.`
+      ? waTemplate
+        ? `Sent ${o.to} the approved WhatsApp template "${waTemplate.title}" — they last wrote ${waClosedFor || "more than a day ago"}, so a free-text reply could not be delivered (chosen because ${waTemplate.because}).`
+        : `Answered ${o.to}${o.inboundSubject ? ` about "${o.inboundSubject}"` : ""}${o.template ? ` — adapted from the saved reply "${o.template.title}"` : " (no saved reply matched)"}${
+          media.kind === "attached"
+            ? `, with the picture "${media.alt}" attached`
+            : media.kind === "linked"
+              ? `, with a link to "${media.alt || "a picture"}" because it could not be attached (${media.why})`
+              : ""
+        }.`
       : `Composed a reply to ${o.to} but could not send it: ${outcome.error ?? "unknown error"}.`,
   });
 
+  // Twilio accepted this message and the carrier then said it never arrived, in
+  // that order, inside this function's own lifetime. Reporting it to the caller
+  // as sent would put a delivery in a worker's tally that never happened.
+  if (carrierAlreadyRuled) {
+    return {
+      sent: false,
+      reason: "the carrier reported that this reply never reached the customer",
+      // twilio-status has already decided whether a retry could help and told a
+      // person if one could not. Saying so again here would double both.
+      retryable: false,
+      needsHuman: false,
+      outcome,
+    };
+  }
   if (outcome.ok) return { sent: true, outcome };
   return {
     sent: false,
     reason: `the reply could not be sent: ${outcome.error ?? "unknown error"}`,
-    retryable: true,
-    needsHuman: false,
+    // A permanent refusal is not a queue position — see the customer-row branch
+    // above. Callers that keep their own retry state must see the difference.
+    retryable: outcome.permanent !== true,
+    needsHuman: outcome.permanent === true,
     outcome,
   };
+}
+
+// ---------------------------------------------------------------------------
+// WHAT TWILIO TELLS US AFTERWARDS.
+//
+// The REST API answers 201 `queued`. That is the ONLY thing the send above can
+// know, and it is not delivery: the carrier filtering a message as spam (30007),
+// a handset that cannot be reached (30003), a landline (30006) and WhatsApp's
+// window having shut (63016) are all reported minutes later, on the message
+// resource, and only to a StatusCallback.
+//
+// Without this, every one of those looked like a success. The agent's row said
+// `sent`, the customer's row said `answered: true`, and agent-catchup treats
+// answered:true as SETTLED FOREVER — so the one worker that exists to repair an
+// unanswered message ruled it out permanently. The console showed a delivered
+// reply the customer never received, and nothing retried.
+//
+// This is the correction, and it is deliberately the same shape as the failure
+// branch of deliverAutoReply above: stamp the reply row with what really
+// happened, put the reason back on the customer's row, count the failure, and
+// decide honestly whether a retry could ever help or a person has to.
+// ---------------------------------------------------------------------------
+
+export type TwilioDeliveryReport = {
+  /** Twilio's SID for the message WE sent. */
+  sid: string;
+  /** queued | sending | sent | delivered | undelivered | failed | read */
+  status: string;
+  errorCode?: number;
+  channel: string;
+  /** The row holding our message, named on the callback URL at send time. */
+  messageId?: string;
+  /** The customer's row, so a failure can be put back in the queue. */
+  customerMessageId?: string;
+};
+
+/** How far through delivery a Twilio status is. A callback for `sent` can
+ *  legitimately arrive AFTER the one for `delivered` — the two are separate HTTP
+ *  requests over the public internet — so progress is compared rather than
+ *  assumed, and a terminal failure is never overwritten by a stale success. */
+const DELIVERY_RANK: Record<string, number> = {
+  queued: 1,
+  accepted: 1,
+  scheduled: 1,
+  sending: 2,
+  sent: 3,
+  delivered: 4,
+  read: 5,
+  undelivered: 9,
+  failed: 9,
+};
+
+const isFailure = (status: string) => status === "failed" || status === "undelivered";
+
+/** The column only accepts the six values 0040 declared, and `read` is not one
+ *  of them. Mapping it to `delivered` keeps the tick right while the raw status
+ *  is preserved in meta, so no migration has to land before this works. */
+const deliveryColumn = (status: string): string => {
+  if (isFailure(status)) return "failed";
+  if (status === "read") return "delivered";
+  if (status === "delivered") return "delivered";
+  if (status === "sent") return "sent";
+  return "queued";
+};
+
+/**
+ * Apply one Twilio delivery report to the messages it concerns.
+ *
+ * Every query is org-scoped: the organisation is named on the callback URL, and
+ * the URL is covered by the signature Twilio computes, so it cannot be moved to
+ * another tenant by anyone without the account's auth token.
+ */
+export async function applyTwilioDeliveryUpdate(
+  admin: SupabaseClient,
+  orgId: string,
+  r: TwilioDeliveryReport,
+): Promise<{ applied: boolean; note: string }> {
+  const status = String(r.status ?? "").trim().toLowerCase();
+  if (!status) return { applied: false, note: "the callback carried no message status" };
+
+  // The row we sent. Named on the URL for the agent's own replies (which is what
+  // makes an early callback safe — the row is written before the send); found by
+  // Twilio's SID for anything else, which is exactly what provider_sid holds and
+  // what 0114's unique index makes a single row.
+  const row = r.messageId
+    ? (await admin
+      .from("conversation_messages")
+      .select("id, conversation_id, channel_type, body, role, delivery_status, meta")
+      .eq("id", r.messageId)
+      .eq("organization_id", orgId)
+      .maybeSingle()).data
+    : r.sid
+      ? (await admin
+        .from("conversation_messages")
+        .select("id, conversation_id, channel_type, body, role, delivery_status, meta")
+        .eq("organization_id", orgId)
+        .eq("provider_sid", r.sid)
+        .maybeSingle()).data
+      : null;
+  if (!row) {
+    // Not an error. A callback can beat the row that records the send (a human's
+    // reply in the Inbox is written after the send returns), and Twilio will send
+    // the later ones anyway — including the one that matters, the failure.
+    return { applied: false, note: `no message row yet for ${r.sid || r.messageId || "this callback"}` };
+  }
+  const m = row as Json;
+  const meta = (m.meta ?? {}) as Json;
+  const seen = String(meta?.delivery?.status ?? "");
+  const rank = DELIVERY_RANK[status] ?? 0;
+  const seenRank = DELIVERY_RANK[seen] ?? 0;
+  // A message that has already been reported as not arriving is FINISHED here.
+  // Nothing later resurrects it, and — just as important — a redelivered failure
+  // callback must not count a second send failure against the customer's message
+  // and hand it to a person over one carrier report.
+  if (isFailure(seen)) {
+    return { applied: false, note: `already recorded as ${seen}` };
+  }
+  // Never walk a message backwards: `sent` and `delivered` are separate HTTP
+  // requests over the public internet and can arrive in either order.
+  if (seen && !isFailure(status) && rank <= seenRank) {
+    return { applied: false, note: `${status} is not newer than the recorded ${seen}` };
+  }
+
+  const channel = String(r.channel || m.channel_type || "sms");
+  const failure = isFailure(status) ? (twilioFailure(r.errorCode, channel) ?? {
+    words: `the carrier reported it as ${status}${r.errorCode ? ` (Twilio error ${r.errorCode})` : ""}`,
+    permanent: false,
+  }) : null;
+
+  const { error: stampErr } = await admin
+    .from("conversation_messages")
+    .update({
+      delivery_status: deliveryColumn(status),
+      meta: {
+        ...meta,
+        delivery: {
+          ...((meta.delivery ?? {}) as Json),
+          provider: "twilio",
+          status,
+          at: new Date().toISOString(),
+          ...(r.sid ? { sid: r.sid } : {}),
+          ...(r.errorCode ? { code: r.errorCode } : {}),
+          ...(failure ? { error: failure.words } : {}),
+        },
+      },
+    })
+    .eq("id", String(m.id))
+    .eq("organization_id", orgId);
+  if (stampErr) {
+    console.error("[phoxta] could not record the Twilio delivery report:", stampErr.message);
+    return { applied: false, note: stampErr.message };
+  }
+  if (!failure) return { applied: true, note: `recorded ${status}` };
+
+  // --- IT DID NOT ARRIVE. Undo the optimism. ---
+  const conversationId = String(m.conversation_id ?? "");
+  let handedOver = false;
+  if (r.customerMessageId) {
+    // Read the row's CURRENT meta rather than rebuilding it: it carries
+    // meta.twilio_to, the business's own number, and a retry that loses it can
+    // never be sent as the right business again.
+    const { data: cust } = await admin
+      .from("conversation_messages")
+      .select("meta, body")
+      .eq("id", r.customerMessageId)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    if (cust) {
+      const custMeta = ((cust as Json).meta ?? {}) as Json;
+      const failures = Number(custMeta?.auto_reply?.send_failures ?? 0) + 1;
+      const giveUp = failure.permanent || failures >= MAX_SEND_FAILURES;
+      handedOver = giveUp;
+      await markNotAnswered(
+        admin,
+        orgId,
+        String(r.customerMessageId),
+        custMeta,
+        giveUp
+          ? `the reply was sent but never reached them: ${failure.words}. It needs a person to reply`
+          : `the reply was sent but never reached them: ${failure.words}`,
+        !giveUp,
+        { send_failures: failures },
+      );
+      if (giveUp && conversationId) {
+        await notifyNeedsHuman(admin, orgId, conversationId, String((cust as Json).body ?? "").slice(0, 140));
+      }
+    }
+  } else if (conversationId && failure.permanent) {
+    // A human's own reply, or a flow's, with no customer row to re-queue. The
+    // person who wrote it still has to learn it never landed.
+    await notifyNeedsHuman(admin, orgId, conversationId, `A reply to this customer was not delivered: ${failure.words}`);
+    handedOver = true;
+  }
+
+  await auditAutoReply(admin, orgId, {
+    status: "error",
+    channel,
+    trigger: "twilio-status",
+    conversationId,
+    to: "",
+    provider: "twilio",
+    providerSid: r.sid,
+    messageId: String(m.id),
+    reason: failure.words,
+    summary: `Twilio reported the message as ${status}: ${failure.words}.${
+      handedOver ? " Handed to a person." : " It stays in the queue and will be tried again."
+    }`,
+  });
+
+  return { applied: true, note: `${status}: ${failure.words}` };
 }

@@ -3,7 +3,7 @@
 // loads unified cross-channel memory, runs the tool-using agent, persists, meters.
 import { runAgent, callMessages } from "./anthropic.ts";
 import { modelFor, type Tier } from "./models.ts";
-import { buildAgentTools, agentToolRunner, resolveBookingMode, type AgentCtx, type ProductCard, type MediaItem } from "./agentTools.ts";
+import { buildAgentTools, agentToolRunner, picturesEnabled, resolveBookingMode, type AgentCtx, type ProductCard, type MediaItem } from "./agentTools.ts";
 import { meter, tokensUsedThisMonth, MONTHLY_TOKEN_CAP } from "./meter.ts";
 import { guardInput, guardOutput, INJECTION_GUARD_NOTE } from "./guardrails.ts";
 import { loadCustomerMemory, extractCustomerMemory } from "./memory.ts";
@@ -638,6 +638,23 @@ export async function respondCore(
   // The owner's saved replies for this channel, ranked against what was asked.
   const templates = await loadTemplates(admin, org.id, params.channel, params.customer.name ?? "", org.name, userText);
 
+  // WHAT SHOWING A PICTURE ACTUALLY COSTS ON THIS CHANNEL.
+  //
+  // The tools are the same everywhere; what happens to the file is not. On
+  // WhatsApp and in web chat the picture travels with the message. On SMS it
+  // becomes a link, because MMS is a US/Canada-only product on Twilio — and a
+  // link adds segments a business pays for, so the model is told rather than
+  // left to guess. On a phone call there is nothing to look at at all.
+  const pictureNote = !picturesEnabled(config.capabilities)
+    ? ""
+    : params.channel === "voice"
+      ? "\nYou are on a phone call: the customer cannot see anything. Never offer to show them a picture — describe it, or offer to text it to them.\n"
+      : params.channel === "whatsapp" || params.channel === "web"
+        ? "\nYou can SHOW this customer a picture from the business's own library — a product photograph, a menu, a price list, a design it made. Call find_picture, then attach_picture with the one that genuinely answers the question. It travels with your reply, so refer to it naturally and never paste its link. A picture that only roughly fits is worse than none: answer in words instead.\n"
+        : params.channel === "sms"
+          ? "\nYou can show this customer a picture from the business's own library with find_picture and attach_picture. On a text message it arrives as a link they tap, and every link costs the business extra message segments — so only attach one when the picture IS the answer.\n"
+          : "\nYou can show this customer a picture from the business's own library with find_picture and attach_picture. On email it arrives as a link in the message. Only attach one when the picture genuinely answers the question.\n";
+
   const system = [
     `You are ${config.display_name}, the AI agent for "${org.name}" (${org.vertical || "small business"}). Persona: ${config.persona} Tone: ${config.tone}.`,
     procedures
@@ -655,6 +672,7 @@ export async function respondCore(
       : "It is within business hours.",
     `Escalate to a human for: ${(config.escalation?.on_intents ?? []).join(", ") || "complaints, refunds, anything you cannot resolve"}.`,
     "Always look up real business data with the read tools before stating facts. Be concise, warm and helpful. Respond only with your reply to the customer.",
+    pictureNote,
     templateBlock(templates),
   ].join(" ");
 
@@ -711,6 +729,13 @@ export async function respondCore(
           // agent's reply look like that?", visible on the message itself.
           template: marked.template,
           templates_offered: templates.length,
+          // The picture the agent chose, and WHY. Written here so a web-chat
+          // thread shows it in the Inbox too — the texting channels overwrite
+          // this a moment later with what actually reached the wire, which can
+          // be a link rather than an attachment (see deliverAutoReply).
+          ...((ctx.media ?? []).length
+            ? { media: ctx.media, picture_reason: ctx.pictureReason ?? "" }
+            : {}),
           guardrails: { input_injection: inGuard.injection, output_flags: out.flags },
         })]
         : []),
@@ -794,10 +819,24 @@ export async function recordInboundOnly(
      * `retryable:false` on every future run, dry runs included.
      */
     retryable?: boolean;
+    /**
+     * File it AND claim it, because the caller is about to compose an answer in
+     * the background.
+     *
+     * twilio-inbound answers Twilio inside its webhook deadline and then does
+     * the model turn afterwards, so the customer's message has to be on the
+     * thread BEFORE the compose starts — otherwise a function killed mid-turn
+     * loses the message entirely. The claim is the same stamp claimForReply
+     * writes, and it is what stops agent-catchup answering the same message
+     * while that background turn is still running. It expires after ten minutes,
+     * which is how a worker killed mid-turn still gets repaired.
+     */
+    claim?: boolean;
   },
-): Promise<{ conversationId: string }> {
+): Promise<{ conversationId: string; messageId: string | null }> {
   const { id: conversationId } = await resolveConversation(admin, org.id, params.channel, params.conversationId, params.customer, params.isTest === true);
-  await insertMessages(admin, [{
+  const now = new Date().toISOString();
+  const written = await insertMessages(admin, [{
     organization_id: org.id,
     conversation_id: conversationId,
     role: "customer",
@@ -810,12 +849,13 @@ export async function recordInboundOnly(
         answered: false,
         reason: params.reason,
         retryable: params.retryable === true,
-        at: new Date().toISOString(),
+        at: now,
+        ...(params.claim === true ? { claimed_at: now } : {}),
       },
     },
   }]);
-  await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conversationId);
-  return { conversationId };
+  await admin.from("conversations").update({ last_message_at: now }).eq("id", conversationId);
+  return { conversationId, messageId: customerRowId(written) };
 }
 
 /** Refresh a conversation's rolling summary (memory + reporting). */

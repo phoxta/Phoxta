@@ -885,6 +885,9 @@ async function syncOrg(admin: SupabaseClient, orgId: string): Promise<SyncResult
       customerMessageId: rowId,
       customerMeta: meta,
       template: result.template,
+      // A picture the agent chose. Mail carries no attachment from the agent, so
+      // the funnel puts a link to it in the body rather than dropping it.
+      media: result.media ?? [],
       mode: ctx.mode,
       thread: { threadId: gmailThreadId, messageId, references, subject, fromMailbox: true },
       stampExtra: { source: "gmail-sync", in_reply_to: messageId, gmail_thread_id: gmailThreadId },

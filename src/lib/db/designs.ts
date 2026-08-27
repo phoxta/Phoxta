@@ -21,11 +21,31 @@ export type Design = {
   doc: DesignDoc | Deck;
   status: DesignStatus;
   brief: string | null;
+  /**
+   * The rendered cover, in the business's own asset bucket.
+   *
+   * A design lives here as JSON and is painted in the browser, which is right
+   * for the editor and useless to the server: Twilio does not take bytes, it
+   * takes a URL and fetches it. Without a stored PNG the agent could never
+   * answer "send me the menu" with the menu the business actually made. The
+   * studio publishes this on save — see publishDesignPng — so it is the design
+   * as it was last saved, never a stale copy of something newer.
+   *
+   * Null on every design that has not been saved since this shipped.
+   */
+  png_url: string | null;
+  png_path: string | null;
+  png_at: string | null;
   created_at: string;
   updated_at: string;
 };
 
-const SELECT = "id, organization_id, title, template_id, doc, status, brief, created_at, updated_at";
+/** `*` rather than a named list, and deliberately so: png_url/png_path/png_at
+ *  arrive with migration 0120, and the SPA deploys independently of migrations.
+ *  Naming a column that is not there yet turns the whole designs list into an
+ *  error, so the columns are read as they appear. The row is these columns
+ *  anyway — there is nothing here a named list would have saved. */
+const SELECT = "*";
 
 export async function listDesigns(orgId: string): Promise<{ data: Design[]; error: string | null }> {
   const { data, error } = await supabase
@@ -66,6 +86,25 @@ export async function saveDesign(
   patch: Partial<Pick<Design, "title" | "doc" | "status" | "template_id" | "brief">>,
 ): Promise<{ error: string | null }> {
   const { error } = await supabase.from("designs").update(patch).eq("id", id);
+  return { error: friendlyError(error?.message) };
+}
+
+/**
+ * Record where the rendered cover was stored.
+ *
+ * Split from saveDesign because it happens after it: the document is saved
+ * first (that is the thing the person pressed the button for), and only then is
+ * the picture rendered and uploaded. A design whose PNG failed to publish is
+ * still saved, and simply cannot be sent by the agent until the next save.
+ */
+export async function saveDesignPng(
+  id: string,
+  png: { url: string; path: string },
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from("designs")
+    .update({ png_url: png.url, png_path: png.path, png_at: new Date().toISOString() })
+    .eq("id", id);
   return { error: friendlyError(error?.message) };
 }
 

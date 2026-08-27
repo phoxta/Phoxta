@@ -3,10 +3,27 @@
 // (SMS / WhatsApp / email), or recorded as a private internal note. Enforces the
 // WhatsApp 24-hour customer-service window (free-form only inside it; a template
 // is required outside — Twilio error 63016) and tracks delivery status.
+//
+// ── WHOSE NUMBER A HUMAN'S REPLY COMES FROM ─────────────────────────────────
+// The same question the agent's own replies answer, on the same threads, and it
+// had the same wrong answer here for longer: this function passed no `from` at
+// all, so twilioSend fell through to the platform-wide TWILIO_FROM. On a thread
+// where the agent now correctly answers from the business's own number, the
+// customer saw two different senders in one conversation — and their reply to
+// the second landed on the Phoxta line, whose webhook is
+// twilio-inbound?key=<Phoxta's own agent key>, i.e. in ANOTHER business's Inbox.
+//
+// tenantSmsFrom reads the business's own number off the thread: it is the `To`
+// of the inbound message Twilio signed, recorded as meta.twilio_to by
+// twilio-inbound. When a thread carries none — an outbound-only conversation
+// nobody has ever texted in on — the send is REFUSED and the person is told why.
+// A message from the wrong company is worse than a message not sent, and this is
+// a person at a keyboard who can act on the explanation.
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
-import { twilioSend } from "../_shared/dispatch.ts";
+import { twilioSend, twilioStatusCallback } from "../_shared/dispatch.ts";
 import { sendConversationEmail } from "../_shared/conversationEmail.ts";
+import { tenantSmsFrom } from "../_shared/autoReply.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -48,7 +65,8 @@ Deno.serve(async (req) => {
         organization_id: orgId, conversation_id: conversationId, role: "note",
         channel_type: c.channel_type, body: text, author_id: userId,
       });
-      await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conversationId);
+      await admin.from("conversations").update({ last_message_at: new Date().toISOString() })
+        .eq("id", conversationId).eq("organization_id", orgId);
       return json({ ok: true, role: "note" });
     }
 
@@ -60,6 +78,18 @@ Deno.serve(async (req) => {
     if (channel === "sms" || channel === "whatsapp") {
       if (!c.customer_phone) return json({ error: "No phone number on file for this contact." }, 400);
 
+      // THE BUSINESS'S OWN NUMBER, or nothing. See the header comment.
+      const from = await tenantSmsFrom(admin, orgId, conversationId, channel);
+      if (!from) {
+        return json({
+          ok: false,
+          error:
+            channel === "whatsapp"
+              ? "This thread has no record of which of your WhatsApp numbers the customer messaged, so a reply would go out from Phoxta's shared number and their answer would land in someone else's inbox. Ask them to send one message first, then reply here."
+              : "This thread has no record of which of your numbers the customer texted, so a reply would go out from Phoxta's shared number and their answer would land in someone else's inbox. Ask them to text you first, then reply here.",
+        }, 200);
+      }
+
       // WhatsApp 24-hour window guardrail: outside it, a free-form message is
       // rejected (63016) — require an approved template instead. A template
       // (ContentSid) is allowed any time, so it bypasses the check.
@@ -67,6 +97,7 @@ Deno.serve(async (req) => {
         const { data: lastIn } = await admin
           .from("conversation_messages")
           .select("created_at")
+          .eq("organization_id", orgId)
           .eq("conversation_id", conversationId).eq("role", "customer")
           .order("created_at", { ascending: false }).limit(1).maybeSingle();
         const lastMs = lastIn ? Date.now() - new Date((lastIn as Json).created_at).getTime() : Infinity;
@@ -75,7 +106,17 @@ Deno.serve(async (req) => {
         }
       }
 
-      const r = await twilioSend(channel as "sms" | "whatsapp", c.customer_phone, text, contentSid ? { contentSid, contentVariables: variables } : undefined);
+      const r = await twilioSend(channel as "sms" | "whatsapp", c.customer_phone, text, {
+        from,
+        ...(contentSid ? { contentSid, contentVariables: variables } : {}),
+        // Twilio answers 201 `queued` and reports the real outcome minutes later.
+        // The row is written below, AFTER the send, so this callback carries only
+        // the organisation: twilio-status matches on the message SID, which is
+        // exactly what provider_sid holds. An early `queued` callback that beats
+        // the insert simply finds nothing and is logged; the ones that matter —
+        // `delivered`, `failed`, `undelivered` — arrive long afterwards.
+        statusCallback: twilioStatusCallback({ orgId: String(orgId), channel }),
+      });
       delivery_status = r.status;
       provider_sid = r.sid ?? "";
       if (r.errorCode === 63016) windowClosed = true;
@@ -113,8 +154,12 @@ Deno.serve(async (req) => {
       channel_type: channel, body: text, author_id: userId,
       delivery_status, provider_sid,
     });
-    await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conversationId);
-    await admin.from("conversations").update({ first_response_at: new Date().toISOString() }).eq("id", conversationId).is("first_response_at", null);
+    // Org-scoped like every other query here: this runs on the service-role key,
+    // where a conversation id alone is enough to write to any tenant's row.
+    await admin.from("conversations").update({ last_message_at: new Date().toISOString() })
+      .eq("id", conversationId).eq("organization_id", orgId);
+    await admin.from("conversations").update({ first_response_at: new Date().toISOString() })
+      .eq("id", conversationId).eq("organization_id", orgId).is("first_response_at", null);
 
     return json({ ok: true, delivery_status, windowClosed });
   } catch (err) {

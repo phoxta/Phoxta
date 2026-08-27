@@ -1,7 +1,6 @@
 // Phoxta — twilio-inbound: receives inbound SMS/WhatsApp from Twilio and replies
 // with the business's own AI agent. Point a Twilio number's "A message comes in"
 // webhook at:  <FUNCTIONS_URL>/twilio-inbound?org=<organization_id>
-// The reply is returned as TwiML, so Twilio sends it (no outbound API/keys needed).
 // verify_jwt is declared false in supabase/config.toml — never pass
 // --no-verify-jwt, which sets it permanently.
 //
@@ -12,32 +11,55 @@
 // Inbox and drive the LLM on that tenant's bill.
 // Requires: TWILIO_AUTH_TOKEN (and TWILIO_WEBHOOK_BASE if a proxy rewrites the host).
 //
-// ── WHY THIS FILE RUNS THE GATES ────────────────────────────────────────────
-// It used to POST to agent-inbound and return twiml(data.reply) — so the live
-// SMS/WhatsApp path had NO per-thread ceiling, NO burst window and NO daily cap,
-// on the one channel that is metered per segment and policed by carriers. A
-// customer's number running an autoresponder (a "driving, will reply later"
-// service, an SMS-to-email gateway, or another tenant's agent number saved as a
-// contact) ping-ponged without bound: nothing in the chain read threadReplyGate,
-// and agent-inbound's hourly throttle returned a SENDABLE courtesy line, so it
-// texted that out too and then decayed and let full replies resume.
+// ── ANSWER TWILIO FIRST, COMPOSE AFTERWARDS ─────────────────────────────────
+// This webhook used to hand Twilio the reply as TwiML inside its own HTTP
+// response, which meant Twilio held the request open for the whole model turn.
+// Twilio abandons a messaging webhook at about fifteen seconds (error 11200)
+// and does NOT retry an incoming-message webhook, so any turn that used a tool
+// — routinely twelve to twenty seconds — was simply never delivered. The
+// honest-refusal message an owner has been seeing ("the reply took 16s to
+// compose, past Twilio's webhook deadline") was that deadline being reported
+// rather than hidden.
 //
-// Now this file is a transport like any other and it is shaped exactly like
-// email-inbound: resolve the business, resolve the thread, run the cheap
-// pre-flight BEFORE a model turn is spent, and put nothing on the wire except
-// through deliverAutoReply. The one thing it keeps for itself is the send: a
-// TwiML reply rides back in this webhook's own response, which is what makes it
-// free and — more importantly — what makes it come from THE NUMBER THE CUSTOMER
-// TEXTED. Twilio's REST API would send from the platform-wide TWILIO_FROM, i.e.
-// one tenant's customer would hear from another tenant's number.
-import { adminClient } from "../_shared/supabaseAdmin.ts";
+// So the shape is now the one the deadline actually allows:
+//   1. authenticate the request,
+//   2. FILE the customer's message and claim it (a few hundred milliseconds),
+//   3. answer Twilio with an empty <Response/> — nothing to send, no deadline
+//      left to miss,
+//   4. compose and send AFTER responding, in the runtime's background hook,
+//      over Twilio's REST API.
+//
+// Filing before responding is what makes step 4 safe to lose: if the background
+// turn dies mid-flight, the customer's message is already on the thread with a
+// claim that expires in ten minutes, so agent-catchup answers it on a later
+// tick. Nothing is silently dropped. And where the runtime offers no background
+// hook, the work is simply awaited — Twilio may log an 11200 for the webhook,
+// which costs nothing here because the response carries no message anyway.
+//
+// ── WHOSE NUMBER THE REPLY COMES FROM ───────────────────────────────────────
+// TwiML was originally chosen for one good reason: Twilio sends a TwiML reply
+// FROM the number the customer texted, whereas the REST API sends from whatever
+// `From` you pass — and there was only ever one platform-wide TWILIO_FROM, so a
+// REST reply answered one business's customer from another business's number.
+// That reason has expired. The signature-proven `To` on this very request is
+// the business's own number: it is recorded as meta.twilio_to on the customer's
+// row AND handed to deliverAutoReply as `smsFrom`, so the REST send speaks as
+// the right business. When it cannot be resolved, the reply is REFUSED and a
+// person is told — a message from the wrong company is worse than a message not
+// sent, and its reply would land in the wrong business's Inbox.
+//
+// There is exactly ONE delivery path now. A "fast replies by TwiML, slow ones
+// async" split would double the delivery logic on the channel that is metered
+// per segment and policed by carriers, and the two halves would drift.
+import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { verifyTwilioSignature } from "../_shared/webhooks.ts";
 import { internalProofHeaders } from "../_shared/internalProof.ts";
 import {
   autoReplyAllowed,
   deliverAutoReply,
+  markNotAnswered,
   notifyNeedsHuman,
-  type SendOutcome,
+  tenantSenderFrom,
 } from "../_shared/autoReply.ts";
 import { phoneForStorage } from "../_shared/telephony.ts";
 
@@ -47,13 +69,13 @@ const ANON = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 // deno-lint-ignore no-explicit-any
 type Json = any;
 
-/** TwiML for one reply. An EMPTY message means say nothing: a `<Response>` with
- *  no `<Message>` is how Twilio is told to send no SMS/WhatsApp at all. */
-function twiml(message: string): Response {
-  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const body = message ? `<Message>${esc(message)}</Message>` : "";
-  const xml = `<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`;
-  return new Response(xml, { headers: { "Content-Type": "text/xml" } });
+/** The only thing this webhook ever returns now: "received, nothing to send".
+ *  A `<Response>` with no `<Message>` is how Twilio is told to send nothing —
+ *  the reply itself goes out over the REST API once it has been composed. */
+function ack(): Response {
+  return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`, {
+    headers: { "Content-Type": "text/xml" },
+  });
 }
 
 /** One POST to agent-inbound carrying the proof that lets it trust the channel
@@ -73,31 +95,20 @@ async function callAgent(payload: Json): Promise<Json> {
   return { ...data, __ok: res.ok };
 }
 
-/**
- * How long a turn may take before handing Twilio the TwiML stops being a send.
+/** Run the compose-and-send after the response has gone back to Twilio.
  *
- * Twilio abandons a messaging webhook at about 15 seconds (error 11200) and does
- * NOT retry an incoming-message webhook, so past that the <Message> body never
- * reaches Twilio and no SMS is sent. The transport below used to report
- * {ok:true,status:'sent'} unconditionally, which stamped the agent's row
- * delivered and the customer's row answered:true — a signal agent-catchup now
- * treats as settled forever. A turn that ran long was therefore silently dropped
- * AND made unrecoverable, while the owner's Inbox showed a delivered reply.
- *
- * Nine seconds leaves room for the writes deliverAutoReply still has to make
- * (the delivery stamp, the customer's row, the audit line) plus the round trip
- * back to Twilio. Past it the send is reported as FAILED, which is the honest
- * answer — the agent row reads failed, so it consumes no ceiling and does not
- * count as a reply, and the customer's message stays retryable for agent-catchup,
- * which can now answer it from this same tenant's own number.
- */
-const TWIML_BUDGET_MS = (() => {
-  const v = Number(Deno.env.get("TWILIO_TWIML_BUDGET_MS"));
-  return Number.isFinite(v) && v > 0 ? v : 9000;
-})();
+ *  Deliberately the same guarded shape as agent-inbound's classifyLater and
+ *  ops-maintenance's engage tick: `EdgeRuntime.waitUntil` where the runtime has
+ *  it, and a plain await where it does not — because the alternative to awaiting
+ *  is dropping a customer's message on the floor. The task never throws. */
+async function afterResponding(task: Promise<void>): Promise<void> {
+  // deno-lint-ignore no-explicit-any
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(task);
+  else await task;
+}
 
 Deno.serve(async (req) => {
-  const startedAt = Date.now();
   try {
     const url = new URL(req.url);
     const orgParam = url.searchParams.get("org");
@@ -114,18 +125,9 @@ Deno.serve(async (req) => {
     const body = form.get("Body")?.toString()?.trim() ?? "";
     const from = form.get("From")?.toString() ?? "";
     // THE BUSINESS'S OWN NUMBER — the one the customer actually texted, proven by
-    // Twilio's signature on this request.
-    //
-    // The reply below rides back as TwiML, which Twilio sends from this number,
-    // so the live path was always right. Everything else that answers a text —
-    // agent-catchup retrying a deferred message, the operator's reply tool, an
-    // Engage flow waking from a delay — goes through Twilio's REST API, which
-    // sends from the single platform-wide TWILIO_FROM. There is no per-org number
-    // anywhere in the schema, so those answered a business's customer from the
-    // PHOXTA line; the customer's reply then hit Phoxta's own webhook and Phoxta's
-    // agent answered another company's customer, in thread, as Phoxta. Recording
-    // it here is what lets those paths send as the right business — and
-    // _shared/autoReply.ts refuses to text at all when it is absent.
+    // Twilio's signature on this request. It is recorded on the customer's row
+    // (so agent-catchup, the operator's reply tool and an Engage flow can all
+    // answer as the right business later) and handed to this turn's own send.
     const twilioTo = form.get("To")?.toString() ?? "";
     // Twilio's own id for this inbound message: the idempotency key. Twilio
     // retries a webhook that did not answer 200 in time, and without this a
@@ -145,7 +147,7 @@ Deno.serve(async (req) => {
     // act on it — which is where a configuration problem belongs anyway.
     const quiet = (why: string): Response => {
       console.error(`[phoxta] twilio-inbound: ${why} (from ${from || "unknown"})`);
-      return twiml("");
+      return ack();
     };
 
     if (!orgParam && !directKey) return quiet("no ?org= or ?key= on the webhook URL — this number is not wired to a business");
@@ -154,9 +156,9 @@ Deno.serve(async (req) => {
     // business is known: it used to return silence here and be dropped entirely,
     // so a customer who photographed a broken part and sent it got no reply, and
     // the business never saw the message.
-    if (!body && numMedia === 0) return twiml("");
+    if (!body && numMedia === 0) return ack();
 
-    const admin = adminClient();
+    const admin: SupabaseClient = adminClient();
     let key = directKey;
     if (!key && orgParam) {
       const { data } = await admin.rpc("app_storefront_agent_key", { p_org: orgParam });
@@ -184,6 +186,13 @@ Deno.serve(async (req) => {
     // above all WHICH OF THE BUSINESS'S NUMBERS it came in on.
     const inboundMeta: Json = { source: "twilio-inbound", twilio_to: twilioTo };
 
+    // The sender for this turn's own reply, in the form twilioSend wants. Proven
+    // by the signature on this request rather than read back from a row, so the
+    // live path never depends on the recording having succeeded. Empty means the
+    // reply cannot be sent as this business at all — autoReplyAllowed refuses on
+    // exactly that below, and tells a person.
+    const smsFrom = tenantSenderFrom(twilioTo, channel);
+
     // --- A photo with no caption. ---
     // The customer sent something real and expects it to have arrived. The agent
     // cannot read it, so nothing is composed and nothing is texted back — but the
@@ -207,7 +216,7 @@ Deno.serve(async (req) => {
       });
       const waiting = String(rec?.conversationId ?? "");
       if (waiting) await notifyNeedsHuman(admin, orgId, waiting, `${phone} sent an attachment with no text.`);
-      return twiml("");
+      return ack();
     }
 
     // --- The thread this text belongs to, resolved with the SAME predicate
@@ -234,10 +243,11 @@ Deno.serve(async (req) => {
     const pre = await autoReplyAllowed(admin, orgId, {
       conversationId: knownConversation || null,
       channel,
-      // This leg answers inside Twilio's own webhook response, so the reply
-      // leaves from the number the customer texted by construction — it needs no
-      // sender resolved and must never be refused for the want of one.
-      outbound: { ownTransport: true },
+      // The reply now leaves over Twilio's REST API, so it needs a sender — and
+      // the sender is the number this very request proves the customer texted.
+      // With none resolvable the gate refuses (TENANT_SENDER_MISSING) rather
+      // than letting the business be answered for by the platform line.
+      outbound: { smsFrom },
     });
     if (!pre.ok) {
       const rec = await callAgent({
@@ -261,97 +271,146 @@ Deno.serve(async (req) => {
       // Silence, not a canned line. A refusal here is the switch, the ceiling,
       // the burst window or the daily cap — texting a bot line on top of any of
       // them is the loop we are bounding.
-      return twiml("");
+      return ack();
     }
 
-    const data = await callAgent({
+    // --- FILE IT AND CLAIM IT, BEFORE ANSWERING TWILIO. ---
+    //
+    // Two jobs in one call. The message reaches the business's Inbox
+    // immediately, whatever happens to the model turn afterwards — and the claim
+    // (the same stamp claimForReply writes) stops agent-catchup answering the
+    // same text while this function is still composing. It expires after ten
+    // minutes, which is exactly how a background turn that never finished gets
+    // repaired rather than lost.
+    //
+    // This call also runs the provider-id dedupe: a Twilio redelivery of the
+    // same MessageSid comes back `duplicate` and stops here, before a model turn
+    // and before a second text.
+    const filed = await callAgent({
       public_key: key,
       channel,
+      record_only: true,
+      claim: true,
+      reason: "the agent is composing a reply",
+      retryable: true,
       message: body,
       customer: { phone },
+      ...(knownConversation ? { conversationId: knownConversation } : {}),
       inbound: { providerSid, meta: inboundMeta },
     });
+    if (filed?.duplicate) {
+      console.log(`[phoxta] twilio-inbound: ${providerSid} was already on the thread — Twilio redelivered it, nothing composed`);
+      return ack();
+    }
+    const conversationId = String(filed?.conversationId ?? "") || knownConversation;
+    // The row the whole outcome gets written onto. When the filing failed we
+    // carry on WITHOUT it rather than dropping the customer: respondCore writes
+    // its own row (and its own claim) in that case, so the message still reaches
+    // the Inbox and still gets answered — it simply loses the head start.
+    const filedRowId = String(filed?.messageId ?? "");
+    if (!filedRowId) {
+      console.error(`[phoxta] twilio-inbound: could not file ${providerSid} before composing — the reply will file it instead`);
+    }
 
-    // Five different ways the agent deliberately says "do not send this":
-    //   throttled — the per-org hourly cap; the reply is a courtesy line, and
-    //               texting it makes the cap useless as a volume control (and it
-    //               is what let a loop resume once the hour rolled over).
-    //   capped    — the plan's monthly allowance is spent; same reasoning.
-    //   human     — somebody pressed "Take over", or the owner's switch is off;
-    //               silence is the promise.
-    //   duplicate — Twilio redelivered a message already on the thread.
-    //   the call failed outright — and this one is silent too: a holding line
-    //               here would be an unbounded, ungated send (no agent row is
-    //               written, so no ceiling and no counter ever increments), and
-    //               it would promise a follow-up on a message nothing recorded.
-    if (!data?.__ok) return quiet("agent-inbound did not answer this message");
-    const reply = String(data?.reply ?? "").trim();
-    if (!reply || data?.throttled || data?.capped || data?.human || data?.duplicate) return twiml("");
+    /** Everything after the response to Twilio: the model turn and the send. */
+    const composeAndSend = async (): Promise<void> => {
+      /** Record on the customer's own row why no reply went out. Retryable
+       *  refusals stay in agent-catchup's queue; settled ones do not. */
+      const file = async (reason: string, retryable: boolean): Promise<void> => {
+        if (filedRowId) await markNotAnswered(admin, orgId, filedRowId, inboundMeta, reason, retryable);
+      };
+      try {
+        const data = await callAgent({
+          public_key: key,
+          channel,
+          message: body,
+          customer: { phone },
+          ...(conversationId ? { conversationId } : {}),
+          inbound: {
+            providerSid,
+            meta: inboundMeta,
+            // Answer the row we just wrote — do not file the customer's words a
+            // second time, and do not read them back to the model as history.
+            ...(filedRowId ? { recorded: true, recordedId: filedRowId } : {}),
+          },
+        });
 
-    const conversationId = String(data?.conversationId ?? "");
-    if (!conversationId) return quiet("the agent answered without naming a conversation");
-
-    // --- THE FUNNEL. The switch, the per-thread ceiling, the texting burst
-    //     window, the minimum spacing, the hourly throttle and the daily cap,
-    //     then the delivery stamp on the agent's row, the reason on the
-    //     customer's row when nothing goes out, and the audit line either way.
-    //
-    //     The transport is ours because the reply rides back in THIS response —
-    //     which is what keeps it coming from the number the customer texted. It
-    //     is called only after every gate has passed. ---
-    let outgoing = "";
-    const delivered = await deliverAutoReply(admin, orgId, {
-      channel,
-      trigger: "twilio-inbound",
-      conversationId,
-      to: phone,
-      text: reply,
-      agentMessageId: data?.agentMessageId ?? null,
-      customerMessageId: data?.customerMessageId ?? null,
-      // The FULL inbound meta, not just the source: markNotAnswered and the
-      // answered-stamp both rewrite the row's meta from this object, so passing
-      // a thinner one would erase the business's own number from the row and
-      // leave a later retry with no honest way to send.
-      customerMeta: inboundMeta,
-      template: data?.template ?? null,
-      stampExtra: inboundMeta,
-      transport: (): Promise<SendOutcome> => {
-        // Handing the text to Twilio in a 200 with a <Message> body IS the send
-        // — but only while Twilio is still listening. It abandons a messaging
-        // webhook at ~15s with error 11200 and does not retry it, so past the
-        // budget the <Message> never reaches Twilio and nothing is texted.
-        // Reporting 'sent' anyway stamped the row delivered and the customer's
-        // message answered:true, which is now PERMANENT: no worker, sweep or dry
-        // run would ever look at it again. A transport that cannot confirm
-        // delivery must say so, and uncertainty must stay retryable.
-        const elapsed = Date.now() - startedAt;
-        if (elapsed > TWIML_BUDGET_MS) {
-          console.warn(`[phoxta] twilio-inbound: turn took ${elapsed}ms, past the ${TWIML_BUDGET_MS}ms webhook budget — not claiming delivery`);
-          return Promise.resolve({
-            ok: false,
-            provider: "twilio-twiml",
-            id: "",
-            status: "failed" as const,
-            error: `the reply took ${Math.round(elapsed / 1000)}s to compose, past Twilio's webhook deadline — it was not put on the wire`,
-          });
+        // Six ways this turn ends without a reply on the wire. Each one leaves
+        // the customer's row saying WHY, in words the owner can read in the
+        // Inbox, and each one says honestly whether it is worth trying again.
+        if (!data?.__ok) {
+          // The model or the endpoint failed. Retryable on purpose: this is the
+          // case agent-catchup exists for.
+          return await file("the agent could not compose a reply just now — it stays in the queue and will be tried again", true);
         }
-        // No id until the status callback — deliberately EMPTY rather than the
-        // inbound MessageSid, which already sits on the customer's row and would
-        // collide on 0114's unique (organization_id, provider_sid) index the
-        // moment delivery is stamped.
-        outgoing = reply;
-        return Promise.resolve({ ok: true, provider: "twilio-twiml", id: "", status: "sent" as const });
-      },
-    });
+        // Recorded by the compose call itself (a redelivery it saw first), or by
+        // agent-inbound writing the reason onto this very row.
+        if (data?.duplicate || data?.throttled) return;
+        if (data?.human) {
+          // `autoReply` distinguishes the owner's switch (already written onto
+          // this row by agent-inbound) from somebody pressing "Take over"
+          // mid-turn, which is a promise of silence and is settled for the agent.
+          if (!data?.autoReply) await file("a human has taken over this thread", false);
+          return;
+        }
+        if (data?.capped) {
+          return await file("this business has used its monthly AI allowance, so the agent stopped composing replies", true);
+        }
+        const reply = String(data?.reply ?? "").trim();
+        if (!reply) return await file("the agent composed no reply", true);
 
-    // ONLY what the funnel authorised. `outgoing` is set by the transport, which
-    // deliverAutoReply calls after the last gate — so there is no expression
-    // here that can put text in front of a customer on its own.
-    return twiml(delivered.sent ? outgoing : "");
+        const convId = String(data?.conversationId ?? "") || conversationId;
+        if (!convId) return await file("the agent answered without naming a conversation", true);
+
+        // --- THE FUNNEL, and the only way a text leaves here. The switch, the
+        //     per-thread ceiling, the texting burst window, the minimum spacing,
+        //     the hourly throttle, the daily cap and human takeover are all
+        //     re-checked at the moment of delivery; then the send, the delivery
+        //     stamp on the agent's row, the reason on the customer's row when
+        //     nothing goes out, and the audit line either way.
+        //
+        //     `smsFrom` is the business's own number, proven by the signature on
+        //     the request this reply answers. Without it the funnel refuses
+        //     rather than borrowing the platform line. ---
+        await deliverAutoReply(admin, orgId, {
+          channel,
+          trigger: "twilio-inbound",
+          conversationId: convId,
+          to: phone,
+          text: reply,
+          agentMessageId: data?.agentMessageId ?? null,
+          // Ours when we filed it; the compose call's own row when we could not.
+          customerMessageId: filedRowId || (data?.customerMessageId ?? null),
+          // The FULL inbound meta, not just the source: markNotAnswered and the
+          // answered-stamp both rewrite the row's meta from this object, so
+          // passing a thinner one would erase the business's own number from the
+          // row and leave a later retry with no honest way to send.
+          customerMeta: inboundMeta,
+          template: data?.template ?? null,
+          // The picture the agent deliberately chose, if it chose one. The funnel
+          // decides whether it can be attached on this channel, whether the file
+          // is one WhatsApp will take, and — when it cannot go — sends the reply
+          // with a link rather than dropping either half.
+          media: Array.isArray(data?.media) ? data.media : [],
+          smsFrom,
+          stampExtra: inboundMeta,
+        });
+      } catch (e) {
+        // The customer must not be lost because this function fell over after it
+        // had already answered Twilio. Retryable, so agent-catchup takes it.
+        const why = String((e as Error)?.message || e);
+        console.error("[phoxta] twilio-inbound: composing the reply failed:", why);
+        await file(`the agent could not compose a reply just now (${why}) — it stays in the queue and will be tried again`, true)
+          .catch(() => { /* the claim expires in ten minutes either way */ });
+      }
+    };
+
+    await afterResponding(composeAndSend());
+    return ack();
   } catch (e) {
     // Silence, for the same reason as every other failure above: an apology sent
     // from outside the funnel is a message with no ceiling behind it.
     console.error("[phoxta] twilio-inbound failed:", String((e as Error)?.message || e));
-    return twiml("");
+    return ack();
   }
 });

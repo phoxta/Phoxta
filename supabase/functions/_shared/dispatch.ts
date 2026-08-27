@@ -100,11 +100,121 @@ async function dispatchEmail(to: string, subject: string, message: string, reply
 // owner configured themselves.
 export type TwilioSendResult = { ok: boolean; status: DispatchResult["status"]; sid?: string; errorCode?: number; errorMessage?: string };
 
+/**
+ * The PLATFORM's own WhatsApp sender — for the transports that legitimately
+ * speak as Phoxta (campaigns, journeys the owner configured). Never for an
+ * automatic reply, which always passes the tenant's own number explicitly.
+ *
+ * TWILIO_WHATSAPP_FROM is not set on this project, so this has been falling
+ * through to TWILIO_FROM and working by coincidence: today the SMS number and
+ * the WhatsApp sender happen to be the same line. The moment a second number is
+ * added — or the WhatsApp sender is moved — that coincidence ends and every
+ * WhatsApp send fails with Twilio 63007 ("no channel with the specified From"),
+ * which reads like a WhatsApp outage rather than a missing secret. So the
+ * fallback stays (removing it would break a working path today) and says so
+ * once, loudly, where whoever is reading the logs can act on it.
+ */
+let warnedWhatsappFrom = false;
+function platformWhatsappFrom(): string {
+  const explicit = String(env("TWILIO_WHATSAPP_FROM") ?? "").trim();
+  if (explicit) return explicit;
+  const sms = String(env("TWILIO_FROM") ?? "").trim();
+  if (sms && !warnedWhatsappFrom) {
+    warnedWhatsappFrom = true;
+    console.warn(
+      "[phoxta] TWILIO_WHATSAPP_FROM is not set — sending WhatsApp from TWILIO_FROM. " +
+        "That only works while the SMS number and the WhatsApp sender are the same line; set TWILIO_WHATSAPP_FROM explicitly.",
+    );
+  }
+  return sms;
+}
+
+/**
+ * Where Twilio must report what actually happened to a message.
+ *
+ * The REST API answers 201 `queued` and that is ALL it tells you synchronously.
+ * Every failure that matters to a real customer — the carrier filtering it as
+ * spam (30007), a handset that cannot be reached (30003), a landline (30006),
+ * WhatsApp's window having shut (63016) — is reported LATER, on the message
+ * resource, and only to a StatusCallback. Without one the platform stamps the
+ * row `sent`, marks the customer's message answered, and agent-catchup treats
+ * that as settled forever: the console shows a delivered reply the customer
+ * never received and nothing ever retries.
+ *
+ * The ids travel on the URL so the callback needs no lookup and no guesswork
+ * about which tenant it belongs to — every query behind it is org-scoped. That
+ * is safe because the endpoint verifies Twilio's signature over the exact URL
+ * before it reads a single parameter, so nobody without the account's auth
+ * token can call it at all.
+ *
+ * Returns "" when there is no base to build from, and twilioSend simply sends
+ * without a callback rather than failing — a message with no delivery reporting
+ * is worse than one with, but far better than none.
+ */
+export function twilioStatusCallback(o: {
+  orgId: string;
+  /** The row holding the message we are sending — stamped with the outcome. */
+  messageId?: string | null;
+  /** The customer's row, reopened for a retry when the send turns out to have
+   *  failed. Absent for a human's reply, which nothing retries automatically. */
+  customerMessageId?: string | null;
+  channel?: string;
+}): string {
+  // TOLERATE A BASE THAT ALREADY CARRIES THE PATH. The old test demanded an
+  // origin and nothing more, so `https://<ref>.supabase.co/functions/v1` — a
+  // value the signature verifier explicitly supports, and therefore one somebody
+  // will set — failed it and returned "". An empty callback is not an error
+  // anywhere: the send simply goes out with no delivery reporting, and every
+  // asynchronous carrier failure becomes invisible again. The whole point of
+  // this function is to stop that happening silently.
+  const raw = (env("TWILIO_STATUS_CALLBACK_BASE") || env("TWILIO_WEBHOOK_BASE") || env("SUPABASE_URL") || "")
+    .trim()
+    .replace(/\/+$/, "");
+  const org = String(o.orgId ?? "").trim();
+  if (!org || !/^https:\/\//i.test(raw)) return "";
+
+  let origin: string;
+  try {
+    origin = new URL(raw).origin;
+  } catch {
+    return "";
+  }
+  const q = new URLSearchParams({ org });
+  if (o.messageId) q.set("m", String(o.messageId));
+  if (o.customerMessageId) q.set("c", String(o.customerMessageId));
+  if (o.channel) q.set("ch", String(o.channel));
+  // Built from the ORIGIN so a base with or without the prefix lands on exactly
+  // one URL — which is also the URL twilio-status reconstructs to verify.
+  return `${origin}/functions/v1/twilio-status?${q.toString()}`;
+}
+
+/** How many pictures one Twilio message may carry. WhatsApp takes exactly one
+ *  per message; the REST API accepts up to ten MediaUrl values on MMS. Only one
+ *  is ever sent today (the agent attaches one), but the cap is stated rather
+ *  than assumed. */
+const MAX_MEDIA_PER_MESSAGE = (channel: "sms" | "whatsapp") => (channel === "whatsapp" ? 1 : 10);
+
 export async function twilioSend(
   channel: "sms" | "whatsapp",
   to: string,
   message: string,
-  opts?: { contentSid?: string; contentVariables?: Record<string, string>; from?: string },
+  opts?: {
+    contentSid?: string;
+    contentVariables?: Record<string, string>;
+    from?: string;
+    /**
+     * Publicly fetchable https URLs Twilio will attach to the message.
+     *
+     * NOT validated here on purpose — a bad URL fails the whole message, so the
+     * check belongs before the decision to send at all. _shared/media.ts is
+     * where that happens, and _shared/autoReply.ts is the only thing that calls
+     * it: everything reaching this function has already been proved fetchable,
+     * the right type and under the size limit.
+     */
+    mediaUrls?: string[];
+    /** Where Twilio reports the real delivery outcome. See twilioStatusCallback. */
+    statusCallback?: string;
+  },
 ): Promise<TwilioSendResult> {
   const accountSid = env("TWILIO_ACCOUNT_SID");
   // Authenticate with an API Key (SK SID + secret) when present, else the
@@ -112,7 +222,7 @@ export async function twilioSend(
   const authUser = env("TWILIO_API_KEY_SID") || accountSid;
   const authPass = env("TWILIO_API_KEY_SECRET") || env("TWILIO_AUTH_TOKEN");
   const fromRaw = String(opts?.from ?? "").trim() ||
-    (channel === "whatsapp" ? (env("TWILIO_WHATSAPP_FROM") || env("TWILIO_FROM")) : env("TWILIO_FROM"));
+    (channel === "whatsapp" ? platformWhatsappFrom() : env("TWILIO_FROM"));
   if (!accountSid || !fromRaw || !authUser || !authPass) return { ok: false, status: "simulated" };
   const dest = dialable(to);
   if (!dest) {
@@ -134,14 +244,33 @@ export async function twilioSend(
   const params: Record<string, string> = opts?.contentSid
     ? { From, To, ContentSid: opts.contentSid, ContentVariables: JSON.stringify(opts.contentVariables ?? {}) }
     : { From, To, Body: message };
+  const form = new URLSearchParams(params);
+  // MediaUrl is a REPEATED parameter, which is why the body is assembled rather
+  // than handed over as a record. A template send never carries one: an approved
+  // template's media lives in its own header, declared at approval time, and
+  // pairing a MediaUrl with a ContentSid is rejected outright.
+  if (!opts?.contentSid) {
+    for (const u of (opts?.mediaUrls ?? []).slice(0, MAX_MEDIA_PER_MESSAGE(channel))) {
+      const url = String(u ?? "").trim();
+      if (url) form.append("MediaUrl", url);
+    }
+  }
+  if (opts?.statusCallback) form.set("StatusCallback", opts.statusCallback);
   try {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
       method: "POST",
       headers: { Authorization: `Basic ${btoa(`${authUser}:${authPass}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(params),
+      body: form,
     });
     // deno-lint-ignore no-explicit-any
     const data: any = await res.json().catch(() => ({}));
+    // "sent" HERE MEANS "TWILIO ACCEPTED IT", NOT "THE CUSTOMER GOT IT".
+    // A 201 comes back with status `queued`; carrier filtering, an unreachable
+    // handset, a landline and WhatsApp's closed window are all reported minutes
+    // later on the message resource. `statusCallback` is how that verdict gets
+    // back — see twilio-status, which corrects this row and the customer's when
+    // the message turns out never to have arrived. Without a callback URL this
+    // optimism is never corrected, which is exactly the defect it exists to fix.
     if (res.ok) return { ok: true, status: "sent", sid: data?.sid };
     return { ok: false, status: "failed", errorCode: data?.code, errorMessage: data?.message };
   } catch (e) {

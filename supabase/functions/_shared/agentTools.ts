@@ -66,6 +66,19 @@ export type AgentCtx = {
   /** Inline media (images) attached this turn — same contract as cards:
    *  additive, absent by default, ignored by text-only channels. */
   media?: MediaItem[];
+  /**
+   * What find_picture last showed the model, so attach_picture can only ever
+   * name something that actually exists.
+   *
+   * Held for the length of one turn and nowhere else. The alternative — letting
+   * attach_picture take a URL — would let a model that had read a customer's own
+   * message put an arbitrary URL on a business's outbound message, which is a
+   * business unknowingly forwarding a stranger's link to its own customers.
+   */
+  pictureShortlist?: { ref: string; name: string; url: string; kind: "photo" | "design" }[];
+  /** Why the agent chose the picture it attached — recorded on the message and
+   *  in the audit line, because an unexplained attachment is not a choice. */
+  pictureReason?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -247,6 +260,53 @@ const COMMON_WRITE_TOOLS: Tool[] = [
   },
 ];
 
+/**
+ * SHOWING SOMEBODY A PICTURE.
+ *
+ * The business already owns pictures — photographs it uploaded, images the model
+ * drew for it, and the designs it made in the graphics studio, each of which now
+ * keeps a rendered PNG in the same public bucket. Until now none of them could
+ * reach a customer: the agent could describe a menu, a price list or a part, and
+ * that was all.
+ *
+ * TWO tools, not one, and that is the point. An agent that attaches a picture
+ * from a fuzzy search is an agent that occasionally attaches the wrong picture,
+ * and a wrong picture from a business is worse than no picture at all — it is
+ * the business appearing to answer a question it has not answered. So the model
+ * must SEE the library first and then name exactly one thing it saw, with a
+ * reason. Both halves are recorded: the reason goes in the audit line, and the
+ * picture itself onto the message, so an owner can look at the thread and see
+ * precisely what their customer received.
+ */
+const PICTURE_TOOLS: Tool[] = [
+  {
+    name: "find_picture",
+    description:
+      "Search this business's OWN picture library — photographs it uploaded, images it generated, and the designs it made (menus, price lists, posters). " +
+      "Use it when a picture would answer the question better than words: 'what does it look like', 'send me the menu', 'do you have a photo of it'. " +
+      "Returns the pictures it holds with a reference for each. It sends nothing — call attach_picture with one of these references to actually show it.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "What the picture should be of, in a few words." } },
+      required: ["query"],
+    },
+  },
+  {
+    name: "attach_picture",
+    description:
+      "Show the customer ONE picture from the library, alongside your reply. The reference must be one find_picture just returned — never invent one. " +
+      "Only attach a picture that genuinely answers what was asked; a decorative or roughly-related picture is worse than none. One picture per reply.",
+    input_schema: {
+      type: "object",
+      properties: {
+        ref: { type: "string", description: "The reference from find_picture." },
+        reason: { type: "string", description: "Why this picture answers this customer's question." },
+      },
+      required: ["ref", "reason"],
+    },
+  },
+];
+
 const BOOKING_TOOL_NAMES = new Set(
   [...APPOINTMENT_TOOLS, ...RESERVATION_TOOLS, ...TABLE_TOOLS].map((t) => t.name),
 );
@@ -269,10 +329,137 @@ export function buildAgentTools(mode: BookingMode, capabilities?: Record<string,
     ...(marketplace ? MARKETPLACE_TOOLS : []),
     ...(on("bookings") ? booking : []),
     ...COMMON_WRITE_TOOLS,
+    // `pictures` follows the same absent-means-on rule as the rest, so a
+    // business that has never opened its capability list still gets them — the
+    // library being empty is answered by find_picture in one cheap turn.
+    ...(on("pictures") ? PICTURE_TOOLS : []),
   ];
   if (!on("leads")) tools = tools.filter((t) => !LEAD_TOOL_NAMES.has(t.name));
   if (!on("tickets")) tools = tools.filter((t) => t.name !== "create_ticket");
   return tools;
+}
+
+/** Does this business's agent have the picture tools at all? The system prompt
+ *  asks, so it can tell the model what showing a picture costs on THIS channel
+ *  rather than describing a capability that is switched off. */
+export const picturesEnabled = (capabilities?: Record<string, boolean> | null): boolean =>
+  capabilities?.pictures !== false;
+
+// ---------------------------------------------------------------------------
+// THE BUSINESS'S OWN PICTURE LIBRARY, as the agent sees it.
+//
+// Two sources, one list:
+//
+//   PHOTOGRAPHS  objects in the public `design-assets` bucket, under the
+//                organisation's own prefix. Uploads and generated images alike —
+//                design-assets/index.ts stores both there with the label written
+//                into the object name, which is why the name can be read back.
+//
+//   DESIGNS      rows in `designs` that carry a rendered PNG. A design is stored
+//                as a JSON document and painted in the browser, so until the
+//                studio started publishing a PNG on save there was nothing on
+//                the server to send. png_url is that file, in the same bucket.
+//
+// Both are public https URLs on the storage origin, which is exactly what Twilio
+// needs: it fetches the media itself rather than accepting bytes.
+// ---------------------------------------------------------------------------
+
+const BUCKET = "design-assets";
+
+/** design-assets writes `<kind>__<millis+token>__<slug>.<ext>`. The label is the
+ *  slug; anything that does not match the scheme is reported by its file name
+ *  rather than dropped, exactly as the library's own reader does. */
+function assetLabel(file: string): string {
+  const parts = file.split("__");
+  const raw = parts.length >= 3 && (parts[0] === "up" || parts[0] === "gen") ? parts.slice(2).join("__") : file;
+  return raw.replace(/\.[a-z0-9]{2,5}$/i, "").replace(/[-_]+/g, " ").trim() || file;
+}
+
+/** Only the two types WhatsApp will carry are worth offering. A WebP in the
+ *  library is a real picture, but attaching one fails the whole message, so the
+ *  agent is never shown one to choose. */
+const SENDABLE_EXT = /\.(png|jpe?g)$/i;
+
+function pictureScore(name: string, query: string): number {
+  const words = (s: string) => new Set((s.toLowerCase().match(/[a-z][a-z0-9'-]{2,}/g) ?? []).map((w) => w.replace(/(ies|es|s)$/, "")));
+  const q = words(query);
+  if (q.size === 0) return 0;
+  const n = words(name);
+  let hits = 0;
+  for (const w of q) if (n.has(w)) hits++;
+  // A substring match catches "menu" inside "autumn-menu-2026" where the word
+  // split already handles it, and "a4 pricelist" against "price list".
+  const flat = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (const w of q) if (!n.has(w) && flat.includes(w.replace(/[^a-z0-9]/g, ""))) hits += 0.5;
+  return hits;
+}
+
+/** How many the model is shown. Enough to choose between, few enough that the
+ *  choice stays a decision rather than a scan. */
+const PICTURE_SHORTLIST = 6;
+
+async function searchPictures(
+  admin: SupabaseClient,
+  orgId: string,
+  query: string,
+): Promise<{ ref: string; name: string; url: string; kind: "photo" | "design" }[]> {
+  const out: { name: string; url: string; kind: "photo" | "design" }[] = [];
+  const seen = new Set<string>();
+
+  // Designs first: a design is something the business MADE to be shown — a menu,
+  // a price list, a poster — so it is nearly always the better answer.
+  try {
+    // select("*") because png_url arrives with migration 0120 and edge functions
+    // deploy independently of migrations; naming a column that is not there yet
+    // would turn "show me the menu" into an error instead of a polite miss.
+    const { data, error } = await admin
+      .from("designs")
+      .select("*")
+      .eq("organization_id", orgId)
+      .neq("status", "archived")
+      .order("updated_at", { ascending: false })
+      .limit(40);
+    if (error) throw new Error(error.message);
+    for (const d of ((data as Json[] | null) ?? [])) {
+      const url = String(d?.png_url ?? "").trim();
+      if (!url || !/^https:\/\//i.test(url)) continue;
+      const path = String(d?.png_path ?? "").trim();
+      if (path) seen.add(path);
+      out.push({ name: String(d?.title ?? "").trim() || "Untitled design", url, kind: "design" });
+    }
+  } catch (e) {
+    // A business that has never opened the studio has no designs and no PNGs;
+    // that is not a failure, and the photographs below still answer.
+    console.warn("[phoxta] designs unavailable to the picture search:", String((e as Error)?.message || e));
+  }
+
+  try {
+    const { data, error } = await admin.storage.from(BUCKET).list(orgId, {
+      limit: 100,
+      sortBy: { column: "created_at", order: "desc" },
+    });
+    if (error) throw new Error(error.message);
+    for (const o of ((data as Json[] | null) ?? [])) {
+      const file = String(o?.name ?? "");
+      // Storage keeps a hidden placeholder object so an empty folder survives.
+      if (!o?.id || !file || file === ".emptyFolderPlaceholder") continue;
+      if (!SENDABLE_EXT.test(file)) continue;
+      const path = `${orgId}/${file}`;
+      // A design's own render is already in the list under its real title.
+      if (seen.has(path)) continue;
+      out.push({ name: assetLabel(file), url: admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl, kind: "photo" });
+    }
+  } catch (e) {
+    console.warn("[phoxta] picture library unreadable:", String((e as Error)?.message || e));
+  }
+
+  const scored = out.map((p, i) => ({ p, score: pictureScore(p.name, query), i }));
+  const matched = scored.filter((s) => s.score > 0);
+  // No word matched anything. The list is NOT handed over unfiltered: showing
+  // the model six unrelated pictures is how it ends up attaching one of them.
+  if (matched.length === 0) return [];
+  matched.sort((a, b) => (b.score - a.score) || (a.i - b.i));
+  return matched.slice(0, PICTURE_SHORTLIST).map((s, i) => ({ ref: `pic${i + 1}`, ...s.p }));
 }
 
 // ---------------------------------------------------------------------------
@@ -821,6 +1008,38 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
       });
       ctx.actions.push("Scheduled a callback");
       return "Callback scheduled.";
+    }
+
+    // ── The business's own pictures ────────────────────────────────────────
+    if (name === "find_picture") {
+      const found = await searchPictures(admin, orgId, String(input.query ?? ""));
+      ctx.pictureShortlist = found;
+      if (found.length === 0) {
+        return "This business has no pictures in its library that match that. Answer in words — do not describe a picture you cannot send.";
+      }
+      return JSON.stringify(
+        found.map((p) => ({ ref: p.ref, name: p.name, kind: p.kind })),
+      );
+    }
+
+    if (name === "attach_picture") {
+      const ref = String(input.ref ?? "").trim();
+      const reason = String(input.reason ?? "").trim();
+      const shortlist = ctx.pictureShortlist ?? [];
+      if (shortlist.length === 0) {
+        return "Call find_picture first — you can only attach a picture this business actually has.";
+      }
+      const hit = shortlist.find((p) => p.ref === ref);
+      if (!hit) {
+        return `There is no picture with the reference "${ref}". Use one of: ${shortlist.map((p) => p.ref).join(", ")}.`;
+      }
+      if (!reason) return "Say why this picture answers the customer's question, then attach it.";
+      // ONE per reply. WhatsApp carries a single image per message, and an agent
+      // that attaches three has stopped answering and started decorating.
+      ctx.media = [{ type: "image", url: hit.url, alt: hit.name }];
+      ctx.pictureReason = reason;
+      ctx.actions.push(`Showed the customer "${hit.name}"`);
+      return `Attached "${hit.name}". Write your reply as normal — refer to the picture naturally; it travels with the message. Do not paste its link.`;
     }
 
     if (name === "escalate_to_human") {

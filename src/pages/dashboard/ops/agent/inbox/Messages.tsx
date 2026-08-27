@@ -1,5 +1,5 @@
-import { Fragment } from "react";
-import { StickyNote, MessageSquareOff } from "lucide-react";
+import { Fragment, useState } from "react";
+import { StickyNote, MessageSquareOff, ImageOff, Image as ImageIcon, Link2 } from "lucide-react";
 import { Letter } from "react-letter";
 import { RichText } from "@shared-chat/chatRich";
 import type { TimelineMessage } from "@/lib/db/ops/agent";
@@ -177,6 +177,107 @@ function NotAnswered({ note }: { note: AutoReplyNote }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Pictures on a message
+//
+// "The Inbox must show what was sent, including the picture, so an owner can see
+// exactly what their customer received." Three different things write `meta.media`
+// and this renders all three:
+//
+//   • the AGENT, when it chose a picture from the business's own library —
+//     `[{ type: 'image', url, alt }]`, written by respondCore and then overwritten
+//     by deliverAutoReply with what actually reached the wire;
+//   • the CUSTOMER, when they texted a photograph — twilio-inbound files the
+//     Twilio media links as a bare array of URL strings;
+//   • a HUMAN's email attachments, which do not use this key at all.
+//
+// Both shapes are accepted because both exist in the table today. A picture that
+// will not load (a Twilio media URL on an account with HTTP auth for media
+// switched on, an object that has since been deleted) falls back to a link
+// rather than leaving a broken image in a business's own thread.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Picture = { url: string; alt: string };
+
+function picturesOf(meta: Record<string, unknown>): Picture[] {
+  const raw = meta.media;
+  if (!Array.isArray(raw)) return [];
+  const out: Picture[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      if (/^https?:\/\//i.test(item)) out.push({ url: item, alt: "Attachment" });
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const m = item as Record<string, unknown>;
+    const url = typeof m.url === "string" ? m.url : "";
+    if (!/^https?:\/\//i.test(url)) continue;
+    out.push({ url, alt: typeof m.alt === "string" && m.alt.trim() ? m.alt.trim() : "Picture" });
+  }
+  return out.slice(0, 4);
+}
+
+/** Why the picture went as a link instead of riding with the message — written
+ *  by deliverAutoReply. The answer to "it said it was sending the menu, so where
+ *  is it?", which is otherwise only in a function log. */
+function mediaFallbackReason(meta: Record<string, unknown>): string {
+  const d = meta.media_delivery;
+  if (!d || typeof d !== "object") return "";
+  const rec = d as Record<string, unknown>;
+  if (rec.attached === true) return "";
+  return typeof rec.reason === "string" ? rec.reason : "";
+}
+
+function MessagePicture({ picture }: { picture: Picture }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <a className="ibx-media__missing" href={picture.url} target="_blank" rel="noopener noreferrer">
+        <ImageOff aria-hidden="true" width={14} height={14} />
+        <span>{picture.alt} — open it in a new tab</span>
+      </a>
+    );
+  }
+  return (
+    <a className="ibx-media__frame" href={picture.url} target="_blank" rel="noopener noreferrer" title={picture.alt}>
+      <img src={picture.url} alt={picture.alt} loading="lazy" onError={() => setBroken(true)} />
+    </a>
+  );
+}
+
+function MessagePictures({
+  pictures,
+  fallbackReason,
+  chosenBecause,
+}: {
+  pictures: Picture[];
+  fallbackReason: string;
+  /** The agent's own words for why this picture answers the question. An
+   *  attachment nobody can explain is not a choice — see attach_picture. */
+  chosenBecause: string;
+}) {
+  if (pictures.length === 0) return null;
+  return (
+    <span className="ibx-media">
+      <span className="ibx-media__row">
+        {pictures.map((p) => <MessagePicture key={p.url} picture={p} />)}
+      </span>
+      {chosenBecause && (
+        <span className="ibx-media__note">
+          <ImageIcon aria-hidden="true" width={13} height={13} />
+          <span>Chosen because {chosenBecause.replace(/^because\s+/i, "").replace(/\.$/, "")}.</span>
+        </span>
+      )}
+      {fallbackReason && (
+        <span className="ibx-media__note">
+          <Link2 aria-hidden="true" width={13} height={13} />
+          <span>Sent as a link rather than attached — {fallbackReason}.</span>
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Conversation timeline
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -256,6 +357,13 @@ function MessageBubble({
     const e = (d as Record<string, unknown>).error;
     return typeof e === "string" ? e : "";
   })();
+  // What the customer actually saw, or sent. Rendered inside the bubble so a
+  // reply and its picture read as one message rather than two.
+  const pictures = picturesOf(meta);
+  const mediaFallback = mediaFallbackReason(meta);
+  // Only the agent explains itself: a photograph the CUSTOMER texted needs no
+  // justification, and a human's attachment is their own decision.
+  const pictureReason = m.role === "agent" && typeof meta.picture_reason === "string" ? meta.picture_reason.trim() : "";
   const label = m.role === "customer" ? customerName : AUTHOR_LABEL[m.role] ?? m.role;
   const tone = m.role === "agent" ? " is-ai" : m.role === "system" ? " is-system" : "";
   // The AI writes markdown ("**bold**", bullet lists) whether or not anything
@@ -276,6 +384,7 @@ function MessageBubble({
         <span className={`ibx-bubble${html ? " ibx-bubble--html" : ""}${rich ? " rich" : ""}`}>
           {subject && <span className="ibx-bubble__subject">{subject}</span>}
           {html ? <EmailBody html={html} /> : rich ? <RichText text={m.body} /> : <PlainBody text={m.body} />}
+          <MessagePictures pictures={pictures} fallbackReason={mediaFallback} chosenBecause={pictureReason} />
         </span>
 
         {endsGroup && (

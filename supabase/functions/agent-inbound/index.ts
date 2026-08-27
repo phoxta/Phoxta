@@ -23,6 +23,7 @@ import { verifySharedSecret } from "../_shared/webhooks.ts";
 import {
   autoReplyMode,
   deliverAutoReply,
+  markNotAnswered,
   modeReason,
   notifyNeedsHuman,
   type AutoReplyMode,
@@ -749,13 +750,42 @@ Deno.serve(async (req) => {
     const message = raw.slice(0, 4000);
     const customer = trusted ? (body?.customer ?? {}) : publicCustomer(body?.customer);
 
+    // ------------------------------------------------------------------------
+    // THE CALLER ALREADY FILED THIS MESSAGE.
+    //
+    // twilio-inbound now answers Twilio inside its ~15-second webhook deadline
+    // and composes afterwards, so it files the customer's message FIRST (which
+    // is what keeps the message recoverable if the background turn dies) and
+    // then calls this endpoint to compose. Two things follow, and both are
+    // gated on the internal-transport proof — a browser holding the public key
+    // must never be able to say "somebody else already recorded this":
+    //
+    //   • the reply is composed against THAT row rather than a second copy, and
+    //   • every branch below that would otherwise file the message writes its
+    //     outcome onto that row instead.
+    //
+    // An id is required, not just the flag: `recorded: true` with no row to
+    // point at would suppress respondCore's own insert and lose the customer's
+    // message outright.
+    // ------------------------------------------------------------------------
+    const recordedRowId = trusted && body?.inbound?.recorded === true ? String(body?.inbound?.recordedId ?? "") : "";
+    const callerRecorded = !!recordedRowId;
+    const recordedMeta = (trusted ? (body?.inbound?.meta ?? {}) : {}) as Json;
+
     // --- Was this message already handled? ---
     // Provider webhooks are at-least-once: Postmark, Resend and SendGrid all
     // re-deliver, and this endpoint always answers 200 so they will. Without an
     // idempotency key a redelivery re-runs the model and sends the customer a
     // SECOND reply. The provider's own id for the message is that key, and it is
     // the same column gmail-sync deduplicates on.
-    if (trusted && body?.inbound?.providerSid) {
+    //
+    // Skipped for a caller that has already filed the message: the row it is
+    // pointing at carries this very provider id, so the check would match the
+    // message against ITSELF and refuse to answer anything. That caller ran this
+    // same dedupe on the way in — filing IS the deduplicated step, and the
+    // unique index on (organization_id, provider_sid) is what makes it a
+    // guarantee rather than a race.
+    if (trusted && body?.inbound?.providerSid && !callerRecorded) {
       const { data: seen } = await admin
         .from("conversation_messages")
         .select("conversation_id")
@@ -774,7 +804,7 @@ Deno.serve(async (req) => {
     // a reply to it is how mail loops start. Trusted callers only — a browser
     // cannot write to a thread without an answer coming back.
     if (trusted && body?.record_only === true) {
-      const { conversationId } = await recordInboundOnly(admin, org, {
+      const { conversationId, messageId } = await recordInboundOnly(admin, org, {
         channel: String(body?.channel ?? "email"),
         conversationId: body?.conversationId ? String(body.conversationId) : undefined,
         customer,
@@ -788,8 +818,13 @@ Deno.serve(async (req) => {
         // Defaulting everything to settled is how a heuristic buried a real
         // customer where the catch-up worker could never reach them again.
         retryable: body?.retryable === true,
+        // "File it, and hold it for me" — the transport is about to compose in
+        // the background and does not want a catch-up tick answering it too.
+        claim: body?.claim === true,
       });
-      return json({ ok: true, recorded: true, conversationId, organizationId: org.id, reply: "" });
+      // The row id goes back so the transport can finish the story on the same
+      // row: the delivery it made, or the reason it never managed one.
+      return json({ ok: true, recorded: true, conversationId, messageId, organizationId: org.id, reply: "" });
     }
 
     // A conversation id from an unproven caller is a claim, not a fact, and it is
@@ -819,18 +854,27 @@ Deno.serve(async (req) => {
     //     sends no mail, and the widget switches to polling for a person. ---
     const gate = await modeGate(admin, org.id, isTest);
     if (gate.blocked) {
-      const { conversationId } = await recordInboundOnly(admin, org, {
-        channel,
-        conversationId: threadId,
-        customer,
-        message,
-        isTest,
-        providerSid: trusted && body?.inbound?.providerSid ? String(body.inbound.providerSid) : "",
-        meta: trusted ? (body?.inbound?.meta ?? {}) : {},
-        reason: gate.reason,
-        retryable: true,
-      });
-      if (gate.mode === "approve") await notifyNeedsHuman(admin, org.id, conversationId, message);
+      // Already on the thread: write the decision onto the caller's row rather
+      // than filing the customer's words a second time. (The switch can flip
+      // between a transport's own pre-flight and this call — that is exactly
+      // why it is re-read here.)
+      const conversationId = callerRecorded
+        ? (threadId ?? "")
+        : (await recordInboundOnly(admin, org, {
+          channel,
+          conversationId: threadId,
+          customer,
+          message,
+          isTest,
+          providerSid: trusted && body?.inbound?.providerSid ? String(body.inbound.providerSid) : "",
+          meta: trusted ? (body?.inbound?.meta ?? {}) : {},
+          reason: gate.reason,
+          retryable: true,
+        })).conversationId;
+      if (callerRecorded) {
+        await markNotAnswered(admin, org.id, recordedRowId, recordedMeta, gate.reason, true);
+      }
+      if (gate.mode === "approve" && conversationId) await notifyNeedsHuman(admin, org.id, conversationId, message);
       return json({
         conversationId,
         ...(trusted ? {} : { threadToken: await threadToken(conversationId) }),
@@ -860,8 +904,14 @@ Deno.serve(async (req) => {
       // the sender (a Twilio signature, a provider webhook secret), so it can
       // open the thread; an anonymous browser still cannot, which is the abuse
       // this throttle exists to stop.
+      const throttleReason = "this business is over its hourly message limit";
       let recorded = threadId;
-      if (threadId) {
+      if (callerRecorded) {
+        // Already filed by the transport: record the reason on that row. An
+        // insert here would put the customer's words on the thread twice, and
+        // the second copy would collide with the unique provider_sid index.
+        await markNotAnswered(admin, org.id, recordedRowId, recordedMeta, throttleReason, true);
+      } else if (threadId) {
         await admin.from("conversation_messages").insert({
           organization_id: org.id,
           conversation_id: threadId,
@@ -873,7 +923,7 @@ Deno.serve(async (req) => {
             throttled: true,
             auto_reply: {
               answered: false,
-              reason: "this business is over its hourly message limit",
+              reason: throttleReason,
               retryable: true,
               at: new Date().toISOString(),
             },
@@ -893,7 +943,7 @@ Deno.serve(async (req) => {
           isTest,
           providerSid: body?.inbound?.providerSid ? String(body.inbound.providerSid) : "",
           meta: { ...((body?.inbound?.meta ?? {}) as Json), throttled: true },
-          reason: "this business is over its hourly message limit",
+          reason: throttleReason,
           retryable: true,
         });
         recorded = rec.conversationId;
@@ -915,6 +965,9 @@ Deno.serve(async (req) => {
       customer,
       message,
       isTest,
+      // Already on the thread: the flow must not file the customer's words a
+      // second time.
+      ...(callerRecorded ? { recordedMessageId: recordedRowId } : {}),
     });
     if (engaged?.suppressAi) {
       await classifyLater(classifyInbound(admin, org, engaged.conversationId, message));
@@ -924,6 +977,17 @@ Deno.serve(async (req) => {
         reply: engaged.reply,
         cards: [],
         media: [],
+        // The flow's own rows, so a proven transport can put its reply through
+        // deliverAutoReply and stamp what actually happened on the wire — the
+        // same thing the Chatwoot branch above does with them. Without this a
+        // flow-authored text left an agent bubble with no delivery tick.
+        ...(trusted
+          ? {
+            organizationId: org.id,
+            agentMessageId: engaged.agentMessageId,
+            customerMessageId: engaged.customerMessageId,
+          }
+          : {}),
       });
     }
     const result = await respondCore(admin, org, config, {
@@ -939,9 +1003,16 @@ Deno.serve(async (req) => {
       // its threading headers — so a later reply can thread and a redelivery can
       // be deduplicated. Rebuilt field by field rather than passed through: an
       // untrusted `recorded: true` would suppress the insert and lose the
-      // customer's message entirely.
+      // customer's message entirely, so the flag survives only when the
+      // internal-transport proof held AND a real row id came with it.
       ...(trusted && body?.inbound
-        ? { inbound: { providerSid: String(body.inbound.providerSid ?? ""), meta: body.inbound.meta ?? {} } }
+        ? {
+          inbound: {
+            providerSid: String(body.inbound.providerSid ?? ""),
+            meta: body.inbound.meta ?? {},
+            ...(callerRecorded ? { recorded: true, recordedId: recordedRowId } : {}),
+          },
+        }
         : {}),
     });
     // A human has taken over this thread: the customer's message is persisted

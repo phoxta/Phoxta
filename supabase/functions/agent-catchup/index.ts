@@ -52,12 +52,14 @@ import {
   automatedMailReason,
   claimForReply,
   deliverAutoReply,
+  hasWhatsappTemplates,
   markNotAnswered,
   modeReason,
   notifyNeedsHuman,
   replySubject,
   selfAddresses,
   trimForAgent,
+  whatsappWindow,
   type AutoReplyMode,
 } from "../_shared/autoReply.ts";
 
@@ -70,7 +72,6 @@ const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
  *  who left hours ago will never see the answer — spending a model turn on it
  *  would be spending for nothing. */
 const CHANNELS = ["email", "sms", "whatsapp"];
-const WA_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** How many rows to look at before filtering. Bounded so one call cannot walk a
  *  large history. Raised from 400 alongside the settled-message filter below:
  *  what used to fill this budget was traffic that needed nothing. */
@@ -616,9 +617,26 @@ async function answerOne(
   }
 
   // --- Channel-specific delivery constraints, checked before spending. ---
-  if (c.channel === "whatsapp" && Date.now() - Date.parse(c.createdAt) > WA_WINDOW_MS) {
-    // Permanent: the window only ever gets further away.
-    return skip("outside WhatsApp's 24-hour window — an approved template is required", { mark: true, retryable: false });
+  //
+  // WhatsApp's 24-hour rule, read BEFORE a model turn is paid for. The window is
+  // measured from the newest INBOUND message on the thread — what WhatsApp
+  // itself measures — rather than from the age of this candidate row, which is a
+  // different and usually older number.
+  //
+  // Closed no longer means "never": deliverAutoReply will send one of the
+  // business's own approved templates when it has one that fits. So the only
+  // thing settled here is the case where there is nothing to send at all — no
+  // template on file — and that reaches a person instead of being buried.
+  if (c.channel === "whatsapp") {
+    const win = await whatsappWindow(admin, orgId, c.conversationId);
+    if (!win.open && !(await hasWhatsappTemplates(admin, orgId))) {
+      if (!dryRun) await notifyNeedsHuman(admin, orgId, c.conversationId, c.body);
+      return skip(
+        "WhatsApp only allows a free-text reply within 24 hours of the customer's last message, and this business has no approved " +
+          "WhatsApp template to send instead — it needs a person to reply",
+        { mark: true, retryable: false },
+      );
+    }
   }
 
   // --- The same gates the live path runs, and for the same reasons. ---
@@ -707,6 +725,10 @@ async function answerOne(
     customerMessageId: c.messageId,
     customerMeta: c.meta,
     template: result.template,
+    // A picture the agent chose while composing. Same funnel, same checks: the
+    // file is validated before the send, and where it cannot be attached the
+    // reply still goes with a link in it.
+    media: result.media ?? [],
     mode: ctx.mode,
     // Known keys are passed straight through; when there are none, the helper
     // recovers what it can from the thread and — crucially — still decides the

@@ -41,6 +41,7 @@
 # After any deploy, confirm nothing drifted:
 #   GET https://api.supabase.com/v1/projects/{ref}/functions   → group by verify_jwt
 # Healthy tally as of 2026-08-19: false = 21, true = 23.
+# twilio-status was added 2026-08-27 (false), so the tally is now false = 22.
 
 project_id = "ktgleoqvdikngocygdkn"
 
@@ -137,6 +138,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.twilio-inbound]
+verify_jwt = false
+
+# Twilio's delivery reports for messages WE sent (StatusCallback). Twilio posts
+# with no Supabase key; the X-Twilio-Signature over the URL and the parameters is
+# the whole guard. The URL is registered per message by _shared/dispatch.ts, not
+# in the Twilio console.
+[functions.twilio-status]
 verify_jwt = false
 
 [functions.email-inbound]

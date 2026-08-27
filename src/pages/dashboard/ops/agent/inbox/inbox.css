@@ -639,6 +639,69 @@
   font-weight: 700;
 }
 
+/* ── Pictures on a message ────────────────────────────────────────────────
+   What the customer actually saw. The bubble is pre-wrap, so the block has to
+   declare its own normal whitespace or the gaps between thumbnails inherit the
+   message's line breaks. Fixed height rather than aspect-ratio: a menu is
+   portrait and a product photograph is landscape, and a row of thumbnails that
+   changes height per picture makes a thread jump as it loads. */
+.ibx-media {
+  display: block;
+  white-space: normal;
+  margin-top: 8px;
+}
+
+.ibx-media__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ibx-media__frame {
+  display: block;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(127, 127, 127, 0.16);
+  line-height: 0;
+}
+
+.ibx-media__frame img {
+  display: block;
+  height: 148px;
+  max-width: 240px;
+  width: auto;
+  object-fit: cover;
+}
+
+.ibx-media__missing,
+.ibx-media__note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ibx-media__missing {
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: rgba(127, 127, 127, 0.16);
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ibx-media__note {
+  margin-top: 6px;
+  opacity: 0.82;
+}
+
+.ibx-media__missing svg,
+.ibx-media__note svg {
+  flex-shrink: 0;
+}
+
 /* ── Composer ─────────────────────────────────────────────────────────────
    Docked to the bottom of the thread pane. Everything conditional (WhatsApp
    window notice, template panel, AI draft, delivery warning) stacks INSIDE

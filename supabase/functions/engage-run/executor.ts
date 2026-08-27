@@ -566,6 +566,17 @@ export type EngageInboundParams = {
   message: string;
   isTest?: boolean;
   businessHours?: Json;
+  /**
+   * The row the CALLER already wrote for this customer message.
+   *
+   * twilio-inbound files an inbound text before it answers Twilio's webhook, so
+   * that the message survives whatever happens to the model turn afterwards.
+   * Without knowing that, a flow claiming the turn would file the customer's
+   * words a SECOND time — two identical bubbles in the Inbox, and a duplicate
+   * row that no worker ever marks answered and that agent-catchup would later
+   * pick up and answer again with the AI, on top of the flow's own reply.
+   */
+  recordedMessageId?: string;
 };
 
 export type EngageInboundOutcome = {
@@ -628,7 +639,40 @@ export async function engageHandleInbound(
       .maybeSingle();
     conv = data ?? null;
   }
-  const isNew = !conv;
+
+  // ── IS THIS A NEW CONVERSATION? ────────────────────────────────────────────
+  //
+  // It used to be `!conv`, and that was true for exactly as long as the reply
+  // was composed inside Twilio's own webhook response. twilio-inbound now FILES
+  // the customer's text before it answers Twilio (so the message survives a
+  // background turn that dies) — which means that by the time this hook runs, a
+  // first-time texter already HAS a conversation. `!conv` was false for every
+  // SMS and WhatsApp customer, trigger_new_conversation stopped firing on both
+  // channels, and every welcome and qualifier flow went silent without a single
+  // error anywhere.
+  //
+  // So the question is asked the way it was always meant: has anything happened
+  // on this thread OTHER than the message we are answering right now? A
+  // conversation whose only message is this one was opened by this one, which is
+  // exactly what "new" meant before the filing moved.
+  //
+  // Fails CLOSED. If the count cannot be read we do not fire a welcome flow: a
+  // greeting sent to somebody mid-conversation is worse than a greeting missed.
+  const openedByThisMessage = async (): Promise<boolean> => {
+    if (!conv) return true; // nothing filed anything — the pre-rebuild case
+    const { data, error } = await admin
+      .from("conversation_messages")
+      .select("id")
+      .eq("organization_id", org.id)
+      .eq("conversation_id", conv.id)
+      .limit(5);
+    if (error) {
+      console.error("[phoxta] engage new-conversation check failed:", error.message);
+      return false;
+    }
+    const recorded = String(p.recordedMessageId ?? "");
+    return ((data as Json[] | null) ?? []).every((r) => recorded && String(r.id) === recorded);
+  };
 
   // Take-over gate: a human owns this thread (ai_paused set from the Inbox).
   // Flows must stay as silent as the AI — fall through to respondCore, whose
@@ -676,7 +720,11 @@ export async function engageHandleInbound(
       n.type === "trigger_keyword" &&
       (Array.isArray(n.data?.keywords) ? n.data.keywords : []).some((k: Json) => k && msg.includes(String(k).toLowerCase()))
     );
-    const nc = !kw && isNew ? pick((n) => n.type === "trigger_new_conversation") : null;
+    // Only asked when a keyword did not already claim the turn, so the extra
+    // read costs nothing on the common path.
+    const nc = !kw && (await openedByThisMessage())
+      ? pick((n) => n.type === "trigger_new_conversation")
+      : null;
     const oh = !kw && !nc && isOffHours(p.businessHours) ? pick((n) => n.type === "trigger_off_hours") : null;
     const hit = kw ?? nc ?? oh;
     if (!hit) return null;
@@ -780,7 +828,8 @@ export async function engageHandleInbound(
   // duplicate it, so only the flow's own sends are recorded.
   const now = new Date().toISOString();
   const msgRows: Json[] = [];
-  if (flowOwnsTurn) {
+  // …and not when the CALLER has already filed it — see recordedMessageId.
+  if (flowOwnsTurn && !p.recordedMessageId) {
     // `meta` on every row: PostgREST rejects a batch whose objects don't share
     // one key set (PGRST102) — mixing this row with the flow's meta-carrying
     // sends below used to silently drop the whole transcript.
@@ -800,7 +849,7 @@ export async function engageHandleInbound(
   // deliverAutoReply: agent-inbound's Chatwoot branch pushes a flow's answer to a
   // live WhatsApp customer, and without a row to stamp there is nowhere to record
   // whether that push actually landed.
-  let customerMessageId: string | null = null;
+  let customerMessageId: string | null = p.recordedMessageId ? String(p.recordedMessageId) : null;
   let agentMessageId: string | null = null;
   if (msgRows.length) {
     const { data: written, error: msgErr } = await admin.from("conversation_messages").insert(msgRows).select("id, role");

@@ -61,7 +61,22 @@ export type ConversationMessage = {
   provider_sid: string | null;
   author_id: string | null;
 };
-export type CannedResponse = { id: string; title: string; shortcut: string; body: string; channel: string; is_whatsapp_template: boolean; whatsapp_template_sid: string };
+/** Meta's own category for an approved WhatsApp template. It decides whether the
+ *  AI agent may ever send one as an ANSWER: only a utility template can be, a
+ *  marketing template is a promotion rather than a reply, and an authentication
+ *  template is an empty one-time-code shell. */
+export type WhatsappTemplateCategory = "utility" | "marketing" | "authentication";
+export type CannedResponse = {
+  id: string;
+  title: string;
+  shortcut: string;
+  body: string;
+  channel: string;
+  is_whatsapp_template: boolean;
+  whatsapp_template_sid: string;
+  /** Absent on a project where migration 0120 has not been applied yet. */
+  whatsapp_template_category?: WhatsappTemplateCategory;
+};
 export type OrgMember = { user_id: string; full_name: string; role: string };
 export type OutboundCampaign = { id: string; name: string; type: string; channel_pref: string; goal: string; status: string; created_at: string };
 export type OutboundTask = { id: string; type: string; channel: string; customer_name: string; status: string; outcome: string | null; created_at: string };
@@ -331,19 +346,41 @@ export async function listViewers(convId: string, exceptUserId: string): Promise
 
 // ---------- Canned responses / WhatsApp templates ----------
 export async function listCanned(orgId: string): Promise<{ data: CannedResponse[]; error: string | null }> {
+  // `*` rather than a named list: whatsapp_template_category arrives with
+  // migration 0120 and the SPA deploys independently of migrations, so naming it
+  // would turn the whole saved-replies drawer into an error on a project where
+  // the migration has not landed yet.
   const { data, error } = await supabase
     .from("canned_responses")
-    .select("id, title, shortcut, body, channel, is_whatsapp_template, whatsapp_template_sid")
+    .select("*")
     .eq("organization_id", orgId)
     .order("created_at", { ascending: false });
   return { data: (data as CannedResponse[] | null) ?? [], error: friendlyError(error?.message) };
 }
+/** The one column that can legitimately not exist yet: 0120 adds it, and the SPA
+ *  ships on its own schedule. A write that names it before it lands must lose the
+ *  category, not the person's reply — so the write is retried without it. */
+const MISSING_CATEGORY = /whatsapp_template_category/i;
+
+const withoutCategory = <T extends Partial<CannedResponse>>(input: T): Omit<T, "whatsapp_template_category"> => {
+  const { whatsapp_template_category: _unmigrated, ...rest } = input;
+  return rest;
+};
+
 export async function createCanned(orgId: string, input: Partial<CannedResponse>): Promise<{ error: string | null }> {
   const { error } = await supabase.from("canned_responses").insert({ organization_id: orgId, ...input });
+  if (error && MISSING_CATEGORY.test(error.message)) {
+    const retry = await supabase.from("canned_responses").insert({ organization_id: orgId, ...withoutCategory(input) });
+    return { error: friendlyError(retry.error?.message) };
+  }
   return { error: friendlyError(error?.message) };
 }
 export async function updateCanned(id: string, patch: Partial<Omit<CannedResponse, "id">>): Promise<{ error: string | null }> {
   const { error } = await supabase.from("canned_responses").update(patch).eq("id", id);
+  if (error && MISSING_CATEGORY.test(error.message)) {
+    const retry = await supabase.from("canned_responses").update(withoutCategory(patch)).eq("id", id);
+    return { error: friendlyError(retry.error?.message) };
+  }
   return { error: friendlyError(error?.message) };
 }
 export async function deleteCanned(id: string): Promise<{ error: string | null }> {
