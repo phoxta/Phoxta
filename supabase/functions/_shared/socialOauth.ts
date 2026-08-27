@@ -43,7 +43,14 @@ export const SPECS: Record<Platform, Spec> = {
   instagram: {
     authUrl: "https://www.facebook.com/v21.0/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    scopes: "instagram_basic,instagram_content_publish,pages_show_list,business_management",
+    // Meta lists exactly these for publishing through Facebook Login:
+    // instagram_basic, instagram_content_publish and pages_read_engagement.
+    // pages_show_list is what /me/accounts needs to find the Page the account
+    // hangs off. business_management was in here and is NOT required — it is a
+    // heavyweight permission that App Review will ask you to justify, and
+    // pages_read_engagement, which IS required, was missing: without it the
+    // publish fails after a connection that looked fine.
+    scopes: "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
     clientId: () => env("META_APP_ID"),
     clientSecret: () => env("META_APP_SECRET"),
   },
