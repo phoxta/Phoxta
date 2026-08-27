@@ -52,5 +52,11 @@ post ops-maintenance   '{}'
 # action for each, and runs it through the governed tool path. It also records
 # the heartbeat that proves this whole script ran -- if cron_heartbeats stops
 # advancing, the background loop has stopped, wherever it is hosted.
+# Scheduled social posts. One row per channel per post, claimed atomically, so
+# two overlapping ticks cannot publish the same thing twice. This is what makes
+# scheduling mean anything: the post goes out whether or not anybody has the
+# dashboard open.
+post social-publish    '{}'
+
 post objective-planner '{}'
 echo "worker-cron done"

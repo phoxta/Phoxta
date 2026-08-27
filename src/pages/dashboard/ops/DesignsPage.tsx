@@ -19,6 +19,8 @@ import {
 } from "@/lib/designs/snap";
 import { EmailIndex } from "./designs/EmailIndex";
 import { NewDesign } from "./designs/NewDesign";
+import { ScheduleDialog } from "./designs/ScheduleDialog";
+import { SocialQueue } from "./designs/SocialQueue";
 import { FloatingBar } from "./designs/FloatingBar";
 import { Inspector } from "./designs/Inspector";
 import { CanvasText } from "./designs/CanvasText";
@@ -77,6 +79,8 @@ export default function DesignsPage() {
   // share a canvas — see the note at the top of EmailComposer for why an SVG
   // artboard cannot be one.
   const [mode, setMode] = useState<"graphics" | "email">("graphics");
+  /** The design being scheduled out to social. */
+  const [scheduling, setScheduling] = useState<Design | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await listDesigns(orgId);
@@ -143,6 +147,12 @@ export default function DesignsPage() {
                     </span>
                   </div>
                   <button
+                    type="button" className="dsn-tile__go"
+                    onClick={() => setScheduling(d)}
+                    aria-label={`Schedule ${d.title}`}
+                    title="Schedule this post"
+                  >Schedule</button>
+                  <button
                     type="button" className="dsn-x"
                     onClick={async () => {
                       if (!(await confirmDanger(`Archive "${d.title}"?`))) return;
@@ -159,6 +169,12 @@ export default function DesignsPage() {
           </div>
         )}
       </Card>
+
+      <SocialQueue orgId={orgId} />
+
+      {scheduling && (
+        <ScheduleDialog orgId={orgId} design={scheduling} onClose={() => setScheduling(null)} />
+      )}
     </>}
     </div>
   );
