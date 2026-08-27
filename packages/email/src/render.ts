@@ -36,11 +36,28 @@
 // an image masthead is a blank gap for a large share of readers. A wordmark set
 // in type always renders.
 
-const INK = "#14194e";
-const ACCENT = "#1c56fd";
-const MUTED = "#6b7189";
-const LINE = "#e6e8f2";
-const PAPER = "#f4f5fa";
+/**
+ * THE PALETTE IS THE SITE'S, not a near-miss of it.
+ *
+ * These were navy and blue for a while — inherited from the first transactional
+ * template and never checked. phoxta.com is near-black and orange: --at-neutral
+ * runs 0 #FEFEFE to 900 #1D1D1D, and --at-theme-primary is #F0460E. An email
+ * that arrives in a different palette from the site it links to does not read
+ * as a design decision, it reads as a forgery, which is a genuinely expensive
+ * thing for the one email sent to people who do not know the brand yet.
+ *
+ * ACCENT and ACCENT_TEXT are the same colour at two jobs. #F0460E on white is
+ * 3.8:1 — fine for a filled bar, a rule or a button, and under the 4.5:1 that
+ * small text needs. So fills get the brand orange and small type gets the
+ * darkened one at 4.6:1. Against the near-black ground the brand orange clears
+ * it on its own (4.5:1) and is used directly.
+ */
+const INK = "#1D1D1D";          // --at-neutral-900
+const PAPER = "#F2F2F2";        // --at-neutral-50
+const LINE = "#DFDFDF";         // --at-neutral-100
+const MUTED = "#585959";        // --at-neutral-500
+const ACCENT = "#F0460E";       // --at-theme-primary
+const ACCENT_TEXT = "#D63D0B";  // the same orange, dark enough to read small
 
 /**
  * Set on EVERY text element, not once on the body.
@@ -50,11 +67,15 @@ const PAPER = "#f4f5fa";
  * element the whole message arrives in Times, which is exactly how the first
  * render of this template came out.
  *
- * No webfont. Outlook ignores @font-face, Gmail strips the link, and a font
- * that loads for some readers and not others is worse than one system face for
- * everyone.
+ * DM Sans first, because that is the site's face and the brochure is the one
+ * email a reader compares against the site. It is named in the stack and, in
+ * the brochure only, linked from Google Fonts: Apple Mail and iOS honour the
+ * link, Outlook and Gmail ignore it and fall to Segoe and Roboto, which are
+ * close enough in width that nothing reflows. A face that loads for some
+ * readers is a problem only if the fallback is a surprise — here it is the
+ * same stack every other email uses.
  */
-const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+const FONT = "'DM Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif";
 
 /** Every value that reaches the markup goes through this. */
 export const esc = (v: unknown) =>
@@ -114,11 +135,15 @@ export type EmailOpts = {
  *  can appear anywhere, and blocks are rendered by more than one shell. */
 type Tone = "paper" | "ink";
 const on = (t: Tone) => ({
-  text: t === "ink" ? "#ffffff" : INK,
-  body: t === "ink" ? "#c2cbf0" : INK,
-  soft: t === "ink" ? "#9aa6d8" : MUTED,
-  line: t === "ink" ? "#2b3170" : LINE,
-  accent: t === "ink" ? "#8ea6ff" : ACCENT,
+  text: t === "ink" ? "#FEFEFE" : INK,
+  body: t === "ink" ? "#CDCCCC" : INK,   // --at-neutral-200, 10.5:1 on ink
+  soft: t === "ink" ? "#B7B7B7" : MUTED, // --at-neutral-300, 8.4:1 on ink
+  line: t === "ink" ? "#3A3A3A" : LINE,
+  /** Small type. */
+  accent: t === "ink" ? ACCENT : ACCENT_TEXT,
+  /** Bars, rules, discs — anything filled, where the brand colour itself is
+   *  the point and contrast is not carrying any words. */
+  fill: ACCENT,
 });
 
 const p = (html: string, colour: string = INK) =>
@@ -162,11 +187,12 @@ function block(b: Block, tone: Tone = "paper"): string {
     case "chips":
       return brochure(b, tone);
     case "button":
-      // A padded table cell, not a styled <a>: Outlook ignores padding on an
-      // anchor, so a plain link button collapses to bare text there.
+      // The site's call to action is a full pill in near-black, so this is
+      // too. A padded table cell, not a styled <a>: Outlook ignores padding on
+      // an anchor, so a plain link button collapses to bare text there.
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px">
-        <tr><td bgcolor="${ACCENT}" style="border-radius:8px">
-          <a href="${esc(b.href)}" style="display:inline-block;padding:13px 26px;font-family:${FONT};font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px">${esc(b.label)}</a>
+        <tr><td bgcolor="${INK}" style="border-radius:50px">
+          <a href="${esc(b.href)}" style="display:inline-block;padding:15px 30px;font-family:${FONT};font-size:15px;font-weight:600;line-height:1;color:${PAPER};text-decoration:none;border-radius:50px">${esc(b.label)}</a>
         </td></tr></table>`;
   }
 }
@@ -232,14 +258,14 @@ function brochure(
                style="display:block;width:100%;max-width:600px;height:auto;border:0;font-family:${FONT};font-size:13px;color:#ffffff">
         </td></tr>
         <tr><td bgcolor="${INK}" style="padding:30px 30px 34px">
-          <div style="font-family:${FONT};font-size:33px;line-height:1.1;font-weight:700;letter-spacing:-0.03em;color:#ffffff">${esc(b.title)}</div>
-          <div style="font-family:${FONT};font-size:16px;line-height:1.55;color:#b3bdea;margin:12px 0 22px">${esc(b.sub)}</div>
+          <div style="font-family:${FONT};font-size:34px;line-height:1.12;font-weight:600;letter-spacing:-0.01em;color:#ffffff">${esc(b.title)}</div>
+          <div style="font-family:${FONT};font-size:16px;line-height:1.55;color:#CDCCCC;margin:12px 0 22px">${esc(b.sub)}</div>
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td bgcolor="#ffffff" style="border-radius:8px">
-              <a href="${esc(b.cta.href)}" style="display:inline-block;padding:14px 26px;font-family:${FONT};font-size:15px;font-weight:700;color:${INK};text-decoration:none">${esc(b.cta.label)}</a>
+            <td bgcolor="${PAPER}" style="border-radius:50px">
+              <a href="${esc(b.cta.href)}" style="display:inline-block;padding:15px 30px;font-family:${FONT};font-size:15px;font-weight:600;line-height:1;color:${INK};text-decoration:none;border-radius:50px">${esc(b.cta.label)}</a>
             </td>
           </tr></table>
-          ${b.note ? `<div style="font-family:${FONT};font-size:12.5px;color:#8b97cf;margin-top:16px">${esc(b.note)}</div>` : ""}
+          ${b.note ? `<div style="font-family:${FONT};font-size:12.5px;color:#B7B7B7;margin-top:16px">${esc(b.note)}</div>` : ""}
         </td></tr></table>`;
 
     case "section":
@@ -247,12 +273,12 @@ function brochure(
       // from a scroll into a document you can find your place in.
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:36px 0 20px">
         <tr><td style="padding-bottom:14px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td width="34" bgcolor="${c.accent}" style="height:3px;font-size:0;line-height:0;border-radius:2px">&nbsp;</td>
+          <td width="34" bgcolor="${c.fill}" style="height:3px;font-size:0;line-height:0;border-radius:2px">&nbsp;</td>
         </tr></table></td></tr>
         <tr><td style="font-family:${FONT};font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:${c.soft}">
           ${b.n ? `<span style="color:${c.accent}">${esc(b.n)}</span>&nbsp;&nbsp;` : ""}${esc(b.label)}
         </td></tr>
-        <tr><td style="padding-top:7px;font-family:${FONT};font-size:25px;line-height:1.2;font-weight:700;letter-spacing:-0.025em;color:${c.text}">${esc(b.title)}</td></tr>
+        <tr><td style="padding-top:7px;font-family:${FONT};font-size:25px;line-height:1.22;font-weight:600;letter-spacing:-0.005em;color:${c.text}">${esc(b.title)}</td></tr>
       </table>`;
 
     case "grid": {
@@ -294,7 +320,7 @@ function brochure(
         <tr><td style="padding:0 18px 20px">
           ${b.bars.map((x) => `<div style="font-family:${FONT};font-size:12.5px;color:${c.text};margin:13px 0 6px">${esc(x.label)} <span style="color:${c.soft}">— ${esc(x.note)}</span></div>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-              <td bgcolor="${c.accent}" width="${Math.max(4, Math.round((x.value / max) * 100))}%" style="height:9px;border-radius:5px;font-size:0;line-height:0">&nbsp;</td>
+              <td bgcolor="${c.fill}" width="${Math.max(4, Math.round((x.value / max) * 100))}%" style="height:9px;border-radius:5px;font-size:0;line-height:0">&nbsp;</td>
               <td width="${100 - Math.max(4, Math.round((x.value / max) * 100))}%" style="font-size:0;line-height:0">&nbsp;</td>
             </tr></table>`).join("")}
         </td></tr></table>`;
@@ -320,7 +346,7 @@ function brochure(
     case "plans":
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 18px;border:1px solid ${c.line};border-radius:12px">
         ${b.items.map((pl, i) => `<tr>
-          <td style="padding:16px 18px;${i ? `border-top:1px solid ${c.line};` : ""}${pl.best ? (tone === "ink" ? "background:#1c2266;" : "background:#f2f5ff;") : ""}">
+          <td style="padding:16px 18px;${i ? `border-top:1px solid ${c.line};` : ""}${pl.best ? (tone === "ink" ? "background:#2B1207;" : "background:#FDEEE8;") : ""}">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
               <td style="font-family:${FONT};font-size:15.5px;font-weight:700;color:${c.text}">${esc(pl.name)}${pl.best ? ` <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:${c.accent}">&nbsp;MOST POPULAR</span>` : ""}</td>
               <td align="right" style="font-family:${FONT};font-size:17px;font-weight:700;color:${c.text};white-space:nowrap">${esc(pl.price)}<span style="font-size:12px;font-weight:400;color:${c.soft}">${esc(pl.per)}</span></td>
@@ -332,7 +358,7 @@ function brochure(
     case "chips":
       return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px">
         <tr><td style="font-family:${FONT};font-size:0;line-height:0">
-          ${b.items.map((t) => `<span style="display:inline-block;margin:0 6px 8px 0;padding:8px 13px;border:1px solid ${c.line};border-radius:16px;font-family:${FONT};font-size:13px;line-height:1;color:${c.text};background:${tone === "ink" ? "#1b2059" : "#f7f8fd"}">${esc(t)}</span>`).join("")}
+          ${b.items.map((t) => `<span style="display:inline-block;margin:0 6px 8px 0;padding:8px 13px;border:1px solid ${c.line};border-radius:50px;font-family:${FONT};font-size:13px;line-height:1;color:${c.text};background:${tone === "ink" ? "#1b2059" : "#f7f8fd"}">${esc(t)}</span>`).join("")}
         </td></tr></table>`;
   }
 }
@@ -451,6 +477,9 @@ export function renderBrochure(o: {
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
 <title>${esc(o.subject)}</title>
+<!-- The site's face. Apple Mail and iOS load it; everything else falls to the
+     stack in FONT and nothing reflows. -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   /* The ONLY stylesheet in any of these emails, and it does one thing: let a
      tile fill the column on a phone instead of sitting at 168px in the middle
@@ -468,12 +497,20 @@ export function renderBrochure(o: {
 
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PAPER}">
 <tr><td align="center" style="padding:28px 16px 40px">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;background:#FEFEFE;border-radius:8px;overflow:hidden">
 
     <tr><td bgcolor="${INK}" style="padding:20px 30px 18px">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-        <td style="font-family:${FONT};font-size:19px;font-weight:700;letter-spacing:.02em;color:#ffffff">PHOXTA</td>
-        <td align="right" style="font-family:${FONT};font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8291d6">${esc(o.strap)}</td>
+        <td style="line-height:0">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="line-height:0;padding-right:9px">
+              <img src="https://www.phoxta.com/assets/imgs/email/logo.png" alt="" width="28" height="30"
+                   style="display:block;width:28px;height:30px;border:0">
+            </td>
+            <td style="font-family:${FONT};font-size:24px;font-weight:700;line-height:1;color:#FEFEFE">Phoxta</td>
+          </tr></table>
+        </td>
+        <td align="right" style="font-family:${FONT};font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#B7B7B7">${esc(o.strap)}</td>
       </tr></table>
     </td></tr>
     <tr><td bgcolor="${ACCENT}" style="height:4px;font-size:0;line-height:0">&nbsp;</td></tr>
