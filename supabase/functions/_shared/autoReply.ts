@@ -138,7 +138,14 @@ const ROBOT_SUBJECT =
  *  domain with a marketing reputation — or simply a mail with a logo in its
  *  footer — lands there routinely. Treating that as proof of a robot silently
  *  suppressed real customers. */
-const ROBOT_LABELS = new Set(["SPAM", "TRASH", "DRAFT", "SENT", "CATEGORY_FORUMS"]);
+/* CATEGORY_FORUMS came out for the same reason CATEGORY_PROMOTIONS did, and it
+ * mattered more. Gmail files GOOGLE GROUP mail under Forums — and Phoxta's own
+ * console creates hello@ / support@ / sales@ as Google Groups and tells the
+ * business to publish them. So this label was not catching a discussion list; it
+ * was catching the customer mail arriving at the addresses the product hands
+ * out, and burying it definitively. What is left here is unambiguous: Spam,
+ * Trash, a draft, and our own sent copy. */
+const ROBOT_LABELS = new Set(["SPAM", "TRASH", "DRAFT", "SENT"]);
 
 export type AutomationProbe = {
   headers?: MailHeaders;
@@ -201,11 +208,35 @@ export function automatedMailReason(p: AutomationProbe): AutomationVerdict | nul
     if (h[k]) return sure(`${k} present`);
   }
 
+  // THE BUSINESS'S OWN GROUP IS NOT A MAILING LIST.
+  //
+  // Phoxta itself creates hello@ / info@ / support@ / sales@ / billing@ /
+  // contact@ as GOOGLE GROUPS (google-workspace/index.ts) and tells the owner to
+  // publish them. A group is not a mailbox — the only copy the platform can ever
+  // see is the one the group delivers to a member — and Google stamps that copy
+  // with List-Id, List-Post and Precedence: list, exactly like a newsletter.
+  //
+  // So the two rules below, written for newsletters, were permanently refusing
+  // the customer mail arriving at the very addresses this product tells
+  // businesses to hand out — and refusing it DEFINITIVELY, so it was never
+  // retried and never answered. That is a support address that silently
+  // swallows customers.
+  //
+  // The distinction is whose list it is. A newsletter's List-Id names the
+  // SENDER's domain; a business's own distribution group names the business's
+  // own. Matched on domain rather than exact address because a group's List-Id
+  // is `hello.phoxta.com`, not an address at all.
+  const selfDomains = new Set(self.map((a) => a.split("@")[1]).filter(Boolean));
+  const listAddr = `${h["list-id"] ?? ""} ${h["list-post"] ?? ""}`.toLowerCase();
+  const ownGroup = [...selfDomains].some((d) => d && (listAddr.includes("@" + d) || listAddr.includes("." + d) || listAddr.includes("<" + d)));
+
   const precedence = (h["precedence"] ?? "").trim().toLowerCase();
-  if (["bulk", "list", "junk", "auto_reply"].includes(precedence)) return sure(`Precedence: ${precedence}`);
+  if (["bulk", "junk", "auto_reply"].includes(precedence)) return sure(`Precedence: ${precedence}`);
+  // `Precedence: list` alone is what a group stamps on ordinary mail it relays.
+  if (precedence === "list" && !ownGroup) return sure("Precedence: list");
 
   for (const k of ["list-id", "list-unsubscribe", "list-post", "list-help", "list-subscribe"]) {
-    if (h[k]) return sure("a mailing list (List-* headers)");
+    if (h[k] && !ownGroup) return sure("a mailing list (List-* headers)");
   }
 
   // An ABSENT Return-Path only means the provider did not hand us one; an
