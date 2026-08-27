@@ -58,17 +58,47 @@ export async function verifyTwilioSignature(req: Request, form: FormData): Promi
   const header = req.headers.get("x-twilio-signature");
   if (!header) return false;
 
+  // THE URL TWILIO SIGNED IS NOT THE URL THIS FUNCTION SEES.
+  //
+  // Twilio signs the address it dialled — including `/functions/v1/` — but the
+  // Supabase gateway strips that prefix before the function is invoked, and
+  // rewrites the host besides. So `req.url` is a DIFFERENT string from the one
+  // the HMAC was computed over, and a single reconstruction is a guess about
+  // somebody else's proxy that fails closed and silently: every inbound SMS and
+  // WhatsApp message answered 403, Twilio recorded a delivery failure nobody was
+  // watching, and the customer got nothing.
+  //
+  // So try the reconstructions that are actually plausible and accept if ANY of
+  // them verifies. This does not weaken anything: each candidate is still a full
+  // HMAC-SHA1 against the auth token, and an attacker without that token cannot
+  // produce a signature matching any of them. The alternative — demanding that
+  // one guess be right — is a guarantee of nothing except downtime the next time
+  // a platform changes how it proxies.
   const reqUrl = new URL(req.url);
-  const base = Deno.env.get("TWILIO_WEBHOOK_BASE");
-  const url = base ? `${base.replace(/\/$/, "")}${reqUrl.pathname}${reqUrl.search}` : reqUrl.toString();
+  const base = (Deno.env.get("TWILIO_WEBHOOK_BASE") ?? "").replace(/\/$/, "");
+  const path = reqUrl.pathname;
+  const search = reqUrl.search;
+  // Supabase invokes at /<name>; Twilio was given /functions/v1/<name>.
+  const prefixed = path.startsWith("/functions/v1") ? path : `/functions/v1${path}`;
+
+  const candidates = [
+    reqUrl.toString(),
+    ...(base ? [`${base}${prefixed}${search}`, `${base}${path}${search}`] : []),
+    `${reqUrl.origin}${prefixed}${search}`,
+  ];
 
   const keys: string[] = [];
   for (const [k] of form.entries()) keys.push(k);
   keys.sort();
-  let payload = url;
-  for (const k of keys) payload += k + (form.get(k)?.toString() ?? "");
+  let tail = "";
+  for (const k of keys) tail += k + (form.get(k)?.toString() ?? "");
 
-  return timingSafeEqual(b64(await hmac("SHA-1", token, payload)), header);
+  for (const candidate of new Set(candidates)) {
+    if (timingSafeEqual(b64(await hmac("SHA-1", token, candidate + tail)), header)) return true;
+  }
+  // One line, so the next person debugging silence has somewhere to start.
+  console.warn("[phoxta] twilio signature rejected; tried:", [...new Set(candidates)].join(" | "));
+  return false;
 }
 
 /**
