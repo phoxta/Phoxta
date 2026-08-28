@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL } from "@/lib/cache/dashboardQueries";
 import { useEngageOps, getChannelSnapshot, type ChannelSnapshot } from "@/lib/db/ops/engageAreas";
+import { listSocialAccounts, type SocialAccount } from "@/lib/db/ops/social";
 import { getEmailIngressHealth, ingressVerdict, type EmailIngressHealth } from "@/lib/db/ops/emailHealth";
 import { Chip } from "@/components/dash/Ui";
 
@@ -39,6 +40,53 @@ type ChannelDef = {
   manage: { to: string; label: string } | null;
   soon?: boolean;
 };
+
+/**
+ * Instagram is two different channels wearing one name, and this card used to
+ * tell half the truth.
+ *
+ * PUBLISHING is built and live: connect the account in Graphics and scheduled
+ * posts go out from the server. DMs IN THE INBOX are not built. The card said
+ * "Coming soon" for both, so somebody who had just connected Instagram and
+ * scheduled a post to it was told by the channel map that Instagram was not
+ * available yet — which reads as "the thing I did has not worked".
+ *
+ * So it reports what is true of each half, and it says where the other half
+ * is, rather than making the reader guess which one "coming soon" refers to.
+ */
+function instagramCard(social: SocialAccount[] | undefined, base: string): ChannelDef {
+  const live = (social ?? []).filter((a) => a.platform === "instagram" && a.status === "connected");
+  const stale = (social ?? []).filter((a) => a.platform === "instagram" && a.status === "expired");
+
+  if (live.length === 0 && stale.length === 0) {
+    return {
+      key: "instagram",
+      name: "Instagram",
+      blurb: "Schedule posts to your Instagram profile from Graphics. DMs arriving in this Inbox are not built yet.",
+      state: { label: "Not connected", tone: "warn" },
+      detail: "Connect the account in Graphics to schedule posts",
+      manage: { to: `${base}/designs`, label: "Connect in Graphics" },
+    };
+  }
+  if (live.length === 0) {
+    return {
+      key: "instagram",
+      name: "Instagram",
+      blurb: "Scheduled posts go out from Graphics. DMs arriving in this Inbox are not built yet.",
+      state: { label: "Needs reconnecting", tone: "danger" },
+      detail: stale.map((a) => a.handle || a.display_name).filter(Boolean).join(", ") || "The token has expired",
+      manage: { to: `${base}/designs`, label: "Reconnect in Graphics" },
+    };
+  }
+  return {
+    key: "instagram",
+    name: "Instagram",
+    blurb: "Scheduled posts go out from Graphics, on the server. DMs arriving in this Inbox are not built yet.",
+    state: { label: "Posting", tone: "ok" },
+    detail: `${live.map((a) => a.handle || a.display_name).filter(Boolean).join(", ") || "Connected"} · posts only`,
+    manage: { to: `${base}/designs`, label: "Manage in Graphics" },
+  };
+}
 
 /**
  * The Email card's state, from the connection's real health rather than the mere
@@ -90,7 +138,7 @@ function emailCard(
   };
 }
 
-function buildCards(snapshot: ChannelSnapshot | undefined, orgId: string, health: EmailIngressHealth | null): ChannelDef[] {
+function buildCards(snapshot: ChannelSnapshot | undefined, orgId: string, health: EmailIngressHealth | null, social: SocialAccount[] | undefined): ChannelDef[] {
   const base = `/dashboard/businesses/${orgId}/ops`;
   const s = snapshot;
   const count = (ch: string) => s?.counts[ch] ?? 0;
@@ -136,15 +184,7 @@ function buildCards(snapshot: ChannelSnapshot | undefined, orgId: string, health
       detail: traffic("voice"),
       manage: { to: "../agent", label: "Manage in Agent" },
     },
-    {
-      key: "instagram",
-      name: "Instagram",
-      blurb: "DMs from your Instagram profile, answered in the same Inbox by the same agent.",
-      state: { label: "Coming soon", tone: "plain" },
-      detail: "",
-      manage: null,
-      soon: true,
-    },
+    instagramCard(social, base),
     {
       key: "messenger",
       name: "Messenger",
@@ -159,6 +199,12 @@ function buildCards(snapshot: ChannelSnapshot | undefined, orgId: string, health
 
 export default function ChannelsPage() {
   const { orgId } = useEngageOps();
+
+  const { data: socialAccounts } = useCachedData(
+    `ops:engage:social:${orgId}`,
+    async () => (await listSocialAccounts(orgId)).data?.accounts ?? [],
+    { ttl: DASHBOARD_TTL },
+  );
 
   const { data: snapshot, loading, error } = useCachedData(
     `ops:engage:channels:${orgId}`,
@@ -184,7 +230,10 @@ export default function ChannelsPage() {
     { ttl: DASHBOARD_TTL },
   );
 
-  const cards = useMemo(() => buildCards(snapshot, orgId, emailHealth ?? null), [snapshot, orgId, emailHealth]);
+  const cards = useMemo(
+    () => buildCards(snapshot, orgId, emailHealth ?? null, socialAccounts),
+    [snapshot, orgId, emailHealth, socialAccounts],
+  );
   // Email counts as in use on the VERDICT, not on the chip's wording — otherwise
   // a business whose mail is arriving fine drops out of the count the moment
   // Phoxta is mid-setup and the chip stops reading exactly "Working".
