@@ -2,6 +2,7 @@
 // Execution is governed by per-tool policy: 'off' (blocked), 'approve' (queued for
 // the owner), or 'auto' (run now). Every attempt is written to agent_audit_log.
 import type { SupabaseClient } from "./supabaseAdmin.ts";
+import { internalProofHeaders } from "./internalProof.ts";
 import type { Tool } from "./anthropic.ts";
 import { getAccessToken, gmailSendRaw, createDoc, createEvent, appendSheet } from "./google.ts";
 import { dispatch, placeAiCall } from "./dispatch.ts";
@@ -65,6 +66,8 @@ export const WRITE_TOOLS: Tool[] = [
   // operator scheduled can be edited, moved or cancelled from the console like
   // any other.
   { name: "schedule_post", description: "Schedule a social post to the business's connected accounts. It goes out from the server at the time given — nothing needs to be open. Pick a design by title from list_designs (it must be postable) and check list_social_accounts first. Instagram extras: collaborators are up to 3 usernames invited as co-authors, who each have to accept; alt_text describes the picture; also_story puts the same picture on the story as well.", input_schema: { type: "object", properties: { design: { type: "string", description: "The design's title, from list_designs." }, caption: { type: "string" }, when: { type: "string", description: "ISO datetime. Omit to send on the next tick, within five minutes." }, platforms: { type: "array", items: { type: "string", enum: ["instagram", "linkedin", "tiktok", "x"] }, description: "Omit to use every connected account." }, collaborators: { type: "array", items: { type: "string" }, description: "Instagram only, up to 3 usernames." }, alt_text: { type: "string" }, also_story: { type: "boolean" } }, required: ["design", "caption"] } },
+
+  { name: "plan_content", description: "Plan a month of social content: the posts, when each goes out, the words on each picture and the caption. It creates the designs and the pictures too. NOTHING GOES OUT until the owner approves the plan — every post is written as a draft, so this is safe to run and show them. Give a brief saying what the month should be about; optionally how many days to spread it over, how many posts, and imagery \"stock\" (real photographs, free, the default) or \"generated\" (made to order, costs per picture).", input_schema: { type: "object", properties: { brief: { type: "string" }, days: { type: "number", description: "Days to spread it over. Default 30." }, posts: { type: "number", description: "How many posts. Default 12, maximum 30." }, starts_on: { type: "string", description: "YYYY-MM-DD. Default today." }, imagery: { type: "string", enum: ["stock", "generated"] } }, required: ["brief"] } },
 
   // --- Call center ---
   { name: "add_location", description: "Add a business/branch location for call routing. Give a name and ZIP; optional phone and service types.", input_schema: { type: "object", properties: { name: { type: "string" }, zip: { type: "string" }, phone: { type: "string" }, service_types: { type: "array", items: { type: "string" } } }, required: ["name"] } },
@@ -410,6 +413,39 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     const where = usable.map((x: Json) => x.platform).join(", ");
     const invited = collaborators.length ? `, inviting ${collaborators.map((c: string) => "@" + c).join(", ")}` : "";
     return `Scheduled "${d.title}" to ${where} for ${at.toLocaleString("en-GB")}${invited}.`;
+  }
+
+
+  if (tool === "plan_content") {
+    // The planner is its own function because it spends the model budget and
+    // writes a month of rows; calling it here keeps ONE implementation of what
+    // a plan is, rather than the operator having a second, simpler idea of it.
+    const base = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!base || !key) throw new Error("The planner is not reachable from here.");
+    const res = await fetch(`${base}/functions/v1/content-plan`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${key}`,
+        apikey: key,
+        ...(await internalProofHeaders()),
+        // The planner authorises on the caller's membership; the operator is
+        // acting for the owner whose session started this turn.
+        "x-acting-user": userId ?? "",
+      },
+      body: JSON.stringify({
+        orgId, action: "generate",
+        brief: String(a.brief ?? ""),
+        days: Number(a.days) || 30,
+        posts: Number(a.posts) || 12,
+        startsOn: a.starts_on ? String(a.starts_on) : undefined,
+        imagery: a.imagery === "generated" ? "generated" : "stock",
+      }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || out?.error) throw new Error(out?.error ?? `The planner refused it (HTTP ${res.status}).`);
+    return `Planned ${out.posts} posts — "${out.title}". ${out.rationale} Nothing goes out until the plan is approved in Graphics.`;
   }
 
 

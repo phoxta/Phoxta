@@ -22,11 +22,13 @@
 // does.
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
+import { isTrustedTransport } from "../_shared/internalProof.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
 import { meter } from "../_shared/meter.ts";
 import { searchStock } from "../_shared/stock.ts";
+import { makeImage } from "../_shared/openai.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -35,6 +37,8 @@ type Json = any;
 const MAX_DAYS = 60;
 /** More than this and nobody reads the plan they are approving. */
 const MAX_POSTS = 30;
+/** Generated pictures land here, in the business's own public bucket. */
+const IMAGE_BUCKET = "design-assets";
 
 const HOUSE = [
   "You plan social content for small businesses, and you are good at it, which means the month has a shape rather than being thirty unrelated posts.",
@@ -55,8 +59,25 @@ Deno.serve(async (req) => {
     const orgId = String(body?.orgId ?? "");
     if (!orgId) return json({ error: "Choose a business first." }, 400);
 
-    const auth = await authorize(req, orgId);
-    if (auth.error) return auth.error;
+    /**
+     * Two ways in, and the second is narrow on purpose.
+     *
+     * A person calls this with their own session. The OPERATOR calls it as
+     * itself, from agent-operator, which has no user JWT to present — so it
+     * proves it is one of our own functions with the shared HMAC and names the
+     * owner it is acting for. The proof is not authority on its own; it says
+     * "this call came from inside", and the acting user is still recorded on
+     * everything the plan creates, so an operator-made plan is attributable to
+     * the person whose session asked for it.
+     */
+    let actingUser: string | null;
+    if (await isTrustedTransport(req)) {
+      actingUser = req.headers.get("x-acting-user") || null;
+    } else {
+      const auth = await authorize(req, orgId);
+      if (auth.error) return auth.error;
+      actingUser = auth.ok.userId;
+    }
     const admin = adminClient();
 
     const action = String(body?.action ?? "generate");
@@ -107,6 +128,16 @@ Deno.serve(async (req) => {
     const days = Math.min(MAX_DAYS, Math.max(1, Number(body?.days) || 30));
     const count = Math.min(MAX_POSTS, Math.max(1, Number(body?.posts) || 12));
     const startsOn = String(body?.startsOn ?? "").trim() || new Date().toISOString().slice(0, 10);
+    /**
+     * Where the pictures come from.
+     *
+     * STOCK BY DEFAULT, and that is not timidity. Pexels is real photography,
+     * free, and instant; generated imagery costs real money per picture, and a
+     * month of it is thirty charges for a plan the owner has not approved yet.
+     * A business that wants a look nothing in a stock library has can ask for
+     * it — and pays for it knowingly.
+     */
+    const imagery = String(body?.imagery ?? "stock") === "generated" ? "generated" : "stock";
 
     const { data: org } = await admin.from("organizations")
       .select("name, vertical, branding").eq("id", orgId).maybeSingle();
@@ -169,7 +200,7 @@ Deno.serve(async (req) => {
       brief, starts_on: startsOn, days,
       rationale: String(out?.rationale ?? "").slice(0, 2000),
       status: "draft",
-      created_by: auth.ok.userId,
+      created_by: actingUser,
     }).select("id").single();
     if (planErr || !plan) return json({ error: planErr?.message ?? "Could not save the plan." }, 500);
 
@@ -182,16 +213,37 @@ Deno.serve(async (req) => {
       const when = new Date(`${String(it?.date ?? startsOn)}T${String(Math.min(23, Math.max(0, Number(it?.hour) || 10))).padStart(2, "0")}:00:00`);
       if (Number.isNaN(when.getTime())) continue;
 
-      const photo = await searchStock(String(it?.imageQuery ?? "")).catch(() => null);
+      const query = String(it?.imageQuery ?? "");
+      let image: Json = null;
+      if (imagery === "generated") {
+        try {
+          const bytes = await makeImage(query);
+          const path = `${orgId}/${crypto.randomUUID()}.png`;
+          try { await admin.storage.createBucket(IMAGE_BUCKET, { public: true }); } catch { /* exists */ }
+          const { error } = await admin.storage.from(IMAGE_BUCKET).upload(path, bytes, { contentType: "image/png", upsert: false });
+          if (!error) {
+            image = { url: admin.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl, alt: query, source: "generated" };
+          }
+        } catch (e) {
+          // One picture failing must not lose the month. It falls back to
+          // stock, which is a worse picture and a finished plan.
+          console.error("generated image failed, falling back to stock:", (e as Error)?.message);
+        }
+      }
+      if (!image) {
+        const photo = await searchStock(query).catch(() => null);
+        if (photo) {
+          image = { url: photo.url, alt: photo.alt ?? "", photographer: photo.photographer, photographerUrl: photo.photographerUrl, source: "pexels" };
+        }
+      }
+
       const doc = {
         templateId,
         content: {
           title: String(it?.headline ?? "").slice(0, 120),
           subtitle: String(it?.subhead ?? "").slice(0, 160),
         },
-        images: photo
-          ? { image1: { url: photo.url, alt: photo.alt ?? "", photographer: photo.photographer, photographerUrl: photo.photographerUrl, source: "pexels" } }
-          : {},
+        images: image ? { image1: image } : {},
       };
 
       const { data: design } = await admin.from("designs").insert({
@@ -200,7 +252,7 @@ Deno.serve(async (req) => {
         template_id: templateId,
         doc,
         brief: String(it?.angle ?? ""),
-        created_by: auth.ok.userId,
+        created_by: actingUser,
       }).select("id").single();
       if (!design) continue;
 
@@ -214,7 +266,7 @@ Deno.serve(async (req) => {
       const { data: post } = await admin.from("social_posts").insert({
         organization_id: orgId, plan_id: plan.id, design_id: design.id,
         media_url: "", caption, scheduled_at: when.toISOString(),
-        status: "draft", created_by: auth.ok.userId,
+        status: "draft", created_by: actingUser,
       }).select("id").single();
       if (!post) continue;
 
@@ -225,7 +277,7 @@ Deno.serve(async (req) => {
     }
 
     await meter(admin, {
-      organizationId: orgId, userId: auth.ok.userId, feature: "content-plan",
+      organizationId: orgId, userId: actingUser, feature: "content-plan",
       tier: "balanced", model, inTok, outTok, cacheWriteTok, cacheReadTok,
       latencyMs: Date.now() - started,
     });

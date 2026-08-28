@@ -23,6 +23,7 @@ import { preflight, json } from "../_shared/cors.ts";
 import { requireUser } from "../_shared/auth.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { searchStockMany } from "../_shared/stock.ts";
+import { makeImage } from "../_shared/openai.ts";
 
 const BUCKET = "design-images";
 
@@ -67,41 +68,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === "generate") {
-      const key = Deno.env.get("OPENAI_API_KEY");
-      if (!key) return json({ error: "Image generation is not configured." }, 503);
-
-      const size = String(body?.size ?? "1024x1536"); // portrait suits the pack
-      const r = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-image-1",
-          prompt: `${query}. Professional photography for a social media post. No text, no words, no letters, no logos, no watermarks.`,
-          size,
-          n: 1,
-        }),
-      });
-
-      if (!r.ok) {
-        const detail = await r.text();
-        console.error("image generation failed", r.status, detail.slice(0, 400));
-        // The upstream message is not passed through: it can carry account and
-        // billing detail that is not this user's business.
-        return json({ error: r.status === 429 ? "Too many images at once. Try again shortly." : "That image could not be generated." }, 502);
-      }
-
-      const out = await r.json();
-      const b64 = out?.data?.[0]?.b64_json;
-      const url = out?.data?.[0]?.url;
+      // The call itself lives in _shared/openai.ts: the content planner makes
+      // pictures too, and a second copy of the prompt is a second place for
+      // "no text, no words, no logos" to be forgotten.
       let bytes: Uint8Array;
-      if (b64) {
-        bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      } else if (url) {
-        const img = await fetch(url);
-        if (!img.ok) return json({ error: "That image could not be saved." }, 502);
-        bytes = new Uint8Array(await img.arrayBuffer());
-      } else {
-        return json({ error: "That image could not be generated." }, 502);
+      try {
+        bytes = await makeImage(query, String(body?.size ?? "1024x1536")); // portrait suits the pack
+      } catch (e) {
+        const why = (e as Error)?.message ?? "That image could not be generated.";
+        return json({ error: why }, /not configured/i.test(why) ? 503 : 502);
       }
 
       try { await admin.storage.createBucket(BUCKET, { public: true }); } catch (_) { /* already exists */ }

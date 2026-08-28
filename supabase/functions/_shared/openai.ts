@@ -137,6 +137,52 @@ async function speakOpenAI(text: string, voice: SpeechVoice, instructions?: stri
 /** Render `text` to MP3 bytes. `voiceId` is the business's own Cartesia voice
  *  when it has one configured. Throws with BOTH providers' reasons if neither
  *  worked, so the caller can tell the owner what to fix rather than guess. */
+/**
+ * Make a photograph that does not exist.
+ *
+ * Shared because two callers need it now — the editor's photo slot and the
+ * content planner — and a second copy of the prompt is a second place for
+ * "no text, no words, no logos" to be forgotten. That instruction is not
+ * decoration: gpt-image-1 will happily letter a poster, and a headline baked
+ * into the photograph sits underneath the design's own headline.
+ *
+ * Returns bytes rather than a URL. OpenAI's hosted URLs expire, and the two
+ * callers both need to store the file anyway.
+ */
+export async function makeImage(prompt: string, size = "1024x1536"): Promise<Uint8Array> {
+  const key = Deno.env.get("OPENAI_API_KEY");
+  if (!key) throw new Error("Image generation is not configured.");
+
+  const r = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt: `${prompt}. Professional photography for a social media post. No text, no words, no letters, no logos, no watermarks.`,
+      size,
+      n: 1,
+    }),
+  });
+  if (!r.ok) {
+    const detail = await r.text().catch(() => "");
+    console.error("image generation failed", r.status, detail.slice(0, 400));
+    // The upstream message is not passed through: it can carry account and
+    // billing detail that is not the caller's business.
+    throw new Error(r.status === 429 ? "Too many images at once. Try again shortly." : "That image could not be generated.");
+  }
+
+  const out = await r.json();
+  const b64 = out?.data?.[0]?.b64_json;
+  const url = out?.data?.[0]?.url;
+  if (b64) return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  if (url) {
+    const img = await fetch(url);
+    if (!img.ok) throw new Error("That image could not be saved.");
+    return new Uint8Array(await img.arrayBuffer());
+  }
+  throw new Error("That image could not be generated.");
+}
+
 export async function speak(
   text: string,
   voice: SpeechVoice = "alloy",

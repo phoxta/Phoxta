@@ -22,6 +22,7 @@ import { NewDesign } from "./designs/NewDesign";
 import { ScheduleDialog } from "./designs/ScheduleDialog";
 import { SocialAccounts } from "./designs/SocialAccounts";
 import { CalendarDialog } from "./designs/CalendarDialog";
+import { PlanDialog } from "./designs/PlanDialog";
 import { SocialQueue } from "./designs/SocialQueue";
 import { FloatingBar } from "./designs/FloatingBar";
 import { Inspector } from "./designs/Inspector";
@@ -88,6 +89,7 @@ export default function DesignsPage() {
   /** The connected-accounts dialog. */
   const [accountsOpen, setAccountsOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   const load = useCallback(async () => {
     const { data, error } = await listDesigns(orgId);
@@ -129,6 +131,9 @@ export default function DesignsPage() {
         onMade={(d) => setOpen(d)}
         extra={
           <>
+            <button type="button" className="dsn-btn" onClick={() => setPlanOpen(true)}>
+              {I_SPARK}Plan a month
+            </button>
             <button type="button" className="dsn-btn" onClick={() => setCalendarOpen(true)}>
               {I_CAL}Calendar
             </button>
@@ -201,6 +206,8 @@ export default function DesignsPage() {
           browser back here with a parameter for it to read, and a month of
           three tables is not worth fetching for a dialog nobody opened. */}
       <CalendarDialog orgId={orgId} open={calendarOpen} onClose={() => setCalendarOpen(false)} />
+
+      <PlanDialog orgId={orgId} open={planOpen} onClose={() => setPlanOpen(false)} />
 
       {scheduling && (
         <ScheduleDialog orgId={orgId} design={scheduling} onClose={() => setScheduling(null)} />
