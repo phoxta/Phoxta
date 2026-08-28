@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
-import { Card, Chip, PageHeader } from "@/components/dash/Ui";
+import { Link } from "react-router-dom";
+import { Chip } from "@/components/dash/Ui";
 import { toast, toastError } from "@/lib/ops/feedback";
-import type { OpsContext } from "@/layouts/OperatingLayout";
 import {
   listCalendar, reschedule, kindLabel, type CalendarItem, type CalendarKind,
 } from "@/lib/db/ops/calendar";
 
 /**
  * The content calendar: posts, emails and articles on one month.
+ *
+ * IT OPENS OVER GRAPHICS RATHER THAN BEING ITS OWN TAB. A calendar is
+ * something you glance at while deciding when a post should go — the question
+ * arrives WHILE you are making the thing, and a separate tab means leaving the
+ * design to answer it and navigating back. So it is a button beside Templates
+ * and Accounts, and it closes onto the work you were already doing.
  *
  * WHY IT IS A VIEW AND NOT A PLANNER WITH ITS OWN STORE. Each of these already
  * has a table that something acts on — social_publish reads social_posts,
@@ -61,8 +66,11 @@ function localIso(d: Date) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export default function CalendarPage() {
-  const { orgId } = useOutletContext<OpsContext>();
+export function CalendarDialog({ orgId, open, onClose }: {
+  orgId: string;
+  open: boolean;
+  onClose: () => void;
+}) {
   const [month, setMonth] = useState(() => new Date());
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +95,14 @@ export default function CalendarPage() {
     setLoading(false);
   }, [orgId, grid]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (open) void load(); }, [load, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open, onClose]);
 
   const visible = useMemo(() => items.filter((i) => show[i.kind]), [items, show]);
 
@@ -117,36 +132,34 @@ export default function CalendarPage() {
   const monthLabel = month.toLocaleString("en-GB", { month: "long", year: "numeric" });
   const step = (by: number) => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + by, 1));
 
-  return (
-    <>
-      <PageHeader
-        crumb="Console"
-        title="Calendar"
-        note="Everything you have planned — posts, emails and articles — on one month."
-        actions={
-          <>
-            <button type="button" className="hrx-pill" onClick={() => step(-1)} aria-label="Previous month">←</button>
-            <button type="button" className="hrx-pill" onClick={() => setMonth(new Date())}>Today</button>
-            <button type="button" className="hrx-pill" onClick={() => step(1)} aria-label="Next month">→</button>
-          </>
-        }
-      />
+  if (!open) return null;
 
-      <Card
-        title={monthLabel}
-        right={
-          <div className="cal__filters">
-            {(Object.keys(show) as CalendarKind[]).map((k) => (
-              <label key={k} className={`cal__filter${show[k] ? " is-on" : ""}`}>
-                <input type="checkbox" checked={show[k]}
-                       onChange={() => setShow((s) => ({ ...s, [k]: !s[k] }))} />
-                <i className={`cal__dot is-${k}`} />
-                {kindLabel(k)}s
-              </label>
-            ))}
+  return (
+    <div className="dsn-modal" role="dialog" aria-modal="true" aria-label="Content calendar"
+         onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="dsn-modal__box dsn-brief-dlg" style={{ width: "min(980px, 96vw)" }}>
+        <h3 className="dsn-picker__t">Calendar</h3>
+
+        <div className="dsn-brief-dlg__body">
+          <div className="cal__bar">
+            <div className="cal__nav">
+              <button type="button" className="dsn-btn" onClick={() => step(-1)} aria-label="Previous month">←</button>
+              <b>{monthLabel}</b>
+              <button type="button" className="dsn-btn" onClick={() => step(1)} aria-label="Next month">→</button>
+              <button type="button" className="dsn-btn" onClick={() => setMonth(new Date())}>Today</button>
+            </div>
+            <div className="cal__filters">
+              {(Object.keys(show) as CalendarKind[]).map((k) => (
+                <label key={k} className={`cal__filter${show[k] ? " is-on" : ""}`}>
+                  <input type="checkbox" checked={show[k]}
+                         onChange={() => setShow((sh) => ({ ...sh, [k]: !sh[k] }))} />
+                  <i className={`cal__dot is-${k}`} />
+                  {kindLabel(k)}s
+                </label>
+              ))}
+            </div>
           </div>
-        }
-      >
+
         <div className="cal__grid" role="grid" aria-label={`${monthLabel} calendar`}>
           {DAY_NAMES.map((d) => <div key={d} className="cal__dayname">{d}</div>)}
           {grid.map((d) => {
@@ -174,12 +187,13 @@ export default function CalendarPage() {
             );
           })}
         </div>
-        {loading && <p className="dsn-note">Loading…</p>}
-      </Card>
+          {loading && <p className="dsn-note">Loading…</p>}
 
-      <Card title={new Date(picked + "T12:00:00").toLocaleDateString("en-GB", {
-        weekday: "long", day: "numeric", month: "long", year: "numeric",
-      })}>
+          <h4 className="cal__dayhead">
+            {new Date(picked + "T12:00:00").toLocaleDateString("en-GB", {
+              weekday: "long", day: "numeric", month: "long", year: "numeric",
+            })}
+          </h4>
         {dayItems.length === 0 ? (
           <p className="dsn-note">
             Nothing planned for this day. Posts are scheduled from{" "}
@@ -221,14 +235,22 @@ export default function CalendarPage() {
             ))}
           </div>
         )}
-      </Card>
+        </div>
 
+        <div className="dsn-brief-dlg__acts">
+          <button type="button" className="dsn-btn" onClick={onClose}>Done</button>
+        </div>
+      </div>
       <style>{CSS}</style>
-    </>
+    </div>
   );
 }
 
 const CSS = `
+.cal__bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.cal__nav{display:flex;align-items:center;gap:7px;font-size:15px}
+.cal__nav b{min-width:132px;text-align:center}
+.cal__dayhead{font-size:14.5px;font-weight:600;margin:16px 0 8px;color:var(--hrx-ink)}
 .cal__filters{display:flex;gap:10px;flex-wrap:wrap}
 .cal__filter{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--hrx-muted);cursor:pointer}
 .cal__filter.is-on{color:var(--hrx-ink)}

@@ -21,6 +21,7 @@ import { EmailIndex } from "./designs/EmailIndex";
 import { NewDesign } from "./designs/NewDesign";
 import { ScheduleDialog } from "./designs/ScheduleDialog";
 import { SocialAccounts } from "./designs/SocialAccounts";
+import { CalendarDialog } from "./designs/CalendarDialog";
 import { SocialQueue } from "./designs/SocialQueue";
 import { FloatingBar } from "./designs/FloatingBar";
 import { Inspector } from "./designs/Inspector";
@@ -61,6 +62,7 @@ import "./designs.css";
 const ln = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 const I_BACK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>;
 const I_DOWN = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
+const I_CAL = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z" /></svg>;
 const I_LINK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" /></svg>;
 const I_SPARK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>;
 
@@ -85,6 +87,7 @@ export default function DesignsPage() {
   const [scheduling, setScheduling] = useState<Design | null>(null);
   /** The connected-accounts dialog. */
   const [accountsOpen, setAccountsOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const load = useCallback(async () => {
     const { data, error } = await listDesigns(orgId);
@@ -125,9 +128,14 @@ export default function DesignsPage() {
         orgId={orgId}
         onMade={(d) => setOpen(d)}
         extra={
-          <button type="button" className="dsn-btn" onClick={() => setAccountsOpen(true)}>
-            {I_LINK}Accounts
-          </button>
+          <>
+            <button type="button" className="dsn-btn" onClick={() => setCalendarOpen(true)}>
+              {I_CAL}Calendar
+            </button>
+            <button type="button" className="dsn-btn" onClick={() => setAccountsOpen(true)}>
+              {I_LINK}Accounts
+            </button>
+          </>
         }
       />
 
@@ -188,6 +196,11 @@ export default function DesignsPage() {
           ?social= parameter the platform sends the browser back with, and a
           connection whose outcome nobody sees is a connection nobody trusts. */}
       <SocialAccounts orgId={orgId} open={accountsOpen} onClose={() => setAccountsOpen(false)} />
+
+      {/* Mounted only while open, unlike SocialAccounts: nothing sends the
+          browser back here with a parameter for it to read, and a month of
+          three tables is not worth fetching for a dialog nobody opened. */}
+      <CalendarDialog orgId={orgId} open={calendarOpen} onClose={() => setCalendarOpen(false)} />
 
       {scheduling && (
         <ScheduleDialog orgId={orgId} design={scheduling} onClose={() => setScheduling(null)} />
