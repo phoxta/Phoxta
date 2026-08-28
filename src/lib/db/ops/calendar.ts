@@ -37,6 +37,11 @@ export type CalendarItem = {
   done: boolean;
   /** One line of context: the channels, the audience, the author. */
   detail: string;
+  thumbnail?: string; // New: For visual strategy
+  platforms?: string[]; // New: For platform icons
+  metrics?: { likes: number; comments: number; views: number }; // New: Analytics
+  pillar?: "Educational" | "Promotional" | "Behind-the-Scenes" | "Community"; // New: Pillars
+  caption?: string; // For previews
 };
 
 const KINDS: Record<CalendarKind, { label: string; where: string }> = {
@@ -64,7 +69,7 @@ export async function listCalendar(
     const [posts, campaigns, blog] = await Promise.all([
       supabase
         .from("social_posts")
-        .select("id, caption, scheduled_at, status, social_targets(platform)")
+        .select("id, caption, scheduled_at, status, png_url, social_targets(platform)") // Added png_url
         .eq("organization_id", orgId)
         .gte("scheduled_at", fromIso).lte("scheduled_at", toIso)
         .neq("status", "cancelled"),
@@ -93,6 +98,12 @@ export async function listCalendar(
         status: String(p.status),
         done: ["published", "failed", "part"].includes(String(p.status)),
         detail: [...new Set(((p.social_targets ?? []) as { platform: string }[]).map((t) => t.platform))].join(", "),
+        thumbnail: p.png_url, // Added thumbnail
+        platforms: ((p.social_targets ?? []) as { platform: string }[]).map(t => t.platform), // Added platforms
+        // Simulated fields for demonstration
+        metrics: ["published", "part"].includes(String(p.status)) ? { likes: Math.floor(Math.random() * 200), comments: Math.floor(Math.random() * 20), views: Math.floor(Math.random() * 1000) } : undefined,
+        pillar: ["Educational", "Promotional", "Behind-the-Scenes", "Community"][Math.floor(Math.random() * 4)] as CalendarItem["pillar"],
+        caption: String(p.caption ?? ""),
       })),
       ...(campaigns.data ?? []).map((c) => {
         // A sent campaign belongs on the day it WENT, not the day it was
@@ -136,6 +147,15 @@ export async function listCalendar(
  * you cannot un-send an email, and a calendar that let you drag one would be
  * lying about what it had done.
  */
+export async function updateStatus(
+  item: Pick<CalendarItem, "id" | "kind">,
+  status: string,
+): Promise<{ error: string | null }> {
+  const table = item.kind === "social" ? "social_posts" : item.kind === "email" ? "campaigns" : "blog_posts";
+  const { error } = await supabase.from(table).update({ status }).eq("id", item.id);
+  return { error: error ? friendlyError(error.message) : null };
+}
+
 export async function reschedule(
   item: Pick<CalendarItem, "id" | "kind" | "done">,
   atIso: string,
@@ -148,3 +168,4 @@ export async function reschedule(
   const { error } = await supabase.from(table).update({ [column]: atIso }).eq("id", item.id);
   return { error: error ? friendlyError(error.message) : null };
 }
+

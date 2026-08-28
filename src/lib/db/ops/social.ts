@@ -9,10 +9,15 @@ import { friendlyError } from "@/lib/friendlyError";
  * has no business holding them — the function selects the columns a person is
  * allowed to see and nothing else.
  *
- * Publishing is not done here and never will be: `social-publish` is pinged by
- * the cron tick on the Oracle box, so a scheduled post goes out whether or not
+ * Publishing is never done IN THE BROWSER: `social-publish` is pinged by the
+ * cron tick on the Oracle box, so a scheduled post goes out whether or not
  * anyone has the dashboard open. That is the whole difference between
  * scheduling and posting.
+ *
+ * `sendSocialPostNow` is the one call that reaches that worker directly, and it
+ * still does not publish anything here — it asks the same worker to do the same
+ * work for one named post, so there is exactly one piece of code that has ever
+ * put a post on the wire.
  */
 
 export type SocialPlatform = "instagram" | "linkedin" | "tiktok" | "x";
@@ -30,11 +35,44 @@ export type SocialAccount = {
 
 export type SocialTarget = {
   id: string;
+  /** Which connected account this channel is — what the editor pre-selects. */
+  account_id: string;
   platform: SocialPlatform;
   status: "pending" | "sending" | "sent" | "failed" | "skipped";
   permalink: string;
   error: string;
+  /** As of `metrics_at`. NULL means not known, which is not the same as none —
+   *  TikTok never tells us, and a post read before anyone had seen it has not
+   *  had zero likes, it has had none counted yet. */
+  likes: number | null;
+  comments: number | null;
+  metrics_at: string | null;
 };
+
+/**
+ * The Instagram-only extras a post can carry.
+ *
+ * Instagram is the only one of the four with anything here, and that is not an
+ * omission. LinkedIn has no co-author concept at all — you can @mention a
+ * person or a company in the words, which is a different thing — X and TikTok
+ * neither tag on the image nor take an alt-text field. A control that appeared
+ * for all four and worked for one would be worse than no control.
+ */
+export type InstagramOptions = {
+  /** Co-authors, up to 3. They must accept before it reaches their profile. */
+  collaborators: string[];
+  /** Tagged on the picture itself. x/y are 0..1 from the top-left. */
+  userTags: { username: string; x: number; y: number }[];
+  /** Read out by a screen reader, and the thing Instagram indexes. */
+  altText: string;
+  /** Publish the same picture to the story as well as the feed. */
+  alsoStory: boolean;
+};
+
+export type PostOptions = { instagram?: InstagramOptions };
+
+export const EMPTY_IG_OPTIONS: InstagramOptions =
+  { collaborators: [], userTags: [], altText: "", alsoStory: false };
 
 export type SocialPost = {
   id: string;
@@ -44,6 +82,7 @@ export type SocialPost = {
   scheduled_at: string;
   status: "draft" | "queued" | "published" | "failed" | "part" | "cancelled";
   created_at: string;
+  options: PostOptions | null;
   social_targets: SocialTarget[];
 };
 
@@ -107,7 +146,7 @@ export const listSocialPosts = (orgId: string) =>
 
 export const scheduleSocialPost = (
   orgId: string,
-  p: { designId?: string; mediaUrl: string; caption: string; scheduledAt: string; accountIds: string[] },
+  p: { designId?: string; mediaUrl: string; caption: string; scheduledAt: string; accountIds: string[]; options?: PostOptions },
 ) => call<{ id: string; at: string }>(orgId, "schedule", p);
 
 /**
@@ -147,7 +186,78 @@ export async function writeSocialCaption(
   }
 }
 
+/**
+ * Change a post that has not gone out yet — the words, the time, the channels.
+ *
+ * Refused by the server once any channel has published it, and that refusal is
+ * the point: after Instagram has the post, this row stops being a plan and
+ * becomes the record of what is live.
+ */
+export const updateSocialPost = (
+  orgId: string,
+  p: { id: string; caption: string; scheduledAt: string; accountIds: string[]; options?: PostOptions },
+) => call<{ at: string }>(orgId, "update", p);
+
+/**
+ * Send a queued post now instead of waiting for its time.
+ *
+ * Goes to `social-publish` rather than `social-schedule`, because it is asking
+ * for the publishing worker itself — the same one the cron tick calls, narrowed
+ * to one post. There is deliberately no second publisher behind this button.
+ *
+ * `claimed: 0` is not a failure. It means there was nothing left to send, and
+ * `note` says which of the several reasons applies.
+ */
+export async function sendSocialPostNow(orgId: string, postId: string): Promise<{
+  data: { claimed: number; sent?: number; failed?: number; simulated?: number; note?: string } | null;
+  error: string | null;
+}> {
+  try {
+    const { data, error } = await supabase.functions.invoke("social-publish", {
+      body: { organizationId: orgId, postId },
+    });
+    if (error) {
+      let msg = error.message;
+      try {
+        const ctx = await (error as { context?: Response }).context?.json?.();
+        if (ctx?.error) msg = ctx.error;
+      } catch { /* keep the transport's message */ }
+      return { data: null, error: friendlyError(msg) };
+    }
+    if (data?.error) return { data: null, error: String(data.error) };
+    return { data, error: null };
+  } catch (e) {
+    return { data: null, error: friendlyError(String((e as Error)?.message ?? e)) };
+  }
+}
+
+/**
+ * Read how the published posts are doing, from the platforms.
+ *
+ * Deliberately NOT part of loading the queue. The list comes from our own
+ * tables and always works; this reaches four external APIs on a metered
+ * budget, and a platform being down must not be the reason a business cannot
+ * see what it has scheduled.
+ *
+ * It refreshes the stalest few and leaves anything read in the last quarter of
+ * an hour alone, so pressing it repeatedly cannot spend the publishing
+ * allowance. Reload the list afterwards to see the new numbers.
+ */
+export async function refreshSocialInsights(
+  orgId: string,
+): Promise<{ data: { refreshed: number; unknown: number } | null; error: string | null }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("social-insights", { body: { orgId } });
+    if (error) return { data: null, error: friendlyError(String((error as Error)?.message ?? error)) };
+    if (data?.error) return { data: null, error: String(data.error) };
+    return { data, error: null };
+  } catch (e) {
+    return { data: null, error: friendlyError(String((e as Error)?.message ?? e)) };
+  }
+}
+
 export const cancelSocialPost = (orgId: string, id: string) => call<{ ok: true }>(orgId, "cancel", { id });
+export const deleteSocialPost = (orgId: string, id: string) => call<{ ok: true }>(orgId, "delete", { id });
 export const retrySocialPost = (orgId: string, id: string) => call<{ ok: true }>(orgId, "retry", { id });
 export const disconnectSocialAccount = (orgId: string, id: string) => call<{ ok: true }>(orgId, "disconnect", { id });
 

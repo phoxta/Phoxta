@@ -1,7 +1,7 @@
 // Phoxta — social-schedule: what the console calls to queue, cancel and read
 // back a scheduled post. Member-authed, per business.
 //
-// Actions: accounts | list | schedule | cancel | retry | disconnect
+// Actions: accounts | list | schedule | update | cancel | retry | disconnect
 //
 // The publishing itself is social-publish, pinged by cron. This function only
 // writes the queue, so a slow platform can never block the person pressing the
@@ -13,6 +13,39 @@ import { LIMITS } from "../_shared/social.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
+
+/**
+ * The per-platform options, cleaned on the way in.
+ *
+ * NOT trusted from the browser. These end up as parameters on a Meta API call,
+ * and Instagram refuses the WHOLE container when one of them is malformed — so
+ * a stray "@" on a username or a tag coordinate of 1.4 would not lose the tag,
+ * it would lose the post, minutes later, in a worker, with the reason arriving
+ * as a 400 nobody is watching. Cleaning here means the stored options are
+ * always publishable.
+ *
+ * The caps are Instagram's own: 3 collaborators, 20 tags on an image, 1000
+ * characters of alt text.
+ */
+function cleanOptions(v: Json): Json {
+  const ig = (v?.instagram ?? {}) as Json;
+  const handle = (x: unknown) => String(x ?? "").trim().replace(/^@+/, "").slice(0, 30);
+  const unit = (x: unknown) => Math.min(1, Math.max(0, Number(x) || 0));
+
+  const collaborators = (Array.isArray(ig.collaborators) ? ig.collaborators : [])
+    .map(handle).filter(Boolean).slice(0, 3);
+  const userTags = (Array.isArray(ig.userTags) ? ig.userTags : [])
+    .map((t: Json) => ({ username: handle(t?.username), x: unit(t?.x), y: unit(t?.y) }))
+    .filter((t: Json) => t.username).slice(0, 20);
+  const altText = String(ig.altText ?? "").trim().slice(0, 1000);
+  const alsoStory = Boolean(ig.alsoStory);
+
+  const out: Json = {};
+  if (collaborators.length || userTags.length || altText || alsoStory) {
+    out.instagram = { collaborators, userTags, altText, alsoStory };
+  }
+  return out;
+}
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -41,7 +74,7 @@ Deno.serve(async (req) => {
       case "list": {
         const { data, error } = await admin
           .from("social_posts")
-          .select("id, design_id, media_url, caption, scheduled_at, status, created_at, social_targets(id, platform, status, permalink, error)")
+          .select("id, design_id, media_url, caption, scheduled_at, status, created_at, options, social_targets(id, account_id, platform, status, permalink, error, likes, comments, metrics_at)")
           .eq("organization_id", org.id)
           .order("scheduled_at", { ascending: false })
           .limit(60);
@@ -84,6 +117,7 @@ Deno.serve(async (req) => {
           caption,
           scheduled_at: at.toISOString(),
           status: "queued",
+          options: cleanOptions(body?.options ?? {}),
           created_by: userId,
         }).select("id").single();
         if (error || !post) return json({ error: error?.message ?? "Could not queue it." }, 500);
@@ -99,6 +133,99 @@ Deno.serve(async (req) => {
           return json({ error: tErr.message }, 500);
         }
         return json({ ok: true, id: post.id, at: at.toISOString() });
+      }
+
+      /**
+       * Change a post that has not gone out: the words, the time, the channels.
+       *
+       * THE RULE THAT SHAPES ALL OF THIS: a post is editable only while NO
+       * channel has published it. Once Instagram has it, the caption in this
+       * row stops being a plan and starts being a record of what is live —
+       * editing it would leave the console describing a post that says
+       * something else, and the owner would have no way to know. So a post
+       * with a single sent channel is not edited; it is cancelled, or the
+       * failed channels are retried as they are.
+       *
+       * A channel mid-flight is refused for the same reason a moment earlier:
+       * the worker is holding that row and about to put the OLD caption out.
+       */
+      case "update": {
+        const id = String(body?.id ?? "");
+        const { data: post } = await admin.from("social_posts")
+          .select("id, status, social_targets(id, account_id, platform, status, claimed_at)")
+          .eq("organization_id", org.id).eq("id", id).maybeSingle();
+        if (!post) return json({ error: "That post is not there." }, 404);
+
+        const targets = ((post as Json).social_targets ?? []) as Json[];
+        if ((post as Json).status === "published" || targets.some((t) => t.status === "sent")) {
+          return json({ error: "Part of this has already gone out, so it can no longer be changed. Cancel it and schedule a new one." }, 409);
+        }
+        if ((post as Json).status === "cancelled") {
+          return json({ error: "That post was cancelled." }, 409);
+        }
+        if (targets.some((t) => t.status === "sending")) {
+          return json({ error: "It is going out right now — give it a moment." }, 409);
+        }
+
+        const caption = String(body?.caption ?? "").trim();
+        const when = String(body?.scheduledAt ?? "").trim();
+        const accountIds: string[] = Array.isArray(body?.accountIds) ? body.accountIds : [];
+        if (accountIds.length === 0) return json({ error: "Choose at least one account." }, 400);
+
+        const at = when ? new Date(when) : new Date();
+        if (Number.isNaN(at.getTime())) return json({ error: "That date does not parse." }, 400);
+
+        const { data: accts } = await admin
+          .from("social_accounts").select("id, platform, status")
+          .eq("organization_id", org.id).in("id", accountIds);
+        const usable = (accts ?? []) as Json[];
+        if (usable.length !== accountIds.length) return json({ error: "One of those accounts is not yours." }, 403);
+
+        const tooLong = usable
+          .map((x) => ({ p: x.platform as keyof typeof LIMITS, max: LIMITS[x.platform as keyof typeof LIMITS]?.caption ?? 2200 }))
+          .filter((x) => caption.length > x.max);
+        if (tooLong.length) {
+          return json({ error: `That caption is too long for ${tooLong.map((t) => t.p).join(", ")}.` }, 400);
+        }
+
+        // Channels removed go entirely — a 'skipped' row would sit in the
+        // console for ever saying nothing useful about a choice the owner
+        // already reversed. Only unsent rows can be here at all; the guard
+        // above saw to that.
+        const keep = new Set(accountIds);
+        const drop = targets.filter((t) => !keep.has(t.account_id)).map((t) => t.id);
+        if (drop.length) await admin.from("social_targets").delete().in("id", drop);
+
+        // Channels added come in fresh. The ones that were already there are
+        // left alone rather than reinserted, so a failed attempt count is not
+        // silently wiped by an unrelated edit to the wording.
+        const had = new Set(targets.map((t) => t.account_id));
+        const add = usable.filter((x) => !had.has(x.id));
+        if (add.length) {
+          const { error: aErr } = await admin.from("social_targets").insert(
+            add.map((x) => ({
+              organization_id: org.id, post_id: id, account_id: x.id, platform: x.platform,
+            })),
+          );
+          if (aErr) return json({ error: aErr.message }, 500);
+        }
+
+        // Anything that failed earlier is put back in the queue with the new
+        // wording: fixing a caption a platform refused and then having to
+        // press Retry as well would be a step with no meaning behind it.
+        await admin.from("social_targets")
+          .update({ status: "pending", attempts: 0, error: "", claimed_at: null })
+          .eq("post_id", id).eq("status", "failed");
+
+        const { error: uErr } = await admin.from("social_posts").update({
+          caption,
+          scheduled_at: at.toISOString(),
+          status: "queued",
+          options: cleanOptions(body?.options ?? {}),
+        }).eq("organization_id", org.id).eq("id", id);
+        if (uErr) return json({ error: uErr.message }, 500);
+
+        return json({ ok: true, at: at.toISOString() });
       }
 
       case "cancel": {

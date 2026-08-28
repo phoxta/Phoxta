@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { arr, list, obj, str } from "@/lib/safeJson";
 import type { Json } from "@/lib/safeJson";
 import { StageShot as Shot, type StageImage } from "@/components/StageShot";
-import { imageForStage } from "@/lib/ideas/imagery";
 import { CONFIDENCE_LABEL, readEstimate, readEstimates, type Estimate } from "@/lib/dossier/estimate";
+import { midOf } from "@/lib/dossier/charts";
+import { playbookImage } from "@/lib/dossier/imagery";
 import { legalPack } from "@/lib/dossier/legal";
 import {
   getSection, sectionIndex, TAB_KEYS, type DossierTab,
@@ -175,6 +176,108 @@ function Meter({ level, label, scale = "severity" }: {
 }
 
 /**
+ * Charts for estimates that already have a range.
+ *
+ * They plot the same numbers the cards already show — they do not invent a
+ * second set. If a range cannot be read as quantities, the chart returns null
+ * and nothing is drawn, which is the same honesty rule <Figure> uses.
+ */
+type ChartRow = { label: string; value: string };
+
+function ChartBars({ rows, caption }: { rows: ChartRow[]; caption?: string }) {
+  const plotted = rows
+    .map((r) => ({ ...r, n: midOf(r.value) }))
+    .filter((r): r is ChartRow & { n: number } => r.n != null && r.n > 0);
+  if (plotted.length < 2) return null;
+  const max = Math.max(...plotted.map((r) => r.n));
+  return (
+    <div className="bdx-chart" role="img" aria-label={caption || "Comparison of estimates"}>
+      {caption && <p className="bdx-chart__cap">{caption}</p>}
+      <div className="bdx-chart__bars">
+        {plotted.map((r, i) => (
+          <div key={i} className="bdx-chart__row">
+            <span className="bdx-chart__lab">{r.label}</span>
+            <span className="bdx-chart__track">
+              <i style={{ width: `${Math.max(8, (r.n / max) * 100)}%` }} />
+            </span>
+            <span className="bdx-chart__val">{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChartColumns({ rows, caption }: { rows: ChartRow[]; caption?: string }) {
+  const plotted = rows
+    .map((r) => ({ ...r, n: midOf(r.value) }))
+    .filter((r): r is ChartRow & { n: number } => r.n != null && r.n > 0);
+  if (plotted.length < 2) return null;
+  const max = Math.max(...plotted.map((r) => r.n));
+  return (
+    <div className="bdx-chart" role="img" aria-label={caption || "Column comparison of estimates"}>
+      {caption && <p className="bdx-chart__cap">{caption}</p>}
+      <div className="bdx-cols">
+        {plotted.map((r, i) => (
+          <div key={i} className="bdx-cols__item">
+            <span className="bdx-cols__val">{r.value}</span>
+            <span className="bdx-cols__track">
+              <i style={{ height: `${Math.max(12, (r.n / max) * 100)}%` }} />
+            </span>
+            <span className="bdx-cols__lab">{r.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const COL = ["var(--wf-blue)", "var(--wf-purple)", "var(--wf-orange)", "var(--wf-pink)", "var(--wf-green)"];
+
+function ChartDonut({ rows, caption }: { rows: ChartRow[]; caption?: string }) {
+  const plotted = rows
+    .map((r) => ({ ...r, n: midOf(r.value) }))
+    .filter((r): r is ChartRow & { n: number } => r.n != null && r.n > 0);
+  if (plotted.length < 2) return null;
+  const total = plotted.reduce((s, r) => s + r.n, 0);
+  if (total <= 0) return null;
+  const R = 42;
+  const C = 2 * Math.PI * R;
+  let offset = 0;
+  return (
+    <div className="bdx-chart bdx-donut" role="img" aria-label={caption || "Share of estimates"}>
+      {caption && <p className="bdx-chart__cap">{caption}</p>}
+      <div className="bdx-donut__row">
+        <svg viewBox="0 0 120 120" width="148" height="148" aria-hidden="true">
+          <circle cx="60" cy="60" r={R} fill="none" stroke="var(--wf-hairline)" strokeWidth="16" />
+          {plotted.map((r, i) => {
+            const len = (r.n / total) * C;
+            const dash = `${len} ${C - len}`;
+            const el = (
+              <circle key={i} cx="60" cy="60" r={R} fill="none"
+                      stroke={COL[i % COL.length]} strokeWidth="16"
+                      strokeDasharray={dash} strokeDashoffset={-offset}
+                      transform="rotate(-90 60 60)" />
+            );
+            offset += len;
+            return el;
+          })}
+        </svg>
+        <ul className="bdx-donut__leg">
+          {plotted.map((r, i) => (
+            <li key={i}>
+              <i style={{ background: COL[i % COL.length] }} />
+              <span>{r.label}</span>
+              <b>{r.value}</b>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/**
  * The section head, as a category card — and where the disclosure lives.
  *
  * Full-saturation accent fill with the display headline on it. The estimate
@@ -229,6 +332,13 @@ type Body = { d: Json; image: StageImage; fallback: string };
 function IndustrySlide({ d, image, fallback }: Body) {
   const sizing = readEstimates(d.sizing);
   const growth = readEstimate(d.growth);
+  const segments = arr(d.segments);
+  const segmentRows = segments
+    .map((sg) => {
+      const spend = readEstimate(sg.spend);
+      return spend ? { label: str(sg.name) || spend.label, value: spend.value } : null;
+    })
+    .filter((r): r is ChartRow => r !== null);
   return (
     <>
       <div className="row g-4 align-items-center mb-40">
@@ -263,6 +373,12 @@ function IndustrySlide({ d, image, fallback }: Body) {
             )}
             {growth && <div className="col-lg-4"><Figure e={growth} dark /></div>}
           </div>
+          {sizing.length >= 2 && (
+            <ChartBars
+              caption="The same ranges, drawn so the drop from the whole market to what you can reach is visible."
+              rows={sizing.slice(0, 3).map((e) => ({ label: e.label, value: e.value }))}
+            />
+          )}
         </div>
       )}
 
@@ -286,11 +402,14 @@ function IndustrySlide({ d, image, fallback }: Body) {
         </div>
       )}
 
-      {arr(d.segments).length > 0 && (
+      {segments.length > 0 && (
         <div className="mb-40">
           <Head>Who is actually buying</Head>
+          {segmentRows.length >= 2 && (
+            <ChartDonut caption="Share of spend across the buyers named below." rows={segmentRows} />
+          )}
           <div className="row g-3">
-            {arr(d.segments).map((sg, i) => {
+            {segments.map((sg, i) => {
               const spend = readEstimate(sg.spend);
               const name = str(sg.name);
               const who = str(sg.who);
@@ -500,6 +619,13 @@ function GtmSlide({ d, image, fallback }: Body) {
       {arr(d.channels).length > 0 && (
         <div className="mb-40">
           <Head>Where customers come from</Head>
+          <ChartBars
+            caption="Cost to win one customer, channel by channel — the same estimates as the cards below."
+            rows={arr(d.channels).flatMap((c) => {
+              const cac = readEstimate(c.cac);
+              return cac ? [{ label: str(c.channel) || cac.label, value: cac.value }] : [];
+            })}
+          />
           <div className="row g-3">
             {arr(d.channels).map((c, i) => {
               const cac = readEstimate(c.cac);
@@ -548,6 +674,10 @@ function GtmSlide({ d, image, fallback }: Body) {
 function PricingSlide({ d, image, fallback }: Body) {
   const tiers = arr(d.tiers);
   const unit = readEstimates(d.unitEconomics);
+  const tierRows = tiers.flatMap((t) => {
+    const price = readEstimate(t.price);
+    return price ? [{ label: str(t.name) || price.label, value: price.value }] : [];
+  });
   return (
     <>
       <div className="row g-4 align-items-center mb-40">
@@ -996,7 +1126,7 @@ export default function DossierSlide({
   // dossier-run and stored with it. The curated set is the floor beneath it, for
   // sections whose search has not run yet or found nothing.
   const image = obj(d.image) as StageImage;
-  const fallback = imageForStage(str(d.imageQuery), seed, sectionIndex(section), 900, 620);
+  const fallback = playbookImage(section, seed, sectionIndex(section), 900, 620);
   const body: Body = { d, image, fallback };
 
   const inner =

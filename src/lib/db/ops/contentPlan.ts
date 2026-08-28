@@ -103,3 +103,17 @@ export async function renderPlannedDesign(
     return { url: null, error: friendlyError(String((e as Error)?.message ?? e)) };
   }
 }
+
+export async function updatePlannedPost(
+  postId: string,
+  updates: { caption?: string; scheduled_at?: string }
+): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase.from("social_posts").update(updates).eq("id", postId);
+    return { error: error ? friendlyError(error.message) : null };
+  } catch (e) {
+    return { error: friendlyError(String((e as Error)?.message ?? e)) };
+  }
+}
+
+

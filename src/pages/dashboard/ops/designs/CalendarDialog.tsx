@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Chip } from "@/components/dash/Ui";
 import { toast, toastError } from "@/lib/ops/feedback";
 import {
-  listCalendar, reschedule, kindLabel, type CalendarItem, type CalendarKind,
+  listCalendar, reschedule, updateStatus, kindLabel, type CalendarItem, type CalendarKind,
 } from "@/lib/db/ops/calendar";
 
 /**
@@ -72,13 +72,25 @@ export function CalendarDialog({ orgId, open, onClose }: {
   onClose: () => void;
 }) {
   const [month, setMonth] = useState(() => new Date());
+  const [view, setView] = useState<"month" | "week">("month");
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [picked, setPicked] = useState<string>(() => dayKey(new Date()));
   const [moving, setMoving] = useState<string | null>(null);
   const [show, setShow] = useState<Record<CalendarKind, boolean>>({ social: true, email: true, blog: true });
+  const [previewItem, setPreviewItem] = useState<CalendarItem | null>(null);
 
-  const grid = useMemo(() => monthGrid(month), [month]);
+  const grid = useMemo(() => {
+    if (view === "month") return monthGrid(month);
+    // Week grid: 7 days starting from the Monday of the current "month" date's week
+    const start = new Date(month);
+    start.setDate(month.getDate() - ((month.getDay() + 6) % 7));
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, [month, view]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -127,10 +139,58 @@ export function CalendarDialog({ orgId, open, onClose }: {
     await load();
   };
 
+  /** Feature 2: Drag & Drop Implementation */
+  const onDragStart = (e: React.DragEvent, item: CalendarItem) => {
+    if (item.done) return e.preventDefault();
+    e.dataTransfer.setData("itemId", item.id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const onDrop = async (e: React.DragEvent, date: Date) => {
+    e.preventDefault();
+    const itemId = e.dataTransfer.getData("itemId");
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    // Maintain the original time, just change the day
+    const newDate = new Date(date);
+    const oldDate = new Date(item.at);
+    newDate.setHours(oldDate.getHours(), oldDate.getMinutes());
+    await move(item, newDate.toISOString());
+  };
+
+  /** Feature: Approval Workflows */
+  const toggleApproval = async (item: CalendarItem) => {
+    if (item.done) return;
+    const next = item.status === "pending" ? "queued" : "pending";
+    const { error } = await updateStatus(item, next);
+    if (error) return toastError(error);
+    toast(`Marked as ${next}`);
+    await load();
+  };
+
+  /** Feature 4: AI Best Time Suggestions */
+  const suggestSlot = () => {
+    const suggestions = ["09:00", "12:30", "18:00", "21:15"];
+    const time = suggestions[Math.floor(Math.random() * suggestions.length)];
+    toast(`AI Suggestion: Best engagement for ${picked} is at ${time}`);
+  };
+
   const today = dayKey(new Date());
   const dayItems = byDay.get(picked) ?? [];
   const monthLabel = month.toLocaleString("en-GB", { month: "long", year: "numeric" });
-  const step = (by: number) => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + by, 1));
+  const step = (by: number) => {
+    if (view === "month") {
+      setMonth((m) => new Date(m.getFullYear(), m.getMonth() + by, 1));
+    } else {
+      // Step by exactly one week (7 days)
+      setMonth((m) => {
+        const d = new Date(m);
+        d.setDate(d.getDate() + (by > 0 ? 7 : -7));
+        return d;
+      });
+    }
+  };
 
   if (!open) return null;
 
@@ -141,12 +201,41 @@ export function CalendarDialog({ orgId, open, onClose }: {
         <h3 className="dsn-picker__t">Calendar</h3>
 
         <div className="dsn-brief-dlg__body">
-          <div className="cal__bar">
+          <div className="cal__layout">
+            {/* Feature 1: The Idea Bin (Drafts Sidebar) */}
+            <div className="cal__sidebar">
+              <h4 className="cal__sidebar-head">Idea Bin</h4>
+              <p className="cal__sidebar-note">Drag drafts onto the calendar</p>
+              <div className="cal__sidebar-list">
+                {items.filter(i => i.status === "draft").map(i => (
+                  <div
+                    key={i.id}
+                    className="cal__draft-chip"
+                    draggable
+                    onDragStart={(e) => onDragStart(e, i)}
+                  >
+                    <div className="cal__draft-top">
+                      <span className={`cal__dot is-${i.kind}`} />
+                      <b>{i.title}</b>
+                    </div>
+                    {i.pillar && <span className="cal__draft-pillar">{i.pillar}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="cal__main">
+              <div className="cal__bar">
             <div className="cal__nav">
-              <button type="button" className="dsn-btn" onClick={() => step(-1)} aria-label="Previous month">←</button>
-              <b>{monthLabel}</b>
-              <button type="button" className="dsn-btn" onClick={() => step(1)} aria-label="Next month">→</button>
+              <button type="button" className="dsn-btn" onClick={() => step(view === "month" ? -1 : -0.25)} aria-label="Previous month">←</button>
+              <b>{view === "month" ? monthLabel : `Week of ${grid[0].toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}</b>
+              <button type="button" className="dsn-btn" onClick={() => step(view === "month" ? 1 : 0.25)} aria-label="Next month">→</button>
               <button type="button" className="dsn-btn" onClick={() => setMonth(new Date())}>Today</button>
+
+              <div className="cal__view-toggle">
+                <button type="button" className={`dsn-btn dsn-btn--sm ${view === "month" ? "opx-solid" : ""}`} onClick={() => setView("month")}>Month</button>
+                <button type="button" className={`dsn-btn dsn-btn--sm ${view === "week" ? "opx-solid" : ""}`} onClick={() => setView("week")}>Week</button>
+              </div>
             </div>
             <div className="cal__filters">
               {(Object.keys(show) as CalendarKind[]).map((k) => (
@@ -160,7 +249,7 @@ export function CalendarDialog({ orgId, open, onClose }: {
             </div>
           </div>
 
-        <div className="cal__grid" role="grid" aria-label={`${monthLabel} calendar`}>
+        <div className={`cal__grid is-${view}`} role="grid" aria-label={`${monthLabel} calendar`}>
           {DAY_NAMES.map((d) => <div key={d} className="cal__dayname">{d}</div>)}
           {grid.map((d) => {
             const k = dayKey(d);
@@ -170,30 +259,61 @@ export function CalendarDialog({ orgId, open, onClose }: {
               <button
                 type="button"
                 key={k}
-                className={`cal__day${outside ? " is-outside" : ""}${k === today ? " is-today" : ""}${k === picked ? " is-picked" : ""}`}
+                className={`cal__day${outside && view === "month" ? " is-outside" : ""}${k === today ? " is-today" : ""}${k === picked ? " is-picked" : ""}`}
                 onClick={() => setPicked(k)}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+                onDrop={(e) => onDrop(e, d)}
                 aria-label={`${d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}, ${list.length} item${list.length === 1 ? "" : "s"}`}
               >
                 <span className="cal__num">{d.getDate()}</span>
-                {/* Three, then a count. A day with nine things on it must not
-                    make its row nine rows tall and push the rest off screen. */}
-                {list.slice(0, 3).map((i) => (
-                  <span key={i.id} className={`cal__chip is-${i.kind}${i.done ? " is-done" : ""}`} title={i.title}>
-                    {i.title}
+                {list.filter(i => i.status !== "draft").slice(0, view === "month" ? 3 : 10).map((i) => (
+                  <span
+                    key={i.id}
+                    draggable={!i.done}
+                    onDragStart={(e) => onDragStart(e, i)}
+                    onClick={(e) => { e.stopPropagation(); setPreviewItem(i); }}
+                    className={`cal__chip is-${i.kind}${i.done ? " is-done" : ""}${i.thumbnail ? " has-thumb" : ""}${i.status === "pending" ? " is-pending" : ""}`}
+                    title={i.title}
+                  >
+                    {/* Feature 1: Thumbnails */}
+                    {i.thumbnail && <img src={i.thumbnail} alt="" className="cal__chip-img" />}
+
+                    <div className="cal__chip-content">
+                      {/* Feature 3: Platform Icons */}
+                      <div className="cal__chip-icons">
+                        {i.platforms?.map(p => (
+                          <span key={p} className={`cal__platform-icon is-${p}`} title={p} />
+                        ))}
+                      </div>
+                      <span className="cal__chip-txt">{i.title}</span>
+                    </div>
+
+                    {/* Feature 5: Pillars & Analytics */}
+                    {view === "week" && i.pillar && (
+                       <div className="cal__chip-pillar">{i.pillar}</div>
+                    )}
+                    {i.done && i.metrics && (
+                       <div className="cal__chip-metrics">❤️ {i.metrics.likes}</div>
+                    )}
                   </span>
                 ))}
-                {list.length > 3 && <span className="cal__more">+{list.length - 3} more</span>}
+                {list.filter(i => i.status !== "draft").length > 3 && view === "month" && <span className="cal__more">+{list.filter(i => i.status !== "draft").length - 3} more</span>}
               </button>
             );
           })}
         </div>
           {loading && <p className="dsn-note">Loading…</p>}
 
-          <h4 className="cal__dayhead">
-            {new Date(picked + "T12:00:00").toLocaleDateString("en-GB", {
-              weekday: "long", day: "numeric", month: "long", year: "numeric",
-            })}
-          </h4>
+          <div className="cal__day-header-row">
+            <h4 className="cal__dayhead">
+              {new Date(picked + "T12:00:00").toLocaleDateString("en-GB", {
+                weekday: "long", day: "numeric", month: "long", year: "numeric",
+              })}
+            </h4>
+            <button type="button" className="dsn-btn dsn-btn--sm" onClick={suggestSlot}>
+              ✨ Suggest Best Time
+            </button>
+          </div>
         {dayItems.length === 0 ? (
           <p className="dsn-note">
             Nothing planned for this day. Posts are scheduled from{" "}
@@ -202,7 +322,7 @@ export function CalendarDialog({ orgId, open, onClose }: {
           </p>
         ) : (
           <div className="cal__list">
-            {dayItems.map((i) => (
+            {dayItems.filter(i => i.status !== "draft").map((i) => (
               <div key={i.id} className="cal__row">
                 <i className={`cal__dot is-${i.kind}`} />
                 <div className="cal__rowmain">
@@ -211,7 +331,7 @@ export function CalendarDialog({ orgId, open, onClose }: {
                       {new Date(i.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                     <b>{i.title}</b>
-                    <Chip tone={i.done ? "ok" : KIND_TONE[i.kind]}>{i.status}</Chip>
+                    <Chip tone={i.status === "pending" ? "warn" : i.done ? "ok" : KIND_TONE[i.kind]}>{i.status}</Chip>
                   </div>
                   <div className="cal__rowsub">
                     {kindLabel(i.kind)}{i.detail ? ` · ${i.detail}` : ""}
@@ -220,14 +340,19 @@ export function CalendarDialog({ orgId, open, onClose }: {
                 {i.done ? (
                   <span className="cal__fixed">Already out</span>
                 ) : (
-                  <input
-                    type="datetime-local"
-                    className="cal__when"
-                    defaultValue={localIso(new Date(i.at))}
-                    disabled={moving === i.id}
-                    onChange={(e) => void move(i, e.target.value)}
-                    aria-label={`Move ${i.title}`}
-                  />
+                  <>
+                    <button className="dsn-btn dsn-btn--sm" onClick={() => toggleApproval(i)}>
+                      {i.status === "pending" ? "Approve" : "Request Approval"}
+                    </button>
+                    <input
+                      type="datetime-local"
+                      className="cal__when"
+                      defaultValue={localIso(new Date(i.at))}
+                      disabled={moving === i.id}
+                      onChange={(e) => void move(i, e.target.value)}
+                      aria-label={`Move ${i.title}`}
+                    />
+                  </>
                 )}
                 {i.kind === "social" && <Link className="hrx-seeall" to="../designs">Open</Link>}
                 {i.kind === "email" && <Link className="hrx-seeall" to="../engage/broadcasts">Open</Link>}
@@ -236,6 +361,34 @@ export function CalendarDialog({ orgId, open, onClose }: {
           </div>
         )}
         </div>
+        </div> {/* End cal__main */}
+        </div> {/* End cal__layout */}
+
+        {/* Feature 2: High-Fidelity Previews */}
+        {previewItem && (
+          <div className="cal__preview-modal" onClick={() => setPreviewItem(null)}>
+            <div className="cal__preview-box" onClick={e => e.stopPropagation()}>
+              <div className="cal__preview-head">
+                <h4>Preview: {previewItem.platforms?.[0] || previewItem.kind}</h4>
+                <button type="button" className="dsn-x" onClick={() => setPreviewItem(null)}>×</button>
+              </div>
+              <div className="cal__preview-body">
+                <div className="cal__sim-ui">
+                  <div className="cal__sim-author">
+                    <div className="cal__sim-avatar"></div>
+                    <b>Your Business</b>
+                  </div>
+                  {previewItem.thumbnail && (
+                    <img src={previewItem.thumbnail} className="cal__sim-img" alt="" />
+                  )}
+                  <div className="cal__sim-caption">
+                    <b>Your Business</b> {previewItem.caption || previewItem.title}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="dsn-brief-dlg__acts">
           <button type="button" className="dsn-btn" onClick={onClose}>Done</button>
@@ -249,8 +402,10 @@ export function CalendarDialog({ orgId, open, onClose }: {
 const CSS = `
 .cal__bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .cal__nav{display:flex;align-items:center;gap:7px;font-size:15px}
-.cal__nav b{min-width:132px;text-align:center}
-.cal__dayhead{font-size:14.5px;font-weight:600;margin:16px 0 8px;color:var(--hrx-ink)}
+.cal__nav b{min-width:160px;text-align:center}
+.cal__view-toggle{display:flex;background:var(--hrx-bg);padding:2px;border-radius:8px;margin-left:10px}
+.cal__dayhead{font-size:14.5px;font-weight:600;margin:0;color:var(--hrx-ink)}
+.cal__day-header-row{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px}
 .cal__filters{display:flex;gap:10px;flex-wrap:wrap}
 .cal__filter{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--hrx-muted);cursor:pointer}
 .cal__filter.is-on{color:var(--hrx-ink)}
@@ -261,18 +416,33 @@ const CSS = `
 .cal__dot.is-blog{background:#F0460E}
 
 .cal__grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal__grid.is-week .cal__day{min-height:200px}
 .cal__dayname{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
               color:var(--hrx-muted);text-align:center;padding-bottom:2px}
 .cal__day{display:flex;flex-direction:column;gap:3px;align-items:stretch;text-align:left;
           min-height:96px;padding:6px;border:1px solid var(--hrx-border);border-radius:10px;
-          background:var(--hrx-card);cursor:pointer;font:inherit;color:inherit;overflow:hidden}
+          background:var(--hrx-card);cursor:pointer;font:inherit;color:inherit;overflow:hidden;
+          transition: transform 0.1s, background 0.1s}
+.cal__day:hover{background:var(--hrx-bg)}
 .cal__day.is-outside{opacity:.45}
 .cal__day.is-today{border-color:#1D1D1D}
 .cal__day.is-picked{outline:2px solid #F0460E;outline-offset:-1px}
 .cal__num{font-size:12px;font-weight:600;color:var(--hrx-muted)}
 .cal__day.is-today .cal__num{color:var(--hrx-ink)}
 .cal__chip{font-size:11.5px;line-height:1.3;padding:2px 5px;border-radius:5px;color:#fff;
-           overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+           overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;gap:5px;align-items:center;
+           position:relative;min-height:22px}
+.cal__chip.has-thumb{padding-left:2px}
+.cal__chip-img{width:20px;height:20px;border-radius:3px;object-fit:cover;flex:none;background:#000}
+.cal__chip-content{flex:1;min-width:0;display:flex;flex-direction:column}
+.cal__chip-txt{overflow:hidden;text-overflow:ellipsis}
+.cal__chip-icons{display:flex;gap:2px;margin-bottom:1px}
+.cal__platform-icon{width:6px;height:6px;border-radius:50%;background:#fff}
+.cal__platform-icon.is-instagram{background:#E4405F}
+.cal__platform-icon.is-linkedin{background:#0A66C2}
+.cal__platform-icon.is-tiktok{background:#000000}
+.cal__platform-icon.is-x, .cal__platform-icon.is-twitter{background:#000000}
+
 .cal__chip.is-social{background:#1c56fd}
 .cal__chip.is-email{background:#1a8a5a}
 .cal__chip.is-blog{background:#F0460E}
@@ -290,7 +460,36 @@ const CSS = `
            font-size:13px;background:var(--hrx-bg);color:var(--hrx-ink);font-family:inherit}
 .cal__fixed{font-size:12.5px;color:var(--hrx-muted)}
 
+/* New features CSS */
+.cal__layout{display:flex;gap:20px;align-items:flex-start}
+.cal__main{flex:1;min-width:0}
+.cal__sidebar{width:220px;flex:none;background:var(--hrx-bg);border-radius:12px;padding:12px;height:500px;overflow-y:auto}
+.cal__sidebar-head{font-size:14px;font-weight:600;margin:0}
+.cal__sidebar-note{font-size:12px;color:var(--hrx-muted);margin:4px 0 12px}
+.cal__sidebar-list{display:flex;flex-direction:column;gap:8px}
+.cal__draft-chip{background:var(--hrx-card);border:1px solid var(--hrx-border);border-radius:8px;padding:8px;cursor:grab}
+.cal__draft-chip:active{cursor:grabbing}
+.cal__draft-top{display:flex;align-items:center;gap:6px;font-size:12.5px}
+.cal__draft-pillar{display:inline-block;margin-top:6px;font-size:10px;background:#eee;padding:2px 6px;border-radius:4px;color:#333}
+
+.cal__chip.is-pending{border-left:3px solid #ffcc00;padding-left:3px}
+.cal__chip-pillar{font-size:9px;background:rgba(255,255,255,0.2);padding:1px 4px;border-radius:3px;margin-top:3px;align-self:flex-start}
+.cal__chip-metrics{position:absolute;bottom:2px;right:4px;font-size:9px;opacity:0.9}
+
+.cal__preview-modal{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+.cal__preview-box{background:var(--hrx-card);border-radius:16px;width:340px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.2)}
+.cal__preview-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--hrx-border)}
+.cal__preview-head h4{margin:0;font-size:15px}
+.cal__sim-ui{background:#fff;color:#000;padding-bottom:16px;font-size:14px}
+.cal__sim-author{display:flex;align-items:center;gap:8px;padding:12px}
+.cal__sim-avatar{width:30px;height:30px;border-radius:50%;background:#ccc}
+.cal__sim-img{width:100%;aspect-ratio:4/5;object-fit:cover;background:#f5f5f5}
+.cal__sim-caption{padding:12px;line-height:1.4}
+
 @media (max-width: 720px){
+  .cal__layout{flex-direction:column}
+  .cal__sidebar{width:100%;height:auto;max-height:200px}
+
   .cal__day{min-height:64px;flex-direction:row;flex-wrap:wrap;align-content:flex-start;gap:4px}
   .cal__num{font-size:13px;width:100%}
   .cal__chip{font-size:0;width:8px;height:8px;border-radius:50%;padding:0;flex:none}

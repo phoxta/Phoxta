@@ -121,6 +121,9 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: Copy | unde
       fontStyle={l.italic ? "italic" : undefined}
       letterSpacing={l.tracking}
       textAnchor={anchor}
+      stroke={l.strokeColor ? paint(l.strokeColor, palette) : undefined}
+      strokeWidth={l.strokeColor ? (l.strokeWidth ?? 1) : undefined}
+      strokeLinejoin={l.strokeColor ? "round" : undefined}
       style={l.capitalize ? { textTransform: "capitalize" } : undefined}
     >
       {lines.map((line, i) => (
@@ -896,35 +899,54 @@ function LayerView({ l, doc, content, palette, asset, editable, uid, onPointerDo
 
   const body = (() => {
     switch (l.type) {
-      case "rect": {
+            case "rect": {
         const geo = geometryOf(l, l.shape, l);
         const stroked = STROKE_ONLY.has(l.shape ?? "rect");
+        
+        // Define gradient ID if a gradient is active
+        const gradId = l.gradient ? `${uid}-sgrad-${l.id}` : undefined;
+
         const common = {
-          /* Marked as the design's own, because the exporter strips dashed
-             outlines — that rule exists to kill the empty-photo-slot
-             placeholder, and without a mark it would also kill a dashed
-             border somebody chose on purpose. See export.ts. */
           "data-design": "shape",
-          // A line has no interior, so its colour has to come out of the stroke
-          // or it paints nothing at all — `fill` is the only colour the layer is
-          // guaranteed to carry, so it stands in when no stroke was chosen.
-          fill: stroked ? "none" : paint(l.fill, palette),
+          fill: stroked ? "none" : (l.gradient ? `url(#${gradId})` : paint(l.fill, palette)),
           fillOpacity: stroked ? undefined : (l.opacity ?? 1),
           stroke: l.strokeColor ? paint(l.strokeColor, palette) : stroked ? paint(l.fill, palette) : undefined,
           strokeWidth: l.strokeWidth ?? (stroked ? 6 : 0),
           strokeOpacity: stroked ? (l.opacity ?? 1) : undefined,
           strokeLinecap: stroked ? ("round" as const) : undefined,
-          // Mitres on a star's points run to a spike many times the stroke width
-          // at sharp angles; rounding the joins keeps the drawn outline inside
-          // the box the handles claim it occupies.
           strokeLinejoin: "round" as const,
           strokeDasharray: l.strokeDash ? `${l.strokeDash} ${Math.max(1, Math.round(l.strokeDash * 0.67))}` : undefined,
         };
-        if (geo.el === "ellipse") return <ellipse {...common} cx={geo.cx} cy={geo.cy} rx={geo.rx} ry={geo.ry} />;
-        if (geo.el === "polygon") return <polygon {...common} points={geo.points} />;
-        if (geo.el === "path") return <path {...common} d={geo.d} />;
-        if (geo.el === "line") return <line {...common} x1={geo.x1} y1={geo.y1} x2={geo.x2} y2={geo.y2} />;
-        return <rect {...common} x={l.x} y={l.y} width={l.w} height={l.h} rx={geo.rx} />;
+
+        const shapeEl = (() => {
+          if (geo.el === "ellipse") return <ellipse {...common} cx={geo.cx} cy={geo.cy} rx={geo.rx} ry={geo.ry} />;
+          if (geo.el === "polygon") return <polygon {...common} points={geo.points} />;
+          if (geo.el === "path") return <path {...common} d={geo.d} />;
+          if (geo.el === "line") return <line {...common} x1={geo.x1} y1={geo.y1} x2={geo.x2} y2={geo.y2} />;
+          return <rect {...common} x={l.x} y={l.y} width={l.w} height={l.h} rx={geo.rx} />;
+        })();
+
+        if (l.gradient) {
+          return (
+            <>
+              <defs>
+                {l.gradient.type === "linear" ? (
+                  <linearGradient id={gradId} gradientTransform={`rotate(${l.gradient.angle - 90} 0.5 0.5)`}>
+                    <stop offset="0%" stopColor={paint(l.gradient.from, palette)} />
+                    <stop offset="100%" stopColor={paint(l.gradient.to, palette)} />
+                  </linearGradient>
+                ) : (
+                  <radialGradient id={gradId}>
+                    <stop offset="0%" stopColor={paint(l.gradient.from, palette)} />
+                    <stop offset="100%" stopColor={paint(l.gradient.to, palette)} />
+                  </radialGradient>
+                )}
+              </defs>
+              {shapeEl}
+            </>
+          );
+        }
+        return shapeEl;
       }
 
       case "gradient":

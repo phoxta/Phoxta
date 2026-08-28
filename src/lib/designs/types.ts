@@ -221,6 +221,8 @@ export type RectLayer = Base & {
    * renderer something that paints nothing.
    */
   strokeDash?: number;
+  /** NEW: Gradient support for shape fills. Takes precedence over flat fill. */
+  gradient?: { from: PaintRole; to: PaintRole; angle: number; type: "linear" | "radial" };
 };
 
 /** The brand gradient, at the Figma file's own angle. */
@@ -345,6 +347,9 @@ export type TextLayer = Base & {
    *  headline. A plain string with no asterisks renders in `fill`, so the
    *  feature costs nothing when it is not used. */
   accent?: PaintRole;
+  /** NEW: Text Stroke Outline */
+  strokeColor?: PaintRole;
+  strokeWidth?: number;
 };
 
 /** A rounded label — the chips and the CTA button. */

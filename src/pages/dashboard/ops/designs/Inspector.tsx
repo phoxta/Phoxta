@@ -673,6 +673,16 @@ export function Inspector(p: InspectorProps) {
             <Colour label="Text colour" value={text.fill} palette={p.palette}
                     onPick={(v) => set({ fill: v } as Partial<Layer>, "fill")} />
           </Row>
+          <Row label="Stroke">
+            <Colour label="Text Outline" value={text.strokeColor} palette={p.palette} allowNone
+                    onPick={(v) => set({ strokeColor: v, strokeWidth: text.strokeWidth || 1 } as Partial<Layer>, "stroke")} />
+          </Row>
+          {text.strokeColor && (
+            <Row label="Outline Width">
+              <Num value={text.strokeWidth ?? 1} min={0} max={20} suffix="px" ariaLabel="Outline width"
+                   onCommit={(v) => set({ strokeWidth: v } as Partial<Layer>, "strokeW")} />
+            </Row>
+          )}
           <Row label="Accent" hint="Words wrapped in *asterisks* paint in this colour.">
             <Colour label="Accent colour" value={text.accent} palette={p.palette}
                     onPick={(v) => set({ accent: v } as Partial<Layer>, "accent")} />
@@ -804,6 +814,45 @@ export function Inspector(p: InspectorProps) {
                    onCommit={(v) => set({ strokeDash: v } as Partial<Layer>, "dashLen")} />
             </Row>
           )}
+            
+          <Row label="Gradient Fill" hint="Overrides flat fill if active">
+            <button 
+              type="button" 
+              className={`dsni-btn ${rect.gradient ? 'is-on' : ''}`}
+              onClick={() => set({ 
+                gradient: rect.gradient ? undefined : { from: "accent", to: "canvas", angle: 45, type: "linear" } 
+              } as Partial<Layer>, "gradToggle")}
+            >
+              {rect.gradient ? "Remove Gradient" : "Add Gradient"}
+            </button>
+          </Row>
+          {rect.gradient && (
+             <>
+               <Row label="Grad From">
+                 <Colour label="Gradient start" value={rect.gradient.from} palette={p.palette}
+                         onPick={(v) => set({ gradient: { ...rect.gradient!, from: v } } as Partial<Layer>, "gradFrom")} />
+               </Row>
+               <Row label="Grad To">
+                 <Colour label="Gradient end" value={rect.gradient.to} palette={p.palette}
+                         onPick={(v) => set({ gradient: { ...rect.gradient!, to: v } } as Partial<Layer>, "gradTo")} />
+               </Row>
+               <Row label="Grad Type">
+                  <Seg
+                    ariaLabel="Gradient Type"
+                    value={rect.gradient.type}
+                    options={[{ v: "linear", label: "Linear" }, { v: "radial", label: "Radial" }]}
+                    onPick={(v) => set({ gradient: { ...rect.gradient!, type: v } } as Partial<Layer>, "gradType")}
+                  />
+               </Row>
+               {rect.gradient.type === "linear" && (
+                 <Row label="Grad Angle">
+                   <Slide value={rect.gradient.angle} min={0} max={360} suffix="°" ariaLabel="Gradient angle"
+                          onChange={(v, rec) => setAt({ gradient: { ...rect.gradient!, angle: v } } as Partial<Layer>, rec)} />
+                 </Row>
+               )}
+             </>
+          )}
+
           {/* Corners belong to rectangles. A rounded pentagon is a different
               shape rather than a softer one, so the control is hidden instead
               of shown doing nothing. */}
