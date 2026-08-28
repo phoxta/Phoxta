@@ -73,7 +73,11 @@ function blueprintBrief(bp: Json): string {
     `${bp?.name ?? "A ready-made online business"} — ${bp?.tagline ?? ""}`.trim(),
     String(bp?.description ?? "").trim(),
     bp?.vertical ? `Trade: ${bp.vertical}.` : "",
-    "It is sold by Phoxta as a ready-made online business, trading in the United Kingdom, in GBP.",
+    // NO COUNTRY HERE. This brief writes the SHARED dossier, which every owner of
+    // this blueprint reads wherever they are — so naming one country makes the
+    // general analysis wrong for everyone outside it. The country arrives later,
+    // from the owner's own answers, on the localised path only.
+    "It is sold by Phoxta as a ready-made online business. It can be run from any country, and the reader could be anywhere, so treat this as the international view of the trade rather than one market's.",
     price ? `The buyer pays ${price} once for the storefront and the operating console that runs it.` : "",
     "Assume the buyer is one person or a very small team, often new to this trade, with the website and back office already built and no customers yet.",
   ].filter(Boolean).join(" ");
@@ -245,7 +249,7 @@ Deno.serve(async (req) => {
       }
 
       brief = [
-        bp ? blueprintBrief(bp) : `A small online business trading in the United Kingdom, called ${auth.ok.org.name}.`,
+        bp ? blueprintBrief(bp) : `A small online business called ${auth.ok.org.name}.`,
         `The business is called ${auth.ok.org.name}.`,
         `Its owner has told us: ${answers}`,
       ].join(" ");

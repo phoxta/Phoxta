@@ -24,14 +24,14 @@ import type { Idea } from "@/lib/db/ideas";
 
 type Json = Record<string, unknown>;
 
-const obj = (v: unknown): Json => (v && typeof v === "object" && !Array.isArray(v) ? (v as Json) : {});
-const arr = (v: unknown): Json[] => (Array.isArray(v) ? (v as Json[]) : []);
-const list = (v: unknown): string[] => (Array.isArray(v) ? v.map(text).filter(Boolean) : []);
-const text = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
-const has = (o: Json) => Object.keys(o).length > 0;
+export const obj = (v: unknown): Json => (v && typeof v === "object" && !Array.isArray(v) ? (v as Json) : {});
+export const arr = (v: unknown): Json[] => (Array.isArray(v) ? (v as Json[]) : []);
+export const list = (v: unknown): string[] => (Array.isArray(v) ? v.map(text).filter(Boolean) : []);
+export const text = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
+export const has = (o: Json) => Object.keys(o).length > 0;
 
 /** Everything interpolated below is model output, so it is escaped, always. */
-function esc(v: unknown): string {
+export function esc(v: unknown): string {
   return text(v)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -44,7 +44,7 @@ function esc(v: unknown): string {
  * zero claims the business earned nothing, which is a different statement from
  * "this was not a number".
  */
-function money(v: unknown): number | null {
+export function money(v: unknown): number | null {
   const raw = text(v).trim().toLowerCase();
   if (!raw) return null;
   const m = raw.match(/-?[\d,.]+/);
@@ -59,15 +59,15 @@ function money(v: unknown): number | null {
    The template's furniture: the "Business Plan" mark, the big orange slide
    number, the section label, and the mark bottom-left. */
 
-const LOGO = `<svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>`;
+export const LOGO = `<svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 16 C4 16 8 8 16 8 C24 8 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><path d="M4 16 C4 16 8 24 16 24 C24 24 28 16 28 16" stroke="#f04e00" stroke-width="3" fill="none"/><circle cx="16" cy="16" r="3" fill="#f04e00"/></svg>`;
 
-type SlideOpts = { dark?: boolean; wide?: boolean };
+export type SlideOpts = { dark?: boolean; wide?: boolean };
 
 /** One numbered content slide. `n` is assigned at the end, once the deck is
  *  known, so dropping a slide does not leave a hole in the numbering. */
-type Slide = { label: string; title: string; body: string; opts?: SlideOpts };
+export type Slide = { label: string; title: string; body: string; opts?: SlideOpts };
 
-function renderSlide(s: Slide, n: number): string {
+export function renderSlide(s: Slide, n: number): string {
   const cls = ["slide", s.opts?.dark ? "slide--dark" : "", s.opts?.wide ? "slide--wide" : ""].filter(Boolean).join(" ");
   return `<section class="${cls}">
   <header class="slide__head">
@@ -82,7 +82,7 @@ function renderSlide(s: Slide, n: number): string {
 }
 
 /** A heading with its last word in orange, as every heading in the template is. */
-function heading(t: string): string {
+export function heading(t: string): string {
   const words = t.trim().split(/\s+/);
   if (words.length < 2) return `<span class="o">${esc(t)}</span>`;
   const last = words.pop() as string;
@@ -91,7 +91,7 @@ function heading(t: string): string {
 
 /* ── Body pieces ──────────────────────────────────────────────────────── */
 
-const lead = (t: string) => (t ? `<p class="lead">${esc(t)}</p>` : "");
+export const lead = (t: string) => (t ? `<p class="lead">${esc(t)}</p>` : "");
 const note = (t: string) => (t ? `<p class="note">${esc(t)}</p>` : "");
 
 /**
@@ -119,7 +119,7 @@ const stats = (items: { k: string; v: string }[]) =>
     <span class="stat__k">${esc(i.k)}</span><span class="stat__v">${esc(i.v)}</span>
   </div>`).join("")}</div>`;
 
-const bullets = (items: string[]) =>
+export const bullets = (items: string[]) =>
   items.length === 0 ? "" : `<ul class="bullets">${items.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>`;
 
 const table = (head: string[], rows: string[][]) =>
@@ -471,7 +471,7 @@ ${closing}
  * makes a taller slide instead of a clipped one. That is the whole reason this
  * file exists — see the note at the top.
  */
-const STYLES = `
+export const STYLES = `
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {

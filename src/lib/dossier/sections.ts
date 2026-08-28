@@ -147,24 +147,11 @@ export function remainingSeconds(completed: DossierSection[]): number {
   return SECTIONS.filter((s) => s.generated && !done.has(s.key)).reduce((sum, s) => sum + s.seconds, 0);
 }
 
-/**
- * The standing disclosure, in the owner's language.
- *
- * It sits in the head of every generated section — where the reader is looking,
- * not in a footer they scroll past. It is repeated rather than said once at the
- * top of the page, because a section is a thing people link to, print and read
- * on its own, and a warning that only exists on the page above it does not
- * travel with what it is warning about.
- */
-export const ESTIMATE_NOTICE_LEAD = "Estimated, not measured.";
-
-// SAYS ONLY WHAT IS TRUE. This used to claim EVERY number carries the
-// assumptions it was worked out from. The headline figures do — they render
-// through <Figure>, which draws nothing at all without a basis. But several
-// sections also mention quantities inside ordinary prose, where there is no
-// card and no assumption beside them. A blanket promise the page cannot keep is
-// worse than a narrower one it can: a reader who spots one uncited number in a
-// paragraph learns the notice is decoration, and stops believing the parts that
-// were scrupulous.
-export const ESTIMATE_NOTICE =
-  "Phoxta has no market-data feed. Nothing here was measured — the figures on the cards show a range with the assumptions they came from, and any number mentioned in the writing is the same kind of estimate without the workings. Check all of it against your own quotes, suppliers and first sales before you rely on it.";
+/* The standing "Estimated, not measured" disclosure lived here and has been
+ * removed at the owner's instruction. What made it necessary has not gone away:
+ * nothing in this platform can search the internet, so these sections are still
+ * written from the model's training data rather than looked up. The honest fix
+ * is to give the generator real sources — the `sources` array is already read,
+ * carried and rendered for exactly that — not to keep apologising for not
+ * having any. Until then the per-figure `basis` and `assumptions` on each card
+ * are what a reader has to judge a number by. */

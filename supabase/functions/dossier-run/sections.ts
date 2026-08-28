@@ -65,7 +65,9 @@ You have no live market data and no web access. The page says so to the reader, 
 - "assumptions" names the inputs, with the numbers you assumed inside them, so a reader can change one and see the range move.
 - "sources" is ALWAYS an empty array. Never invent a citation, a publisher, a report title, a survey or a URL.
 - If you cannot justify a range, leave that estimate out. A short section is honest; a padded one is not.
-- Write for the owner of a small business in plain British English. No "unlock", no "leverage", no "in today's fast-paced world", no exclamation marks. Money in GBP.
+- Write for the owner of a small business in plain English. No "unlock", no "leverage", no "in today's fast-paced world", no exclamation marks.
+- THIS IS THE GLOBAL VIEW OF THE TRADE. It is read by owners in every country, so do not write it for one. No single country's rules, taxes, registrations, platforms, seasons or holidays as though they were universal; where something genuinely differs by market, say so and name what changes.
+- Money: give amounts in USD and say so, since it is the currency most readers can convert from. Where a figure only makes sense as a local one — a rent, a wage, a licence fee — express it as a multiple or a percentage instead, because the number itself is meaningless without a country.
 - Be specific to THIS trade. Advice that would fit any business is worth nothing to someone who has just paid for this one.`;
 
 const IMG =
@@ -241,7 +243,7 @@ The business: ${brief}`,
   /* ── 8. Suppliers & sourcing ──────────────────────────────────────────── */
   supply: {
     system: `You are a sourcing manager writing for someone about to make their first supplier call. Reply with JSON only.${HOUSE}
-Never name a specific supplier company. You cannot check whether one still trades, still ships to the UK, or still has that minimum order — and a name in a document like this gets phoned. Describe the TYPE, where to find them, and what to ask.`,
+Never name a specific supplier company. You cannot check whether one still trades, still ships to the reader's country, or still has that minimum order — and a name in a document like this gets phoned. Describe the TYPE, where to find them, and what to ask.`,
     tier: "complex",
     maxTokens: 5000,
     user: (ctx, brief) => `${ctx}

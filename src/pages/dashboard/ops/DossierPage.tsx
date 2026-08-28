@@ -7,6 +7,7 @@ import { can } from "@/lib/ops/permissions";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { organizationsQuery } from "@/lib/cache/dashboardQueries";
 import { isPlatformAdmin } from "@/lib/db/platform";
+import { DocumentsPanel } from "./dossier/DocumentsPanel";
 import {
   EMPTY_CONTEXT, blueprintForBusiness, deleteOrgDossier, fillDossierImages,
   getBlueprintDossier, getOrgDossier, listDossierBlueprints, needsImages, runDossierSection,
@@ -262,6 +263,13 @@ export default function DossierPage() {
 
   const rows = view === "mine" ? orgRows : globalRows;
   const bySection = new Map(rows.map((r) => [r.section, r.content]));
+  /** The written sections, keyed — what the documents are built from. It is the
+   *  SAME `rows` the slides render, so a document cannot contain a section the
+   *  page is not showing, or miss one it is. */
+  const sectionMap = Object.fromEntries(
+    rows.filter((r) => r.content && Object.keys(r.content as object).length > 0)
+        .map((r) => [r.section, r.content as Record<string, unknown>]),
+  );
   const done = completedSections(rows);
   const pct = progressPercent(done);
   const upNext = nextSection(done);
@@ -525,6 +533,22 @@ export default function DossierPage() {
           )}
         </div>
       </div>
+
+      {/* ── The documents ────────────────────────────────────────────────
+          The analysis above is a screen. These are the things a bank, a
+          landlord, an accountant or a supplier actually asks to be sent, and
+          they are built from exactly the sections that have been written — so a
+          half-finished dossier yields a shorter plan rather than one with holes
+          in it. A document with nothing behind it is not offered at all. */}
+      <DocumentsPanel
+        sections={sectionMap}
+        brand={view === "mine" ? org.name : blueprint.name}
+        trade={blueprint.name}
+        mine={view === "mine"}
+        where={view === "mine" ? (orgDossier?.context?.location ?? "") : ""}
+        blueprintSlug={blueprint.slug}
+        vertical={org.vertical}
+      />
 
       {asking && (
         <ContextDialog

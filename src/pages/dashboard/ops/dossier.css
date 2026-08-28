@@ -761,3 +761,24 @@
 .bdx-rail__card .hrx-pill:disabled:hover,
 .bdx-dlg .hrx-pill:disabled:hover { background: rgba(255, 255, 255, 0.85); color: var(--hrx-ink, #272727); }
 .bdx-dlg .hrx-pill.dark:disabled:hover { background: var(--hrx-ink, #272727); color: #fff; }
+
+/* ── The documents ────────────────────────────────────────────────────────
+   Console chrome, not slide chrome — these rows sit in an hrx card outside
+   .bdx-slide, so they take the console's tokens rather than the Webflow ones.
+   Prefixed .bdx- like everything else on this page so the two cannot be
+   confused by whoever reads this next. */
+.bdx-docs { display: flex; flex-direction: column; gap: 2px; }
+
+.bdx-doc {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--hrx-border-soft, var(--hrx-border));
+}
+.bdx-doc:last-child { border-bottom: 0; }
+
+.bdx-doc__name { font-size: 15px; font-weight: 600; color: var(--hrx-ink); margin: 0 0 2px; }
+.bdx-doc__why { font-size: 13px; line-height: 1.5; color: var(--hrx-muted); margin: 0; }
+.bdx-doc__acts { display: flex; gap: 8px; margin-left: auto; flex: 0 0 auto; }

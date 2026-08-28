@@ -6,7 +6,7 @@ import { imageForStage } from "@/lib/ideas/imagery";
 import { CONFIDENCE_LABEL, readEstimate, readEstimates, type Estimate } from "@/lib/dossier/estimate";
 import { legalPack } from "@/lib/dossier/legal";
 import {
-  ESTIMATE_NOTICE, ESTIMATE_NOTICE_LEAD, getSection, sectionIndex, TAB_KEYS, type DossierTab,
+  getSection, sectionIndex, TAB_KEYS, type DossierTab,
 } from "@/lib/dossier/sections";
 
 /**
@@ -24,8 +24,9 @@ import {
  * <Figure> renders NOTHING when the reasoning is missing. That is deliberately
  * a property of this component rather than a promise about the prompts: a model
  * that ignores the instruction and returns a bare confident figure gets its
- * figure dropped, not printed. The standing disclosure sits in the section head
- * where the reader is looking, not in a footer.
+ * figure dropped, not printed. That rule stayed when the standing "Estimated,
+ * not measured" disclosure was removed — it is the part that does the work,
+ * because it acts on the data rather than apologising for it.
  *
  * The visual system is the one the Idea Validator's slides use — white canvas,
  * near-black #080808 on every heading, five chromatic accents used only as
@@ -123,9 +124,9 @@ function Figure({ e, dark, bare, head, foot }: {
         <span className="bdx-fig__conf" data-c={e.confidence || undefined}>
           {e.confidence ? CONFIDENCE_LABEL[e.confidence] : "Estimate"}
         </span>
-        <span className="bdx-caption">
-          {e.assumptions.length > 0 ? "Worked out from the assumptions above" : "Estimated, not measured"}
-        </span>
+        {e.assumptions.length > 0 && (
+          <span className="bdx-caption">Worked out from the assumptions above</span>
+        )}
       </div>
       {/* The seam. Empty today, because nothing can fill it honestly yet — a
           later research pass pushes citations into the same stored array and
@@ -207,9 +208,7 @@ function Hero({ section, mine }: { section: DossierTab; mine: boolean }) {
           must not invite: a buyer skipping their own check BECAUSE the page
           promised human authorship. Every claim here is now one we can stand
           behind, and the source link is what makes each item verifiable. */}
-      {spec?.generated ? (
-        <p className="bdx-note mb-0"><b>{ESTIMATE_NOTICE_LEAD}</b> {ESTIMATE_NOTICE}</p>
-      ) : (
+      {spec?.generated ? null : (
         <p className="bdx-note mb-0">
           <b>A checklist, not legal advice.</b> This is a fixed list of what UK law asks of your trade —
           the same for everyone in it, not written per business — and every item links to the official
