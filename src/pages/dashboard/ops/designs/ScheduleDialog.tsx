@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast, toastError } from "@/lib/ops/feedback";
 import type { Design } from "@/lib/db/designs";
 import {
-  type Limits, type SocialAccount, type SocialPlatform, PLATFORM_NAMES,
+  type InstagramOptions as IgOptions,
+  type Limits, type SocialAccount, type SocialPlatform, PLATFORM_NAMES, EMPTY_IG_OPTIONS,
   listSocialAccounts, scheduleSocialPost, writeSocialCaption,
 } from "@/lib/db/ops/social";
+import { InstagramOptions } from "./InstagramOptions";
 import { rasterise } from "./rasterise";
 
 /**
@@ -34,6 +36,9 @@ export function ScheduleDialog({ orgId, design, onClose }: {
   const [caption, setCaption] = useState("");
   const [when, setWhen] = useState(() => localIso(new Date(Date.now() + 15 * 60 * 1000)));
   const [busy, setBusy] = useState(false);
+  /** The collaborators, tags, alt text and story — Instagram only, and only
+   *  worth carrying when Instagram is one of the chosen channels. */
+  const [ig, setIg] = useState<IgOptions>(EMPTY_IG_OPTIONS);
   /** Writing the caption, and the one line of reasoning it comes back with. */
   const [writing, setWriting] = useState(false);
   const [why, setWhy] = useState("");
@@ -70,6 +75,8 @@ export function ScheduleDialog({ orgId, design, onClose }: {
 
   const over = cap ? caption.length - cap.n : 0;
 
+  const toInstagram = usable.some((a) => picked.includes(a.id) && a.platform === "instagram");
+
   const go = async () => {
     if (picked.length === 0) return toastError("Choose where it should go.");
     if (over > 0) return toastError(`That is ${over} characters too long for ${cap!.who}.`);
@@ -82,6 +89,10 @@ export function ScheduleDialog({ orgId, design, onClose }: {
       const at = new Date(when);
       const { error } = await scheduleSocialPost(orgId, {
         designId: design.id, mediaUrl, caption, scheduledAt: at.toISOString(), accountIds: picked,
+        // Only when Instagram is going to receive it. Storing them against a
+        // post that is going nowhere near Instagram would leave the console
+        // showing collaborators on a post that can never have any.
+        options: toInstagram ? { instagram: ig } : {},
       });
       if (error) throw new Error(error);
       toast(at.getTime() <= Date.now() + 60_000 ? "Queued — it goes out on the next tick." : `Scheduled for ${at.toLocaleString("en-GB")}.`);
@@ -185,6 +196,8 @@ export function ScheduleDialog({ orgId, design, onClose }: {
                 </em>
               )}
             </label>
+
+            {toInstagram && <InstagramOptions design={design} value={ig} onChange={setIg} />}
 
             <label className="emc__f">
               <span>When</span>

@@ -33,6 +33,32 @@ export type SocialAccount = {
   token_expiry: string | null;
 };
 
+/**
+ * What a post carries beyond a picture and a caption.
+ *
+ * NAMESPACED BY PLATFORM, because none of these are our fields. Each exists
+ * because one platform accepts a parameter of that name, and the same word
+ * means something different elsewhere: an Instagram "collaborator" is a
+ * co-author who has to accept an invitation before the post appears on their
+ * profile, and neither LinkedIn, X nor TikTok has anything equivalent. So
+ * nothing outside the Instagram adapter reads this.
+ */
+export type PostOptions = {
+  instagram?: {
+    /** Co-authors, up to 3. Public accounts only — Instagram refuses a private
+     *  one — and each has to accept before the post reaches their profile. */
+    collaborators?: string[];
+    /** People tagged ON the picture. x and y run 0..1 from the top-left, which
+     *  is what Instagram wants and what a click on the preview produces. */
+    userTags?: { username: string; x: number; y: number }[];
+    /** Read out by a screen reader. Images only; Instagram rejects it on a
+     *  story or a reel. */
+    altText?: string;
+    /** Put the same picture on the story as well as in the feed. */
+    alsoStory?: boolean;
+  };
+};
+
 export type PublishResult = {
   ok: boolean;
   /** 'simulated' when the platform app is not configured yet. */
@@ -41,6 +67,14 @@ export type PublishResult = {
   permalink?: string;
   error?: string;
 };
+
+/** A username as Instagram wants it: no leading @, no surrounding space. People
+ *  type the @ because that is how a handle is written everywhere else. */
+const handle = (v: unknown) => String(v ?? "").trim().replace(/^@+/, "").slice(0, 30);
+
+/** A tag coordinate. Instagram refuses anything outside 0..1 for the whole
+ *  container, so one bad number would lose the post rather than the tag. */
+const unit = (v: unknown) => Math.min(1, Math.max(0, Number(v) || 0));
 
 const fail = (error: string): PublishResult => ({ ok: false, status: "failed", error: error.slice(0, 500) });
 const simulated = (why: string): PublishResult => ({ ok: true, status: "simulated", error: why });
@@ -107,34 +141,128 @@ async function waitForContainer(id: string, token: string): Promise<{ ok: true }
   return { ok: false, why: "IN_PROGRESS" };
 }
 
-async function instagram(a: SocialAccount, caption: string, media: string): Promise<PublishResult> {
+/**
+ * Create a container, WAIT for Instagram to build it, then publish it.
+ *
+ * The feed post and the story both come through here. They are the same three
+ * steps with a different container, and the middle one is the step that is easy
+ * to leave out — writing it twice is how one of the two ends up without it.
+ */
+async function createAndPublish(
+  base: string,
+  token: string,
+  container: Record<string, unknown>,
+): Promise<{ ok: true; id: string } | { ok: false; why: string }> {
+  const create = await fetch(`${base}/media`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(container),
+  });
+  if (!create.ok) return { ok: false, why: "Instagram refused the image: " + await reason(create) };
+  const { id: creationId } = await create.json();
+  if (!creationId) return { ok: false, why: "Instagram accepted the image but returned no container id." };
+
+  const ready = await waitForContainer(String(creationId), token);
+  if (!ready.ok) {
+    return {
+      ok: false,
+      why: ready.why === "IN_PROGRESS"
+        ? "Instagram was still processing the image after 20 seconds. It will be retried."
+        : "Instagram could not use the image: " + ready.why,
+    };
+  }
+
+  const publish = await fetch(`${base}/media_publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ creation_id: creationId, access_token: token }),
+  });
+  if (!publish.ok) return { ok: false, why: "Instagram refused to publish it: " + await reason(publish) };
+  const { id } = await publish.json();
+  return { ok: true, id: String(id ?? "") };
+}
+
+/**
+ * The published post's own address.
+ *
+ * A media id is not a shortcode, so /p/<media-id> is a 404 — the link has to be
+ * asked for. Best effort: a post that is up with no link is a great deal better
+ * than a post that is up behind a link that goes nowhere.
+ */
+async function permalinkOf(id: string, token: string): Promise<string> {
+  if (!id) return "";
+  try {
+    const res = await fetch(
+      `https://graph.instagram.com/v21.0/${id}?fields=permalink&access_token=${encodeURIComponent(token)}`,
+    );
+    if (!res.ok) return "";
+    return String((await res.json())?.permalink ?? "");
+  } catch {
+    return "";
+  }
+}
+
+async function instagram(
+  a: SocialAccount,
+  caption: string,
+  media: string,
+  options?: PostOptions,
+): Promise<PublishResult> {
   if (!(env("INSTAGRAM_APP_ID") || env("META_APP_ID")) || !a.access_token) return simulated("No Instagram app configured.");
   const base = `https://graph.instagram.com/v21.0/${a.external_id}`;
+  const o = options?.instagram ?? {};
   try {
-    const create = await fetch(`${base}/media`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image_url: media, caption, access_token: a.access_token }),
-    });
-    if (!create.ok) return fail("Instagram refused the image: " + await reason(create));
-    const { id: creationId } = await create.json();
-    if (!creationId) return fail("Instagram accepted the image but returned no container id.");
+    const container: Record<string, unknown> = { image_url: media, caption, access_token: a.access_token };
 
-    const ready = await waitForContainer(String(creationId), a.access_token);
-    if (!ready.ok) {
-      return ready.why === "IN_PROGRESS"
-        ? fail("Instagram was still processing the image after 20 seconds. It will be retried.")
-        : fail("Instagram could not use the image: " + ready.why);
+    // Meta reads an array or object parameter from a JSON STRING, in a form
+    // body and a JSON one alike. Passing a real array happens to work on some
+    // endpoints and is rejected on others; one form that is accepted
+    // everywhere beats two that are each accepted somewhere.
+    const collaborators = (o.collaborators ?? []).map(handle).filter(Boolean).slice(0, 3);
+    if (collaborators.length) container.collaborators = JSON.stringify(collaborators);
+
+    const tags = (o.userTags ?? [])
+      .map((t) => ({ username: handle(t?.username), x: unit(t?.x), y: unit(t?.y) }))
+      .filter((t) => t.username)
+      .slice(0, 20);
+    if (tags.length) container.user_tags = JSON.stringify(tags);
+
+    const alt = String(o.altText ?? "").trim();
+    if (alt) container.alt_text = alt.slice(0, 1000);
+
+    const feed = await createAndPublish(base, a.access_token, container);
+    if (!feed.ok) return fail(feed.why);
+
+    /**
+     * The story is a SECOND post, published after the feed one.
+     *
+     * There is no "share this post to my story" in the API — that button lives
+     * in the app and nowhere else. What the API does have is publishing a story
+     * of its own, so this puts the same picture there. A story takes no caption,
+     * no collaborators and no tags: it is the picture, and nothing else.
+     *
+     * A FAILED STORY DOES NOT FAIL THE POST. The feed post is already up and
+     * cannot be recalled, and reporting the whole thing as failed would put it
+     * back in the queue to go out a second time. So it is carried as a note on
+     * a successful send, which is what the console shows against the post.
+     */
+    let note = "";
+    if (o.alsoStory) {
+      const story = await createAndPublish(base, a.access_token, {
+        image_url: media,
+        media_type: "STORIES",
+        access_token: a.access_token,
+      });
+      if (!story.ok) note = `The post went out, but the story did not: ${story.why}`;
     }
 
-    const publish = await fetch(`${base}/media_publish`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ creation_id: creationId, access_token: a.access_token }),
-    });
-    if (!publish.ok) return fail("Instagram refused to publish it: " + await reason(publish));
-    const { id } = await publish.json();
-    return { ok: true, status: "sent", externalId: id, permalink: `https://www.instagram.com/p/${id}` };
+    return {
+      ok: true,
+      status: "sent",
+      externalId: feed.id,
+      permalink: await permalinkOf(feed.id, a.access_token),
+      error: note,
+    };
   } catch (e) {
     return fail(String((e as Error)?.message ?? e));
   }
@@ -274,10 +402,10 @@ async function tiktok(a: SocialAccount, caption: string, media: string): Promise
   }
 }
 
-export function publish(a: SocialAccount, caption: string, media: string): Promise<PublishResult> {
+export function publish(a: SocialAccount, caption: string, media: string, options?: PostOptions): Promise<PublishResult> {
   if (!media) return Promise.resolve(fail("There is no picture to post."));
   switch (a.platform) {
-    case "instagram": return instagram(a, caption, media);
+    case "instagram": return instagram(a, caption, media, options);
     case "linkedin": return linkedin(a, caption, media);
     case "x": return x(a, caption, media);
     case "tiktok": return tiktok(a, caption, media);
