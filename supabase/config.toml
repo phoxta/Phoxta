@@ -116,6 +116,9 @@ verify_jwt = true
 
 # Writes a social post from a brief: copy, Pexels photographs, brand colours.
 # Signed-in only, since it spends model tokens and writes into a tenant library.
+[functions.content-plan]
+verify_jwt = true
+
 [functions.design-render]
 verify_jwt = true
 
