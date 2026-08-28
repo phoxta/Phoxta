@@ -61,6 +61,52 @@ async function reason(res: Response): Promise<string> {
 // Instagram Login, whose token is the account's own and is not valid against
 // the Facebook host. Posting to the wrong host with a good token fails in a way
 // that reads like a permissions problem, so it is worth being explicit.
+/**
+ * Instagram builds the container ASYNCHRONOUSLY, and publishing before it is
+ * built fails.
+ *
+ * /media returns a container id straight away, but Instagram has not fetched
+ * the picture yet. Calling /media_publish at that moment returns 9007 /
+ * 2207027 — "Media ID is not available. The media is not ready to be
+ * published." — which reads like a permissions or an id problem and is
+ * neither. It is simply too early. The documented sequence is to poll the
+ * container until its status_code is FINISHED, and that step was missing.
+ *
+ * POLLING ALSO RECOVERS THE ERROR MESSAGE. When Instagram cannot fetch or
+ * accept the image — the asset URL is not public, the aspect ratio is out of
+ * range, the file is too large — /media has ALREADY returned 200 and told us
+ * nothing. The reason only ever appears on the container, as status_code ERROR
+ * with the explanation in `status`. Without this, every one of those failures
+ * arrived as the same opaque 9007.
+ *
+ * The ceiling is deliberately short. social-publish works through a batch of
+ * ten sequentially and cron allows the whole call 100 seconds, so a long wait
+ * per item would spend the budget on one post. An image container normally
+ * finishes in a few seconds; one that has not finished in twenty is reported
+ * as retryable, and the next tick tries it again.
+ */
+const CONTAINER_TRIES = 10;
+const CONTAINER_WAIT_MS = 2000;
+
+async function waitForContainer(id: string, token: string): Promise<{ ok: true } | { ok: false; why: string }> {
+  for (let i = 0; i < CONTAINER_TRIES; i++) {
+    // Sleep first: the container is never ready the instant it is created, so
+    // an immediate check is a guaranteed miss and one wasted call.
+    await new Promise((r) => setTimeout(r, CONTAINER_WAIT_MS));
+    const res = await fetch(
+      `https://graph.instagram.com/v21.0/${id}?fields=status_code,status&access_token=${encodeURIComponent(token)}`,
+    );
+    if (!res.ok) return { ok: false, why: "the container could not be checked: " + (await reason(res)) };
+    const s = await res.json().catch(() => ({}));
+    const code = String(s?.status_code ?? "");
+    if (code === "FINISHED") return { ok: true };
+    // EXPIRED is a container left unpublished for 24 hours. It cannot happen on
+    // this path, and is cheaper to handle than to reason about.
+    if (code === "ERROR" || code === "EXPIRED") return { ok: false, why: String(s?.status || code) };
+  }
+  return { ok: false, why: "IN_PROGRESS" };
+}
+
 async function instagram(a: SocialAccount, caption: string, media: string): Promise<PublishResult> {
   if (!(env("INSTAGRAM_APP_ID") || env("META_APP_ID")) || !a.access_token) return simulated("No Instagram app configured.");
   const base = `https://graph.instagram.com/v21.0/${a.external_id}`;
@@ -73,6 +119,13 @@ async function instagram(a: SocialAccount, caption: string, media: string): Prom
     if (!create.ok) return fail("Instagram refused the image: " + await reason(create));
     const { id: creationId } = await create.json();
     if (!creationId) return fail("Instagram accepted the image but returned no container id.");
+
+    const ready = await waitForContainer(String(creationId), a.access_token);
+    if (!ready.ok) {
+      return ready.why === "IN_PROGRESS"
+        ? fail("Instagram was still processing the image after 20 seconds. It will be retried.")
+        : fail("Instagram could not use the image: " + ready.why);
+    }
 
     const publish = await fetch(`${base}/media_publish`, {
       method: "POST",
