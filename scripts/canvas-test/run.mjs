@@ -104,4 +104,7 @@ await build({
 });
 node([path.join(here, "editor.test.mjs"), root, tmp]);
 
+console.log("\n── typing habits ──────────────────────────────────────");
+node([path.join(here, "typing.test.mjs"), root, tmp]);
+
 fs.rmSync(tmp, { recursive: true, force: true });

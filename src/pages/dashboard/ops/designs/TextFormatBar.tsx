@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { paint, type Palette, type PaintRole } from "@/lib/designs/types";
+import { DEFAULT_FONT, DESIGN_FONTS, fontNamed, paint, type Palette, type PaintRole } from "@/lib/designs/types";
+import { fontStack } from "@/lib/designs/layout";
 
 /**
  * Formatting part of a sentence, rather than all of it.
@@ -81,23 +82,25 @@ export function TextFormatBar({ host, palette, onChanged }: {
     place();
   };
 
-  const colour = (role: PaintRole) => {
+  /**
+   * Wrap the selection in a styled span.
+   *
+   * extract + insert rather than surroundContents, which throws whenever the
+   * selection starts and ends in different elements — which is most of the
+   * time once anything else has been styled. The words stay selected
+   * afterwards, so a second choice replaces the first instead of the selection
+   * vanishing after every click.
+   */
+  const wrap = (decorate: (span: HTMLSpanElement, current: HTMLElement | null) => void) => {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
     const range = sel.getRangeAt(0);
+    const node = range.commonAncestorContainer;
+    const current = node instanceof HTMLElement ? node : node.parentElement;
     const span = document.createElement("span");
-    // data-role is what survives the trip exactly — a literal colour would be
-    // kept as a hex and stop following the palette when the design is
-    // recoloured.
-    span.dataset.role = String(role);
-    span.style.color = paint(role, palette);
-    // extract + insert rather than surroundContents, which throws whenever the
-    // selection starts and ends in different elements — which is most of the
-    // time once anything else has been styled.
+    decorate(span, current);
     span.appendChild(range.extractContents());
     range.insertNode(span);
-    // Leave the newly coloured words selected, so a second choice replaces the
-    // first rather than the selection vanishing after every click.
     sel.removeAllRanges();
     const after = document.createRange();
     after.selectNodeContents(span);
@@ -106,29 +109,31 @@ export function TextFormatBar({ host, palette, onChanged }: {
     place();
   };
 
-  const resize = (factor: number) => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-    const range = sel.getRangeAt(0);
-    const span = document.createElement("span");
-    const parent = range.commonAncestorContainer instanceof HTMLElement
-      ? range.commonAncestorContainer
-      : range.commonAncestorContainer.parentElement;
-    const current = Number(parent?.closest<HTMLElement>("[data-scale]")?.dataset.scale) || 1;
+  // data-role, not a literal colour: a hex would freeze the word to whatever
+  // the accent happened to be and stop it following a palette change.
+  const colour = (role: PaintRole) => wrap((span) => {
+    span.dataset.role = String(role);
+    span.style.color = paint(role, palette);
+  });
+
+  const setFont = (name: string) => wrap((span) => {
+    span.dataset.font = name;
+    span.style.fontFamily = fontStack(name);
+  });
+
+  const setWeight = (w: number) => wrap((span) => {
+    span.dataset.weight = String(w);
+    span.style.fontWeight = String(w);
+  });
+
+  const resize = (factor: number) => wrap((span, current) => {
     // Relative to whatever the selection already carries, so pressing bigger
     // twice compounds instead of snapping back to one step.
-    const next = Math.min(4, Math.max(0.4, Math.round(current * factor * 100) / 100));
+    const now = Number(current?.closest<HTMLElement>("[data-scale]")?.dataset.scale) || 1;
+    const next = Math.min(4, Math.max(0.4, Math.round(now * factor * 100) / 100));
     span.dataset.scale = String(next);
     span.style.fontSize = `${next}em`;
-    span.appendChild(range.extractContents());
-    range.insertNode(span);
-    sel.removeAllRanges();
-    const after = document.createRange();
-    after.selectNodeContents(span);
-    sel.addRange(after);
-    onChanged();
-    place();
-  };
+  });
 
   return (
     <div
@@ -155,6 +160,25 @@ export function TextFormatBar({ host, palette, onChanged }: {
         />
       ))}
       <span className="txb__sep" />
+      <select
+        className="txb__sel" title="Typeface for the selection" aria-label="Typeface"
+        defaultValue=""
+        onChange={(e) => { if (e.target.value) setFont(e.target.value); e.target.value = ""; }}
+      >
+        <option value="">Font</option>
+        {DESIGN_FONTS.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+      </select>
+      <select
+        className="txb__sel" title="Weight for the selection" aria-label="Weight"
+        defaultValue=""
+        onChange={(e) => { if (e.target.value) setWeight(Number(e.target.value)); e.target.value = ""; }}
+      >
+        <option value="">Weight</option>
+        {(fontNamed(DEFAULT_FONT)?.weights ?? [400, 700]).map((w) => (
+          <option key={w} value={w}>{w}</option>
+        ))}
+      </select>
+      <span className="txb__sep" />
       <button type="button" title="Smaller" onClick={() => resize(1 / 1.25)}>A−</button>
       <button type="button" title="Bigger" onClick={() => resize(1.25)}>A+</button>
       <style>{CSS}</style>
@@ -171,4 +195,6 @@ const CSS = `
 .txb__swatch{width:20px;height:20px;min-width:20px;padding:0;border-radius:50%;box-shadow:inset 0 0 0 1px rgb(255 255 255 / 35%)}
 .txb__swatch:hover{outline:2px solid #fff;outline-offset:1px}
 .txb__sep{width:1px;height:18px;background:rgb(255 255 255 / 22%);margin:0 4px}
+.txb__sel{height:26px;border:0;border-radius:6px;background:rgb(255 255 255 / 12%);color:#fff;font-size:12px;padding:0 4px;cursor:pointer}
+.txb__sel option{color:#1D1D1D}
 `;

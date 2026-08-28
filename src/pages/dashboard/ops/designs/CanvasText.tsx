@@ -22,11 +22,13 @@ import { TextFormatBar } from "./TextFormatBar";
  * change where the lines break. Scaling the numbers instead would make the
  * wrap drift as you zoomed, and the copy would re-break under the cursor.
  */
-export function CanvasText({ layer, value, palette, view, onChange, onDone }: {
+export function CanvasText({ layer, value, palette, view, untouched, onChange, onDone }: {
   layer: TextLayer;
   value: Copy | undefined;
   palette: Palette;
   view: Viewport;
+  /** True while the copy is still the template's, untouched by anyone. */
+  untouched?: boolean;
   onChange: (next: Copy) => void;
   onDone: () => void;
 }) {
@@ -39,6 +41,16 @@ export function CanvasText({ layer, value, palette, view, onChange, onDone }: {
   const mine = useRef<string>("");
   /** When this editor appeared, for recognising the click that opened it. */
   const openedAt = useRef(0);
+  /**
+   * Whether the copy was the template's AT THE MOMENT THIS OPENED.
+   *
+   * Held in a ref, not read from the prop, because the prop flips the instant
+   * the first character is typed — the slot then has something of its own — and
+   * anything watching it would re-initialise the editor mid-keystroke. That is
+   * not hypothetical: putting it in the effect's dependencies turned
+   * "Hello canvas" into "ello canvasH".
+   */
+  const wasUntouched = useRef(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -46,7 +58,16 @@ export function CanvasText({ layer, value, palette, view, onChange, onDone }: {
     el.innerHTML = runsToHtml(toRuns(value, layer.accent), palette);
     mine.current = el.innerHTML;
     openedAt.current = performance.now();
-    selectAll();
+    // SELECT ALL ONLY WHILE IT IS STILL THE TEMPLATE'S PLACEHOLDER.
+    //
+    // Replacing the lot is right the first time you open "Your headline here",
+    // and hostile every time after: opening real copy to fix one word and
+    // having the first keystroke delete the whole line is the single thing
+    // that made this editor feel unlike every other one. Once the words are
+    // yours, the click places a caret where you clicked, as it does in a
+    // document.
+    wasUntouched.current = Boolean(untouched);
+    if (untouched) selectAll();
     el.focus();
     // Only on open: re-running when `value` changes would fight the typing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,7 +136,7 @@ export function CanvasText({ layer, value, palette, view, onChange, onDone }: {
           // select-all, so the next thing typed is inserted into the middle of
           // the placeholder instead of replacing it. Any click this soon after
           // opening belongs to the gesture, not to the person.
-          if (performance.now() - openedAt.current < 400) selectAll();
+          if (wasUntouched.current && performance.now() - openedAt.current < 400) selectAll();
         }}
         onBlur={() => { push(); onDone(); }}
         onKeyDown={onKeyDown}

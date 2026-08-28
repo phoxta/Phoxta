@@ -134,6 +134,7 @@ function Rig() {
         {editing && one?.type === "text" && (
           <CanvasText
             layer={one} value={content[one.slot]} palette={palette} view={view}
+            untouched={doc.content?.[one.slot] === undefined}
             onChange={(next) => setDoc((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }))}
             onDone={() => { trail.current.push("done"); setEditing(null); }}
           />

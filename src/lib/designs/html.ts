@@ -1,3 +1,4 @@
+import { fontStack } from "./layout";
 import { normalise } from "./rich";
 import type { PaintRole, Palette, Rich, TextRun } from "./types";
 import { paint } from "./types";
@@ -36,15 +37,25 @@ export function runsToHtml(runs: TextRun[], palette: Palette): string {
     if (r.underline) html = `<u>${html}</u>`;
     if (r.italic) html = `<i>${html}</i>`;
     if (r.bold) html = `<b>${html}</b>`;
-    if (r.fill || r.scale) {
+    // font and weight belong here too. A TextRun has carried them since runs
+    // existed and this bridge never wrote them, so a run styled with either
+    // lost it the moment the editor read itself back — a control for them
+    // would have appeared to work and quietly done nothing.
+    if (r.fill || r.scale || r.font || r.weight) {
       const style = [
         r.fill ? `color:${paint(r.fill, palette)}` : "",
         r.scale ? `font-size:${r.scale}em` : "",
+        r.font ? `font-family:${fontStack(r.font)}` : "",
+        // Written as a number, not "bold": htmlToRuns reads a computed weight
+        // of 600 or more as bold, and a 500 run must not become one.
+        r.weight ? `font-weight:${r.weight}` : "",
       ].filter(Boolean).join(";");
       // The role travels in a data attribute so a palette change still moves
       // the run: reading the colour back out of `style` would freeze it to
       // whatever hex the accent happened to be when it was typed.
-      html = `<span data-role="${r.fill ?? ""}" data-scale="${r.scale ?? ""}" style="${style}">${html}</span>`;
+      html = `<span data-role="${r.fill ?? ""}" data-scale="${r.scale ?? ""}"`
+        + ` data-font="${r.font ? esc(r.font) : ""}" data-weight="${r.weight ?? ""}"`
+        + ` style="${style}">${html}</span>`;
     }
     return html;
   }).join("");
@@ -52,7 +63,7 @@ export function runsToHtml(runs: TextRun[], palette: Palette): string {
 
 /* ── HTML → runs ─────────────────────────────────────────────────────────── */
 
-type Acc = { bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; fill?: PaintRole; scale?: number };
+type Acc = { bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; fill?: PaintRole; scale?: number; font?: string; weight?: number };
 
 const TAG_MARK: Record<string, keyof Acc> = {
   B: "bold", STRONG: "bold",
@@ -106,6 +117,14 @@ export function htmlToRuns(root: Node, palette: Palette): Rich {
 
     const scale = Number(node.dataset?.scale);
     if (scale > 0) next.scale = scale;
+
+    // Only what WE wrote. A font-family the browser or a paste invented is not
+    // one of the pack's six faces, and keeping it would render in the editor
+    // and fall back to something else in the exported file.
+    const font = node.dataset?.font;
+    if (font) next.font = font;
+    const w = Number(node.dataset?.weight);
+    if (w > 0) next.weight = w;
 
     for (const child of Array.from(node.childNodes)) walk(child, next);
   };

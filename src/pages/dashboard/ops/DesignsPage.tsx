@@ -975,6 +975,9 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
                     value={content[one.slot]}
                     palette={palette}
                     view={view}
+                    // Untouched means the copy is still the template's: the
+                    // slot has nothing of its own in the document yet.
+                    untouched={doc.content?.[one.slot] === undefined}
                     onChange={(next) => apply((d) => ({ ...d, content: { ...d.content, [one.slot]: next } }), false)}
                     onDone={() => { setEditing(null); force((n) => n + 1); }}
                   />
