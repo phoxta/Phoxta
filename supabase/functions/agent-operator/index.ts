@@ -90,9 +90,63 @@ Deno.serve(async (req) => {
 
     const read = toolRunner(ctx.admin, orgId as string);
     const callerIsAdmin = isAdminRole(ctx.role);
+    /**
+     * Show a design in the chat.
+     *
+     * Declared here rather than in _shared/tools.ts for the same reason `speak`
+     * is: the picture has to reach the OWNER as an attachment, and a shared
+     * read tool can only hand a string back to the model.
+     *
+     * IT SHOWS THE STORED PICTURE, which is the point. media_url on a scheduled
+     * post is exactly this file, so what the owner is shown before approving is
+     * the file that will be posted — not a fresh render that might differ from
+     * it. A design whose picture is missing says so rather than showing
+     * something older.
+     */
+    const SHOW_DESIGN_TOOL = {
+      name: "show_design",
+      description:
+        "Show the owner one of the business's designs, as a picture in this chat. Use it before scheduling a post so " +
+        "they can see what will go out, and whenever they ask what a design looks like. Give the design's title from " +
+        "list_designs. This shows the SAME file that would be posted. You CAN show pictures; never tell the owner you cannot.",
+      input_schema: {
+        type: "object",
+        properties: { design: { type: "string", description: "The design's title, from list_designs." } },
+        required: ["design"],
+      },
+    };
+
+    async function showDesign(input: Json): Promise<string> {
+      const title = String(input?.design ?? "").trim();
+      if (!title) return "Which design? Use list_designs to see them.";
+      const { data: d } = await ctx.admin.from("designs")
+        .select("title, png_url").eq("organization_id", orgId)
+        .ilike("title", `%${title}%`).limit(1).maybeSingle();
+      if (!d) return `No design matching "${title}". Use list_designs to see them.`;
+      if (!(d as Json).png_url) {
+        return `"${(d as Json).title}" has no picture yet — it has to be opened and saved in Graphics once, which renders it. I cannot render one from here.`;
+      }
+      try {
+        const res = await fetch(String((d as Json).png_url));
+        if (!res.ok) throw new Error(`the picture could not be read (HTTP ${res.status})`);
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const name = `${String((d as Json).title).replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "design"}.png`;
+        const path = `${orgId}/${crypto.randomUUID()}-${name}`;
+        const { error } = await ctx.admin.storage.from("operator-files")
+          .upload(path, bytes, { contentType: "image/png", upsert: false });
+        if (error) throw new Error(error.message);
+        artifacts.push({ kind: "image", path, name, mime: "image/png", size: bytes.byteLength });
+        return `Attached "${(d as Json).title}" to this reply — the owner can see it. This is the file that would be posted.`;
+      } catch (e) {
+        return `I could not attach "${(d as Json).title}": ${(e as Error).message}`;
+      }
+    }
+
     const runner = async (name: string, input: Json): Promise<string> =>
       name === "speak"
         ? await makeVoiceNote(input)
+        : name === "show_design"
+        ? await showDesign(input)
         : isWriteTool(name)
           ? await executeAction(ctx.admin, orgId as string, ctx.userId, name, input, callerIsAdmin)
           : await read(name, input);
@@ -117,7 +171,7 @@ Deno.serve(async (req) => {
       system,
       userMessage: message,
       history,
-      tools: [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS, ...WRITE_TOOLS, SPEAK_TOOL],
+      tools: [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS, ...WRITE_TOOLS, SPEAK_TOOL, SHOW_DESIGN_TOOL],
       toolRunner: runner,
       maxTurns: 8,
       maxTokens: 1500,
