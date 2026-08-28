@@ -1,0 +1,16 @@
+{
+  "name": "phoxta-design-render",
+  "private": true,
+  "type": "module",
+  "description": "Rasterise a Phoxta design document to PNG, through the app's own renderer in headless Chrome.",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "puppeteer": "23.11.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
