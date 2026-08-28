@@ -121,8 +121,16 @@ async function destinationFor(admin: SupabaseClient, orgId: string, ref: string,
   return (c?.phone as string) || null;
 }
 
-/** Perform the mutation. Returns a human summary or throws. */
-export async function runWrite(admin: SupabaseClient, orgId: string, tool: string, a: Json): Promise<string> {
+/**
+ * Perform the mutation. Returns a human summary or throws.
+ *
+ * `actorId` is the person the write is attributed to — the owner whose session
+ * started this turn, or whoever approved it from the queue. It is nullable
+ * because the cron legs (automation-run, objective-planner) act on a schedule
+ * with nobody behind them, and a scheduled row with no author is the truth
+ * rather than a missing value to invent.
+ */
+export async function runWrite(admin: SupabaseClient, orgId: string, tool: string, a: Json, actorId: string | null = null): Promise<string> {
   if (tool === "update_product_price") {
     const p = await resolveProduct(admin, orgId, String(a.product));
     if (!p) throw new Error(`No product matching "${a.product}".`);
@@ -397,7 +405,7 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
 
     const { data: post, error } = await admin.from("social_posts").insert({
       organization_id: orgId, design_id: d.id, media_url: d.png_url, caption,
-      scheduled_at: at.toISOString(), status: "queued", options, created_by: userId,
+      scheduled_at: at.toISOString(), status: "queued", options, created_by: actorId,
     }).select("id").single();
     if (error || !post) throw new Error(error?.message ?? "Could not queue it.");
 
@@ -432,7 +440,7 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
         ...(await internalProofHeaders()),
         // The planner authorises on the caller's membership; the operator is
         // acting for the owner whose session started this turn.
-        "x-acting-user": userId ?? "",
+        "x-acting-user": actorId ?? "",
       },
       body: JSON.stringify({
         orgId, action: "generate",
@@ -805,7 +813,7 @@ export async function executeAction(
     return `Queued for the owner's approval: ${title}. They can approve it in Agent → Operator.`;
   }
   try {
-    const summary = await runWrite(admin, orgId, tool, args);
+    const summary = await runWrite(admin, orgId, tool, args, userId);
     await audit(admin, orgId, tool, args, "ok", summary);
     return summary;
   } catch (e) {

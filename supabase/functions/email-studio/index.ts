@@ -84,7 +84,7 @@ async function sendOne(
   return { ok: true, id };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req): Promise<Response> => {
   const pf = preflight(req);
   if (pf) return pf;
   try {
@@ -92,7 +92,10 @@ Deno.serve(async (req) => {
     const action = String(body?.action ?? "");
 
     const who = await requirePlatformAdmin(req);
-    if ("error" in who) return who.error;
+    // Truthiness, not `in`: TypeScript gives the success branch an implicit
+    // `error?: undefined`, so `in` does not discriminate and the handler infers
+    // `Response | undefined`. The pinned return type above is the guard.
+    if (who.error) return who.error;
     const { admin, userId, email: actor } = who;
 
     switch (action) {

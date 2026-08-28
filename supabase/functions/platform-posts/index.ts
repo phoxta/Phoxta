@@ -87,14 +87,18 @@ async function audit(admin: Json, actorEmail: string, action: string, target: st
 const slugify = (s: string) =>
   s.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
 
-Deno.serve(async (req) => {
+Deno.serve(async (req): Promise<Response> => {
   const pf = preflight(req);
   if (pf) return pf;
 
   try {
     const body = (await req.json().catch(() => ({}))) as Json;
     const gate = await requirePlatformAdmin(req);
-    if ("error" in gate) return gate.error;
+    // Truthiness, not `"error" in gate`: TypeScript gives the success branch an
+    // implicit `error?: undefined`, so `in` does not discriminate the union and
+    // the handler infers `Response | undefined` — which is how a fall-through
+    // would hide here. The explicit Promise<Response> above is the guard.
+    if (gate.error) return gate.error;
     const { admin, email: actorEmail } = gate;
     await ensureSchema();
 

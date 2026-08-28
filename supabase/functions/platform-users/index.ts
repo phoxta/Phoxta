@@ -55,14 +55,17 @@ const PER_PAGE = 50;
 /** The roles organization_memberships' CHECK constraint allows. */
 const ROLES = ["owner", "admin", "staff", "viewer"];
 
-Deno.serve(async (req) => {
+Deno.serve(async (req): Promise<Response> => {
   const pf = preflight(req);
   if (pf) return pf;
 
   try {
     const body = (await req.json().catch(() => ({}))) as Json;
     const gate = await requirePlatformAdmin(req);
-    if ("error" in gate) return gate.error;
+    // Truthiness, not `in`: TypeScript gives the success branch an implicit
+  // `error?: undefined`, so `in` does not discriminate and the handler infers
+  // `Response | undefined` — which is how a fall-through would hide here.
+  if (gate.error) return gate.error;
     const { admin, email: actorEmail } = gate;
 
     // --- list: pageable roster + total, enriched with profile + businesses ---

@@ -44,7 +44,8 @@ Deno.serve(async (req) => {
 
     if (decision === "approve") {
       try {
-        const summary = await runWrite(admin, (act as Json).organization_id, (act as Json).tool, (act as Json).args);
+        // Attributed to whoever approved it: they are the person authorising the write.
+        const summary = await runWrite(admin, (act as Json).organization_id, (act as Json).tool, (act as Json).args, a.ok.userId);
         await admin.from("agent_actions").update({ status: "executed", result: summary }).eq("id", actionId);
         await admin.from("agent_audit_log").insert({ organization_id: (act as Json).organization_id, actor: "owner", tool: (act as Json).tool, args: (act as Json).args, status: "ok", summary });
         return json({ status: "executed", summary });
