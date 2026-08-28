@@ -87,6 +87,21 @@ async function instagram(a: SocialAccount, caption: string, media: string): Prom
   }
 }
 
+/**
+ * LinkedIn pins every call to a dated version, and refuses undated ones.
+ *
+ * THIS HAS A SHELF LIFE. Versions are supported for a minimum of one year and
+ * then sunset, and a request carrying a sunset version gets an error rather
+ * than a fallback to the newest — so this stops working on a timer whether or
+ * not anybody touches the code. It was 202405 when written, which was already
+ * long dead by the time anything tried to post through it.
+ *
+ * Bump it once a year, from
+ * learn.microsoft.com/en-us/linkedin/marketing/versioning, and read that
+ * release's changelog before doing so.
+ */
+const LINKEDIN_VERSION = "202608";
+
 // ── LinkedIn ────────────────────────────────────────────────────────────────
 // Three steps: ask for an upload slot, PUT the bytes to it, then create the
 // post referencing the returned image urn. Unlike Instagram, LinkedIn wants the
@@ -97,7 +112,7 @@ async function linkedin(a: SocialAccount, caption: string, media: string): Promi
   const H = {
     Authorization: `Bearer ${a.access_token}`,
     "X-Restli-Protocol-Version": "2.0.0",
-    "LinkedIn-Version": "202405",
+    "LinkedIn-Version": LINKEDIN_VERSION,
   };
   try {
     const init = await fetch("https://api.linkedin.com/rest/images?action=initializeUpload", {
