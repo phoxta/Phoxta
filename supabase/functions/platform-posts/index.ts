@@ -8,7 +8,7 @@
 //
 // The schema bootstraps lazily over SUPABASE_DB_URL the first time an admin
 // touches the function (`supabase db push` is not available in this
-// environment — same approach as brand-migrate). The DDL is idempotent and
+// environment). The DDL is idempotent and
 // also recorded in supabase/migrations/0102_platform_posts.sql.
 import { preflight, json } from "../_shared/cors.ts";
 import { adminClient, userClient } from "../_shared/supabaseAdmin.ts";

@@ -324,12 +324,6 @@ verify_jwt = true
 [functions.platform-lead]
 verify_jwt = true
 
-# ─────────────────────────────────────────────────────────────────────────────
-# NOT DEPLOYED
-# brand-migrate — one-shot DDL helper; its header says to delete it after a
-# successful run. Left undeclared deliberately so it is not deployed by accident.
-# ─────────────────────────────────────────────────────────────────────────────
-
 # Writes the caption and hashtags for a design. Member-authed and metered:
 # it spends the model budget, so it takes a real session rather than the
 # public key.
