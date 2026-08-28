@@ -1135,3 +1135,21 @@
     white-space: nowrap;
 }
 .dsn-tile__go:hover { border-color: var(--hrx-ink); }
+
+/* "Write it for me", on the Caption label row.
+   A quiet text button rather than a solid one: it sits inside a field label,
+   and the primary action in this dialog is Schedule. Right-aligned via `float`
+   because the label is a plain <span> carrying the counter the same way. */
+.emc__ai {
+  float: right;
+  margin-left: 10px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--hrx-primary, var(--hrx-ink));
+  cursor: pointer;
+}
+.emc__ai:hover:not(:disabled) { text-decoration: underline; }
+.emc__ai:disabled { opacity: 0.55; cursor: default; }

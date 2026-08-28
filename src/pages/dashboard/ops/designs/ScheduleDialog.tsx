@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast, toastError } from "@/lib/ops/feedback";
 import type { Design } from "@/lib/db/designs";
 import {
-  type Limits, type SocialAccount, PLATFORM_NAMES,
-  listSocialAccounts, scheduleSocialPost,
+  type Limits, type SocialAccount, type SocialPlatform, PLATFORM_NAMES,
+  listSocialAccounts, scheduleSocialPost, writeSocialCaption,
 } from "@/lib/db/ops/social";
 import { rasterise } from "./rasterise";
 
@@ -34,6 +34,9 @@ export function ScheduleDialog({ orgId, design, onClose }: {
   const [caption, setCaption] = useState("");
   const [when, setWhen] = useState(() => localIso(new Date(Date.now() + 15 * 60 * 1000)));
   const [busy, setBusy] = useState(false);
+  /** Writing the caption, and the one line of reasoning it comes back with. */
+  const [writing, setWriting] = useState(false);
+  const [why, setWhy] = useState("");
   const field = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -90,6 +93,32 @@ export function ScheduleDialog({ orgId, design, onClose }: {
     }
   };
 
+  /**
+   * Write the caption from what is printed ON the design.
+   *
+   * The picked platforms travel with the request, because the craft genuinely
+   * differs: the first line carries an Instagram post, LinkedIn demotes a link
+   * in the body, and X counts the hashtags inside its 280. A caption written for
+   * one platform and posted to another is a caption refused at publish time.
+   *
+   * It REPLACES the box, so anything already typed is confirmed first — the
+   * button sits next to the words it would overwrite.
+   */
+  const write = async () => {
+    const platforms = usable
+      .filter((a) => picked.includes(a.id))
+      .map((a) => a.platform as SocialPlatform);
+    if (caption.trim() && !window.confirm("Replace what you have written?")) return;
+    setWriting(true);
+    const { data, error } = await writeSocialCaption(orgId, { designId: design.id, platforms });
+    setWriting(false);
+    if (error) return toastError(error);
+    if (!data) return;
+    setCaption(data.full);
+    setWhy(data.why);
+    field.current?.focus();
+  };
+
   return (
     <div className="dsn-modal" role="dialog" aria-modal="true" aria-label="Schedule this design"
          onPointerDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
@@ -130,14 +159,23 @@ export function ScheduleDialog({ orgId, design, onClose }: {
             <label className="emc__f">
               <span>
                 Caption
+                <button
+                  type="button" className="emc__ai" onClick={() => void write()}
+                  disabled={writing || busy}
+                  title="Write it from the words on the design"
+                >
+                  {writing ? "Writing…" : "Write it for me"}
+                </button>
                 {cap && (
                   <span style={{ float: "right", fontWeight: 400, color: over > 0 ? "#D63D0B" : "var(--hrx-muted)" }}>
                     {caption.length}/{cap.n} · {cap.who} is the tightest
                   </span>
                 )}
               </span>
-              <textarea ref={field} rows={4} value={caption} onChange={(e) => setCaption(e.target.value)}
+              <textarea ref={field} rows={6} value={caption}
+                        onChange={(e) => { setCaption(e.target.value); if (why) setWhy(""); }}
                         placeholder="What the post says. The picture is the design." />
+              {why && <em style={{ color: "var(--hrx-muted)" }}>{why}</em>}
               {limits && picked.length > 0 && (
                 <em>
                   {usable.filter((a) => picked.includes(a.id))

@@ -110,6 +110,43 @@ export const scheduleSocialPost = (
   p: { designId?: string; mediaUrl: string; caption: string; scheduledAt: string; accountIds: string[] },
 ) => call<{ id: string; at: string }>(orgId, "schedule", p);
 
+/**
+ * Write the caption and the hashtags for a design.
+ *
+ * Its own function rather than another `social-schedule` action, because it is
+ * the only thing here that spends the model budget — so it is metered, and a
+ * failure to write copy must never look like a failure to schedule.
+ *
+ * `platforms` steers the craft: the rules genuinely differ, and a caption
+ * written for Instagram and posted to X is a caption that gets refused for
+ * length. `steer` is the owner saying what this particular post is for.
+ */
+export async function writeSocialCaption(
+  orgId: string,
+  p: { designId: string; platforms: SocialPlatform[]; steer?: string },
+): Promise<{
+  data: { caption: string; hashtags: string[]; hook: string; why: string; cap: number; full: string } | null;
+  error: string | null;
+}> {
+  try {
+    const { data, error } = await supabase.functions.invoke("social-caption", {
+      body: { orgId, ...p },
+    });
+    if (error) {
+      let msg = error.message;
+      try {
+        const ctx = await (error as { context?: Response }).context?.json?.();
+        if (ctx?.error) msg = ctx.error;
+      } catch { /* keep the transport's message */ }
+      return { data: null, error: friendlyError(msg) };
+    }
+    if (data?.error) return { data: null, error: String(data.error) };
+    return { data, error: null };
+  } catch (e) {
+    return { data: null, error: friendlyError(String((e as Error)?.message ?? e)) };
+  }
+}
+
 export const cancelSocialPost = (orgId: string, id: string) => call<{ ok: true }>(orgId, "cancel", { id });
 export const retrySocialPost = (orgId: string, id: string) => call<{ ok: true }>(orgId, "retry", { id });
 export const disconnectSocialAccount = (orgId: string, id: string) => call<{ ok: true }>(orgId, "disconnect", { id });
