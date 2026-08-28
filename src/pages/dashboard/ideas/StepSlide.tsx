@@ -1,5 +1,7 @@
 import { imageForStage } from "@/lib/ideas/imagery";
 import { getStep, stepIndex, TOTAL_STEPS, type IdeaStep } from "@/lib/ideas/steps";
+import { arr, list, num, obj, str, type Json } from "@/lib/safeJson";
+import { StageShot as Shot, type StageImage } from "@/components/StageShot";
 
 /**
  * A step's output, rendered as a slide.
@@ -22,16 +24,10 @@ import { getStep, stepIndex, TOTAL_STEPS, type IdeaStep } from "@/lib/ideas/step
  * because the data was thin is honest; one padded with empty scaffolding is not.
  */
 
-type Json = Record<string, unknown>;
-
-const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
-const arr = (v: unknown): Json[] => (Array.isArray(v) ? (v as Json[]) : []);
-const obj = (v: unknown): Json => (v && typeof v === "object" && !Array.isArray(v) ? (v as Json) : {});
-const list = (v: unknown): string[] => (Array.isArray(v) ? v.map(str).filter(Boolean) : []);
-const num = (v: unknown): number | null => {
-  const n = typeof v === "number" ? v : parseFloat(str(v));
-  return Number.isFinite(n) ? n : null;
-};
+/* The five coercions this file is built on — str/arr/obj/list/num — now live in
+   src/lib/safeJson.ts, shared with the business dossier's slides. They are the
+   degradation contract rather than convenience helpers, and one drifting copy
+   would put the word "undefined" on a slide someone is deciding money on. */
 
 /**
  * Severity/strength words → a three-bar meter.
@@ -117,38 +113,10 @@ const Stat = ({ k, n, note, dark, children }: {
   );
 };
 
-/** What idea-run stored for this stage after searching Pexels. */
-export type StageImage = {
-  url?: string;
-  alt?: string;
-  photographer?: string;
-  photographerUrl?: string;
-};
-
-/**
- * The stage photograph.
- *
- * `image` is the real one, searched against the stage's own subject and stored
- * on the idea; `fallback` is the curated set, used when the search has not run
- * or found nothing.
- *
- * The credit is not decoration. Pexels licenses on the condition the
- * photographer is named wherever the photo appears, so it renders from the same
- * object as the URL — a slide cannot show the picture and forget the credit,
- * because there is no path that passes one without the other.
- */
-const Shot = ({ image, fallback, tall }: { image: StageImage; fallback: string; tall?: boolean }) => (
-  <figure className={`idv-shot-wrap${tall ? " idv-shot-wrap--tall" : ""} mb-0`}>
-    <img className={`idv-shot${tall ? " idv-shot--tall" : ""}`}
-         src={image.url || fallback} alt={image.alt ?? ""}
-         width={720} height={tall ? 340 : 280} loading="lazy" />
-    {image.url && image.photographer && (
-      <a className="idv-shot__credit" href={image.photographerUrl} target="_blank" rel="noopener noreferrer">
-        {image.photographer} / Pexels
-      </a>
-    )}
-  </figure>
-);
+/* The stage photograph and its Pexels credit come from @/components/StageShot,
+   imported above as `Shot`. It renders the credit out of the same object as the
+   URL, so there is no code path that shows the picture without the attribution
+   the licence requires — which is why there is one of it rather than two. */
 
 const Bullets = ({ items }: { items: string[] }) => (
   <ul className="idv-list">{items.map((b, i) => <li key={i}>{b}</li>)}</ul>

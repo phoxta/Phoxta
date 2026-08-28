@@ -73,6 +73,7 @@ const ChannelsPage = lazy(() => import("@/pages/dashboard/ops/engage/ChannelsPag
 const InsightsPage = lazy(() => import("@/pages/dashboard/ops/engage/InsightsPage"));
 const OpsHelpCenterPage = lazy(() => import("@/pages/dashboard/ops/HelpCenterPage"));
 const OpsDesignsPage = lazy(() => import("@/pages/dashboard/ops/DesignsPage"));
+const OpsDossierPage = lazy(() => import("@/pages/dashboard/ops/DossierPage"));
 const OpsInboxPage = lazy(() => import("@/pages/dashboard/ops/agent/InboxPage"));
 const OpsSettingsPage = lazy(() => import("@/pages/dashboard/ops/SettingsPage"));
 const OpsPlatformPage = lazy(() => import("@/pages/dashboard/ops/PlatformPage"));
@@ -170,6 +171,13 @@ export default function App() {
             <Route path="marketing" element={<KeepSearch to="../engage/broadcasts" />} />
             {/* Public knowledge base — published articles appear at /help/:org. */}
             <Route path="help-center" element={<OpsHelpCenterPage />} />
+            {/* The Playbook — the blueprint's dossier (industry, competition,
+                strategy, launch, pricing, financials, operations, sourcing,
+                risk and the legal checklist), shared by every business built
+                from that blueprint until its owner asks for their own version.
+                One route: the sections are tabs within the page, not URLs, so
+                the reader keeps their place while a run advances behind them. */}
+            <Route path="dossier" element={<OpsDossierPage />} />
             {/* The graphics studio — social posts from the agency template pack. */}
             <Route path="designs" element={<OpsDesignsPage />} />
             <Route path="settings" element={<OpsSettingsPage />} />

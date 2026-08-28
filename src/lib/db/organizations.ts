@@ -21,12 +21,21 @@ export type Organization = {
   provisioned_at?: string | null;
   /** ISO currency for every money surface in this business's console. */
   currency?: string;
+  /** Address, phone, hours, map query — whatever the owner filled in under
+   *  Settings. The Playbook prefills its location question from it rather than
+   *  asking for something this console already knows. */
+  profile?: { address?: string; phone?: string; email?: string; mapQuery?: string } | null;
 };
 
 export type Member = { user_id: string; role: "owner" | "admin" | "staff" | "viewer"; created_at: string };
 
+// `blueprint_id` and `profile` were declared on the type and selected by
+// listMyOrganizations, but were missing here — so every console page reading
+// OpsContext.org saw them as undefined. The Playbook needs both: the blueprint
+// id is what resolves which dossier a business reads, and the profile is what
+// stops it asking for an address the owner already gave Settings.
 const ORG_SELECT =
-  "id, name, slug, stage, vertical, primary_region, created_at, lifecycle_stage, app_path, site_url, provisioned_at, currency";
+  "id, name, slug, stage, vertical, blueprint_id, primary_region, created_at, lifecycle_stage, app_path, site_url, provisioned_at, currency, profile";
 
 /** A single business the user can access (RLS scopes to members). */
 export async function getBusiness(id: string): Promise<{ data: Organization | null; error: string | null }> {

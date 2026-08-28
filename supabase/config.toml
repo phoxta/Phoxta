@@ -130,6 +130,18 @@ verify_jwt = true
 [functions.idea-validate]
 verify_jwt = false
 
+# Generates one section of a business dossier. Signed-in only — it spends model
+# tokens. Which dossier it may write is decided inside: the shared blueprint one
+# takes a platform_admins check, an owner's own version takes org membership at
+# admin level.
+[functions.dossier-run]
+verify_jwt = true
+
+# Fills in the photograph for dossier sections whose Pexels search found nothing
+# on the day. Signed-in only: it spends the Pexels quota.
+[functions.dossier-image]
+verify_jwt = true
+
 # Provider webhooks — authenticated by the provider's own signature header.
 [functions.stripe-webhook]
 verify_jwt = false

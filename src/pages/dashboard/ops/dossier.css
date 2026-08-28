@@ -1,0 +1,763 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inconsolata:wght@400&display=swap");
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Business dossier  (.bdx-*)
+   ───────────────────────────────────────────────────────────────────────
+   TWO DESIGN SYSTEMS, ONE PAGE, AND THE LINE BETWEEN THEM
+
+   The console wears hrx — Figtree, pill buttons, bordered cards, the tokens
+   in src/styles/dashboard-theme.css. The dossier's SLIDES wear the Webflow
+   system the Idea Validator's slides wear, because the owner asked for this
+   to read like that page and because the shape fits: nine sections is nine
+   category cards.
+
+   So the chrome on this page (the rail, the progress bar, the buttons, the
+   question dialog) is hrx, and everything inside `.bdx-slide` is Webflow.
+   Every Webflow token is declared ON `.bdx-slide` and nowhere else, which is
+   what stops it leaking into the rest of the console: a design system applied
+   to one surface has to stop at that surface's edge or it has leaked rather
+   than been applied.
+
+   WHY THIS IS A COPY OF ideas.css AND NOT AN IMPORT OF IT
+
+   src/pages/dashboard/ideas.css is the source of truth for the token values
+   below; they are carried over verbatim so the two surfaces stay identical by
+   construction. It is not shared, because a stylesheet two pages both edit is
+   how one page's tweak silently breaks the other, and because three of its
+   rules must NOT come along: the `.idv-step .idv-slide` bleed (it assumes a
+   parent card that does not exist here), the sticky `.idv-rail` (the console
+   has exactly one pinned element and it is the shell's top nav), and the
+   `.idv-tab*` block (it is built on main.css's marketing tokens). If a third
+   slide surface ever appears, extract the token block then — not before.
+
+   THE CONTRAST ADAPTATION, carried over with the tokens. The system specifies
+   white on purple, pink, blue and orange. That works at 32px display sizes;
+   ours carry 14px lists where the bar is 4.5:1, and white measures 3.15 on
+   pink, 3.38 on blue and 2.86 on orange. Each fill is paired with whichever of
+   ink or white actually measures. Purple keeps white (5.33). Any new accent
+   fill must be measured the same way.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.bdx-slide {
+  /* ── Colour ── */
+  --wf-canvas: #ffffff;
+  --wf-primary: #080808;
+  --wf-on-primary: #ffffff;
+  --wf-ink: #080808;
+  --wf-body: #363636;
+  --wf-body-mid: #5a5a5a;
+  --wf-mute: #898989;
+  --wf-mute-soft: #ababab;
+  --wf-hairline: #d8d8d8;
+
+  --wf-purple: #7a3dff;
+  --wf-pink: #ed52cb;
+  --wf-blue: #3b89ff;
+  --wf-blue-info: #146ef5;
+  --wf-orange: #ff6b00;
+  --wf-green: #00d722;
+  --wf-yellow: #ffae13;
+  --wf-red: #ee1d36;
+
+  /* ── Type ── */
+  --wf-font: "WF Visual Sans Variable", "Inter", system-ui, -apple-system, sans-serif;
+  --wf-mono: "WFVisualSans-Mono", "Inconsolata", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ── Shape ── */
+  --wf-r-sm: 4px;   /* buttons — never a pill */
+  --wf-r-md: 8px;   /* cards */
+
+  /* Level 2: five stops at very low individual opacity. Featured cards only. */
+  --wf-lift:
+    0 84px 24px rgba(0, 0, 0, 0),
+    0 54px 22px rgba(0, 0, 0, 0.01),
+    0 30px 18px rgba(0, 0, 0, 0.04),
+    0 13px 13px rgba(0, 0, 0, 0.08),
+    0 3px 7px rgba(0, 0, 0, 0.09);
+
+  background: var(--wf-canvas);
+  color: var(--wf-ink);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--hrx-border-soft, #ededed);
+}
+
+/* dashboard-theme.css sets Figtree on every element inside `.hrx` with
+   `.hrx :is(h1, h2, …)`, which outranks a bare `.bdx-display-md`. Without this
+   the slide would silently render in the console's typeface and stop being the
+   thing it was carried over to be. Specificity 0,2,1 beats it outright rather
+   than relying on which stylesheet the bundler happens to emit second. */
+.bdx-slide,
+.bdx-slide :is(h1, h2, h3, h4, h5, h6, p, a, span, li, td, th, div, button),
+.hrx .bdx-slide,
+.hrx .bdx-slide :is(h1, h2, h3, h4, h5, h6, p, a, span, li, td, th, div, button) {
+  font-family: var(--wf-font);
+}
+
+/* ── Display type ────────────────────────────────────────────────────────
+   Weight ceiling 600, floor 400 — never heavier than semibold, never lighter
+   than regular. Negative tracking only at the top of the scale. */
+
+.bdx-display-xl,
+.bdx-display-md,
+.bdx-display-sm {
+  color: var(--wf-ink);
+  margin: 0;
+}
+
+.bdx-display-xl { font-size: 48px; font-weight: 600; line-height: 1.06; letter-spacing: -0.7px; }
+.bdx-display-md { font-size: 30px; font-weight: 500; line-height: 1.3; letter-spacing: -0.3px; }
+.bdx-display-sm { font-size: 22px; font-weight: 500; line-height: 1.3; }
+
+@media (max-width: 991.98px) {
+  .bdx-display-xl { font-size: 36px; letter-spacing: -0.45px; }
+  .bdx-display-md { font-size: 25px; }
+}
+
+@media (max-width: 575.98px) {
+  .bdx-display-xl { font-size: 30px; }
+  .bdx-display-md { font-size: 21px; }
+}
+
+/* ── Body type ── */
+.bdx-body-md { font-size: 16px; font-weight: 400; line-height: 1.6; letter-spacing: -0.16px; color: var(--wf-body); }
+.bdx-body-sm { font-size: 14px; font-weight: 400; line-height: 1.6; color: var(--wf-body); }
+.bdx-title-md { font-size: 19px; font-weight: 500; line-height: 1.4; color: var(--wf-ink); }
+.bdx-title-sm { font-size: 16px; font-weight: 500; line-height: 1.55; letter-spacing: -0.16px; color: var(--wf-ink); }
+.bdx-caption { font-size: 12.8px; font-weight: 550; line-height: 1.35; color: var(--wf-body-mid); }
+.bdx-mono { font-family: var(--wf-mono); font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--wf-body-mid); }
+
+/* ── Badges — 4px, not a pill ── */
+.bdx-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--wf-r-sm);
+  padding: 4px 8px;
+  font-size: 12.8px;
+  font-weight: 550;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: var(--wf-blue-info);
+  color: var(--wf-on-primary);
+}
+
+.bdx-badge--good { background: var(--wf-green); color: var(--wf-primary); }
+.bdx-badge--warn { background: var(--wf-red); color: var(--wf-on-primary); }
+.bdx-badge--ink { background: var(--wf-primary); color: var(--wf-on-primary); }
+.bdx-badge--soft { background: transparent; color: var(--wf-body-mid); box-shadow: inset 0 0 0 1px var(--wf-hairline); }
+.bdx-badge--onfill { background: rgba(255, 255, 255, 0.24); color: #fff; }
+
+/* ── Section head: the category card ─────────────────────────────────────
+   Full-saturation accent fill, display type on top of it, no image behind the
+   words — the photograph sits on the canvas below, so nothing needs a scrim. */
+
+.bdx-hero {
+  padding: 44px 40px;
+  background: var(--wf-cat, var(--wf-primary));
+  color: var(--wf-on-cat, var(--wf-on-primary));
+}
+
+.bdx-hero .bdx-display-xl { color: inherit; }
+.bdx-hero__lede { color: var(--wf-on-cat-soft); max-width: 54ch; }
+
+.bdx-slide[data-cat="purple"] { --wf-cat: var(--wf-purple); --wf-on-cat: #ffffff; --wf-on-cat-soft: rgba(255, 255, 255, 0.78); }
+.bdx-slide[data-cat="pink"]   { --wf-cat: var(--wf-pink);   --wf-on-cat: var(--wf-primary); --wf-on-cat-soft: rgba(8, 8, 8, 0.72); }
+.bdx-slide[data-cat="blue"]   { --wf-cat: var(--wf-blue);   --wf-on-cat: var(--wf-primary); --wf-on-cat-soft: rgba(8, 8, 8, 0.72); }
+.bdx-slide[data-cat="orange"] { --wf-cat: var(--wf-orange); --wf-on-cat: var(--wf-primary); --wf-on-cat-soft: rgba(8, 8, 8, 0.72); }
+.bdx-slide[data-cat="green"]  { --wf-cat: var(--wf-green);  --wf-on-cat: var(--wf-primary); --wf-on-cat-soft: rgba(8, 8, 8, 0.7); }
+
+.bdx-slide[data-cat="pink"] .bdx-badge--onfill,
+.bdx-slide[data-cat="blue"] .bdx-badge--onfill,
+.bdx-slide[data-cat="orange"] .bdx-badge--onfill,
+.bdx-slide[data-cat="green"] .bdx-badge--onfill {
+  background: rgba(8, 8, 8, 0.14);
+  color: var(--wf-primary);
+}
+
+/* ── The standing disclosure ─────────────────────────────────────────────
+   It sits INSIDE the section head, on the accent fill, because that is where
+   the reader is looking before they reach the first number. A rule about
+   honesty printed in a footer is a rule nobody reads. */
+
+.bdx-note {
+  display: block;
+  margin-top: 22px;
+  padding: 12px 14px;
+  border-radius: var(--wf-r-md);
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  max-width: 70ch;
+}
+
+.bdx-slide[data-cat="pink"] .bdx-note,
+.bdx-slide[data-cat="blue"] .bdx-note,
+.bdx-slide[data-cat="orange"] .bdx-note,
+.bdx-slide[data-cat="green"] .bdx-note { background: rgba(8, 8, 8, 0.1); }
+
+.bdx-note b { font-weight: 600; }
+
+@media (max-width: 767.98px) { .bdx-hero { padding: 30px 22px; } }
+
+/* ── Body ── */
+.bdx-body { padding: 32px; background: var(--wf-canvas); }
+.bdx-body > *:last-child { margin-bottom: 0; }
+
+@media (max-width: 767.98px) { .bdx-body { padding: 22px; } }
+
+/* ── Section opener ── */
+.bdx-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--wf-hairline);
+  padding-top: 20px;
+  margin: 0 0 20px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--wf-mute);
+}
+
+/* The section's own accent as a 4px tick — the only place an accent appears
+   outside a fill. Small enough to mark, not large enough to read as a second
+   brand colour. */
+.bdx-head::before {
+  content: "";
+  width: 12px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--wf-cat, var(--wf-primary));
+  flex: none;
+}
+
+/* ── Photography ── */
+.bdx-shot-wrap { position: relative; display: block; }
+.bdx-shot { border-radius: var(--wf-r-md); width: 100%; height: 280px; object-fit: cover; display: block; }
+.bdx-shot--tall { height: 340px; }
+
+/* Pexels licenses on the condition the photographer is credited wherever the
+   photograph appears, so this is a licence term rendered, not a caption. */
+.bdx-shot__credit {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  font-family: var(--wf-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(8, 8, 8, 0.62);
+  border-radius: var(--wf-r-sm);
+  padding: 5px 8px;
+  text-decoration: none;
+}
+
+.bdx-shot__credit:hover { background: rgba(8, 8, 8, 0.85); color: #fff; }
+
+/* ── Cards ── */
+.bdx-tile {
+  background: var(--wf-canvas);
+  border: 1px solid var(--wf-hairline);
+  border-radius: var(--wf-r-md);
+  padding: 22px;
+}
+
+.bdx-tile--lift { box-shadow: var(--wf-lift); border-color: transparent; }
+
+/* ── Figures without an estimate behind them (counts, names, verdicts) ── */
+.bdx-stat {
+  background: var(--wf-canvas);
+  border: 1px solid var(--wf-hairline);
+  border-radius: var(--wf-r-md);
+  padding: 22px;
+}
+
+.bdx-stat__k,
+.bdx-fig__k {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--wf-mute);
+  margin-bottom: 10px;
+}
+
+/* A STAT MUST NEVER OUTSHOUT A FIGURE, and it used to.
+   `Figure` is a number that carries its range, its basis and its assumptions —
+   everything a reader needs to judge it. `Stat` is a bare number with none of
+   that. At 40px against Figure's 34px the unsupported one was the loudest thing
+   on the slide, which taught the eye to trust exactly the wrong number: the page
+   argued for caution in words while its own typography argued against it.
+   Smaller, lighter, and in the muted ink — a Stat is a detail, not a headline. */
+.bdx-stat__n {
+  display: block;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.3px;
+  color: var(--wf-ink);
+}
+
+.bdx-stat__n--sm { font-size: 28px; font-weight: 500; letter-spacing: -0.28px; line-height: 1.24; }
+.bdx-stat__n--xs { font-size: 19px; font-weight: 500; letter-spacing: -0.19px; line-height: 1.45; }
+
+/* Polarity flip — how this system marks its featured surface. */
+.bdx-stat--dark,
+.bdx-fig--dark {
+  background: var(--wf-primary);
+  border-color: var(--wf-primary);
+  box-shadow: var(--wf-lift);
+}
+.bdx-stat--dark .bdx-stat__k,
+.bdx-fig--dark .bdx-fig__k { color: rgba(255, 255, 255, 0.6); }
+.bdx-stat--dark .bdx-stat__n,
+.bdx-fig--dark .bdx-fig__n { color: var(--wf-on-primary); }
+.bdx-stat--dark .bdx-body-sm,
+.bdx-stat--dark .bdx-caption,
+.bdx-fig--dark .bdx-fig__basis,
+.bdx-fig--dark .bdx-caption { color: rgba(255, 255, 255, 0.74); }
+.bdx-fig--dark .bdx-fig__unit { color: rgba(255, 255, 255, 0.6); }
+.bdx-fig--dark .bdx-list li { color: rgba(255, 255, 255, 0.74); }
+.bdx-fig--dark .bdx-list li::before { background: rgba(255, 255, 255, 0.45); }
+.bdx-fig--dark .bdx-fig__conf { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+/* ── The estimate card ───────────────────────────────────────────────────
+   The one component this page has that the Idea Validator does not, and the
+   reason the whole feature can be honest: a range, then the sentence it came
+   from, then the assumptions, in that order and at those sizes. The reasoning
+   is not a footnote under the number — it is most of the card, because it is
+   most of what the number is worth.
+
+   `.bdx-fig__n` steps down as the range lengthens. "£38 – £52" wants to be the
+   biggest thing in the card; a two-line range set at 40px is not a figure, it
+   is shouting. */
+
+.bdx-fig {
+  background: var(--wf-canvas);
+  border: 1px solid var(--wf-hairline);
+  border-radius: var(--wf-r-md);
+  padding: 22px;
+}
+
+.bdx-fig__n {
+  display: block;
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.34px;
+  color: var(--wf-ink);
+}
+
+/* Inside a tier card or a tile that already has its own border — the reasoning
+   still renders, the second box around it does not. */
+.bdx-fig--bare { background: transparent; border: 0; padding: 0; box-shadow: none; }
+
+.bdx-fig__n--sm { font-size: 25px; letter-spacing: -0.25px; }
+.bdx-fig__n--xs { font-size: 19px; font-weight: 500; letter-spacing: -0.19px; line-height: 1.4; }
+
+.bdx-fig__unit {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--wf-mute);
+}
+
+.bdx-fig__basis {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--wf-body);
+}
+
+.bdx-fig__ass { margin-top: 12px; }
+
+.bdx-fig__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.bdx-fig__conf {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--wf-r-sm);
+  padding: 3px 7px;
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  background: #f1f1f1;
+  color: var(--wf-body-mid);
+}
+
+.bdx-fig__conf[data-c="low"] { background: rgba(238, 29, 54, 0.1); color: #b3162a; }
+.bdx-fig__conf[data-c="medium"] { background: rgba(255, 174, 19, 0.16); color: #8a5c00; }
+.bdx-fig__conf[data-c="high"] { background: rgba(0, 215, 34, 0.14); color: #0a6b18; }
+
+.bdx-fig__srcs { margin: 10px 0 0; padding: 0; list-style: none; }
+.bdx-fig__srcs li { font-size: 12.8px; line-height: 1.5; }
+
+/* ── The funnel: three estimates, each narrower than the last ──────────── */
+.bdx-funnel { display: flex; flex-direction: column; gap: 8px; }
+
+.bdx-funnel__row {
+  border-radius: var(--wf-r-md);
+  padding: 18px 22px;
+  min-width: 0;
+}
+
+.bdx-funnel__row:nth-child(1) { width: 100%; background: var(--wf-primary); color: var(--wf-on-primary); }
+.bdx-funnel__row:nth-child(2) { width: 80%; background: #3a3a3a; color: var(--wf-on-primary); }
+.bdx-funnel__row:nth-child(3) { width: 60%; background: #3a3a3a; color: var(--wf-on-primary); }
+
+/* The narrowest, reachable slice takes the section's own accent — a surface
+   fill, which is what the accents are for. Keyed off :last-child rather than
+   :nth-child(3) so a funnel with only two honestly-justified estimates still
+   ends in the accent instead of trailing off into grey. */
+.bdx-funnel__row:last-child:not(:first-child) {
+  background: var(--wf-cat, var(--wf-blue));
+  color: var(--wf-on-cat, var(--wf-on-primary));
+}
+
+.bdx-funnel__k { font-size: 12px; font-weight: 500; letter-spacing: 0.6px; text-transform: uppercase; opacity: 0.66; }
+.bdx-funnel__v { font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -0.28px; }
+.bdx-funnel__b { font-size: 13.5px; line-height: 1.5; opacity: 0.82; }
+.bdx-funnel__a { font-size: 12.5px; line-height: 1.5; opacity: 0.7; }
+
+@media (max-width: 767.98px) {
+  .bdx-funnel__row:nth-child(2),
+  .bdx-funnel__row:nth-child(3) { width: 100%; }
+}
+
+/* ── Meter ───────────────────────────────────────────────────────────────
+   Low/medium/high as three bars. `scale` flips the palette, because three bars
+   of risk is bad news and three bars of demand is good — same widget, opposite
+   meaning, so the colour is what gets read rather than the count. */
+
+.bdx-meter { display: inline-flex; gap: 3px; vertical-align: middle; }
+.bdx-meter i { width: 16px; height: 4px; border-radius: 2px; background: var(--wf-hairline); display: inline-block; }
+.bdx-meter i.on-low { background: var(--wf-green); }
+.bdx-meter i.on-med { background: var(--wf-yellow); }
+.bdx-meter i.on-high { background: var(--wf-red); }
+.bdx-meter i.on-good { background: var(--wf-green); }
+.bdx-meter i.on-weak { background: var(--wf-red); }
+
+.bdx-meter__row { display: flex; align-items: center; gap: 10px; }
+.bdx-meter__row span { font-size: 12px; letter-spacing: 0.4px; text-transform: uppercase; color: var(--wf-mute); }
+
+/* ── Pricing tiers ── */
+.bdx-tier {
+  background: var(--wf-canvas);
+  border: 1px solid var(--wf-hairline);
+  border-radius: var(--wf-r-md);
+  padding: 26px;
+}
+
+.bdx-tier--featured {
+  background: var(--wf-primary);
+  border-color: var(--wf-primary);
+  color: var(--wf-on-primary);
+  box-shadow: var(--wf-lift);
+}
+.bdx-tier--featured .bdx-stat__k,
+.bdx-tier--featured .bdx-fig__k { color: rgba(255, 255, 255, 0.6); }
+.bdx-tier--featured .bdx-fig__n { color: var(--wf-on-primary); }
+.bdx-tier--featured .bdx-body-sm,
+.bdx-tier--featured .bdx-fig__basis,
+.bdx-tier--featured .bdx-caption { color: rgba(255, 255, 255, 0.74); }
+.bdx-tier--featured .bdx-fig__unit { color: rgba(255, 255, 255, 0.6); }
+.bdx-tier--featured .bdx-list li { color: rgba(255, 255, 255, 0.74); }
+.bdx-tier--featured .bdx-list li::before { background: rgba(255, 255, 255, 0.45); }
+.bdx-tier--featured .bdx-fig__conf { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+/* ── Timeline ── */
+.bdx-timeline { position: relative; padding-left: 28px; }
+.bdx-timeline::before {
+  content: "";
+  position: absolute;
+  left: 3px; top: 9px; bottom: 9px;
+  width: 1px;
+  background: var(--wf-hairline);
+}
+.bdx-timeline__item { position: relative; padding-bottom: 22px; }
+.bdx-timeline__item:last-child { padding-bottom: 0; }
+.bdx-timeline__item::before {
+  content: "";
+  position: absolute;
+  left: -28px; top: 6px;
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  background: var(--wf-cat, var(--wf-primary));
+}
+
+/* ── Table ── */
+.bdx-slide .table { --bs-table-color: var(--wf-ink); color: var(--wf-ink); margin-bottom: 0; }
+.bdx-slide .table th {
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--wf-body-mid);
+  border-bottom-color: var(--wf-hairline);
+}
+.bdx-slide .table td { border-color: var(--wf-hairline); font-size: 14px; line-height: 1.6; vertical-align: top; }
+.bdx-slide .table td.bdx-num { font-weight: 500; letter-spacing: -0.16px; white-space: nowrap; }
+
+/* ── Lists ── */
+.bdx-slide ul.bdx-list { list-style: none; padding: 0; margin: 0; }
+.bdx-slide ul.bdx-list li {
+  position: relative;
+  padding-left: 18px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--wf-body);
+}
+.bdx-slide ul.bdx-list li:last-child { margin-bottom: 0; }
+.bdx-slide ul.bdx-list li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 9px;
+  width: 5px; height: 5px;
+  border-radius: 1px;
+  background: var(--wf-mute-soft);
+}
+
+/* A numbered variant, for the lists that are a sequence rather than a set. */
+.bdx-slide ol.bdx-list { list-style: none; padding: 0; margin: 0; counter-reset: bdx; }
+.bdx-slide ol.bdx-list li {
+  position: relative;
+  counter-increment: bdx;
+  padding-left: 30px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--wf-body);
+}
+.bdx-slide ol.bdx-list li::before {
+  content: counter(bdx, decimal-leading-zero);
+  position: absolute;
+  left: 0; top: 1px;
+  font-family: var(--wf-mono);
+  font-size: 12px;
+  color: var(--wf-mute);
+}
+
+/* Equal-height cards, but only inside a grid column. A percentage height
+   resolves against a stretched flex item, which a Bootstrap column is — outside
+   one there is nothing to resolve against and the card grows to fill the
+   viewport. So the rule is scoped to where it means something. */
+.bdx-slide .row > [class*="col"] > .bdx-stat,
+.bdx-slide .row > [class*="col"] > .bdx-fig,
+.bdx-slide .row > [class*="col"] > .bdx-tile,
+.bdx-slide .row > [class*="col"] > .bdx-tier {
+  height: 100%;
+}
+
+/* ── The legal checklist ─────────────────────────────────────────────────
+   Deliberately not a slide full of confident cards. It is a list of things to
+   go and check, so it looks like one. */
+
+.bdx-check { border-top: 1px solid var(--wf-hairline); }
+.bdx-check__item { padding: 20px 0; border-bottom: 1px solid var(--wf-hairline); }
+.bdx-check__item:last-child { border-bottom: 0; }
+.bdx-check__where { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.bdx-check__where a { color: var(--wf-blue-info); text-decoration: underline; font-size: 13.5px; }
+.bdx-check__where a:hover { color: var(--wf-primary); }
+
+/* The group the platform will not write. Marked as a refusal, not as a to-do. */
+.bdx-refuse {
+  border: 1px solid var(--wf-primary);
+  border-radius: var(--wf-r-md);
+  padding: 22px;
+  margin-top: 8px;
+}
+.bdx-refuse .bdx-check { border-top: 0; }
+.bdx-refuse .bdx-check__item:first-child { padding-top: 8px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Page chrome — hrx, not Webflow
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* The rail is NOT sticky. The console has exactly one pinned element and it is
+   the shell's top nav; a second one is what the house rule exists to prevent. */
+.bdx-rail { min-width: 0; }
+
+.bdx-rail__card {
+  background: var(--hrx-card, #fff);
+  border: 1px solid var(--hrx-border-soft, #ededed);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.bdx-bar { display: flex; gap: 3px; }
+.bdx-bar__group { display: flex; gap: 2px; flex: 1 1 0; }
+
+.bdx-seg {
+  height: 6px;
+  flex: 1 1 0;
+  border-radius: 999px;
+  background: #e7e9ec;
+  transition: background-color 0.2s ease;
+}
+
+.bdx-seg--done { background: var(--hrx-blue, #195ce5); }
+.bdx-seg--mine { background: var(--hrx-orange, #fe5f2b); }
+
+.bdx-seg--current { opacity: 0.45; animation: bdxPulse 1.6s ease-in-out infinite; }
+
+@keyframes bdxPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bdx-seg--current { animation: none; }
+}
+
+.bdx-tabs__group {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hrx-muted, #6b7280);
+  margin: 14px 0 6px 10px;
+}
+
+.bdx-tabs > div:first-child .bdx-tabs__group { margin-top: 0; }
+
+.bdx-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  color: var(--hrx-ink, #272727);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.bdx-tab:hover { background: var(--hrx-soft, #f9fbfc); }
+
+.bdx-tab--on,
+.bdx-tab--on:hover { background: var(--hrx-ink, #272727); color: #fff; }
+
+.bdx-tab__dot { width: 8px; height: 8px; flex: none; border-radius: 999px; background: #dfe2e6; }
+.bdx-tab__dot.is-done { background: var(--hrx-blue, #195ce5); }
+.bdx-tab__dot.is-mine { background: var(--hrx-orange, #fe5f2b); }
+.bdx-tab__dot.is-running { background: var(--hrx-orange, #fe5f2b); animation: bdxPulse 1.6s ease-in-out infinite; }
+.bdx-tab__dot.is-static { background: #b6bcc4; }
+
+.bdx-tab__n {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+  flex: none;
+}
+
+.bdx-tab__name {
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The source switch: whose version is on screen. Two states, always both
+   visible, because a reader has to be able to see that the other one exists. */
+.bdx-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--hrx-soft, #f9fbfc);
+  border: 1px solid var(--hrx-border-soft, #ededed);
+}
+
+.bdx-switch button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hrx-muted, #6b7280);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bdx-switch button[aria-pressed="true"] { background: var(--hrx-ink, #272727); color: #fff; }
+.bdx-switch button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* The banner that says which version is being read. It is not a toast: it stays
+   there for as long as the global dossier is what is on screen, because "you
+   are reading the shared picture" is a fact about the page, not an event. */
+.bdx-source {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--hrx-border-soft, #ededed);
+  background: var(--hrx-soft, #f9fbfc);
+  margin-bottom: 14px;
+}
+
+.bdx-source--mine { border-color: #ffd8c9; background: #fff6f2; }
+.bdx-source__txt { flex: 1 1 320px; min-width: 0; font-size: 13.5px; line-height: 1.55; color: var(--hrx-ink, #272727); }
+.bdx-source__txt b { font-weight: 600; }
+
+/* ── The six questions ───────────────────────────────────────────────── */
+.bdx-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  background: rgba(8, 8, 8, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4vh 16px;
+  overflow: auto;
+}
+
+.bdx-dlg {
+  width: min(640px, 100%);
+  background: #fff;
+  border-radius: 18px;
+  padding: 26px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+}
+
+.bdx-dlg h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 6px; }
+.bdx-dlg__lede { font-size: 14px; line-height: 1.6; color: var(--hrx-muted, #6b7280); margin: 0 0 18px; }
+.bdx-dlg__q { display: block; margin-bottom: 16px; }
+.bdx-dlg__q > span { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
+.bdx-dlg__q > small { display: block; font-size: 12.5px; color: var(--hrx-muted, #6b7280); margin-bottom: 6px; }
+.bdx-dlg__foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+
+/* The shared pill has no disabled state of its own, and a button that is off
+   but looks on is a button people press twice. */
+.bdx-source .hrx-pill:disabled,
+.bdx-rail__card .hrx-pill:disabled,
+.bdx-dlg .hrx-pill:disabled { opacity: 0.45; cursor: not-allowed; }
+.bdx-source .hrx-pill:disabled:hover,
+.bdx-rail__card .hrx-pill:disabled:hover,
+.bdx-dlg .hrx-pill:disabled:hover { background: rgba(255, 255, 255, 0.85); color: var(--hrx-ink, #272727); }
+.bdx-dlg .hrx-pill.dark:disabled:hover { background: var(--hrx-ink, #272727); color: #fff; }
