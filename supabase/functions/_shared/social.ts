@@ -402,6 +402,85 @@ async function tiktok(a: SocialAccount, caption: string, media: string): Promise
   }
 }
 
+/**
+ * How a published post is doing.
+ *
+ * ONE SHAPE FOR FOUR PLATFORMS, and null where a platform will not say. Null is
+ * not zero: "nobody liked it" and "we are not allowed to know" are different
+ * facts about a business's post, and collapsing them into 0 tells the owner
+ * something false about their own work.
+ *
+ * TikTok is the honest null here. Reading a video's stats needs the video.list
+ * scope, which this app has not asked for and has no approved reason to hold,
+ * so it reports nothing rather than guessing.
+ */
+export type Insights = { likes: number | null; comments: number | null; permalink?: string };
+
+export async function insights(a: SocialAccount, externalId: string): Promise<Insights | null> {
+  if (!externalId || !a.access_token) return null;
+  try {
+    if (a.platform === "instagram") {
+      // Business and Creator accounts only — which is what publishing already
+      // requires, so anything that reached here qualifies.
+      const res = await fetch(
+        `https://graph.instagram.com/v21.0/${externalId}` +
+        `?fields=like_count,comments_count,permalink&access_token=${encodeURIComponent(a.access_token)}`,
+      );
+      if (!res.ok) return null;
+      const d = await res.json();
+      return {
+        likes: typeof d?.like_count === "number" ? d.like_count : null,
+        comments: typeof d?.comments_count === "number" ? d.comments_count : null,
+        permalink: String(d?.permalink ?? ""),
+      };
+    }
+
+    if (a.platform === "linkedin") {
+      // LinkedIn OMITS a summary that would be zero rather than sending one, so
+      // a missing likesSummary means none — not unknown. That is the one place
+      // where absence really is zero, and reading it as null would leave every
+      // new post permanently "unknown".
+      const res = await fetch(
+        `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(externalId)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${a.access_token}`,
+            "LinkedIn-Version": LINKEDIN_VERSION,
+            "X-Restli-Protocol-Version": "2.0.0",
+          },
+        },
+      );
+      if (!res.ok) return null;
+      const d = await res.json();
+      return {
+        likes: Number(d?.likesSummary?.totalLikes ?? 0),
+        comments: Number(d?.commentsSummary?.totalFirstLevelComments ?? 0),
+      };
+    }
+
+    if (a.platform === "x") {
+      const res = await fetch(
+        `https://api.x.com/2/tweets/${encodeURIComponent(externalId)}?tweet.fields=public_metrics`,
+        { headers: { Authorization: `Bearer ${a.access_token}` } },
+      );
+      if (!res.ok) return null;
+      const m = (await res.json())?.data?.public_metrics;
+      if (!m) return null;
+      return {
+        likes: typeof m.like_count === "number" ? m.like_count : null,
+        comments: typeof m.reply_count === "number" ? m.reply_count : null,
+      };
+    }
+
+    // TikTok: see above.
+    return null;
+  } catch {
+    // A platform that is down must not fail the page that is only showing
+    // numbers beside a post that went out days ago.
+    return null;
+  }
+}
+
 export function publish(a: SocialAccount, caption: string, media: string, options?: PostOptions): Promise<PublishResult> {
   if (!media) return Promise.resolve(fail("There is no picture to post."));
   switch (a.platform) {

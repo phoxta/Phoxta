@@ -55,8 +55,15 @@ export function ScheduleDialog({ orgId, design, onClose }: {
     void (async () => {
       const { data, error } = await listSocialAccounts(orgId);
       if (error) toastError(error);
-      setAccounts(data?.accounts ?? []);
+      const found = data?.accounts ?? [];
+      setAccounts(found);
       setLimits(data?.limits ?? null);
+      // TICKED BY DEFAULT. Somebody who has connected four accounts wants the
+      // post on four accounts; starting empty made every post a four-click
+      // errand and, worse, made "I forgot to tick LinkedIn" a silent outcome
+      // that only shows up as a post that never appeared. Unticking to hold one
+      // back is the rarer intent, so it is the one that costs a click.
+      setPicked(found.filter((x) => x.status === "connected").map((x) => x.id));
       setLoading(false);
     })();
   }, [orgId]);
@@ -136,6 +143,7 @@ export function ScheduleDialog({ orgId, design, onClose }: {
       <div className="dsn-modal__box dsn-brief-dlg" style={{ width: "min(620px, 94vw)" }}>
         <h3 className="dsn-picker__t">Schedule this post</h3>
 
+        <div className="dsn-brief-dlg__body">
         {loading ? (
           <p className="dsn-note">Loading…</p>
         ) : usable.length === 0 ? (
@@ -147,18 +155,26 @@ export function ScheduleDialog({ orgId, design, onClose }: {
           <>
             <div className="emc__f">
               <span>Where</span>
-              <div className="d-flex flex-wrap gap-2">
+              <div className="sow">
                 {usable.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    className={`hrx-seeall${picked.includes(a.id) ? " opx-solid" : ""}`}
-                    onClick={() => setPicked((p) => (p.includes(a.id) ? p.filter((x) => x !== a.id) : [...p, a.id]))}
-                  >
-                    {PLATFORM_NAMES[a.platform]}{a.handle ? ` · ${a.handle}` : ""}
-                  </button>
+                  <label key={a.id} className={`sow__c${picked.includes(a.id) ? " is-on" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={picked.includes(a.id)}
+                      onChange={() => setPicked((p) =>
+                        p.includes(a.id) ? p.filter((x) => x !== a.id) : [...p, a.id])}
+                    />
+                    <span>{PLATFORM_NAMES[a.platform]}{a.handle ? ` · ${a.handle}` : ""}</span>
+                  </label>
                 ))}
               </div>
+              {usable.length > 1 && (
+                <em>
+                  {picked.length === usable.length
+                    ? "Going to everything you have connected. Untick anything you want to hold back."
+                    : `${picked.length} of ${usable.length} — the rest will not get this post.`}
+                </em>
+              )}
               {accounts.some((a) => a.status !== "connected") && (
                 <em>
                   {accounts.filter((a) => a.status !== "connected").map((a) => PLATFORM_NAMES[a.platform]).join(", ")}
@@ -206,6 +222,7 @@ export function ScheduleDialog({ orgId, design, onClose }: {
             </label>
           </>
         )}
+        </div>
 
         <div className="dsn-brief-dlg__acts">
           <button type="button" className="dsn-btn" onClick={onClose} disabled={busy}>Cancel</button>
@@ -215,9 +232,19 @@ export function ScheduleDialog({ orgId, design, onClose }: {
           </button>
         </div>
       </div>
+      <style>{CSS}</style>
     </div>
   );
 }
+
+const CSS = `
+.sow{display:flex;flex-wrap:wrap;gap:7px}
+.sow__c{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;cursor:pointer;
+        border:1px solid var(--hrx-border);background:var(--hrx-bg);font-size:13px;color:var(--hrx-ink);
+        user-select:none}
+.sow__c.is-on{border-color:#1D1D1D;background:var(--hrx-card);font-weight:600}
+.sow__c input{margin:0;accent-color:#1D1D1D;width:15px;height:15px;cursor:pointer}
+`;
 
 /** `datetime-local` wants the local wall clock, not an ISO instant. */
 function localIso(d: Date) {

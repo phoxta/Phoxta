@@ -107,4 +107,23 @@ node([path.join(here, "editor.test.mjs"), root, tmp]);
 console.log("\n── typing habits ──────────────────────────────────────");
 node([path.join(here, "typing.test.mjs"), root, tmp]);
 
+console.log("
+── the schedule dialog fits the window ──────────────────────");
+await build({
+  entryPoints: [path.join(here, "dialog-rig.tsx")],
+  bundle: true, outfile: path.join(tmp, "dialog-rig.js"),
+  // Only the network is stubbed. The dialog, the Instagram panel, the design
+  // renderer and designs.css are the real ones, because the question is
+  // whether THOSE fit on a laptop.
+  alias: {
+    "@/lib/db/ops/social": path.join(here, "stubs/social.ts"),
+    "@/lib/ops/feedback": path.join(here, "stubs/feedback.ts"),
+    "@/lib/supabaseClient": path.join(here, "stubs/supabaseClient.ts"),
+    ...alias,
+  },
+  define: { "process.env.NODE_ENV": '"development"' },
+  logLevel: "error",
+});
+node([path.join(here, "dialog.test.mjs"), root, tmp]);
+
 fs.rmSync(tmp, { recursive: true, force: true });

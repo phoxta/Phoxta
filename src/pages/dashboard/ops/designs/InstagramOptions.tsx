@@ -111,6 +111,7 @@ export function InstagramOptions({ design, value, onChange }: {
       {/* ── tagging, on the picture ──────────────────────────────────────── */}
       <label className="emc__f">
         <span>Tag people</span>
+        <div className="igo__tagger">
         <div
           ref={box}
           className="igo__pic"
@@ -133,7 +134,7 @@ export function InstagramOptions({ design, value, onChange }: {
           ))}
         </div>
         {value.userTags.length === 0 ? (
-          <em>Click the picture where someone is, then say who.</em>
+          <em className="igo__hint">Click the picture where someone is, then say who.</em>
         ) : (
           <div className="igo__tags">
             {value.userTags.map((t, i) => (
@@ -155,6 +156,7 @@ export function InstagramOptions({ design, value, onChange }: {
             <em>Drag a pin to move it. One with no name is dropped.</em>
           </div>
         )}
+        </div>
       </label>
 
       {/* ── alt text ─────────────────────────────────────────────────────── */}
@@ -205,17 +207,20 @@ const CSS = `
 .igo__add input{width:130px;height:30px;border:1px solid var(--hrx-border);border-radius:8px;padding:0 8px;font-size:13px;background:var(--hrx-bg);color:var(--hrx-ink)}
 .igo__add button{height:30px;padding:0 10px;border:1px solid var(--hrx-border);border-radius:8px;background:var(--hrx-bg);cursor:pointer;font-size:13px;color:var(--hrx-ink)}
 .igo__add button:disabled{opacity:.45;cursor:default}
-.igo__pic{position:relative;width:240px;max-width:100%;border-radius:10px;overflow:hidden;
+.igo__tagger{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.igo__hint{flex:1 1 170px;font-style:normal;font-size:12.5px;color:var(--hrx-muted);line-height:1.45}
+.igo__pic{position:relative;width:170px;flex:0 0 auto;max-width:100%;border-radius:10px;overflow:hidden;
           border:1px solid var(--hrx-border);cursor:crosshair;touch-action:none;user-select:none}
 .igo__pic svg{display:block;width:100%;height:auto}
 .igo__pin{position:absolute;transform:translate(-50%,-50%);min-width:20px;height:20px;border-radius:999px;
           background:#1D1D1D;color:#fff;font-size:11px;font-weight:700;display:inline-flex;
           align-items:center;justify-content:center;cursor:grab;box-shadow:0 0 0 2px #fff}
-.igo__tags{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.igo__tags{display:flex;flex-direction:column;gap:5px;flex:1 1 190px;min-width:0}
 .igo__tag{display:inline-flex;align-items:center;gap:6px}
+.igo__tags em{font-style:normal;font-size:12px;color:var(--hrx-muted);line-height:1.4}
 .igo__tag b{width:20px;height:20px;border-radius:999px;background:#1D1D1D;color:#fff;font-size:11px;
             display:inline-flex;align-items:center;justify-content:center;flex:none}
-.igo__tag input{flex:1;max-width:220px;height:30px;border:1px solid var(--hrx-border);border-radius:8px;
+.igo__tag input{flex:1;min-width:0;height:30px;border:1px solid var(--hrx-border);border-radius:8px;
                 padding:0 8px;font-size:13px;background:var(--hrx-bg);color:var(--hrx-ink)}
 .igo__check{display:flex;gap:9px;align-items:flex-start;margin-top:10px;cursor:pointer}
 .igo__check input{margin-top:3px}

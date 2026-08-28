@@ -329,3 +329,6 @@ verify_jwt = true
 # public key.
 [functions.social-caption]
 verify_jwt = true
+
+[functions.social-insights]
+verify_jwt = true

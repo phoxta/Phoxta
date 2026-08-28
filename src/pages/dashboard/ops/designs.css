@@ -636,6 +636,14 @@
     border-radius: 18px;
     background: var(--hrx-card);
     box-shadow: 0 24px 60px rgb(10 12 30 / 35%);
+    /* A DIALOG IS NEVER TALLER THAN THE WINDOW.
+       .dsn-modal centres its box, so a box that outgrows the viewport does not
+       hang off the bottom where you could scroll to it — it overflows equally
+       top and bottom and the buttons at its foot become unreachable, with
+       nothing on screen suggesting they are there. Every dialog got away with
+       it until one of them grew. */
+    max-height: 100%;
+    overflow: auto;
 }
 /* ── Reordering layers by dragging ───────────────────────────────────────
    The insertion point is drawn as a line BETWEEN two rows rather than as a
@@ -1110,7 +1118,22 @@
 /* A flex child with no basis takes the whole dialog; a brief is one sentence
    and the box should look like it wants one. */
 .dsn-brief-dlg__in { width: 100%; flex: 0 0 auto; min-height: 84px; max-height: 200px; resize: vertical; line-height: 1.5; }
-.dsn-brief-dlg__acts { display: flex; justify-content: flex-end; gap: 8px; }
+.dsn-brief-dlg__acts { display: flex; justify-content: flex-end; gap: 8px; flex: 0 0 auto; }
+/* A dialog that names its own body scrolls THAT, so the heading and the
+   buttons stay put and "Schedule" is always where you left it. One that does
+   not keeps the whole-box scrolling above, which is the safe default. */
+.dsn-brief-dlg { max-height: 100%; }
+.dsn-brief-dlg:has(> .dsn-brief-dlg__body) { overflow: hidden; }
+.dsn-brief-dlg > .dsn-picker__t { flex: 0 0 auto; }
+.dsn-brief-dlg__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    /* The gutter is so a focus ring on a field at the edge is not shaved off
+       by the scroll container. */
+    margin: 0 -4px;
+    padding: 2px 4px;
+}
 
 /* Form fields, shared. Used by the email composer, the Create-an-email
    dialog and the imported-design editor — and only the first of those
