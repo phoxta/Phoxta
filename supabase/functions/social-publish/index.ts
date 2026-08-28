@@ -14,6 +14,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { publish, type SocialAccount } from "../_shared/social.ts";
+import { refreshInstagram } from "../_shared/socialOauth.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -64,6 +65,31 @@ Deno.serve(async (req) => {
           .update({ status: "failed", error: `The ${acct.platform} account needs reconnecting.` }).eq("id", t.id);
         failed++;
         continue;
+      }
+
+      /**
+       * Renew an Instagram token before it lapses, not after.
+       *
+       * They last 60 days and are refreshed by presenting the token itself.
+       * One refreshed inside its window gets another 60 days; one left to
+       * expire cannot be recovered at all and the owner has to reconnect by
+       * hand — so this runs on the way past rather than waiting for a failure.
+       * A week's margin covers a business that schedules nothing for a while.
+       */
+      if (acct.platform === "instagram" && acct.token_expiry) {
+        const daysLeft = (new Date(acct.token_expiry).getTime() - Date.now()) / 86_400_000;
+        if (daysLeft < 7) {
+          const fresh = await refreshInstagram(acct.access_token);
+          if (fresh) {
+            acct.access_token = fresh.accessToken;
+            await admin.from("social_accounts").update({
+              access_token: fresh.accessToken,
+              token_expiry: new Date(Date.now() + fresh.expiresIn * 1000).toISOString(),
+            }).eq("id", acct.id);
+          }
+          // A failed refresh is not fatal here: the token may still have days
+          // left on it, so the post is attempted and the real error reported.
+        }
       }
 
       const r = await publish(acct as SocialAccount, post.caption ?? "", post.media_url ?? "");

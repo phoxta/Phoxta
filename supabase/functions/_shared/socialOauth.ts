@@ -229,12 +229,62 @@ export async function exchange(p: Platform, code: string, verifier: string): Pro
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`${p} refused the code: HTTP ${res.status} ${JSON.stringify(body).slice(0, 200)}`);
+
+  let accessToken = body.access_token ?? "";
+  let expiresIn = Number(body.expires_in ?? 0);
+
+  /**
+   * Instagram hands back a token that lasts ONE HOUR and does not say so — the
+   * short-lived response carries no expires_in at all, so it stores as "never
+   * expires" and then stops working over lunch. It has to be exchanged for the
+   * long-lived one, which lasts 60 days.
+   *
+   * Done here rather than left to the caller because a caller that forgets
+   * produces a connection that looks perfectly healthy in the console and fails
+   * the first time anything is actually scheduled.
+   */
+  if (p === "instagram" && accessToken) {
+    const url = new URL("https://graph.instagram.com/access_token");
+    url.searchParams.set("grant_type", "ig_exchange_token");
+    url.searchParams.set("client_secret", s.clientSecret());
+    url.searchParams.set("access_token", accessToken);
+    const long = await fetch(url);
+    const lb = await long.json().catch(() => ({}));
+    if (!long.ok || !lb.access_token) {
+      throw new Error(`Instagram would not issue a long-lived token: HTTP ${long.status} ${JSON.stringify(lb).slice(0, 200)}`);
+    }
+    accessToken = lb.access_token;
+    expiresIn = Number(lb.expires_in ?? 60 * 24 * 3600);
+  }
+
   return {
-    accessToken: body.access_token ?? "",
+    accessToken,
     refreshToken: body.refresh_token ?? "",
-    expiresIn: Number(body.expires_in ?? 0),
+    expiresIn,
     raw: body,
   };
+}
+
+/**
+ * Keep a long-lived Instagram token alive.
+ *
+ * They last 60 days and are refreshed by presenting the token itself — there is
+ * no refresh token. A token refreshed inside its window comes back with another
+ * 60 days; one left to lapse cannot be recovered and the owner has to reconnect
+ * by hand, so this runs from the publisher rather than waiting for a failure.
+ */
+export async function refreshInstagram(token: string): Promise<{ accessToken: string; expiresIn: number } | null> {
+  try {
+    const url = new URL("https://graph.instagram.com/refresh_access_token");
+    url.searchParams.set("grant_type", "ig_refresh_token");
+    url.searchParams.set("access_token", token);
+    const res = await fetch(url);
+    const b = await res.json().catch(() => ({}));
+    if (!res.ok || !b.access_token) return null;
+    return { accessToken: b.access_token, expiresIn: Number(b.expires_in ?? 60 * 24 * 3600) };
+  } catch {
+    return null;
+  }
 }
 
 export type Identity = { externalId: string; handle: string; displayName: string; avatarUrl: string };
