@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Card, Chip } from "@/components/dash/Ui";
+import { Chip } from "@/components/dash/Ui";
 import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
 import {
   type SocialAccount, type SocialPlatform, PLATFORM_NAMES,
@@ -21,8 +21,18 @@ const ORDER: SocialPlatform[] = ["instagram", "linkedin", "tiktok", "x"];
  * missing and which redirect URI to whitelist — the two facts whoever sets it
  * up actually needs. Bouncing someone to a consent screen that cannot work is
  * worse than telling them it is not ready.
+ *
+ * MOUNTED ALWAYS, SHOWN ON DEMAND. The dialog only appears when asked for, but
+ * the component stays mounted because it is what reads the ?social= parameter
+ * the platform sends the browser back with. Render it only while the dialog is
+ * open and the outcome of every connection is thrown away unread — the person
+ * returns from Instagram to a page that says nothing.
  */
-export function SocialAccounts({ orgId }: { orgId: string }) {
+export function SocialAccounts({ orgId, open, onClose }: {
+  orgId: string;
+  open: boolean;
+  onClose: () => void;
+}) {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<SocialPlatform | null>(null);
@@ -36,6 +46,13 @@ export function SocialAccounts({ orgId }: { orgId: string }) {
   }, [orgId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onClose(); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open, onClose, busy]);
 
   // The callback's verdict, read once so a refresh does not repeat it.
   useEffect(() => {
@@ -64,14 +81,18 @@ export function SocialAccounts({ orgId }: { orgId: string }) {
     if (data?.url) window.open(data.url, "_blank", "noopener");
   };
 
-  if (loading) return null;
+  if (!open) return null;
 
   return (
-    <Card title="Accounts">
-      <p className="opx-note">
-        Where a scheduled post can go. Each platform needs its own approved developer app before it can
-        be connected — that is a platform requirement, not a setting.
-      </p>
+    <div className="dsn-modal" role="dialog" aria-modal="true" aria-label="Connected accounts"
+         onPointerDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
+      <div className="dsn-modal__box dsn-brief-dlg" style={{ width: "min(620px, 94vw)" }}>
+        <h3 className="dsn-picker__t">Accounts</h3>
+        <p className="dsn-note">
+          Where a scheduled post can go. Each platform needs its own approved developer app before it
+          can be connected — that is a platform requirement, not a setting.
+        </p>
+        {loading && <p className="dsn-note">Loading…</p>}
       <div className="soa">
         {ORDER.map((p) => {
           const mine = accounts.filter((a) => a.platform === p && a.status !== "revoked");
@@ -111,13 +132,17 @@ export function SocialAccounts({ orgId }: { orgId: string }) {
           );
         })}
       </div>
-      {accounts.some((a) => a.last_error) && (
-        <p className="dsn-note">
-          {accounts.filter((a) => a.last_error).map((a) => `${PLATFORM_NAMES[a.platform]}: ${a.last_error}`).join(" · ")}
-        </p>
-      )}
+        {accounts.some((a) => a.last_error) && (
+          <p className="dsn-note">
+            {accounts.filter((a) => a.last_error).map((a) => `${PLATFORM_NAMES[a.platform]}: ${a.last_error}`).join(" · ")}
+          </p>
+        )}
+        <div className="dsn-brief-dlg__acts">
+          <button type="button" className="dsn-btn" onClick={onClose}>Done</button>
+        </div>
+      </div>
       <style>{CSS}</style>
-    </Card>
+    </div>
   );
 }
 

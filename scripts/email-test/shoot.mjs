@@ -27,6 +27,16 @@ export const getEmail = async () => ({ data: null, error: null });
 export const deleteEmail = async () => ({ data: null, error: null });
 export const emailFromPost = async () => ({ data: null, error: null });
 `);
+fs.writeFileSync(path.join(TMP, "social-stub.ts"), `
+export const PLATFORM_NAMES = { instagram: "Instagram", linkedin: "LinkedIn", tiktok: "TikTok", x: "X" };
+export const listSocialAccounts = async () => ({ data: { accounts: [
+  { id: "1", platform: "instagram", handle: "@p.r.o_of_africa", display_name: "", avatar_url: "", status: "connected", last_error: "", updated_at: "" },
+  { id: "2", platform: "linkedin", handle: "Femi Adeyemi", display_name: "", avatar_url: "", status: "connected", last_error: "", updated_at: "" },
+], limits: {} }, error: null });
+export const connectSocial = async () => ({ data: null, error: "not in the rig", needs: [], redirectUri: "" });
+export const disconnectSocialAccount = async () => ({ data: null, error: null });
+export const listSocialPosts = async () => ({ data: { posts: [] }, error: null });
+`);
 fs.writeFileSync(path.join(TMP, "picker-stub.tsx"), `
 export function DesignPicker() { return null; }
 `);
@@ -46,6 +56,7 @@ await build({
     "@": path.join(ROOT, "src"),
     "@email": path.join(ROOT, "packages/email/src/render.ts"),
     "@/lib/db/emailStudio": path.join(TMP, "db-stub.ts"),
+    "@/lib/db/ops/social": path.join(TMP, "social-stub.ts"),
     "@/pages/dashboard/ops/designs/DesignPicker": path.join(TMP, "picker-stub.tsx"),
   },
 });
@@ -172,6 +183,15 @@ await pg2.goto(pathToFileURL(path.join(TMP, "start.html")).href, { waitUntil: "n
 await new Promise((r) => setTimeout(r, 700));
 const labels = await pg2.evaluate(() => [...document.querySelectorAll(".dsn-start button")].map((b) => b.textContent?.trim()));
 console.log("  start buttons: " + labels.join(" | "));
+await pg2.evaluate(() => {
+  [...document.querySelectorAll(".dsn-start button")].find((b) => /accounts/i.test(b.textContent ?? ""))?.click();
+});
+await new Promise((r) => setTimeout(r, 700));
+const rows = await pg2.evaluate(() => [...document.querySelectorAll(".soa__row .soa__name")].map((n) => n.textContent));
+console.log("  accounts dialog: " + (rows.length ? rows.join(", ") : "DID NOT OPEN"));
+await pg2.screenshot({ path: path.join(OUT, "accounts-dialog.png") });
+await pg2.keyboard.press("Escape");
+await new Promise((r) => setTimeout(r, 300));
 await pg2.screenshot({ path: path.join(OUT, "start.png") });
 await pg2.evaluate(() => {
   const b = [...document.querySelectorAll("button")].find((x) => x.textContent?.includes("Create New"));

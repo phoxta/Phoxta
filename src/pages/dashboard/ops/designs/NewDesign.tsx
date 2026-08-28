@@ -26,7 +26,13 @@ const ln = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinec
 const I_SPARK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>;
 const I_PLUS = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
 
-export function NewDesign({ orgId, onMade }: { orgId: string; onMade: (d: Design) => void }) {
+export function NewDesign({ orgId, onMade, extra }: {
+  orgId: string;
+  onMade: (d: Design) => void;
+  /** Further start buttons, so they sit on the same row rather than in a
+   *  second one that reads as a different kind of thing. */
+  extra?: React.ReactNode;
+}) {
   const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState(false);
   /** The layout picker. Behind a button because eighteen layouts open on the
@@ -78,6 +84,7 @@ export function NewDesign({ orgId, onMade }: { orgId: string; onMade: (d: Design
         <button type="button" className="dsn-btn" onClick={() => setPicking(true)} disabled={busy}>
           {I_PLUS}Templates
         </button>
+        {extra}
       </div>
 
       {briefing && (

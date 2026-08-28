@@ -61,6 +61,7 @@ import "./designs.css";
 const ln = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 const I_BACK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>;
 const I_DOWN = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
+const I_LINK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" /></svg>;
 const I_SPARK = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>;
 
 /** What the canvas does that no control on it says. Lives in the toolbar: the
@@ -82,6 +83,8 @@ export default function DesignsPage() {
   const [mode, setMode] = useState<"graphics" | "email">("graphics");
   /** The design being scheduled out to social. */
   const [scheduling, setScheduling] = useState<Design | null>(null);
+  /** The connected-accounts dialog. */
+  const [accountsOpen, setAccountsOpen] = useState(false);
 
   const load = useCallback(async () => {
     const { data, error } = await listDesigns(orgId);
@@ -118,7 +121,15 @@ export default function DesignsPage() {
 
       {mode === "email" ? <EmailIndex orgId={orgId} /> : <>
 
-      <NewDesign orgId={orgId} onMade={(d) => setOpen(d)} />
+      <NewDesign
+        orgId={orgId}
+        onMade={(d) => setOpen(d)}
+        extra={
+          <button type="button" className="dsn-btn" onClick={() => setAccountsOpen(true)}>
+            {I_LINK}Accounts
+          </button>
+        }
+      />
 
       <Card title="Your posts">
         {loading ? (
@@ -171,9 +182,12 @@ export default function DesignsPage() {
         )}
       </Card>
 
-      <SocialAccounts orgId={orgId} />
-
       <SocialQueue orgId={orgId} />
+
+      {/* Stays mounted whether or not it is showing: it is what reads the
+          ?social= parameter the platform sends the browser back with, and a
+          connection whose outcome nobody sees is a connection nobody trusts. */}
+      <SocialAccounts orgId={orgId} open={accountsOpen} onClose={() => setAccountsOpen(false)} />
 
       {scheduling && (
         <ScheduleDialog orgId={orgId} design={scheduling} onClose={() => setScheduling(null)} />
