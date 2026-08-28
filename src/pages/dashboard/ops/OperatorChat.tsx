@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { DesignSvg } from "@/lib/designs/render";
+import { slidesOf } from "@/lib/designs/types";
+import { getDesign, type Design } from "@/lib/db/designs";
 import { Link } from "react-router-dom";
 import { RichText } from "@shared-chat/chatRich";
 // The panel ships its own styles so it looks the same on every surface.
@@ -131,14 +134,49 @@ const prettySize = (n?: number) =>
   n == null ? "" : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`;
 
 // ---------------------------------------------------------------------------
+/**
+ * A design, shown as the design rather than as a picture of one.
+ *
+ * The operator used to attach the design's stored PNG, which meant two things
+ * were wrong at once: it was whatever the design looked like the last time
+ * somebody saved it, and a design that had never been saved could not be shown
+ * at all. This renders the document itself with the same DesignSvg the studio
+ * uses, so the preview is current by construction and crisp at any size.
+ */
+export function DesignPreview({ id, title }: { id: string; title: string }) {
+  const [design, setDesign] = useState<Design | null>(null);
+  const [gone, setGone] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void getDesign(id).then(({ data }) => {
+      if (!active) return;
+      if (data) setDesign(data); else setGone(true);
+    });
+    return () => { active = false; };
+  }, [id]);
+
+  if (gone) return <div className="opc-design opc-design--gone">{title} — no longer in this business.</div>;
+  if (!design) return <div className="opc-design opc-design--wait">Loading {title}…</div>;
+
+  return (
+    <figure className="opc-design">
+      <DesignSvg doc={slidesOf(design.doc, design.template_id)[0]} width={240} />
+      <figcaption>{design.title}</figcaption>
+    </figure>
+  );
+}
+
 /** Renders a message's files: images tile into a grid, video/audio get players,
  *  anything else becomes a download row. */
 function Attachments({ items, urls }: { items: OperatorAttachment[]; urls: Record<string, string> }) {
   if (!items?.length) return null;
+  const designs = items.filter((a) => a.kind === "design");
   const images = items.filter((a) => a.kind === "image");
-  const rest = items.filter((a) => a.kind !== "image");
+  const rest = items.filter((a) => a.kind !== "image" && a.kind !== "design");
   return (
     <div className="opc-att">
+      {designs.map((a) => <DesignPreview key={a.path} id={a.path} title={a.name} />)}
       {images.length > 0 && (
         <div className={`opc-grid${images.length > 1 ? " multi" : ""}`}>
           {images.map((a) => (
@@ -208,6 +246,9 @@ export default function OperatorChat({
   // One batched call per change rather than one per attachment.
   useEffect(() => {
     const paths = [...msgs.flatMap((m) => m.attachments ?? []), ...pending]
+      // A "design" carries an id rather than a storage key, and asking the
+      // bucket to sign one would fail on every message that showed a design.
+      .filter((a) => a.kind !== "design")
       .map((a) => a.path)
       .filter((p) => !urls[p]);
     if (paths.length === 0) return;

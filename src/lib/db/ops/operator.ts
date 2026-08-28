@@ -3,10 +3,19 @@ import { friendlyError } from "@/lib/friendlyError";
 
 // The AI operator: chat that can act on the business through governed write tools,
 // plus the approval queue, audit trail and per-tool policy that make it safe.
-/** A file on an operator message. `path` is a storage key in the private
- *  `operator-files` bucket — never a URL, since reads need a signed one. */
+/**
+ * A file on an operator message. `path` is a storage key in the private
+ * `operator-files` bucket — never a URL, since reads need a signed one.
+ *
+ * "design" IS THE EXCEPTION, and deliberately so. It is not a file at all: it
+ * is a reference to a design, and `path` holds the design's id. The chat
+ * renders it with the same DesignSvg the studio uses rather than showing a
+ * picture of it — so the preview is the live document, crisp at any size and
+ * never a stale copy of what the design looked like when it was last saved.
+ */
 export type OperatorAttachment = {
-  kind: "image" | "video" | "audio" | "file";
+  kind: "image" | "video" | "audio" | "file" | "design";
+  /** A storage key — or, for "design", the design's id. */
   path: string;
   name: string;
   mime?: string;

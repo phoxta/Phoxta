@@ -272,3 +272,32 @@
   .opc-group.theirs .opc-bubble { background: #fff; color: #1246b0; }
   .opc-group.mine .opc-bubble { background: rgba(8, 10, 22, 0.66); }
 }
+
+/* A design shown in the chat renders as the design, not as a picture of one —
+   see DesignPreview. The SVG is fluid inside a fixed-width card so it stays
+   crisp at any zoom, which is the whole reason it is not an image. */
+.opc-design {
+    margin: 8px 0 0;
+    max-width: 240px;
+    border: 1px solid var(--hrx-border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--hrx-card);
+}
+.opc-design svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+.opc-design figcaption {
+    font-size: 12.5px;
+    color: var(--hrx-muted);
+    padding: 7px 10px;
+    border-top: 1px solid var(--hrx-border);
+}
+.opc-design--wait,
+.opc-design--gone {
+    font-size: 12.5px;
+    color: var(--hrx-muted);
+    padding: 10px 12px;
+}

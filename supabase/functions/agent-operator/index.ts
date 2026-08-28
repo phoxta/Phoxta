@@ -106,9 +106,9 @@ Deno.serve(async (req) => {
     const SHOW_DESIGN_TOOL = {
       name: "show_design",
       description:
-        "Show the owner one of the business's designs, as a picture in this chat. Use it before scheduling a post so " +
+        "Show the owner one of the business's designs in this chat — it renders as the design itself, live. Use it before scheduling a post so " +
         "they can see what will go out, and whenever they ask what a design looks like. Give the design's title from " +
-        "list_designs. This shows the SAME file that would be posted. You CAN show pictures; never tell the owner you cannot.",
+        "list_designs. It works even for a design that has never been rendered. You CAN show designs; never tell the owner you cannot.",
       input_schema: {
         type: "object",
         properties: { design: { type: "string", description: "The design's title, from list_designs." } },
@@ -120,26 +120,23 @@ Deno.serve(async (req) => {
       const title = String(input?.design ?? "").trim();
       if (!title) return "Which design? Use list_designs to see them.";
       const { data: d } = await ctx.admin.from("designs")
-        .select("title, png_url").eq("organization_id", orgId)
+        .select("id, title").eq("organization_id", orgId)
         .ilike("title", `%${title}%`).limit(1).maybeSingle();
       if (!d) return `No design matching "${title}". Use list_designs to see them.`;
-      if (!(d as Json).png_url) {
-        return `"${(d as Json).title}" has no picture yet — it has to be opened and saved in Graphics once, which renders it. I cannot render one from here.`;
-      }
-      try {
-        const res = await fetch(String((d as Json).png_url));
-        if (!res.ok) throw new Error(`the picture could not be read (HTTP ${res.status})`);
-        const bytes = new Uint8Array(await res.arrayBuffer());
-        const name = `${String((d as Json).title).replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "design"}.png`;
-        const path = `${orgId}/${crypto.randomUUID()}-${name}`;
-        const { error } = await ctx.admin.storage.from("operator-files")
-          .upload(path, bytes, { contentType: "image/png", upsert: false });
-        if (error) throw new Error(error.message);
-        artifacts.push({ kind: "image", path, name, mime: "image/png", size: bytes.byteLength });
-        return `Attached "${(d as Json).title}" to this reply — the owner can see it. This is the file that would be posted.`;
-      } catch (e) {
-        return `I could not attach "${(d as Json).title}": ${(e as Error).message}`;
-      }
+
+      // A REFERENCE, NOT A FILE. The console renders it with the studio's own
+      // renderer, so the owner sees the live document rather than a picture of
+      // whatever it looked like the last time somebody saved it — and a design
+      // that has never been rendered can still be shown, which the old
+      // attach-the-PNG version could not do.
+      artifacts.push({
+        kind: "design",
+        path: String((d as Json).id),
+        name: String((d as Json).title ?? "Design"),
+        mime: "application/x-phoxta-design",
+        size: 0,
+      });
+      return `Showing "${(d as Json).title}" in this reply — the owner can see it.`;
     }
 
     const runner = async (name: string, input: Json): Promise<string> =>
