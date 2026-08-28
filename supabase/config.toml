@@ -279,6 +279,10 @@ verify_jwt = true
 # reach it through supabase-js, which sends the anon key — that satisfies the
 # gateway, so `true` costs nothing and blocks keyless spam.
 # The cron leg carries no user JWT; the shared secret is the gate.
+# Meta calls these server to server with no JWT; the signed_request is the gate.
+[functions.social-deauthorize]
+verify_jwt = false
+
 [functions.social-connect]
 verify_jwt = true
 

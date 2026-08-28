@@ -9,6 +9,14 @@
       "destination": "https://ktgleoqvdikngocygdkn.supabase.co/functions/v1/social-callback"
     },
     {
+      "source": "/oauth/social/deauthorize",
+      "destination": "https://ktgleoqvdikngocygdkn.supabase.co/functions/v1/social-deauthorize"
+    },
+    {
+      "source": "/oauth/social/data-deletion",
+      "destination": "https://ktgleoqvdikngocygdkn.supabase.co/functions/v1/social-deauthorize"
+    },
+    {
       "source": "/((?!.*\\.).*)",
       "destination": "/index.html"
     }
