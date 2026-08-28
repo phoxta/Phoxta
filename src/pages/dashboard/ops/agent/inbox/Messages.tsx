@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useState, memo, useMemo } from "react";
 import { StickyNote, MessageSquareOff, ImageOff, Image as ImageIcon, Link2 } from "lucide-react";
 import { Letter } from "react-letter";
 import { RichText } from "@shared-chat/chatRich";
@@ -7,6 +7,47 @@ import type { TicketMessage } from "@/lib/db/ops/helpdesk";
 import { Avatar, AuthorIcon, DeliveryTick } from "@/pages/dashboard/ops/ui/primitives";
 import { channelLabel } from "@/pages/dashboard/ops/ui/util";
 import { dayLabel, sentAt } from "./queue";
+
+/** Bare URLs in plain text. Stops at whitespace and at the brackets senders
+ *  wrap links in, so "Docs ( https://x/y )" links the URL and not the bracket. */
+const URL_RE = /(https?:\/\/[^\s<>()[\]]+)/g;
+
+/**
+ * Optimized sub-components with memoization to prevent re-renders on every
+ * composer keystroke in the parent InboxPage.
+ */
+
+const EmailBody = memo(({ html }: { html: string }) => {
+  return (
+    <div
+      className="ibx-letter"
+      onClick={(e) => {
+        const a = (e.target as HTMLElement).closest("a");
+        const href = a?.getAttribute("href");
+        if (!href) return;
+        e.preventDefault();
+        window.open(href, "_blank", "noopener,noreferrer");
+      }}
+    >
+      <Letter html={html} />
+    </div>
+  );
+});
+
+const PlainBody = memo(({ text }: { text: string }) => {
+  const parts = useMemo(() => text.split(URL_RE), [text]);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+});
 
 /**
  * The thread body: day separators, author grouping, bubbles.
@@ -34,42 +75,6 @@ const DELIVERY_LABEL: Record<string, string> = {
 };
 
 /**
- * An HTML email, rendered by react-letter.
- *
- * This was hand-rolled twice — a sandboxed iframe with a measured height, then
- * an injected base stylesheet — and both were re-implementing a solved problem
- * badly. react-letter (mat-sz/react-letter, MIT) exists precisely for this and
- * states its target as Gmail's rendering. Its sanitizer, lettersanitizer, works
- * over DOMParser and prefixes the message's classes, IDs and CSS selectors so
- * an email cannot reach the console's own styles.
- *
- * Rendering inline rather than in an iframe is what finally kills the letterbox:
- * the message is part of the document, so it is simply as tall as it is. There
- * is no height to measure, nothing to re-measure when an image loads, and no
- * scrollbar inside a scrollbar.
- *
- * Links still have to leave: an email opening in place would replace the
- * console. Intercepting the click is more reliable than hoping every anchor was
- * rewritten with a target.
- */
-function EmailBody({ html }: { html: string }) {
-  return (
-    <div
-      className="ibx-letter"
-      onClick={(e) => {
-        const a = (e.target as HTMLElement).closest("a");
-        const href = a?.getAttribute("href");
-        if (!href) return;
-        e.preventDefault();
-        window.open(href, "_blank", "noopener,noreferrer");
-      }}
-    >
-      <Letter html={html} />
-    </div>
-  );
-}
-
-/**
  * Markup that arrived in a plain-text field.
  *
  * Ingest used to put an email's HTML straight into `body` when the mail carried
@@ -89,33 +94,6 @@ function looksLikeHtml(text: string | null | undefined): boolean {
   return (text.match(HTML_TAGS)?.length ?? 0) >= 2;
 }
 
-/** Bare URLs in plain text. Stops at whitespace and at the brackets senders
- *  wrap links in, so "Docs ( https://x/y )" links the URL and not the bracket. */
-const URL_RE = /(https?:\/\/[^\s<>()[\]]+)/g;
-
-/**
- * A plain-text message body.
- *
- * Mail with no HTML part arrives as the sender's flattened alternative, where
- * every link has been rewritten as "Label ( https://... )". Rendered raw that is
- * a wall of unclickable URLs. Linkifying is all a mail client does here — and
- * the URL stays visible rather than hidden behind its label, because a link
- * whose destination you cannot see is worse than an ugly one.
- */
-function PlainBody({ text }: { text: string }) {
-  const parts = text.split(URL_RE);
-  return (
-    <>
-      {parts.map((part, i) =>
-        i % 2 === 1 ? (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
-  );
-}
 
 /** Two messages group when the same author sent them within five minutes. */
 const GROUP_MS = 5 * 60 * 1000;
@@ -317,7 +295,7 @@ export function ConversationMessages({
   );
 }
 
-function MessageBubble({
+const MessageBubble = memo(({
   m,
   showChannel,
   endsGroup,
@@ -327,7 +305,7 @@ function MessageBubble({
   showChannel: boolean;
   endsGroup: boolean;
   customerName: string;
-}) {
+}) => {
   if (m.role === "note") {
     return (
       <div className="ibx-note">
@@ -405,7 +383,8 @@ function MessageBubble({
       </span>
     </div>
   );
-}
+});
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ticket thread
