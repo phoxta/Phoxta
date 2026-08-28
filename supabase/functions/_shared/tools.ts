@@ -95,6 +95,14 @@ export const OPERATOR_READ_TOOLS: Tool[] = [
   { name: "list_campaigns", description: "List marketing campaigns with channel, status and recipients.", input_schema: { type: "object", properties: {} } },
   { name: "list_services", description: "List bookable services with duration, price and whether active.", input_schema: { type: "object", properties: {} } },
   { name: "list_locations", description: "List business/branch locations with ZIP, phone and service types.", input_schema: { type: "object", properties: {} } },
+
+  // The social surface. Without these the operator could write a caption and
+  // nothing else — it could not see which channels were connected, which
+  // designs existed, or how the last post did, so it correctly reported that
+  // it had no way to post and no way to check one.
+  { name: "list_social_accounts", description: "Which social accounts this business has connected (Instagram, LinkedIn, TikTok, X), the handle, and whether each is working or needs reconnecting. Check this before scheduling a post — a channel that is not connected cannot receive one.", input_schema: { type: "object", properties: {} } },
+  { name: "list_designs", description: "The graphics this business has made, newest first: the title, and whether the design has a rendered picture yet. A design can only be posted once it has one — that happens when it is opened and saved in Graphics. Use the title when scheduling a post.", input_schema: { type: "object", properties: {} } },
+  { name: "list_social_posts", description: "Social posts this business has scheduled or published: the caption, when it goes or went out, its status, which channels, and the likes and comments where they have been read. Use for 'what is going out this week' and 'how did the last post do'.", input_schema: { type: "object", properties: {} } },
 ];
 
 // Memory tools — the agent's durable per-tenant notes (safe self-writes, not
@@ -241,6 +249,32 @@ export function toolRunner(admin: SupabaseClient, orgId: string, opts?: { audien
     }
     if (name === "list_services") {
       const { data } = await admin.from("services").select("name, duration_min, price_cents, active").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(40);
+      return JSON.stringify(data ?? []);
+    }
+    if (name === "list_social_accounts") {
+      const { data } = await admin.from("social_accounts")
+        .select("platform, handle, display_name, status, last_error")
+        .eq("organization_id", orgId).neq("status", "revoked").order("platform");
+      const rows = (data ?? []) as Json[];
+      if (rows.length === 0) return "No social accounts are connected. They are connected in Graphics → Accounts.";
+      return JSON.stringify(rows);
+    }
+    if (name === "list_designs") {
+      const { data } = await admin.from("designs")
+        .select("id, title, status, png_url, updated_at")
+        .eq("organization_id", orgId).neq("status", "archived")
+        .order("updated_at", { ascending: false }).limit(40);
+      // postable, not png_url: the URL is of no use to the model and the only
+      // thing it needs to know is whether the design can go out yet.
+      return JSON.stringify((data ?? []).map((d: Json) => ({
+        title: d.title, status: d.status, postable: Boolean(d.png_url),
+        updated_at: d.updated_at,
+      })));
+    }
+    if (name === "list_social_posts") {
+      const { data } = await admin.from("social_posts")
+        .select("caption, scheduled_at, status, social_targets(platform, status, likes, comments, permalink)")
+        .eq("organization_id", orgId).order("scheduled_at", { ascending: false }).limit(30);
       return JSON.stringify(data ?? []);
     }
     if (name === "list_locations") {

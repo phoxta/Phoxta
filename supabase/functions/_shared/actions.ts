@@ -58,6 +58,14 @@ export const WRITE_TOOLS: Tool[] = [
   { name: "create_campaign", description: "Create a marketing campaign (draft). Give a name; optional channel (email/sms), subject, body and audience.", input_schema: { type: "object", properties: { name: { type: "string" }, channel: { type: "string", enum: ["email", "sms"] }, subject: { type: "string" }, body: { type: "string" }, audience: { type: "string" } }, required: ["name"] } },
   { name: "send_campaign", description: "Send a campaign to the business's contacts. Reference it by name or id.", input_schema: { type: "object", properties: { campaign: { type: "string" } }, required: ["campaign"] } },
 
+  // --- Social ---
+  // Scheduling, not publishing. The row goes into the same queue the console
+  // writes to and the same cron worker publishes it, so there is exactly one
+  // piece of code that has ever put a post on the wire — and a post the
+  // operator scheduled can be edited, moved or cancelled from the console like
+  // any other.
+  { name: "schedule_post", description: "Schedule a social post to the business's connected accounts. It goes out from the server at the time given — nothing needs to be open. Pick a design by title from list_designs (it must be postable) and check list_social_accounts first. Instagram extras: collaborators are up to 3 usernames invited as co-authors, who each have to accept; alt_text describes the picture; also_story puts the same picture on the story as well.", input_schema: { type: "object", properties: { design: { type: "string", description: "The design's title, from list_designs." }, caption: { type: "string" }, when: { type: "string", description: "ISO datetime. Omit to send on the next tick, within five minutes." }, platforms: { type: "array", items: { type: "string", enum: ["instagram", "linkedin", "tiktok", "x"] }, description: "Omit to use every connected account." }, collaborators: { type: "array", items: { type: "string" }, description: "Instagram only, up to 3 usernames." }, alt_text: { type: "string" }, also_story: { type: "boolean" } }, required: ["design", "caption"] } },
+
   // --- Call center ---
   { name: "add_location", description: "Add a business/branch location for call routing. Give a name and ZIP; optional phone and service types.", input_schema: { type: "object", properties: { name: { type: "string" }, zip: { type: "string" }, phone: { type: "string" }, service_types: { type: "array", items: { type: "string" } } }, required: ["name"] } },
 
@@ -336,6 +344,74 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     if (error) throw new Error(error.message);
     return `Sent campaign "${c.name}" to ${count ?? 0} contacts.`;
   }
+
+  // --- Social ---
+  if (tool === "schedule_post") {
+    const { data: d } = await admin.from("designs")
+      .select("id, title, png_url").eq("organization_id", orgId)
+      .ilike("title", `%${String(a.design).trim()}%`).limit(1).maybeSingle();
+    if (!d) throw new Error(`No design matching "${a.design}". Use list_designs to see them.`);
+    // A design with no rendered picture cannot be posted, and finding that out
+    // at publish time — in a worker, five minutes later — is the wrong place.
+    if (!d.png_url) {
+      throw new Error(`"${d.title}" has no picture yet. Open it in Graphics and save it once, which renders it, then it can be posted.`);
+    }
+
+    const wanted: string[] = Array.isArray(a.platforms) ? a.platforms.map(String) : [];
+    const { data: accts } = await admin.from("social_accounts")
+      .select("id, platform, handle").eq("organization_id", orgId).eq("status", "connected");
+    const usable = ((accts ?? []) as Json[]).filter((x) => wanted.length === 0 || wanted.includes(x.platform));
+    if (usable.length === 0) {
+      throw new Error(wanted.length
+        ? "None of those channels are connected. They are connected in Graphics → Accounts."
+        : "No social accounts are connected. Connect one in Graphics → Accounts.");
+    }
+
+    const at = a.when ? new Date(String(a.when)) : new Date();
+    if (Number.isNaN(at.getTime())) throw new Error("That date does not parse.");
+
+    const caption = String(a.caption ?? "");
+    // Checked against the TIGHTEST chosen channel here rather than at publish
+    // time: a caption X refuses for length would otherwise sit in the queue and
+    // fail five minutes later, in a worker, where nobody is watching.
+    const caps: Record<string, number> = { instagram: 2200, linkedin: 3000, tiktok: 2200, x: 280 };
+    const tight = usable.reduce((w: Json | null, x: Json) =>
+      !w || (caps[x.platform] ?? 2200) < (caps[w.platform] ?? 2200) ? x : w, null);
+    if (tight && caption.length > (caps[tight.platform] ?? 2200)) {
+      throw new Error(`That caption is ${caption.length - (caps[tight.platform] ?? 2200)} characters too long for ${tight.platform}.`);
+    }
+
+    const collaborators = (Array.isArray(a.collaborators) ? a.collaborators : [])
+      .map((c: unknown) => String(c ?? "").trim().replace(/^@+/, "")).filter(Boolean).slice(0, 3);
+    const options = (collaborators.length || a.alt_text || a.also_story)
+      ? { instagram: {
+          collaborators,
+          userTags: [],
+          altText: String(a.alt_text ?? "").slice(0, 1000),
+          alsoStory: Boolean(a.also_story),
+        } }
+      : {};
+
+    const { data: post, error } = await admin.from("social_posts").insert({
+      organization_id: orgId, design_id: d.id, media_url: d.png_url, caption,
+      scheduled_at: at.toISOString(), status: "queued", options, created_by: userId,
+    }).select("id").single();
+    if (error || !post) throw new Error(error?.message ?? "Could not queue it.");
+
+    const { error: tErr } = await admin.from("social_targets").insert(
+      usable.map((x: Json) => ({ organization_id: orgId, post_id: post.id, account_id: x.id, platform: x.platform })),
+    );
+    if (tErr) {
+      // A post with no targets would sit queued for ever.
+      await admin.from("social_posts").delete().eq("id", post.id);
+      throw new Error(tErr.message);
+    }
+
+    const where = usable.map((x: Json) => x.platform).join(", ");
+    const invited = collaborators.length ? `, inviting ${collaborators.map((c: string) => "@" + c).join(", ")}` : "";
+    return `Scheduled "${d.title}" to ${where} for ${at.toLocaleString("en-GB")}${invited}.`;
+  }
+
 
   // --- Call center ---
   if (tool === "add_location") {
