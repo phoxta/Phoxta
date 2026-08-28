@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Chip } from "@/components/dash/Ui";
+import { TEMPLATES } from "@/lib/designs/templates";
 import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
 import {
   type ContentPlan, type PlannedPost,
@@ -39,6 +40,7 @@ export function PlanDialog({ orgId, open, onClose }: {
   const [count, setCount] = useState(12);
   const [days, setDays] = useState(30);
   const [imagery, setImagery] = useState<"stock" | "generated">("stock");
+  const [templateId, setTemplateId] = useState("vary");
 
   const loadList = useCallback(async () => {
     const { data, error } = await listContentPlans(orgId);
@@ -69,7 +71,7 @@ export function PlanDialog({ orgId, open, onClose }: {
     if (!brief.trim()) return toastError("Say what the month should be about.");
     setBusy(true);
     const { data, error } = await generateContentPlan(orgId, {
-      brief: brief.trim(), days, posts: count, imagery,
+      brief: brief.trim(), days, posts: count, imagery, templateId,
     });
     setBusy(false);
     if (error) return toastError(error);
@@ -142,6 +144,13 @@ export function PlanDialog({ orgId, open, onClose }: {
                   <em>days</em>
                 </label>
                 <label className="emc__f">
+                  <span>Graphic</span>
+                  <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+                    <option value="vary">Mixed — one to suit each post</option>
+                    {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </label>
+                <label className="emc__f">
                   <span>Pictures</span>
                   <select value={imagery} onChange={(e) => setImagery(e.target.value as "stock" | "generated")}>
                     <option value="stock">Real photographs (free)</option>
@@ -150,8 +159,8 @@ export function PlanDialog({ orgId, open, onClose }: {
                 </label>
               </div>
               <p className="dsn-note">
-                It writes the posts, the designs and the pictures. Nothing goes out until you have read
-                the month and approved it.
+                It writes the posts, lays out the designs and finds or makes the pictures. Nothing goes
+                out until you have read the month and approved it.
               </p>
 
               {plans.length > 0 && (

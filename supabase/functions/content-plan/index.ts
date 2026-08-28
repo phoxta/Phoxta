@@ -40,6 +40,28 @@ const MAX_POSTS = 30;
 /** Generated pictures land here, in the business's own public bucket. */
 const IMAGE_BUCKET = "design-assets";
 
+/**
+ * The layouts, as the client knows them.
+ *
+ * Sent with the request rather than listed here, exactly as design-generate
+ * does it and for the reason written there: a hand-written server-side copy
+ * listed six templates while the pack had eighteen, and the failure of a
+ * duplicated list is that it keeps working, just wrongly.
+ *
+ * Client-supplied is fine here — it only decides which of that same client's
+ * own layouts its own designs use — and every id that comes back is checked
+ * against this list before it reaches a row.
+ */
+type Layout = { id: string; purpose: string };
+
+function readCatalogue(v: unknown): Layout[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((t: Json) => t && typeof t.id === "string")
+    .slice(0, 40)
+    .map((t: Json) => ({ id: String(t.id).slice(0, 20), purpose: String(t.purpose ?? "").slice(0, 200) }));
+}
+
 const HOUSE = [
   "You plan social content for small businesses, and you are good at it, which means the month has a shape rather than being thirty unrelated posts.",
   "",
@@ -139,6 +161,13 @@ Deno.serve(async (req) => {
      */
     const imagery = String(body?.imagery ?? "stock") === "generated" ? "generated" : "stock";
 
+    const layouts = readCatalogue(body?.catalogue);
+    const asked = String(body?.templateId ?? "").trim();
+    // Varying is only possible when the caller told us what the layouts are.
+    // The operator calls this with no catalogue, so it gets one consistent
+    // look rather than a month of layouts picked from a list we do not have.
+    const wantVary = asked === "vary" && layouts.length > 1;
+
     const { data: org } = await admin.from("organizations")
       .select("name, vertical, branding").eq("id", orgId).maybeSingle();
 
@@ -165,6 +194,10 @@ Deno.serve(async (req) => {
       "",
       `PLAN ${count} POSTS across ${days} days starting ${startsOn}. Spread them — not one a day for ${count} days and then nothing.`,
       `They are going to: ${[...new Set(channels.map((c) => c.platform))].join(", ")}.`,
+      wantVary
+        ? "\nTHE LAYOUTS YOU MAY USE, and what each is for. Pick the one that suits each post rather than the same one every time:\n" +
+          layouts.map((l) => `- ${l.id}: ${l.purpose}`).join("\n")
+        : "",
       "",
       "Return JSON only:",
       "{",
@@ -178,7 +211,11 @@ Deno.serve(async (req) => {
       '    "subhead": string — a supporting line on the picture, under 90 characters. May be empty,',
       '    "caption": string — the post caption, WITHOUT hashtags,',
       '    "hashtags": string[] — a handful, each starting with #,',
-      '    "imageQuery": string — what the photograph behind it should be of, in a few words',
+      '    "imageQuery": string — what the photograph behind it should be of, in a few words' +
+        (wantVary ? "," : ""),
+      wantVary
+        ? '    "layout": string — the id of the layout that suits THIS post, from the list above'
+        : "",
       "  }]",
       "}",
     ].filter(Boolean).join("\n");
@@ -204,14 +241,23 @@ Deno.serve(async (req) => {
     }).select("id").single();
     if (planErr || !plan) return json({ error: planErr?.message ?? "Could not save the plan." }, 500);
 
-    // The template every planned post starts from. One layout for the month
-    // keeps it recognisably one business rather than a scrapbook.
-    const templateId = String(body?.templateId ?? "v1");
+    // Which layout each post uses. A single id pins the month to one look;
+    // "vary" lets the planner choose per post from the catalogue, matching the
+    // layout's stated purpose to what that post is doing — which is what the
+    // purpose field is for.
+    const fallbackTemplate = layouts[0]?.id ?? "v1";
+    const fixedTemplate = wantVary ? "" : (layouts.some((l) => l.id === asked) ? asked : fallbackTemplate);
 
     let made = 0;
     for (const it of items) {
       const when = new Date(`${String(it?.date ?? startsOn)}T${String(Math.min(23, Math.max(0, Number(it?.hour) || 10))).padStart(2, "0")}:00:00`);
       if (Number.isNaN(when.getTime())) continue;
+
+      // An id the model invented is not an error worth losing the post over —
+      // it falls back to the first real layout.
+      const templateId = wantVary
+        ? (layouts.some((l) => l.id === String(it?.layout)) ? String(it.layout) : fallbackTemplate)
+        : fixedTemplate;
 
       const query = String(it?.imageQuery ?? "");
       let image: Json = null;

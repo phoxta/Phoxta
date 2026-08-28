@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import { friendlyError } from "@/lib/friendlyError";
+import { catalogue } from "@/lib/designs/templates";
 
 /**
  * A month of content, planned once and approved once.
@@ -68,8 +69,18 @@ export const getContentPlan = (orgId: string, planId: string) =>
  */
 export const generateContentPlan = (
   orgId: string,
-  p: { brief: string; days?: number; posts?: number; startsOn?: string; imagery?: "stock" | "generated" },
-) => call<{ planId: string; title: string; rationale: string; posts: number }>({ orgId, action: "generate", ...p });
+  p: {
+    brief: string; days?: number; posts?: number; startsOn?: string;
+    imagery?: "stock" | "generated";
+    /** A template id, or "vary" to let the planner choose per post. */
+    templateId?: string;
+  },
+) => call<{ planId: string; title: string; rationale: string; posts: number }>({
+  orgId, action: "generate", ...p,
+  // The layouts travel with the request rather than being listed on the
+  // server: a duplicated list kept working while listing six of eighteen.
+  catalogue: catalogue(),
+});
 
 export const approveContentPlan = (orgId: string, planId: string) =>
   call<{ queued: number }>({ orgId, action: "approve", planId });
