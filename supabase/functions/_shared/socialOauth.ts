@@ -124,9 +124,37 @@ export const appBase = () => env("APP_BASE_URL") || "https://www.phoxta.com";
  */
 export const callbackUrl = () => `${appBase()}/oauth/social/callback`;
 
-async function hmac(data: string, secret: string): Promise<string> {
+/**
+ * The key the state is signed with.
+ *
+ * ONE KEY FOR EVERY PLATFORM, and deliberately not the platform's own client
+ * secret, which is what it used to be. That coupling had two sharp edges:
+ * rotating an app secret silently invalidated every connection in flight, and
+ * any deployment skew between the function that signs and the one that verifies
+ * produced a signature mismatch reported as "bad-state" — an error that points
+ * at the state rather than at the two different keys. That is exactly how the
+ * Instagram connection failed: social-connect had been redeployed with the
+ * renamed secret and social-callback had not.
+ *
+ * The anti-replay property is unaffected. The platform name is INSIDE the
+ * signed payload, so a state issued for TikTok cannot be presented as
+ * LinkedIn's whatever key signed it.
+ *
+ * The service-role key is used because it is present in every edge function by
+ * construction, is already secret, and does not rotate when an app's
+ * credentials do. If it is somehow absent this throws rather than falling back
+ * to a constant — a guessable signing key is worse than a broken one, because
+ * it fails open.
+ */
+function stateKey(): string {
+  const k = env("SUPABASE_SERVICE_ROLE_KEY");
+  if (!k) throw new Error("No signing key available for the OAuth state.");
+  return k;
+}
+
+async function hmac(data: string): Promise<string> {
   const key = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(secret || "phoxta"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+    "raw", new TextEncoder().encode(stateKey()), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
   );
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
   // base64url: a '+' or '/' in a query parameter does not survive the round trip.
@@ -138,7 +166,7 @@ async function hmac(data: string, secret: string): Promise<string> {
 export async function signState(p: Platform, payload: any): Promise<string> {
   const data = btoa(JSON.stringify({ ...payload, p, exp: Date.now() + 10 * 60 * 1000 }))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  return `${data}.${await hmac(data, SPECS[p].clientSecret())}`;
+  return `${data}.${await hmac(data)}`;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -155,9 +183,9 @@ export async function verifyState(state: string): Promise<any | null> {
   }
   const p = payload?.p as Platform;
   if (!p || !SPECS[p]) return null;
-  // Compared against the signature for the platform the payload CLAIMS to be,
-  // so a state signed with TikTok's secret cannot be replayed as LinkedIn's.
-  if ((await hmac(data, SPECS[p].clientSecret())) !== sig) return null;
+  // `p` is inside the signed payload, so swapping it breaks the signature —
+  // a state issued for one platform still cannot be presented as another's.
+  if ((await hmac(data)) !== sig) return null;
   if (typeof payload.exp === "number" && Date.now() > payload.exp) return null;
   return payload;
 }
