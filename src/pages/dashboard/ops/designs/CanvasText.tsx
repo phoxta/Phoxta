@@ -101,6 +101,17 @@ export function CanvasText({ layer, value, palette, view, untouched, onChange, o
       onDone();
       return;
     }
+    if (e.key === "Enter") {
+      // Insert the break OURSELVES. Left to the browser, Chrome wraps each new
+      // line in a <div>, and while the reader now copes with that, a <br> is
+      // what this file writes and what it reads back — so the round trip is
+      // the same shape going both ways instead of depending on which browser
+      // typed it.
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+      push();
+      return;
+    }
     // The canvas listens for these; while typing they belong to the text.
     e.stopPropagation();
   };

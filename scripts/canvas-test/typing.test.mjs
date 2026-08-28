@@ -120,6 +120,39 @@ if (el) {
           `"${mine}" became "${after}"`);
   }
 
+  // ── 1b. a line break must survive being committed ───────────────────────
+  //
+  // Enter puts the caret on a new line while the editor is open. The question
+  // is whether it is still there after the editor closes and the words are
+  // read back into runs — Chrome wraps a new line in a <div> rather than
+  // emitting <br>, and a walker that only knows about <br> loses it silently.
+  {
+    await page.evaluate(() => {
+      const host = document.querySelector(".dsn-textedit [contenteditable]");
+      const r = document.createRange();
+      r.selectNodeContents(host); r.collapse(false);
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    });
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("second line");
+    await settle();
+
+    const inEditor = await readText();
+    check("Enter breaks the line while editing", inEditor.includes("\n"),
+          JSON.stringify(inEditor));
+
+    // Commit it the way a person does — click away.
+    await page.keyboard.press("Escape");
+    await settle(240);
+    const runs = await readRuns(layer.slot);
+    const joined = runs.map((r) => r.text).join("");
+    check("the line break is still there after committing", joined.includes("\n"),
+          `stored as ${JSON.stringify(joined).slice(0, 70)}`);
+
+    await open();
+    await settle(160);
+  }
+
   // ── 2. the shortcuts every editor has ───────────────────────────────────
   for (const [key, mark, label] of [["KeyB", "bold", "Ctrl+B"], ["KeyI", "italic", "Ctrl+I"], ["KeyU", "underline", "Ctrl+U"]]) {
     await page.evaluate(() => {

@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+/** Space between the bar and the words it is formatting. */
+const GAP = 10;
 import { DEFAULT_FONT, DESIGN_FONTS, fontNamed, paint, type Palette, type PaintRole } from "@/lib/designs/types";
 import { fontStack } from "@/lib/designs/layout";
 
@@ -46,9 +49,18 @@ export function TextFormatBar({ host, palette, onChanged }: {
   /** Called after the DOM was changed, so the editor can re-read it. */
   onChanged: () => void;
 }) {
-  const [box, setBox] = useState<{ left: number; top: number } | null>(null);
+  const [box, setBox] = useState<{ left: number; top: number; below: boolean } | null>(null);
+  const bar = useRef<HTMLDivElement | null>(null);
 
-  /** Where the selection is, in the page, or null when nothing is selected. */
+  /**
+   * Where the selection is, clamped to stay on screen.
+   *
+   * The bar is centred on the selection and sits above it, and both of those
+   * fail at an edge: a selection near the side of the canvas pushes half the
+   * bar out of the window, and one near the top leaves no room above it. So
+   * the left is clamped to the viewport and the bar drops below the selection
+   * when it will not fit above — the same rule the layer toolbar follows.
+   */
   const place = useCallback(() => {
     const sel = window.getSelection();
     if (!host || !sel || sel.rangeCount === 0 || sel.isCollapsed) { setBox(null); return; }
@@ -58,7 +70,16 @@ export function TextFormatBar({ host, palette, onChanged }: {
     if (!host.contains(range.commonAncestorContainer)) { setBox(null); return; }
     const r = range.getBoundingClientRect();
     if (!r.width && !r.height) { setBox(null); return; }
-    setBox({ left: r.left + r.width / 2, top: r.top });
+
+    // Measured once it exists; the fallback is roughly this bar's own size and
+    // only matters for the single frame before the first render.
+    const w = bar.current?.offsetWidth || 470;
+    const h = bar.current?.offsetHeight || 48;
+    const half = w / 2;
+    const pad = 10;
+    const left = Math.min(Math.max(r.left + r.width / 2, half + pad), window.innerWidth - half - pad);
+    const below = r.top - h - GAP < pad;
+    setBox({ left, top: below ? r.bottom + GAP : r.top - GAP, below });
   }, [host]);
 
   useEffect(() => {
@@ -137,8 +158,14 @@ export function TextFormatBar({ host, palette, onChanged }: {
 
   return (
     <div
+      ref={bar}
       className="txb"
-      style={{ left: box.left, top: box.top }}
+      style={{
+        left: box.left,
+        top: box.top,
+        // Above the selection by default; below it when there is no room.
+        transform: box.below ? "translate(-50%, 0)" : "translate(-50%, -100%)",
+      }}
       onMouseDown={hold}
       role="toolbar"
       aria-label="Format the selected text"
@@ -186,15 +213,23 @@ export function TextFormatBar({ host, palette, onChanged }: {
   );
 }
 
+/* Sized like a toolbar people use, not a tooltip they have to aim at. 34px
+   targets clear the 24px accessibility minimum with room to spare and match
+   what Docs and Figma ship; the 26px buttons and 20px swatches this replaces
+   were smaller than either. */
 const CSS = `
-.txb{position:fixed;z-index:1400;transform:translate(-50%,calc(-100% - 10px));display:flex;align-items:center;gap:2px;
-     padding:4px 6px;border-radius:10px;background:#1D1D1D;box-shadow:0 6px 20px rgb(0 0 0 / 30%)}
-.txb button{min-width:26px;height:26px;padding:0 5px;border:0;border-radius:6px;background:transparent;color:#fff;
-            font-size:13px;line-height:1;cursor:pointer}
+.txb{position:fixed;z-index:1400;display:flex;align-items:center;gap:3px;
+     padding:7px 9px;border-radius:14px;background:#1D1D1D;
+     box-shadow:0 10px 30px rgb(0 0 0 / 34%), 0 0 0 1px rgb(255 255 255 / 8%)}
+.txb button{min-width:34px;height:34px;padding:0 9px;border:0;border-radius:9px;background:transparent;color:#fff;
+            font-size:15px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .txb button:hover{background:#F0460E}
-.txb__swatch{width:20px;height:20px;min-width:20px;padding:0;border-radius:50%;box-shadow:inset 0 0 0 1px rgb(255 255 255 / 35%)}
-.txb__swatch:hover{outline:2px solid #fff;outline-offset:1px}
-.txb__sep{width:1px;height:18px;background:rgb(255 255 255 / 22%);margin:0 4px}
-.txb__sel{height:26px;border:0;border-radius:6px;background:rgb(255 255 255 / 12%);color:#fff;font-size:12px;padding:0 4px;cursor:pointer}
+.txb__swatch{width:26px;height:26px;min-width:26px;padding:0;border-radius:50%;
+             box-shadow:inset 0 0 0 1px rgb(255 255 255 / 40%)}
+.txb__swatch:hover{outline:2px solid #fff;outline-offset:2px;background:none}
+.txb__sep{width:1px;height:24px;background:rgb(255 255 255 / 22%);margin:0 6px}
+.txb__sel{height:34px;border:0;border-radius:9px;background:rgb(255 255 255 / 12%);color:#fff;
+          font-size:13.5px;padding:0 8px;cursor:pointer}
+.txb__sel:hover{background:rgb(255 255 255 / 20%)}
 .txb__sel option{color:#1D1D1D}
 `;

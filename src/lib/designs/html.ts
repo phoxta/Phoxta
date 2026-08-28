@@ -65,6 +65,9 @@ export function runsToHtml(runs: TextRun[], palette: Palette): string {
 
 type Acc = { bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; fill?: PaintRole; scale?: number; font?: string; weight?: number };
 
+/** Elements a contenteditable uses to begin a new line. */
+const BLOCK = new Set(["DIV", "P", "LI", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "PRE", "TR"]);
+
 const TAG_MARK: Record<string, keyof Acc> = {
   B: "bold", STRONG: "bold",
   I: "italic", EM: "italic",
@@ -92,6 +95,22 @@ export function htmlToRuns(root: Node, palette: Palette): Rich {
     if (!(node instanceof HTMLElement)) return;
 
     if (node.tagName === "BR") { out.push({ ...acc, text: "\n" }); return; }
+
+    /**
+     * A block element starts a new line.
+     *
+     * Enter is handled explicitly now, so the common path produces a <br>. This
+     * covers everything else: a multi-line paste, and any browser that wraps
+     * lines in <div> of its own accord. Without it "one<div>two</div>" reads
+     * back as "onetwo" — the break visible while typing and gone the moment the
+     * editor is committed, which looks like the text snapping onto one line.
+     *
+     * Guarded against doubling, so a <br> immediately followed by a block does
+     * not produce two breaks.
+     */
+    if (BLOCK.has(node.tagName) && out.length && !out[out.length - 1].text.endsWith("\n")) {
+      out.push({ ...acc, text: "\n" });
+    }
 
     const next: Acc = { ...acc };
     const mark = TAG_MARK[node.tagName];
