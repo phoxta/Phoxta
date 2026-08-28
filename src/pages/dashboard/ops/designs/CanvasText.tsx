@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fontStack } from "@/lib/designs/layout";
 import { htmlToRuns, plainPaste, runsToHtml } from "@/lib/designs/html";
 import { toRuns } from "@/lib/designs/rich";
 import { paint, type Copy, type Palette, type TextLayer } from "@/lib/designs/types";
 import type { Viewport } from "@/lib/designs/snap";
+import { TextFormatBar } from "./TextFormatBar";
 
 /**
  * Editing text where it lives.
@@ -30,6 +31,9 @@ export function CanvasText({ layer, value, palette, view, onChange, onDone }: {
   onDone: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  /** The same element as `ref`, but as state, because the format bar has to
+   *  re-render once it exists — a ref alone never triggers that. */
+  const [host, setHost] = useState<HTMLDivElement | null>(null);
   // The last HTML we wrote, so a re-render caused by our own change does not
   // reset the DOM and throw the caret back to the start of the line.
   const mine = useRef<string>("");
@@ -95,7 +99,7 @@ export function CanvasText({ layer, value, palette, view, onChange, onDone }: {
       }}
     >
       <div
-        ref={ref}
+        ref={(el) => { ref.current = el; setHost(el); }}
         contentEditable
         suppressContentEditableWarning
         spellCheck={false}
@@ -134,6 +138,12 @@ export function CanvasText({ layer, value, palette, view, onChange, onDone }: {
           width: "100%",
         }}
       />
+
+      {/* Outside the contenteditable, so pressing a button is never mistaken
+          for typing, and fixed-positioned against the viewport rather than
+          inheriting the artboard's zoom — a toolbar that shrank with the
+          canvas would be unusable at the zoom people actually work at. */}
+      <TextFormatBar host={host} palette={palette} onChanged={push} />
     </div>
   );
 }

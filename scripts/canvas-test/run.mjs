@@ -63,6 +63,20 @@ await build({
 fs.copyFileSync(path.join(here, "deck.test.mjs"), path.join(tmp, "deck.test.mjs"));
 node([path.join(tmp, "deck.test.mjs")]);
 
+console.log("\n── duplicating ──────────────────────────────────────────────");
+await build({
+  entryPoints: [path.join(root, "src/lib/designs/templates.ts")],
+  bundle: true, format: "esm", outfile: path.join(tmp, "templates.bundle.mjs"),
+  alias, logLevel: "error",
+});
+fs.copyFileSync(path.join(here, "duplicate.test.mjs"), path.join(tmp, "duplicate.test.mjs"));
+node([path.join(tmp, "duplicate.test.mjs")]);
+
+console.log("\n── partial formatting ───────────────────────────────────");
+// Runs in a real browser: execCommand and DOM ranges have no meaning in node,
+// and the bridge this exercises is the one the editor actually uses.
+node([path.join(here, "format-runner.mjs")]);
+
 console.log("\n── gestures ─────────────────────────────────────────────────");
 await build({
   entryPoints: [path.join(here, "rig.tsx")],

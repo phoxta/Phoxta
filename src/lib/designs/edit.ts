@@ -87,15 +87,64 @@ export function removeLayer(doc: DesignDoc, id: string): DesignDoc {
 /** A fresh id that cannot collide with a template's hand-written ones. */
 const freshId = (kind: string) => `${kind}-${Math.random().toString(36).slice(2, 9)}`;
 
-export function duplicateLayer(doc: DesignDoc, id: string): { doc: DesignDoc; id: string } {
-  const layers = [...layersOf(materialise(doc))];
+/**
+ * Copy a layer.
+ *
+ * A NEW LAYER ID IS NOT ENOUGH. Words and photographs do not live on the
+ * layer — they live in `doc.content` and `doc.images`, keyed by SLOT — so a
+ * copy that keeps the original's slot is not a copy at all: both layers read
+ * the same key, and editing either one changes both. That is what duplicating
+ * a headline and then rewriting it did, and it looked like the edit had leaked
+ * rather than like the two boxes were always the same box.
+ *
+ * So a duplicate claims a free slot and takes the content with it, exactly as
+ * `addText` and `addImage` already do. When every slot is taken there is
+ * nowhere for the copy's own words to live, so it genuinely does share — and
+ * says so, rather than pretending.
+ */
+export function duplicateLayer(
+  doc: DesignDoc,
+  id: string,
+): { doc: DesignDoc; id: string; shared?: boolean } {
+  const base = materialise(doc);
+  const layers = [...layersOf(base)];
   const i = layers.findIndex((l) => l.id === id);
   if (i < 0) return { doc, id };
+  const src = layers[i];
+
   // Offset, so the copy is visibly a copy rather than hidden exactly behind
   // the original where it looks like nothing happened.
-  const copy = { ...layers[i], id: freshId(layers[i].type), x: layers[i].x + 24, y: layers[i].y + 24 } as Layer;
+  let copy = { ...src, id: freshId(src.type), x: src.x + 24, y: src.y + 24 } as Layer;
+  let content = { ...(doc.content ?? {}) };
+  let images = { ...(doc.images ?? {}) };
+  let shared = false;
+
+  if (src.type === "text" || src.type === "chip") {
+    // Chips carry a TextSlot too, so both kinds count as occupying one.
+    const used = new Set(
+      layers.filter((l) => l.type === "text" || l.type === "chip").map((l) => l.slot),
+    );
+    const free = TEXT_SLOTS.find((sl) => !used.has(sl));
+    if (free) {
+      copy = { ...copy, slot: free } as Layer;
+      content = { ...content, [free]: content[src.slot] ?? "" };
+    } else {
+      shared = true;
+    }
+  } else if (src.type === "image") {
+    const used = new Set(layers.filter((l) => l.type === "image").map((l) => l.slot));
+    const free = (["image1", "image2", "image3"] as ImageSlot[]).find((sl) => !used.has(sl));
+    if (free) {
+      copy = { ...copy, slot: free } as Layer;
+      if (images[src.slot]) images = { ...images, [free]: images[src.slot] };
+    } else {
+      shared = true;
+    }
+  }
+
   layers.splice(i + 1, 0, copy);
-  return { doc: withLayers(doc, layers), id: copy.id };
+  const next = withLayers(doc, layers);
+  return { doc: { ...next, content, images }, id: copy.id, shared };
 }
 
 export function toggle(doc: DesignDoc, id: string, key: "locked" | "hidden"): DesignDoc {
