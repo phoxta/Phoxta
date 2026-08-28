@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
     ].filter(Boolean).join("\n");
 
     const started = Date.now();
-    const { data: out, inTok, outTok, model } = await callJson<Json>({
+    const { data: out, inTok, outTok, cacheWriteTok, cacheReadTok, model } = await callJson<Json>({
       model: modelFor("balanced"),
       system: HOUSE,
       user,
@@ -225,6 +225,8 @@ Deno.serve(async (req) => {
       model,
       inTok,
       outTok,
+      cacheWriteTok,
+      cacheReadTok,
       latencyMs: Date.now() - started,
     });
 
