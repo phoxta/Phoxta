@@ -466,9 +466,36 @@ export type AgentReply = { conversationId: string; reply: string; actions: strin
 export async function agentRespond(orgId: string, message: string, conversationId?: string | null, channel = "web"): Promise<{ data: AgentReply | null; error: string | null }> {
   return callAgent<AgentReply>(orgId, "respond", { message, conversationId: conversationId ?? undefined, channel, customer: {} });
 }
-export async function summarizeConversation(orgId: string, conversationId: string): Promise<void> {
-  await callAgent(orgId, "summarize", { conversationId });
+export async function summarizeConversation(orgId: string, conversationId: string): Promise<{ summary: string; error: string | null }> {
+  try {
+    const { data, error } = await invokeFn<{ summary: string }>("conversation-summarize", { organizationId: orgId, conversationId });
+    return { summary: data?.summary ?? "", error };
+  } catch (e) {
+    return { summary: "", error: friendlyError(String((e as Error)?.message ?? e)) };
+  }
 }
+
+/**
+ * NEW: Refine an existing draft (AI Refinement).
+ * Commands: "shorten", "professional", "friendly", "fix"
+ */
+export async function refineAiReply(orgId: string, text: string, command: string): Promise<{ data: string; error: string | null }> {
+  try {
+    const { data, error } = await invokeFn<{ refined: string }>("ai-refine", { organizationId: orgId, text, command });
+    return { data: data?.refined ?? text, error };
+  } catch (e) {
+    return { data: text, error: friendlyError(String((e as Error)?.message ?? e)) };
+  }
+}
+
+/**
+ * NEW: List questions the AI failed to answer recently.
+ */
+export async function listKnowledgeGaps(orgId: string): Promise<{ data: string[]; error: string | null }> {
+  const { data, error } = await supabase.from("agent_knowledge_gaps").select("question").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(10);
+  return { data: (data ?? []).map(d => d.question), error: friendlyError(error?.message) };
+}
+
 
 /** Fire-and-forget drain of the outbound worker. */
 export function runAgentWorker(): void {
