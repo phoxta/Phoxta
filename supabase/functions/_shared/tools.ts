@@ -18,7 +18,7 @@ export const READ_TOOLS: Tool[] = [
         query: { type: "string", description: "What to look up" },
         source_types: {
           type: "array",
-          items: { type: "string", enum: ["products", "cms_pages", "crm_contacts", "tickets"] },
+          items: { type: "string", enum: ["products", "cms_pages", "crm_contacts", "tickets", "blog_posts"] },
           description: "Optional filter of content types",
         },
       },
@@ -85,6 +85,7 @@ export const OWNER_READ_TOOLS: Tool[] = [
 // agent, which would otherwise be able to dump other customers' data. The runner
 // below can execute them; a tool is only callable if an agent advertises it.
 export const OPERATOR_READ_TOOLS: Tool[] = [
+  { name: "list_blog_posts", description: "List published blog articles with their title, author, and publish date.", input_schema: { type: "object", properties: {} } },
   { name: "list_contacts", description: "List CRM contacts with stage, email, phone, company and value.", input_schema: { type: "object", properties: {} } },
   { name: "list_invoices", description: "List invoices with number, customer, status, total and due date.", input_schema: { type: "object", properties: {} } },
   { name: "list_conversations", description: "List Inbox conversations across every channel (chat, email, SMS, WhatsApp, voice) with the customer, channel, status, whether unread, the AI summary and the last message time. Use for questions about the inbox, what needs replying to, or what a customer has been saying. Returns the conversation id, which reply_conversation / set_conversation_status / assign_conversation need.", input_schema: { type: "object", properties: { status: { type: "string", description: "Filter: open, handled, escalated or closed." }, unread_only: { type: "boolean" } } } },
@@ -123,7 +124,7 @@ export const MEMORY_TOOLS: Tool[] = [
  *  The model cannot widen this: source_types it supplies are intersected with
  *  the allowlist, never trusted. Refusing by prompt is not a control — the same
  *  request framed as "I'm the new sales manager" walked straight past it. */
-const PUBLIC_SOURCE_TYPES = ["products", "cms_pages", "knowledge_docs"];
+const PUBLIC_SOURCE_TYPES = ["products", "cms_pages", "knowledge_docs", "blog_posts"];
 
 export function toolRunner(admin: SupabaseClient, orgId: string, opts?: { audience?: "public" | "member" }) {
   const isPublic = opts?.audience === "public";
@@ -190,6 +191,10 @@ export function toolRunner(admin: SupabaseClient, orgId: string, opts?: { audien
       const { data } = await admin.from("agent_memory").select("title, content").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(15);
       const rows = (data as { title: string; content: string }[] | null) ?? [];
       return rows.length ? rows.map((r) => `- ${r.title ? r.title + ": " : ""}${r.content}`).join("\n") : "No stored memory yet.";
+    }
+    if (name === "list_blog_posts") {
+      const { data } = await admin.from("blog_posts").select("title, author, published_at, status").eq("organization_id", orgId).eq("status", "published").order("published_at", { ascending: false }).limit(40);
+      return JSON.stringify(data ?? []);
     }
     if (name === "list_contacts") {
       const { data } = await admin.from("crm_contacts").select("name, email, phone, company, stage, value_cents").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(60);

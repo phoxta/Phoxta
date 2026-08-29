@@ -239,6 +239,15 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
+      case "delete": {
+        const { error } = await admin.from("social_posts")
+          .delete()
+          .eq("organization_id", org.id).eq("id", body?.id)
+          .eq("status", "cancelled");
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
+      }
+
       case "retry": {
         const { data: post } = await admin.from("social_posts")
           .select("id").eq("organization_id", org.id).eq("id", body?.id).maybeSingle();
