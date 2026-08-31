@@ -31,7 +31,13 @@ import {
  *   than a missing font.
  */
 
-export type ExportResult = { blob: Blob; width: number; height: number };
+export type ExportResult = {
+  blob: Blob;
+  width: number;
+  height: number;
+  /** hrefs that could not be inlined and were left out of the file. */
+  missing: string[];
+};
 
 /* ── Fonts ───────────────────────────────────────────────────────────────
    The one place a typeface control can silently break.
@@ -287,7 +293,7 @@ export async function exportPng(
       console.warn("[design export] could not inline", missing.length, "asset(s):", missing);
     }
 
-    return { blob, width: canvas.width, height: canvas.height };
+    return { blob, width: canvas.width, height: canvas.height, missing };
   } finally {
     URL.revokeObjectURL(url);
   }

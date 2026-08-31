@@ -601,9 +601,13 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
       // the file never depends on where the editor happens to be scrolled.
       const clone = svg.cloneNode(true) as SVGSVGElement;
       clone.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
-      const { blob } = await exportPng(clone, doc);
+      const { blob, missing } = await exportPng(clone, doc);
       downloadPng(blob, deck.slides.length > 1 ? `${title || "post"}-${index + 1}` : (title || "post"));
-      toast("Downloaded.");
+      if (missing.length) {
+        toastError(`Downloaded, but ${missing.length === 1 ? "a photo" : `${missing.length} photos`} could not be fetched and ${missing.length === 1 ? "is" : "are"} missing from the file.`);
+      } else {
+        toast("Downloaded.");
+      }
     } catch (e) {
       toastError((e as Error).message);
     } finally {
@@ -625,6 +629,7 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
     if (deck.slides.length === 1) return download();
     setBusy("exporting");
     const was = index;
+    let dropped = 0;
     try {
       for (let i = 0; i < deck.slides.length; i++) {
         setSlide(i);
@@ -637,11 +642,16 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
         if (!svg) throw new Error("The canvas is not ready yet.");
         const clone = svg.cloneNode(true) as SVGSVGElement;
         clone.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
-        const { blob } = await exportPng(clone, deck.slides[i]);
+        const { blob, missing } = await exportPng(clone, deck.slides[i]);
+        dropped += missing.length;
         downloadPng(blob, `${title || "post"}-${i + 1}`);
         await new Promise((r) => setTimeout(r, 350));
       }
-      toast(`Downloaded ${deck.slides.length} slides.`);
+      if (dropped) {
+        toastError(`Downloaded ${deck.slides.length} slides, but ${dropped === 1 ? "a photo" : `${dropped} photos`} could not be fetched and ${dropped === 1 ? "is" : "are"} missing.`);
+      } else {
+        toast(`Downloaded ${deck.slides.length} slides.`);
+      }
     } catch (e) {
       toastError((e as Error).message);
     } finally {
