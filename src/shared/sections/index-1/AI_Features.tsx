@@ -19,45 +19,45 @@ const EXTERNAL_LINK_ICON = (
     </svg>
 );
 
-const AWARDS = [
+const FEATURES = [
     {
-        href: "https://www.phoxta.com",
+        href: "/dashboard",
         imgSm: "/assets/imgs/pages/img-89-sm.webp",
-        title: "Production-grade engineering",
-        org: "Reliable systems built for scale and uptime",
-        date: "Engineering",
+        title: "Unified Agentic Inbox",
+        org: "Omnichannel intelligence across Email, SMS, and Voice touchpoints",
+        date: "Communications",
         url: "✔",
     },
     {
-        href: "https://www.phoxta.com",
+        href: "/dashboard",
         imgSm: "/assets/imgs/pages/img-90-sm.webp",
-        title: "Full observability",
-        org: "Monitoring, evals and audit on every model",
-        date: "AgentOps",
+        title: "Autonomous Context Retrieval",
+        org: "Dynamic RAG engine with per-customer long-term memory banks",
+        date: "Intelligence",
         url: "✔",
     },
     {
-        href: "https://www.phoxta.com",
+        href: "/dashboard",
         imgSm: "/assets/imgs/pages/img-91-sm.webp",
-        title: "Security & data privacy",
-        org: "Your data stays yours, isolated and protected",
-        date: "Security",
+        title: "Goal-Oriented Orchestration",
+        org: "Autonomous lifecycle flows for journeys and proactive outreach",
+        date: "Automation",
         url: "✔",
     },
     {
-        href: "https://www.phoxta.com",
+        href: "/dashboard",
         imgSm: "/assets/imgs/pages/img-92-sm.webp",
-        title: "Always-on reliability",
-        org: "24/7 systems that don't drop the ball",
-        date: "Uptime",
+        title: "Enterprise AI Governance",
+        org: "Production-grade guardrails with Human-in-the-Loop (HITL) control",
+        date: "Governance",
         url: "✔",
     },
     {
-        href: "https://www.phoxta.com",
+        href: "/dashboard",
         imgSm: "/assets/imgs/pages/img-93-sm.webp",
-        title: "Human + AI governance",
-        org: "Guardrails and approvals keep AI in your control",
-        date: "Governance",
+        title: "Full-Stack Customer Ops",
+        org: "Unified commerce, payments, and CRM integrated into the AI loop",
+        date: "Operations",
         url: "✔",
         isLast: true,
     },
@@ -97,41 +97,37 @@ export default function Section5() {
                         </div>
                         <div className="row mt-120">
                             <div className="col-12">
-                                {AWARDS.map((award, idx) => (
-                                    <div
+                                                                {FEATURES.map((feature, idx) => (
+                                                                        <div
                                         key={idx}
-                                        className={`card-award scroll-move-up ${award.isLast ? "mb-0" : ""}`}
-                                        data-rotate="positive-15deg"
-                                        data-img-award={award.imgSm}
+                                        className={`card-award scroll-move-up ${feature.isLast ? "mb-0" : ""}`}
                                     >
-                                        <a
-                                            href={award.href}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                        <Link
+                                            to={feature.href}
                                             className="card-award-link"
                                         >
                                             <div className="card-award-content">
                                                 <div className="card-award-image position-relative">
                                                     <img
-                                                        src={award.imgSm}
-                                                        alt="Award"
+                                                        src={feature.imgSm}
+                                                        alt="Feature"
                                                         style={{ objectFit: "cover" }} loading="lazy" />
                                                 </div>
-                                                <h6 className="card-award-title mb-0 text-white">{award.title}</h6>
+                                                <h6 className="card-award-title mb-0 text-white">{feature.title}</h6>
                                             </div>
                                             <h6 className="card-award-web-excellence mb-0 fz-font-lg fw-500 text-white">
-                                                {award.org}
+                                                {feature.org}
                                             </h6>
-                                            <span className="card-award-date text-white">[ {award.date} ]</span>
+                                            <span className="card-award-date text-white">[ {feature.date} ]</span>
                                             <div className="card-award-meta">
                                                 <span className="card-award-url fz-font-lg text-white">
-                                                    {award.url}
+                                                    {feature.url}
                                                 </span>
                                             </div>
                                             <div className="card-award-icon ms-auto text-white">
                                                 {EXTERNAL_LINK_ICON}
                                             </div>
-                                        </a>
+                                        </Link>
                                     </div>
                                 ))}
                             </div>

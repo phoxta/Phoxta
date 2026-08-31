@@ -136,7 +136,7 @@ export type TextSlot =
   | "testimonial" | "quote" | "cta" | "phone" | "website"
   | "point1" | "point2" | "point3" | "score";
 
-export type ImageSlot = "image1" | "image2" | "image3";
+export type ImageSlot = "image1" | "image2" | "image3" | "image4" | "image5" | "image6";
 
 type Base = {
   id: string;

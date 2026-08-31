@@ -63,9 +63,9 @@ export default function Section2() {
                                                 </div>
                                             </div>
                                             <div className="at-about-content">
-                                                <h4 className="at-about-title mb-10">Agentic AI operational console</h4>
+                                                                                                <h4 className="at-about-title mb-10">Agentic workflow orchestration</h4>
                                                 <p className="at-about-dec at_fade_anim">
-                                                    Highly integrated ecosystem of autonomous AI agents engineered to manage your entire business. From customer acquisition and multi-channel support to complex workflows, Operating with zero downtime.
+                                                    Deploy a production-grade ecosystem of autonomous agents engineered to manage your entire lifecycle. From lead acquisition to omnichannel support, operate at scale with zero downtime.
                                                 </p>
                                             </div>
                                         </div>
@@ -73,9 +73,9 @@ export default function Section2() {
                                     <div className="col-lg-6 col-md-6">
                                         <div className="at-about-item mb-40 d-flex flex-column gap-4">
                                             <div className="at-about-content order-2 order-md-1">
-                                                <h4 className="at-about-title mb-10">Niche-specific business innovation</h4>
+                                                <h4 className="at-about-title mb-10">Vertical-specific AI infrastructure</h4>
                                                 <p className="at-about-dec at_fade_anim">
-                                                    Merging industry-tailored infrastructure with deep AI automation. Each business features a specialized layout and an embedded AI model trained on that specific market's data, enhancing your competitive advantage and enabling seamless operations from day one.
+                                                    Integrate deep industry domain knowledge with modern automation. Each blueprint features a specialized UI and an embedded model fine-tuned for its vertical, enabling competitive advantage from day one.
                                                 </p>
                                             </div>
                                             <div className="anim-zoomin-wrap order-1 order-md-2">

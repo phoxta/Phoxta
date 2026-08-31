@@ -40,11 +40,11 @@ const TAGS = ["E-commerce", "Local services", "Content & creator", "SaaS", "Mark
 const HERO_SLIDES = [
     {
         title: "Own a business that already works.",
-        sub: "Pick a validated, AI-powered business, make it your own, and go live immediately - launch to revenue in minutes.",
+        sub: "Acquire a high-margin, AI-powered business with validated product-market fit. Deploy autonomous infrastructure and go live in minutes.",
     },
     {
-        title: "Get started with your Business Ideas",
-        sub: "Autonomous agents handle sales, support and daily operations — you steer everything from one console.",
+        title: "Scale faster with Agentic Operations.",
+        sub: "Autonomous agents manage growth, fulfillment, and 24/7 support—letting you focus on high-level strategy and market expansion.",
     },
 ];
 

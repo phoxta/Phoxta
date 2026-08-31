@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 import ArticleCard1 from "@/shared/cards/ArticleCard1";
-import { ARTICLES_BY_DATE } from "@/data/articles";
+import { useLiveArticles } from "@/lib/hooks/useLiveArticles";
 
-const HOMEPAGE_POSTS = ARTICLES_BY_DATE.slice(0, 4);
+
 
 const ARROW_SVG = (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -17,6 +17,8 @@ const ARROW_SVG = (
 // Homepage strip = the newest posts, straight from the blog data.
 
 export default function Section13() {
+    const articles = useLiveArticles();
+    const HOMEPAGE_POSTS = articles.slice(0, 4);
     return (
         <div className="at-sec13-thumb fix w-100 scale-up-img p-relative pt-120 pb-120">
             <div className="container">
@@ -32,27 +34,27 @@ export default function Section13() {
                                 {ARROW_SVG}
                             </i>
                         </span>
-                        <h3 className="alt-section-title lh-1 neutral-900 fw-700 mb-30 reveal-text mb-0">
-                            <RevealText>
-                                Articles and startup guides.
-                            </RevealText>
-                        </h3>
-                    </div>
-                    <div className="col-xxl-2 col-lg-3 ms-auto text-xxl-end text-lg-end">
-                        <div className="at-service-btn pt-30">
-                            <Link className="at-btn" to="/blog">
-                                <span>
-                                    <span className="text-1">ALL ARTICLES</span>
-                                    <span className="text-2">ALL ARTICLES</span>
-                                </span>
-                                <i>
-                                    {ARROW_SVG}
-                                    {ARROW_SVG}
-                                </i>
-                            </Link>
+                                                <h3 className="reveal-text mb-0">
+                                <RevealText>
+                                    Insights & Strategic Intelligence.
+                                </RevealText>
+                            </h3>
+                        </div>
+                        <div className="col-xxl-2 col-lg-3 ms-auto text-xxl-end text-lg-end">
+                            <div className="at-service-btn pt-30">
+                                <Link className="at-btn" to="/blog">
+                                    <span>
+                                        <span className="text-1">READ MORE</span>
+                                        <span className="text-2">READ MORE</span>
+                                    </span>
+                                    <i>
+                                        {ARROW_SVG}
+                                        {ARROW_SVG}
+                                    </i>
+                                </Link>
+                            </div>
                         </div>
                     </div>
-                </div>
                 <div className="row">
                     {HOMEPAGE_POSTS.map((post) => (
                         <ArticleCard1

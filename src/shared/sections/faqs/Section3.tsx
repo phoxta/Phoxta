@@ -30,9 +30,9 @@ type FaqSection = {
 export const FAQ_SECTIONS: FaqSection[] = [
     {
         number: "01",
-        title: "Getting started",
+        title: "Acquisition & Launch",
         description:
-            "What Phoxta is, what you get, and how quickly you can go live.",
+            "How to acquire a business, deploy your infrastructure, and go live.",
         accordionId: "accordionFaq1",
         items: [
             {
@@ -40,31 +40,31 @@ export const FAQ_SECTIONS: FaqSection[] = [
                 num: "1",
                 question: "What is Phoxta?",
                 answer:
-                    "Phoxta is a marketplace of validated, AI-powered businesses you can own and run from day one. Pick a business blueprint, make it your own, and launch with a ready storefront, an operating console, and an AI agent that runs the day-to-day.",
+                    "Phoxta is an M&A platform for high-margin, agentic businesses. We provide validated business blueprints that include autonomous infrastructure, unified commerce operations, and specialized AI models, allowing you to acquire and launch a revenue-ready business in minutes.",
                 open: true,
             },
             {
                 id: "collapseFaq1-2",
                 num: "2",
-                question: "Do I need technical or business experience?",
+                question: "Do I need technical expertise to operate these businesses?",
                 answer:
-                    "No. Every business comes ready to operate — the AI agent and console handle customer messages, bookings, orders and follow-ups, and setup is fully guided.",
+                    "No. Phoxta businesses are engineered for autonomous operation. Your agentic console handles the technical complexity of CRM, commerce, and multi-channel communication, while you focus on high-level strategic growth.",
                 open: false,
             },
             {
                 id: "collapseFaq1-3",
                 num: "3",
-                question: "What exactly do I get when I buy a business?",
+                question: "What exactly is included in an acquisition?",
                 answer:
-                    "A live storefront on your own domain, an operating console to run it, and a dedicated AI agent that answers calls, chats and bookings across every channel — all pre-wired and ready to brand.",
+                    "Each acquisition includes a production-ready storefront, a comprehensive Agentic Operating Console, a specialized AI Agent (Email, Voice, SMS, WhatsApp), and a vertical-specific industry dossier for strategic intelligence.",
                 open: false,
             },
             {
                 id: "collapseFaq1-4",
                 num: "4",
-                question: "How fast can I go live?",
+                question: "How quickly can I deploy and scale?",
                 answer:
-                    "Most owners launch within minutes: pick a blueprint, brand it, and publish on a free Phoxta subdomain. Connect a custom domain whenever you're ready.",
+                    "Deployment is near-instant. Once you select a blueprint and finalize your brand configuration, your entire autonomous infrastructure is provisioned and ready for traffic immediately.",
                 open: false,
             },
         ],
@@ -73,85 +73,85 @@ export const FAQ_SECTIONS: FaqSection[] = [
         number: "02",
         title: (
             <>
-                Your AI agent <br />
-                &amp; operations
+                Agentic Operations <br />
+                &amp; Governance
             </>
         ),
         description:
-            "How the agent works across channels — and how it acts on your business.",
+            "How your autonomous agents manage workflows and business logic.",
         accordionId: "accordionFaq2",
         items: [
             {
                 id: "collapseFaq2-1",
                 num: "1",
-                question: "What can the AI agent do?",
+                question: "What capabilities does the AI Operator have?",
                 answer:
-                    "It answers customers over SMS, WhatsApp, email and voice — booking and rescheduling appointments, capturing leads, taking orders, recommending products, and escalating to you when needed. One agent, every channel.",
+                    "The AI Operator is a production-grade agent that handles lead acquisition, appointment orchestration, order fulfillment, and omnichannel support. It uses Context-Aware RAG and long-term memory to maintain deep customer relationships.",
                 open: true,
             },
-            {
+                        {
                 id: "collapseFaq2-2",
                 num: "2",
-                question: "Can the agent take actions, not just chat?",
+                question: "How is AI governance handled?",
                 answer:
-                    "Yes. With your permission it can update prices, fulfil orders, manage bookings and more — governed by a per-tool policy (off, ask-me, or auto), an approval queue, and a full audit log you control.",
+                    "We use an Enterprise AI Governance model. You control every action via 'Human-in-the-Loop' (HITL) approvals. You can set granular policies for your agent—choosing which tasks are autonomous, which require your sign-off, and which are restricted.",
                 open: false,
             },
             {
                 id: "collapseFaq2-3",
                 num: "3",
-                question: "Does it work after hours?",
+                question: "Can the agent manage complex commerce tasks?",
                 answer:
-                    "Yes — it helps customers 24/7, captures every lead, books when it can, and never sends anyone to voicemail.",
+                    "Yes. The agent is integrated into your business logic, allowing it to issue refunds, update inventory, manage reservations, and schedule social content—all while maintaining a full audit trail.",
                 open: false,
             },
             {
                 id: "collapseFaq2-4",
                 num: "4",
-                question: "Can I control how it sounds and behaves?",
+                question: "Is the intelligence truly omnichannel?",
                 answer:
-                    "Yes. From the console you set its persona, tone, business hours, escalation rules and knowledge, and you can test it live before customers ever reach it.",
+                    "Absolutely. Your business uses 'One Brain' across Email, SMS, WhatsApp, and Voice. Memory and context are shared across all touchpoints, ensuring a seamless experience for your customers regardless of the channel.",
                 open: false,
             },
         ],
     },
     {
         number: "03",
-        title: "Branding & customisation",
+        title: "Scale & Strategic Growth",
         description:
-            "Make the business yours — branding, domains, and editable content.",
+            "Managing portfolios, custom domains, and industry-specific tools.",
         accordionId: "accordionFaq3",
         items: [
             {
                 id: "collapseFaq3-1",
                 num: "1",
-                question: "Can I make the business my own?",
+                question: "Can I manage multiple businesses from one console?",
                 answer:
-                    "Completely. Rebrand instantly with your name, logo, colours and fonts — manually or with AI — and edit pages, sections, text and images in the visual Studio editor.",
+                    "Yes. Phoxta is designed for portfolio operators. You can acquire multiple high-margin businesses and manage them through a single unified console, sharing operations while maintaining distinct brand identities and domains.",
                 open: true,
             },
             {
                 id: "collapseFaq3-2",
                 num: "2",
-                question: "Can I use my own domain?",
+                question: "How do custom domains and SEO work?",
                 answer:
-                    "Yes. Launch on a free Phoxta subdomain, then connect a custom domain you already own — or buy one — from the dashboard in a few clicks.",
+                    "Every storefront is optimized for both human and AI search (LLM-ready). You can link your own custom domains with automated TLS/SSL provisioning via our Vercel-backed infrastructure.",
                 open: false,
             },
             {
                 id: "collapseFaq3-3",
                 num: "3",
-                question: "Can I edit the storefront and products?",
+                question: "What is the 'Business Dossier'?",
                 answer:
-                    "Yes — every page, section, product, price and image is editable from the Studio editor and the operating console, and changes go live immediately.",
+                    "The Dossier is an industry-specific intelligence report included with every blueprint. It covers market strategy, competitive analysis, and operational procedures, providing the strategic roadmap you need to scale.",
                 open: false,
             },
             {
                 id: "collapseFaq3-4",
                 num: "4",
-                question: "Can I run more than one business?",
+                question: "Is the platform LLM-optimized?",
                 answer:
-                    "Yes. You can buy and run multiple businesses from a single account; higher plans include more businesses and capacity.",
+                    "Yes. Our frontend and content structures are designed for 'AI Search Optimization' (ASO), ensuring your business is correctly interpreted and recommended by AI-driven search engines and answer bots.",
                 open: false,
             },
         ],
@@ -160,44 +160,44 @@ export const FAQ_SECTIONS: FaqSection[] = [
         number: "04",
         title: (
             <>
-                Pricing, billing <br />
-                &amp; support
+                Investment, Billing <br />
+                &amp; Data Privacy
             </>
         ),
         description:
-            "How pricing works, billing, cancellation, and getting help.",
+            "Pricing models, asset ownership, and security standards.",
         accordionId: "accordionFaq4",
         items: [
             {
                 id: "collapseFaq4-1",
                 num: "1",
-                question: "How does pricing work?",
+                question: "What is the investment model?",
                 answer:
-                    "A simple monthly subscription per account — Starter, Growth or Scale — plus a one-time price for each business blueprint you buy. See the Pricing page for full details.",
+                    "Acquisition involves a one-time asset price for the business blueprint and a monthly subscription—Starter, Growth, or Scale—for the ongoing autonomous infrastructure and agent operations.",
                 open: true,
             },
             {
                 id: "collapseFaq4-2",
                 num: "2",
-                question: "Is there a free trial?",
+                question: "Who owns the data and the customer records?",
                 answer:
-                    "No — Phoxta doesn't offer a free trial. Pricing is simple: a monthly plan plus a one-time price per business. You can preview any business live before you buy, and cancel anytime.",
+                    "You do. You have full ownership of your CRM, order history, and content. Data is isolated per tenant using enterprise-grade RLS (Row-Level Security) on our Supabase-backed infrastructure.",
                 open: false,
             },
             {
                 id: "collapseFaq4-3",
                 num: "3",
-                question: "What happens to my business if I cancel?",
+                question: "What happens to the business if I pause my subscription?",
                 answer:
-                    "You keep your data and your storefront simply pauses. You can re-activate anytime, and export your customers and content whenever you like.",
+                    "Your business data remains yours. The autonomous infrastructure pauses, but all records are preserved. You can re-activate or export your business assets at any time.",
                 open: false,
             },
             {
                 id: "collapseFaq4-4",
                 num: "4",
-                question: "How do I get help?",
+                question: "What level of security is provided?",
                 answer:
-                    "Your in-console AI assistant answers most questions instantly, and you can email our team anytime. Growth and Scale plans include priority support.",
+                    "We employ production-grade security, including encrypted OAuth for Google Workspace, isolated database tenancy, and comprehensive audit logs for all AI and human actions.",
                 open: false,
             },
         ],

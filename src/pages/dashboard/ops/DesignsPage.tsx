@@ -849,7 +849,7 @@ function Editor({ design, orgName, onClose }: { design: Design; orgName: string;
               asset library. */}
           <button type="button" className="dsn-btn dsn-btn--sm" onClick={() => {
             const r = addImage(doc);
-            if (!r) return toastError("All three photo slots are already on the canvas.");
+            if (!r) return toastError("All six photo slots are already on the canvas.");
             apply(r.doc);
             setSel([r.id]);
             const made = layersOf(r.doc).find((l) => l.id === r.id);

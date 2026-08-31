@@ -224,7 +224,7 @@ export function addRect(doc: DesignDoc, kind: ShapeKind = "rect"): { doc: Design
  */
 export function addImage(doc: DesignDoc): { doc: DesignDoc; id: string } | null {
   const used = new Set(layersOf(doc).filter((l) => l.type === "image").map((l) => l.slot));
-  const slot = (["image1", "image2", "image3"] as ImageSlot[]).find((s) => !used.has(s));
+  const slot = (["image1", "image2", "image3", "image4", "image5", "image6"] as ImageSlot[]).find((s) => !used.has(s));
   if (!slot) return null;
   const id = freshId("image");
   const layer: Layer = { id, name: "Photo", type: "image", slot, ...centred(480, 480), radius: 24 };

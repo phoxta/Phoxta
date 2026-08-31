@@ -1129,9 +1129,9 @@ export default function OpsPlatformPage() {
       {section === "Leads" && (
         <Card title="Leads" right={<Chip tone="line">{leads.length}</Chip>}>
           <p className="opx-note">
-            From the contact form, Startup School and careers. Counted on the Overview; worked here.
+            From the contact form, Startup School, careers and the demo gate. Counted on the Overview; worked here.
           </p>
-          {leads.length === 0 ? <Empty title="No leads yet">Contact-form, Startup School and careers submissions land here.</Empty> : (
+          {leads.length === 0 ? <Empty title="No leads yet">Contact-form, Startup School, careers and demo-unlock submissions land here.</Empty> : (
             <div className="d-flex flex-column gap-3">
               {leads.map((l) => (
                 <div key={l.id} className="opx-item">

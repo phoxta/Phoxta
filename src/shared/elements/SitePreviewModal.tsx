@@ -1,5 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import { checkDemoAccess } from "@/lib/demoGate";
+import DemoGateForm from "@/shared/elements/DemoGateForm";
 
 // In-page preview of a live demo storefront: a scrollable iframe popup with a
 // fullscreen toggle, an open-in-new-tab escape hatch, and a close icon.
@@ -7,6 +9,11 @@ import { createPortal } from "react-dom";
 // #smooth-wrapper, because ScrollSmoother transforms #smooth-content and
 // position:fixed inside a transformed ancestor pins to that ancestor, not the
 // viewport.
+//
+// The demo itself is gated: until the visitor has a pass it loads blurred
+// behind a short form (see @/lib/demoGate). The tease is deliberate — a blurred
+// storefront is why anyone fills the form in — but it is a lead gate, not a
+// paywall, so it fails open when the backend can't answer.
 
 const CLOSE_SVG = (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -56,6 +63,9 @@ export type SitePreviewModalProps = {
 export default function SitePreviewModal({ url, title, open, onClose }: SitePreviewModalProps) {
   const [fullscreen, setFullscreen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // "checking" holds the gate back for the length of one round trip, so a
+  // visitor who already has a pass never sees the form flash up at them.
+  const [gate, setGate] = useState<"checking" | "locked" | "open">("checking");
 
   // Reset to windowed + loading each time the popup opens.
   useEffect(() => {
@@ -63,6 +73,20 @@ export default function SitePreviewModal({ url, title, open, onClose }: SitePrev
       setFullscreen(false);
       setLoaded(false);
     }
+  }, [open]);
+
+  // Does this visitor still have a pass? Asked per open rather than once per
+  // page, because a pass granted in another tab counts here too.
+  useEffect(() => {
+    if (!open) return;
+    let on = true;
+    setGate("checking");
+    checkDemoAccess().then(({ granted }) => {
+      if (on) setGate(granted ? "open" : "locked");
+    });
+    return () => {
+      on = false;
+    };
   }, [open]);
 
   // Lock the page behind the popup and close on Escape while open.
@@ -148,9 +172,13 @@ export default function SitePreviewModal({ url, title, open, onClose }: SitePrev
             </span>
           </span>
           <span style={{ marginLeft: "auto", display: "inline-flex", gap: 8 }}>
-            <a href={url} target="_blank" rel="noreferrer" title="Open in new tab" aria-label="Open in new tab" style={btnStyle}>
-              {NEW_TAB_SVG}
-            </a>
+            {/* Hidden while locked: a one-click way out of the gate, sitting
+                directly above the form, is not a gate. */}
+            {gate === "open" && (
+              <a href={url} target="_blank" rel="noreferrer" title="Open in new tab" aria-label="Open in new tab" style={btnStyle}>
+                {NEW_TAB_SVG}
+              </a>
+            )}
             <button
               type="button"
               onClick={() => setFullscreen((f) => !f)}
@@ -186,15 +214,27 @@ export default function SitePreviewModal({ url, title, open, onClose }: SitePrev
             title={title}
             onLoad={() => setLoaded(true)}
             allow="fullscreen"
+            // Hidden from assistive tech while locked: the gate is the only
+            // thing on this layer a visitor is meant to reach.
+            aria-hidden={gate === "open" ? undefined : true}
+            tabIndex={gate === "open" ? undefined : -1}
             style={{
               display: "block",
               width: "100%",
               height: "100%",
               border: 0,
               opacity: loaded ? 1 : 0,
-              transition: "opacity 0.25s ease",
+              transition: "opacity 0.25s ease, filter 0.4s ease",
+              filter: gate === "open" ? "none" : "blur(14px) saturate(0.85)",
+              // No scrolling or clicking through the blur.
+              pointerEvents: gate === "open" ? "auto" : "none",
+              userSelect: gate === "open" ? "auto" : "none",
+              transform: gate === "open" ? "none" : "scale(1.04)", // hides the blurred edge
             }}
           />
+          {gate === "locked" && (
+            <DemoGateForm title={title} url={url} onUnlocked={() => setGate("open")} />
+          )}
         </div>
       </div>
     </div>,

@@ -12,11 +12,11 @@ export const SITE_URL = (
 export const SITE_NAME = "Phoxta";
 export const TWITTER_HANDLE = "@phoxta";
 
-export const DEFAULT_TITLE = "Phoxta — Own a validated, AI-powered business";
-export const TITLE_SUFFIX = " | Phoxta";
+export const DEFAULT_TITLE = "Phoxta — Acquire & Scale AI-Powered Agentic Businesses";
+export const TITLE_SUFFIX = " | Phoxta AI Business Marketplace";
 
 export const DEFAULT_DESCRIPTION =
-    "Phoxta is a marketplace of validated, AI-powered businesses you can own and run from day one. Pick a business, make it yours, and go from launch to revenue in days — not months.";
+    "Acquire high-margin, AI-powered businesses with validated product-market fit. Deploy autonomous agentic infrastructure, scale with unified commerce operations, and launch to revenue in minutes.";
 
 /**
  * Default social share image — a purpose-built 1200×630 card.

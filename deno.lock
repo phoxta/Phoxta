@@ -150,6 +150,7 @@
         "npm:@vercel/analytics@^2.0.1",
         "npm:@vitejs/plugin-react@^4.4.1",
         "npm:bootstrap@^5.3.3",
+        "npm:dotenv@^17.4.2",
         "npm:eslint-plugin-react-hooks@^5.2.0",
         "npm:eslint-plugin-react-refresh@~0.4.20",
         "npm:eslint@^9.27.0",

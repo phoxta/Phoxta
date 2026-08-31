@@ -154,8 +154,8 @@ export default function BusinessListing() {
                                 {ARROW_SVG}
                             </i>
                         </span>
-                        <h3 className="reveal-text mb-0">
-                            <RevealText>Real Businesses. Proven Impact.</RevealText>
+                                                <h3 className="reveal-text mb-0">
+                            <RevealText>Acquire High-Margin, Agentic Businesses.</RevealText>
                         </h3>
                     </div>
                     <div className="col-xxl-3 col-lg-4 ms-auto d-flex justify-content-lg-end">
@@ -169,7 +169,7 @@ export default function BusinessListing() {
                                 {ARROW_CIRCLE}
                             </Link>
                             <Link className="at-btn z-index-1" to="/marketplace">
-                                Explore all listings
+                                Browse Marketplace
                             </Link>
                             <Link className="at-btn-circle" to="/contact">
                                 {ARROW_CIRCLE}

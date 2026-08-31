@@ -48,6 +48,103 @@ export const CATEGORY_LABELS: Record<ArticleCategory, string> = {
 
 export const ARTICLES: Article[] = [
     {
+        slug: "phoxta-everything-it-does",
+        title: "Everything Phoxta Does: A Comprehensive Guide to Agentic Infrastructure",
+        excerpt: "Discover the full capabilities of Phoxta, the autonomous operational console empowering agentic businesses with AI governance, unified commerce, and portfolio scale.",
+        category: "playbooks",
+        img: "/assets/imgs/pages/img-195.webp",
+        hero: "/assets/imgs/pages/img-198.webp",
+        author: "Phoxta",
+        date: "October 15, 2026",
+        iso: "2026-10-15",
+        readMinutes: 10,
+        body: [
+            {
+                kind: "lead",
+                text: "Phoxta is the operational nervous system for the next generation of autonomous businesses. From precision appointment orchestration to unified portfolio management, we replace the fragmented tech stack of legacy operations with a unified, AI-native infrastructure designed to handle lifecycle management, omnichannel support, and commerce logic—autonomously.",
+            },
+            {
+                kind: "p",
+                text: "We provide an ecosystem of 18 meticulously designed, high-margin business models—ranging from elite car rentals to aesthetic clinics and high-volume e-commerce. You don't build; you acquire a production-ready blueprint that operates natively on Phoxta's agentic infrastructure.",
+            },
+            { kind: "h", text: "Why Phoxta is the New Way of Running a Business" },
+            {
+                kind: "p",
+                text: "Legacy businesses scale by adding headcount: more support agents, more administrators, more operational friction. Agentic businesses scale through infrastructure. Phoxta eliminates the 'operational wall' by embedding specialized AI Operators directly into your commerce engine.",
+            },
+            {
+                kind: "list",
+                items: [
+                    "Zero Context-Switching: Unified commerce, CRM, and omnichannel support in a single Agentic Operating Console.",
+                    "Autonomous Lifecycle Management: Failed payments, rebookings, and support inquiries are handled 24/7 without human intervention.",
+                    "Strategic Leverage: Focus your human capital on growth, M&A, and supplier negotiation, while the machine handles the labor.",
+                ],
+            },
+            {
+                kind: "figure",
+                img: "/assets/imgs/pages/img-125-faq.webp",
+                alt: "Phoxta Support and Team Operations",
+                caption: "Scale your portfolio without scaling your stress. Let agents handle operations.",
+            },
+            { kind: "h", text: "The Business Models (The Blueprints)" },
+            {
+                kind: "p",
+                text: "We have analyzed the unit economics of 18 distinct industries and pre-configured their operational logic into deployable assets. Examples include:",
+            },
+            {
+                kind: "duo",
+                left: {
+                    h: "Service & Hospitality",
+                    p: "Agentic Salons, Online Restaurants, and Travel Experiences. The AI orchestrates complex scheduling, allergen inquiries, and waitlist back-filling to maximize yield.",
+                },
+                right: {
+                    h: "Asset & E-Commerce",
+                    p: "Small Fleet Car Rental, Coffee Subscriptions, and DTC Brands. Autonomous operations mitigate churn, upsell extras, and manage inventory logic.",
+                },
+            },
+            { kind: "h", text: "Enterprise AI Governance & HITL" },
+            {
+                kind: "p",
+                text: "Scale safely. Phoxta provides granular control over your AI Operators. You dictate which actions are handled autonomously (e.g., policy FAQs, simple rebookings) and which require Human-in-the-Loop (HITL) approval (e.g., high-value refunds), ensuring your brand standards are never compromised.",
+            },
+            {
+                kind: "figure",
+                img: "/assets/imgs/template/wb2.webp",
+                alt: "Agentic commerce and storefront dashboard overview",
+                caption: "Wake up to a morning briefing of actions taken, and a clear queue of decisions requiring your strategic input.",
+            },
+            { kind: "h", text: "The Benefits of the Agentic Ecosystem" },
+            {
+                kind: "p",
+                text: "By standardizing the operational spine, you unlock true portfolio leverage. You can operate three different businesses with the overhead of one.",
+            },
+            {
+                kind: "table",
+                caption: "The Infrastructure Advantage",
+                head: ["Metric", "Legacy Model", "Agentic Ecosystem"],
+                rows: [
+                    ["Operational Overhead", "Scales linearly with revenue", "Fixed infrastructure cost"],
+                    ["Responsiveness", "9-to-5, prone to leaks", "24/7 omnichannel immediate capture"],
+                    ["Portfolio Management", "Requires siloed teams", "Unified across all blueprints"],
+                ],
+            },
+            { kind: "h", text: "Transparent Platform Pricing" },
+            {
+                kind: "p",
+                text: "Phoxta operates on a transparent SaaS model designed to grow with your portfolio. Access the full suite of AI Operators, the Agentic Console, and unlimited blueprint deployments starting at £75/month for Starter and £250/month for Growth. Our Scale tier (£1,500/month) unlocks advanced multi-brand governance, dedicated AI fine-tuning, and priority infrastructure support.",
+            },
+            {
+                kind: "quote",
+                text: "Phoxta transforms you from an operator fighting fires into a portfolio manager allocating strategy.",
+            },
+            {
+                kind: "p",
+                text: "Stop building redundant infrastructure. Explore the Phoxta Marketplace, acquire an agentic business blueprint, and deploy the future of autonomous commerce today.",
+            },
+        ],
+    },
+
+    {
         slug: "start-a-coffee-subscription-business",
         title: "How to Start a Coffee Subscription Business in 2026",
         excerpt:
