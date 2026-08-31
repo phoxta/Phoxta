@@ -1,18 +1,28 @@
 // Phoxta — embeddings for the per-tenant RAG index. Provider-agnostic (keeps the
 // historical filename so callers don't change).
-//   EMBED_PROVIDER = voyage | openai | gemini  (auto-detects by which key is set)
+//   EMBED_PROVIDER = voyage | openai | gemini | local  (auto-detects by which key is set)
 //     voyage : voyage-3.5-lite (1024-dim, free tier)        ← ai_embeddings is vector(1024)
 //     openai : text-embedding-3-small (1536)
 //     gemini : gemini-embedding-001, outputDimensionality 1536
+//     local  : whatever LOCAL_EMBED_BASE_URL serves — Qwen3-Embedding-0.6B by
+//              default, which is natively 1024-dim and therefore drops straight
+//              into the existing column with no re-index and no migration.
+//              0.6B is small enough to run on spare CPU next to the voice box.
 // NOTE: the ai_embeddings column dimension must match the active provider.
-// EMBED_DIM pins the expected dimension (default 1024 = Voyage); embed() throws a
-// clear error if a provider returns a different size, instead of a cryptic insert
-// failure. Set EMBED_DIM=1536 if you switch the column + provider to OpenAI/Gemini.
+// EMBED_DIM pins the expected dimension (default 1024 = Voyage / Qwen3-Embedding);
+// embed() throws a clear error if a provider returns a different size, instead of a
+// cryptic insert failure. Set EMBED_DIM=1536 if you switch the column + provider to
+// OpenAI/Gemini.
 const EXPECTED_DIM = parseInt(Deno.env.get("EMBED_DIM") ?? "1024", 10);
 
-function embedProvider(): "voyage" | "openai" | "gemini" {
+function embedProvider(): "voyage" | "openai" | "gemini" | "local" {
   const p = Deno.env.get("EMBED_PROVIDER");
-  if (p === "voyage" || p === "openai" || p === "gemini") return p;
+  if (p === "voyage" || p === "openai" || p === "gemini" || p === "local") return p;
+  // LOCAL_EMBED_BASE_URL is its own variable rather than reusing LOCAL_BASE_URL
+  // precisely so this auto-detect cannot fire off the chat box: serving a chat
+  // model says nothing about whether an embedding model is loaded, and guessing
+  // wrong would stall the whole RAG queue on 404s.
+  if (Deno.env.get("LOCAL_EMBED_BASE_URL")) return "local";
   if (Deno.env.get("VOYAGE_API_KEY")) return "voyage";
   if (Deno.env.get("GEMINI_API_KEY")) return "gemini";
   return "openai";
@@ -67,13 +77,43 @@ async function embedGemini(texts: string[]): Promise<number[][]> {
   return (data.embeddings as { values: number[] }[]).map((e) => e.values);
 }
 
+/** Self-hosted embeddings over the OpenAI /embeddings route — vLLM, llama.cpp's
+ *  server and Infinity all speak it. No fallback on purpose: embed() is drained
+ *  by embed-worker on the five-minute cron, so a box that is briefly down costs
+ *  one tick's queue, and silently re-embedding half a tenant's index on a
+ *  DIFFERENT model would poison the vector space far more expensively. */
+async function embedLocal(texts: string[]): Promise<number[][]> {
+  const base = (Deno.env.get("LOCAL_EMBED_BASE_URL") || "").replace(/\/+$/, "");
+  if (!base) throw new Error("LOCAL_EMBED_BASE_URL not set");
+  const res = await fetch(`${base}/embeddings`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${Deno.env.get("LOCAL_API_KEY") || "no-key"}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: Deno.env.get("LOCAL_EMBED_MODEL") || "Qwen3-Embedding-0.6B",
+      input: texts.map((t) => t.slice(0, 8000)),
+    }),
+  });
+  if (!res.ok) throw new Error(`local embeddings ${res.status} ${await res.text().catch(() => "")}`);
+  const data = await res.json();
+  return (data.data as { embedding: number[] }[]).map((d) => d.embedding);
+}
+
 export async function embed(texts: string[]): Promise<number[][]> {
   const p = embedProvider();
-  const vecs = p === "voyage" ? await embedVoyage(texts) : p === "gemini" ? await embedGemini(texts) : await embedOpenAI(texts);
+  const vecs = p === "voyage"
+    ? await embedVoyage(texts)
+    : p === "gemini"
+    ? await embedGemini(texts)
+    : p === "local"
+    ? await embedLocal(texts)
+    : await embedOpenAI(texts);
   if (vecs.length && vecs[0].length !== EXPECTED_DIM) {
     throw new Error(
       `embedding dim ${vecs[0].length} from ${p} != ai_embeddings column dim ${EXPECTED_DIM}. ` +
-        `Set EMBED_PROVIDER/EMBED_DIM to match the column (1024=Voyage, 1536=OpenAI/Gemini).`,
+        `Set EMBED_PROVIDER/EMBED_DIM to match the column (1024=Voyage/Qwen3-Embedding, 1536=OpenAI/Gemini).`,
     );
   }
   return vecs;

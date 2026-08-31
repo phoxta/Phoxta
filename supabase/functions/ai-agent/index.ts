@@ -6,7 +6,7 @@ import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { modelFor } from "../_shared/models.ts";
 import { callMessages } from "../_shared/anthropic.ts";
-import { meter } from "../_shared/meter.ts";
+import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
 import { respondCore, summarizeConversation, loadConfig } from "../_shared/agentCore.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -25,6 +25,16 @@ Deno.serve(async (req) => {
     if (a.error) return a.error;
     const { userId, admin, org } = a.ok;
     const config = await loadConfig(admin, organizationId);
+
+    // `respond` is NOT checked here: respondCore enforces the same cap itself
+    // and answers the customer with a courtesy line + `capped: true` (a 429 to
+    // a storefront widget would read as an outage). The owner-facing actions
+    // get the standard refusal instead. Both are metered in their own paths —
+    // summarize as agent_summary inside agentCore, outbound_turn below.
+    if (action === "summarize" || action === "outbound_turn") {
+      const allowance = await assertWithinCap(admin, org.id);
+      if (!allowance.ok) return json({ error: CAP_REACHED_MESSAGE, limitReached: true }, 429);
+    }
 
     if (action === "respond") {
       const message = (body?.message ?? "").toString().trim();

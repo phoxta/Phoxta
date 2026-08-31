@@ -10,12 +10,18 @@
 //      one-time notification per conversation that passed its first-response
 //      target with no reply (dedupe via the sla_events table).
 //
+// It no longer pings engage-run. It used to fire that tick and forget it, which
+// meant engage-run's answer — including "I failed" — was thrown away, and the
+// Engage runtime had no heartbeat and no line in the VM log of its own. It has
+// its own lane in integrations/worker-cron/ping.sh now, like every other worker.
+//
 // SLA + routing policies live in agent_config.escalation (jsonb) under the
 // `sla` / `routing` keys — the same shape the console reads (src/lib/ops/sla.ts).
 // The sla_events table + app_set_member_role RPC are bootstrapped lazily over
 // SUPABASE_DB_URL (`supabase db push` is unavailable here — same pattern as
 // platform-posts) and recorded in supabase/migrations/0105_sla_routing.sql.
 import { preflight, json } from "../_shared/cors.ts";
+import { requireCron } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
 
@@ -239,14 +245,23 @@ async function flagSlaBreaches(admin: SupabaseClient, orgId: string, sla: SlaPol
 Deno.serve(async (req) => {
   const pf = preflight(req);
   if (pf) return pf;
-  try {
-    const presented = req.headers.get("x-cron-secret");
-    const cronSecrets = [Deno.env.get("CRON_SECRET"), Deno.env.get("BILLING_CRON_SECRET")].filter(Boolean);
-    if (!presented || !cronSecrets.includes(presented)) return json({ error: "Cron only." }, 401);
 
-    const admin = adminClient();
+  const gate = requireCron(req);
+  if (gate.error) return gate.error;
+
+  const admin = adminClient();
+  // A heartbeat, so cron_heartbeats proves THIS worker ran rather than only
+  // proving the loop that pings it is alive.
+  const beat = async (ok: boolean, detail: string) => {
+    try { await admin.rpc("app_cron_beat", { p_worker: "ops-maintenance", p_ok: ok, p_detail: detail }); } catch { /* the tick still ran */ }
+  };
+
+  try {
     const { data, error } = await admin.rpc("app_expire_pending");
-    if (error) return json({ error: error.message }, 500);
+    if (error) {
+      await beat(false, `app_expire_pending: ${error.message}`);
+      return json({ error: error.message }, 500);
+    }
 
     // SLA + routing. Fail-soft: housekeeping already ran, so policy work
     // reports its own error instead of failing the whole invocation.
@@ -271,25 +286,7 @@ Deno.serve(async (req) => {
       policyError = String((err as Error)?.message || err);
     }
 
-    // 4. Engage runtime tick: the same scheduler slot drives engage-run (flow
-    //    timers + journey triggers) with zero external infra changes. Fire-and-
-    //    forget with the same x-cron-secret — engage work must never fail or
-    //    slow housekeeping.
-    try {
-      const base = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
-      if (base) {
-        const tick = fetch(`${base}/functions/v1/engage-run`, {
-          method: "POST",
-          headers: { "x-cron-secret": presented, "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: "cron" }),
-        }).then((r) => r.body?.cancel(), () => { /* best effort */ });
-        // deno-lint-ignore no-explicit-any
-        const rt = (globalThis as any).EdgeRuntime;
-        if (rt?.waitUntil) rt.waitUntil(tick);
-      }
-    } catch (_) { /* best effort */ }
-
-    // 5. One-shot copy correction (2026-08-26): the platform agent's knowledge
+    // 4. One-shot copy correction (2026-08-26): the platform agent's knowledge
     //    still carried the old "live in days" claim after the marketing copy
     //    moved to "immediately / minutes". Exact legacy phrases only, so this
     //    is surgical and naturally idempotent (zero matching rows after the
@@ -312,14 +309,22 @@ Deno.serve(async (req) => {
       }
     } catch (_) { /* copy fix must never break housekeeping */ }
 
+    const expired = typeof data === "object" && data !== null ? JSON.stringify(data) : String(data ?? "");
+    await beat(!policyError, `expired ${expired}; routed ${routed}; SLA flagged ${slaFlagged}` + (policyError ? `; policy work failed: ${policyError}` : ""));
+    // The housekeeping already ran, so a policy failure does not undo anything —
+    // but it IS a failure, and the VM log only sees the status code. A 500 here
+    // costs nothing (nothing is retried on it) and is the only way the log line
+    // stops saying "ok" while SLA flagging is silently not happening.
     return json({
-      ok: true,
+      ok: !policyError,
       ...(typeof data === "object" && data !== null ? data : { result: data }),
       routed,
       sla_flagged: slaFlagged,
       ...(policyError ? { policy_error: policyError } : {}),
-    });
+    }, policyError ? 500 : 200);
   } catch (err) {
-    return json({ error: String((err as Error)?.message || err) }, 500);
+    const msg = String((err as Error)?.message || err);
+    await beat(false, msg);
+    return json({ error: msg }, 500);
   }
 });

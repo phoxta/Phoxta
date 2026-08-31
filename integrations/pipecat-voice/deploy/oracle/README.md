@@ -91,6 +91,28 @@ Two more places name this host, and BOTH must match or voice breaks:
     browser still refuses the connection before it is made — the failure appears
     in no server log. It is exactly what happened after the move off Railway.
 
+### Lock the doors — `VOICE_BRIDGE_SECRET`
+
+The voice server no longer runs an agent session for anyone who opens a stream or
+POSTs an SDP offer with a public key (those ship in every storefront bundle). The
+proof is one shared secret that MUST be set in **two** places to the SAME value:
+
+```bash
+secret="$(openssl rand -hex 32)"
+# 1. On the VM, in voice.env (then: docker compose up -d)
+printf 'VOICE_BRIDGE_SECRET=%s\n' "$secret" >> voice.env
+# 2. As a Supabase secret (agent-inbound reads it to trust the proof; dispatch.ts
+#    signs outbound streams with it; voice-session mints the widget token with it)
+supabase secrets set VOICE_BRIDGE_SECRET="$secret"
+```
+
+Set it on ONE side only and things half-break silently: on the VM but not
+Supabase → agent-inbound ignores the proof and files phone calls as web chat; on
+Supabase but not the VM → the server keeps running open. **Unset on both** is the
+old open behaviour, with a loud startup log line saying so. If you added `?key=`
+to a Twilio webhook URL for per-number routing, no secret change is needed — the
+key is part of the signed URL.
+
 ## 7. Verify
 
 ```bash
@@ -115,6 +137,16 @@ listening to silence.
 | `caddy` | TLS termination for every host below | :80/:443 |
 | `coturn` | Self-hosted TURN relay (replaces per-GB Twilio TURN) | :3478 + 49152-49570/udp |
 | `uptime` | Uptime Kuma — watches the whole estate | `status.phoxta.com` |
+| `llm` | llama.cpp — Qwen3-4B, serves the **`cheap` model tier** | `llm.phoxta.com/v1` |
+| `embed` | llama.cpp — Qwen3-Embedding-0.6B, serves the **RAG queue** | `llm.phoxta.com/v1/embeddings` |
+
+> **`integrations/design-render` (`/render`) is NOT wired by the `Caddyfile` in
+> this folder.** Its README expects a `render` service in this compose file and a
+> `handle /render*` route in the `voice.phoxta.com` block that proxies to it —
+> neither is present here. Until both are added (deliberately, by whoever owns
+> that integration — this runbook does not), `https://voice.phoxta.com/render`
+> 404s through to the voice bridge (`{"detail":"Not Found"}`), which reads like
+> the render service is broken when it is simply unrouted. Flagged, not fixed.
 
 Plus two cron jobs (not containers):
 
@@ -124,6 +156,91 @@ Plus two cron jobs (not containers):
   stopped running. Log: `/var/log/phoxta-worker-cron.log`.
 - `/etc/cron.d/phoxta-recordings-prune` — deletes local call recordings older
   than 30 days (Supabase Storage remains the system of record).
+
+### The free LLM tier
+
+Two llama.cpp servers run on the CPU this box already costs nothing for. They
+take the two workloads that a 4-core Ampere can honestly carry:
+
+- the **`cheap` model tier** — `agent-inbound` classification, `qa-scorer`,
+  and the cheap paths in `agentCore` / `memory`: short prompts, ~100-token
+  answers, all of them background jobs that nobody is watching a spinner for;
+- the **whole RAG embedding queue** — `Qwen3-Embedding-0.6B` is natively
+  1024-dim, which is exactly what `ai_embeddings` already is, so this is a
+  provider swap with no migration and no re-index.
+
+Everything else — balanced, complex, voice, anything a human is waiting on —
+stays on the hosted provider. Generation here is roughly **8 tokens/second**;
+a chat turn would land a minute late.
+
+**Set up:**
+
+```bash
+# 1. DNS — one more A record at the same IP
+vercel dns add phoxta.com llm A <VM_PUBLIC_IP>
+
+# 2. .env on the VM, alongside VOICE_DOMAIN / STATUS_DOMAIN / ACME_EMAIL
+printf 'LLM_DOMAIN=llm.phoxta.com\nLOCAL_API_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
+
+# 3. Build llama.cpp — IN A QUIET HOUR. There is no linux/arm64 image published
+#    for it (ggml-org/llama.cpp#13891), so this compiles from source and takes
+#    every core for 15+ minutes. Those are the cores carrying live calls.
+docker compose --profile llm build llm
+
+# 4. Start. First run downloads ~3.1 GB of weights into the llm_models volume.
+#    Caddy is re-created so it picks up LLM_DOMAIN and requests the certificate.
+docker compose --profile llm up -d llm embed caddy
+```
+
+> The two LLM services live behind the `llm` **profile** on purpose: a plain
+> `docker compose up -d` — the voice runbook above — never evaluates them, so a
+> VM that has never heard of `LLM_DOMAIN` or `LOCAL_API_KEY` still comes up
+> exactly as before. Pass `--profile llm` to every compose command that should
+> include them (`ps`, `logs`, `restart`).
+
+> Keep `LOCAL_API_KEY` hex. Compose splits `command:` shell-style **after**
+> interpolating it, so a key containing a space or a `$` becomes two arguments
+> and the server starts with no auth at all — on a public text-generation
+> endpoint. `openssl rand -hex 32` cannot produce one.
+
+**Point Phoxta at it** (`LOCAL_BASE_URL` and `LOCAL_EMBED_BASE_URL` are the
+same host — Caddy splits them on the path):
+
+```bash
+supabase secrets set \
+  LLM_PROVIDER_CHEAP=local \
+  LOCAL_BASE_URL=https://llm.phoxta.com/v1 \
+  LOCAL_MODEL=qwen3-4b-instruct \
+  LOCAL_API_KEY=<the same key> \
+  EMBED_PROVIDER=local \
+  LOCAL_EMBED_BASE_URL=https://llm.phoxta.com/v1 \
+  LOCAL_EMBED_MODEL=Qwen3-Embedding-0.6B
+```
+
+`LOCAL_MODEL` **must** match `--alias` in `docker-compose.yml`. That string is
+how [`models.ts`](../../../../supabase/functions/_shared/models.ts) recognises
+a local model id, and therefore how the gateway knows a call started here and
+that Gemini is the thing to fall back to. Get it wrong and the routing silently
+does nothing.
+
+**Verify:**
+
+```bash
+curl -s https://llm.phoxta.com/v1/models -H "Authorization: Bearer $LOCAL_API_KEY"
+# expect: qwen3-4b-instruct
+
+# 1024 is the number that matters — it must equal the ai_embeddings column.
+curl -s https://llm.phoxta.com/v1/embeddings \
+  -H "Authorization: Bearer $LOCAL_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"model":"Qwen3-Embedding-0.6B","input":"hello"}' \
+  | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["data"][0]["embedding"]))'
+
+# and that it is actually closed to everyone else
+curl -s -o /dev/null -w '%{http_code}\n' https://llm.phoxta.com/v1/models   # expect 401
+```
+
+Rolling back is one secret: `supabase secrets unset LLM_PROVIDER_CHEAP
+EMBED_PROVIDER` puts both workloads straight back on the hosted provider.
 
 ### TURN
 

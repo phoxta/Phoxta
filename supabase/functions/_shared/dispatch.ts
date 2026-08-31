@@ -316,13 +316,13 @@ export async function sendEmail(opts: {
   }
 }
 
-async function dispatchSms(to: string, message: string): Promise<DispatchResult> {
-  const r = await twilioSend("sms", to, message);
+async function dispatchSms(to: string, message: string, from?: string): Promise<DispatchResult> {
+  const r = await twilioSend("sms", to, message, from ? { from } : undefined);
   return { status: r.status, provider: r.status === "simulated" ? "none" : "twilio" };
 }
 
-async function dispatchWhatsApp(to: string, message: string): Promise<DispatchResult> {
-  const r = await twilioSend("whatsapp", to, message);
+async function dispatchWhatsApp(to: string, message: string, from?: string): Promise<DispatchResult> {
+  const r = await twilioSend("whatsapp", to, message, from ? { from } : undefined);
   return { status: r.status, provider: r.status === "simulated" ? "none" : "twilio_whatsapp" };
 }
 
@@ -334,6 +334,30 @@ async function dispatchWhatsApp(to: string, message: string): Promise<DispatchRe
 export type CallResult = { ok: boolean; status: DispatchResult["status"]; sid?: string; error?: string };
 
 const xmlEsc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+// The voice server used to run a full agent session for anyone who opened a
+// media stream to its /ws — and the agent key that authorises it ships in every
+// storefront bundle, so "leaked key + public wss:// endpoint" was a free line
+// into the business's agent. Now the stream must carry a signature the server
+// verifies with the shared VOICE_BRIDGE_SECRET. On an OUTBOUND call the Twilio
+// CallSid does not exist yet at dial time, so this form signs the literal
+// "outbound"; server.py accepts it ONLY when the stream's `from` param is
+// "outbound" (an inbound call signs `key|callSid|exp` instead, minted in
+// server.py's webhook). exp is a short window so a captured TwiML is useless
+// within minutes.
+//   exp = now + 600 ; sig = hex(HMAC-SHA256(VOICE_BRIDGE_SECRET, `${key}|outbound|${exp}`))
+// With the secret unset we send nothing: the server then degrades to its old
+// open behaviour, so an unsigned stream is no worse than before — the secret
+// being present on BOTH sides is what turns the lock.
+async function voiceStreamSig(key: string): Promise<{ sig: string; exp: number } | null> {
+  const secret = env("VOICE_BRIDGE_SECRET");
+  if (!secret) return null;
+  const exp = Math.floor(Date.now() / 1000) + 600;
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const buf = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(`${key}|outbound|${exp}`));
+  const sig = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return { sig, exp };
+}
 
 async function twilioCall(to: string, twiml: string): Promise<CallResult> {
   const accountSid = env("TWILIO_ACCOUNT_SID");
@@ -390,10 +414,19 @@ export async function placeAiCall(agentKey: string, to: string, opening = ""): P
     };
   }
   const openParam = opening ? `<Parameter name="opening" value="${xmlEsc(opening)}"/>` : "";
+  // The dialled number IS the customer on an outbound call, so the bridge threads
+  // the conversation and files it as voice against the right contact. Normalise
+  // to the same E.164 twilioCall dials so agent-inbound recognises the number.
+  const customerPhone = dialable(to) || to;
+  const sig = await voiceStreamSig(agentKey);
+  const authParams = sig ? `<Parameter name="sig" value="${sig.sig}"/><Parameter name="exp" value="${sig.exp}"/>` : "";
   const twiml =
     `<?xml version="1.0" encoding="UTF-8"?><Response><Connect>` +
     `<Stream url="wss://${host}/ws"><Parameter name="key" value="${xmlEsc(agentKey)}"/>` +
-    `<Parameter name="from" value="outbound"/>${openParam}</Stream></Connect></Response>`;
+    `<Parameter name="from" value="outbound"/>` +
+    `<Parameter name="direction" value="outbound"/>` +
+    `<Parameter name="customer_phone" value="${xmlEsc(customerPhone)}"/>` +
+    `${authParams}${openParam}</Stream></Connect></Response>`;
   return twilioCall(to, twiml);
 }
 
@@ -448,13 +481,23 @@ export async function dispatch(
   to: string,
   subject: string,
   message: string,
-  /** Email only: where the recipient's reply must land. Omit for platform mail. */
-  opts?: { replyTo?: string },
+  opts?: {
+    /** Email only: where the recipient's reply must land. Omit for platform mail. */
+    replyTo?: string;
+    /**
+     * SMS/WhatsApp only: the TENANT's number to send from. Without it Twilio
+     * sends from the platform's TWILIO_FROM — and when the customer replies to
+     * that number, twilio-inbound routes the reply to whichever org owns the
+     * platform line. That is a cross-tenant leak, and the email branch was
+     * already fixed for it (replyTo); this is the same fix for texting.
+     */
+    from?: string;
+  },
 ): Promise<DispatchResult> {
   if (!to) return { status: "simulated", provider: "none" };
   if (channel === "email") return dispatchEmail(to, subject, message, opts?.replyTo);
-  if (channel === "sms") return dispatchSms(to, message);
-  if (channel === "whatsapp") return dispatchWhatsApp(to, message);
+  if (channel === "sms") return dispatchSms(to, message, opts?.from);
+  if (channel === "whatsapp") return dispatchWhatsApp(to, message, opts?.from);
   if (channel === "call") return dispatchVoice(to, message);
   return { status: "simulated", provider: "none" };
 }

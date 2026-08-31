@@ -1,13 +1,31 @@
 // Phoxta — AI helpdesk deflection (RAG-grounded).
 // Embeds the ticket, retrieves the business's own knowledge (products, published
-// pages, resolved tickets) via pgvector, and drafts a reply + confidence. Same
-// auth/metering model as the gateway.
+// pages, and the owner's knowledge docs — public AND internal, because the
+// reader here is a staff member drafting a reply, not a customer) via pgvector,
+// and drafts a reply + confidence. Same auth/metering model as the gateway,
+// including the monthly cap.
+//
+// Other tickets are deliberately NOT retrieved. They used to be: a ticket's
+// embedding is its subject line, so "retrieved knowledge" was a list of other
+// customers' subject lines — no answers in them, and a name or an order number
+// in one was a paste away from someone else's reply.
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { modelFor } from "../_shared/models.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { embedOne } from "../_shared/openai.ts";
-import { meter } from "../_shared/meter.ts";
+import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
+
+/** Below this cosine similarity a match is noise. Without a floor, a ticket
+ *  about a refund on an index with no refund policy still got its eight
+ *  "nearest" rows — eight unrelated products — and the model was told to answer
+ *  ONLY from them. */
+const MIN_SIMILARITY = 0.45;
+/** One retrieved row's worth of prompt. A whole published page is thousands of
+ *  characters; eight of them crowd out the ticket the model is meant to answer. */
+const ROW_CHARS = 1_500;
+/** And the ceiling on all of them together. */
+const KNOWLEDGE_CHARS = 8_000;
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -22,6 +40,10 @@ Deno.serve(async (req) => {
     const a = await authorize(req, organizationId);
     if (a.error) return a.error;
     const { userId, admin, org } = a.ok;
+
+    // Before the embedding call as well as the draft: both spend the budget.
+    const allowance = await assertWithinCap(admin, org.id);
+    if (!allowance.ok) return json({ error: CAP_REACHED_MESSAGE, limitReached: true }, 429);
 
     const { data: ticket } = await admin
       .from("tickets")
@@ -47,9 +69,22 @@ Deno.serve(async (req) => {
         p_org: organizationId,
         query_embedding: emb,
         match_count: 8,
-        p_source_types: ["products", "cms_pages", "tickets"],
+        p_source_types: ["products", "cms_pages", "knowledge_docs", "knowledge_docs_internal"],
+        p_min_similarity: MIN_SIMILARITY,
       });
-      knowledge = ((matches as { source_type: string; content: string }[] | null) ?? []).map((r) => `[${r.source_type}] ${r.content}`).join("\n---\n");
+      // Best matches first (the RPC orders by distance), each cut to ROW_CHARS,
+      // and the list stops once the total would pass KNOWLEDGE_CHARS — so the
+      // prompt has a known upper size whatever is in the index.
+      const rows = (matches as { source_type: string; content: string }[] | null) ?? [];
+      const pieces: string[] = [];
+      let total = 0;
+      for (const r of rows) {
+        const piece = `[${r.source_type}] ${String(r.content ?? "").slice(0, ROW_CHARS)}`;
+        if (total + piece.length > KNOWLEDGE_CHARS) break;
+        pieces.push(piece);
+        total += piece.length;
+      }
+      knowledge = pieces.join("\n---\n");
     } catch (_) {
       knowledge = ""; // RAG optional (e.g. embeddings not yet generated)
     }
@@ -68,13 +103,13 @@ Deno.serve(async (req) => {
 
     const t0 = Date.now();
     const model = modelFor("balanced");
-    const { data, inTok, outTok, model: used } = await callJson<{ reply: string; confidence: number; resolved: boolean }>({
+    const { data, inTok, outTok, cacheWriteTok, cacheReadTok, model: used } = await callJson<{ reply: string; confidence: number; resolved: boolean }>({
       model,
       system,
       user,
       maxTokens: 900,
     });
-    await meter(admin, { organizationId, userId, model: used, feature: "helpdesk", tier: "balanced", inTok, outTok, latencyMs: Date.now() - t0 });
+    await meter(admin, { organizationId: org.id, userId, model: used, feature: "helpdesk", tier: "balanced", inTok, outTok, cacheWriteTok, cacheReadTok, latencyMs: Date.now() - t0 });
 
     if (!data?.reply) return json({ error: "Couldn't draft a reply for that ticket." }, 502);
     return json({ reply: data.reply, confidence: data.confidence ?? 0.5, resolved: !!data.resolved });

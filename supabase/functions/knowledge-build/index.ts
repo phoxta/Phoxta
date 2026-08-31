@@ -18,6 +18,7 @@
 // an origin='manual' row, so an owner's "we never discount in December" survives
 // every rebuild.
 import { preflight, json } from "../_shared/cors.ts";
+import { requireCron } from "../_shared/auth.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { callMessages } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
@@ -78,14 +79,23 @@ Deno.serve(async (req) => {
   if (pf) return pf;
 
   // Same shape as the other background workers: a shared cron secret, so this
-  // is reachable by the scheduler and nothing else.
-  const secret = Deno.env.get("CRON_SECRET") ?? "";
-  if (secret && req.headers.get("x-cron-secret") !== secret) {
-    return json({ error: "Forbidden" }, 403);
-  }
+  // is reachable by the scheduler and nothing else. The check used to be
+  // `if (secret && header !== secret)`, which admitted EVERYONE — three model
+  // calls per business, for every business — the moment the secret was unset.
+  // requireCron fails closed and compares in constant time.
+  const gate = requireCron(req);
+  if (gate.error) return gate.error;
+
+  const admin = adminClient();
+  // A heartbeat, so cron_heartbeats proves THIS worker ran rather than only
+  // proving the loop that pings it is alive. The daily knowledge.sh loops this
+  // function while `pending` > 0, so one calendar day may leave several beats;
+  // the last one carries the final "0 pending".
+  const beat = async (ok: boolean, detail: string) => {
+    try { await admin.rpc("app_cron_beat", { p_worker: "knowledge-build", p_ok: ok, p_detail: detail }); } catch { /* the run still happened */ }
+  };
 
   try {
-    const admin = adminClient();
     const body = (await req.json().catch(() => ({}))) as Json;
     const only: string | null = body?.organizationId ?? null;
     const force = body?.force === true;
@@ -193,8 +203,12 @@ Deno.serve(async (req) => {
     // The autosave trigger enqueues each doc for embedding, so embed-worker
     // picks them up on its next pass — no extra wiring needed here.
     // `pending` lets the caller decide whether to run again rather than guess.
+    const builtDocs = results.reduce((n: number, r: Json) => n + Number(r.built ?? 0), 0);
+    await beat(true, `${results.length} business(es) walked, ${builtDocs} doc(s) written, ${pending} pending` + (only ? ` (one org: ${only})` : ""));
     return json({ ok: true, orgs: results.length, pending, results });
   } catch (err) {
-    return json({ error: String((err as Error)?.message || err) }, 500);
+    const msg = String((err as Error)?.message || err);
+    await beat(false, msg);
+    return json({ error: msg }, 500);
   }
 });

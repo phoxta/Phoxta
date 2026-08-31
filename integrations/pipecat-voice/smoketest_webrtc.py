@@ -3,9 +3,18 @@ Pipecat JS client would: builds an SDP offer, POSTs it to /offer, applies the
 answer, sends silence on the mic track, and counts audio frames coming back —
 i.e. the agent speaking its greeting over WebRTC (same brain as the phone path).
 
-Success = SDP answer received AND inbound audio frames (the spoken greeting)."""
+Success = SDP answer received AND inbound audio frames (the spoken greeting).
+
+If VOICE_BRIDGE_SECRET is set, /offer now demands the widget token (contract 3),
+so we mint the web form — hex(HMAC-SHA256(secret, `${key}|web|${exp}`)) — exactly
+as the voice-session edge function would. With the secret unset the server runs
+open and the query params are ignored."""
 import asyncio
+import hashlib
+import hmac
 import os
+import time
+import urllib.parse
 
 import httpx
 from aiortc import RTCPeerConnection, RTCSessionDescription
@@ -16,6 +25,17 @@ load_dotenv()
 
 KEY = os.environ.get("PHOXTA_AGENT_KEY", "")
 PORT = os.environ.get("SMOKE_PORT", os.environ.get("PORT", "8765"))
+
+
+def _offer_query() -> str:
+    """?key=… plus a valid token+exp when the secret is set."""
+    q = {"key": KEY}
+    secret = os.environ.get("VOICE_BRIDGE_SECRET", "")
+    if secret:
+        exp = int(time.time()) + 300
+        q["token"] = hmac.new(secret.encode(), f"{KEY}|web|{exp}".encode(), hashlib.sha256).hexdigest()
+        q["exp"] = str(exp)
+    return urllib.parse.urlencode(q)
 
 
 async def main():
@@ -38,7 +58,7 @@ async def main():
     await pc.setLocalDescription(await pc.createOffer())
     async with httpx.AsyncClient(timeout=30) as h:
         r = await h.post(
-            f"http://localhost:{PORT}/offer?key={KEY}",
+            f"http://localhost:{PORT}/offer?{_offer_query()}",
             json={"sdp": pc.localDescription.sdp, "type": pc.localDescription.type},
         )
         ans = r.json()

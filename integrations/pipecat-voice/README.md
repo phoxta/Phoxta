@@ -31,16 +31,12 @@ You provide the swappable building blocks Pipecat orchestrates: telephony
 **not** configured here — it lives in Phoxta. Self-host alternative to Twilio for
 media is **LiveKit**; Pipecat supports it too.
 
-## Run it (recommended): `launch.py`
-One command brings up the tunnel, **auto-points your Twilio number at it**, and runs
-the server — so restarts just work (the account-less tunnel URL changes each time,
-and the launcher re-points Twilio every launch):
-```bash
-python launch.py
-```
-Needs `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` in `.env`.
-For a *permanently fixed* URL, use a named Cloudflare tunnel with your own domain,
-or deploy `server.py` to the Oracle VM (see `deploy/oracle/`) and drop the tunnel.
+## Run it
+The supported deployment is the Oracle Cloud VM — see
+[`deploy/oracle/README.md`](deploy/oracle/README.md), the real runbook (Docker
+Compose, Caddy for TLS, the shared `VOICE_BRIDGE_SECRET`). For local development,
+fill in `.env` and run `python server.py` (see **Manual setup** below), exposing
+it with `ngrok http 8765` and setting `PUBLIC_HOST` to the ngrok host.
 
 `setup_phoxta.py` is a one-off that points the agent's business at **Phoxta itself**
 (renames the org, writes a Phoxta sales/support persona with the offering + pricing
@@ -74,9 +70,13 @@ never show, because the browser refuses the connection before it is made:
 
 ## Manual setup
 1. **Get the agent key**: in the Phoxta console → *AI Agent → Configure* → copy
-   the web-widget/public key. Put it in `PHOXTA_AGENT_KEY` (or map per-number with
-   `PHOXTA_KEY_+1555...`). Set `PHOXTA_AGENT_URL` to your project's
-   `…/functions/v1/agent-inbound` and `SUPABASE_ANON_KEY`.
+   the web-widget/public key. Map a phone number to it either with `?key=<key>`
+   on the Twilio voice webhook URL, or per-number via env — **digits only**,
+   e.g. a call to +1 555 123 4567 → `PHOXTA_KEY_15551234567=<key>` (env-var names
+   can't reliably hold the E.164 `+`). An unmapped number is turned away rather
+   than dropped onto a default business. Set `PHOXTA_AGENT_URL` to your project's
+   `…/functions/v1/agent-inbound` and `SUPABASE_ANON_KEY`. For a locked-down
+   deployment also set `VOICE_BRIDGE_SECRET` here and as a Supabase secret.
 2. **Keys**: `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY` (+ `CARTESIA_VOICE_ID`),
    `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`.
 3. **Install & run**

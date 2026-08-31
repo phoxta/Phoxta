@@ -7,6 +7,7 @@ import {
     usePipecatClient,
     usePipecatClientTransportState,
 } from "@pipecat-ai/client-react";
+import { supabase } from "@/lib/supabaseClient";
 
 // In-browser voice channel for the Phoxta agent. The browser opens a WebRTC peer
 // connection to the self-hosted Pipecat voice server (POST <serverUrl>/offer),
@@ -16,9 +17,36 @@ import {
 type Props = {
     /** The business agent public key (AI Agent → Configure → web key). */
     publicKey: string;
-    /** Base URL of the Pipecat voice server, e.g. https://phoxta-voice.fly.dev. */
+    /** Base URL of the Pipecat voice server, e.g. https://voice.phoxta.com. */
     serverUrl: string;
 };
+
+/**
+ * A short-lived session token from the voice-session edge function. The voice
+ * server now requires it on /ice and /offer, so a leaked agent public key (they
+ * ship in every bundle) can no longer pull TURN credentials or open a real agent
+ * session on its own. Returns null on any failure — we still try to connect,
+ * because the server degrades to its old open behaviour when ITS secret is unset,
+ * so a token blip should degrade the widget, not brick it.
+ */
+async function fetchVoiceToken(publicKey: string): Promise<{ token: string; exp: number } | null> {
+    try {
+        const { data, error } = await supabase.functions.invoke("voice-session", {
+            body: { public_key: publicKey },
+        });
+        if (error) return null;
+        const d = data as { token?: string; exp?: number };
+        return d?.token && d?.exp ? { token: d.token, exp: d.exp } : null;
+    } catch {
+        return null;
+    }
+}
+
+function withToken(url: string, tok: { token: string; exp: number } | null): string {
+    if (!tok) return url;
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}token=${encodeURIComponent(tok.token)}&exp=${tok.exp}`;
+}
 
 const MIC_ICON = (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -62,7 +90,10 @@ function VoicePanel({ serverUrl, publicKey }: Props) {
         setError(null);
         setBusy(true);
         try {
-            const url = `${serverUrl.replace(/\/$/, "")}/offer?key=${encodeURIComponent(publicKey)}`;
+            // Mint a FRESH token at click time (they live 5 minutes, and the panel
+            // may have been open longer than that) and hand it to /offer.
+            const tok = await fetchVoiceToken(publicKey);
+            const url = withToken(`${serverUrl.replace(/\/$/, "")}/offer?key=${encodeURIComponent(publicKey)}`, tok);
             // client-js accepts a connection_url that the transport POSTs the SDP
             // offer to; our server replies with the SDP answer.
             await client.connect({ connection_url: url } as Parameters<typeof client.connect>[0]);
@@ -125,7 +156,9 @@ export default function VoiceAgentWidget({ publicKey, serverUrl }: Props) {
             let iceServers: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
             try {
                 const base = serverUrl.replace(/\/$/, "");
-                const res = await fetch(`${base}/ice?key=${encodeURIComponent(publicKey)}`);
+                // /ice hands out TURN credentials, so it too requires the token.
+                const tok = await fetchVoiceToken(publicKey);
+                const res = await fetch(withToken(`${base}/ice?key=${encodeURIComponent(publicKey)}`, tok));
                 if (res.ok) {
                     const data = await res.json();
                     if (Array.isArray(data?.iceServers) && data.iceServers.length) iceServers = data.iceServers;

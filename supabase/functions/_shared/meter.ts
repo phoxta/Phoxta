@@ -1,6 +1,14 @@
 import { costCents } from "./pricing.ts";
 import type { SupabaseClient } from "./supabaseAdmin.ts";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** ai_usage.user_id and conversation_id are uuid columns. A caller that passes a
+ *  label ("automation", "cron") instead of an id used to make the INSERT fail —
+ *  and because supabase-js reports failures as a return value, not a throw, the
+ *  try/catch below never saw it. Every such call was silently unmetered. Coerce
+ *  to null rather than fail: a row with no user is infinitely better than no row. */
+const asUuid = (v: string | null | undefined): string | null => (v && UUID_RE.test(v) ? v : null);
+
 /** Record one AI call into ai_usage (cost + eval/observability fields). Never throws. */
 export async function meter(
   admin: SupabaseClient,
@@ -24,10 +32,10 @@ export async function meter(
   try {
     const cacheWrite = opts.cacheWriteTok ?? 0;
     const cacheRead = opts.cacheReadTok ?? 0;
-    await admin.from("ai_usage").insert({
+    const { error } = await admin.from("ai_usage").insert({
       organization_id: opts.organizationId,
-      user_id: opts.userId ?? null,
-      conversation_id: opts.conversationId ?? null,
+      user_id: asUuid(opts.userId),
+      conversation_id: asUuid(opts.conversationId),
       model: opts.model,
       feature: opts.feature,
       tier: opts.tier,
@@ -39,9 +47,65 @@ export async function meter(
       status: opts.status ?? "ok",
       cost_cents: costCents(opts.model, opts.inTok, opts.outTok, cacheWrite, cacheRead),
     });
-  } catch (_) {
-    // Metering must never break the user-facing call.
+    // Logged, never thrown. Metering must not break the user-facing call — but
+    // a metering failure that nobody can see is how a whole feature's spend
+    // went missing from the cap and the cost dashboard for months.
+    if (error) console.error("[phoxta] ai_usage insert failed:", error.message, { feature: opts.feature, model: opts.model });
+  } catch (e) {
+    console.error("[phoxta] meter threw:", e instanceof Error ? e.message : String(e));
   }
+}
+
+/**
+ * The plan whose allowance applies. ONE definition, because the two copies
+ * that used to exist had drifted: the public agent floored a lapsed
+ * subscription to starter, the dashboard assistant let it keep its paid cap.
+ * A cancelled `scale` org must not keep 5M tokens a month anywhere.
+ */
+export function planFor(sub: { plan?: string | null; status?: string | null } | null | undefined): string {
+  return sub?.status === "active" ? (sub?.plan ?? "starter") : "starter";
+}
+
+export function planCapFor(sub: { plan?: string | null; status?: string | null } | null | undefined): number {
+  return MONTHLY_TOKEN_CAP[planFor(sub)] ?? MONTHLY_TOKEN_CAP.starter;
+}
+
+/**
+ * The organisation that platform-level AI work is booked to — the public idea
+ * validator, per-user startup-school runs, blueprint dossiers. None of those
+ * has a tenant, and ai_usage.organization_id is NOT NULL, so without this row
+ * their spend simply did not exist anywhere. Logged when missing: a null here
+ * means the calls are unmetered again, and that should never be quiet.
+ */
+export async function platformOrgId(admin: SupabaseClient, feature = "platform"): Promise<string | null> {
+  const { data } = await admin
+    .from("organizations").select("id").eq("vertical", "platform").limit(1).maybeSingle();
+  const id = (data as { id?: string } | null)?.id ?? null;
+  if (!id) console.error(`[phoxta] ${feature}: no organisation with vertical = 'platform' — this call is unmetered`);
+  return id;
+}
+
+export type CapCheck = { ok: boolean; cap: number; used: number; plan: string };
+
+/** What the caller returns to a person when the cap is hit. One string, so the
+ *  wording cannot drift between features either. */
+export const CAP_REACHED_MESSAGE = "You've reached this month's AI usage for your plan. Upgrade to keep going.";
+
+/**
+ * The monthly-cap check every authenticated AI feature is expected to run
+ * BEFORE calling the model. It existed in two places and was missing from the
+ * other nineteen; a trialing org could spend 750K complex-tier tokens in the
+ * page editor while its storefront agent was already refusing on the cap.
+ * Reads the plan and the month's usage in parallel.
+ */
+export async function assertWithinCap(admin: SupabaseClient, orgId: string): Promise<CapCheck> {
+  const [{ data: sub }, used] = await Promise.all([
+    admin.from("subscriptions").select("plan, status").eq("organization_id", orgId).maybeSingle(),
+    tokensUsedThisMonth(admin, orgId),
+  ]);
+  const plan = planFor(sub as { plan?: string | null; status?: string | null } | null);
+  const cap = MONTHLY_TOKEN_CAP[plan] ?? MONTHLY_TOKEN_CAP.starter;
+  return { ok: used < cap, cap, used, plan };
 }
 
 /** Per-org monthly token cap by plan (mirrors the gateway's allowance). */

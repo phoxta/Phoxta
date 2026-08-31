@@ -1,10 +1,18 @@
 """Simulate a Twilio Media Stream against the running voice server to validate
-the full pipeline (start -> Grok greeting -> Cartesia TTS -> outbound audio)
-without placing a real phone call. Success = we receive `media` frames back
-(the agent speaking its greeting)."""
+the full pipeline (start -> greeting -> TTS -> outbound audio) without placing a
+real phone call. Success = we receive `media` frames back (the agent speaking
+its greeting).
+
+If VOICE_BRIDGE_SECRET is set, /ws now demands a stream signature (contract 2),
+so we mint the inbound form — hex(HMAC-SHA256(secret, `${key}|${callSid}|${exp}`))
+— exactly as server.py's `/` webhook would. With the secret unset the server
+runs open and the extra params are simply ignored."""
 import asyncio
+import hashlib
+import hmac
 import json
 import os
+import time
 
 import websockets
 from dotenv import load_dotenv
@@ -15,6 +23,18 @@ SID = "MZ00000000000000000000000000000000"
 CALL = "CA00000000000000000000000000000000"
 KEY = os.environ.get("PHOXTA_AGENT_KEY", "")
 ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
+
+
+def _stream_params() -> dict:
+    """Inbound stream params, plus a valid sig+exp when the secret is set."""
+    params = {"key": KEY, "from": "+15550001111"}
+    secret = os.environ.get("VOICE_BRIDGE_SECRET", "")
+    if secret:
+        exp = int(time.time()) + 600
+        sig = hmac.new(secret.encode(), f"{KEY}|{CALL}|{exp}".encode(), hashlib.sha256).hexdigest()
+        params["sig"] = sig
+        params["exp"] = str(exp)
+    return params
 
 
 async def main():
@@ -30,7 +50,7 @@ async def main():
                 "accountSid": ACCOUNT_SID,
                 "callSid": CALL,
                 "tracks": ["inbound"],
-                "customParameters": {"key": KEY, "from": "+15550001111"},
+                "customParameters": _stream_params(),
                 "mediaFormat": {"encoding": "audio/x-mulaw", "sampleRate": 8000, "channels": 1},
             },
         }))

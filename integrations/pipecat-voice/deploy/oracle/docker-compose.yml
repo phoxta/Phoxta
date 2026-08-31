@@ -12,6 +12,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file: ./voice.env
+    # A redeploy (`up -d --build`) sends SIGTERM. server.py runs uvicorn's
+    # graceful shutdown — stop accepting new calls, let live ones finish — but
+    # Docker's default 10s grace SIGKILLs mid-sentence long before a call ends.
+    # 5m matches Caddy's stream_close_delay and server.py's SHUTDOWN_GRACE_SECS,
+    # so a caller finishes their turn instead of being cut off.
+    stop_grace_period: 5m
     # Deliberately no `ports:` — only Caddy can reach the bridge, so the bare
     # HTTP port is never exposed and every connection arrives over TLS.
     expose:
@@ -63,6 +69,103 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
+  # ── The free LLM tier ──────────────────────────────────────────────────────
+  #
+  # Two llama.cpp servers on the CPU this box already costs nothing to run.
+  # Between them they carry the `cheap` model tier (short classification,
+  # scoring and summary jobs) and the ENTIRE RAG embedding queue, which is the
+  # whole of what a 4-core Ampere can honestly do. Balanced and complex stay on
+  # the hosted provider: generation here runs at roughly 8 tokens/second, so an
+  # interactive chat turn or a voice reply would arrive a minute late.
+  #
+  # THREADS ARE CAPPED ON PURPOSE. Left alone llama.cpp takes every core it can
+  # see, and the cores it takes are the ones the Pipecat bridge needs to keep
+  # audio moving — a background summary would stutter a live call. Two threads
+  # for chat, one for embeddings, and the voice bridge keeps the rest.
+  # BUILT FROM SOURCE, NOT PULLED. ghcr.io/ggml-org/llama.cpp:server is
+  # documented as multi-arch but no linux/arm64 manifest is actually published
+  # (ggml-org/llama.cpp#13891, #19177) — on this Ampere box a pull fails with
+  # "no matching manifest". .devops/cpu.Dockerfile builds arm64 explicitly, so
+  # we build it, exactly as the voice image is already built here.
+  #
+  # BUILD IT IN A QUIET HOUR. cmake takes every core for 15+ minutes, and those
+  # are the cores carrying live calls: `docker compose build llm` first, then
+  # `up -d`, rather than discovering it mid-call.
+  #
+  # Both services share one build and one image tag, so the second is a cache
+  # hit rather than a second quarter-hour.
+  # OPT-IN via `--profile llm`. The voice stack must come up on a VM that has
+  # never heard of these services — `docker compose up -d` with no profile
+  # starts voice/coturn/uptime/caddy exactly as before and never evaluates
+  # these two. Compose interpolates the WHOLE file regardless of profile, which
+  # is why the key is `${LOCAL_API_KEY:-}` (never `:?`) and the refusal to run
+  # without it lives in the entrypoint instead, where it fires only when the
+  # container actually starts.
+  llm:
+    profiles: ["llm"]
+    build: &llama_build
+      # Pinned. A remote git context with no ref follows master, and a box that
+      # rebuilds itself onto whatever landed upstream this morning is not a
+      # thing you want holding the cheap tier.
+      context: https://github.com/ggml-org/llama.cpp.git#v0.3.0
+      dockerfile: .devops/cpu.Dockerfile
+      target: server
+    image: phoxta/llama-server:cpu
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      # Without this the weights land inside the container and are re-downloaded
+      # on every rebuild — 2.5 GB each time, on a box with a monthly cap.
+      LLAMA_CACHE: /models
+      LOCAL_API_KEY: ${LOCAL_API_KEY:-}
+    volumes:
+      - llm_models:/models
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        [ -n "$$LOCAL_API_KEY" ] || { echo "LOCAL_API_KEY is empty — refusing to start an unauthenticated LLM endpoint on the public internet" >&2; exit 1; }
+        exec /app/llama-server \
+          -hf unsloth/Qwen3-4B-Instruct-2507-GGUF:Q4_K_M \
+          --alias qwen3-4b-instruct \
+          --host 0.0.0.0 --port 8080 \
+          -t 2 -c 8192 --jinja \
+          --api-key "$$LOCAL_API_KEY"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  embed:
+    profiles: ["llm"]
+    build: *llama_build
+    image: phoxta/llama-server:cpu
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      LLAMA_CACHE: /models
+      LOCAL_API_KEY: ${LOCAL_API_KEY:-}
+    volumes:
+      - llm_models:/models
+    # --pooling last is NOT optional. Qwen3-Embedding is trained with
+    # last-token pooling; with llama.cpp's default the server still answers
+    # 200 with 1024 floats that insert cleanly and retrieve badly, so the only
+    # symptom is search quietly getting worse.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        [ -n "$$LOCAL_API_KEY" ] || { echo "LOCAL_API_KEY is empty — refusing to start an unauthenticated embeddings endpoint on the public internet" >&2; exit 1; }
+        exec /app/llama-server \
+          -hf Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0 \
+          --alias Qwen3-Embedding-0.6B \
+          --host 0.0.0.0 --port 8080 \
+          -t 1 -c 8192 \
+          --embeddings --pooling last \
+          --api-key "$$LOCAL_API_KEY"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -72,6 +175,11 @@ services:
     environment:
       VOICE_DOMAIN: ${VOICE_DOMAIN:?set VOICE_DOMAIN in .env, e.g. voice.phoxta.com}
       STATUS_DOMAIN: ${STATUS_DOMAIN:?set STATUS_DOMAIN in .env, e.g. status.phoxta.com}
+      # Optional — the LLM profile is opt-in. `llm.localhost` is the deliberate
+      # default: Caddy issues *.localhost names from its internal CA and never
+      # asks Let's Encrypt for them, so an unset domain costs nothing and
+      # answers 502 on a name nobody resolves, instead of failing the stack.
+      LLM_DOMAIN: ${LLM_DOMAIN:-llm.localhost}
       ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env — Let's Encrypt expiry notices}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -87,3 +195,4 @@ volumes:
   caddy_data:
   caddy_config:
   uptime_data:
+  llm_models:     # GGUF weights — ~3.1 GB, keep it or every restart re-downloads

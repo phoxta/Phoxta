@@ -24,6 +24,7 @@ import {
 import type { Conversation, OrgMember } from "@/lib/db/ops/agent";
 import type { Ticket } from "@/lib/db/ops/helpdesk";
 import { Avatar, Tag } from "@/pages/dashboard/ops/ui/primitives";
+import RecordingPlayer from "@/pages/dashboard/ops/ui/RecordingPlayer";
 
 /**
  * Customer context rail.
@@ -346,9 +347,7 @@ export default function ContextRail({
                 <div style={{ fontSize: 11, color: "var(--at-neutral-500)" }}>
                   {new Date(c.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </div>
-                {c.recording_url && (
-                  <audio controls preload="none" src={c.recording_url} className="w-100 mt-1" style={{ height: 30 }} />
-                )}
+                <RecordingPlayer orgId={orgId} callId={c.id} recording={c.recording_url} className="w-100 mt-1" style={{ height: 30 }} />
               </div>
             ))}
           </Section>

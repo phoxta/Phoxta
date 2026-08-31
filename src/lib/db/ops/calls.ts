@@ -36,6 +36,29 @@ export async function listRecentCalls(
   return { data: (data as unknown as CallRow[] | null) ?? [], error: friendlyError(error?.message) };
 }
 
+// ---------- Recordings ----------
+// call_logs.recording_url no longer holds a playable URL. The call-recordings
+// bucket is private (0127) and the column carries the object's storage PATH for
+// new rows — a legacy row still has the old public URL, which no longer serves.
+// Either way the console asks recording-url for a ten-minute signed link; the
+// function checks membership, loads the row scoped to the business and parses
+// the path out of whichever shape the column holds. Called on demand (a click),
+// never for every row in a list: a signed link minted for a row nobody plays is
+// a link that exists for nothing.
+export async function getRecordingUrl(orgId: string, callLogId: string): Promise<{ url: string | null; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("recording-url", { body: { organizationId: orgId, callLogId } });
+  if (error) {
+    let msg = error.message;
+    try {
+      const ctx = await (error as { context?: Response }).context?.json?.();
+      if (ctx?.error) msg = ctx.error;
+    } catch { /* keep generic */ }
+    return { url: null, error: friendlyError(msg) };
+  }
+  const url = (data as { url?: string } | null)?.url ?? null;
+  return { url, error: url ? null : "The recording could not be opened." };
+}
+
 export type CallStats = {
   total: number;
   inbound: number;

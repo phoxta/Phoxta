@@ -13,9 +13,11 @@
 // is carried over intact — it is the product, not scaffolding — and the amounts
 // it reasons in were already GBP, which is now the platform's currency too.
 import { preflight, json } from "../_shared/cors.ts";
-import { adminClient } from "../_shared/supabaseAdmin.ts";
+import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
+import { hashIp } from "../_shared/clientIp.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
+import { meter, platformOrgId } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -39,45 +41,14 @@ const envCeiling = Number(Deno.env.get("VALIDATOR_DAILY_CEILING"));
 const GLOBAL_DAILY_LIMIT = Number.isFinite(envCeiling) && envCeiling > 0 ? Math.floor(envCeiling) : 300;
 
 /**
- * The visitor's address, as far as the infrastructure will vouch for it.
- *
- * `x-forwarded-for` is a list a caller can pre-seed: proxies APPEND, so the
- * LEFTMOST entry is whatever the client sent and the rightmost entries are the
- * ones our own infrastructure wrote. Keying the limit on the leftmost value —
- * as this did — meant rotating a single header defeated it outright. So read
- * from the right, skipping private hops to land on the real peer.
+ * Where this spend is recorded. There is no caller to bill — that is the whole
+ * design — and ai_usage.organization_id is NOT NULL (0004, never relaxed), so
+ * the row lands on Phoxta's own organisation, exactly as dossier-run books the
+ * shared blueprint dossiers. This is the platform's marketing cost, and it is
+ * the one model call a stranger can trigger; the day it stops appearing in
+ * ai_usage is the day nobody can see what the homepage is costing. The IP and
+ * global gates above stay the actual limit — there is no org to cap.
  */
-function callerAddress(req: Request): string {
-  // Cloudflare replaces cf-connecting-ip with the true peer on every request,
-  // so when it is present it is the one value a caller cannot author.
-  const cf = req.headers.get("cf-connecting-ip")?.trim();
-  if (cf) return cf;
-  // Otherwise take the RIGHTMOST hop and nothing else. Everything to its left
-  // was written by whoever called us and is therefore forgeable — that was the
-  // original hole — while the rightmost entry is appended by the proxy actually
-  // in front of us. Walking leftwards past a private hop looks more thorough but
-  // is worse: on a chain that ends in infrastructure addresses it lands on a
-  // shared upstream and quietly buckets every visitor together, so one caller's
-  // usage would exhaust the allowance for everyone.
-  const chain = (req.headers.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  return chain[chain.length - 1] ?? req.headers.get("x-real-ip")?.trim() ?? "unknown";
-}
-
-/**
- * The visitor's IP, hashed.
- *
- * The limit needs to recognise "this caller again", which a hash answers. It
- * does not need to know who they are, and storing raw addresses would make the
- * table a privacy liability for no extra function.
- */
-async function hashIp(req: Request): Promise<string> {
-  const raw = callerAddress(req);
-  const salt = Deno.env.get("CRON_SECRET") ?? "phoxta";
-  const bytes = new TextEncoder().encode(`${salt}:${raw}`);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
-}
-
 const PROMPT = (idea: string) => `You are a senior startup validation strategist. Perform a comprehensive, multi-dimensional deep validation of the following business idea.
 
 IDEA: "${idea}"
@@ -191,12 +162,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { data: report } = await callJson<Json>({
+    const t0 = Date.now();
+    const { data: report, inTok, outTok, cacheWriteTok, cacheReadTok, model } = await callJson<Json>({
       model: modelFor("complex"),
       system: "You are a senior startup validation strategist. Reply with JSON only — no prose, no code fences.",
       user: PROMPT(idea),
       maxTokens: 5000,
     });
+
+    const meterOrg = await platformOrgId(admin, "idea-validate");
+    if (meterOrg) {
+      await meter(admin, {
+        organizationId: meterOrg,
+        model,
+        feature: "idea-validate",
+        tier: "complex",
+        inTok, outTok, cacheWriteTok, cacheReadTok,
+        latencyMs: Date.now() - t0,
+      });
+    }
 
     // The lead is the reason this endpoint is free. Recorded after the work
     // succeeds, so a failed generation does not look like interest.

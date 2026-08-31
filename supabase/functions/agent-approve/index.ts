@@ -3,7 +3,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
-import { runWrite } from "../_shared/actions.ts";
+import { runWrite, recordAudit } from "../_shared/actions.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -43,15 +43,27 @@ Deno.serve(async (req) => {
     if (!claimed) return json({ error: "That action was already decided." }, 400);
 
     if (decision === "approve") {
+      const orgId = (act as Json).organization_id;
+      const tool = (act as Json).tool;
+      // A6 — execute the action the owner APPROVED, exactly as it was queued. The
+      // args already carry the target id executeAction stamped at queue time
+      // (args.__target), so runWrite acts on the very row the owner looked at,
+      // rather than re-resolving the name now (hours later, when a rename or a
+      // second "John Smith" could point it at a different row).
+      const args = (act as Json).args;
       try {
         // Attributed to whoever approved it: they are the person authorising the write.
-        const summary = await runWrite(admin, (act as Json).organization_id, (act as Json).tool, (act as Json).args, a.ok.userId);
+        const summary = await runWrite(admin, orgId, tool, args, a.ok.userId);
         await admin.from("agent_actions").update({ status: "executed", result: summary }).eq("id", actionId);
-        await admin.from("agent_audit_log").insert({ organization_id: (act as Json).organization_id, actor: "owner", tool: (act as Json).tool, args: (act as Json).args, status: "ok", summary });
+        // Same audit shape as the operator's own path (actor_id + source), via the
+        // shared writer — the daily outbound cap counts 'ok' rows from this table.
+        await recordAudit(admin, orgId, { tool, args, status: "ok", summary, actor: "owner", actorId: a.ok.userId, source: "approval" });
         return json({ status: "executed", summary });
       } catch (e) {
-        await admin.from("agent_actions").update({ status: "failed", error: String((e as Error)?.message || e) }).eq("id", actionId);
-        return json({ status: "failed", error: String((e as Error)?.message || e) });
+        const msg = String((e as Error)?.message || e);
+        await admin.from("agent_actions").update({ status: "failed", error: msg }).eq("id", actionId);
+        await recordAudit(admin, orgId, { tool, args, status: "error", summary: msg, actor: "owner", actorId: a.ok.userId, source: "approval" });
+        return json({ status: "failed", error: msg });
       }
     }
 

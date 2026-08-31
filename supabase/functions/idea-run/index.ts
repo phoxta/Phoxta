@@ -12,9 +12,10 @@
 // migration 0109.
 import { preflight, json } from "../_shared/cors.ts";
 import { requireUser } from "../_shared/auth.ts";
-import { adminClient } from "../_shared/supabaseAdmin.ts";
+import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
+import { meter, platformOrgId } from "../_shared/meter.ts";
 import { searchStock } from "../_shared/stock.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -22,6 +23,16 @@ type Json = any;
 
 type Step = "problem" | "market" | "value" | "customer" | "model" | "report" | "strategy";
 
+/**
+ * Where this spend is recorded. An idea belongs to a USER, not to a business —
+ * the programme runs before there is one — and ai_usage.organization_id is NOT
+ * NULL (0004, never relaxed). So the row lands on Phoxta's own organisation, the
+ * way dossier-run books its shared blueprint dossiers: the platform is the party
+ * paying for the validation programme, and a cost that is not in ai_usage is a
+ * cost nobody sees. Null is survivable — metering must never be the reason a
+ * step fails — but it means the platform org row is missing, and that is worth
+ * a log line.
+ */
 const ORDER: Step[] = ["problem", "market", "value", "customer", "model", "report", "strategy"];
 
 /**
@@ -190,12 +201,28 @@ Deno.serve(async (req) => {
     if (!idea) return json({ error: "That idea was not found." }, 404);
 
     const spec = PROMPTS[step];
-    const { data: output } = await callJson<Json>({
+    const t0 = Date.now();
+    const { data: output, inTok, outTok, cacheWriteTok, cacheReadTok, model } = await callJson<Json>({
       model: modelFor(spec.tier),
       system: spec.system,
       user: spec.user(contextFor(idea, step), idea),
       maxTokens: step === "strategy" ? 6000 : 4000,
     });
+
+    // Metered right after the call rather than after the store below, so a
+    // failed write still leaves the spend on record — the tokens were used.
+    const meterOrg = await platformOrgId(admin, "idea-run");
+    if (meterOrg) {
+      await meter(admin, {
+        organizationId: meterOrg,
+        userId: who.userId,
+        model,
+        feature: "idea-run",
+        tier: spec.tier,
+        inTok, outTok, cacheWriteTok, cacheReadTok,
+        latencyMs: Date.now() - t0,
+      });
+    }
 
     // Resolve the stage's own photograph while we are here. The model named a
     // subject in imageQuery; this turns it into an actual picture, once, and

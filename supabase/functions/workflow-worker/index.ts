@@ -2,8 +2,14 @@
 // Processes pending workflow_runs (fanned out by triggers when automations fire),
 // running each step and recording observable, replayable state. Email send is
 // pluggable (Resend) and degrades to "simulated" without keys.
+//
+// Schedule-only. requireUser used to admit any signed-in user of any tenant,
+// who could then drain (and so send the automation emails of) every business
+// on the platform. Nothing in the console calls this — drainWorkflows() in
+// src/lib/db/ops/ai.ts is exported and unused — so there is no member leg to
+// keep: the cron tick (integrations/worker-cron/ping.sh) is the only caller.
 import { preflight, json } from "../_shared/cors.ts";
-import { requireUser } from "../_shared/auth.ts";
+import { requireCron } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { orgReplyTo } from "../_shared/conversationEmail.ts";
 import { renderSimple } from "../_shared/email.ts";
@@ -11,6 +17,8 @@ import { renderSimple } from "../_shared/email.ts";
 // deno-lint-ignore no-explicit-any
 type Json = any;
 const BATCH = 20;
+/** A run 'running' for longer than this was abandoned by a worker that died. */
+const STALE_MINUTES = 10;
 
 const SOURCE_TABLE: Record<string, string> = {
   contact_created: "crm_contacts",
@@ -77,14 +85,30 @@ Deno.serve(async (req) => {
   const pf = preflight(req);
   if (pf) return pf;
 
-  // requireUser also admits the trusted scheduler via x-cron-secret
-  // (CRON_SECRET / BILLING_CRON_SECRET) — same drain either way, so pg_cron
-  // and the worker-cron tick can keep this queue moving without a session.
-  const auth = await requireUser(req);
-  if ("error" in auth) return auth.error;
+  const gate = requireCron(req);
+  if (gate.error) return gate.error;
+
+  const admin = adminClient();
+  // A heartbeat, so cron_heartbeats proves THIS worker ran rather than only
+  // proving the loop that pings it is alive.
+  const beat = async (ok: boolean, detail: string) => {
+    try { await admin.rpc("app_cron_beat", { p_worker: "workflow-worker", p_ok: ok, p_detail: detail }); } catch { /* the tick still ran */ }
+  };
 
   try {
-    const admin = adminClient();
+    // Reaper: a run left 'running' by a worker that died is failed with a
+    // reason rather than shown as running for ever. Not retried — its steps may
+    // have half-happened (an email sent, a tag added) and the console can show
+    // exactly which from `steps`.
+    const cutoff = new Date(Date.now() - STALE_MINUTES * 60_000).toISOString();
+    const { data: stale } = await admin
+      .from("workflow_runs")
+      .update({ status: "failed", error: "the worker stopped before this run finished" })
+      .eq("status", "running")
+      .lt("updated_at", cutoff)
+      .select("id");
+    const reaped = ((stale as { id: string }[] | null) ?? []).length;
+
     const { data: pending } = await admin
       .from("workflow_runs")
       .select("id, organization_id, automation_id, trigger, input")
@@ -92,11 +116,25 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: true })
       .limit(BATCH);
 
-    const runs = (pending as { id: string; organization_id: string; automation_id: string | null; trigger: string; input: Json }[] | null) ?? [];
+    const candidates = (pending as { id: string; organization_id: string; automation_id: string | null; trigger: string; input: Json }[] | null) ?? [];
     let processed = 0;
+    let failed = 0;
+    let taken = 0;
 
-    for (const r of runs) {
-      await admin.from("workflow_runs").update({ status: "running" }).eq("id", r.id);
+    for (const r of candidates) {
+      // The claim: pending → running WITH the status predicate. Two overlapping
+      // ticks (or the tick and a future console nudge) both read the same
+      // pending rows; an UPDATE … WHERE status = 'pending' either takes the row
+      // or takes nothing, so a run cannot execute twice.
+      const { data: got } = await admin
+        .from("workflow_runs")
+        .update({ status: "running" })
+        .eq("id", r.id)
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
+      if (!got) continue;
+      taken++;
       const steps: Json[] = [];
       try {
         const { data: automation } = await admin.from("automations").select("name, action, config, runs").eq("id", r.automation_id).maybeSingle();
@@ -147,12 +185,20 @@ Deno.serve(async (req) => {
           .from("workflow_runs")
           .update({ status: "failed", steps, error: e instanceof Error ? e.message : String(e) })
           .eq("id", r.id);
+        failed++;
       }
     }
 
-    return json({ processed });
+    const detail = `${processed} succeeded, ${failed} failed of ${taken} claimed` + (reaped ? `; ${reaped} stale run(s) failed by the reaper` : "");
+    // Every claimed run failing is a broken tick, and a broken tick says so in
+    // its status code: the VM log sees only that.
+    const totalFailure = taken > 0 && processed === 0;
+    await beat(!totalFailure, detail);
+    return json({ processed, failed, reaped }, totalFailure ? 502 : 200);
   } catch (err) {
-    console.error("workflow-worker error", err);
-    return json({ error: "Worker error.", processed: 0 }, 200);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("workflow-worker error", msg);
+    await beat(false, msg);
+    return json({ error: "Worker error.", detail: msg, processed: 0 }, 500);
   }
 });

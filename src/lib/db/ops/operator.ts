@@ -26,6 +26,11 @@ export type OperatorMsg = {
   content: string;
   attachments?: OperatorAttachment[];
   created_at?: string;
+  /** Client-only. The page speaking in the operator's place — "I ran out of
+   *  steps before finishing" — shown in the thread where the answer would have
+   *  been, but never saved and never sent back as history, because the operator
+   *  did not say it. Rows read from the database never carry it. */
+  notice?: boolean;
 };
 
 /** Which of the four renderers a file gets, from its MIME type. */
@@ -45,6 +50,10 @@ async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<{ d
     let msg = error.message;
     try {
       const ctx = await (error as { context?: Response }).context?.json?.();
+      // The monthly-cap message is ours and written for the owner: it says what
+      // happened and what to do. friendlyError would flatten it to "Something
+      // went wrong", which sends them looking for a bug that is a plan limit.
+      if (ctx?.limitReached && ctx?.error) return { data: null, error: String(ctx.error) };
       if (ctx?.error) msg = ctx.error;
     } catch { /* keep generic */ }
     return { data: null, error: friendlyError(msg) };
@@ -69,6 +78,214 @@ export async function runOperator(
     attachments: data?.attachments ?? [],
     error,
   };
+}
+
+// --- Streaming ---------------------------------------------------------------
+// supabase.functions.invoke buffers the whole body before it resolves, so the
+// streaming variant goes through fetch with the two headers invoke would have
+// sent — the signed-in user's JWT and the anon key — and reads the response as
+// server-sent events: `data: <JSON>\n\n` per event, the runner's own events
+// (delta / turn / tool_start / tool_end) and then one `done` or one `error`.
+
+const SUPABASE_URL = ((import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "").replace(/\/+$/, "");
+const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
+
+const GENERIC_ERROR = "Something went wrong. Please try again.";
+const DROPPED_ERROR = "The connection dropped before the operator finished. Please try again.";
+
+/** One event off the operator's stream: the agent runner's events plus the two
+ *  the function adds to end a turn. */
+export type OperatorStreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "turn"; n: number }
+  | { type: "tool_start"; name: string }
+  | { type: "tool_end"; name: string; ok: boolean }
+  | {
+    type: "done";
+    reply: string;
+    toolCalls: string[];
+    attachments?: OperatorAttachment[];
+    usage?: { input_tokens: number; output_tokens: number };
+    model?: string;
+    exhausted?: boolean;
+  }
+  | { type: "error"; error: string };
+
+export type OperatorStreamHandlers = {
+  /** A piece of the answer, as the model produces it. */
+  onDelta?: (text: string) => void;
+  /** A model call is starting. Whatever streamed before it was the model
+   *  thinking aloud ahead of its tool calls, not the answer — clear it. */
+  onTurn?: (n: number) => void;
+  onToolStart?: (name: string) => void;
+  onToolEnd?: (name: string, ok: boolean) => void;
+};
+
+export type OperatorResult = {
+  reply: string;
+  toolCalls: string[];
+  attachments: OperatorAttachment[];
+  /** The agent used every turn it had without finishing. `reply` is then a
+   *  notice to show, not an answer to keep. */
+  exhausted: boolean;
+  /** False when the deployed function answered with plain JSON — an older build
+   *  that does not know `stream` — and the reply arrived in one piece. */
+  streamed: boolean;
+  error: string | null;
+};
+
+const failed = (error: string): OperatorResult =>
+  ({ reply: "", toolCalls: [], attachments: [], exhausted: false, streamed: false, error });
+
+/**
+ * Streaming counterpart of runOperator. Handlers fire as events arrive; the
+ * promise resolves once with the finished turn — the same fields runOperator
+ * returns plus `exhausted` and `streamed` — so a page keeps ONE finalise path.
+ *
+ * Falls back by itself: when the response is not `text/event-stream` (an older
+ * deployment ignored `stream: true` and answered JSON) the JSON is returned
+ * whole, with `streamed: false`.
+ */
+export async function runOperatorStream(
+  orgId: string,
+  message: string,
+  history: OperatorMsg[],
+  on: OperatorStreamHandlers = {},
+): Promise<OperatorResult> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return failed("Your session has expired. Please sign in again.");
+  if (!SUPABASE_URL) return failed("Can't reach the server. Check your connection and try again.");
+
+  let res: Response;
+  try {
+    res = await fetch(`${SUPABASE_URL}/functions/v1/agent-operator`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_ANON_KEY,
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({
+        organizationId: orgId,
+        message,
+        // Role + content only. The function strips the rest as well, but a
+        // row's attachments and timestamps have no business on the wire.
+        history: history.map((m) => ({ role: m.role, content: m.content })),
+        stream: true,
+      }),
+    });
+  } catch (e) {
+    return failed(friendlyError(e instanceof Error ? e.message : String(e)) ?? GENERIC_ERROR);
+  }
+
+  // Auth, the monthly cap and an empty message all fail BEFORE the stream
+  // starts, as ordinary HTTP statuses — read them the way invoke() does.
+  if (!res.ok) {
+    let msg: string | null = null;
+    try {
+      const j = (await res.json()) as { error?: string; limitReached?: boolean } | null;
+      // The cap message is ours and written for the owner — pass it through;
+      // anything else is mapped so no raw provider text reaches the screen.
+      msg = j?.limitReached && j.error ? String(j.error) : friendlyError(j?.error ?? `HTTP ${res.status}`);
+    } catch { /* not JSON */ }
+    return failed(msg ?? GENERIC_ERROR);
+  }
+
+  // SSE framing. Events are separated by a blank line and each carries one or
+  // more "data:" lines whose payloads join with "\n". Network chunks need not
+  // align with events, so `feed` returns whatever trails for the next chunk.
+  // `state` is an object rather than a `let` so TypeScript sees the assignment
+  // made inside `handle` — a plain variable is narrowed to its initial null.
+  const state: { final: OperatorResult | null } = { final: null };
+  const handle = (frame: string) => {
+    const data = frame.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart()).join("\n");
+    if (!data) return;
+    let ev: OperatorStreamEvent;
+    try {
+      ev = JSON.parse(data) as OperatorStreamEvent;
+    } catch {
+      return; // a frame we cannot read is skipped, not fatal — `done` still decides the turn
+    }
+    switch (ev.type) {
+      case "delta":
+        on.onDelta?.(ev.text);
+        break;
+      case "turn":
+        on.onTurn?.(ev.n);
+        break;
+      case "tool_start":
+        on.onToolStart?.(ev.name);
+        break;
+      case "tool_end":
+        on.onToolEnd?.(ev.name, ev.ok);
+        break;
+      case "done":
+        state.final = {
+          reply: ev.reply ?? "",
+          toolCalls: ev.toolCalls ?? [],
+          attachments: ev.attachments ?? [],
+          exhausted: ev.exhausted === true,
+          streamed: true,
+          error: null,
+        };
+        break;
+      case "error":
+        state.final = failed(friendlyError(ev.error) ?? GENERIC_ERROR);
+        break;
+    }
+  };
+  const feed = (buf: string): string => {
+    let i: number;
+    while ((i = buf.indexOf("\n\n")) >= 0) {
+      handle(buf.slice(0, i));
+      buf = buf.slice(i + 2);
+    }
+    return buf;
+  };
+  const finish = (rest: string): OperatorResult => {
+    if (!state.final && rest.trim()) handle(rest);
+    return state.final ?? failed(DROPPED_ERROR);
+  };
+
+  const type = res.headers.get("content-type") ?? "";
+  if (!type.includes("text/event-stream")) {
+    const text = await res.text();
+    let parsed: { reply?: string; toolCalls?: string[]; attachments?: OperatorAttachment[]; error?: string } | null = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch { /* not JSON */ }
+    if (parsed) {
+      // An older deployment: the whole reply, the old shape.
+      if (parsed.error) return failed(friendlyError(parsed.error) ?? GENERIC_ERROR);
+      return { reply: parsed.reply ?? "", toolCalls: parsed.toolCalls ?? [], attachments: parsed.attachments ?? [], exhausted: false, streamed: false, error: null };
+    }
+    // Not JSON either: an event stream whose content type a proxy rewrote. The
+    // events are all here, just not progressive — replay them.
+    if (!/^data:/m.test(text)) return failed(GENERIC_ERROR);
+    return finish(feed(text));
+  }
+
+  if (!res.body) return failed(GENERIC_ERROR);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf = feed(buf + decoder.decode(value, { stream: true }));
+      // `done`/`error` ends the turn; anything after it is the server closing.
+      if (state.final) break;
+    }
+    buf += decoder.decode();
+  } catch {
+    if (!state.final) return failed(DROPPED_ERROR);
+  } finally {
+    reader.cancel().catch(() => { /* already closed */ });
+  }
+  return finish(buf);
 }
 
 // Operator chat history — persisted so a session survives refresh/navigation.

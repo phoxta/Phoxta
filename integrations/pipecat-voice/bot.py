@@ -9,11 +9,25 @@ The bridge below replaces the usual in-pipeline LLM with an HTTP call to
 agent-inbound. That keeps "one brain, every touchpoint": whatever the agent can
 do on web/SMS/WhatsApp, it does on the phone too.
 
-NOTE: Pipecat's APIs move quickly (v1.0, April 2026). Pin a version in
-requirements.txt and adjust import paths / service constructors to match your
-installed `pipecat-ai`. The structure (transport -> stt -> bridge -> tts) is stable.
+Proving the call is real (VOICE_BRIDGE_SECRET):
+  agent-inbound is public — anyone can POST it a message with an agent public
+  key. The key names a BUSINESS, not a person, so a caller who could assert a
+  phone number could read someone else's history back out of the reply. Every
+  request this bridge makes therefore carries `x-voice-proof`, an HMAC of a fixed
+  string keyed by the shared VOICE_BRIDGE_SECRET, vouching for EXACTLY what a
+  phone call can truthfully claim: the "voice" channel and the caller's number.
+  With the secret unset the header is omitted and agent-inbound treats us as an
+  anonymous web caller — today's behaviour, so a half-finished rollout degrades
+  instead of breaking.
+
+NOTE: Pipecat's APIs move quickly. requirements.txt pins the installed version.
+The structure (transport -> stt -> bridge -> tts) is stable.
 """
 
+import asyncio
+import base64
+import hashlib
+import hmac
 import os
 
 import httpx
@@ -31,6 +45,7 @@ from pipecat.frames.frames import (
     TranscriptionFrame,
     TTSSpeakFrame,
     UserStartedSpeakingFrame,
+    UserStoppedSpeakingFrame,
 )
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
@@ -45,6 +60,28 @@ from pipecat.transports.websocket.fastapi import (
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.deepgram.tts import DeepgramTTSService
 
+# Proof header, computed once per request from the current env (contract 1):
+#   x-voice-proof = base64url(HMAC-SHA256(VOICE_BRIDGE_SECRET, "phoxta-voice-bridge-v1"))
+# base64url here == urlsafe base64 with the trailing "=" padding stripped, which
+# is exactly what agent-inbound's voiceProofValid() re-derives and compares.
+_VOICE_PROOF_MSG = b"phoxta-voice-bridge-v1"
+
+if not os.environ.get("VOICE_BRIDGE_SECRET"):
+    logger.warning(
+        "[phoxta] VOICE_BRIDGE_SECRET unset — the bridge speaks to agent-inbound as an "
+        "ANONYMOUS web caller (channel not 'voice', caller number stripped). Set it here "
+        "AND as a Supabase secret so the phone call is filed as voice."
+    )
+
+
+def _voice_proof_header() -> dict:
+    secret = os.environ.get("VOICE_BRIDGE_SECRET", "")
+    if not secret:
+        return {}
+    mac = hmac.new(secret.encode(), _VOICE_PROOF_MSG, hashlib.sha256).digest()
+    return {"x-voice-proof": base64.urlsafe_b64encode(mac).decode().rstrip("=")}
+
+
 # Read lazily so load_dotenv() (above / in server.py) has populated the env.
 def _agent_url() -> str:
     return os.environ.get("PHOXTA_AGENT_URL", "")
@@ -54,23 +91,44 @@ def _anon_key() -> str:
     return os.environ.get("SUPABASE_ANON_KEY", "")
 
 
+def _agent_headers() -> dict:
+    """Headers for every bridge -> agent-inbound request: the anon gateway key
+    AND the voice proof (contract 1). The proof is what lets agent-inbound trust
+    the channel and caller number; without the secret it is simply absent."""
+    hdr = {"Content-Type": "application/json"}
+    anon = _anon_key()
+    if anon:
+        hdr["Authorization"] = f"Bearer {anon}"
+        hdr["apikey"] = anon
+    hdr.update(_voice_proof_header())
+    return hdr
+
+
 async def _fetch_voice(public_key: str) -> dict:
     """Fetch the business's saved voice settings (agent_config.voice) so the call
     uses a per-business TTS voice. Best-effort — empty dict on any failure."""
     url = _agent_url()
     if not url:
         return {}
-    anon = _anon_key()
-    hdr = {"Content-Type": "application/json"}
-    if anon:
-        hdr["Authorization"] = f"Bearer {anon}"
-        hdr["apikey"] = anon
     try:
         async with httpx.AsyncClient(timeout=10) as http:
-            r = await http.post(url, json={"public_key": public_key, "voice_config": True}, headers=hdr)
+            r = await http.post(url, json={"public_key": public_key, "voice_config": True}, headers=_agent_headers())
             return (r.json() or {}).get("voice") or {}
     except Exception:  # noqa: BLE001
         return {}
+
+
+def _build_stt() -> DeepgramSTTService:
+    """Deepgram STT tuned for phone turn-taking. Endpointing (~300ms) is how
+    quickly Deepgram calls a pause the end of a segment; utterance_end_ms (~1000)
+    is the silence after which it declares the whole utterance done. Set both
+    explicitly rather than inheriting whatever the default is, because the bridge
+    now fires one agent turn per finished utterance (see PhoxtaAgentBridge) and
+    those two numbers decide when 'finished' happens."""
+    return DeepgramSTTService(
+        api_key=os.environ["DEEPGRAM_API_KEY"],
+        settings=DeepgramSTTService.Settings(endpointing=300, utterance_end_ms=1000),
+    )
 
 
 def _build_tts(voice_cfg: dict):
@@ -99,36 +157,43 @@ async def _finalize_recording(public_key, conversation_id, call_sid, chunks, met
     is swallowed: a recording is a nice-to-have, never a reason to break a call."""
     if not chunks:
         return
-    import io
-    import wave
 
-    sr = int(meta.get("sample_rate", 8000))
-    ch = int(meta.get("num_channels", 1))
-    buf = io.BytesIO()
-    with wave.open(buf, "wb") as w:
-        w.setnchannels(ch)
-        w.setsampwidth(2)  # AudioBufferProcessor emits 16-bit PCM
-        w.setframerate(sr)
-        w.writeframes(b"".join(chunks))
-    wav = buf.getvalue()
+    def _build_and_save():
+        # Encoding a multi-second WAV and writing it to disk is blocking work;
+        # done in a worker thread so it can't stall the event loop right as the
+        # next call is trying to set up its audio.
+        import io
+        import wave
 
-    os.makedirs("recordings", exist_ok=True)
-    local = os.path.join("recordings", f"{conversation_id or call_sid}.wav")
-    try:
-        with open(local, "wb") as f:
-            f.write(wav)
-        logger.info(f"[phoxta] saved recording {local} ({len(wav)} bytes)")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(f"[phoxta] could not save local recording: {exc}")
+        sr = int(meta.get("sample_rate", 8000))
+        ch = int(meta.get("num_channels", 1))
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as w:
+            w.setnchannels(ch)
+            w.setsampwidth(2)  # AudioBufferProcessor emits 16-bit PCM
+            w.setframerate(sr)
+            w.writeframes(b"".join(chunks))
+        data = buf.getvalue()
+        os.makedirs("recordings", exist_ok=True)
+        path = os.path.join("recordings", f"{conversation_id or call_sid}.wav")
+        saved = None
+        try:
+            with open(path, "wb") as f:
+                f.write(data)
+            saved = path
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"[phoxta] could not save local recording: {exc}")
+        return data, saved
+
+    wav, saved = await asyncio.to_thread(_build_and_save)
+    if saved:
+        logger.info(f"[phoxta] saved recording {saved} ({len(wav)} bytes)")
 
     url = _agent_url()
     if not (conversation_id and url):
         return
     anon = _anon_key()
-    hdr = {"Content-Type": "application/json"}
-    if anon:
-        hdr["Authorization"] = f"Bearer {anon}"
-        hdr["apikey"] = anon
+    hdr = _agent_headers()
     try:
         async with httpx.AsyncClient(timeout=60) as http:
             r = await http.post(url, json={"public_key": public_key, "recording_init": True, "conversationId": conversation_id}, headers=hdr)
@@ -156,73 +221,180 @@ async def _finalize_recording(public_key, conversation_id, call_sid, chunks, met
 class PhoxtaAgentBridge(FrameProcessor):
     """Speech-in / agent-reply-out. Sits between STT and TTS in the pipeline.
 
-    On the opening StartFrame it fetches the agent's greeting; on each final
-    transcription it calls the agent and speaks the reply. It deliberately does
-    NOT forward TranscriptionFrames downstream (or the TTS would read the
-    caller's own words back to them)."""
+    Turn-taking, the hard part of a voice agent, works like this:
+      • Deepgram emits an is_final TranscriptionFrame for each finished segment.
+        One caller sentence can arrive as several. We BUFFER them and do NOT call
+        the agent per segment — that would start several overlapping agent turns
+        for one sentence.
+      • When the VAD says the caller stopped (UserStoppedSpeakingFrame) we flush
+        the buffer and fire ONE agent turn. A fallback timer (~1.5s after the
+        last is_final) covers a missed stop frame so the call can't stall.
+      • The agent call runs as a cancellable task, not awaited inline: when the
+        caller starts speaking again, presses a key, or the call ends, the
+        in-flight reply (and its timers) is cancelled so we never talk over them.
+      • A monotonic turn id guards late replies that slipped past cancellation.
 
-    def __init__(self, public_key: str, caller: str, opening: str = ""):
+    It deliberately does NOT forward TranscriptionFrames downstream (or the TTS
+    would read the caller's own words back to them)."""
+
+    def __init__(self, public_key: str, caller: str, caller_name: str = "", direction: str = "inbound", opening: str = ""):
         super().__init__()
         self._public_key = public_key
-        self._caller = caller
-        self._opening = opening  # outbound calls open with this line instead of the greeting
+        self._caller = caller                 # customer phone (dialled number on outbound)
+        self._caller_name = caller_name        # Twilio caller-ID name, when known
+        self._direction = direction            # "inbound" | "outbound"
+        self._opening = opening                # outbound calls open with this line instead of the greeting
         self._conversation_id = None
-        self._http = httpx.AsyncClient(timeout=30)
-        # Monotonic turn counter for barge-in: each new caller utterance/keypress
-        # bumps it; a reply whose turn is stale by the time the agent answers is
-        # dropped, so we never speak over a caller who has already moved on.
-        self._turn = 0
-        self._dtmf = ""  # buffer of keypad digits between speech turns
+        # 15s client timeout: a phone caller will not wait 30s in silence, and a
+        # reply that slow is better served by the fallback line than a late answer.
+        self._http = httpx.AsyncClient(timeout=15)
+        self._turn = 0                         # bumped by every caller utterance/keypress
+        self._dtmf = ""                        # buffer of keypad digits between speech turns
+        self._buffer: list[str] = []           # is_final segments of the current utterance
+        self._reply_task = None                # in-flight agent reply
+        self._filler_task = None               # "one moment…" holding line
+        self._fallback_task = None             # missed-stop-frame safety timer
+
+    # --- customer / payloads --------------------------------------------------
+    def _customer(self) -> dict:
+        c: dict = {"phone": self._caller}
+        if self._caller_name:
+            c["name"] = self._caller_name
+        return c
+
+    def _greeting_payload(self) -> dict:
+        return {
+            "public_key": self._public_key,
+            "greeting": True,
+            "channel": "voice",
+            "direction": self._direction,
+            "customer": self._customer(),
+        }
 
     async def _post(self, payload: dict) -> dict:
-        anon = _anon_key()
-        headers = {"Content-Type": "application/json"}
-        if anon:
-            headers["Authorization"] = f"Bearer {anon}"
-            headers["apikey"] = anon
         try:
-            resp = await self._http.post(_agent_url(), json=payload, headers=headers)
+            resp = await self._http.post(_agent_url(), json=payload, headers=_agent_headers())
             return resp.json()
+        except asyncio.CancelledError:
+            raise  # barge-in / shutdown cancelled us — propagate, don't swallow
         except Exception as exc:  # noqa: BLE001
             logger.error(f"[phoxta] agent call failed: {exc}")
             return {}
 
+    # --- task cancellation (all synchronous — no self-cancel deadlocks) -------
+    @staticmethod
+    def _kill(task) -> None:
+        if task is not None and not task.done():
+            task.cancel()
+
+    def _cancel_reply(self) -> None:
+        self._kill(self._reply_task)
+        self._reply_task = None
+
+    def _cancel_filler(self) -> None:
+        self._kill(self._filler_task)
+        self._filler_task = None
+
+    def _cancel_fallback(self) -> None:
+        self._kill(self._fallback_task)
+        self._fallback_task = None
+
+    def _cancel_pending(self) -> None:
+        self._cancel_reply()
+        self._cancel_filler()
+        self._cancel_fallback()
+
+    # --- greeting -------------------------------------------------------------
     async def _greet(self):
-        data = await self._post(
-            {"public_key": self._public_key, "greeting": True, "channel": "voice", "customer": {"phone": self._caller}}
-        )
+        data = await self._post(self._greeting_payload())
+        if not data.get("conversationId"):
+            # Retry once: a greeting with no conversation id means the call opens
+            # with no thread, so every later turn would file as a fresh
+            # conversation. The first _ask still sends channel:"voice", so even if
+            # this second try also fails the thread is opened as voice by the
+            # proof on that message.
+            logger.warning("[phoxta] greeting returned no conversationId — retrying once")
+            data = await self._post(self._greeting_payload())
         self._conversation_id = data.get("conversationId")
         # Outbound: open with the operator's purpose line; inbound: the greeting.
         line = self._opening or data.get("reply")
         if line:
             await self.push_frame(TTSSpeakFrame(line))
 
+    # --- one caller turn ------------------------------------------------------
+    def _fire(self, text: str) -> None:
+        """Start (or restart) the agent turn for `text` as a cancellable task.
+        Clears any in-flight reply, holding-line filler and stray fallback timer
+        first, so exactly one turn is ever live."""
+        self._turn += 1
+        self._cancel_pending()
+        self._reply_task = self.create_task(self._ask(text, self._turn))
+
+    def _flush_turn(self) -> None:
+        self._cancel_fallback()
+        text = " ".join(self._buffer).strip()
+        self._buffer = []
+        if text:
+            self._fire(text)
+
+    def _arm_fallback(self) -> None:
+        # (Re)start the safety timer on each is_final so it lands ~1.5s after the
+        # LAST one. If the stop frame arrives first it cancels this; if it never
+        # comes, this flushes the turn so the caller is never left hanging.
+        self._cancel_fallback()
+        self._fallback_task = self.create_task(self._fallback_fire(self._turn))
+
+    async def _fallback_fire(self, turn: int):
+        try:
+            await asyncio.sleep(1.5)
+        except asyncio.CancelledError:
+            return
+        self._fallback_task = None  # detach before flushing so we don't cancel ourselves
+        if turn == self._turn and self._buffer:
+            logger.debug("[phoxta] stop-frame missed — firing buffered turn on the fallback timer")
+            self._flush_turn()
+
+    async def _filler(self, turn: int):
+        try:
+            await asyncio.sleep(2.5)
+        except asyncio.CancelledError:
+            return
+        if turn == self._turn:
+            await self.push_frame(TTSSpeakFrame("One moment…"))
+
     async def _ask(self, text: str, turn: int):
-        data = await self._post(
-            {
-                "public_key": self._public_key,
-                "channel": "voice",
-                "conversationId": self._conversation_id,
-                "customer": {"phone": self._caller},
-                "message": text,
-            }
-        )
+        # Holding line if the brain is slow; cancelled the instant the reply lands.
+        self._filler_task = self.create_task(self._filler(turn))
+        try:
+            data = await self._post(
+                {
+                    "public_key": self._public_key,
+                    "channel": "voice",
+                    "direction": self._direction,
+                    "conversationId": self._conversation_id,
+                    "customer": self._customer(),
+                    "message": text,
+                }
+            )
+        finally:
+            self._cancel_filler()
+
         if data.get("conversationId"):
             self._conversation_id = data["conversationId"]
-        # Barge-in: if the caller has spoken again (or pressed a key) while the
-        # agent was thinking, this reply is stale — drop it rather than talk over.
+        # Barge-in backstop: if the caller has moved on since we asked, drop this
+        # reply rather than talk over them. Cancellation usually gets here first;
+        # this catches a reply that slipped in just as the turn advanced.
         if turn != self._turn:
             logger.debug(f"[phoxta] dropping stale reply for turn {turn} (now {self._turn})")
             return
         reply = (data.get("reply") or "").strip()
         # An EMPTY reply is a DECISION, not a failure. agent-inbound answers
         # reply:"" with human:true when somebody has pressed "Take over" on the
-        # thread, or when the owner has set "Answer new customer messages
-        # automatically" to Off / Ask me. Speaking a canned line there is exactly
-        # what those settings promise will not happen — the caller must hear
-        # silence from the agent, and a person picks it up. Only a genuine
-        # failure (the call errored, or came back with no `reply` key at all)
-        # gets the "could you say that again?" fallback, where silence is worse.
+        # thread, or when the owner has set auto-reply to Off / Ask me. Speaking a
+        # canned line there is exactly what those settings promise will not
+        # happen. Only a genuine failure (the call errored, or came back with no
+        # `reply` key at all — including the 15s timeout, which returns {}) gets
+        # the fallback, said ONCE, and we do NOT auto re-ask.
         if reply:
             await self.push_frame(TTSSpeakFrame(reply))
             return
@@ -240,26 +412,40 @@ class PhoxtaAgentBridge(FrameProcessor):
         if isinstance(frame, StartFrame):
             await self.push_frame(frame, direction)
             await self._greet()
+
         elif isinstance(frame, UserStartedSpeakingFrame):
-            # Caller started talking — invalidate any in-flight reply (barge-in)
-            # and forward the frame so TTS downstream stops speaking.
+            # Caller (re)started talking — a fresh utterance. Invalidate any
+            # in-flight reply and its timers (barge-in), drop a half-collected
+            # transcript, and forward the frame so TTS downstream stops speaking.
             self._turn += 1
+            self._buffer = []
+            self._cancel_pending()
             await self.push_frame(frame, direction)
+
         elif isinstance(frame, InputDTMFFrame):
             # Keypad press (IVR / verification codes / "press 1 to…"). Buffer the
-            # digit and hand it to the one brain as a normal message so the agent
-            # can act on it (route, confirm a code, pick a menu option, etc.).
+            # digit and hand it to the one brain as a normal message on the SAME
+            # cancellable path as speech, so the next press or utterance can
+            # interrupt it too.
             digit = getattr(frame.button, "value", str(frame.button))
             self._dtmf += str(digit)
-            self._turn += 1
-            turn = self._turn
-            await self._ask(f"[Caller pressed keypad: {self._dtmf}]", turn)
+            self._buffer = []
+            self._fire(f"[Caller pressed keypad: {self._dtmf}]")
+
         elif isinstance(frame, TranscriptionFrame) and frame.text and frame.text.strip():
+            # A Deepgram is_final segment. Buffer it and (re)arm the fallback — do
+            # NOT fire yet; we fire once when the caller stops (below).
             self._dtmf = ""  # speech supersedes any half-entered keypad buffer
-            self._turn += 1
-            turn = self._turn
-            await self._ask(frame.text.strip(), turn)
+            self._buffer.append(frame.text.strip())
+            self._arm_fallback()
+
+        elif isinstance(frame, UserStoppedSpeakingFrame):
+            # The caller finished — fire the one buffered turn.
+            self._flush_turn()
+            await self.push_frame(frame, direction)
+
         elif isinstance(frame, (EndFrame, CancelFrame)):
+            self._cancel_pending()
             # Summarize the call so it joins the customer's cross-channel memory.
             if self._conversation_id:
                 try:
@@ -268,6 +454,7 @@ class PhoxtaAgentBridge(FrameProcessor):
                     pass
             await self._http.aclose()
             await self.push_frame(frame, direction)
+
         else:
             await self.push_frame(frame, direction)
 
@@ -291,9 +478,9 @@ async def run_webrtc_bot(connection, public_key: str, caller: str = "web visitor
         ),
     )
 
-    stt = DeepgramSTTService(api_key=os.environ["DEEPGRAM_API_KEY"])
+    stt = _build_stt()
     tts = _build_tts(await _fetch_voice(public_key))
-    bridge = PhoxtaAgentBridge(public_key=public_key, caller=caller)
+    bridge = PhoxtaAgentBridge(public_key=public_key, caller=caller, direction="inbound")
 
     pipeline = Pipeline([transport.input(), stt, bridge, tts, transport.output()])
     task = PipelineTask(
@@ -304,15 +491,28 @@ async def run_webrtc_bot(connection, public_key: str, caller: str = "web visitor
             enable_usage_metrics=True,
         ),
     )
+
+    # Mirror the Twilio handler: end the pipeline the moment the browser peer
+    # goes away. Without it the task lingers until Pipecat's idle timeout, holding
+    # the Deepgram STT + TTS sockets open and a concurrency slot with them.
+    try:
+        @transport.event_handler("on_client_disconnected")
+        async def _on_webrtc_disconnect(_transport, _client):  # noqa: ANN001
+            logger.info(f"[phoxta] webrtc session ({public_key[:6]}…) disconnected — ending pipeline")
+            await task.cancel()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[phoxta] could not attach webrtc disconnect handler: {exc}")
+
     runner = PipelineRunner(handle_sigint=False)
     logger.info(f"[phoxta] webrtc session ({public_key[:6]}…) from {caller} started")
     await runner.run(task)
     logger.info("[phoxta] webrtc session ended")
 
 
-async def run_bot(websocket, stream_sid: str, call_sid: str, caller: str, public_key: str, opening: str = ""):
+async def run_bot(websocket, stream_sid: str, call_sid: str, caller: str, public_key: str, caller_name: str = "", direction: str = "inbound", opening: str = ""):
     """Run one Pipecat call session over a Twilio Media Stream websocket.
 
+    `caller` is the customer's number (the dialled number on an outbound call);
     `opening` (set for outbound calls) is spoken first instead of the greeting."""
     serializer = TwilioFrameSerializer(
         stream_sid=stream_sid,
@@ -348,12 +548,22 @@ async def run_bot(websocket, stream_sid: str, call_sid: str, caller: str, public
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"[phoxta] DENOISE requested but unavailable: {exc}")
 
+    # A hard ceiling on call length. Pipecat's session_timeout fires this many
+    # seconds after the stream starts (absolute, not idle), so it is not a stall
+    # detector — on_client_disconnected already handles a clean hang-up. It is the
+    # backstop for a call that never sends a close (a wedged carrier leg, media
+    # still flowing): without it that call holds a Deepgram socket and a
+    # concurrency slot until Pipecat's own idle timeout. One hour is far above any
+    # real call; override with MAX_CALL_SECS.
+    max_call = int(os.environ.get("MAX_CALL_SECS", "3600"))
+
     param_kwargs = dict(
         audio_in_enabled=True,
         audio_out_enabled=True,
         add_wav_header=False,
         vad_analyzer=SileroVADAnalyzer(),
         serializer=serializer,
+        session_timeout=max_call,
     )
     if turn_analyzer is not None:
         param_kwargs["turn_analyzer"] = turn_analyzer
@@ -365,15 +575,15 @@ async def run_bot(websocket, stream_sid: str, call_sid: str, caller: str, public
         # Older/newer Pipecat may name these params differently — degrade rather
         # than fail the call; the core pipeline still runs without the extras.
         logger.warning(f"[phoxta] optional transport params unsupported here ({exc}); continuing without them")
-        param_kwargs.pop("turn_analyzer", None)
-        param_kwargs.pop("audio_in_filter", None)
+        for k in ("turn_analyzer", "audio_in_filter", "session_timeout"):
+            param_kwargs.pop(k, None)
         params = FastAPIWebsocketParams(**param_kwargs)
 
     transport = FastAPIWebsocketTransport(websocket=websocket, params=params)
 
-    stt = DeepgramSTTService(api_key=os.environ["DEEPGRAM_API_KEY"])
+    stt = _build_stt()
     tts = _build_tts(await _fetch_voice(public_key))
-    bridge = PhoxtaAgentBridge(public_key=public_key, caller=caller, opening=opening)
+    bridge = PhoxtaAgentBridge(public_key=public_key, caller=caller, caller_name=caller_name, direction=direction, opening=opening)
 
     # Optional call recording (RECORD_CALLS=1): an AudioBufferProcessor at the
     # tail captures both legs (caller + agent); we collect the chunks and, on
@@ -415,12 +625,11 @@ async def run_bot(websocket, stream_sid: str, call_sid: str, caller: str, public
             enable_usage_metrics=True,    # STT/TTS usage for cost visibility
         ),
     )
-    # End the pipeline the moment Twilio closes the media stream. Without this
-    # nothing notices the hang-up, and the task lingers until Pipecat's idle
-    # timeout (~5 min) — holding the Deepgram STT *and* TTS websockets open,
-    # occupying a concurrency slot, and delaying the recording write/upload by
-    # the same five minutes. on_session_timeout is the same story for a call
-    # that stalls rather than disconnects cleanly.
+    # End the pipeline the moment Twilio closes the media stream, or the call
+    # stalls past the hard ceiling. Without this nothing notices the hang-up and
+    # the task lingers until Pipecat's idle timeout (~5 min) — holding the
+    # Deepgram STT *and* TTS websockets open, occupying a concurrency slot, and
+    # delaying the recording write/upload by the same five minutes.
     try:
         @transport.event_handler("on_client_disconnected")
         async def _on_disconnect(_transport, _client):  # noqa: ANN001
@@ -429,13 +638,13 @@ async def run_bot(websocket, stream_sid: str, call_sid: str, caller: str, public
 
         @transport.event_handler("on_session_timeout")
         async def _on_session_timeout(_transport, _client):  # noqa: ANN001
-            logger.info(f"[phoxta] call {call_sid} session timeout — ending pipeline")
+            logger.info(f"[phoxta] call {call_sid} hit the {max_call}s ceiling — ending pipeline")
             await task.cancel()
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"[phoxta] could not attach transport lifecycle handlers: {exc}")
 
     runner = PipelineRunner(handle_sigint=False)
-    logger.info(f"[phoxta] call {call_sid} from {caller} started")
+    logger.info(f"[phoxta] call {call_sid} from {caller} ({direction}) started")
     if audio_buffer is not None:
         try:
             await audio_buffer.start_recording()

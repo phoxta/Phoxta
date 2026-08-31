@@ -105,9 +105,25 @@ export async function queueCampaignSend(
   if (updErr) return { error: friendlyError(updErr.message) };
   // Kick the drainer — if this invoke fails the rows stay pending and the
   // cron-driven worker picks them up on its next pass.
-  supabase.functions.invoke("campaign-run", { body: { orgId } }).catch(() => {});
+  //
+  // It drains fifty a call and answers `remaining_batch_full` when there were
+  // more. One call used to be made and the flag ignored, so a campaign to 300
+  // people sent fifty now and the rest at five-minute intervals as the cron
+  // reached them — which looked, from the console, like a send that stopped.
+  // Loop while it says there is more, bounded so a worker that always answers
+  // "more" cannot keep a browser tab calling it for ever. Still fire-and-forget:
+  // the rows are queued and the cron is the backstop either way.
+  void (async () => {
+    for (let i = 0; i < CAMPAIGN_DRAIN_MAX_CALLS; i++) {
+      const { data, error } = await supabase.functions.invoke("campaign-run", { body: { orgId } });
+      if (error || !(data as { remaining_batch_full?: boolean } | null)?.remaining_batch_full) break;
+    }
+  })().catch(() => {});
   return { error: null };
 }
+
+/** 20 × 50 = a thousand recipients before the cron takes over. */
+const CAMPAIGN_DRAIN_MAX_CALLS = 20;
 
 // --- Segments --------------------------------------------------------------
 export type Segment = {

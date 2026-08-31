@@ -2,18 +2,41 @@
 // READ the business's data (RAG + structured) and PERFORM changes via the write
 // tools — every write governed by per-tool policy (off/approve/auto), queued for
 // approval where required, and audited. Reuses the existing agent runner + metering.
-import { preflight, json } from "../_shared/cors.ts";
+import { preflight, json, CORS } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { modelFor } from "../_shared/models.ts";
-import { runAgent } from "../_shared/anthropic.ts";
+import { runAgent, type AgentResult, type Msg } from "../_shared/anthropic.ts";
 import { speak, SPEECH_VOICES, type SpeechVoice } from "../_shared/openai.ts";
 import { READ_TOOLS, OWNER_READ_TOOLS, OPERATOR_READ_TOOLS, MEMORY_TOOLS, toolRunner, memoryContext } from "../_shared/tools.ts";
 import { WRITE_TOOLS, isWriteTool, executeAction } from "../_shared/actions.ts";
 import { isAdminRole } from "../_shared/auth.ts";
-import { meter } from "../_shared/meter.ts";
+import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
+
+/** What the owner reads when the agent used every turn it had and still had no
+ *  answer. runAgent hands back `exhausted: true` with an empty text on purpose —
+ *  the wording belongs to the surface, and this one talks to the owner, not to
+ *  a customer, so it can say what to do about it. */
+const EXHAUSTED_MESSAGE = "I ran out of steps before finishing. Try a narrower request.";
+
+/** Run `task` after the response has gone out — `EdgeRuntime.waitUntil` where the
+ *  runtime has it, a plain await where it does not (the same guarded shape as
+ *  agent-inbound's classifyLater and twilio-inbound's afterResponding). Metering
+ *  used to sit between the model's answer and the owner seeing it: a database
+ *  round trip the owner waited on for no reason. The task never throws. */
+async function afterResponding(task: Promise<void>): Promise<void> {
+  // deno-lint-ignore no-explicit-any
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(task);
+  else await task;
+}
+
+/** The token spend a failed run carries (see runAgent's catch) — real, billed,
+ *  and metered as "failed" so a day of provider trouble does not look cheap. */
+const usageOf = (err: unknown): { inTok: number; outTok: number } | undefined =>
+  (err as { usage?: { inTok: number; outTok: number } } | null)?.usage;
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -25,8 +48,29 @@ Deno.serve(async (req) => {
     if (a.error) return a.error;
     const ctx = a.ok;
     const message = String(body?.message ?? "");
-    const history = Array.isArray(body?.history) ? body.history.slice(-8) : [];
     if (!message) return json({ error: "Empty message." }, 400);
+
+    // ONLY role + content go to the model. The page sends its own rows, which
+    // carry attachments and created_at — fields the Messages API rejects with a
+    // 400, and a 400 is (correctly) not retried on another provider, so one
+    // voice note in the history used to fail every turn after it. Empty rows
+    // are dropped, the window is taken AFTER cleaning so it is always eight
+    // real turns, and it must open on a user turn (same rule as ai-gateway).
+    const history: Msg[] = (Array.isArray(body?.history) ? (body.history as Json[]) : [])
+      .map((m) => ({
+        role: m?.role as Msg["role"],
+        content: typeof m?.content === "string" ? m.content.trim() : "",
+      }))
+      .filter((m) => (m.role === "user" || m.role === "assistant") && m.content)
+      .slice(-8);
+    while (history.length && history[0].role === "assistant") history.shift();
+
+    // The monthly plan allowance — checked BEFORE the model is called, and
+    // before any stream starts, so the owner gets a real 429 rather than an
+    // error event half-way through a reply. This was the one AI feature the
+    // owner drives by hand that had no cap at all.
+    const cap = await assertWithinCap(ctx.admin, orgId as string);
+    if (!cap.ok) return json({ error: CAP_REACHED_MESSAGE, limitReached: true }, 429);
 
     // Voice notes. Declared here rather than in _shared/tools.ts because the
     // audio has to come back to the CALLER as an attachment, not just to the
@@ -163,7 +207,7 @@ Deno.serve(async (req) => {
 
     const t0 = Date.now();
     const model = modelFor("balanced");
-    const r = await runAgent({
+    const agentOpts = {
       model,
       system,
       userMessage: message,
@@ -172,9 +216,87 @@ Deno.serve(async (req) => {
       toolRunner: runner,
       maxTurns: 8,
       maxTokens: 1500,
-    });
-    await meter(ctx.admin, { organizationId: orgId as string, userId: ctx.userId, model: r.model, feature: "operator", tier: "balanced", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
-    return json({ reply: r.text, toolCalls: r.toolCalls, attachments: artifacts });
+    };
+    const record = (r: AgentResult) =>
+      meter(ctx.admin, { organizationId: orgId as string, userId: ctx.userId, model: r.model, feature: "operator", tier: "balanced", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });
+    const recordFailure = (err: unknown) => {
+      const u = usageOf(err);
+      if (!u) return Promise.resolve();
+      return meter(ctx.admin, { organizationId: orgId as string, userId: ctx.userId, model, feature: "operator", tier: "balanced", inTok: u.inTok, outTok: u.outTok, latencyMs: Date.now() - t0, status: "failed" });
+    };
+    // `text` is "" when the agent ran out of turns; the owner must never see a
+    // blank bubble, and the page is told it was an exhaustion (`exhausted`) so it
+    // can treat the message as a notice rather than an answer to keep.
+    const replyOf = (r: AgentResult) => (r.exhausted ? EXHAUSTED_MESSAGE : r.text);
+
+    // ---- Streaming: server-sent events -------------------------------------
+    // Everything that can fail with a proper status — auth, the cap, an empty
+    // message — has already failed above, so by here the only things left to
+    // report are what the model does, and those go on the wire as events:
+    //   data: {"type":"turn","n":0}            before each model call
+    //   data: {"type":"tool_start","name":..}  / {"type":"tool_end","name":..,"ok":..}
+    //   data: {"type":"delta","text":..}       the answer as it streams
+    //   data: {"type":"done", reply, toolCalls, attachments, usage, model, exhausted}
+    //   data: {"type":"error", error}          instead of "done" when the run failed
+    // `done` carries the same fields the JSON response does, so the page keeps
+    // ONE finalise path, and metering runs after `done` is on the wire.
+    if (body?.stream === true) {
+      const enc = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const emit = (e: unknown) => {
+            try {
+              controller.enqueue(enc.encode(`data: ${JSON.stringify(e)}\n\n`));
+            } catch { /* the reader has gone — the run finishes and is metered regardless */ }
+          };
+          // Not awaited inside start(): a start() that only resolves when the run
+          // is over would make the stream's readiness depend on the whole model
+          // call, which is exactly the wait streaming exists to remove.
+          (async () => {
+            try {
+              const r = await runAgent({ ...agentOpts, onEvent: emit });
+              emit({
+                type: "done",
+                reply: replyOf(r),
+                toolCalls: r.toolCalls,
+                attachments: artifacts,
+                usage: { input_tokens: r.inTok, output_tokens: r.outTok },
+                model: r.model,
+                exhausted: r.exhausted,
+              });
+              await afterResponding(record(r));
+            } catch (err) {
+              emit({ type: "error", error: String((err as Error)?.message || err) });
+              await afterResponding(recordFailure(err));
+            } finally {
+              try {
+                controller.close();
+              } catch { /* already closed */ }
+            }
+          })();
+        },
+      });
+      return new Response(stream, {
+        headers: {
+          ...CORS,
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache",
+          // Tells nginx-style proxies not to hold the body until it is complete.
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
+
+    // ---- Plain JSON (older pages, other callers) — response shape unchanged --
+    let r: AgentResult;
+    try {
+      r = await runAgent(agentOpts);
+    } catch (err) {
+      await afterResponding(recordFailure(err));
+      throw err;
+    }
+    await afterResponding(record(r));
+    return json({ reply: replyOf(r), toolCalls: r.toolCalls, attachments: artifacts });
   } catch (err) {
     return json({ error: String((err as Error)?.message || err) }, 500);
   }

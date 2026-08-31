@@ -28,8 +28,8 @@
 // a person pressing Send now while the tick is already carrying that post
 // claims nothing rather than posting it twice.
 import { preflight, json } from "../_shared/cors.ts";
-import { authorize } from "../_shared/auth.ts";
-import { adminClient } from "../_shared/supabaseAdmin.ts";
+import { authorize, isCronRequest } from "../_shared/auth.ts";
+import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { renderDesign } from "../_shared/render.ts";
 import { publish, type SocialAccount } from "../_shared/social.ts";
 import { refreshInstagram } from "../_shared/socialOauth.ts";
@@ -37,8 +37,30 @@ import { refreshInstagram } from "../_shared/socialOauth.ts";
 // deno-lint-ignore no-explicit-any
 type Json = any;
 
-const env = (k: string) => Deno.env.get(k) ?? "";
 const BATCH = 10;
+/** A claim this old with no outcome written is a run that died mid-publish. */
+const STALE_MINUTES = 10;
+
+/**
+ * The reaper. The claim (0122) retries a row left 'sending' after ten minutes
+ * — but only while attempts < 3. A row that crashed on its THIRD attempt met
+ * neither branch: not claimable, never settled, 'sending' for ever, and because
+ * settle() skips a post with any 'sending' row, the post itself stayed 'queued'
+ * for ever too, with "It is going out right now" as the only explanation.
+ * Those rows are failed here with a reason, and their posts handed to settle.
+ */
+async function reapStuckTargets(admin: SupabaseClient, onlyPost: string | null): Promise<string[]> {
+  const cutoff = new Date(Date.now() - STALE_MINUTES * 60_000).toISOString();
+  let q = admin
+    .from("social_targets")
+    .update({ status: "failed", error: "gave up after 3 attempts" })
+    .eq("status", "sending")
+    .lt("claimed_at", cutoff)
+    .gte("attempts", 3);
+  if (onlyPost) q = q.eq("post_id", onlyPost);
+  const { data } = await q.select("post_id");
+  return [...new Set(((data as { post_id: string }[] | null) ?? []).map((r) => r.post_id))];
+}
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -46,11 +68,17 @@ Deno.serve(async (req) => {
 
   // The cron leg carries no JWT that means anything; the shared secret is the
   // whole gate. Compared before any work so an unauthenticated caller cannot
-  // even measure the queue.
-  const secret = env("CRON_SECRET");
-  const isCron = !!secret && req.headers.get("x-cron-secret") === secret;
+  // even measure the queue. Constant-time, and false when no secret is set.
+  const isCron = isCronRequest(req);
 
   const admin = adminClient();
+  // A heartbeat, so cron_heartbeats proves THIS worker ran rather than only
+  // proving the loop that pings it is alive. Scheduled leg only: a person
+  // pressing Send now is not evidence the schedule is working.
+  const beat = async (ok: boolean, detail: string) => {
+    if (!isCron) return;
+    try { await admin.rpc("app_cron_beat", { p_worker: "social-publish", p_ok: ok, p_detail: detail }); } catch { /* the tick still ran */ }
+  };
 
   /** Set on the member leg: the single post this call is allowed to touch. */
   let onlyPost: string | null = null;
@@ -77,20 +105,29 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Reap before claiming, so a post whose last channel died on its third try
+    // is settled this tick rather than never.
+    const touched = new Set<string>();
+    const reaped = await reapStuckTargets(admin, onlyPost);
+    for (const postId of reaped) touched.add(postId);
+
     const { data: claimed, error } = await admin.rpc("app_claim_social_targets", {
       p_limit: BATCH,
       p_post_id: onlyPost,
     });
-    if (error) return json({ error: error.message }, 500);
+    if (error) {
+      await beat(false, `claim failed: ${error.message}`);
+      return json({ error: error.message }, 500);
+    }
     const targets = (claimed ?? []) as Json[];
-    if (targets.length === 0) {
+    if (targets.length === 0 && touched.size === 0) {
       // The sweep finding nothing is the normal case and needs no words. A
       // person pressing a button and being told "0" is being told nothing —
       // so the member leg works out WHY there was nothing to claim.
+      await beat(true, "nothing due");
       return json({ ok: true, claimed: 0, note: onlyPost ? await whyNothing(admin, onlyPost) : "" });
     }
 
-    const touched = new Set<string>();
     let sent = 0, failed = 0, simulated = 0;
 
     for (const t of targets) {
@@ -191,7 +228,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Settle each post that had work in this batch.
+    // Settle each post that had work in this batch (or a reaped channel).
     for (const postId of touched) {
       const { data: rows } = await admin
         .from("social_targets").select("status").eq("post_id", postId);
@@ -202,9 +239,19 @@ Deno.serve(async (req) => {
       await admin.from("social_posts").update({ status }).eq("id", postId);
     }
 
-    return json({ ok: true, claimed: targets.length, sent, simulated, failed });
+    const detail =
+      `${sent} sent, ${simulated} simulated, ${failed} failed of ${targets.length} claimed` +
+      (reaped.length ? `; gave up on channels of ${reaped.length} post(s) after 3 attempts` : "");
+    // Every claimed channel failing is a broken tick (a platform down, an app
+    // misconfigured), and a broken tick says so in its status code: the VM log
+    // sees only that. A member's single post failing is a 200 with the reason.
+    const totalFailure = isCron && targets.length > 0 && sent === 0 && simulated === 0;
+    await beat(!totalFailure, detail);
+    return json({ ok: !totalFailure, claimed: targets.length, sent, simulated, failed, reaped: reaped.length }, totalFailure ? 502 : 200);
   } catch (err) {
-    return json({ error: String((err as Error)?.message || err) }, 500);
+    const msg = String((err as Error)?.message || err);
+    await beat(false, msg);
+    return json({ error: msg }, 500);
   }
 });
 

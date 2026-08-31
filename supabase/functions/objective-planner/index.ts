@@ -37,6 +37,7 @@ import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
 import { WRITE_TOOLS, executeAction } from "../_shared/actions.ts";
+import { meter } from "../_shared/meter.ts";
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
 
 // deno-lint-ignore no-explicit-any
@@ -48,6 +49,15 @@ const PER_TICK = 10;
 /** How much history the planner sees. Enough to recognise "I already did that"
  *  without turning every tick into a long prompt. */
 const HISTORY = 12;
+/** How many objectives one tick thinks about at once. A pool, not a stampede:
+ *  each is an independent business, so one waiting on the model must not hold up
+ *  the rest, but four bounds how many model calls a tick opens at once. */
+const CONCURRENCY = 4;
+
+/** ensureSchema() is idempotent but pointless to re-run on every five-minute
+ *  tick — and its embedded create-or-replace would clobber a newer definition a
+ *  migration applied between deploys. Latched for the life of the isolate. */
+let schemaReady = false;
 
 /* ── Schema bootstrap ──────────────────────────────────────────────────────
    `supabase db push` is unavailable against this project, so the migration in
@@ -76,11 +86,20 @@ async function ensureSchema(): Promise<string | null> {
 async function snapshot(admin: SupabaseClient, orgId: string): Promise<Json> {
   const count = async (table: string, build: (q: Json) => Json) => {
     try {
-      const { count } = await build(admin.from(table).select("id", { count: "exact", head: true }).eq("organization_id", orgId));
+      const { count, error } = await build(admin.from(table).select("id", { count: "exact", head: true }).eq("organization_id", orgId));
+      // A missing table (a vertical with no bookings) legitimately errors, and
+      // the planner must survive that as a zero. But a WRONG COLUMN errors the
+      // same way, and swallowing it silently is how `bookings.starts_at` — the
+      // column is `start_at` — reported 0 upcoming bookings on every tick
+      // forever, so "confirm tomorrow's appointments" was a permanent no-op and
+      // nobody could see why. Log the reason with the table name; still return 0.
+      if (error) {
+        console.warn(`[phoxta] objective-planner snapshot: ${table} count failed (${error.message}) — treating as 0`);
+        return 0;
+      }
       return count ?? 0;
-    } catch {
-      // A table this deployment does not have is a zero, not a failure. The
-      // planner must survive a vertical that has no bookings.
+    } catch (e) {
+      console.warn(`[phoxta] objective-planner snapshot: ${table} threw (${e instanceof Error ? e.message : String(e)}) — treating as 0`);
       return 0;
     }
   };
@@ -93,7 +112,7 @@ async function snapshot(admin: SupabaseClient, orgId: string): Promise<Json> {
       count("orders", (q) => q.eq("status", "pending")),
       count("invoices", (q) => q.in("status", ["sent", "overdue"])),
       count("tickets", (q) => q.neq("status", "closed")),
-      count("bookings", (q) => q.gte("starts_at", new Date().toISOString()).lte("starts_at", soon)),
+      count("bookings", (q) => q.gte("start_at", new Date().toISOString()).lte("start_at", soon)),
       count("reviews", (q) => q.gte("created_at", new Date(Date.now() - 3 * 864e5).toISOString())),
     ]);
 
@@ -165,11 +184,20 @@ async function think(admin: SupabaseClient, o: Json): Promise<{ outcome: string;
     })),
   });
 
-  const { data, inTok, outTok } = await callJson<{ reason?: string; tool?: string | null; args?: Json }>({
+  const t0 = Date.now();
+  const { data, inTok, outTok, cacheWriteTok, cacheReadTok, model } = await callJson<{ reason?: string; tool?: string | null; args?: Json }>({
     model: modelFor("balanced"),
     system,
     user,
     maxTokens: 700,
+  });
+  // R2 — the autopilot spends the model budget like any other feature; it was the
+  // one AI leg calling the model UNmetered, so its cost never reached ai_usage or
+  // counted against the monthly cap. userId is null: a scheduled tick has nobody
+  // behind it.
+  await meter(admin, {
+    organizationId: orgId, userId: null, model, feature: "autopilot", tier: "balanced",
+    inTok: inTok ?? 0, outTok: outTok ?? 0, cacheWriteTok, cacheReadTok, latencyMs: Date.now() - t0,
   });
 
   const tokens = (inTok ?? 0) + (outTok ?? 0);
@@ -219,10 +247,14 @@ Deno.serve(async (req) => {
     if ("error" in who) return who.error;
     if (who.userId !== "cron") return json({ error: "This endpoint runs on the schedule." }, 403);
 
-    const schemaError = await ensureSchema();
-    if (schemaError) {
-      await beat(false, `schema: ${schemaError}`);
-      return json({ error: `Could not prepare the autopilot tables: ${schemaError}` }, 500);
+    // Once per isolate, not every tick (see schemaReady).
+    if (!schemaReady) {
+      const schemaError = await ensureSchema();
+      if (schemaError) {
+        await beat(false, `schema: ${schemaError}`);
+        return json({ error: `Could not prepare the autopilot tables: ${schemaError}` }, 500);
+      }
+      schemaReady = true;
     }
 
     const { data: due, error } = await admin.rpc("app_claim_objectives", { p_limit: PER_TICK });
@@ -234,7 +266,7 @@ Deno.serve(async (req) => {
     const objectives = (due ?? []) as Json[];
     const tally: Record<string, number> = { acted: 0, queued: 0, noop: 0, halted: 0, failed: 0 };
 
-    for (const o of objectives) {
+    const processOne = async (o: Json): Promise<void> => {
       let row: Json;
       try {
         row = await think(admin, o);
@@ -269,6 +301,28 @@ Deno.serve(async (req) => {
             .eq("id", o.id);
         }
       }
+    };
+
+    // A bounded pool rather than a sequential loop: the objectives are unrelated
+    // businesses, and one waiting on the model must not stall the rest. `next` is
+    // shared but incremented synchronously between awaits (single-threaded), so
+    // no two workers take the same index.
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, objectives.length) }, async () => {
+        while (next < objectives.length) {
+          await processOne(objectives[next++]);
+        }
+      }),
+    );
+
+    // Bounded housekeeping, once per tick: keep the run log from growing without
+    // end. It deletes at most a couple of thousand of the oldest rows past its
+    // retention window, so a long backlog is spread over ticks rather than one.
+    try {
+      await admin.rpc("app_prune_objective_runs", {});
+    } catch (e) {
+      console.warn("[phoxta] objective run prune failed:", e instanceof Error ? e.message : String(e));
     }
 
     const detail = `${objectives.length} due · ${Object.entries(tally).filter(([, n]) => n).map(([k, n]) => `${k}:${n}`).join(" ") || "nothing to do"}`;
@@ -398,22 +452,65 @@ begin
 end;
 $fn$;
 
+-- Per-tenant round-robin claim. MUST stay identical to migration 0128: this is
+-- create-or-replaced on the first tick of every isolate, so a drift here silently
+-- overwrites the migration's definition. The simple version this replaced ordered
+-- purely by next_run_at, so one business with two hundred due objectives took
+-- every slot of every tick and starved everyone else. Ranking by each tenant's
+-- position then overdueness — before locking — gives every business its first
+-- objective before any business's second. FOR UPDATE is not allowed alongside a
+-- window function, so ranking is a plain CTE and the lock is taken afterwards on
+-- the chosen ids; the re-check inside the locked CTE drops a row another tick
+-- claimed in between (its next_run_at moved), and SKIP LOCKED drops one in flight.
 create or replace function public.app_claim_objectives(p_limit int default 10)
 returns setof agent_objectives language plpgsql security definer set search_path = public as $fn$
 begin
   return query
+  with ranked as (
+    select id, next_run_at,
+           row_number() over (partition by organization_id order by next_run_at, id) as rn
+      from agent_objectives
+     where status = 'active' and next_run_at <= now()
+  ), picked as (
+    select id from ranked order by rn, next_run_at limit greatest(1, p_limit)
+  ), locked as (
+    select o.id from agent_objectives o
+     where o.id in (select id from picked) and o.status = 'active' and o.next_run_at <= now()
+       for update skip locked
+  )
   update agent_objectives o
-     set next_run_at = now() + make_interval(mins => o.cadence_minutes), last_run_at = now()
-   where o.id in (
-     select id from agent_objectives
-      where status = 'active' and next_run_at <= now()
-      order by next_run_at limit greatest(1, p_limit) for update skip locked
-   )
+     set next_run_at = now() + make_interval(mins => o.cadence_minutes),
+         last_run_at = now()
+   where o.id in (select id from locked)
   returning o.*;
 end;
 $fn$;
 
--- These three are the autopilot's internal machinery and only the service role
+-- Bounded pruning of the run log (mirrors 0128). Deletes at most p_limit of the
+-- oldest rows past p_days, so a tick that meets a year of backlog spends a bounded
+-- amount of time and the rest goes on later ticks. Bootstrapped here because
+-- db push is unavailable against this project, the same reason the tables are.
+create or replace function public.app_prune_objective_runs(p_days int default 30, p_limit int default 2000)
+returns int language plpgsql security definer set search_path = public as $fn$
+declare
+  v_n int;
+begin
+  with gone as (
+    delete from agent_objective_runs
+     where id in (
+       select id from agent_objective_runs
+        where created_at < now() - make_interval(days => greatest(1, p_days))
+        order by created_at
+        limit greatest(1, p_limit)
+     )
+    returning 1
+  )
+  select count(*) into v_n from gone;
+  return coalesce(v_n, 0);
+end;
+$fn$;
+
+-- These are the autopilot's internal machinery and only the service role
 -- inside an edge function has any business calling them. Postgres grants
 -- EXECUTE to PUBLIC by default, and SECURITY DEFINER then runs them as the
 -- owner -- so without this block an anonymous caller could forge a heartbeat
@@ -424,6 +521,7 @@ $fn$;
 revoke execute on function public.app_cron_beat(text, boolean, text) from public, anon, authenticated;
 revoke execute on function public.app_claim_action(uuid, text) from public, anon, authenticated;
 revoke execute on function public.app_claim_objectives(int) from public, anon, authenticated;
+revoke execute on function public.app_prune_objective_runs(int, int) from public, anon, authenticated;
 
 -- Removes the two rows left by the security probe that found these grants
 -- missing in the first place. Harmless and idempotent; kept in the record

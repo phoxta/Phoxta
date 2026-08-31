@@ -23,6 +23,10 @@ Deno.serve(async (req) => {
     .from("conversations")
     .select("id, organization_id, channel_type, status, csat")
     .in("status", ["handled", "closed", "escalated"])
+    // Train-preview sandbox threads (ai-agent respond with test: true) are not
+    // customer conversations. Grading them spent a cheap-tier call per rehearsal
+    // and pulled the org's QA average towards whatever the owner was typing.
+    .eq("is_test", false)
     .is("qa_at", null)
     .order("last_message_at", { ascending: false })
     .limit(BATCH);

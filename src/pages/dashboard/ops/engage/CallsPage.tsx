@@ -17,6 +17,7 @@ import {
 import { callablePhone, displayPhone } from "@/lib/ops/phone";
 import { toast, toastError } from "@/lib/ops/feedback";
 import { Card, Chip, Empty, StatTile } from "@/components/dash/Ui";
+import RecordingPlayer from "@/pages/dashboard/ops/ui/RecordingPlayer";
 
 /**
  * Engage → Calls: the voice side of the console in one place.
@@ -473,7 +474,7 @@ export default function CallsPage() {
                     )}
                     {c.conversation_id && <Link to={`../inbox?c=${c.conversation_id}`}>Conversation →</Link>}
                   </div>
-                  {c.recording_url && <audio className="clx-audio" controls preload="none" src={c.recording_url} />}
+                  <RecordingPlayer orgId={orgId} callId={c.id} recording={c.recording_url} className="clx-audio" />
                 </div>
               </div>
             );

@@ -49,7 +49,7 @@
 // _shared/autoReply.ts, shared with email-inbound and agent-catchup, so there is
 // one place where "may the agent answer this?" is decided rather than three.
 import { preflight, json } from "../_shared/cors.ts";
-import { authorize, isAdminRole } from "../_shared/auth.ts";
+import { authorize, isAdminRole, isCronRequest } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import {
   canSendMail,
@@ -128,6 +128,19 @@ const replyMaxAgeMs = () => envNum("GMAIL_SYNC_REPLY_MAX_AGE_HOURS", 48) * 3600_
  *  of pages. Inside a cron request budgeted at 100 seconds for four workers,
  *  that is how one mailbox starves the rest. */
 const MAX_PAGES = 8;
+
+/** How many mailboxes ONE cron tick syncs. The old cron leg walked every
+ *  google_connections row in table order with no cap and no deadline, so one
+ *  slow mailbox at the head of the list starved the ones below it every tick.
+ *  app_gmail_sync_queue (migration 0129) hands back the least-recently-synced
+ *  mailboxes first, so a bounded slice each tick still reaches every mailbox in
+ *  turn instead of forever re-reading the same head. */
+const maxOrgsPerTick = () => envNum("GMAIL_SYNC_MAX_ORGS", 8);
+/** A wall-clock stop on the cron loop. gmail-sync shares the roughly 100-second
+ *  cron budget with three other workers; a tick that runs long steals their
+ *  time, and an org not reached this tick is simply first in the queue next
+ *  tick (it is still the least-recently-synced), so nothing is dropped. */
+const CRON_DEADLINE_MS = 60_000;
 
 // ── What the sync reads ─────────────────────────────────────────────────────
 //
@@ -1345,16 +1358,45 @@ Deno.serve(async (req) => {
     const backfill = body?.mode === "backfill";
     const limit = Math.max(1, Math.min(Number(body?.limit ?? 50), 200));
 
-    const cronSecret = Deno.env.get("CRON_SECRET");
-    if (cronSecret && req.headers.get("x-cron-secret") === cronSecret) {
-      const { data: conns } = await admin.from("google_connections").select("organization_id");
-      const list = (conns as Json[] | null) ?? [];
+    if (isCronRequest(req)) {
+      const orgCap = maxOrgsPerTick();
+      const startedAt = Date.now();
+
+      // Which mailboxes, and in what order.
+      //   sync    — ordered by longest-since-a-successful-sync (never-synced
+      //             first) and capped, so a slow mailbox at the head of
+      //             google_connections' table order can no longer starve the
+      //             tail every tick (app_gmail_sync_queue, migration 0129). If
+      //             the RPC is not installed yet, fall back to a capped unordered
+      //             slice — still bounded, just not yet fair.
+      //   backfill — the full walk: a one-shot repair of historical formatting,
+      //             not a recurring drain, so it keeps reaching every org at once.
+      let list: { organization_id: string }[];
+      if (backfill) {
+        const { data: conns } = await admin.from("google_connections").select("organization_id");
+        list = (conns as { organization_id: string }[] | null) ?? [];
+      } else {
+        const { data: queue, error: queueErr } = await admin.rpc("app_gmail_sync_queue", { p_limit: orgCap });
+        if (queueErr) {
+          const { data: conns } = await admin.from("google_connections").select("organization_id").limit(orgCap);
+          list = (conns as { organization_id: string }[] | null) ?? [];
+        } else {
+          list = ((queue as { organization_id: string }[] | null) ?? []).map((q) => ({ organization_id: q.organization_id }));
+        }
+      }
+
       let total = 0;
       let replied = 0;
+      let processed = 0;
+      let stoppedEarly = false;
       // One broken connection must not stop the others, but it must be reported:
       // swallowing it is what made a dead mailbox indistinguishable from a quiet one.
       const problems: { org: string; error: string }[] = [];
       for (const c of list) {
+        // Stop on the clock, not only on the org cap. See CRON_DEADLINE_MS: an
+        // org not reached this tick is first in the queue next tick, so bailing
+        // here loses nothing and gives the three other workers their budget back.
+        if (Date.now() - startedAt > CRON_DEADLINE_MS) { stoppedEarly = true; break; }
         try {
           const r = backfill
             ? await backfillOrg(admin, c.organization_id, limit)
@@ -1378,14 +1420,19 @@ Deno.serve(async (req) => {
         } catch (e) {
           problems.push({ org: c.organization_id, error: String((e as Error)?.message || e) });
         }
+        processed++;
       }
       // A heartbeat, so cron_heartbeats proves THIS worker ran rather than only
-      // proving the loop that pings it is alive.
+      // proving the loop that pings it is alive — and it now says N of M and
+      // whether the tick finished its slice or bailed on the deadline, so a
+      // persistently-truncated tick (more mailboxes than one budget can reach) is
+      // visible rather than silent.
+      const summary = `${processed} of ${list.length} mailbox(es)${stoppedEarly ? `, stopped at the ${Math.round(CRON_DEADLINE_MS / 1000)}s deadline (the rest sync next tick)` : ""}, ${total} imported, ${replied} answered`;
       try {
         await admin.rpc("app_cron_beat", {
           p_worker: "gmail-sync",
           p_ok: problems.length === 0,
-          p_detail: problems.length ? problems.map((p) => `${p.org}: ${p.error}`).join("; ") : `${list.length} mailbox(es), ${total} imported, ${replied} answered`,
+          p_detail: problems.length ? `${summary}; problems: ${problems.map((p) => `${p.org}: ${p.error}`).join("; ")}` : summary,
         });
       } catch { /* the tick still ran */ }
       // Which orgs were synced, not just how many: "1 connection" does not tell
@@ -1395,6 +1442,8 @@ Deno.serve(async (req) => {
         ok: problems.length === 0,
         mode: backfill ? "backfill" : "sync",
         orgs: list.map((c) => c.organization_id),
+        processed,
+        stoppedEarly,
         [backfill ? "filled" : "imported"]: total,
         ...(backfill ? {} : { replied }),
         problems,

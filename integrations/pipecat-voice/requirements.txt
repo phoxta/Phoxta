@@ -1,8 +1,12 @@
 # Phoxta Pipecat voice bridge.
-# Pin pipecat-ai to a known-good release; the service constructors / import paths
-# below target the 1.x line. Verify against the version you install.
+# PINNED to the exact release the bridge is written and verified against —
+# Pipecat's service constructors and import paths move between minor versions
+# (bot.py targets 1.3.0's DeepgramSTTService.Settings, frame names and task
+# manager). A range like >=1.0,<2.0 would let a rebuild pull a newer minor whose
+# API differs and break voice with no code change. Bump this deliberately, and
+# re-verify bot.py against the new version when you do.
 # `webrtc` adds aiortc for the in-browser voice widget (SmallWebRTC /offer path).
-pipecat-ai[deepgram,cartesia,silero,twilio,webrtc]>=1.0,<2.0
+pipecat-ai[deepgram,cartesia,silero,twilio,webrtc]==1.3.0
 fastapi>=0.115
 uvicorn[standard]>=0.30
 python-multipart>=0.0.9

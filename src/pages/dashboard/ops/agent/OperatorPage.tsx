@@ -5,7 +5,7 @@ import type { OpsContext } from "@/layouts/OperatingLayout";
 import { formatPrice } from "@/lib/db/marketplace";
 import { toast, toastError, confirmDanger, reportMutation } from "@/lib/ops/feedback";
 import {
-    runOperator,
+    runOperatorStream,
     listOperatorMessages,
     saveOperatorMessages,
     listActions,
@@ -50,6 +50,10 @@ const AGX_CSS = `
 .agx-note{font-size:13px;color:var(--hrx-muted)}
 .agx-chat{height:min(70vh,720px);min-height:420px;display:flex;flex-direction:column}
 .agx-json{white-space:pre-wrap;max-height:160px;overflow:auto;background:#fff;border:1px solid var(--hrx-border-soft);border-radius:12px;padding:8px;font-size:12px;margin:6px 0 0}
+.agx-notice{border:1px dashed var(--hrx-border-soft);color:var(--hrx-muted)}
+.agx-tool{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--hrx-muted);margin-top:4px}
+.agx-tool-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:agx-pulse 1s ease-in-out infinite}
+@keyframes agx-pulse{0%,100%{opacity:.25}50%{opacity:1}}
 `;
 
 const short = (s: unknown, n = 140): string => {
@@ -59,6 +63,14 @@ const short = (s: unknown, n = 140): string => {
 
 const prettySize = (n?: number) =>
     n == null ? "" : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`;
+
+/** "Using list products…" — read tools by their name spelled out, write tools by
+ *  the same label the policy panel shows, so what the owner watches happening
+ *  matches what they permitted. */
+const toolLabel = (name: string): string => {
+    const w = WRITE_TOOL_LABELS[name];
+    return w ? short(w.charAt(0).toLowerCase() + w.slice(1), 60) : name.replace(/_/g, " ");
+};
 
 /** Files produced by a turn — today the speak tool's voice notes. `urls` holds
  *  the signed URL per storage path; until it arrives the player is left out
@@ -209,6 +221,13 @@ export default function OperatorPage() {
     ]);
     const [draft, setDraft] = useState("");
     const [busy, setBusy] = useState(false);
+    // The reply being written, while it streams: the text so far and the tools
+    // running right now (several can run at once). Null when no turn is live.
+    const [live, setLive] = useState<{ text: string; tools: string[] } | null>(null);
+    // Whether the reader is at the bottom of the log — the only time a stream is
+    // allowed to scroll it. Someone who scrolled up to re-read an earlier answer
+    // must not be dragged back down by every token.
+    const stickToBottom = useRef(true);
     // Signed URLs for message attachments, keyed by storage path. The
     // operator-files bucket is private, so a path renders nothing on its own.
     const [urls, setUrls] = useState<Record<string, string>>({});
@@ -280,20 +299,51 @@ export default function OperatorPage() {
         return () => { active = false; };
     }, [msgs, urls]);
 
+    // Follow the reply as it streams, but only while the reader is at the bottom.
+    useEffect(() => {
+        if (live && stickToBottom.current) bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
+    }, [live]);
+
     async function send(text: string) {
         const q = text.trim();
         if (!q || busy) return;
-        // History must start with a user turn — drop the leading greeting.
-        let history = [...msgs];
+        // History must start with a user turn — drop the leading greeting. Notices
+        // are the page talking ("I ran out of steps"), not the operator, and never
+        // go back to the model.
+        let history = msgs.filter((m) => !m.notice);
         while (history.length && history[0].role === "assistant") history = history.slice(1);
         setMsgs((m) => [...m, { role: "user", content: q }]);
         setDraft("");
         setBusy(true);
         setError(null);
-        const { reply, attachments, error } = await runOperator(orgId, q, history);
+        // Sending means you want to see the answer, wherever you had scrolled to.
+        stickToBottom.current = true;
+        setLive({ text: "", tools: [] });
+        const { reply, attachments, exhausted, error } = await runOperatorStream(orgId, q, history, {
+            onDelta: (t) => setLive((l) => ({ text: (l?.text ?? "") + t, tools: l?.tools ?? [] })),
+            // A new model call: whatever streamed before it was the model thinking
+            // aloud ahead of its tool calls, not the answer — start the bubble over.
+            onTurn: () => setLive((l) => ({ text: "", tools: l?.tools ?? [] })),
+            onToolStart: (name) => setLive((l) => ({ text: l?.text ?? "", tools: [...(l?.tools ?? []), name] })),
+            onToolEnd: (name) => setLive((l) => {
+                if (!l) return l;
+                const i = l.tools.indexOf(name);
+                return i < 0 ? l : { ...l, tools: [...l.tools.slice(0, i), ...l.tools.slice(i + 1)] };
+            }),
+        });
+        setLive(null);
         setBusy(false);
         if (error) {
             setError(error);
+            return;
+        }
+        if (exhausted) {
+            // The agent used every turn it had without an answer. Said where the
+            // answer would have been, but as a notice: not saved and not history,
+            // because the operator did not say it. Tools may still have run —
+            // an action could be waiting — so the queue and activity refresh.
+            setMsgs((m) => [...m, { role: "assistant", content: reply, notice: true }]);
+            refresh();
             return;
         }
         // Voice notes (the speak tool) come back as attachments. Dropping them
@@ -447,14 +497,37 @@ export default function OperatorPage() {
             <div className="col-12 col-lg-7">
                 <div className="hrx-card agx-chat">
                     <h2 className="visually-hidden">Chat with your operator</h2>
-                    <div className="flex-grow-1 overflow-auto p-3 p-lg-4 d-flex flex-column gap-2" ref={bodyRef} role="log" aria-label="Operator conversation" aria-busy={busy}>
+                    <div
+                        className="flex-grow-1 overflow-auto p-3 p-lg-4 d-flex flex-column gap-2"
+                        ref={bodyRef}
+                        role="log"
+                        aria-label="Operator conversation"
+                        aria-busy={busy}
+                        onScroll={(e) => {
+                            const el = e.currentTarget;
+                            stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+                        }}
+                    >
                         {msgs.map((m, i) => (
-                            <div key={i} className={`fz-font-md ${m.role === "user" ? "align-self-end bg-neutral-900 text-white" : "align-self-start bg-neutral-100"}`} style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, whiteSpace: "pre-wrap" }}>
+                            <div key={i} className={`fz-font-md ${m.role === "user" ? "align-self-end bg-neutral-900 text-white" : m.notice ? "align-self-start agx-notice" : "align-self-start bg-neutral-100"}`} style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, whiteSpace: "pre-wrap" }}>
                                 {m.content}
                                 <MsgAttachments items={m.attachments ?? []} urls={urls} />
                             </div>
                         ))}
-                        {busy && <div className="align-self-start bg-neutral-100 fz-font-md" style={{ padding: "10px 14px", borderRadius: 12 }}>…</div>}
+                        {/* The reply while it streams. aria-live="off" because the log
+                            region would otherwise read out every fragment as it lands;
+                            the finished message joins the log once and is read then. */}
+                        {live && (
+                            <div className="align-self-start bg-neutral-100 fz-font-md" style={{ maxWidth: "85%", padding: "10px 14px", borderRadius: 12, whiteSpace: "pre-wrap" }} aria-live="off">
+                                {live.text || (live.tools.length ? null : "…")}
+                                {live.tools.length > 0 && (
+                                    <div className="agx-tool">
+                                        <span className="agx-tool-dot" aria-hidden="true" />
+                                        Using {live.tools.map(toolLabel).join(", ")}…
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                     <form className="d-flex gap-2 p-3 border-top border-100 align-items-end" onSubmit={(e) => { e.preventDefault(); send(draft); }}>
                         <label className="visually-hidden" htmlFor="operator-draft">Message your operator</label>

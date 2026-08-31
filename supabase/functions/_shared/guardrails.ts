@@ -30,7 +30,33 @@ const SECRET_RE: Array<[RegExp, string]> = [
 ];
 
 // Card-like numbers (13–16 digits, optional spaces/dashes) — never echo PCI data.
-const CARD_RE = /\b(?:\d[ -]?){13,16}\b/g;
+//
+// A bare digit-run test redacted far more than cards: an international phone
+// number ("+2348012345678" is 13 digits), a courier tracking number, a booking
+// reference — all of which the agent legitimately reads back to a customer, and
+// all of which came out as "[redacted]". Two things a card number has that those
+// do not: it is never written with a leading "+", and it passes the Luhn check
+// (every scheme's PAN does; a random 13–16 digit run fails nine times in ten).
+// The lookbehind refuses the "+" form outright, and the replacer below only
+// redacts a run that Luhn accepts.
+const CARD_RE = /(?<!\+)\b(?:\d[ -]?){13,16}\b/g;
+
+/** The Luhn mod-10 check every card scheme's PAN satisfies. */
+function luhnValid(digits: string): boolean {
+  let sum = 0;
+  let double = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let d = digits.charCodeAt(i) - 48;
+    if (d < 0 || d > 9) return false;
+    if (double) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+    double = !double;
+  }
+  return sum % 10 === 0;
+}
 
 // The reply claiming to disclose its own instructions.
 const SYSTEM_LEAK_RE: RegExp[] = [
@@ -65,8 +91,10 @@ export function guardOutput(reply: string): OutputGuard {
 
   const carded = cleaned.replace(CARD_RE, (m) => {
     const digits = m.replace(/[ -]/g, "");
-    return digits.length >= 13 && digits.length <= 16 ? "[redacted]" : m;
+    return digits.length >= 13 && digits.length <= 16 && luhnValid(digits) ? "[redacted]" : m;
   });
+  // Still flagged whenever something WAS redacted: the flag is what the QA view
+  // reads to find replies that nearly leaked a card.
   if (carded !== cleaned) {
     flags.add("card");
     cleaned = carded;

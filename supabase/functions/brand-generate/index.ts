@@ -6,7 +6,7 @@ import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { modelFor } from "../_shared/models.ts";
 import { callJson } from "../_shared/anthropic.ts";
-import { meter } from "../_shared/meter.ts";
+import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -26,6 +26,11 @@ Deno.serve(async (req) => {
 
     const prompt = clampStr(body.prompt, "", 400);
     if (!prompt) return json({ error: "Describe the look you want, e.g. 'modern luxury travel, deep navy and gold'." }, 400);
+
+    // Metered but never capped until now: a rebrand button that can be pressed
+    // all afternoon has to answer to the same monthly allowance as the agent.
+    const allowance = await assertWithinCap(admin, org.id);
+    if (!allowance.ok) return json({ error: CAP_REACHED_MESSAGE, limitReached: true }, 429);
 
     const system =
       "You are a senior brand designer. Produce a cohesive, tasteful visual brand for a small business. " +

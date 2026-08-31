@@ -324,6 +324,12 @@ verify_jwt = true
 [functions.platform-lead]
 verify_jwt = true
 
+# The demo gate: checks a visitor's five-day pass and takes the details that
+# earn one. Anonymous visitors, but they arrive through supabase-js with the
+# public key, so the JWT check still holds.
+[functions.demo-access]
+verify_jwt = true
+
 # Writes the caption and hashtags for a design. Member-authed and metered:
 # it spends the model budget, so it takes a real session rather than the
 # public key.
@@ -332,3 +338,16 @@ verify_jwt = true
 
 [functions.social-insights]
 verify_jwt = true
+
+# Mints a ten-minute signed URL for one call recording. The bucket is private
+# (0127); membership is checked by authorize() on top of the JWT gate.
+[functions.recording-url]
+verify_jwt = true
+
+# Mints the short-lived token the in-browser voice widget hands the self-hosted
+# Pipecat server so /ice and /offer stop being open to anyone. Public on purpose
+# — an anonymous visitor must be able to start a voice session — so it defends
+# itself with a per-IP rate limit and by refusing keys that resolve to no
+# business, exactly like idea-validate.
+[functions.voice-session]
+verify_jwt = false

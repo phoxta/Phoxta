@@ -15,17 +15,19 @@ import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { respondCore, recordInboundOnly, summarizeConversation, loadConfig, type Org } from "../_shared/agentCore.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
-import { meter } from "../_shared/meter.ts";
+import { meter, planCapFor } from "../_shared/meter.ts";
 import { callRateLimited, checkDestination, phoneForStorage } from "../_shared/telephony.ts";
 import { engageHandleInbound, type EngageInboundParams } from "../engage-run/executor.ts";
-import { hmacToken, isTrustedTransport, safeEqual } from "../_shared/internalProof.ts";
+import { hmacToken, isTrustedTransport, safeEqual, voiceProofValid } from "../_shared/internalProof.ts";
 import { verifySharedSecret } from "../_shared/webhooks.ts";
+import { callerAddress } from "../_shared/clientIp.ts";
 import {
   autoReplyMode,
   deliverAutoReply,
   markNotAnswered,
   modeReason,
   notifyNeedsHuman,
+  orgHourlyThrottled,
   type AutoReplyMode,
   type SendOutcome,
 } from "../_shared/autoReply.ts";
@@ -63,6 +65,18 @@ const threadToken = (conversationId: string) => hmacToken(`thread:${conversation
 /** Everything an untrusted caller is allowed to say about who they are. A name
  *  is a display label; it resolves no identity and links no contact. */
 const publicCustomer = (customer: Json): Json => ({ name: String(customer?.name ?? "").slice(0, 120) });
+
+/** Everything a VOICE-PROOFED caller (the Pipecat bridge) may assert: the phone
+ *  the call arrived on and a display name — and nothing else. The voice proof
+ *  vouches for a phone call, so unlike a browser this caller's phone IS the real
+ *  caller's number, which is what threads the call and what call_logs.from_number
+ *  records. Email is deliberately absent: the proof does not vouch for it, and an
+ *  email would resolve and link a contact whose other conversations the agent is
+ *  then fed as memory (see internalProof.ts). */
+const voiceCustomer = (customer: Json): Json => ({
+  name: String(customer?.name ?? "").slice(0, 120),
+  phone: String(customer?.phone ?? "").slice(0, 40),
+});
 
 /** Channels that reach a person by an identifier they own, and therefore thread
  *  by it. Only a proven transport may speak on one. */
@@ -172,23 +186,23 @@ const VOICE_TURN_HANDOFF = "Got it — I've made a note of that and someone from
 // Public-endpoint abuse/cost throttle: max inbound customer messages per business
 // per hour. Beyond this the agent politely defers (the per-plan monthly token cap
 // in respondCore is the hard cost ceiling).
-const MAX_MSGS_PER_HOUR = 200;
-async function overLimit(admin: ReturnType<typeof adminClient>, orgId: string): Promise<boolean> {
-  const since = new Date(Date.now() - 3600_000).toISOString();
-  const { count } = await admin
-    .from("conversation_messages")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", orgId)
-    .eq("role", "customer")
-    .gte("created_at", since);
-  return (count ?? 0) >= MAX_MSGS_PER_HOUR;
-}
+//
+// The check itself now lives in _shared/autoReply.ts as orgHourlyThrottled — the
+// SAME 200/hour ceiling the in-process reply paths already enforce (its
+// MAX_MSGS_PER_HOUR const mirrored the copy that used to sit here). Sharing it
+// buys this endpoint the exemption that copy was missing: an org's Gmail import
+// backfills a whole mailbox in one tick, and those rows are stamped
+// meta.ingest = "backfill" (INGEST_BACKFILL) precisely because they could never
+// be auto-answered — so orgHourlyThrottled subtracts them and a mail import can
+// no longer push a business past its hourly ceiling and silence live web/SMS
+// customers for the next hour. A single, exempt-aware number instead of two that
+// disagreed.
 
 // ---------------------------------------------------------------------------
 // Two branches of this endpoint MINT ROWS on nothing but the public key: the
 // voice greeting (a conversation per inbound call) and the instant-callback form
-// (a conversation plus an outbound task). overLimit counts inbound MESSAGES, so
-// neither of them was counted by anything at all: a script holding a key handed
+// (a conversation plus an outbound task). The hourly throttle counts inbound
+// MESSAGES, so neither of them was counted by anything at all: a script holding a key handed
 // out by app_storefront_agent_key could fill a tenant's Inbox with rows carrying
 // attacker-chosen name/phone/email labels, and — through the callback branch —
 // queue the outbound work described below.
@@ -219,6 +233,86 @@ async function callbacksOverLimit(admin: ReturnType<typeof adminClient>, orgId: 
     .eq("type", "instant_callback")
     .gte("created_at", since);
   return (count ?? 0) >= MAX_CALLBACKS_PER_HOUR;
+}
+
+// ---------------------------------------------------------------------------
+// A FIRST-LAYER per-VISITOR throttle on the untrusted web widget.
+//
+// orgHourlyThrottled bounds a whole BUSINESS (200 inbound/hour), which is tuned
+// for a real business's traffic and says nothing about one abusive caller: a
+// single scripted visitor can spend that entire allowance — and, under the daily
+// token sub-budget below, the widget's whole model budget — on their own. This
+// bounds ONE caller before any database work or model spend happens: a sliding
+// window per source address and per thread they are posting to.
+//
+// Isolate-local ON PURPOSE, and only a FIRST layer. The Map lives in this
+// worker's memory and RESETS whenever the isolate is recycled or a different
+// isolate serves the next request, so it cannot be the durable ceiling — the
+// org-wide throttle and the DB-backed daily sub-budget are. What it adds is an
+// instant, zero-round-trip cap on a burst from one address, which is exactly the
+// shape of the abuse a public key handed to anon invites. Only the UNTRUSTED web
+// branch reaches it; a signature-proven transport and the voice bridge never do.
+// ---------------------------------------------------------------------------
+const WEB_WINDOW_MS = 10 * 60 * 1000;
+const WEB_IP_MAX = 20; // messages per window from one source address
+const WEB_THREAD_MAX = 20; // messages per window to one conversation
+const webHits = new Map<string, number[]>();
+
+/** Record a hit on `key` and report whether it is now over `max` inside the
+ *  window. Prunes the key it touches, and sweeps the whole Map only when it has
+ *  grown large, so a busy isolate cannot retain a timestamp array per address
+ *  seen in the last ten minutes. */
+function overWebWindow(key: string, max: number, now: number): boolean {
+  const from = now - WEB_WINDOW_MS;
+  const hits = (webHits.get(key) ?? []).filter((t) => t >= from);
+  hits.push(now);
+  webHits.set(key, hits);
+  if (webHits.size > 5000) {
+    for (const [k, v] of webHits) {
+      const live = v.filter((t) => t >= from);
+      if (live.length === 0) webHits.delete(k);
+      else webHits.set(k, live);
+    }
+  }
+  return hits.length > max;
+}
+
+// ---------------------------------------------------------------------------
+// The anonymous web widget's DAILY share of the plan's token cap.
+//
+// The plan's MONTHLY token cap (enforced in respondCore) is the only spend
+// ceiling the public path had, and every channel draws on it equally — so a
+// script driving the widget (its public key ships in every storefront bundle)
+// could burn the whole month's allowance in an afternoon and silence this
+// business's SMS, WhatsApp and email agent for the rest of the month. Anonymous
+// web turns are held to a QUARTER of the plan cap PER CALENDAR DAY (UTC).
+//
+// app_org_web_ai_tokens_today (migration 0127) sums exactly the web channel's
+// non-test tokens spent today, in the database (a JS reduce truncates at
+// PostgREST's 1000-row cap — which fails for the busy orgs a ceiling exists to
+// bound). planCapFor is the ONE definition of which plan applies; a lapsed
+// subscription floors to starter, same as everywhere else. Fails OPEN on a read
+// error: the monthly cap still binds in respondCore, and refusing every web
+// visitor because one RPC hiccupped is the worse of the two mistakes.
+// ---------------------------------------------------------------------------
+const WEB_DAILY_BUDGET_SHARE = 0.25;
+
+async function webSubBudgetExceeded(admin: ReturnType<typeof adminClient>, orgId: string): Promise<boolean> {
+  try {
+    const [{ data: sub }, { data: usedToday, error }] = await Promise.all([
+      admin.from("subscriptions").select("plan, status").eq("organization_id", orgId).maybeSingle(),
+      admin.rpc("app_org_web_ai_tokens_today", { p_org: orgId }),
+    ]);
+    if (error) {
+      console.warn("[phoxta] web sub-budget read unavailable:", error.message);
+      return false;
+    }
+    const dailyCap = Math.floor(planCapFor(sub as Json) * WEB_DAILY_BUDGET_SHARE);
+    return Number(usedToday ?? 0) >= dailyCap;
+  } catch (e) {
+    console.warn("[phoxta] web sub-budget check failed:", String((e as Error)?.message || e));
+    return false;
+  }
 }
 
 /** An email address, or "" — never a caller-supplied string taken on trust. */
@@ -322,6 +416,18 @@ Deno.serve(async (req) => {
     const trusted = await isTrustedTransport(req);
     const isTest = trusted && body?.test === true;
 
+    // The voice bridge proves itself with a SECOND, weaker capability (see
+    // internalProof.ts). It is NOT `trusted`: that proof is keyed by the
+    // service-role key and would let its holder speak as twilio-inbound or
+    // email-inbound on any channel, asserting any customer's email — a VM off the
+    // platform must never hold it. A voice-proofed caller may assert EXACTLY what
+    // a phone call can truthfully claim: the "voice" channel and the caller's
+    // phone and name (voiceCustomer), and the voice-only ops. Never another
+    // channel, never inbound.providerSid, never `test` — every one of those stays
+    // gated on `trusted` below, so this grant cannot reach them. Fails closed:
+    // with VOICE_BRIDGE_SECRET unset voiceProofValid is always false.
+    const voiceProven = await voiceProofValid(req);
+
     // --- Voice config (the Pipecat bot fetches this at call start to pick TTS). ---
     if (body?.voice_config) return json({ voice: (cfgRow as Json).voice ?? {} });
 
@@ -347,11 +453,23 @@ Deno.serve(async (req) => {
         Number.isFinite(openedAt) && Date.now() - openedAt < 6 * 3600_000;
       if (!live && !trusted) return json({ error: "recording_init_failed" }, 404);
       const bucket = "call-recordings";
-      try { await admin.storage.createBucket(bucket, { public: true }); } catch (_) { /* already exists */ }
+      // PRIVATE, not public. This bucket used to be created public and the row
+      // stored a getPublicUrl, so anyone who learned (or guessed — the path is
+      // <org>/<conversation>-<ms>.wav) a URL could listen to a tenant's customer
+      // calls with no session at all. recording-url mints a short-lived,
+      // membership-checked signed URL from the stored path instead. On a re-run
+      // the bucket already exists, createBucket throws, and the catch swallows it
+      // — so an existing bucket is left exactly as it is; a legacy PUBLIC one is
+      // flipped to private by migration 0127, not here.
+      try { await admin.storage.createBucket(bucket, { public: false }); } catch (_) { /* already exists */ }
       const path = `${org.id}/${convId}-${Date.now()}.wav`;
       const { data, error } = await admin.storage.from(bucket).createSignedUploadUrl(path);
       if (error || !data) return json({ error: "recording_init_failed" }, 500);
       const base = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
+      // Handed back for the bridge, which uses it only as a truthy flag and the
+      // value it echoes to recording_done. The row that ends up stored is the
+      // PATH, not this URL — recording_done derives it (see below), so nothing is
+      // stored that would resolve against the now-private bucket.
       const publicUrl = admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
       return json({ bucket, path, token: data.token, base, publicUrl });
     }
@@ -359,14 +477,31 @@ Deno.serve(async (req) => {
     // --- Call recording: attach the uploaded file to this call's log row(s). ---
     if (body?.recording_done && body?.conversationId && body?.recording_url) {
       if (!UUID_RE.test(String(body.conversationId))) return json({ ok: true });
-      // The URL is rendered as a link in the console, so it is a caller-supplied
-      // string that ends up in a tenant's UI: only an https URL, and only one
-      // short enough to be a real storage path.
+      // Store the STORAGE PATH, never a URL. The column used to hold a public
+      // getPublicUrl, so the row was a live link into a public bucket; the bucket
+      // is private now and recording-url mints a signed URL from the path on
+      // demand (the column name is kept — no schema change — and recording-url
+      // still parses the path out of any legacy full URL, so old rows keep
+      // playing). The bridge echoes back the URL recording_init handed it, which
+      // is a bounded caller-supplied string, so validate its shape and DERIVE the
+      // path from it rather than trusting a caller-supplied path outright.
       const recordingUrl = String(body.recording_url);
       if (!/^https:\/\/[^\s"'<>]{5,900}$/i.test(recordingUrl)) return json({ ok: true });
+      const marker = "/call-recordings/";
+      const at = recordingUrl.indexOf(marker);
+      const path = at >= 0 ? recordingUrl.slice(at + marker.length).split(/[?#]/)[0] : "";
+      // The derived path MUST live under THIS org's prefix. recording_done runs on
+      // nothing but the public key (anon-readable), so without this check a caller
+      // could point a row at another tenant's recording path and recording-url
+      // would later sign it for a member of THIS org — a cross-tenant read. A path
+      // that does not start with the org's own folder is refused silently.
+      if (!path || !path.startsWith(`${org.id}/`)) {
+        console.warn(`[phoxta] agent-inbound: recording_done for ${org.id} named a path outside its prefix — ignored`);
+        return json({ ok: true });
+      }
       await admin
         .from("call_logs")
-        .update({ recording_url: recordingUrl })
+        .update({ recording_url: path })
         .eq("organization_id", org.id)
         .eq("conversation_id", body.conversationId);
       return json({ ok: true });
@@ -444,7 +579,7 @@ Deno.serve(async (req) => {
       if (body.event !== "message_created" || body.message_type !== "incoming") return json({ ok: true });
       const message = (body.content ?? "").toString().trim();
       if (!message) return json({ ok: true });
-      if (await overLimit(admin, org.id)) return json({ ok: true }); // silently defer (avoid webhook retries)
+      if (await orgHourlyThrottled(admin, org.id)) return json({ ok: true }); // silently defer (avoid webhook retries)
       const sender = body.sender ?? {};
       const channelType = String(body.conversation?.channel ?? "web").toLowerCase().includes("whatsapp") ? "whatsapp" : "web";
       // The owner's switch reaches Chatwoot too: file the message, notify, and
@@ -692,7 +827,7 @@ Deno.serve(async (req) => {
       const cbGate = await modeGate(admin, org.id, false);
       const blockedBy = cbGate.blocked
         ? cbGate.reason
-        : (await overLimit(admin, org.id))
+        : (await orgHourlyThrottled(admin, org.id))
           ? "this business is over its hourly message limit"
           : (await callbacksOverLimit(admin, org.id))
             ? "this business is over its hourly callback limit"
@@ -748,7 +883,17 @@ Deno.serve(async (req) => {
     // refusal, because there it is an abuse control rather than a mail quirk.
     if (raw.length > 4000 && !trusted) return json({ error: "Message too long." }, 400);
     const message = raw.slice(0, 4000);
-    const customer = trusted ? (body?.customer ?? {}) : publicCustomer(body?.customer);
+    // A proven transport speaks for a real, authenticated identity; the voice
+    // bridge speaks for the phone number the call arrived on (its proof vouches
+    // for exactly the phone + name — voiceCustomer); everyone else is an
+    // anonymous label (publicCustomer). The phone is what carries into
+    // call_logs.from_number for a voice turn (respondCore writes it), so a
+    // greeting-less first turn still logs the caller's real number.
+    const customer = trusted
+      ? (body?.customer ?? {})
+      : voiceProven
+        ? voiceCustomer(body?.customer)
+        : publicCustomer(body?.customer);
 
     // ------------------------------------------------------------------------
     // THE CALLER ALREADY FILED THIS MESSAGE.
@@ -835,15 +980,47 @@ Deno.serve(async (req) => {
     // turn starts a clean thread instead. A web or voice thread keeps its own
     // channel, which is what lets the voice bridge continue a call it opened.
     let threadId: string | undefined = body?.conversationId ? String(body.conversationId) : undefined;
-    let channel = trusted ? (body?.channel ?? "web") : "web";
+    // A voice-proofed caller is EXACTLY the "voice" channel — never another the
+    // body might claim. This is also what fixes a call whose greeting never ran
+    // (V10): the bridge can skip the greeting and go straight to a `message` op,
+    // and the FIRST such turn must open a VOICE conversation rather than falling
+    // back to "web" — otherwise the caller's number is lost and a live phone call
+    // is filed as web chat. An untrusted browser is always "web".
+    let channel = trusted ? (body?.channel ?? "web") : voiceProven ? "voice" : "web";
     if (threadId && !trusted) {
       const { data: owned } = UUID_RE.test(threadId)
         ? await admin.from("conversations").select("id, channel_type")
             .eq("id", threadId).eq("organization_id", org.id).maybeSingle()
         : { data: null };
       const ownedChannel = String((owned as Json)?.channel_type ?? "");
+      // Identity channels (sms/whatsapp/email) reach a person by an identifier
+      // they own and are never an unproven caller's to open — refuse and start a
+      // clean thread. A voice-proofed caller may only CONTINUE a voice thread it
+      // opened; anything else drops to a fresh voice conversation. The web widget
+      // keeps a web/voice thread it can prove is its own.
       if (!owned || IDENTITY_CHANNELS.has(ownedChannel)) threadId = undefined;
+      else if (voiceProven) { if (ownedChannel !== "voice") threadId = undefined; }
       else channel = ownedChannel || "web";
+    }
+
+    // FIRST-LAYER per-visitor throttle (see overWebWindow above): untrusted web
+    // only — never a proven transport, never the voice bridge. Keyed by source IP
+    // and by the thread being posted to, so neither a burst from one address nor
+    // a hammer on one conversation reaches modeGate or a model turn. Isolate-local
+    // and instant; the org throttle and the daily sub-budget below are the
+    // durable ceilings behind it. 429 with a friendly line the widget can show.
+    if (!trusted && !voiceProven) {
+      const now = Date.now();
+      const overIp = overWebWindow(`ip:${callerAddress(req)}`, WEB_IP_MAX, now);
+      const overThread = threadId ? overWebWindow(`th:${threadId}`, WEB_THREAD_MAX, now) : false;
+      if (overIp || overThread) {
+        console.warn(`[phoxta] agent-inbound: web visitor throttled for ${org.id} (${overIp ? "ip" : "thread"})`);
+        return json({
+          ...(threadId ? { conversationId: threadId } : {}),
+          reply: "You're sending messages faster than I can help right now — give it a minute and try again.",
+          throttled: true,
+        }, 429);
+      }
     }
 
     // --- The owner's switch. Off = never answer; Ask me = do not answer, tell a
@@ -891,7 +1068,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (await overLimit(admin, org.id)) {
+    // Two ceilings defer the turn here, and both file the message rather than
+    // lose it: the org-wide hourly throttle (every channel), and — for the
+    // anonymous web widget only — the daily token sub-budget, so the public
+    // widget cannot spend the whole plan's monthly allowance and starve this
+    // business's SMS/WhatsApp/email agent. A proven transport and the voice
+    // bridge are the business's own channels, and the sandbox is the owner trying
+    // their own agent, so none of them meet the sub-budget.
+    const anonWeb = !trusted && !voiceProven && !isTest && channel === "web";
+    const deferReason = (await orgHourlyThrottled(admin, org.id))
+      ? "this business is over its hourly message limit"
+      : (anonWeb && (await webSubBudgetExceeded(admin, org.id)))
+        ? "the web chat has used its share of today's AI allowance for this business"
+        : "";
+    if (deferReason) {
       // The cap is a spend control, not a reason to lose what a person said —
       // and this reply promises them a follow-up, so the message has to exist
       // for someone to follow up ON.
@@ -904,7 +1094,7 @@ Deno.serve(async (req) => {
       // the sender (a Twilio signature, a provider webhook secret), so it can
       // open the thread; an anonymous browser still cannot, which is the abuse
       // this throttle exists to stop.
-      const throttleReason = "this business is over its hourly message limit";
+      const throttleReason = deferReason;
       let recorded = threadId;
       if (callerRecorded) {
         // Already filed by the transport: record the reason on that row. An

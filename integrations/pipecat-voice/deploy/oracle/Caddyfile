@@ -37,3 +37,37 @@
 		stream_close_delay 5m
 	}
 }
+
+{$LLM_DOMAIN} {
+	# The free tier: Supabase edge functions reach the two llama.cpp servers
+	# here. One hostname and one certificate for both, because they are one API
+	# to the caller — LOCAL_BASE_URL and LOCAL_EMBED_BASE_URL are the same
+	# https://…/v1 and the split happens on the path, not in the config the
+	# platform has to keep in step.
+	#
+	# Both upstreams enforce --api-key. This is an open text-generation
+	# endpoint on the public internet; unauthenticated, it becomes somebody
+	# else's free inference inside a day and the box's egress allowance with it.
+	handle /v1/embeddings* {
+		reverse_proxy embed:8080
+	}
+
+	handle {
+		reverse_proxy llm:8080 {
+			# No response timeout. A 4-core CPU takes 30-90s over a summary,
+			# which is fine for a cron worker and would be a 504 here under
+			# any of the usual defaults.
+			transport http {
+				read_timeout 0
+				write_timeout 0
+			}
+		}
+	}
+
+	log {
+		output file /data/llm-access.log {
+			roll_size 10mb
+			roll_keep 3
+		}
+	}
+}

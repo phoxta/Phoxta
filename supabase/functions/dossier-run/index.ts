@@ -28,7 +28,7 @@ import { authorize, requireUser } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
-import { meter } from "../_shared/meter.ts";
+import { meter, assertWithinCap, CAP_REACHED_MESSAGE, platformOrgId } from "../_shared/meter.ts";
 import { searchStock } from "../_shared/stock.ts";
 import { ORDER, PROMPTS, type Section } from "./sections.ts";
 
@@ -112,12 +112,6 @@ async function attachImage(output: Json): Promise<void> {
 /** Phoxta's own organisation, so Layer 1's spend lands in ai_usage like every
  *  other model call rather than being invisible. Null is survivable — metering
  *  must never be the reason a generation fails. */
-async function platformOrgId(admin: SupabaseClient): Promise<string | null> {
-  const { data } = await admin
-    .from("organizations").select("id").eq("vertical", "platform").limit(1).maybeSingle();
-  return (data as { id?: string } | null)?.id ?? null;
-}
-
 Deno.serve(async (req) => {
   const pf = preflight(req);
   if (pf) return pf;
@@ -174,7 +168,7 @@ Deno.serve(async (req) => {
 
       brief = blueprintBrief(bp);
       ctx = contextFrom((rows as Row[] | null) ?? [], section, "Sections of this dossier already written:");
-      meterOrg = await platformOrgId(admin);
+      meterOrg = await platformOrgId(admin, "dossier-run");
     } else {
       // ── Layer 2: one owner's own version ───────────────────────────────
       // Membership is not enough: this spends the model budget, so it takes the
@@ -234,6 +228,13 @@ Deno.serve(async (req) => {
           error: "This business has rewritten its playbook as many times as we allow in a day. It will be available again tomorrow.",
         }, 429);
       }
+
+      // And the plan's monthly allowance, which the two limits above are not:
+      // sixty complex-tier sections a day is well inside them and well past a
+      // starter org's month. Org-scoped only — the shared blueprint dossier is
+      // the platform's own spend and keeps its admin gate instead.
+      const allowance = await assertWithinCap(admin, orgId);
+      if (!allowance.ok) return json({ error: CAP_REACHED_MESSAGE, limitReached: true }, 429);
 
       await admin.from("org_dossiers")
         .update({ run_started_at: new Date().toISOString(), run_error: null })

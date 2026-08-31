@@ -3,8 +3,11 @@
 //   - a member with { action:'setup', orgId }  → authorize() membership, then
 //     ensureEngageSchema() — how the frontend heals a missing schema.
 //   - the scheduler with x-cron-secret         → ensure schema, then
-//       (a) WAKE:    waiting runs whose wake_at has passed advance through the
-//                    graph executor (delays elapsing in flows AND journeys);
+//       (a) WAKE:    waiting runs whose wake_at has passed are CLAIMED
+//                    (waiting→active, one tick owns each) and advanced through
+//                    the graph executor (delays elapsing in flows AND journeys);
+//                    a wake left 'active' by a died worker is reaped back to
+//                    waiting first so its timer fires again;
 //       (b) TRIGGER: every live journey polls its event source past last_cursor
 //                    (orders paid/fulfilled · reservations confirmed · contact
 //                    tag additions), never looking back further than
@@ -15,7 +18,7 @@
 // Conversational flows do NOT run here — agent-inbound drives them on the
 // actual inbound message (see engageHandleInbound in ./executor.ts).
 import { preflight, json } from "../_shared/cors.ts";
-import { authorize } from "../_shared/auth.ts";
+import { authorize, isCronRequest } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { ensureEngageSchema } from "../_shared/engageSchema.ts";
 import { advanceRun, makeConversationDeliver, makeJourneyDeliver, type ExecCtx } from "./executor.ts";
@@ -30,6 +33,12 @@ const PER_FLOW_EVENTS = 20; // journey events consumed per flow per tick
 // cursor (a paused journey, a cron outage) can only ever release an hour of
 // events on resume instead of a month's backlog.
 const EVENT_LOOKBACK_MS = 60 * 60 * 1000;
+// A run CLAIMED for a wake (waiting→active, claimed_at stamped) but still 'active'
+// this long later is a wake whose worker died mid-advance. It is reaped back to
+// waiting so its timer fires again — otherwise the claim, which is what stops two
+// ticks double-sending, would also strand a run for good on any crash. Two cron
+// cycles of grace; advanceRun itself is near-instant.
+const STALE_CLAIM_MS = 10 * 60 * 1000;
 
 async function loadContact(admin: SupabaseClient, id: string | null): Promise<Json | null> {
   if (!id) return null;
@@ -37,17 +46,49 @@ async function loadContact(admin: SupabaseClient, id: string | null): Promise<Js
   return data ?? null;
 }
 
-// ── (a) wake sleeping runs ───────────────────────────────────────────────────
-async function wakeDueRuns(admin: SupabaseClient, budget: { left: number }): Promise<number> {
-  const nowIso = new Date().toISOString();
-  const { data } = await admin
+// ── (a0) reap dead claims ────────────────────────────────────────────────────
+// A run CLAIMED for a wake but still 'active' past STALE_CLAIM_MS is a wake whose
+// worker died between the claim and advanceRun's write-back. Put it back to
+// waiting so its timer fires again on a later tick. `claimed_at` is stamped ONLY
+// by the claim RPC, so a freshly-enrolled 'active' run (claimed_at null, mid its
+// first advance) is never touched — `.lt` on claimed_at excludes nulls.
+async function reapStaleClaims(admin: SupabaseClient): Promise<number> {
+  const cutoff = new Date(Date.now() - STALE_CLAIM_MS).toISOString();
+  const { data, error } = await admin
     .from("engage_runs")
-    .select("*")
-    .eq("status", "waiting")
+    .update({ status: "waiting", updated_at: new Date().toISOString() })
+    .eq("status", "active")
     .not("wake_at", "is", null)
-    .lte("wake_at", nowIso)
-    .order("wake_at", { ascending: true })
-    .limit(MAX_ADVANCES);
+    .lt("claimed_at", cutoff)
+    .select("id");
+  if (error) {
+    console.error("engage reap failed", error.message);
+    return 0;
+  }
+  return ((data as Json[] | null) ?? []).length;
+}
+
+// ── (a) wake sleeping runs ───────────────────────────────────────────────────
+// CLAIM, don't just read. This used to SELECT the due runs and advance them, with
+// advanceRun writing each run's next status only at the END — so two ticks that
+// overlapped (a slow tick and the next cron, or a dashboard nudge landing
+// mid-tick) both saw the same waiting runs and both fired their delay/enrol, and
+// a customer got the message twice. app_claim_engage_runs flips waiting→active in
+// ONE statement with FOR UPDATE SKIP LOCKED (migration 0129 / engageSchema), so a
+// due run belongs to exactly one tick; reapStaleClaims is the other half, putting
+// a claim whose worker died back to waiting rather than stranding it 'active'.
+async function wakeDueRuns(admin: SupabaseClient, budget: { left: number }): Promise<number> {
+  if (budget.left <= 0) return 0;
+  const nowIso = new Date().toISOString();
+  // Claim only as many as we can afford to advance this tick: a claimed run we do
+  // NOT advance is now flipped to 'active' and would wait for the reaper, so we
+  // never claim past the shared budget.
+  const claimN = Math.min(MAX_ADVANCES, budget.left);
+  const { data, error } = await admin.rpc("app_claim_engage_runs", { p_limit: claimN });
+  if (error) {
+    console.error("engage claim failed", error.message);
+    return 0;
+  }
   let woke = 0;
   for (const run of ((data as Json[]) ?? [])) {
     if (budget.left <= 0) break;
@@ -242,7 +283,18 @@ async function startJourneys(admin: SupabaseClient, budget: { left: number }): P
           })
           .select("*")
           .single();
-        if (runErr || !run) continue;
+        if (runErr) {
+          // The unique index on (flow_id, event_key) — migration 0129 /
+          // engageSchema — is the REAL guard against a double enrol: the seen/
+          // inflight pre-checks above only narrow the race, they cannot close it.
+          // A concurrent tick that beat us to this event trips 23505, which is
+          // "already enrolled", not a failure. Anything else is worth a log line.
+          if ((runErr as { code?: string }).code !== "23505") {
+            console.error("engage enrol insert failed", flow?.id, m.key, runErr.message);
+          }
+          continue;
+        }
+        if (!run) continue;
         const ctx: ExecCtx = {
           admin,
           orgId: flow.organization_id,
@@ -276,10 +328,11 @@ Deno.serve(async (req) => {
   try {
     const body = (await req.json().catch(() => ({}))) as Json;
 
-    // Cron leg — same idiom as ops-maintenance.
-    const presented = req.headers.get("x-cron-secret");
-    const cronSecrets = [Deno.env.get("CRON_SECRET"), Deno.env.get("BILLING_CRON_SECRET")].filter(Boolean);
-    const isCron = !!presented && cronSecrets.includes(presented);
+    // Cron leg. isCronRequest is the constant-time, fail-closed gate shared by
+    // every dual-mode worker (auth.ts): it accepts either scheduler secret
+    // without the timing oracle a plain `.includes`/`===` on the one credential
+    // that can start sends for every tenant at once would leak.
+    const isCron = isCronRequest(req);
 
     if (!isCron) {
       // Member leg: schema self-heal from the Engage tab.
@@ -295,9 +348,19 @@ Deno.serve(async (req) => {
     await ensureEngageSchema();
     const admin = adminClient();
     const budget = { left: MAX_ADVANCES };
+    const reaped = await reapStaleClaims(admin);
     const woke = await wakeDueRuns(admin, budget);
     const started = await startJourneys(admin, budget);
-    return json({ ok: true, woke, started, budget_left: budget.left });
+    // A heartbeat, so cron_heartbeats proves THIS worker ran — engage-run had
+    // none, so a stalled journey engine looked identical to a quiet one.
+    try {
+      await admin.rpc("app_cron_beat", {
+        p_worker: "engage-run",
+        p_ok: true,
+        p_detail: `${reaped} reaped, ${woke} woke, ${started} started, ${budget.left} budget left`,
+      });
+    } catch { /* the tick still ran */ }
+    return json({ ok: true, reaped, woke, started, budget_left: budget.left });
   } catch (err) {
     return json({ error: String((err as Error)?.message || err) }, 500);
   }

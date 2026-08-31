@@ -6,8 +6,24 @@ Flow:
   3. `/ws` reads Twilio's `start` event, then hands the socket to the Pipecat bot.
 
 Multi-tenant: each business has its own agent public key (AI Agent ->
-Configure). For a single business set PHOXTA_AGENT_KEY. For many businesses on
-many Twilio numbers, map the called number ("To") to a key — see resolve_key().
+Configure). Map the called number to a key with `?key=` on the webhook URL, or
+with env PHOXTA_KEY_<digits> (one per number) — see resolve_key().
+
+Locking the doors (VOICE_BRIDGE_SECRET):
+  This server used to run a full agent session — Deepgram STT + TTS, real money,
+  a concurrency slot — for anyone who opened a media stream or POSTed an SDP
+  offer with an agent public key. But that key ships in every storefront bundle
+  and names a BUSINESS, not a person, so it authorises nothing on its own. Three
+  endpoints now demand a signature the caller cannot forge without the shared
+  VOICE_BRIDGE_SECRET:
+    /ws     a Twilio stream must carry sig+exp over `${key}|${callSid}|${exp}`
+            (inbound, minted by `/`) or `${key}|outbound|${exp}` (outbound,
+            minted by dispatch.ts placeAiCall, accepted only when from=outbound).
+    /offer  the browser must carry token+exp over `${key}|web|${exp}`, minted by
+    /ice    the voice-session edge function after it rate-limits the caller.
+  With the secret UNSET the checks are skipped and the server behaves exactly as
+  it did before — a deliberate degrade so a half-finished rollout can't brick
+  voice. The secret present on BOTH sides is what turns the lock.
 """
 
 import base64
@@ -28,15 +44,25 @@ from bot import run_bot, run_webrtc_bot
 load_dotenv()
 
 app = FastAPI()
-# The in-browser voice widget posts SDP offers cross-origin from the SPA, so the
-# /offer route needs CORS. Lock origins down in prod via ALLOWED_ORIGINS (CSV).
-_origins = os.environ.get("ALLOWED_ORIGINS", "*")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"] if _origins == "*" else [o.strip() for o in _origins.split(",")],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# The in-browser voice widget POSTs SDP offers cross-origin from the SPA, so the
+# /offer route needs CORS. Default to the Phoxta storefront origins (apex, www,
+# the Vercel app, and any *.phoxta.com storefront subdomain) rather than "*" — a
+# wildcard on an endpoint that starts real agent sessions is exactly the door we
+# are closing everywhere else. ALLOWED_ORIGINS overrides: a CSV to pin a list, or
+# the literal "*" for a permissive dev box.
+_origins = os.environ.get("ALLOWED_ORIGINS", "").strip()
+if _origins == "*":
+    _cors = dict(allow_origins=["*"])
+elif _origins:
+    _cors = dict(allow_origins=[o.strip() for o in _origins.split(",") if o.strip()])
+else:
+    _cors = dict(
+        allow_origins=["https://phoxta.com", "https://www.phoxta.com", "https://phoxta.vercel.app"],
+        # Any depth of *.phoxta.com storefront subdomain (shop.aurelia.phoxta.com …).
+        allow_origin_regex=r"https://([a-z0-9-]+\.)*phoxta\.com",
+    )
+app.add_middleware(CORSMiddleware, allow_methods=["*"], allow_headers=["*"], **_cors)
+
 DEFAULT_KEY = os.environ.get("PHOXTA_AGENT_KEY", "")
 PUBLIC_HOST = os.environ.get("PUBLIC_HOST", "")  # e.g. "abc123.ngrok.app" (no scheme)
 ICE_SERVERS = [s.strip() for s in os.environ.get("ICE_SERVERS", "stun:stun.l.google.com:19302").split(",") if s.strip()]
@@ -44,19 +70,119 @@ ICE_SERVERS = [s.strip() for s in os.environ.get("ICE_SERVERS", "stun:stun.l.goo
 # Live browser voice sessions, keyed by peer-connection id (for renegotiation).
 _webrtc_connections: dict = {}
 
+# Set on SIGTERM (via uvicorn's graceful shutdown). While true we start no new
+# sessions — live calls keep running until they finish or the Docker stop grace
+# period elapses. uvicorn stops accepting new connections on its own; this flag
+# is the belt to that braces, and lets a half-open handler bail out cleanly.
+_shutting_down = False
+
+
+# ── VOICE_BRIDGE_SECRET signatures ──────────────────────────────────────────
+def _secret() -> str:
+    return os.environ.get("VOICE_BRIDGE_SECRET", "")
+
+
+def _hmac_hex(msg: str) -> str:
+    """hex(HMAC-SHA256(VOICE_BRIDGE_SECRET, msg)) — the shape both the inbound
+    stream signature and the web token are built with."""
+    return hmac.new(_secret().encode(), msg.encode(), hashlib.sha256).hexdigest()
+
+
+def _exp_ok(exp_raw: str) -> bool:
+    """A presented expiry is usable if it parses, is not already past, and is not
+    absurdly far in the future (a minted token/sig lives minutes, so anything
+    beyond an hour is a forged or clock-broken value)."""
+    try:
+        exp = int(exp_raw)
+    except (TypeError, ValueError):
+        return False
+    now = int(time.time())
+    return now <= exp <= now + 3600
+
+
+def _verify_stream(key: str, call_sid: str, from_param: str, sig: str, exp: str) -> bool:
+    """A Twilio media stream is allowed to run only if it proves it was minted by
+    us. Inbound streams sign the real CallSid; outbound streams (dialled by
+    dispatch.ts before any CallSid exists) sign the literal "outbound", and we
+    accept that form ONLY when the stream declares itself outbound."""
+    if not _secret():
+        return True  # degrade to today's open behaviour (logged loudly at startup)
+    if not sig or not _exp_ok(exp):
+        return False
+    msg = f"{key}|outbound|{exp}" if from_param == "outbound" else f"{key}|{call_sid}|{exp}"
+    return hmac.compare_digest(sig, _hmac_hex(msg))
+
+
+def _verify_web(key: str, token: str, exp: str) -> bool:
+    """The browser widget's token — minted by the voice-session edge function
+    after it has rate-limited the caller and checked the key is a real business."""
+    if not _secret():
+        return True
+    if not token or not _exp_ok(exp):
+        return False
+    return hmac.compare_digest(token, _hmac_hex(f"{key}|web|{exp}"))
+
+
+# ── Concurrency caps ────────────────────────────────────────────────────────
+class _Slots:
+    """A global and per-key ceiling on simultaneous sessions. This box carries
+    live audio on a handful of Ampere cores; without a cap one busy tenant (or an
+    abuser who got past the token) can start enough sessions to starve everyone
+    else's calls of CPU and hold every Deepgram socket open. Single uvicorn
+    worker + single-threaded asyncio, so a plain object needs no lock."""
+
+    def __init__(self):
+        self.total = 0
+        self.per_key: dict[str, int] = {}
+
+    def try_acquire(self, key: str) -> bool:
+        cap = int(os.environ.get("MAX_SESSIONS", "8"))
+        per = int(os.environ.get("MAX_SESSIONS_PER_KEY", "3"))
+        if self.total >= cap or self.per_key.get(key, 0) >= per:
+            return False
+        self.total += 1
+        self.per_key[key] = self.per_key.get(key, 0) + 1
+        return True
+
+    def release(self, key: str) -> None:
+        self.total = max(0, self.total - 1)
+        n = self.per_key.get(key, 0) - 1
+        if n <= 0:
+            self.per_key.pop(key, None)
+        else:
+            self.per_key[key] = n
+
+
+_slots = _Slots()
+
 
 def resolve_key(to_number: str) -> str:
     """Map a Twilio number to a business agent key via env PHOXTA_KEY_<digits>
     — digits only (e.g. PHOXTA_KEY_15551234567). The E.164 '+' is stripped
     because env-var names containing '+' aren't reliably exposed to the
-    container. Falls back to PHOXTA_AGENT_KEY."""
+    container. Returns "" when the number is not mapped — the caller decides what
+    an unmapped number gets (we do NOT silently fall back to a default business)."""
     if to_number:
         digits = "".join(ch for ch in to_number if ch.isalnum())
         if digits:
-            specific = os.environ.get(f"PHOXTA_KEY_{digits}")
-            if specific:
-                return specific
-    return DEFAULT_KEY
+            return os.environ.get(f"PHOXTA_KEY_{digits}", "")
+    return ""
+
+
+@app.on_event("startup")
+async def _startup():
+    if not _secret():
+        logger.warning(
+            "[phoxta] VOICE_BRIDGE_SECRET is UNSET — /ws, /offer and /ice run OPEN "
+            "(today's behaviour). Set it here AND as a Supabase secret to lock them."
+        )
+
+
+@app.on_event("shutdown")
+async def _shutdown():
+    global _shutting_down
+    _shutting_down = True
+    logger.info("[phoxta] shutting down — no new sessions; live calls finish within the grace period")
 
 
 @app.get("/health")
@@ -79,13 +205,14 @@ def _valid_twilio_signature(request: Request, form) -> bool:  # noqa: ANN001
     by each POST param name+value in alphabetical order.
 
     Without this, anyone who POSTs here is handed the business's agent key in the
-    TwiML response — the same disclosure voice-outgoing already guards against.
-    Fails OPEN when no auth token is configured, so a misconfigured deployment
-    degrades instead of refusing every inbound call."""
+    TwiML response. Fails CLOSED when no auth token is configured — handing out a
+    working agent line with no proof the request came from Twilio is the exact
+    disclosure this guards, so a misconfigured deployment must refuse, not wave
+    every caller through. (The `/` handler checks for the unset token first so it
+    can log the reason clearly.)"""
     token = os.environ.get("TWILIO_AUTH_TOKEN", "")
     if not token:
-        logger.warning("[phoxta] TWILIO_AUTH_TOKEN unset — inbound signature check skipped")
-        return True
+        return False
     sent = request.headers.get("X-Twilio-Signature", "")
     if not sent:
         return False
@@ -96,35 +223,81 @@ def _valid_twilio_signature(request: Request, form) -> bool:  # noqa: ANN001
     return hmac.compare_digest(mine, sent)
 
 
+# Spoken to a caller whose number is not wired to any business — better than
+# silently dropping them onto a default agent that is not theirs.
+NOT_SETUP_TWIML = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    "<Response><Say>Sorry, this number isn't set up yet. Goodbye.</Say><Hangup/></Response>"
+)
+
+
 @app.post("/")
 async def incoming_call(request: Request):
     form = await request.form()
+
+    # Fail CLOSED with no auth token: without it we cannot prove this POST is
+    # really Twilio, and the response body contains the business's agent key.
+    if not os.environ.get("TWILIO_AUTH_TOKEN", ""):
+        logger.error("[phoxta] TWILIO_AUTH_TOKEN unset — refusing to hand out an agent line unsigned (fail closed)")
+        return Response(content="Forbidden", status_code=403)
     if not _valid_twilio_signature(request, form):
         logger.warning("[phoxta] rejected inbound call POST with a bad/missing Twilio signature")
         return Response(content="Forbidden", status_code=403)
+
     from_number = form.get("From", "")
     to_number = form.get("To", "")
+    caller_name = form.get("CallerName", "")  # Twilio caller-ID lookup, when enabled
+    call_sid = form.get("CallSid", "")
     host = PUBLIC_HOST or request.url.hostname
-    key = resolve_key(to_number)
+
+    # `?key=` on the webhook URL wins (the Phoxta platform line binds this way,
+    # exactly as twilio-inbound does for SMS); then the per-number env map. An
+    # unmapped number is turned away rather than dropped onto a default business.
+    key = request.query_params.get("key") or resolve_key(to_number)
+    if not key:
+        logger.warning(f"[phoxta] inbound call to {to_number or '?'} is not mapped to any business — turning it away")
+        return Response(content=NOT_SETUP_TWIML, media_type="application/xml")
+
+    # Mint the stream signature over the real CallSid so `/ws` can prove the
+    # stream is one we sent. Skipped (empty) when the secret is unset — `/ws`
+    # then also skips verification, so the pair stays consistent.
+    exp = int(time.time()) + 600
+    sig = _hmac_hex(f"{key}|{call_sid}|{exp}") if _secret() else ""
+    auth_params = f'<Parameter name="sig" value="{sig}"/><Parameter name="exp" value="{exp}"/>' if sig else ""
+    name_param = f'<Parameter name="caller_name" value="{_xml_attr(caller_name)}"/>' if caller_name else ""
+
     twiml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         "<Response><Connect>"
         f'<Stream url="wss://{host}/ws">'
-        f'<Parameter name="key" value="{key}"/>'
-        f'<Parameter name="from" value="{from_number}"/>'
+        f'<Parameter name="key" value="{_xml_attr(key)}"/>'
+        f'<Parameter name="from" value="{_xml_attr(from_number)}"/>'
+        f"{name_param}{auth_params}"
         "</Stream>"
         "</Connect></Response>"
     )
     return Response(content=twiml, media_type="application/xml")
 
 
+def _xml_attr(s: str) -> str:
+    """Escape a value going into a TwiML attribute — a number or name is caller-
+    controlled and an unescaped quote would break the XML (or worse)."""
+    return (
+        str(s)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
 async def _fetch_ice() -> list[dict]:
-    """ICE servers (STUN + Twilio TURN) as plain dicts. The VM exposes no public
-    UDP, so a direct peer connection can't form — TURN relays the media (incl.
-    TCP/TLS 443) via the same Twilio account as the phone line. These are returned
-    to the browser via /ice AND used server-side; the browser MUST get them too,
-    or it only offers an unreachable private host candidate. Twilio tokens are
-    short-lived, so we mint fresh creds each time. Falls back to STUN-only."""
+    """ICE servers (STUN + TURN) as plain dicts. The VM exposes no public UDP, so
+    a direct peer connection can't form — TURN relays the media (incl. TCP/TLS
+    443). These are returned to the browser via /ice AND used server-side; the
+    browser MUST get them too, or it only offers an unreachable private host
+    candidate. Creds are short-lived (300s), so a leaked one is worthless fast.
+    Falls back to STUN-only."""
     servers: list[dict] = [{"urls": "stun:stun.l.google.com:19302"}]
 
     # Our own coturn first — Twilio TURN bills per relayed GB and this box has
@@ -135,9 +308,9 @@ async def _fetch_ice() -> list[dict]:
     if turn_secret and turn_host:
         try:
             # RFC 5766 TURN REST API: username is an expiry timestamp, password
-            # is the HMAC of it. Short-lived, so a leaked credential is worthless
-            # within the hour.
-            expiry = int(time.time()) + 3600
+            # is the HMAC of it. 300s to match the widget token that gates /ice —
+            # a relay credential should not outlive the session it was minted for.
+            expiry = int(time.time()) + 300
             user = str(expiry)
             cred = base64.b64encode(
                 hmac.new(turn_secret.encode(), user.encode(), hashlib.sha1).digest()
@@ -189,39 +362,79 @@ async def _build_ice_servers():
 
 
 @app.get("/ice")
-async def ice():
-    """ICE servers for the in-browser WebRTC client (STUN + short-lived Twilio TURN)."""
+async def ice(request: Request):
+    """ICE servers for the in-browser WebRTC client (STUN + short-lived TURN).
+
+    Requires the widget token: TURN credentials relay real bandwidth billed to
+    this account, and handing hour-long creds to anyone who asks is a standing
+    invitation to use us as an open relay. The widget fetches voice-session for a
+    token first, then calls this with token+exp+key."""
+    key = request.query_params.get("key") or DEFAULT_KEY
+    token = request.query_params.get("token") or ""
+    exp = request.query_params.get("exp") or ""
+    if not _verify_web(key, token, exp):
+        logger.warning("[phoxta] /ice rejected: missing or invalid widget token")
+        return Response(status_code=401, content="unauthorized")
     return {"iceServers": await _fetch_ice()}
+
+
+def _offer_credentials(request: Request, body: dict) -> tuple[str, str, str]:
+    """key, token, exp for /offer — accepted from the query string OR the JSON
+    body, so the Pipecat JS client can pass them whichever way it puts them."""
+    key = request.query_params.get("key") or body.get("key") or DEFAULT_KEY
+    token = request.query_params.get("token") or body.get("token") or ""
+    exp = request.query_params.get("exp") or str(body.get("exp") or "")
+    return key, token, exp
 
 
 @app.post("/offer")
 async def offer(request: Request, background_tasks: BackgroundTasks):
     """WebRTC signaling for the in-browser voice widget. The Pipecat JS client
-    POSTs an SDP offer (with ?key=<agent public key>); we return the SDP answer
-    and run the same agent over the peer connection. Supports renegotiation via
-    the pc_id the client echoes back, and ICE-candidate trickle via PATCH."""
+    POSTs an SDP offer (with the widget token); we return the SDP answer and run
+    the same agent over the peer connection. Supports renegotiation via the pc_id
+    the client echoes back, and ICE-candidate trickle via PATCH."""
     from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 
     body = await request.json()
-    key = request.query_params.get("key") or body.get("key") or DEFAULT_KEY
+    key, token, exp = _offer_credentials(request, body)
     pc_id = body.get("pc_id")
 
+    # A renegotiation targets a peer connection that already passed the token
+    # check when it was created, so it is not re-gated (the browser's SDP
+    # follow-ups arrive without re-minting a token).
     if pc_id and pc_id in _webrtc_connections:
         conn = _webrtc_connections[pc_id]
         await conn.renegotiate(sdp=body["sdp"], type=body["type"], restart_pc=body.get("restart_pc", False))
-    else:
-        conn = SmallWebRTCConnection(ice_servers=await _build_ice_servers())
-        await conn.initialize(sdp=body["sdp"], type=body["type"])
+        return conn.get_answer()
 
-        @conn.event_handler("closed")
-        async def _on_closed(c):
-            _webrtc_connections.pop(c.pc_id, None)
+    if not _verify_web(key, token, exp):
+        logger.warning("[phoxta] /offer rejected: missing or invalid widget token")
+        return Response(status_code=401, content="unauthorized")
+    if _shutting_down:
+        return Response(status_code=503, content="server draining")
+    if not _slots.try_acquire(key):
+        logger.warning(f"[phoxta] /offer at capacity for key {key[:6]}… — refusing")
+        return Response(status_code=503, content="voice server at capacity")
 
-        _webrtc_connections[conn.pc_id] = conn
-        background_tasks.add_task(run_webrtc_bot, conn, key, "web visitor")
+    conn = SmallWebRTCConnection(ice_servers=await _build_ice_servers())
+    await conn.initialize(sdp=body["sdp"], type=body["type"])
 
-    answer = conn.get_answer()
-    return answer
+    @conn.event_handler("closed")
+    async def _on_closed(c):
+        _webrtc_connections.pop(c.pc_id, None)
+
+    _webrtc_connections[conn.pc_id] = conn
+    background_tasks.add_task(_run_webrtc_and_release, conn, key)
+    return conn.get_answer()
+
+
+async def _run_webrtc_and_release(conn, key: str):
+    """Run one browser session and always give the concurrency slot back — a
+    session that errored out must not permanently consume capacity."""
+    try:
+        await run_webrtc_bot(conn, key, "web visitor")
+    finally:
+        _slots.release(key)
 
 
 @app.patch("/offer")
@@ -265,13 +478,48 @@ async def media_stream(websocket: WebSocket):
     call_sid = start.get("callSid", "")
     params = start.get("customParameters", {}) or {}
     public_key = params.get("key") or DEFAULT_KEY
-    caller = params.get("from", "")
+    from_param = params.get("from", "")
     opening = params.get("opening", "")  # set for outbound calls (operator's purpose line)
+    caller_name = params.get("caller_name", "")
 
-    await run_bot(websocket, stream_sid, call_sid, caller, public_key, opening)
+    # Prove the stream is one we minted (contract 2). 4401 = a WebSocket "auth
+    # failed" close so the log makes plain WHY the call dropped.
+    if not _verify_stream(public_key, call_sid, from_param, params.get("sig", ""), params.get("exp", "")):
+        logger.warning(f"[phoxta] /ws rejected call {call_sid or '?'}: missing or invalid stream signature")
+        await websocket.close(code=4401)
+        return
+
+    if _shutting_down:
+        logger.info("[phoxta] /ws refused: server draining")
+        await websocket.close(code=1013)  # 1013 = Try Again Later
+        return
+    if not _slots.try_acquire(public_key):
+        logger.warning(f"[phoxta] /ws at capacity for key {public_key[:6]}… — refusing call {call_sid or '?'}")
+        await websocket.close(code=1013)
+        return
+
+    # Outbound calls carry from="outbound" and the dialled number as
+    # customer_phone; inbound calls carry the caller's number as `from`.
+    direction = params.get("direction") or ("outbound" if from_param == "outbound" else "inbound")
+    caller = params.get("customer_phone") or from_param
+
+    try:
+        await run_bot(websocket, stream_sid, call_sid, caller, public_key, caller_name, direction, opening)
+    finally:
+        _slots.release(public_key)
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8765")))
+    # Graceful shutdown: on SIGTERM uvicorn stops accepting new connections and
+    # waits up to this many seconds for live calls to finish before exiting. Kept
+    # in step with the Docker stop_grace_period (5m) and Caddy's stream_close_delay
+    # so a redeploy lets a caller finish their sentence instead of cutting them off.
+    grace = int(os.environ.get("SHUTDOWN_GRACE_SECS", "300"))
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "8765")),
+        timeout_graceful_shutdown=grace,
+    )

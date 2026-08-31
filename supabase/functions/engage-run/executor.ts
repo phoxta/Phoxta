@@ -103,22 +103,52 @@ function matchOption(data: Json, reply: string): ButtonOption | null {
   return null;
 }
 
-/** Off-hours check. Uses the same shape agentCore.afterHours reads (UTC) when
- *  business hours are configured; without config we assume a quiet-hours
- *  window of 22:00–07:00 UTC (the honest default for "off hours"). */
+/**
+ * The wall clock where the business is: weekday (0 = Sunday) and minutes since
+ * midnight in `tz`, or in UTC when the zone is missing or not one Intl knows.
+ *
+ * agent_config.business_hours carries `tz` (an IANA name chosen in the console's
+ * hours picker) alongside open/close/days — and the check below read the
+ * open/close as if they were UTC, so a Lagos shop whose hours said 09:00–17:00
+ * was "off hours" from 5 pm to 10 am its own time. The zone was there all along.
+ */
+export function localClock(tz: string | null | undefined, at = new Date()): { day: number; mins: number } {
+  const zone = String(tz ?? "").trim();
+  if (zone && zone.toUpperCase() !== "UTC") {
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: zone,
+        hourCycle: "h23",
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).formatToParts(at);
+      const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+      const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
+      const h = Number(get("hour"));
+      const m = Number(get("minute"));
+      if (day >= 0 && Number.isFinite(h) && Number.isFinite(m)) return { day, mins: h * 60 + m };
+    } catch { /* an unknown zone falls through to UTC */ }
+  }
+  return { day: at.getUTCDay(), mins: at.getUTCHours() * 60 + at.getUTCMinutes() };
+}
+
+/** Off-hours check. Same shape agentCore.afterHours reads (open/close/days),
+ *  evaluated in the business's own zone (`hours.tz`) when configured; without
+ *  config we assume a quiet-hours window of 22:00–07:00 in that zone (the
+ *  honest default for "off hours"). */
 export function isOffHours(hours: Json): boolean {
   try {
-    const now = new Date();
+    const { day, mins } = localClock(hours?.tz);
     if (hours && (hours.open || hours.close || hours.days)) {
       const days: number[] = hours?.days ?? [1, 2, 3, 4, 5];
-      if (!days.includes(now.getUTCDay())) return true;
-      const mins = now.getUTCHours() * 60 + now.getUTCMinutes();
+      if (!days.includes(day)) return true;
       const [oh, om] = String(hours?.open ?? "09:00").split(":").map(Number);
       const [ch, cm] = String(hours?.close ?? "17:00").split(":").map(Number);
       return mins < oh * 60 + om || mins >= ch * 60 + cm;
     }
-    // No configured hours → 22:00–07:00 UTC fallback.
-    const h = now.getUTCHours();
+    // No configured hours → 22:00–07:00 fallback, in the zone if there is one.
+    const h = Math.floor(mins / 60);
     return h >= 22 || h < 7;
   } catch {
     return false;

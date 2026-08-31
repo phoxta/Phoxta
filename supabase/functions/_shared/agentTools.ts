@@ -12,7 +12,7 @@
 // what it truly knows; when config is missing it says so instead of inventing.
 import type { SupabaseClient } from "./supabaseAdmin.ts";
 import type { Tool } from "./anthropic.ts";
-import { READ_TOOLS, MARKETPLACE_TOOLS, toolRunner } from "./tools.ts";
+import { READ_TOOLS, MARKETPLACE_TOOLS, toolRunner, escapeLike } from "./tools.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -548,13 +548,15 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
   // Retrieval is therefore restricted to published content; see PUBLIC_SOURCE_TYPES.
   const readRun = toolRunner(admin, orgId, { audience: "public" });
 
+  // Both take words a CUSTOMER said, so the LIKE wildcards in them are escaped:
+  // a "%" from the model matched every service and booked the first.
   async function findService(name?: string): Promise<{ id: string; name: string; duration_min: number } | null> {
     if (!name) return null;
     const { data } = await admin
       .from("services")
       .select("id, name, duration_min")
       .eq("organization_id", orgId)
-      .ilike("name", `%${name}%`)
+      .ilike("name", `%${escapeLike(String(name).trim())}%`)
       .limit(1)
       .maybeSingle();
     return (data as { id: string; name: string; duration_min: number } | null) ?? null;
@@ -566,10 +568,31 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
       .select("id, name, price_cents, currency, stock")
       .eq("organization_id", orgId)
       .eq("status", "active")
-      .ilike("name", `%${name}%`)
+      .ilike("name", `%${escapeLike(String(name).trim())}%`)
       .limit(1)
       .maybeSingle();
     return (data as Json) ?? null;
+  }
+
+  /**
+   * The email a customer gives for a self-service lookup, made safe for a
+   * case-insensitive EXACT match.
+   *
+   * These lookups used `.ilike("customer_email", email)` with the raw value, so
+   * an email of "%" matched every order in the business and the reference test
+   * then ran over other customers' orders — a short id is eight hex characters,
+   * guessable in a handful of tries. Case-insensitive is still wanted (checkout
+   * stored whatever case the customer typed), so the wildcards are escaped
+   * rather than the operator swapped for `.eq`. A `%` is never part of an
+   * address and is refused outright; an underscore is, and is escaped.
+   */
+  function lookupEmail(raw: unknown): { ok: true; pattern: string } | { ok: false; reason: string } {
+    const email = String(raw ?? "").trim().toLowerCase();
+    if (!email) return { ok: false, reason: "" };
+    if (email.includes("%") || !email.includes("@")) {
+      return { ok: false, reason: "That does not look like an email address — ask the customer for the exact address on the record." };
+    }
+    return { ok: true, pattern: escapeLike(email) };
   }
 
   async function listResources(): Promise<Json[]> {
@@ -675,13 +698,14 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
     // so neither can be used to enumerate the other.
     if (name === "lookup_order") {
       const ref = String(input.reference ?? "").trim().toLowerCase();
-      const email = String(input.email ?? "").trim().toLowerCase();
-      if (!ref || !email) return "I need both the order reference and the email address on the order before I can look it up.";
+      const email = lookupEmail(input.email);
+      if (!ref || (!email.ok && !email.reason)) return "I need both the order reference and the email address on the order before I can look it up.";
+      if (!email.ok) return email.reason;
       const { data } = await admin
         .from("orders")
         .select("id, payment_reference, status, fulfillment_status, total_cents, currency, created_at, paid_at, tracking, customer_email")
         .eq("organization_id", orgId)
-        .ilike("customer_email", email)
+        .ilike("customer_email", email.pattern)
         .order("created_at", { ascending: false })
         .limit(25);
       const hit = (data ?? []).find((o: Json) => {
@@ -703,13 +727,14 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
     }
     if (name === "lookup_booking") {
       const ref = String(input.reference ?? "").trim().toLowerCase();
-      const email = String(input.email ?? "").trim().toLowerCase();
-      if (!ref || !email) return "I need both a reference (or the date) and the email on the booking before I can look it up.";
+      const email = lookupEmail(input.email);
+      if (!ref || (!email.ok && !email.reason)) return "I need both a reference (or the date) and the email on the booking before I can look it up.";
+      if (!email.ok) return email.reason;
       const [bk, rs] = await Promise.all([
         admin.from("bookings").select("id, start_at, status, customer_email, notes")
-          .eq("organization_id", orgId).ilike("customer_email", email).limit(25),
+          .eq("organization_id", orgId).ilike("customer_email", email.pattern).limit(25),
         admin.from("reservations").select("id, start_date, end_date, status, units, total_cents, currency, customer_email")
-          .eq("organization_id", orgId).ilike("customer_email", email).limit(25),
+          .eq("organization_id", orgId).ilike("customer_email", email.pattern).limit(25),
       ]);
       const matches = (id: unknown, day?: unknown) =>
         ref === String(id ?? "").slice(0, 8).toLowerCase() ||

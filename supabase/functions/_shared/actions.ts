@@ -6,11 +6,19 @@ import { internalProofHeaders } from "./internalProof.ts";
 import type { Tool } from "./anthropic.ts";
 import { getAccessToken, gmailSendRaw, createDoc, createEvent, appendSheet } from "./google.ts";
 import { dispatch, placeAiCall } from "./dispatch.ts";
-import { autoReplyAllowed, deliverAutoReply } from "./autoReply.ts";
+import { autoReplyAllowed, deliverAutoReply, tenantSenderFrom } from "./autoReply.ts";
 import { orgReplyTo } from "./conversationEmail.ts";
+import { escapeLike } from "./tools.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
+
+/** Which leg of the platform asked for a write. Recorded on every audit row so
+ *  "the agent changed a price" can be answered with WHICH agent: the owner
+ *  typing in the operator, the unattended autopilot, a scheduled automation, or
+ *  an approval from the queue. 'agent' is the customer-facing auto-reply, which
+ *  autoReply.ts writes itself. */
+export type AuditSource = "operator" | "autopilot" | "automation" | "approval" | "agent";
 
 export const WRITE_TOOLS: Tool[] = [
   { name: "update_product_price", description: "Change a product's price. Give the product name (or id) and the new price in dollars.", input_schema: { type: "object", properties: { product: { type: "string" }, price: { type: "number" } }, required: ["product", "price"] } },
@@ -82,30 +90,185 @@ export const isWriteTool = (name: string) => WRITE_NAMES.has(name);
 
 const slugify = (s: string) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-async function resolveProduct(admin: SupabaseClient, orgId: string, ref: string) {
-  const byId = /^[0-9a-f-]{36}$/i.test(ref);
-  let q = admin.from("products").select("id, name").eq("organization_id", orgId);
-  q = byId ? q.eq("id", ref) : q.ilike("name", `%${ref}%`);
-  const { data } = await q.limit(1);
-  return ((data as Array<{ id: string; name: string }> | null) ?? [])[0] ?? null;
-}
-
-// Generic "resolve an org-scoped row by id, or fuzzily by one of `matchCols`".
-// Returns the most recent match (ordered by `orderCol`) so natural-language
-// references like a customer name or invoice number land on a real row.
+/**
+ * Resolve an org-scoped row by id, or by a natural-language reference against
+ * `matchCols`.
+ *
+ * The reference used to go into ONE PostgREST `or=(...)` filter, where a comma
+ * or a parenthesis in the value — "Smith, John", "Widget (blue)" — broke the
+ * filter grammar and the lookup silently found nothing. One ilike per column,
+ * run in parallel, keeps every character of the reference inside a single
+ * filter value, where PostgREST does not parse it.
+ *
+ * And it took limit(1): of two matching rows, whichever happened to be newest
+ * was acted on, and nothing recorded that a choice had been made. Two are now
+ * fetched per column and a second distinct match is an ERROR naming both —
+ * unless exactly one of them matches the reference exactly, which is the "Blue
+ * Shirt" against "Blue Shirt XL" case and is not ambiguous to a person.
+ */
 async function resolveRow(
-  admin: SupabaseClient, orgId: string, table: string, cols: string, ref: string, matchCols: string[], orderCol = "created_at",
+  admin: SupabaseClient, orgId: string, table: string, cols: string, ref: string, matchCols: string[], orderCol = "created_at", what = "record",
 ): Promise<Json> {
-  const r = String(ref).trim();
-  const byId = /^[0-9a-f-]{36}$/i.test(r);
-  let q = admin.from(table).select(cols).eq("organization_id", orgId);
-  q = byId ? q.eq("id", r) : q.or(matchCols.map((c) => `${c}.ilike.%${r}%`).join(","));
-  const { data } = await q.order(orderCol, { ascending: false }).limit(1);
-  return ((data as Json[] | null) ?? [])[0] ?? null;
+  const r = String(ref ?? "").trim();
+  if (!r) return null;
+  // The match columns ride along in the select so the exact-match test below can
+  // see them even when the caller only asked for "id, name".
+  const select = [...new Set([...cols.split(",").map((c) => c.trim()), ...matchCols, "id"])].filter(Boolean).join(", ");
+  if (/^[0-9a-f-]{36}$/i.test(r)) {
+    const { data } = await admin.from(table).select(select).eq("organization_id", orgId).eq("id", r).maybeSingle();
+    return data ?? null;
+  }
+  const pattern = `%${escapeLike(r)}%`;
+  const results = await Promise.all(matchCols.map((c) =>
+    admin.from(table).select(select).eq("organization_id", orgId).ilike(c, pattern).order(orderCol, { ascending: false }).limit(2)
+  ));
+  const seen = new Map<string, Json>();
+  for (const { data } of results) {
+    for (const row of ((data as Json[] | null) ?? [])) if (!seen.has(String(row.id))) seen.set(String(row.id), row);
+  }
+  const rows = [...seen.values()];
+  if (rows.length === 0) return null;
+  if (rows.length === 1) return rows[0];
+  const needle = r.toLowerCase();
+  const exact = rows.filter((row) => matchCols.some((c) => String(row[c] ?? "").trim().toLowerCase() === needle));
+  if (exact.length === 1) return exact[0];
+  const label = (row: Json) => matchCols.map((c) => row[c]).filter(Boolean).slice(0, 2).join(" · ") || String(row.id).slice(0, 8);
+  throw new Error(
+    `More than one ${what} matches "${r}": ${rows.slice(0, 4).map((row) => `"${label(row)}" (${String(row.id).slice(0, 8)})`).join(", ")}. Say which one — the id works.`,
+  );
 }
 
 const resolveContact = (admin: SupabaseClient, orgId: string, ref: string): Promise<Json> =>
-  resolveRow(admin, orgId, "crm_contacts", "id, name, email, phone", ref, ["name", "email", "phone"]);
+  resolveRow(admin, orgId, "crm_contacts", "id, name, email, phone", ref, ["name", "email", "phone"], "created_at", "contact");
+
+/**
+ * THE ROW A WRITE ACTS ON, per tool: which argument names it, where it lives,
+ * and what a person may have called it.
+ *
+ * One table so the reference is resolved ONCE — in executeAction, at queue time
+ * — and the id travels with the queued action as args.__target. agent-approve
+ * used to re-resolve by NAME when the owner pressed Approve, hours later, so
+ * the row the owner had looked at and the row that was changed could be two
+ * different rows: a product renamed in between, a second "John Smith" created.
+ */
+type TargetSpec = { arg: string; table: string; cols: string; match: string[]; order?: string; what: string };
+const PRODUCT: TargetSpec = { arg: "product", table: "products", cols: "id, name, price_cents, stock, status", match: ["name", "sku"], what: "product" };
+const CONTACT: TargetSpec = { arg: "contact", table: "crm_contacts", cols: "id, name, email, phone, stage, tags", match: ["name", "email", "phone"], what: "contact" };
+const TICKET: TargetSpec = { arg: "ticket", table: "tickets", cols: "id, subject, status", match: ["subject", "customer_name"], what: "ticket" };
+const CONVERSATION: TargetSpec = {
+  arg: "conversation", table: "conversations", cols: "id, customer_name, customer_phone, customer_email, channel_type",
+  match: ["customer_name", "customer_email", "customer_phone"], what: "conversation",
+};
+const TARGETS: Record<string, TargetSpec> = {
+  update_product_price: PRODUCT, set_product_stock: PRODUCT, set_product_status: PRODUCT, block_availability: PRODUCT,
+  set_order_status: { arg: "order", table: "orders", cols: "id, customer_name, status", match: ["customer_name", "customer_email"], what: "order" },
+  update_contact_stage: CONTACT, add_contact_note: CONTACT, tag_contact: CONTACT,
+  set_invoice_status: { arg: "invoice", table: "invoices", cols: "id, number, status", match: ["number", "customer_name"], what: "invoice" },
+  set_booking_status: { arg: "booking", table: "bookings", cols: "id, customer_name, status", match: ["customer_name", "customer_email"], order: "start_at", what: "booking" },
+  reply_ticket: TICKET, set_ticket_status: TICKET,
+  send_campaign: { arg: "campaign", table: "campaigns", cols: "id, name, status, channel, audience", match: ["name"], what: "campaign" },
+  schedule_post: { arg: "design", table: "designs", cols: "id, title, png_url", match: ["title"], order: "updated_at", what: "design" },
+  reply_conversation: CONVERSATION, set_conversation_status: CONVERSATION, assign_conversation: CONVERSATION,
+};
+
+/** What executeAction stamps onto the args of a targeted tool. `ref` is the
+ *  reference as the model gave it, so runWrite can tell whether the owner
+ *  edited it in the approval UI before deciding. */
+type TargetStamp = { id: string; ref: string; label: string };
+
+const targetLabel = (spec: TargetSpec, row: Json): string =>
+  String(spec.match.map((c) => row?.[c]).find(Boolean) ?? row?.title ?? row?.name ?? String(row?.id ?? "").slice(0, 8));
+
+/** Resolve a targeted tool's row from its reference. Null when the tool has no
+ *  target or nothing matches; throws when the reference is ambiguous. */
+async function resolveTarget(admin: SupabaseClient, orgId: string, tool: string, a: Json): Promise<Json | null> {
+  const spec = TARGETS[tool];
+  if (!spec) return null;
+  return await resolveRow(admin, orgId, spec.table, spec.cols, String(a?.[spec.arg] ?? ""), spec.match, spec.order ?? "created_at", spec.what);
+}
+
+/**
+ * The row a write acts on. Prefers the id resolved at queue time (args.__target)
+ * — the very row the owner looked at and approved — and re-resolves the
+ * reference only when the stamp is missing (a row queued before this shipped)
+ * or the reference itself was edited in the approval UI (approve-with-edit
+ * rewrites args), because then the stamp describes a target the owner no
+ * longer means.
+ */
+async function targetOf(admin: SupabaseClient, orgId: string, tool: string, a: Json): Promise<Json> {
+  const spec = TARGETS[tool];
+  if (!spec) throw new Error(`${tool} has no target.`);
+  const stamp = a?.__target as TargetStamp | undefined;
+  if (stamp?.id && String(a?.[spec.arg] ?? "").trim() === String(stamp.ref ?? "").trim()) {
+    const { data } = await admin.from(spec.table).select(spec.cols).eq("organization_id", orgId).eq("id", stamp.id).maybeSingle();
+    if (data) return data;
+    throw new Error(`The ${spec.what} this action was queued for ("${stamp.label}") no longer exists.`);
+  }
+  const row = await resolveTarget(admin, orgId, tool, a);
+  if (!row) throw new Error(`No ${spec.what} matching "${a?.[spec.arg]}".`);
+  return row;
+}
+
+/**
+ * The business's OWN texting number, for a NEW thread.
+ *
+ * There is no per-tenant number registry: the only place a business's number
+ * is ever recorded is meta.twilio_to on the customer messages twilio-inbound
+ * writes — the `To` of a webhook Twilio signed. deliverAutoReply reads it off
+ * the thread it is answering; a new thread has no thread, so this reads the
+ * most recent number customers have texted THIS business on THIS channel.
+ * Nothing on record means no customer has ever texted a Twilio number wired to
+ * this business, and the send is REFUSED rather than made from the platform's
+ * TWILIO_FROM — a reply to that line is routed to whichever org owns it, which
+ * is a cross-tenant leak (see dispatch() opts.from).
+ */
+async function orgTextingNumber(admin: SupabaseClient, orgId: string, channel: "sms" | "whatsapp"): Promise<string> {
+  const { data, error } = await admin
+    .from("conversation_messages")
+    .select("meta")
+    .eq("organization_id", orgId)
+    .eq("channel_type", channel)
+    .eq("role", "customer")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) {
+    // Fail CLOSED, exactly as tenantSmsFrom does: not knowing the sender must
+    // never mean "use the platform's".
+    console.error("[phoxta] org texting number lookup failed:", error.message);
+    return "";
+  }
+  for (const r of ((data as Json[] | null) ?? [])) {
+    const sender = tenantSenderFrom((r?.meta ?? {}).twilio_to, channel);
+    if (sender) return sender;
+  }
+  return "";
+}
+
+/**
+ * Wake the campaign drainer for one organisation. Fire-and-forget, the way the
+ * console does it: a drain of fifty emails is far longer than a tool call
+ * should hold the model's turn, and if this never lands the rows are still
+ * 'pending' and the cron pass picks them up within five minutes.
+ */
+function kickCampaignRun(orgId: string): void {
+  const base = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const secret = Deno.env.get("CRON_SECRET") || Deno.env.get("BILLING_CRON_SECRET");
+  // campaign-run's server-to-server leg authorises on the scheduler secret (it
+  // has no user session to check). Without one there is nothing to present, so
+  // leave it to the scheduler — which presents it.
+  if (!base || !key || !secret) return;
+  const task = fetch(`${base}/functions/v1/campaign-run`, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: key, Authorization: `Bearer ${key}`, "x-cron-secret": secret },
+    body: JSON.stringify({ orgId }),
+  }).then(async (res) => {
+    if (!res.ok) console.warn("[phoxta] campaign-run kick refused:", res.status, (await res.text().catch(() => "")).slice(0, 200));
+  }).catch((e) => console.warn("[phoxta] campaign-run kick failed:", String((e as Error)?.message || e)));
+  // deno-lint-ignore no-explicit-any
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(task);
+}
 
 // Resolve a destination for outreach: accept a raw email/phone, otherwise look
 // up a contact by name and use its email (for email) or phone (for sms/whatsapp/call).
@@ -129,19 +292,25 @@ async function destinationFor(admin: SupabaseClient, orgId: string, ref: string,
  * because the cron legs (automation-run, objective-planner) act on a schedule
  * with nobody behind them, and a scheduled row with no author is the truth
  * rather than a missing value to invent.
+ *
+ * Tool calls within one model turn now run in PARALLEL, so two writes here may
+ * be in flight at once. Nothing below may assume it runs alone: every
+ * read-modify-write (add_contact_note) is optimistic and retried, and every
+ * "only if still in state X" transition (send_campaign) is a conditional
+ * update, not a read followed by a write.
  */
 export async function runWrite(admin: SupabaseClient, orgId: string, tool: string, a: Json, actorId: string | null = null): Promise<string> {
   if (tool === "update_product_price") {
-    const p = await resolveProduct(admin, orgId, String(a.product));
-    if (!p) throw new Error(`No product matching "${a.product}".`);
-    await admin.from("products").update({ price_cents: Math.round(Number(a.price) * 100) }).eq("id", p.id);
+    const p = await targetOf(admin, orgId, tool, a);
+    const { error } = await admin.from("products").update({ price_cents: Math.round(Number(a.price) * 100) }).eq("id", p.id).eq("organization_id", orgId);
+    if (error) throw new Error(error.message);
     return `Set ${p.name} price to $${Number(a.price)}.`;
   }
   if (tool === "set_product_stock") {
-    const p = await resolveProduct(admin, orgId, String(a.product));
-    if (!p) throw new Error(`No product matching "${a.product}".`);
+    const p = await targetOf(admin, orgId, tool, a);
     const n = Math.max(0, Math.round(Number(a.stock)));
-    await admin.from("products").update({ stock: n }).eq("id", p.id);
+    const { error } = await admin.from("products").update({ stock: n }).eq("id", p.id).eq("organization_id", orgId);
+    if (error) throw new Error(error.message);
     return `Set ${p.name} stock to ${n}.`;
   }
   if (tool === "fulfill_order") {
@@ -201,15 +370,13 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     return `Created product "${a.name}" at $${Number(a.price)}.`;
   }
   if (tool === "set_product_status") {
-    const p = await resolveProduct(admin, orgId, String(a.product));
-    if (!p) throw new Error(`No product matching "${a.product}".`);
-    const { error } = await admin.from("products").update({ status: a.status }).eq("id", p.id);
+    const p = await targetOf(admin, orgId, tool, a);
+    const { error } = await admin.from("products").update({ status: a.status }).eq("id", p.id).eq("organization_id", orgId);
     if (error) throw new Error(error.message);
     return `Set ${p.name} to ${a.status}.`;
   }
   if (tool === "set_order_status") {
-    const o = await resolveRow(admin, orgId, "orders", "id, customer_name", String(a.order), ["customer_name", "customer_email"]);
-    if (!o) throw new Error(`No order matching "${a.order}".`);
+    const o = await targetOf(admin, orgId, tool, a);
     const patch: Json = { status: a.status };
     if (a.status === "fulfilled") patch.fulfillment_status = "fulfilled";
     const { error } = await admin.from("orders").update(patch).eq("id", o.id).eq("organization_id", orgId);
@@ -227,27 +394,34 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     return `Added contact ${a.name}.`;
   }
   if (tool === "update_contact_stage") {
-    const c = await resolveContact(admin, orgId, String(a.contact));
-    if (!c) throw new Error(`No contact matching "${a.contact}".`);
-    const { error } = await admin.from("crm_contacts").update({ stage: a.stage }).eq("id", c.id);
+    const c = await targetOf(admin, orgId, tool, a);
+    const { error } = await admin.from("crm_contacts").update({ stage: a.stage }).eq("id", c.id).eq("organization_id", orgId);
     if (error) throw new Error(error.message);
     return `Moved ${c.name} to ${a.stage}.`;
   }
   if (tool === "add_contact_note") {
-    const c = await resolveContact(admin, orgId, String(a.contact));
-    if (!c) throw new Error(`No contact matching "${a.contact}".`);
-    const { data: cur } = await admin.from("crm_contacts").select("notes").eq("id", c.id).maybeSingle();
-    const prev = ((cur as Json)?.notes ?? "").toString();
-    const note = `${prev ? prev + "\n" : ""}${new Date().toISOString().slice(0, 10)}: ${String(a.note)}`;
-    const { error } = await admin.from("crm_contacts").update({ notes: note }).eq("id", c.id);
-    if (error) throw new Error(error.message);
-    return `Added a note to ${c.name}.`;
+    const c = await targetOf(admin, orgId, tool, a);
+    // Two notes on the same contact in one turn now run at the same time (tool
+    // calls within a turn are parallel), and a plain read-then-write kept only
+    // whichever writer finished last. Optimistic: the WHERE names the notes we
+    // read, so a lost race updates nothing and we read again.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data: cur } = await admin.from("crm_contacts").select("notes").eq("id", c.id).maybeSingle();
+      const raw = (cur as Json)?.notes;
+      const prev = (raw ?? "").toString();
+      const note = `${prev ? prev + "\n" : ""}${new Date().toISOString().slice(0, 10)}: ${String(a.note)}`;
+      let q = admin.from("crm_contacts").update({ notes: note }).eq("id", c.id).eq("organization_id", orgId);
+      q = raw == null ? q.is("notes", null) : q.eq("notes", prev);
+      const { data: upd, error } = await q.select("id");
+      if (error) throw new Error(error.message);
+      if (((upd as Json[] | null) ?? []).length) return `Added a note to ${c.name}.`;
+    }
+    throw new Error(`Could not add the note to ${c.name} — the record was being edited at the same time. Try again.`);
   }
   if (tool === "tag_contact") {
-    const c = await resolveContact(admin, orgId, String(a.contact));
-    if (!c) throw new Error(`No contact matching "${a.contact}".`);
+    const c = await targetOf(admin, orgId, tool, a);
     const tags = (Array.isArray(a.tags) ? a.tags : [a.tags]).map((t: unknown) => String(t).trim()).filter(Boolean);
-    const { error } = await admin.from("crm_contacts").update({ tags }).eq("id", c.id);
+    const { error } = await admin.from("crm_contacts").update({ tags }).eq("id", c.id).eq("organization_id", orgId);
     if (error) throw new Error(error.message);
     return `Tagged ${c.name}: ${tags.join(", ")}.`;
   }
@@ -270,9 +444,8 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     return `Created invoice ${number} for ${a.customer_name} ($${(total / 100).toFixed(2)}).`;
   }
   if (tool === "set_invoice_status") {
-    const inv = await resolveRow(admin, orgId, "invoices", "id, number", String(a.invoice), ["number", "customer_name"]);
-    if (!inv) throw new Error(`No invoice matching "${a.invoice}".`);
-    const { error } = await admin.from("invoices").update({ status: a.status }).eq("id", inv.id);
+    const inv = await targetOf(admin, orgId, tool, a);
+    const { error } = await admin.from("invoices").update({ status: a.status }).eq("id", inv.id).eq("organization_id", orgId);
     if (error) throw new Error(error.message);
     return `Invoice ${inv.number} set to ${a.status}.`;
   }
@@ -288,7 +461,7 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
   }
   if (tool === "create_booking") {
     let serviceId: string | null = null;
-    if (a.service) { const s = await resolveRow(admin, orgId, "services", "id, name", String(a.service), ["name"]); serviceId = (s?.id as string) ?? null; }
+    if (a.service) { const s = await resolveRow(admin, orgId, "services", "id, name", String(a.service), ["name"], "created_at", "service"); serviceId = (s?.id as string) ?? null; }
     const { error } = await admin.from("bookings").insert({
       organization_id: orgId, service_id: serviceId, customer_name: String(a.customer_name).trim(),
       customer_email: a.customer_email ? String(a.customer_email) : "", start_at: String(a.start_at), notes: a.notes ? String(a.notes) : "", status: "pending",
@@ -297,17 +470,15 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     return `Booked ${a.customer_name} for ${a.start_at}.`;
   }
   if (tool === "set_booking_status") {
-    const b = await resolveRow(admin, orgId, "bookings", "id, customer_name", String(a.booking), ["customer_name", "customer_email"], "start_at");
-    if (!b) throw new Error(`No booking matching "${a.booking}".`);
-    const { error } = await admin.from("bookings").update({ status: a.status }).eq("id", b.id);
+    const b = await targetOf(admin, orgId, tool, a);
+    const { error } = await admin.from("bookings").update({ status: a.status }).eq("id", b.id).eq("organization_id", orgId);
     if (error) throw new Error(error.message);
     return `Booking for ${b.customer_name} set to ${a.status}.`;
   }
 
   // --- Reservations ---
   if (tool === "block_availability") {
-    const p = await resolveProduct(admin, orgId, String(a.product));
-    if (!p) throw new Error(`No resource matching "${a.product}".`);
+    const p = await targetOf(admin, orgId, tool, a);
     const { error } = await admin.from("resource_blackouts").insert({ organization_id: orgId, product_id: p.id, start_date: String(a.start_date), end_date: String(a.end_date), reason: a.reason ? String(a.reason) : "" });
     if (error) throw new Error(error.message);
     return `Blocked ${p.name} from ${a.start_date} to ${a.end_date}.`;
@@ -324,16 +495,14 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     return `Opened ticket "${a.subject}".`;
   }
   if (tool === "reply_ticket") {
-    const t = await resolveRow(admin, orgId, "tickets", "id, subject", String(a.ticket), ["subject", "customer_name"]);
-    if (!t) throw new Error(`No ticket matching "${a.ticket}".`);
+    const t = await targetOf(admin, orgId, tool, a);
     const { error } = await admin.from("ticket_messages").insert({ organization_id: orgId, ticket_id: t.id, author: "agent", body: String(a.body) });
     if (error) throw new Error(error.message);
     return `Replied on "${t.subject}".`;
   }
   if (tool === "set_ticket_status") {
-    const t = await resolveRow(admin, orgId, "tickets", "id, subject", String(a.ticket), ["subject", "customer_name"]);
-    if (!t) throw new Error(`No ticket matching "${a.ticket}".`);
-    const { error } = await admin.from("tickets").update({ status: a.status }).eq("id", t.id);
+    const t = await targetOf(admin, orgId, tool, a);
+    const { error } = await admin.from("tickets").update({ status: a.status }).eq("id", t.id).eq("organization_id", orgId);
     if (error) throw new Error(error.message);
     return `Ticket "${t.subject}" set to ${a.status}.`;
   }
@@ -348,20 +517,59 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     return `Created campaign "${a.name}".`;
   }
   if (tool === "send_campaign") {
-    const c = await resolveRow(admin, orgId, "campaigns", "id, name", String(a.campaign), ["name"]);
-    if (!c) throw new Error(`No campaign matching "${a.campaign}".`);
-    const { count } = await admin.from("crm_contacts").select("id", { count: "exact", head: true }).eq("organization_id", orgId);
-    const { error } = await admin.from("campaigns").update({ status: "sent", sent_at: new Date().toISOString(), recipients: count ?? 0 }).eq("id", c.id);
-    if (error) throw new Error(error.message);
-    return `Sent campaign "${c.name}" to ${count ?? 0} contacts.`;
+    // THE REAL PATH, mirrored from the console (src/lib/db/ops/marketing.ts
+    // queueCampaignSend). This tool used to stamp the campaign 'sent' with a
+    // recipient count and deliver nothing — the owner was told a campaign had
+    // gone to 140 contacts that no contact ever received. Now it queues one
+    // campaign_sends row per eligible recipient and campaign-run — the ONE
+    // piece of code that puts marketing mail and texts on the wire, with
+    // opt-out re-checks and unsubscribe footers — delivers them.
+    const c = await targetOf(admin, orgId, tool, a);
+    if (c.status === "sending" || c.status === "sent") {
+      throw new Error(`Campaign "${c.name}" has already ${c.status === "sent" ? "been sent" : "been queued and is sending now"}.`);
+    }
+    const channel = c.channel === "sms" ? "sms" : "email";
+    // Audience is 'all' or a saved segment's id — the same rule the console applies.
+    let q = admin.from("crm_contacts").select("id, email, phone, email_opt_out, sms_opt_out").eq("organization_id", orgId);
+    if (c.audience && c.audience !== "all") {
+      const { data: seg } = await admin.from("segments").select("contact_ids").eq("organization_id", orgId).eq("id", c.audience).maybeSingle();
+      const ids = (Array.isArray((seg as Json)?.contact_ids) ? (seg as Json).contact_ids : []).map(String);
+      if (ids.length === 0) throw new Error(`Campaign "${c.name}" targets a segment that has no contacts (or no longer exists).`);
+      q = q.in("id", ids);
+    }
+    const { data: contacts, error: cErr } = await q.limit(5000);
+    if (cErr) throw new Error(cErr.message);
+    const recipients = ((contacts as Json[] | null) ?? [])
+      .filter((x) => channel === "email" ? (String(x.email ?? "").trim() && !x.email_opt_out) : (String(x.phone ?? "").trim() && !x.sms_opt_out))
+      .map((x) => ({ contact_id: String(x.id), address: String(channel === "email" ? x.email : x.phone).trim() }));
+    if (recipients.length === 0) {
+      throw new Error(`No eligible recipients for "${c.name}" — nobody in its audience has ${channel === "email" ? "an email address" : "a phone number"} and is opted in.`);
+    }
+    // The CLAIM: flip to 'sending' only while still draft/scheduled, so two
+    // concurrent sends (or a retry of this one) queue exactly one batch.
+    const { data: claimed, error: clErr } = await admin.from("campaigns")
+      .update({ status: "sending", recipients: recipients.length })
+      .eq("id", c.id).eq("organization_id", orgId).in("status", ["draft", "scheduled"])
+      .select("id").maybeSingle();
+    if (clErr) throw new Error(clErr.message);
+    if (!claimed) throw new Error(`Campaign "${c.name}" was already sent or is sending.`);
+    const { error: insErr } = await admin.from("campaign_sends").insert(recipients.map((r) => ({
+      organization_id: orgId, campaign_id: c.id, contact_id: r.contact_id, channel, address: r.address, status: "pending",
+    })));
+    if (insErr) {
+      // Nothing was queued, so the campaign must not sit in 'sending' for ever.
+      await admin.from("campaigns").update({ status: c.status }).eq("id", c.id);
+      throw new Error(insErr.message);
+    }
+    kickCampaignRun(orgId);
+    return `Queued campaign "${c.name}" to ${recipients.length} contacts over ${channel}. Delivery is in progress — list_campaigns shows the sent and failed counts as they land.`;
   }
 
   // --- Social ---
   if (tool === "schedule_post") {
-    const { data: d } = await admin.from("designs")
-      .select("id, title, png_url").eq("organization_id", orgId)
-      .ilike("title", `%${String(a.design).trim()}%`).limit(1).maybeSingle();
-    if (!d) throw new Error(`No design matching "${a.design}". Use list_designs to see them.`);
+    const d = await targetOf(admin, orgId, tool, a).catch((e: Error) => {
+      throw new Error(`${e.message} Use list_designs to see them.`);
+    });
     // A design with no rendered picture cannot be posted, and finding that out
     // at publish time — in a worker, five minutes later — is the wrong place.
     if (!d.png_url) {
@@ -479,7 +687,24 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
       replyTo = await orgReplyTo(admin, orgId);
       if (!replyTo) throw new Error("This business has no email address on file for replies — add a billing email in Settings, or connect Google.");
     }
-    const r = await dispatch(channel, dest, a.subject ? String(a.subject) : "A message for you", String(a.message), replyTo ? { replyTo } : undefined);
+    // The same rule for texting. dispatch() without `from` sends from the
+    // platform's TWILIO_FROM, and when the customer replies to that number
+    // twilio-inbound routes the reply to whichever org owns the platform line —
+    // another company reads, and answers, this business's customer.
+    let from = "";
+    if (channel === "sms" || channel === "whatsapp") {
+      from = await orgTextingNumber(admin, orgId, channel);
+      if (!from) {
+        throw new Error(
+          `This business has no ${channel === "sms" ? "SMS" : "WhatsApp"} number on record to send from — it is learned from the first text a customer sends to the business's own Twilio number. ` +
+          "Until then, reply inside an existing conversation or contact them by email.",
+        );
+      }
+    }
+    const r = await dispatch(channel, dest, a.subject ? String(a.subject) : "A message for you", String(a.message), {
+      ...(replyTo ? { replyTo } : {}),
+      ...(from ? { from } : {}),
+    });
     if (r.status === "failed") throw new Error("Message could not be delivered.");
     return `Sent ${channel} to ${dest}${r.status === "simulated" ? " (simulated — no provider configured)" : ""}.`;
   }
@@ -497,10 +722,7 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
 
   // ── Inbox ────────────────────────────────────────────────────────────────
   if (tool === "reply_conversation") {
-    const c = await resolveRow(admin, orgId, "conversations",
-      "id, customer_name, customer_phone, customer_email, channel_type", String(a.conversation),
-      ["customer_name", "customer_email", "customer_phone"]);
-    if (!c) throw new Error(`No conversation matching "${a.conversation}".`);
+    const c = await targetOf(admin, orgId, tool, a);
     const channel = ["sms", "whatsapp", "email"].includes(String((c as Json).channel_type))
       ? String((c as Json).channel_type) : "email";
     const dest = channel === "email" ? (c as Json).customer_email : (c as Json).customer_phone;
@@ -571,17 +793,13 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     const allowed = ["open", "handled", "escalated", "closed"];
     const status = String(a.status ?? "").toLowerCase();
     if (!allowed.includes(status)) throw new Error(`Status must be one of ${allowed.join(", ")}.`);
-    const c = await resolveRow(admin, orgId, "conversations", "id, customer_name", String(a.conversation),
-      ["customer_name", "customer_email", "customer_phone"]);
-    if (!c) throw new Error(`No conversation matching "${a.conversation}".`);
-    const { error } = await admin.from("conversations").update({ status }).eq("id", (c as Json).id);
+    const c = await targetOf(admin, orgId, tool, a);
+    const { error } = await admin.from("conversations").update({ status }).eq("id", (c as Json).id).eq("organization_id", orgId);
     if (error) throw new Error(error.message);
     return `Conversation with ${(c as Json).customer_name || "the customer"} set to ${status}.`;
   }
   if (tool === "assign_conversation") {
-    const c = await resolveRow(admin, orgId, "conversations", "id, customer_name", String(a.conversation),
-      ["customer_name", "customer_email", "customer_phone"]);
-    if (!c) throw new Error(`No conversation matching "${a.conversation}".`);
+    const c = await targetOf(admin, orgId, tool, a);
     const who = String(a.assignee ?? "").trim();
     if (!who || who.toLowerCase() === "unassign" || who.toLowerCase() === "nobody") {
       const { error } = await admin.from("conversations").update({ assigned_to: null }).eq("id", (c as Json).id);
@@ -677,52 +895,30 @@ export function actionTitle(tool: string, a: Json): string {
  */
 async function captureBefore(admin: SupabaseClient, orgId: string, tool: string, a: Json): Promise<Json | null> {
   try {
-    const product = (cols: string) => resolveRow(admin, orgId, "products", cols, String(a.product), ["name", "sku"]);
+    // Targeted tools read the row executeAction already resolved (args.__target),
+    // so the snapshot is of the SAME row the action will change.
+    const pick = async (keys: string[]) => {
+      const row = await targetOf(admin, orgId, tool, a);
+      return Object.fromEntries(keys.map((k) => [k, row?.[k]]));
+    };
     switch (tool) {
-      case "update_product_price": {
-        const p = await product("id, name, price_cents");
-        return p ? { name: p.name, price_cents: p.price_cents } : null;
-      }
-      case "set_product_stock": {
-        const p = await product("id, name, stock");
-        return p ? { name: p.name, stock: p.stock } : null;
-      }
-      case "set_product_status": {
-        const p = await product("id, name, status");
-        return p ? { name: p.name, status: p.status } : null;
-      }
+      case "update_product_price": return await pick(["name", "price_cents"]);
+      case "set_product_stock": return await pick(["name", "stock"]);
+      case "set_product_status": return await pick(["name", "status"]);
       case "fulfill_order": {
         const { data } = await admin.from("orders").select("customer_name, status, fulfillment_status").eq("id", a.order_id).eq("organization_id", orgId).maybeSingle();
         return data ?? null;
       }
-      case "set_order_status": {
-        const o = await resolveRow(admin, orgId, "orders", "id, customer_name, status", String(a.order), ["customer_name", "customer_email"]);
-        return o ? { customer_name: o.customer_name, status: o.status } : null;
-      }
+      case "set_order_status": return await pick(["customer_name", "status"]);
       case "set_reservation_status": {
         const { data } = await admin.from("reservations").select("customer_name, status").eq("id", a.reservation_id).eq("organization_id", orgId).maybeSingle();
         return data ?? null;
       }
-      case "update_contact_stage": {
-        const c = await resolveRow(admin, orgId, "crm_contacts", "id, name, stage", String(a.contact), ["name", "email", "phone"]);
-        return c ? { name: c.name, stage: c.stage } : null;
-      }
-      case "tag_contact": {
-        const c = await resolveRow(admin, orgId, "crm_contacts", "id, name, tags", String(a.contact), ["name", "email", "phone"]);
-        return c ? { name: c.name, tags: c.tags } : null;
-      }
-      case "set_invoice_status": {
-        const inv = await resolveRow(admin, orgId, "invoices", "id, number, status", String(a.invoice), ["number", "customer_name"]);
-        return inv ? { number: inv.number, status: inv.status } : null;
-      }
-      case "set_booking_status": {
-        const b = await resolveRow(admin, orgId, "bookings", "id, customer_name, status", String(a.booking), ["customer_name", "customer_email"], "start_at");
-        return b ? { customer_name: b.customer_name, status: b.status } : null;
-      }
-      case "set_ticket_status": {
-        const t = await resolveRow(admin, orgId, "tickets", "id, subject, status", String(a.ticket), ["subject", "customer_name"]);
-        return t ? { subject: t.subject, status: t.status } : null;
-      }
+      case "update_contact_stage": return await pick(["name", "stage"]);
+      case "tag_contact": return await pick(["name", "tags"]);
+      case "set_invoice_status": return await pick(["number", "status"]);
+      case "set_booking_status": return await pick(["customer_name", "status"]);
+      case "set_ticket_status": return await pick(["subject", "status"]);
       case "publish_page": {
         const { data } = await admin.from("cms_pages").select("title, status").eq("organization_id", orgId).eq("slug", slugify(String(a.slug))).maybeSingle();
         return data ?? null;
@@ -740,16 +936,62 @@ async function policyMode(admin: SupabaseClient, orgId: string, tool: string): P
   return ((data as { mode?: string } | null)?.mode as "off" | "approve" | "auto") ?? "approve"; // safe default
 }
 
-async function audit(admin: SupabaseClient, orgId: string, tool: string, args: Json, status: string, summary: string) {
-  await admin.from("agent_audit_log").insert({ organization_id: orgId, actor: "operator", tool, args, status, summary });
+/**
+ * One audit row. Exported so agent-approve writes the same shape as the
+ * operator's own path rather than its own hand-rolled insert.
+ *
+ * actor_id and source arrive with migration 0128, and edge functions deploy
+ * independently of migrations — so if the two columns are not there yet the row
+ * is written in the legacy shape instead of being lost. It must land either
+ * way: the daily outbound cap is COUNTED from this table, and a send whose
+ * audit row failed to insert would be a send the cap never saw.
+ */
+let warnedLegacyAudit = false;
+export async function recordAudit(
+  admin: SupabaseClient,
+  orgId: string,
+  e: { tool: string; args: Json; status: string; summary: string; actor?: string; actorId?: string | null; source?: AuditSource },
+): Promise<void> {
+  const base = {
+    organization_id: orgId, actor: e.actor ?? "operator", tool: e.tool, args: e.args ?? {},
+    status: e.status, summary: String(e.summary ?? "").slice(0, 2000),
+  };
+  const { error } = await admin.from("agent_audit_log").insert({ ...base, actor_id: e.actorId ?? null, source: e.source ?? "operator" });
+  if (!error) return;
+  if (/actor_id|source|column/i.test(error.message)) {
+    const { error: legacy } = await admin.from("agent_audit_log").insert(base);
+    if (!legacy) {
+      if (!warnedLegacyAudit) {
+        warnedLegacyAudit = true;
+        console.warn("[phoxta] agent_audit_log has no actor_id/source yet — apply migration 0128; writing legacy rows meanwhile.");
+      }
+      return;
+    }
+    console.error("[phoxta] agent_audit_log insert failed:", legacy.message);
+    return;
+  }
+  console.error("[phoxta] agent_audit_log insert failed:", error.message);
 }
+
+/** Outbound customer contact: everything here spends the daily cap below.
+ *  google_send_email was missing, so mail from the connected Workspace mailbox
+ *  walked round a cap that send_message over email could not. */
+const OUTBOUND_TOOLS = ["send_message", "place_call", "reply_conversation", "google_send_email"];
+
+export type ExecuteOptions = {
+  /** Which leg is asking. Defaults to the operator; the cron legs say who they are. */
+  source?: AuditSource;
+};
 
 /** Governed execution used by the operator agent's tool runner. Returns a string for the model.
  *
  *  `isAdmin` reflects the caller's org role. Non-admins can still drive the
  *  operator, but a tool set to 'auto' is downgraded to 'approve' for them — so a
  *  plain member can never have the agent change prices, fulfil orders or send
- *  mail from the business mailbox without an owner/admin signing off. */
+ *  mail from the business mailbox without an owner/admin signing off.
+ *
+ *  `userId` is recorded on every audit row as actor_id, and `opts.source` says
+ *  which leg of the platform asked. */
 export async function executeAction(
   admin: SupabaseClient,
   orgId: string,
@@ -757,11 +999,16 @@ export async function executeAction(
   tool: string,
   args: Json,
   isAdmin = true,
+  opts: ExecuteOptions = {},
 ): Promise<string> {
+  const source = opts.source ?? "operator";
+  const audit = (status: string, summary: string, a: Json = args) =>
+    recordAudit(admin, orgId, { tool, args: a, status, summary, actorId: userId, source });
+
   let mode = await policyMode(admin, orgId, tool);
   if (mode === "auto" && !isAdmin) mode = "approve";
   if (mode === "off") {
-    await audit(admin, orgId, tool, args, "denied", "Blocked by policy");
+    await audit("denied", "Blocked by policy");
     return "That action is turned off for this business.";
   }
   // Deterministic spend budget (audit 2026-08-18): outbound customer contact is
@@ -770,27 +1017,59 @@ export async function executeAction(
   // reply_conversation belongs here too: it delivers a real SMS/WhatsApp/email
   // to a customer, so excluding it would let the agent walk around the cap by
   // replying in a thread instead of starting one.
-  if (tool === "send_message" || tool === "place_call" || tool === "reply_conversation") {
+  //
+  // Counted from agent_audit_log rather than claimed through app_claim_action:
+  // that RPC is the autopilot's per-org budget (100 actions / 10 calls / 50
+  // emails a day, from agent_config.autopilot) and the autopilot already claims
+  // it before reaching here — charging it again here would double-spend every
+  // autopilot send. The audit-log count is a different, larger ceiling with a
+  // different meaning, and since 0128 the table is service-role-write-only, so
+  // a member can no longer forge 'ok' rows to exhaust it or delete rows to lift it.
+  if (OUTBOUND_TOOLS.includes(tool)) {
     const cap = Number(Deno.env.get("OUTBOUND_DAILY_CAP") ?? "200");
     const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
     const { count } = await admin
       .from("agent_audit_log")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
-      .in("tool", ["send_message", "place_call", "reply_conversation"])
+      .in("tool", OUTBOUND_TOOLS)
       .eq("status", "ok")
       .gte("created_at", dayAgo);
     if ((count ?? 0) >= cap) {
-      await audit(admin, orgId, tool, args, "denied", `Daily outbound cap reached (${cap})`);
+      await audit("denied", `Daily outbound cap reached (${cap})`);
       return `Today's outbound limit (${cap} messages/calls) is reached for safety — try again tomorrow or raise the cap with Phoxta support.`;
     }
   }
+
+  // Resolve the target ONCE, here, before either branch. The id is stamped onto
+  // the args so the row the owner sees in the queue is the row that changes
+  // when they approve it, and an ambiguous reference is answered now — to the
+  // model, which can ask — rather than at approval time, to nobody.
+  let queuedArgs: Json = args;
+  const spec = TARGETS[tool];
+  if (spec) {
+    try {
+      const row = await resolveTarget(admin, orgId, tool, args);
+      if (!row) {
+        const msg = `No ${spec.what} matching "${args?.[spec.arg]}".`;
+        await audit("error", msg);
+        return `Couldn't do that: ${msg}`;
+      }
+      const stamp: TargetStamp = { id: String(row.id), ref: String(args?.[spec.arg] ?? ""), label: targetLabel(spec, row) };
+      queuedArgs = { ...args, __target: stamp };
+    } catch (e) {
+      const msg = String((e as Error)?.message || e);
+      await audit("error", msg);
+      return `Couldn't do that: ${msg}`;
+    }
+  }
+
   if (mode === "approve") {
     const title = actionTitle(tool, args);
-    const before = await captureBefore(admin, orgId, tool, args);
-    const queuedArgs = before ? { ...args, __before: before } : args;
+    const before = await captureBefore(admin, orgId, tool, queuedArgs);
+    if (before) queuedArgs = { ...queuedArgs, __before: before };
     await admin.from("agent_actions").insert({ organization_id: orgId, tool, args: queuedArgs, title, requested_by: userId, status: "pending" });
-    await audit(admin, orgId, tool, args, "pending", title);
+    await audit("pending", title, queuedArgs);
     // Tell org owners/admins there's something to approve — previously the
     // queue filled silently and nothing surfaced it outside the Operator tab.
     try {
@@ -813,11 +1092,11 @@ export async function executeAction(
     return `Queued for the owner's approval: ${title}. They can approve it in Agent → Operator.`;
   }
   try {
-    const summary = await runWrite(admin, orgId, tool, args, userId);
-    await audit(admin, orgId, tool, args, "ok", summary);
+    const summary = await runWrite(admin, orgId, tool, queuedArgs, userId);
+    await audit("ok", summary, queuedArgs);
     return summary;
   } catch (e) {
-    await audit(admin, orgId, tool, args, "error", String((e as Error)?.message || e));
+    await audit("error", String((e as Error)?.message || e), queuedArgs);
     return `Couldn't do that: ${(e as Error)?.message || e}`;
   }
 }

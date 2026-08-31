@@ -21,6 +21,7 @@ import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
 import { searchStock } from "../_shared/stock.ts";
+import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -89,6 +90,12 @@ Deno.serve(async (req) => {
       .eq("organization_id", orgId).eq("user_id", who.userId).maybeSingle();
     if (!member) return json({ error: "That business is not yours." }, 403);
 
+    // Membership says WHO may spend; the plan says HOW MUCH. This call was
+    // neither capped nor metered — a post written here cost the tenant nothing
+    // on paper, and nothing stood between a busy studio and the model bill.
+    const allowance = await assertWithinCap(admin, orgId);
+    if (!allowance.ok) return json({ error: CAP_REACHED_MESSAGE, limitReached: true }, 429);
+
     const { data: org } = await admin
       .from("organizations").select("name, branding, vertical").eq("id", orgId).maybeSingle();
 
@@ -103,7 +110,8 @@ Deno.serve(async (req) => {
   photos: ${Object.entries(t.images).map(([s, d]) => `${s} — ${d}`).join("; ") || "none"}`,
     ).join(NL);
 
-    const { data: written } = await callJson<Json>({
+    const t0 = Date.now();
+    const { data: written, inTok, outTok, cacheWriteTok, cacheReadTok, model } = await callJson<Json>({
       model: modelFor("balanced"),
       system:
         "You write social posts for a small business. Reply with JSON only. " +
@@ -125,6 +133,15 @@ Return JSON: {
 In the title slot only, you may wrap one to three words in *asterisks* to paint them in the accent colour. Choose the words that carry the meaning.
 Statistics must be short and plausible — "12+", "98%", "4.5". Never invent a specific claim the brief does not support; if there is no number to give, use a round one the business could stand behind.`,
       maxTokens: 1600,
+    });
+    await meter(admin, {
+      organizationId: orgId,
+      userId: who.userId,
+      model,
+      feature: "design-generate",
+      tier: "balanced",
+      inTok, outTok, cacheWriteTok, cacheReadTok,
+      latencyMs: Date.now() - t0,
     });
 
     const wantedId = pinned || String(written?.templateId ?? "");

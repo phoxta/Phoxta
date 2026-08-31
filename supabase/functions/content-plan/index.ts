@@ -26,7 +26,7 @@ import { isTrustedTransport } from "../_shared/internalProof.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
-import { meter } from "../_shared/meter.ts";
+import { assertWithinCap, CAP_REACHED_MESSAGE, meter } from "../_shared/meter.ts";
 import { searchStock } from "../_shared/stock.ts";
 import { makeImage } from "../_shared/openai.ts";
 
@@ -71,6 +71,49 @@ const HOUSE = [
   "",
   "THE HARD RULE: you may only say what the business details below actually say. Do not invent a price, a discount, a deadline, a delivery time, an opening hour, a stock level, an award or a statistic. If you have no reason to promise anything, write the honest post instead — a plan that invents an offer is published under their name and they find out when a customer arrives expecting it.",
 ].join("\n");
+
+/**
+ * A local wall-clock hour on a date, in the business's own IANA timezone,
+ * resolved to the UTC instant stored in scheduled_at.
+ *
+ * The planner picks a plain hour (say 10). Written as `${date}T10:00:00` and
+ * parsed by the Deno runtime (UTC), that became 10:00 UTC for EVERY business —
+ * so a New York shop's "10am" post went out at 6am its own time. Intl gives the
+ * zone's offset for that exact date (DST included); adding it back turns the
+ * local 10:00 into the correct UTC instant. Returns null on a date that will not
+ * parse, so the post is skipped rather than scheduled at a wrong or invalid time.
+ *
+ * The single hour of a DST transition can land an hour off — a social post is
+ * not worth solving spring-forward for — and an IANA name Intl does not know
+ * falls back to UTC (the pre-change behaviour) rather than losing the post.
+ */
+function wallClockToUtc(dateStr: string, hour: number, timeZone: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr).trim());
+  if (!m) return null;
+  const naiveUtc = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), hour, 0, 0);
+  if (Number.isNaN(naiveUtc)) return null;
+  let offsetMs = 0;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }).formatToParts(new Date(naiveUtc));
+    const p: Record<string, string> = {};
+    for (const part of parts) p[part.type] = part.value;
+    // The wall clock the zone shows for `naiveUtc`, read back as if it were UTC:
+    // its distance from naiveUtc IS the zone's offset at that date.
+    const asUtc = Date.UTC(
+      Number(p.year), Number(p.month) - 1, Number(p.day),
+      Number(p.hour), Number(p.minute), Number(p.second),
+    );
+    offsetMs = asUtc - naiveUtc;
+  } catch {
+    offsetMs = 0; // an IANA name Intl does not know — treat as UTC
+  }
+  const t = new Date(naiveUtc - offsetMs);
+  return Number.isNaN(t.getTime()) ? null : t;
+}
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -169,7 +212,12 @@ Deno.serve(async (req) => {
     const wantVary = asked === "vary" && layouts.length > 1;
 
     const { data: org } = await admin.from("organizations")
-      .select("name, vertical, branding").eq("id", orgId).maybeSingle();
+      .select("name, vertical, branding, timezone").eq("id", orgId).maybeSingle();
+    // The business's own zone (migration 0129). The planner picks an HOUR — local,
+    // "when a customer is on their phone" — and scheduled_at must hold the UTC
+    // instant of that local hour (see wallClockToUtc). 'UTC' when unset reproduces
+    // the old, schedule-everything-in-UTC behaviour.
+    const tz = String((org as Json)?.timezone ?? "").trim() || "UTC";
 
     // Only channels that can actually receive it. Planning for a platform the
     // business has not connected produces a month that half fails on the day.
@@ -193,6 +241,7 @@ Deno.serve(async (req) => {
       brief ? `\nWHAT THE OWNER WANTS FROM THIS MONTH: ${brief}` : "",
       "",
       `PLAN ${count} POSTS across ${days} days starting ${startsOn}. Spread them — not one a day for ${count} days and then nothing.`,
+      `Times are the business's own local time (${tz}) — pick the hour a customer there is actually on their phone; Phoxta converts it to the right moment.`,
       `They are going to: ${[...new Set(channels.map((c) => c.platform))].join(", ")}.`,
       wantVary
         ? "\nTHE LAYOUTS YOU MAY USE, and what each is for. Pick the one that suits each post rather than the same one every time:\n" +
@@ -205,7 +254,7 @@ Deno.serve(async (req) => {
       '  "rationale": string — two or three sentences on the shape you gave the month and why,',
       '  "posts": [{',
       '    "date": "YYYY-MM-DD",',
-      '    "hour": number — 0-23, when it should go out,',
+      `    "hour": number — 0-23, the business's local hour (${tz}) it should go out,`,
       '    "angle": string — what this post is doing, in three or four words,',
       '    "headline": string — the words ON the picture. Under 60 characters,',
       '    "subhead": string — a supporting line on the picture, under 90 characters. May be empty,',
@@ -219,6 +268,12 @@ Deno.serve(async (req) => {
       "  }]",
       "}",
     ].filter(Boolean).join("\n");
+
+    // Don't spend a model turn a plan the business cannot afford would only
+    // waste. The same monthly cap every other AI feature checks (assertWithinCap):
+    // over it we refuse BEFORE the call, not after billing for it.
+    const cap = await assertWithinCap(admin, orgId);
+    if (!cap.ok) return json({ error: CAP_REACHED_MESSAGE, limitReached: true }, 429);
 
     const started = Date.now();
     const { data: out, inTok, outTok, cacheWriteTok, cacheReadTok, model } = await callJson<Json>({
@@ -250,8 +305,11 @@ Deno.serve(async (req) => {
 
     let made = 0;
     for (const it of items) {
-      const when = new Date(`${String(it?.date ?? startsOn)}T${String(Math.min(23, Math.max(0, Number(it?.hour) || 10))).padStart(2, "0")}:00:00`);
-      if (Number.isNaN(when.getTime())) continue;
+      // The hour is the business's LOCAL hour; wallClockToUtc turns it into the
+      // real UTC instant so scheduled_at is not the same clock time in every zone.
+      const hour = Math.min(23, Math.max(0, Number(it?.hour) || 10));
+      const when = wallClockToUtc(String(it?.date ?? startsOn), hour, tz);
+      if (!when) continue;
 
       // An id the model invented is not an error worth losing the post over —
       // it falls back to the first real layout.

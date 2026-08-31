@@ -101,6 +101,61 @@ drop trigger if exists trg_engage_flows_touch on public.engage_flows;
 create trigger trg_engage_flows_touch before update on public.engage_flows
   for each row execute function public.app_touch_updated_at();
 
+-- ── Claiming (mirrored in 0129_pipeline_claims.sql) ─────────────────────────
+-- engage-run used to SELECT waiting runs whose timer had passed and advance
+-- them; two overlapping ticks both read the same runs and both sent. The claim
+-- is one statement: waiting → active, FOR UPDATE SKIP LOCKED, claimed_at set so
+-- a wake whose worker died can be put back to waiting.
+alter table public.engage_runs add column if not exists claimed_at timestamptz;
+
+create or replace function public.app_claim_engage_runs(p_limit int default 100)
+returns setof engage_runs
+language sql
+security definer
+set search_path = public
+as $fn$
+  update engage_runs r
+     set status = 'active',
+         claimed_at = now(),
+         updated_at = now()
+   where r.id in (
+     select r2.id
+       from engage_runs r2
+      where r2.status = 'waiting'
+        and r2.wake_at is not null
+        and r2.wake_at <= now()
+      order by r2.wake_at
+      limit greatest(1, least(coalesce(p_limit, 100), 500))
+      for update skip locked
+   )
+  returning r.*;
+$fn$;
+
+-- SECURITY DEFINER + default EXECUTE TO PUBLIC would let an anon caller claim
+-- (and so silently consume) every business's journey timers.
+revoke execute on function public.app_claim_engage_runs(int) from public, anon, authenticated;
+
+-- One run per source event per journey, enforced. Enrolment checked and then
+-- inserted; two overlapping ticks both saw nothing. The second insert now fails
+-- (23505) and the poller treats it as "already enrolled". Guarded against
+-- pre-existing duplicates, which would make the CREATE fail and take the whole
+-- bootstrap down with it.
+do $$
+begin
+  if not exists (
+    select 1 from public.engage_runs
+     where state ? 'event_key'
+     group by flow_id, state->>'event_key'
+    having count(*) > 1
+  ) then
+    create unique index if not exists idx_engage_runs_one_per_event
+      on public.engage_runs (flow_id, (state->>'event_key'))
+      where state ? 'event_key';
+  else
+    raise notice 'engage_runs has duplicate (flow_id, event_key) rows; unique index skipped';
+  end if;
+end $$;
+
 -- Inbox live view + human take-over (mirrored in 0107_inbox_live.sql).
 -- ai_paused: while true, respondCore and the flow runtime persist inbound
 -- customer messages but never reply — the human who took over owns the thread.

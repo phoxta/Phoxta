@@ -8,9 +8,17 @@
 // Marks renewal_alert_sent_at so each period alerts exactly once.
 //
 // Guard: x-cron-secret must match BILLING_CRON_SECRET (the pg_cron job's
-// secret) or CRON_SECRET (the shared worker-cron secret). Deploy with
-// --no-verify-jwt.
+// secret) or CRON_SECRET (the shared worker-cron secret) — requireCron, so the
+// compare is constant-time and fails closed. verify_jwt is declared false in
+// supabase/config.toml; never pass --no-verify-jwt on the command line.
+//
+// Scheduled from integrations/worker-cron/daily.sh (06:15 UTC). It beats
+// cron_heartbeats as "billing-alerts" on every run, so a day with no beat —
+// the daily schedule silently not installed, which is exactly what happened —
+// is visible on the console rather than discovered when a renewal goes out
+// unannounced.
 import { json } from "../_shared/cors.ts";
+import { requireCron } from "../_shared/auth.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { twilioSend, sendEmail } from "../_shared/dispatch.ts";
 import { CURRENCY, toChargeMinor, PLANS, paystack } from "../_shared/paystack.ts";
@@ -37,11 +45,13 @@ function planLabel(key: string): string {
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
-  const secret = req.headers.get("x-cron-secret");
-  const allowed = [Deno.env.get("BILLING_CRON_SECRET"), Deno.env.get("CRON_SECRET")].filter(Boolean);
-  if (!secret || !allowed.includes(secret)) return json({ error: "Forbidden." }, 403);
+  const gate = requireCron(req);
+  if (gate.error) return gate.error;
 
   const admin = adminClient();
+  const beat = async (ok: boolean, detail: string) => {
+    try { await admin.rpc("app_cron_beat", { p_worker: "billing-alerts", p_ok: ok, p_detail: detail }); } catch { /* the run still happened */ }
+  };
   const now = Date.now();
   const from = new Date(now + 6 * 24 * 3600 * 1000).toISOString();
   const to = new Date(now + 8 * 24 * 3600 * 1000).toISOString();
@@ -52,7 +62,10 @@ Deno.serve(async (req) => {
     .in("status", ["active", "trialing"])
     .gte("current_period_end", from)
     .lte("current_period_end", to);
-  if (error) return json({ error: error.message }, 500);
+  if (error) {
+    await beat(false, `subscriptions read failed: ${error.message}`);
+    return json({ error: error.message }, 500);
+  }
 
   const results: Array<{ org: string; sms: string; email: string }> = [];
   for (const sub of due ?? []) {
@@ -144,6 +157,18 @@ Deno.serve(async (req) => {
     }
     const { data: ud } = org?.owner_user_id ? await admin.auth.admin.getUserById(org.owner_user_id) : { data: null };
     const email = ud?.user?.email;
+    // ── Idempotency ──────────────────────────────────────────────────────────
+    // charge_authorization accepts a caller-supplied `reference` and REFUSES a
+    // second transaction carrying one it has already seen ("Duplicate
+    // Transaction Reference"). Without one, Paystack minted a fresh reference
+    // per call, so this function run twice in a day — pg_cron and the VM cron
+    // both firing, a manual re-run, or a network timeout after Paystack had
+    // taken the money but before we heard and recorded the attempt — charged
+    // the card twice. The ladder is at most one rung per calendar day (the
+    // daysIn gate above), so subscription + day names each rung exactly once.
+    // Allowed characters are alphanumerics, '-', '.' and '='; a uuid fits.
+    const day = new Date(now).toISOString().slice(0, 10).replace(/-/g, "");
+    const reference = `dunning-${sub.id}-${day}`;
     const charge = await paystack(`/transaction/charge_authorization`, {
       method: "POST",
       body: JSON.stringify({
@@ -151,10 +176,19 @@ Deno.serve(async (req) => {
         email: email ?? "billing@phoxta.com",
         amount: toChargeMinor(sub.amount_cents),
         currency: CURRENCY,
+        reference,
         metadata: { kind: "dunning", subscription_id: sub.id, org_id: org?.id },
       }),
     });
-    const succeeded = charge.ok && charge.body?.data?.status === "success";
+    let succeeded = charge.ok && charge.body?.data?.status === "success";
+    // A duplicate means an earlier call with this reference DID reach Paystack
+    // and we never recorded its outcome. That outcome is the truth — counting
+    // it as a failure would burn a rung of the ladder on a charge that may have
+    // gone through, and tell the owner their payment failed when it did not.
+    if (!succeeded && /duplicate/i.test(String(charge.body?.message ?? ""))) {
+      const verify = await paystack(`/transaction/verify/${encodeURIComponent(reference)}`);
+      succeeded = verify.ok && verify.body?.data?.status === "success";
+    }
     const newAttempts = [...attempts, new Date().toISOString()];
     if (succeeded) {
       await admin.from("subscriptions").update({
@@ -182,5 +216,10 @@ Deno.serve(async (req) => {
     }
   }
 
+  await beat(
+    true,
+    `${(due ?? []).length} renewal(s) in window, ${results.length} alerted; dunning: ${dunned.length} past-due subscription(s) looked at` +
+      (dunned.length ? ` (${dunned.map((d) => d.outcome).join(", ")})` : ""),
+  );
   return json({ checked: (due ?? []).length, alerted: results.length, results, dunning: dunned });
 });

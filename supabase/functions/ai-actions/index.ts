@@ -7,7 +7,7 @@ import { modelFor, type Tier } from "../_shared/models.ts";
 import { callJson, runAgent } from "../_shared/anthropic.ts";
 import { READ_TOOLS, OWNER_READ_TOOLS, toolRunner } from "../_shared/tools.ts";
 import { embedOne } from "../_shared/openai.ts";
-import { meter } from "../_shared/meter.ts";
+import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -28,11 +28,18 @@ Deno.serve(async (req) => {
     const ctx = a.ok;
     const orgId = organizationId as string;
 
+    // One check above the switch, so it covers every action — including
+    // semantic_search, whose embedding call spends money without ever reaching
+    // `run`. Before this, a trialing org could spend 750K complex-tier tokens
+    // in page_edit while its storefront agent was already refusing on the cap.
+    const allowance = await assertWithinCap(ctx.admin, orgId);
+    if (!allowance.ok) return json({ error: CAP_REACHED_MESSAGE, limitReached: true }, 429);
+
     const run = async <T>(tier: Tier, feature: string, system: string, user: string, maxTokens = 1024): Promise<T> => {
       const t0 = Date.now();
       const model = modelFor(tier);
-      const { data, inTok, outTok, model: used } = await callJson<T>({ model, system, user, maxTokens });
-      await meter(ctx.admin, { organizationId: orgId, userId: ctx.userId, model: used, feature, tier, inTok, outTok, latencyMs: Date.now() - t0 });
+      const { data, inTok, outTok, cacheWriteTok, cacheReadTok, model: used } = await callJson<T>({ model, system, user, maxTokens });
+      await meter(ctx.admin, { organizationId: orgId, userId: ctx.userId, model: used, feature, tier, inTok, outTok, cacheWriteTok, cacheReadTok, latencyMs: Date.now() - t0 });
       return data;
     };
 
@@ -191,6 +198,14 @@ Deno.serve(async (req) => {
       // Edits a page by emitting OPERATIONS (never a whole document); the client
       // applies them with builder/ops.ts#applyOps. Shared by the AI chat panel
       // and the conversational voice agent, so both speak the same op language.
+      //
+      // CONTEXT BUDGET. The slots map and the document are both cut by
+      // characters (6K and 10K). They were 12K and 16K — ~28K characters of
+      // JSON on every turn, on the complex tier, for an edit that usually
+      // touches one section. Neither slice was ever valid JSON past the cut, so
+      // the contract was already "the model sees the first N blocks"; it now
+      // sees fewer on a very long page, and a section past the cut has to be
+      // named by the owner rather than found. The ops it emits are unchanged.
       case "page_edit": {
         const doc = input.document ?? { root: { props: {} }, content: [] };
         const catalog = input.catalog ?? [];
@@ -215,7 +230,7 @@ Each operation is exactly one of:
   { "op":"set_image", "id": string, "slot": number, "value": string }  // replace ANY section's Nth image (URL/path)
 
 SECTION CONTENT SLOTS (per block id -> the editable text[] and image[] currently on the page, by index):
-${JSON.stringify(slots).slice(0, 12000)}
+${JSON.stringify(slots).slice(0, 6000)}
 
 Rules:
 - Editing copy/images of an existing section: prefer set_text / set_image with the block "id" and the slot index from SECTION CONTENT SLOTS. (set_field only applies to fields the catalog lists for that type.)
@@ -226,7 +241,7 @@ Rules:
 - This is a back-and-forth conversation; use the prior turns for context.
 
 Return JSON { "reply": a short, friendly 1-2 sentence summary of what you changed or a clarifying question, "ops": PageOp[] }. Use an empty "ops" array when you only need to ask or answer.`,
-          `${history.length ? `CONVERSATION SO FAR:\n${history.map((h) => `${h.role}: ${h.content}`).join("\n")}\n\n` : ""}CURRENT DOCUMENT:\n${JSON.stringify(doc).slice(0, 16000)}\n\nINSTRUCTION: ${instruction}`,
+          `${history.length ? `CONVERSATION SO FAR:\n${history.map((h) => `${h.role}: ${h.content}`).join("\n")}\n\n` : ""}CURRENT DOCUMENT:\n${JSON.stringify(doc).slice(0, 10000)}\n\nINSTRUCTION: ${instruction}`,
           2000,
         );
         return json({ result });

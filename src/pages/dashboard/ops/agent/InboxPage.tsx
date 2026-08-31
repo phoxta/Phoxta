@@ -78,6 +78,7 @@ import { toast, toastError, reportMutation } from "@/lib/ops/feedback";
 import { callablePhone, displayPhone } from "@/lib/ops/phone";
 import type { OpsContext } from "@/layouts/OperatingLayout";
 import { supabase } from "@/lib/supabaseClient";
+import RecordingPlayer from "@/pages/dashboard/ops/ui/RecordingPlayer";
 import EmailComposer from "./EmailComposer";
 import RepliesDrawer from "./RepliesDrawer";
 import { connectBrowserCall, logBrowserCall, type Softphone } from "@/lib/db/ops/calls";
@@ -1907,7 +1908,7 @@ export default function InboxPage() {
                           {new Date(c.created_at).toLocaleString()}
                         </div>
                         {c.recording_url ? (
-                          <audio controls src={c.recording_url} className="w-100 mt-1" style={{ height: 34 }} />
+                          <RecordingPlayer orgId={orgId} callId={c.id} recording={c.recording_url} className="w-100 mt-1" style={{ height: 34 }} />
                         ) : (
                           <div style={{ fontSize: 11.5, color: "var(--at-neutral-400)" }} className="mt-1">
                             No recording captured.

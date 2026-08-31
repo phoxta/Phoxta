@@ -37,7 +37,7 @@ import { authorize } from "../_shared/auth.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
-import { meter } from "../_shared/meter.ts";
+import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -162,6 +162,11 @@ Deno.serve(async (req) => {
     if (!words) {
       return json({ error: "There are no words on this design yet — write some copy on it first." }, 400);
     }
+
+    // After the cheap refusals and before the model: the plan's monthly
+    // allowance applies here as it does to every other authenticated feature.
+    const allowance = await assertWithinCap(admin, orgId);
+    if (!allowance.ok) return json({ error: CAP_REACHED_MESSAGE, limitReached: true }, 429);
 
     // No platform picked yet: write for the tightest, so the caption fits
     // wherever it ends up rather than needing a trim later.
