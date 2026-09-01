@@ -62,6 +62,27 @@ Deno.serve(async (req) => {
       return json({ org: { name: (org as Json)?.name ?? "Your business", currency: (org as Json)?.currency ?? "" }, stats, approvals });
     }
 
+    // Read views — the console's Orders and Products tabs. Writes still go
+    // through the operator (the "chat" action) so governance is never bypassed;
+    // these only READ, so they can query directly and stay snappy.
+    if (action === "orders") {
+      const { data } = await admin.from("orders")
+        .select("id, customer_name, total_cents, currency, status, fulfillment_status, created_at")
+        .eq("organization_id", L.organization_id).order("created_at", { ascending: false }).limit(20);
+      return json({ orders: (data as Json[] ?? []).map((o) => ({
+        id: o.id, customer: o.customer_name ?? "Customer", total: (o.total_cents ?? 0) / 100, currency: o.currency ?? "",
+        status: o.status, fulfillment: o.fulfillment_status ?? null, at: o.created_at,
+      })) });
+    }
+    if (action === "products") {
+      const { data } = await admin.from("products")
+        .select("id, name, price_cents, currency, stock, status")
+        .eq("organization_id", L.organization_id).order("created_at", { ascending: false }).limit(30);
+      return json({ products: (data as Json[] ?? []).map((p) => ({
+        id: p.id, name: p.name, price: (p.price_cents ?? 0) / 100, currency: p.currency ?? "", stock: p.stock ?? null, status: p.status,
+      })) });
+    }
+
     if (action === "chat") {
       const message = String(body?.message ?? "").trim();
       if (!message) return json({ error: "empty" }, 400);

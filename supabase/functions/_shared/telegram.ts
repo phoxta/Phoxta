@@ -110,6 +110,33 @@ export function answerInlineQuery(id: string, results: Json[]): Promise<TgResult
   return tg("answerInlineQuery", { inline_query_id: id, results: results.slice(0, 50), cache_time: 5, is_personal: true });
 }
 
+// ── Payments ────────────────────────────────────────────────────────────────
+// createInvoiceLink returns a shareable t.me link that ANY Telegram user can
+// open and pay — so the operator can make a pay link the owner forwards to a
+// customer. Real money needs a provider token (TELEGRAM_PROVIDER_TOKEN, set up
+// in @BotFather → Payments); `amount` is in the currency's smallest unit
+// (e.g. cents/kobo). `payload` rides through to the successful_payment update,
+// so we stamp it with the org id to know whose sale it was.
+export async function createInvoiceLink(p: {
+  title: string; description: string; payload: string; currency: string; amount: number;
+}): Promise<{ ok: boolean; url?: string; description?: string }> {
+  const provider = Deno.env.get("TELEGRAM_PROVIDER_TOKEN") ?? "";
+  if (!provider) return { ok: false, description: "no_provider" };
+  const r = await tg<string>("createInvoiceLink", {
+    title: p.title.slice(0, 32),
+    description: p.description.slice(0, 255),
+    payload: p.payload,
+    provider_token: provider,
+    currency: p.currency,
+    prices: [{ label: p.title.slice(0, 32), amount: Math.round(p.amount) }],
+  });
+  return { ok: r.ok, url: typeof r.result === "string" ? r.result : undefined, description: r.description };
+}
+
+export function answerPreCheckout(id: string, ok = true, errorMessage?: string): Promise<TgResult> {
+  return tg("answerPreCheckoutQuery", { pre_checkout_query_id: id, ok, error_message: errorMessage });
+}
+
 /** Download a file the user sent (a voice note, a photo). Two hops: getFile
  *  gives a temporary file_path, then the file bytes come from the file endpoint
  *  (note: the file endpoint, not the API endpoint). */

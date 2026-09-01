@@ -9,6 +9,7 @@ import { dispatch, placeAiCall } from "./dispatch.ts";
 import { autoReplyAllowed, deliverAutoReply, tenantSenderFrom } from "./autoReply.ts";
 import { orgReplyTo } from "./conversationEmail.ts";
 import { escapeLike } from "./tools.ts";
+import { createInvoiceLink } from "./telegram.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -24,6 +25,7 @@ export const WRITE_TOOLS: Tool[] = [
   { name: "update_product_price", description: "Change a product's price. Give the product name (or id) and the new price in dollars.", input_schema: { type: "object", properties: { product: { type: "string" }, price: { type: "number" } }, required: ["product", "price"] } },
   { name: "set_product_stock", description: "Set a product's stock quantity. Give the product name (or id) and the new stock.", input_schema: { type: "object", properties: { product: { type: "string" }, stock: { type: "number" } }, required: ["product", "stock"] } },
   { name: "fulfill_order", description: "Mark an order as fulfilled. Give the order id.", input_schema: { type: "object", properties: { order_id: { type: "string" } }, required: ["order_id"] } },
+  { name: "create_payment_link", description: "Create a Telegram payment link the owner can send a customer to pay in-chat. Give the amount (in the business's currency) and what it is for.", input_schema: { type: "object", properties: { amount: { type: "number" }, description: { type: "string", description: "What the payment is for." }, currency: { type: "string", description: "Optional ISO currency; defaults to the business's currency." } }, required: ["amount", "description"] } },
   { name: "set_reservation_status", description: "Update a reservation's status.", input_schema: { type: "object", properties: { reservation_id: { type: "string" }, status: { type: "string", enum: ["pending", "confirmed", "completed", "cancelled"] } }, required: ["reservation_id", "status"] } },
   { name: "create_blog_post", description: "Write and publish a blog post for the business.", input_schema: { type: "object", properties: { title: { type: "string" }, excerpt: { type: "string" }, body: { type: "string" } }, required: ["title", "body"] } },
   { name: "publish_page", description: "Create or update a published content page (e.g. about, terms).", input_schema: { type: "object", properties: { slug: { type: "string" }, title: { type: "string" }, body: { type: "string" } }, required: ["slug", "title", "body"] } },
@@ -317,6 +319,23 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     const { error } = await admin.from("orders").update({ fulfillment_status: "fulfilled", status: "fulfilled" }).eq("id", a.order_id).eq("organization_id", orgId);
     if (error) throw new Error(error.message);
     return `Order ${String(a.order_id).slice(0, 8)} marked fulfilled.`;
+  }
+  if (tool === "create_payment_link") {
+    const { data: org } = await admin.from("organizations").select("name, currency").eq("id", orgId).maybeSingle();
+    const currency = String(a.currency ?? (org as Json)?.currency ?? "USD").toUpperCase();
+    const amount = Math.round(Number(a.amount) * 100); // Telegram wants the smallest unit
+    if (!(amount > 0)) throw new Error("Give a positive amount.");
+    const desc = String(a.description ?? `Payment to ${(org as Json)?.name ?? "us"}`);
+    // payload rides through to the successful_payment update so telegram-inbound
+    // knows which business the sale belongs to.
+    const res = await createInvoiceLink({ title: desc.slice(0, 32) || "Payment", description: desc, payload: `pay:${orgId}`, currency, amount });
+    if (!res.ok || !res.url) {
+      if (res.description === "no_provider") {
+        throw new Error("Payments aren't set up yet — connect a payment provider in @BotFather (/mybots → your bot → Payments) and set the TELEGRAM_PROVIDER_TOKEN secret.");
+      }
+      throw new Error(`Could not create the payment link: ${res.description ?? "unknown error"}`);
+    }
+    return `Here's a ${currency} ${Number(a.amount)} payment link for "${desc}" — send it to the customer: ${res.url}`;
   }
   if (tool === "set_reservation_status") {
     const { error } = await admin.from("reservations").update({ status: a.status }).eq("id", a.reservation_id).eq("organization_id", orgId);
