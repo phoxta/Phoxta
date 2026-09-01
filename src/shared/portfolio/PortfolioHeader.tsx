@@ -27,7 +27,9 @@ export default function PortfolioHeader() {
                         className="pf-brand d-inline-flex align-items-center gap-2 text-decoration-none"
                         aria-label={`${PROFILE.name} — home`}
                     >
-                        <span className="pf-brand__mark" aria-hidden="true">{PROFILE.monogram}</span>
+                        <span className="pf-brand__mark pf-brand__mark--photo" aria-hidden="true">
+                            <img src={PROFILE.photo} alt="" width={40} height={40} />
+                        </span>
                         <span className="pf-brand__text">
                             <span className="pf-brand__name">{PROFILE.shortName}</span>
                             <span className="pf-brand__role">{PROFILE.role}</span>

@@ -20,7 +20,7 @@ const PERSON_JSONLD = {
     url: PORTFOLIO_URL,
     email: `mailto:${PROFILE.email}`,
     telephone: PROFILE.phone,
-    address: { "@type": "PostalAddress", addressLocality: "Birmingham", addressCountry: "GB" },
+    address: { "@type": "PostalAddress", addressCountry: "GB" },
     knowsAbout: [
         "Product Design",
         "UX Research",

@@ -8,7 +8,7 @@ export const PROFILE = {
     monogram: "OA",
     role: "Product Designer",
     disciplines: "UX Research · Design Systems · Prototyping · Front-end",
-    location: "Birmingham, United Kingdom",
+    location: "United Kingdom",
     availability: "Open to select product design work",
     // The one-line thesis at the top of the hero.
     headline: "I design digital products people actually use — and ship them.",
@@ -174,6 +174,7 @@ export const PROJECTS: Project[] = [
         contributions: [
             "Designed campaign identities, marketing visuals, website layouts and social content that strengthened brand recognition.",
             "Introduced a modular design framework and a structured feedback loop that cut iteration cycles.",
+            "Set the visual standards that kept every subsidiary and partner on one coherent brand system.",
         ],
         tags: ["Brand", "Web", "Systems"],
         image: "/assets/imgs/pages/img-14.webp",
@@ -277,7 +278,7 @@ export const SKILL_GROUPS: { label: string; skills: string[] }[] = [
 ];
 
 export const EDUCATION = [
-    { title: "MSc International Business with Data Analytics", org: "Ulster University, Birmingham, UK", year: "2026" },
+    { title: "MSc International Business with Data Analytics", org: "Ulster University, UK", year: "2026" },
     { title: "BSc Mathematics", org: "University of Ibadan, Nigeria", year: "2016" },
 ] as const;
 

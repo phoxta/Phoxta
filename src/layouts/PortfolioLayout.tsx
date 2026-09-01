@@ -39,6 +39,9 @@ const PORTFOLIO_CSS = `
 .pf-header.is-scrolled{padding:8px 0;background:rgba(254,254,254,.82);backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);border-bottom-color:var(--pf-line);box-shadow:0 6px 30px -20px rgba(0,0,0,.4)}
 .pf-header__bar{gap:16px}
 .pf-brand__mark{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--pf-ink);color:#fff;font-weight:700;font-size:15px;letter-spacing:.02em}
+.pf-brand__mark--photo{overflow:hidden;padding:0;background:#fff;border:1px solid var(--pf-line)}
+.pf-brand__mark--photo img{width:100%;height:100%;object-fit:cover;object-position:top center;border-radius:inherit;display:block}
+.pf-header:not(.is-scrolled) .pf-brand__mark--photo{border-color:rgba(255,255,255,.35)}
 .pf-brand__text{display:flex;flex-direction:column;line-height:1.05}
 .pf-brand__name{color:var(--pf-ink);font-weight:700;font-size:16px}
 .pf-brand__role{color:var(--pf-muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
@@ -99,6 +102,28 @@ const PORTFOLIO_CSS = `
 .pf-stat{border-top:2px solid var(--pf-ink);padding-top:14px}
 .pf-stat__value{display:block;font-size:clamp(34px,4vw,50px);font-weight:700;color:var(--pf-ink);line-height:1;letter-spacing:-.02em}
 .pf-stat__label{display:block;font-size:13.5px;color:var(--pf-muted);margin-top:8px;max-width:20ch}
+
+/* ── Hero over the dark section: header adapts to light text ─── */
+.pf-header:not(.is-scrolled) .pf-brand__name{color:#fff}
+.pf-header:not(.is-scrolled) .pf-brand__role{color:rgba(255,255,255,.68)}
+.pf-header:not(.is-scrolled) .pf-nav__link{color:#fff}
+.pf-header:not(.is-scrolled) .pf-brand__mark{background:#fff;color:var(--pf-ink)}
+.pf-header:not(.is-scrolled) .pf-cta{background:#fff;color:var(--pf-ink)}
+.pf-header:not(.is-scrolled) .pf-cta:hover{background:var(--pf-accent);color:#fff}
+.pf-header:not(.is-scrolled) .pf-burger{background:transparent;border-color:rgba(255,255,255,.4)}
+.pf-header:not(.is-scrolled) .pf-burger span{background:#fff}
+
+/* ── Hero (Section8-style dark block with framed portrait) ──── */
+.pf-hero--dark{position:relative}
+.pf-hero--dark::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,11,16,.5),rgba(12,11,16,.8));z-index:0}
+.pf-hero--dark > .container{position:relative;z-index:1}
+.pf-hero__eyebrow{font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+.pf-hero__dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--pf-accent);box-shadow:0 0 0 4px rgba(240,70,14,.2)}
+.pf-hero--dark h1{letter-spacing:-.025em;font-size:clamp(34px,4.6vw,58px);line-height:1.05}
+.pf-hero__photo{box-shadow:0 50px 100px -55px rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.1);aspect-ratio:5/6;background:#17161a;max-width:340px;margin-inline:auto}
+.pf-hero__photo img{aspect-ratio:5/6;object-position:top center}
+.pf-hero__badge{position:absolute;left:16px;bottom:16px;z-index:2;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#fff;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.22);padding:8px 14px;border-radius:999px}
+.pf-hero__badge-dot{width:8px;height:8px;border-radius:50%;background:var(--pf-accent);box-shadow:0 0 0 0 rgba(240,70,14,.5);animation:pf-pulse 2s infinite}
 
 /* ── Clients marquee ───────────────────────────────────────── */
 .pf-clients{background:var(--pf-dark)!important}
