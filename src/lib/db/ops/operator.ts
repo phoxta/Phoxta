@@ -44,6 +44,14 @@ export type AgentAction = { id: string; tool: string; args: Record<string, unkno
 export type AuditEntry = { id: string; actor: string; tool: string; status: string; summary: string; args: Record<string, unknown> | null; created_at: string };
 export type ToolPolicy = { tool: string; mode: "off" | "approve" | "auto" };
 
+/** Mint the one-time deep link that connects the owner's Telegram to this
+ *  business's operator. The returned url opens the bot with the link payload;
+ *  after that, the owner runs everything from Telegram. */
+export async function connectTelegram(orgId: string): Promise<{ url: string | null; error: string | null }> {
+  const { data, error } = await invoke<{ url: string }>("telegram-link", { organizationId: orgId });
+  return { url: data?.url ?? null, error };
+}
+
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
   const { data, error } = await supabase.functions.invoke(fn, { body });
   if (error) {

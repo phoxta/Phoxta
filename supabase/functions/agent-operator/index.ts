@@ -3,7 +3,8 @@
 // tools — every write governed by per-tool policy (off/approve/auto), queued for
 // approval where required, and audited. Reuses the existing agent runner + metering.
 import { preflight, json, CORS } from "../_shared/cors.ts";
-import { authorize } from "../_shared/auth.ts";
+import { authorize, internalCtx, type AuthOk } from "../_shared/auth.ts";
+import { isTrustedTransport } from "../_shared/internalProof.ts";
 import { modelFor } from "../_shared/models.ts";
 import { runAgent, type AgentResult, type Msg } from "../_shared/anthropic.ts";
 import { speak, SPEECH_VOICES, type SpeechVoice } from "../_shared/openai.ts";
@@ -44,9 +45,22 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({})) as Json;
     const orgId: string | undefined = body?.organizationId;
-    const a = await authorize(req, orgId);
-    if (a.error) return a.error;
-    const ctx = a.ok;
+    // Two ways in. A dashboard session presents a JWT (authorize). An internal
+    // caller — the Telegram webhook — has already resolved WHO is speaking (the
+    // Telegram user → a Phoxta user) and proves it came from inside with the
+    // service-role HMAC; it passes that identity as `internalUserId`. Either
+    // way, `ctx` is identical from here down, so the operator, its governance
+    // and its metering are one code path across every surface.
+    let ctx: AuthOk;
+    if (body?.internalUserId && orgId && await isTrustedTransport(req)) {
+      const ic = await internalCtx(String(body.internalUserId), orgId);
+      if (ic.error) return ic.error;
+      ctx = ic.ok;
+    } else {
+      const a = await authorize(req, orgId);
+      if (a.error) return a.error;
+      ctx = a.ok;
+    }
     const message = String(body?.message ?? "");
     if (!message) return json({ error: "Empty message." }, 400);
 

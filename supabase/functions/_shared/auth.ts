@@ -57,6 +57,30 @@ export async function authorize(
   return { ok: { userId: ud.user.id, admin, org: org as Org, role } };
 }
 
+/**
+ * The same AuthOk, but for a caller whose identity is already established by an
+ * internal proof rather than a JWT — the Telegram webhook, which resolved the
+ * Telegram user to a Phoxta user + org before calling the operator. There is no
+ * token to verify here; the trust came from `isTrustedTransport`, and this only
+ * loads the org and the caller's role so the operator runs with exactly the
+ * governance a dashboard session would (a non-admin still gets writes downgraded
+ * to approve). Falls back to 'member' when there is no membership row — the
+ * least privilege, never more.
+ */
+export async function internalCtx(
+  userId: string,
+  organizationId: string,
+): Promise<{ ok: AuthOk; error?: undefined } | { ok?: undefined; error: Response }> {
+  const admin = adminClient();
+  const [{ data: m }, { data: org }] = await Promise.all([
+    admin.from("organization_memberships").select("role").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
+    admin.from("organizations").select("id, name, vertical").eq("id", organizationId).maybeSingle(),
+  ]);
+  if (!org) return { error: json({ error: "That business could not be found." }, 404) };
+  const role = ((m as { role?: string } | null)?.role ?? "member") as Role;
+  return { ok: { userId, admin, org: org as Org, role } };
+}
+
 // ── The scheduler ────────────────────────────────────────────────────────────
 //
 // Two accepted scheduler secrets: CRON_SECRET (the worker-cron tick on the

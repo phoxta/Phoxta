@@ -346,3 +346,15 @@ verify_jwt = true
 # business, exactly like idea-validate.
 [functions.voice-session]
 verify_jwt = false
+
+[functions.telegram-inbound]
+verify_jwt = false
+
+[functions.telegram-link]
+verify_jwt = true
+
+[functions.telegram-digest]
+verify_jwt = false
+
+[functions.telegram-setup]
+verify_jwt = false

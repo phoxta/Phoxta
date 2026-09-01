@@ -22,6 +22,7 @@ import {
     WRITE_TOOL_GROUPS,
     defaultToolMode,
     signOperatorFiles,
+    connectTelegram,
     type OperatorAttachment,
     type OperatorMsg,
     type AgentAction,
@@ -216,6 +217,7 @@ const argsSummary = (args: Args | null): string => {
 
 export default function OperatorPage() {
     const { orgId, org } = useOutletContext<OpsContext>();
+    const [tgBusy, setTgBusy] = useState(false);
     const [msgs, setMsgs] = useState<OperatorMsg[]>([
         { role: "assistant", content: `Hi — I'm your AI operator for ${org.name}. Ask about your data, or tell me what to change (e.g. "set the wool coat price to 290", "mark the latest order fulfilled", "draft a blog post about new arrivals").` },
     ]);
@@ -426,6 +428,32 @@ export default function OperatorPage() {
                     <div className="agx-alert danger mb-0" role="alert">{error}</div>
                 </div>
             )}
+
+            {/* Run it from Telegram — mints a one-time link that connects the
+                owner's Telegram to this business's operator. */}
+            <div className="col-12">
+                <section className="hrx-card hrx-pad d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                        <h2 className="hrx-card-title" style={{ marginBottom: 2 }}>Run it from Telegram</h2>
+                        <p className="agx-note m-0">Connect your Telegram and instruct the operator by chat or voice note — no dashboard needed.</p>
+                    </div>
+                    <button
+                        type="button"
+                        className="hrx-btn hrx-btn-primary"
+                        disabled={tgBusy}
+                        onClick={async () => {
+                            setTgBusy(true);
+                            const { url, error: e } = await connectTelegram(orgId);
+                            setTgBusy(false);
+                            if (e || !url) { toastError(e || "Could not create the link."); return; }
+                            window.open(url, "_blank", "noopener");
+                            toast("Opening Telegram — tap Start to connect.");
+                        }}
+                    >
+                        {tgBusy ? "Preparing…" : "Connect Telegram"}
+                    </button>
+                </section>
+            </div>
 
             {/* Approvals lead the page — on a phone this is the first thing you see,
                 on desktop it spans the full width above the chat. */}
