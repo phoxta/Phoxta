@@ -33,6 +33,41 @@ async function backoff(attempt: number): Promise<void> {
   await new Promise((r) => setTimeout(r, (attempt + 1) * 1500));
 }
 
+// --- Response cache (Postgres, service-role) --------------------------------
+// Deterministic Gemini calls (low temperature) are cached by prompt hash so
+// repeated identical requests — re-analyzing the same job, re-tailoring the
+// same CV — return instantly and never spend free-tier quota. Creative calls
+// (cover letters etc., temperature > 0.35) are never cached, so "regenerate"
+// always produces something fresh. Best-effort: any cache error is ignored.
+const SB_URL = Deno.env.get("SUPABASE_URL") || "";
+const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function cacheGet(key: string): Promise<any | null> {
+  if (!SB_URL || !SB_SERVICE) return null;
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/jobtra_ai_cache?key=eq.${encodeURIComponent(key)}&select=value`, {
+      headers: { apikey: SB_SERVICE, Authorization: `Bearer ${SB_SERVICE}` },
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows?.[0]?.value ?? null;
+  } catch { return null; }
+}
+async function cacheSet(key: string, value: any): Promise<void> {
+  if (!SB_URL || !SB_SERVICE) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/jobtra_ai_cache?on_conflict=key`, {
+      method: "POST",
+      headers: { apikey: SB_SERVICE, Authorization: `Bearer ${SB_SERVICE}`, "content-type": "application/json", Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify({ key, value, created_at: new Date().toISOString() }),
+    });
+  } catch { /* best-effort */ }
+}
+
 // Resilient Gemini text call. Returns the model's text, or null so each caller's
 // fallback logic triggers cleanly (same contract as the original wrapper).
 async function callGeminiSafe(
@@ -41,13 +76,24 @@ async function callGeminiSafe(
   retries = 2,
 ): Promise<string | null> {
   const wantJson = (config.responseMimeType || "application/json") === "application/json";
+  const temp = config.temperature ?? 0.2;
   const body: any = {
     model: GEMINI_MODEL,
     messages: [{ role: "user", content: prompt }],
-    temperature: config.temperature ?? 0.2,
+    temperature: temp,
     reasoning_effort: "low",
   };
   if (wantJson) body.response_format = { type: "json_object" };
+
+  // Deterministic calls (low temperature) are served from cache when we've seen
+  // the exact prompt before — no quota spent on a repeat.
+  const cacheable = temp <= 0.35;
+  let cacheKey = "";
+  if (cacheable) {
+    cacheKey = `gemini:${await sha256Hex(JSON.stringify({ p: prompt, j: wantJson, t: temp, m: GEMINI_MODEL }))}`;
+    const cached = await cacheGet(cacheKey);
+    if (typeof cached === "string" && cached) return cached;
+  }
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -64,7 +110,9 @@ async function callGeminiSafe(
       }
       const data = await res.json();
       const text = data?.choices?.[0]?.message?.content;
-      return typeof text === "string" ? (text.trim() || null) : null;
+      const out = typeof text === "string" ? (text.trim() || null) : null;
+      if (out && cacheable && cacheKey) await cacheSet(cacheKey, out);
+      return out;
     } catch (_err) {
       if (attempt < retries) { await backoff(attempt); continue; }
       break;
@@ -1889,7 +1937,61 @@ function oauthConfig(): Response {
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
+// POST /generate-cover-letter — tailored cover letter from the base CV + job.
+async function handleGenerateCoverLetter(body: any): Promise<Response> {
+  try {
+    const { company, role, jobDescription = '', jobUrl = '', baseCv = null, tone = 'Professional',
+            candidateName, candidateEmail, candidatePhone, candidateLinkedin } = body;
+    const cleanCompany = company || 'the company';
+    const cleanRole = role || 'the role';
+    const name = candidateName || baseCv?.fullName || 'The candidate';
+
+    const cvContext = baseCv ? `
+Name: ${baseCv.fullName || name}
+Summary: ${baseCv.summary || ''}
+Key skills: ${(baseCv.skills || []).map((s: any) => `${s.category}: ${(s.items || []).join(', ')}`).join(' | ')}
+Recent experience: ${(baseCv.experience || []).slice(0, 3).map((e: any) => `${e.role} at ${e.company} (${e.startDate}–${e.endDate}): ${(e.bullets || []).slice(0, 2).join(' ')}`).join(' || ')}
+Education: ${(baseCv.education || []).map((ed: any) => `${ed.degree}, ${ed.institution}`).join('; ')}
+` : `Candidate is an experienced professional applying for ${cleanRole}.`;
+
+    const prompt = `You are an expert career writer. Write a tailored, ${String(tone).toLowerCase()} cover letter for ${name} applying for the "${cleanRole}" position at ${cleanCompany}.
+
+Use ONLY facts consistent with the candidate profile below — never invent employers, titles, dates, or metrics.
+
+Candidate profile:
+${cvContext}
+
+Target job:
+Company: ${cleanCompany}
+Role: ${cleanRole}
+${jobUrl ? `Job URL: ${jobUrl}` : ''}
+Job description:
+"""
+${jobDescription || `${cleanRole} at ${cleanCompany}.`}
+"""
+
+Requirements:
+- 3–4 tight paragraphs, ~250–350 words, in UK English.
+- Start with "Dear Hiring Manager,".
+- Open with genuine, specific interest in ${cleanCompany} and this role.
+- Map the candidate's most relevant strengths to the job's needs, with concrete evidence from the profile.
+- Close with a confident call to action and "Kind regards," then the candidate's name.
+- Tone: ${tone}. No markdown, no bracketed placeholders. Return ONLY the letter text.`;
+
+    const text = await callGeminiSafe(prompt, { responseMimeType: 'text/plain', temperature: 0.6 });
+    if (text && text.trim()) {
+      const letter = text.trim();
+      return json({ coverLetter: letter, content: letter });
+    }
+    const fallback = `Dear Hiring Manager,\n\nI am writing to express my strong interest in the ${cleanRole} role at ${cleanCompany}. With over seven years designing and shipping digital products across SaaS, enterprise and consumer teams, I bring the exact blend of UX craft and hands-on delivery this role calls for.\n\nAcross my recent work I have owned product design end to end — from research and journey mapping to high-fidelity prototypes and a scalable design system — while staying close enough to the front end to ensure what I design is what ships. I would welcome the chance to bring that same rigour and pace to ${cleanCompany}.\n\nI would be glad to discuss how I can contribute. Thank you for your consideration.\n\nKind regards,\n${name}`;
+    return json({ coverLetter: fallback, content: fallback });
+  } catch (e: any) {
+    return json({ error: e?.message || 'Failed to generate cover letter' }, 500);
+  }
+}
+
 const POST_HANDLERS: Record<string, (body: any) => Promise<Response>> = {
+  'generate-cover-letter': handleGenerateCoverLetter,
   'parse-email': handleParseEmail,
   'generate-prep': handleGeneratePrep,
   'find-recruiter-contacts': handleFindRecruiterContacts,

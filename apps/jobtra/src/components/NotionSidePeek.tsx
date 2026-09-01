@@ -1,5 +1,5 @@
 import { apiUrl } from '../lib/api';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Maximize2,
@@ -33,7 +33,8 @@ import {
   Share2,
   AlertCircle,
   Phone,
-  Briefcase
+  Briefcase,
+  Save
 } from 'lucide-react';
 import { ApplicationStatus, BaseCV, DiscoveredContact, InterviewRound, JobApplication, JobSource, OnlineRecruiterSearchResult, PriorityLevel, WorkType } from '../types';
 import { getStatusStyle, getSourceStyle, getPriorityStyle, formatDate, formatDateTime, triggerOfferConfetti } from '../utils/notionStyles';
@@ -88,6 +89,13 @@ export const NotionSidePeek: React.FC<NotionSidePeekProps> = ({
   // AI Prep generator state
   const [isGeneratingPrep, setIsGeneratingPrep] = useState(false);
   const [prepData, setPrepData] = useState<any | null>(null);
+
+  // Cover Letter generator state
+  const [coverLetterContent, setCoverLetterContent] = useState<string>(application.coverLetter?.content ?? '');
+  const [coverLetterTone, setCoverLetterTone] = useState<string>(application.coverLetter?.tone ?? 'Professional');
+  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
+  const [coverLetterError, setCoverLetterError] = useState<string | null>(null);
+  const [coverLetterCopied, setCoverLetterCopied] = useState(false);
 
   // New interview round state
   const [newRoundName, setNewRoundName] = useState('');
@@ -222,6 +230,64 @@ export const NotionSidePeek: React.FC<NotionSidePeekProps> = ({
     } finally {
       setIsGeneratingPrep(false);
     }
+  };
+
+  // Reset the local cover-letter draft when switching to a different application
+  useEffect(() => {
+    setCoverLetterContent(application.coverLetter?.content ?? '');
+    setCoverLetterTone(application.coverLetter?.tone ?? 'Professional');
+    setCoverLetterError(null);
+    setCoverLetterCopied(false);
+  }, [application.id]);
+
+  const handleGenerateCoverLetter = async () => {
+    setIsGeneratingCoverLetter(true);
+    setCoverLetterError(null);
+    try {
+      const defaultCv = baseCvs.find((c) => c.isDefault) || baseCvs[0];
+      const res = await fetch(apiUrl('/api/generate-cover-letter'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company: application.company,
+          role: application.role,
+          jobDescription: application.jobDescription || '',
+          jobUrl: application.jobUrl || '',
+          tone: coverLetterTone,
+          baseCv: defaultCv || null,
+          candidateName: defaultCv?.fullName,
+          candidateEmail: defaultCv?.email,
+        }),
+      });
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const data = await res.json();
+      setCoverLetterContent(data.coverLetter ?? data.content ?? '');
+    } catch (err) {
+      console.error('Failed to generate cover letter:', err);
+      setCoverLetterError('Could not generate a cover letter. Please try again.');
+    } finally {
+      setIsGeneratingCoverLetter(false);
+    }
+  };
+
+  const handleSaveCoverLetter = () => {
+    onUpdate({
+      ...application,
+      coverLetter: {
+        content: coverLetterContent,
+        tone: coverLetterTone,
+        updatedAt: new Date().toISOString(),
+      },
+      updatedAt: new Date().toISOString(),
+    });
+    setCopyFeedback('Cover letter saved!');
+    setTimeout(() => setCopyFeedback(null), 2000);
+  };
+
+  const handleCopyCoverLetter = () => {
+    navigator.clipboard.writeText(coverLetterContent);
+    setCoverLetterCopied(true);
+    setTimeout(() => setCoverLetterCopied(false), 2000);
   };
 
   const hasContact = Boolean(application.contactName || application.contactEmail);
@@ -709,6 +775,101 @@ export const NotionSidePeek: React.FC<NotionSidePeekProps> = ({
                   placeholder="Paste snippet of the original job post or key requirements..."
                   className="w-full text-xs text-neutral-800 p-3 rounded-lg bg-neutral-50/70 border border-neutral-200 focus:bg-white focus:border-blue-500 outline-none leading-relaxed"
                 />
+              </div>
+
+              {/* Cover Letter Generator */}
+              <div className="space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <label className="text-xs font-bold text-neutral-700 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Cover Letter</span>
+                    </label>
+                    <p className="text-[11px] text-neutral-500">
+                      Draft a tailored cover letter for {application.company}, then edit, save, and copy it.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <select
+                      value={coverLetterTone}
+                      onChange={(e) => setCoverLetterTone(e.target.value)}
+                      className="text-xs bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-md px-2 py-1.5 text-neutral-700 outline-none cursor-pointer"
+                      title="Cover letter tone"
+                    >
+                      <option value="Professional">Professional</option>
+                      <option value="Enthusiastic">Enthusiastic</option>
+                      <option value="Concise">Concise</option>
+                      <option value="Formal">Formal</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleGenerateCoverLetter}
+                      disabled={isGeneratingCoverLetter}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold text-xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50 shrink-0"
+                    >
+                      {isGeneratingCoverLetter ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Generating…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Generate</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {coverLetterError && (
+                  <div className="bg-rose-50 text-rose-700 text-[11px] px-3 py-2 rounded-md border border-rose-200 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span>{coverLetterError}</span>
+                  </div>
+                )}
+
+                <textarea
+                  rows={12}
+                  value={coverLetterContent}
+                  onChange={(e) => setCoverLetterContent(e.target.value)}
+                  placeholder="Your cover letter will appear here. Generate one with AI or write your own..."
+                  className="w-full text-xs text-neutral-800 p-3 rounded-lg bg-neutral-50/70 border border-neutral-200 focus:bg-white focus:border-blue-500 outline-none leading-relaxed font-mono"
+                />
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveCoverLetter}
+                    className="px-3 py-1.5 rounded-md bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyCoverLetter}
+                    disabled={!coverLetterContent}
+                    className="px-3 py-1.5 rounded-md bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-40"
+                  >
+                    {coverLetterCopied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                  {application.coverLetter?.updatedAt && (
+                    <span className="text-[11px] text-neutral-400 ml-auto">
+                      Last updated {formatDate(application.coverLetter.updatedAt)}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}

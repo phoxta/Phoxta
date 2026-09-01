@@ -321,11 +321,22 @@ export default function App() {
     );
   };
 
-  // Add full application from modal
+  // Add full application from modal — with de-duplication so the same job isn't
+  // tracked twice (same job URL, or same company + role). If it's already there,
+  // open the existing one instead of creating a duplicate.
   const handleAddApplication = (newApp: JobApplication) => {
+    const norm = (s?: string) => (s || '').trim().toLowerCase();
+    const dup = applications.find((a) =>
+      (!!newApp.jobUrl && norm(a.jobUrl) === norm(newApp.jobUrl)) ||
+      (norm(a.company) !== '' && norm(a.company) === norm(newApp.company) && norm(a.role) === norm(newApp.role))
+    );
+    if (dup) {
+      setSelectedApplication(dup);
+      return;
+    }
     setApplications((prev) => [newApp, ...prev]);
     saveApplicationToFirestore(newApp).catch((err) =>
-      console.warn('Firestore add application error:', err)
+      console.warn('Supabase add application error:', err)
     );
   };
 
@@ -609,6 +620,25 @@ export default function App() {
         totalCount={filteredApplications.length}
         cvCount={baseCvs.length}
       />
+
+      {/* Overdue follow-ups nudge — uses the nextStepDate you already track. */}
+      {(() => {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const overdue = applications.filter(
+          (a) => a.nextStepDate && a.nextStepDate < todayStr &&
+            a.status !== 'Offer' && a.status !== 'Rejected' && a.status !== 'Withdrawn'
+        );
+        if (overdue.length === 0) return null;
+        const names = overdue.slice(0, 4).map((a) => a.company).join(', ');
+        return (
+          <div className="px-4 sm:px-6 lg:px-8 pt-3">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <span className="font-semibold">{overdue.length} follow-up{overdue.length > 1 ? 's' : ''} overdue</span>
+              <span className="text-amber-700">— {names}{overdue.length > 4 ? ` +${overdue.length - 4} more` : ''}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Main View Area */}
       <main className="flex-1 w-full pb-16">

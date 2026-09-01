@@ -249,6 +249,7 @@ export interface JobApplication {
   priority: PriorityLevel;
   notes: string;
   jobDescription?: string;
+  coverLetter?: { content: string; tone?: string; updatedAt: string };
   tailoredCv?: TailoredCVRecord;
   appliedCvId?: string;
   appliedCvTitle?: string;
