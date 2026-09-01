@@ -107,6 +107,11 @@ const PORTFOLIO_CSS = `
 .pf-clients__star{display:inline-flex;color:var(--pf-accent);margin-left:34px}
 
 /* ── About ─────────────────────────────────────────────────── */
+.pf-about__portrait{position:relative;border-radius:22px;overflow:hidden;aspect-ratio:5/6;background:var(--pf-ink);box-shadow:0 40px 90px -60px rgba(0,0,0,.6);isolation:isolate}
+.pf-about__photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;z-index:2}
+.pf-about__mono--xl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:0;background:linear-gradient(160deg,#232228,#0e0d11);color:rgba(255,255,255,.9);font-size:96px;font-weight:700;z-index:1}
+.pf-about__badge{position:absolute;left:14px;bottom:14px;z-index:3;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:#fff;background:rgba(0,0,0,.42);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.24);padding:7px 13px;border-radius:999px}
+.pf-about__badge::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--pf-accent);box-shadow:0 0 0 0 rgba(240,70,14,.5);animation:pf-pulse 2s infinite}
 .pf-about__card{display:inline-flex;align-items:center;gap:14px;border:1px solid var(--pf-line);border-radius:16px;padding:14px 18px;background:#fff}
 .pf-about__mono{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;background:var(--pf-ink);color:#fff;font-weight:700;font-size:19px}
 .pf-about__name{font-weight:700;font-size:16px;color:var(--pf-ink)}

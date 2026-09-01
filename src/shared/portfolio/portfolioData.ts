@@ -18,13 +18,16 @@ export const PROFILE = {
     email: "adeyemioluwafemi2018@gmail.com",
     phone: "+44 7350 172153",
     phoneHref: "+447350172153",
+    // Portrait lives in public/ so it ships as a static asset. Sections fall
+    // back to the monogram if the file isn't present yet.
+    photo: "/assets/imgs/portfolio/femi-adeyemi.webp",
 } as const;
 
 // Social links render only when a href is set — add the real URLs here and they
 // appear in the header and contact section automatically.
 export const SOCIALS: { label: string; href: string }[] = [
-    { label: "LinkedIn", href: "" },
-    { label: "GitHub", href: "" },
+    { label: "LinkedIn", href: "https://linkedin.com/in/femi-adeyemi-564430142" },
+    { label: "GitHub", href: "https://github.com/oluwafemiadeyemi?tab=repositories" },
 ];
 
 export const STATS = [
@@ -98,6 +101,8 @@ export type Project = {
     tags: string[];
     image: string;
     tone: "light" | "dark";
+    /** A live URL for the project, when one exists publicly. */
+    link?: string;
 };
 
 // Selected work, most recent first. Images are decorative texture from the
@@ -118,8 +123,9 @@ export const PROJECTS: Project[] = [
             "Set up product analytics to measure feature adoption and feed insight back into prioritisation.",
         ],
         tags: ["SaaS", "Design System", "AI", "Front-end"],
-        image: "/assets/imgs/pages/img-101.webp",
+        image: "/assets/imgs/pages/img-11.webp",
         tone: "dark",
+        link: "https://www.phoxta.com",
     },
     {
         slug: "northern-light",
@@ -136,7 +142,7 @@ export const PROJECTS: Project[] = [
             "Owned delivery from prototype to production on Netlify — environment config and CI/CD included.",
         ],
         tags: ["Enterprise", "Dashboards", "SSO", "Delivery"],
-        image: "/assets/imgs/pages/img-102.webp",
+        image: "/assets/imgs/pages/img-12.webp",
         tone: "light",
     },
     {
@@ -154,7 +160,7 @@ export const PROJECTS: Project[] = [
             "Maintained a scalable design system for consistency across the product.",
         ],
         tags: ["Health", "Research", "Design System"],
-        image: "/assets/imgs/pages/img-103.webp",
+        image: "/assets/imgs/pages/img-13.webp",
         tone: "light",
     },
     {
@@ -170,7 +176,7 @@ export const PROJECTS: Project[] = [
             "Introduced a modular design framework and a structured feedback loop that cut iteration cycles.",
         ],
         tags: ["Brand", "Web", "Systems"],
-        image: "/assets/imgs/pages/img-104.webp",
+        image: "/assets/imgs/pages/img-14.webp",
         tone: "dark",
     },
     {
@@ -187,7 +193,7 @@ export const PROJECTS: Project[] = [
             "Produced visual reports and presentations for C-level executives, and a standard template library that streamlined output.",
         ],
         tags: ["Enterprise", "Localisation", "Systems"],
-        image: "/assets/imgs/pages/img-105.webp",
+        image: "/assets/imgs/pages/img-170.webp",
         tone: "light",
     },
     {
@@ -204,7 +210,7 @@ export const PROJECTS: Project[] = [
             "Introduced modern tooling and AI-assisted workflows that lifted quality and speed.",
         ],
         tags: ["Leadership", "Studio", "Delivery"],
-        image: "/assets/imgs/pages/img-106.webp",
+        image: "/assets/imgs/pages/img-171.webp",
         tone: "dark",
     },
 ];

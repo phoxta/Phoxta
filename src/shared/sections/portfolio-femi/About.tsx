@@ -1,5 +1,11 @@
 import { PROFILE } from "@/shared/portfolio/portfolioData";
 
+// Hide a portrait that fails to load, revealing the monogram behind it — so the
+// section is never broken before the image file is in place.
+const hideOnError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    e.currentTarget.style.display = "none";
+};
+
 const PRINCIPLES = [
     { title: "Start with the user", body: "Research and behaviour data lead the decision, not opinion. I map the journey before I open Figma." },
     { title: "Design for feasibility", body: "I design knowing how it gets built. Front-end skills mean fewer surprises and a tighter design-to-code loop." },
@@ -17,7 +23,20 @@ export default function About() {
                         <h2 className="pf-section-title fz-60 fw-600 lh-1 mt-20 mb-0 at_fade_anim" data-fade-from="bottom">
                             A designer who thinks in products, not just pixels.
                         </h2>
-                        <div className="pf-about__card mt-40">
+                        <div className="pf-about__portrait mt-40 at_fade_anim" data-fade-from="bottom">
+                            <span className="pf-about__mono pf-about__mono--xl" aria-hidden="true">{PROFILE.monogram}</span>
+                            <img
+                                src={PROFILE.photo}
+                                alt={PROFILE.name}
+                                className="pf-about__photo"
+                                width={520}
+                                height={620}
+                                loading="lazy"
+                                onError={hideOnError}
+                            />
+                            <span className="pf-about__badge">{PROFILE.availability}</span>
+                        </div>
+                        <div className="pf-about__card mt-20">
                             <span className="pf-about__mono" aria-hidden="true">{PROFILE.monogram}</span>
                             <div>
                                 <p className="pf-about__name mb-0">{PROFILE.name}</p>
