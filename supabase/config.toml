@@ -358,3 +358,6 @@ verify_jwt = false
 
 [functions.telegram-setup]
 verify_jwt = false
+
+[functions.telegram-miniapp]
+verify_jwt = false

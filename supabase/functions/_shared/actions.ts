@@ -983,6 +983,53 @@ export type ExecuteOptions = {
   source?: AuditSource;
 };
 
+/**
+ * Approve or reject a queued action — the governed path agent-approve runs,
+ * lifted into a shared helper so every surface that can decide (the dashboard,
+ * the Telegram bot, the Telegram Mini App) does it identically: atomic claim so
+ * two decisions cannot both fire, execute by the STORED target id (args.__target)
+ * so the row that changes is the one that was queued, and an audit line with the
+ * approver either way. The caller is responsible for confirming the actor may
+ * approve (owner/admin) before calling this.
+ */
+export async function decideQueuedAction(
+  admin: SupabaseClient,
+  orgId: string,
+  actionId: string,
+  actorId: string,
+  decision: "approve" | "reject",
+): Promise<{ status: string; summary?: string; error?: string; title?: string }> {
+  const { data: act } = await admin.from("agent_actions")
+    .select("id, tool, args, title, status, organization_id").eq("id", actionId).maybeSingle();
+  if (!act || (act as Json).organization_id !== orgId) return { status: "gone" };
+  const title = String((act as Json).title ?? actionTitle(String((act as Json).tool), (act as Json).args));
+  if ((act as Json).status !== "pending") return { status: (act as Json).status, title };
+
+  const decided = new Date().toISOString();
+  if (decision === "reject") {
+    await admin.from("agent_actions").update({ status: "rejected", decided_at: decided, decided_by: actorId }).eq("id", actionId).eq("status", "pending");
+    return { status: "rejected", title };
+  }
+  const { data: claimed } = await admin.from("agent_actions")
+    .update({ status: "executing", decided_at: decided, decided_by: actorId })
+    .eq("id", actionId).eq("status", "pending").select("id").maybeSingle();
+  if (!claimed) return { status: "raced", title };
+
+  const tool = String((act as Json).tool);
+  const args = (act as Json).args;
+  try {
+    const summary = await runWrite(admin, orgId, tool, args, actorId);
+    await admin.from("agent_actions").update({ status: "executed", result: summary }).eq("id", actionId);
+    await recordAudit(admin, orgId, { tool, args, status: "ok", summary, actor: "owner", actorId, source: "approval" });
+    return { status: "executed", summary, title };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await admin.from("agent_actions").update({ status: "failed", error: msg }).eq("id", actionId);
+    await recordAudit(admin, orgId, { tool, args, status: "error", summary: msg, actor: "owner", actorId, source: "approval" });
+    return { status: "failed", error: msg, title };
+  }
+}
+
 /** Governed execution used by the operator agent's tool runner. Returns a string for the model.
  *
  *  `isAdmin` reflects the caller's org role. Non-admins can still drive the

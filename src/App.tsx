@@ -14,6 +14,7 @@ function KeepSearch({ to }: { to: string }) {
 // Pages are lazy-loaded so each route ships its own chunk (smaller first load).
 // Marketing site — the curated, public Phoxta pages.
 const Home1Page = lazy(() => import("@/pages/Home1Page"));
+const TelegramMiniApp = lazy(() => import("@/pages/telegram/MiniApp"));
 // Solutions pages (linked from the nav's Solutions dropdown)
 const MarketingSolutionPage = lazy(() => import("@/pages/MarketingSolutionPage")); // /marketing
 const AiTechPage = lazy(() => import("@/pages/AiTechPage")); // /ai-tech
@@ -112,6 +113,10 @@ export default function App() {
 
       {/* Public storefront for a published Studio page (anon, renders own chrome) */}
       <Route path="/site/:orgId/:slug" element={<PublishedPage />} />
+
+      {/* Telegram Mini App — the operator console inside the chat. Standalone,
+          authenticated by the Telegram signature (not the Supabase session). */}
+      <Route path="/tg" element={<TelegramMiniApp />} />
 
       {/* Dashboard (protected app shell, Supabase-backed) */}
       <Route element={<ProtectedRoute />}>

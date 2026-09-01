@@ -288,11 +288,23 @@ Deno.serve(async (req) => {
     // /start is the one command that works before linking.
     if (text.startsWith("/start")) { await handleStart(admin, msg, text.replace(/^\/start\s*/, "").trim()); return OK(); }
 
+    // In a group the bot (privacy mode) only sees commands and @mentions, so a
+    // team can run /today, /console or mention it and it acts on the SENDER's
+    // business. An unlinked sender in a group is met with silence, not a prompt
+    // spammed to everyone.
+    const inGroup = msg.chat?.type === "group" || msg.chat?.type === "supergroup";
     const link = await linkFor(admin, tgUserId);
-    if (!link) { await sendMessage(chatId, LINK_PROMPT); return OK(); }
+    if (!link) { if (!inGroup) await sendMessage(chatId, LINK_PROMPT); return OK(); }
 
     if (text === "/help" || text === "/help@") { await sendMessage(chatId, HELP); return OK(); }
     if (text.startsWith("/switch")) { await handleSwitch(admin, chatId, link); return OK(); }
+    if (text.startsWith("/console") || text.startsWith("/app")) {
+      const appUrl = (Deno.env.get("APP_URL") || "https://www.phoxta.com").replace(/\/+$/, "");
+      await sendMessage(chatId, "Your operator console — today's numbers, approvals and chat in one screen:", {
+        keyboard: inlineKeyboard([[{ text: "📊 Open console", webApp: `${appUrl}/tg` }]]),
+      });
+      return OK();
+    }
 
     const since = new Date(Date.now() - 2000).toISOString();
     await chatAction(chatId, "typing");

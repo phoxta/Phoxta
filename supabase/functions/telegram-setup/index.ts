@@ -22,15 +22,25 @@ Deno.serve(async (req) => {
     drop_pending_updates: true,
   });
   const cmds = await setMyCommands([
+    { command: "console", description: "Open the operator console (Mini App)" },
     { command: "today", description: "Today's orders, revenue & what needs you" },
     { command: "switch", description: "Switch which business you're acting on" },
     { command: "help", description: "What you can ask the operator" },
   ]);
+
+  // A persistent menu button that launches the Mini App — the console lives one
+  // tap from every chat. APP_URL is where the SPA is served (the /tg route).
+  const appUrl = (Deno.env.get("APP_URL") || "https://www.phoxta.com").replace(/\/+$/, "");
+  const menu = await tg("setChatMenuButton", {
+    menu_button: { type: "web_app", text: "Console", web_app: { url: `${appUrl}/tg` } },
+  });
+
   const me = await tg<{ username?: string }>("getMe", {});
 
   return json({
     webhook: { ok: hook.ok, url: webhookUrl, description: hook.description },
     commands: { ok: cmds.ok },
+    menuButton: { ok: menu.ok, url: `${appUrl}/tg` },
     bot: me.result?.username ? `@${me.result.username}` : null,
   });
 });

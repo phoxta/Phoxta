@@ -108,9 +108,15 @@ post() {
 # advancing, the background loop has stopped, wherever it is hosted.
 ( post objective-planner '{}' ) > "$OUT/7" 2>&1 &
 
+# The Telegram operator's proactive tick: push approval cards for actions queued
+# outside a Telegram chat, and send each owner their morning brief when it is
+# morning where they are. Idempotent (tg_pushed_at / last_brief_at), so a repeat
+# tick never double-sends; a no-op when nobody is linked.
+( post telegram-digest   '{}' ) > "$OUT/8" 2>&1 &
+
 wait
 
-for i in 1 2 3 4 5 6 7; do
+for i in 1 2 3 4 5 6 7 8; do
   [ -f "$OUT/$i" ] && cat "$OUT/$i"
 done
 echo "worker-cron done"
