@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api';
 import React, { useState } from 'react';
 import {
   Mail,
@@ -208,7 +209,7 @@ export const EmailSyncHub: React.FC<EmailSyncHubProps> = ({
     if (!pasteContent.trim() && !pasteSubject.trim()) return;
     setIsAnalyzingPaste(true);
     try {
-      const res = await fetch('/api/parse-email', {
+      const res = await fetch(apiUrl('/api/parse-email'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -349,7 +350,7 @@ export const EmailSyncHub: React.FC<EmailSyncHubProps> = ({
           setGmailScanStatus(`Inspecting (${processedCount}/${totalFound}): "${subjectHeader.slice(0, 38)}..."`);
 
           // Send to Gemini AI smart classifier & extractor
-          const aiRes = await fetch('/api/parse-email', {
+          const aiRes = await fetch(apiUrl('/api/parse-email'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

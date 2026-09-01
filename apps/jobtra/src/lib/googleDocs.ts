@@ -1,3 +1,4 @@
+import { apiUrl } from './api';
 import { BaseCV, TailoredCVRecord, CVTemplateId, CVThemeSettings } from '../types';
 import appletConfig from '../../applet-config.json';
 import { resolveCVTheme } from '../data/cvTemplates';
@@ -262,7 +263,7 @@ export async function pushCVToGoogleDoc(
 
   const { docTitle, docText } = formatCvForGoogleDoc(cv, tailored, templateId, cv.themeSettings);
 
-  const res = await fetch('/api/google-docs/push', {
+  const res = await fetch(apiUrl('/api/google-docs/push'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -298,7 +299,7 @@ export async function pullCVFromGoogleDoc(
     throw new Error('Google Docs access token required to pull edits.');
   }
 
-  const res = await fetch('/api/google-docs/pull', {
+  const res = await fetch(apiUrl('/api/google-docs/pull'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

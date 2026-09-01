@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api';
 import React, { useState } from 'react';
 import { BaseCV, CVTemplateId, CVTemplateInfo } from '../types';
 import { CV_TEMPLATES, getTemplateById } from '../data/cvTemplates';
@@ -67,7 +68,7 @@ export const ReferenceCVAdaptModal: React.FC<ReferenceCVAdaptModalProps> = ({
     setError(null);
 
     try {
-      const res = await fetch('/api/adapt-reference-cv', {
+      const res = await fetch(apiUrl('/api/adapt-reference-cv'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

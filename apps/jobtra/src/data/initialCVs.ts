@@ -1,229 +1,187 @@
 import { BaseCV } from '../types';
 
+const NOW = '2026-09-01T00:00:00.000Z';
+
+// Oluwafemi (Femi) Adeyemi's master CV — the base the tailoring engine works
+// from. Real details imported from his product-design CV.
 export const INITIAL_BASE_CVS: BaseCV[] = [
   {
-    id: 'cv-fullstack-base',
-    title: 'Senior Full-Stack Engineer (Core Base)',
-    targetRole: 'Senior Full-Stack Engineer / Lead',
-    fullName: 'Alex Morgan',
-    email: 'alex.morgan.dev@gmail.com',
-    phone: '+1 (555) 382-9104',
-    location: 'San Francisco, CA (Open to Remote)',
-    linkedin: 'https://linkedin.com/in/alex-morgan-tech',
-    github: 'https://github.com/alexmorgan-dev',
-    portfolio: 'https://alexmorgan.io',
-    summary: 'High-impact Senior Full-Stack Engineer with 7+ years of experience architecting distributed cloud applications, resilient microservices, and reactive web applications. Proven track record leading cross-functional teams, reducing API latencies by 45%, and scaling user platforms to 2M+ MAU with React, TypeScript, Node.js, and GCP/AWS.',
+    id: 'cv-product-designer-base',
+    title: 'Product Designer (Core Base)',
+    targetRole: 'Product Designer / Senior Product Designer',
+    fullName: 'Oluwafemi David Adeyemi',
+    email: 'adeyemioluwafemi2018@gmail.com',
+    phone: '+44 7350 172153',
+    location: 'United Kingdom (Open to Remote)',
+    linkedin: 'https://linkedin.com/in/femi-adeyemi-564430142',
+    github: 'https://github.com/oluwafemiadeyemi',
+    portfolio: 'https://femi.phoxta.com',
+    summary:
+      "Product Designer with 7+ years taking digital products from research and wireframes through to polished, shipped interfaces. I combine strong UX craft — user research, journey mapping, interactive prototyping and scalable design systems in Figma — with hands-on front-end skills (React, Next.js, TypeScript) that let me design for feasibility and work fluently with engineers. I have led design for SaaS platforms, enterprise internal tools and consumer health products, using analytics and user-behaviour data to inform decisions and measure their impact.",
     isDefault: true,
+    templateId: 'modern-executive',
     skills: [
       {
-        category: 'Frontend & UI',
-        items: ['TypeScript', 'React 18/19', 'Next.js', 'Tailwind CSS', 'Redux / Zustand', 'Vite', 'GraphQL Client', 'WebSockets', 'Web Performance & Core Web Vitals']
+        category: 'Design',
+        items: ['Figma & FigJam', 'Adobe Creative Suite', 'Interaction & Visual (UI) Design', 'Design Systems & Component Libraries', 'Interactive Prototyping', 'Wireframing & Information Architecture', 'Accessibility & Responsive Design'],
       },
       {
-        category: 'Backend & APIs',
-        items: ['Node.js', 'Express', 'NestJS', 'PostgreSQL', 'Prisma / Drizzle ORM', 'Redis', 'RESTful API Design', 'GraphQL Apollo', 'Python / FastAPI']
+        category: 'Research & Strategy',
+        items: ['User Research & Usability Testing', 'User Flows & Journey Mapping', 'Product Analytics & SQL', 'Data-Informed Product Strategy', 'AI-Assisted Design Workflows'],
       },
       {
-        category: 'Cloud & DevOps',
-        items: ['AWS (ECS, Lambda, S3, RDS)', 'GCP (Cloud Run, Spanner)', 'Docker', 'Kubernetes', 'CI/CD (GitHub Actions)', 'Terraform', 'Datadog']
+        category: 'Front-end Engineering',
+        items: ['HTML, CSS & Tailwind', 'React', 'Next.js', 'TypeScript'],
       },
       {
-        category: 'Architecture & Practices',
-        items: ['Microservices', 'Event-Driven Systems (Kafka)', 'System Design', 'TDD (Jest, Playwright)', 'Agile / Scrum Leadership', 'Security & OAuth2']
-      }
+        category: 'Ways of Working',
+        items: ['Agile', 'Project & Risk Management', 'Cross-Functional Collaboration', 'Design-to-Code Handoff'],
+      },
     ],
     experience: [
       {
-        id: 'exp-1',
-        company: 'Vanguard Cloud Solutions',
-        role: 'Senior Full-Stack Engineer & Team Lead',
-        location: 'San Francisco, CA (Hybrid)',
-        startDate: '2022-03',
+        id: 'exp-phoxta',
+        company: 'Phoxta',
+        role: 'Founder & Lead Product Designer',
+        location: 'United Kingdom',
+        startDate: '2025-10',
         endDate: 'Present',
         isCurrent: true,
         bullets: [
-          'Architected and delivered high-throughput analytics pipeline processing 40M+ events/day using React, TypeScript, Node.js, Kafka, and PostgreSQL, reducing latency by 45%.',
-          'Spearheaded transition from legacy monolith to Next.js micro-frontends with server-side rendering, boosting Lighthouse performance scores from 58 to 96.',
-          'Mentored 6 engineers across frontend and backend disciplines, conducted rigorous code reviews, and instituted automated CI/CD workflows cutting release cycle from 2 weeks to daily.'
+          'Own end-to-end product design for an AI-powered SaaS platform for planning, launching and scaling business operations — from problem framing and user flows to high-fidelity Figma prototypes and shipped UI.',
+          'Designed the multi-tenant operations console, marketplace and CRM, translating complex operator workflows into clear, task-focused interfaces.',
+          'Built and maintain a scalable design system and component library (Figma to React), keeping the web app, marketing site and email communications consistent.',
+          'Set up product analytics to capture user behaviour, measure feature adoption and feed insights back into design prioritisation.',
+          'Designed an AI-assisted social media command centre (sentiment analysis, engagement forecasting, content recommendations) and an AI graphics generator with layer decomposition and PSD export.',
+          'Hands-on with the front end (Next.js, Tailwind CSS), shipping designs to production and closing the gap between design intent and implementation.',
         ],
-        techStack: ['React', 'TypeScript', 'Node.js', 'Kafka', 'PostgreSQL', 'Docker', 'GCP Cloud Run']
+        techStack: ['Figma', 'React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Product Analytics'],
       },
       {
-        id: 'exp-2',
-        company: 'Apex Media & Commerce',
-        role: 'Full-Stack Software Engineer',
-        location: 'Austin, TX (Remote)',
-        startDate: '2019-06',
-        endDate: '2022-02',
+        id: 'exp-northern-light',
+        company: 'Northern Light School Division',
+        role: 'Product Designer & Software Engineer (Contract)',
+        location: 'Canada (Remote)',
+        startDate: '2025-01',
+        endDate: '2025-03',
         isCurrent: false,
         bullets: [
-          'Built responsive checkout and subscription billing service integrating Stripe APIs and webhook handlers, increasing conversion rate by 18% across 450k active customers.',
-          'Engineered real-time inventory synchronization service with Redis pub/sub and WebSockets, cutting race conditions and overselling incidents to zero.',
-          'Developed comprehensive unit and integration testing suite with Jest and Cypress, achieving 88% test coverage and reducing production defects by 35%.'
+          'Designed and built an internal HR web application (timesheets, expenses and approvals) for a Canadian organisation with about 15,000 staff.',
+          'Mapped employee and manager journeys, then designed role-based dashboards and approval workflows that surface only what each user needs.',
+          'Created responsive UI components with Tailwind CSS, including dashboard analytics, data visualisation and animated statistics.',
+          'Designed for trust and security by aligning the UX with Microsoft Entra ID single sign-on and row-level permissions, so users see only their own data.',
+          'Managed delivery from prototype to production on Netlify, owning environment configuration and CI/CD.',
         ],
-        techStack: ['TypeScript', 'React', 'Node.js', 'Stripe API', 'Redis', 'PostgreSQL', 'AWS Lambda']
+        techStack: ['Figma', 'React', 'Tailwind CSS', 'Microsoft Entra ID', 'Netlify'],
       },
       {
-        id: 'exp-3',
-        company: 'Beacon Interactive Labs',
-        role: 'Frontend / Junior Web Developer',
-        location: 'Seattle, WA',
-        startDate: '2017-08',
-        endDate: '2019-05',
+        id: 'exp-artstanding',
+        company: 'Artstanding Creative Agency',
+        role: 'Co-Founder & CTO (Design & Technology Lead)',
+        location: 'Lagos, Nigeria',
+        startDate: '2024-03',
+        endDate: '2025-05',
         isCurrent: false,
         bullets: [
-          'Implemented responsive UI dashboards and interactive charting components using React and D3.js for B2B enterprise clients.',
-          'Refactored frontend CSS styling to reusable modular components, reducing bundle size by 30% and speeding initial load times.'
+          'Led multidisciplinary design and engineering teams delivering websites, digital products, platforms and creative-tech solutions for clients.',
+          'Partnered with product managers, engineers and marketers to ensure design feasibility and alignment with business goals.',
+          'Established design and development standards, review processes and quality benchmarks across all client projects.',
+          'Introduced modern tooling and AI-assisted workflows that improved output quality and delivery speed.',
+          'Led design and technical direction in client pitches and proposals, translating complex ideas into clear, buildable solutions.',
         ],
-        techStack: ['JavaScript', 'React', 'CSS3 / SASS', 'REST APIs', 'Webpack']
-      }
+        techStack: ['Figma', 'React', 'Design Systems', 'AI-Assisted Workflows'],
+      },
+      {
+        id: 'exp-mod-group',
+        company: 'MOD Group',
+        role: 'Senior Digital Designer',
+        location: 'Lagos, Nigeria',
+        startDate: '2020-12',
+        endDate: '2024-02',
+        isCurrent: false,
+        bullets: [
+          "Spearheaded visual design strategy for digital and print media across MOD Group's subsidiaries and partner organisations.",
+          'Designed campaign identities, marketing visuals, website layouts and social media content that strengthened brand recognition.',
+          'Reduced design iteration cycles by introducing a modular design framework and a structured feedback loop.',
+        ],
+        techStack: ['Adobe Creative Suite', 'Figma', 'Brand Systems'],
+      },
+      {
+        id: 'exp-healthtracka',
+        company: 'Healthtracka',
+        role: 'Digital Designer (UX/UI)',
+        location: 'Lagos, Nigeria',
+        startDate: '2022-07',
+        endDate: '2023-03',
+        isCurrent: false,
+        bullets: [
+          'Translated product concepts into user flows, journey maps, sketches and wireframes for a consumer health platform.',
+          'Coordinated user research with the marketing and product teams — interviews, surveys and competitor analysis — to identify user pain points and market needs.',
+          'Built interactive prototypes and ran usability tests to validate designs before development.',
+          'Created polished user interfaces and maintained a scalable design system for consistency across the product.',
+        ],
+        techStack: ['Figma', 'User Research', 'Prototyping', 'Design Systems'],
+      },
+      {
+        id: 'exp-schneider',
+        company: 'Schneider Electric',
+        role: 'Digital and UI/UX Designer',
+        location: 'Lagos, Nigeria',
+        startDate: '2019-01',
+        endDate: '2020-10',
+        isCurrent: false,
+        bullets: [
+          'Localised application interfaces for the West Africa region, adapting content and UI to regional user needs.',
+          'Developed wireframes, icons and infographics to enhance technical documentation and training materials.',
+          'Collaborated with cross-functional teams to produce visual reports and presentations for C-level executives.',
+          'Introduced a standard design template library that streamlined internal communication output.',
+          'Supported global brand alignment through localised marketing content and visual updates.',
+        ],
+        techStack: ['Adobe Creative Suite', 'Wireframing', 'Infographics'],
+      },
     ],
     education: [
       {
-        id: 'edu-1',
-        degree: 'Bachelor of Science in Computer Science',
-        institution: 'University of Washington',
-        location: 'Seattle, WA',
-        graduationYear: '2017',
-        details: 'Dean’s List, Focus on Distributed Systems & Human-Computer Interaction'
-      }
+        id: 'edu-ulster',
+        degree: 'MSc International Business with Data Analytics',
+        institution: 'Ulster University',
+        location: 'United Kingdom',
+        graduationYear: '2026',
+      },
+      {
+        id: 'edu-ibadan',
+        degree: 'BSc Mathematics',
+        institution: 'University of Ibadan',
+        location: 'Nigeria',
+        graduationYear: '2016',
+      },
     ],
     projects: [
       {
-        id: 'proj-1',
-        name: 'OmniStream - Realtime Analytics Engine',
-        description: 'Open-source distributed telemetry collector with WebAssembly dashboard rendering 100k data points at 60fps.',
-        link: 'https://github.com/alexmorgan-dev/omnistream',
-        techStack: ['TypeScript', 'Rust / Wasm', 'React', 'WebSockets', 'Tailwind']
+        id: 'proj-phoxta',
+        name: 'Phoxta — AI operations platform',
+        description: 'Founding designer of an AI-powered platform to plan, launch and scale a business: multi-tenant operations console, marketplace, CRM, an AI social command centre and an AI graphics generator, all on one Figma-to-React design system.',
+        link: 'https://www.phoxta.com',
+        techStack: ['Figma', 'React', 'Next.js', 'TypeScript', 'Tailwind CSS'],
       },
       {
-        id: 'proj-2',
-        name: 'AutoDeploy CLI & GitHub Action',
-        description: 'Developer productivity tool automating preview environment spins on Cloud Run for every PR.',
-        link: 'https://github.com/alexmorgan-dev/autodeploy-cli',
-        techStack: ['Node.js', 'Go', 'Docker', 'GitHub Actions']
-      }
+        id: 'proj-portfolio',
+        name: 'femi.phoxta.com — Product-design portfolio',
+        description: 'Designed and built a personal portfolio showcasing selected work across SaaS, enterprise, health and energy.',
+        link: 'https://femi.phoxta.com',
+        techStack: ['React', 'TypeScript', 'Design Systems'],
+      },
     ],
     certifications: [
-      'AWS Certified Solutions Architect - Associate',
-      'Google Cloud Certified Professional Cloud Developer'
+      'Applied AI and Data Science — MIT Professional Education (2026)',
+      'AI Engineering with LangChain — DataCamp (2026)',
+      'Python — DataCamp (2025)',
+      'Design Thinking — Interaction Design Foundation (IxDF) (2022)',
+      'Human–Computer Interaction — Interaction Design Foundation (IxDF) (2022)',
+      'Project Management Professional (6th Edition) — Stack Skills (2020)',
+      'Risk Management Professional (6th Edition) — Stack Skills (2020)',
     ],
-    createdAt: '2026-01-15T09:00:00.000Z',
-    updatedAt: '2026-08-25T14:30:00.000Z'
+    createdAt: NOW,
+    updatedAt: NOW,
   },
-  {
-    id: 'cv-frontend-product',
-    title: 'Frontend & Product Engineer (UI/UX Focus)',
-    targetRole: 'Senior Frontend Engineer / Product Engineer',
-    fullName: 'Alex Morgan',
-    email: 'alex.morgan.dev@gmail.com',
-    phone: '+1 (555) 382-9104',
-    location: 'San Francisco, CA (Open to Remote)',
-    linkedin: 'https://linkedin.com/in/alex-morgan-tech',
-    github: 'https://github.com/alexmorgan-dev',
-    portfolio: 'https://alexmorgan.io',
-    summary: 'Design-minded Senior Frontend & Product Engineer passionate about building delightful, pixel-perfect user experiences with high performance and accessibility (WCAG AAA). Deep mastery of React, TypeScript, Next.js, motion systems, and scalable design systems collaborating closely with Product Designers and Founders.',
-    isDefault: false,
-    skills: [
-      {
-        category: 'Frontend Core',
-        items: ['React 18/19', 'TypeScript', 'Next.js App Router', 'Tailwind CSS', 'Framer Motion', 'Radix UI / Headless UI', 'State Management (Zustand, Jotai)', 'TanStack Query']
-      },
-      {
-        category: 'Design & DX',
-        items: ['Figma to Code', 'Design System Architecture', 'Micro-interactions', 'WCAG AA/AAA Accessibility', 'Storybook', 'Responsive Layouts']
-      },
-      {
-        category: 'Performance & Testing',
-        items: ['Core Web Vitals', 'Lighthouse Optimization', 'Bundle Splitting', 'Vitest', 'Playwright E2E', 'Performance Profiling']
-      }
-    ],
-    experience: [
-      {
-        id: 'fe-exp-1',
-        company: 'Vanguard Cloud Solutions',
-        role: 'Staff Frontend & Design Systems Engineer',
-        location: 'San Francisco, CA',
-        startDate: '2022-03',
-        endDate: 'Present',
-        isCurrent: true,
-        bullets: [
-          'Built the company-wide design system used across 14 internal and customer-facing apps, reducing UI bug tickets by 60% and cutting new feature development time in half.',
-          'Spearheaded frontend overhaul of core SaaS workspace, optimizing rendering performance to sustain 60fps animations and sub-100ms interaction latency.',
-          'Partnered directly with Product & UX leadership to establish design tokens, accessible keyboard navigation patterns, and fluid mobile-responsive breakpoints.'
-        ],
-        techStack: ['React', 'TypeScript', 'Tailwind CSS', 'Framer Motion', 'Storybook', 'Next.js']
-      }
-    ],
-    education: [
-      {
-        id: 'fe-edu-1',
-        degree: 'B.S. in Computer Science',
-        institution: 'University of Washington',
-        graduationYear: '2017'
-      }
-    ],
-    projects: [
-      {
-        id: 'fe-proj-1',
-        name: 'FluidUI - Zero-Runtime Headless Component Kit',
-        description: 'Accessible, unstyled component primitives with built-in spring physics and focus trapping.',
-        techStack: ['TypeScript', 'React', 'Tailwind']
-      }
-    ],
-    certifications: [],
-    createdAt: '2026-02-10T11:00:00.000Z',
-    updatedAt: '2026-08-20T10:15:00.000Z'
-  },
-  {
-    id: 'cv-tech-lead',
-    title: 'Engineering Manager & Tech Lead',
-    targetRole: 'Engineering Manager / Lead Architect',
-    fullName: 'Alex Morgan',
-    email: 'alex.morgan.dev@gmail.com',
-    phone: '+1 (555) 382-9104',
-    location: 'San Francisco, CA (Open to Remote)',
-    linkedin: 'https://linkedin.com/in/alex-morgan-tech',
-    github: 'https://github.com/alexmorgan-dev',
-    summary: 'Strategic Engineering Lead and hands-on Architect with 7+ years guiding high-performing cross-functional teams to build resilient enterprise software. Adept at technical roadmap planning, developer mentorship, hiring top engineering talent, and balancing product velocity with architectural excellence.',
-    isDefault: false,
-    skills: [
-      {
-        category: 'Leadership & Management',
-        items: ['Team Leadership (6-12 Engineers)', '1:1 Coaching & Career Growth', 'Technical Roadmap Planning', 'Agile / Scrum / Kanban', 'Hiring & Technical Interviewing', 'Cross-functional Alignment']
-      },
-      {
-        category: 'System Architecture',
-        items: ['Distributed Systems', 'Cloud Native (AWS/GCP)', 'API Gateway Architecture', 'Zero-Downtime Deployments', 'Disaster Recovery & SLOs']
-      }
-    ],
-    experience: [
-      {
-        id: 'lead-exp-1',
-        company: 'Vanguard Cloud Solutions',
-        role: 'Engineering Lead / Manager',
-        location: 'San Francisco, CA',
-        startDate: '2023-01',
-        endDate: 'Present',
-        isCurrent: true,
-        bullets: [
-          'Led an engineering squad of 8 senior full-stack developers responsible for the core cloud orchestration engine generating $12M ARR.',
-          'Established quarterly engineering OKRs, reduced sprint spillover by 30%, and improved sprint velocity by 25% through refined backlog grooming.',
-          'Scaled team through active technical interviewing and onboarding 5 high-caliber engineers while maintaining 100% team retention.'
-        ],
-        techStack: ['Architecture Strategy', 'Team Coaching', 'TypeScript', 'Go', 'GCP', 'PostgreSQL']
-      }
-    ],
-    education: [
-      {
-        id: 'lead-edu-1',
-        degree: 'B.S. in Computer Science',
-        institution: 'University of Washington',
-        graduationYear: '2017'
-      }
-    ],
-    certifications: ['Scrum Alliance Certified ScrumMaster (CSM)'],
-    createdAt: '2026-03-01T14:00:00.000Z',
-    updatedAt: '2026-08-15T16:45:00.000Z'
-  }
 ];

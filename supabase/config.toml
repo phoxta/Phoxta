@@ -366,3 +366,9 @@ verify_jwt = false
 
 [functions.telegram-miniapp]
 verify_jwt = false
+
+# Jobtra's AI backend (femi.phoxta.com/jobtra). Called cross-origin from the
+# tracker page with no Supabase JWT, so verify_jwt must be false; it uses the
+# platform GEMINI_API_KEY and guards itself with CORS.
+[functions.jobtra-ai]
+verify_jwt = false

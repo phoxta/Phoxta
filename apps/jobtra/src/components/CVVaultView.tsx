@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api';
 import React, { useState, useRef } from 'react';
 import {
   FileText,
@@ -156,7 +157,7 @@ ${cv.education.map((ed) => `- **${ed.degree}**, ${ed.institution} (${ed.graduati
           reader.readAsDataURL(file);
         });
 
-        const res = await fetch('/api/parse-pdf-resume', {
+        const res = await fetch(apiUrl('/api/parse-pdf-resume'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -205,7 +206,7 @@ ${cv.education.map((ed) => `- **${ed.degree}**, ${ed.institution} (${ed.graduati
     setImportError(null);
 
     try {
-      const res = await fetch('/api/parse-resume-text', {
+      const res = await fetch(apiUrl('/api/parse-resume-text'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -297,7 +298,7 @@ ${cv.education.map((ed) => `- **${ed.degree}**, ${ed.institution} (${ed.graduati
     setIsSimulating(true);
 
     try {
-      const res = await fetch('/api/analyze-job', {
+      const res = await fetch(apiUrl('/api/analyze-job'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

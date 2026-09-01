@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api';
 import React, { useState, useEffect } from 'react';
 import {
   FileText,
@@ -93,7 +94,7 @@ export const CVTailoringPanel: React.FC<CVTailoringPanelProps> = ({
     setTailorError(null);
 
     try {
-      const res = await fetch('/api/analyze-job', {
+      const res = await fetch(apiUrl('/api/analyze-job'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -142,7 +143,7 @@ export const CVTailoringPanel: React.FC<CVTailoringPanelProps> = ({
       setTimeout(() => setTailorStep('Rewriting impact achievement bullets...'), 1400);
       setTimeout(() => setTailorStep('Crafting tailored executive summary & cover pitch...'), 2200);
 
-      const res = await fetch('/api/tailor-cv', {
+      const res = await fetch(apiUrl('/api/tailor-cv'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

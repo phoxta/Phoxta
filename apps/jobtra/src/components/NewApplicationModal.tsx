@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api';
 import React, { useState, useEffect } from 'react';
 import {
   X,
@@ -86,7 +87,7 @@ export const NewApplicationModal: React.FC<NewApplicationModalProps> = ({
     setAiSuccessMsg(null);
 
     try {
-      const res = await fetch('/api/analyze-job', {
+      const res = await fetch(apiUrl('/api/analyze-job'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

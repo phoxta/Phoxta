@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api';
 import React, { useState } from 'react';
 import {
   Sparkles,
@@ -59,7 +60,7 @@ export const BulletOptimizerModal: React.FC<BulletOptimizerModalProps> = ({
     setError(null);
 
     try {
-      const res = await fetch('/api/evaluate-bullet', {
+      const res = await fetch(apiUrl('/api/evaluate-bullet'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

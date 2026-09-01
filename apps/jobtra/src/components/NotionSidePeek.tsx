@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api';
 import React, { useState } from 'react';
 import {
   X,
@@ -126,7 +127,7 @@ export const NotionSidePeek: React.FC<NotionSidePeekProps> = ({
   const handleSearchRecruiterOnline = async () => {
     setIsSearchingRecruiter(true);
     try {
-      const res = await fetch('/api/find-recruiter-contacts', {
+      const res = await fetch(apiUrl('/api/find-recruiter-contacts'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -202,7 +203,7 @@ export const NotionSidePeek: React.FC<NotionSidePeekProps> = ({
   const handleGenerateAIPrep = async () => {
     setIsGeneratingPrep(true);
     try {
-      const res = await fetch('/api/generate-prep', {
+      const res = await fetch(apiUrl('/api/generate-prep'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
