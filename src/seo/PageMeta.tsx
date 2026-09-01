@@ -25,6 +25,13 @@ type Props = {
     noindex?: boolean;
     /** Optional JSON-LD structured data (object or array of objects). */
     jsonLd?: object | object[];
+    /**
+     * Full canonical URL, used verbatim for <link rel="canonical"> and og:url.
+     * For pages served from a different origin than SITE_URL — e.g. the
+     * femi.phoxta.com portfolio — where `path` (which is prefixed with SITE_URL)
+     * would produce the wrong host.
+     */
+    canonicalUrl?: string;
 };
 
 /**
@@ -42,9 +49,10 @@ export default function PageMeta({
     type = "website",
     noindex = false,
     jsonLd,
+    canonicalUrl,
 }: Props) {
     const location = useLocation();
-    const url = absoluteUrl(path ?? location.pathname);
+    const url = canonicalUrl ?? absoluteUrl(path ?? location.pathname);
     const ogImage = image.startsWith("http") ? image : absoluteUrl(image);
 
     return (

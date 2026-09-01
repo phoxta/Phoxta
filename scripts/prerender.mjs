@@ -72,6 +72,7 @@ function articleSlugs() {
 
 const ROUTES = [
     "/",
+    "/portfolio",
     "/about",
     "/marketplace",
     "/pricing",

@@ -5,6 +5,11 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/((?!.*\\.).*)",
+      "has": [{ "type": "host", "value": "femi.phoxta.com" }],
+      "destination": "/portfolio/index.html"
+    },
+    {
       "source": "/oauth/social/callback",
       "destination": "https://ktgleoqvdikngocygdkn.supabase.co/functions/v1/social-callback"
     },

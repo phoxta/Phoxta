@@ -15,6 +15,10 @@ function KeepSearch({ to }: { to: string }) {
 // Marketing site — the curated, public Phoxta pages.
 const Home1Page = lazy(() => import("@/pages/Home1Page"));
 const TelegramMiniApp = lazy(() => import("@/pages/telegram/MiniApp"));
+// Personal portfolio — served at femi.phoxta.com (host-mapped below) and also at
+// /portfolio on any host. Its own standalone layout (no Phoxta marketing chrome).
+const PortfolioLayout = lazy(() => import("@/layouts/PortfolioLayout"));
+const PortfolioPage = lazy(() => import("@/pages/portfolio/PortfolioPage"));
 // Solutions pages (linked from the nav's Solutions dropdown)
 const MarketingSolutionPage = lazy(() => import("@/pages/MarketingSolutionPage")); // /marketing
 const AiTechPage = lazy(() => import("@/pages/AiTechPage")); // /ai-tech
@@ -104,7 +108,31 @@ const RouteFallback = () => (
   </div>
 );
 
+// Hosts that ARE the portfolio — the whole site is the portfolio there, mounted
+// at the root. Everything else on that host redirects home. Path-based access
+// (/portfolio on any host) stays available for previews and prerendering.
+const PORTFOLIO_HOSTS = new Set(["femi.phoxta.com", "femi.localhost"]);
+function isPortfolioHost(): boolean {
+  try {
+    return PORTFOLIO_HOSTS.has(window.location.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
+  if (isPortfolioHost()) {
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route element={<PortfolioLayout />}>
+            <Route path="/" element={<PortfolioPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    );
+  }
   return (
     <Suspense fallback={<RouteFallback />}>
     <Routes>
@@ -221,6 +249,12 @@ export default function App() {
       {/* ── Marketing site (public, curated) ───────────────────────────── */}
       <Route element={<MainLayout headerStyle={4} footerStyle={1} noHeader />}>
         <Route path="/" element={<Home1Page />} />
+      </Route>
+      {/* Personal portfolio (femi.phoxta.com). Reachable at /portfolio on any
+          host too, which is what gets prerendered and what the femi.phoxta.com
+          root rewrites to (see vercel.json). */}
+      <Route element={<PortfolioLayout />}>
+        <Route path="/portfolio" element={<PortfolioPage />} />
       </Route>
       {/* /invest taken down 2026-08-18 (audit): the page offered securities
           (Growth Notes, APR figures) with no product, KYC, or filings behind
