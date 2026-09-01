@@ -26,8 +26,21 @@ export default function middleware(request: Request): Response {
         const host = (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
         if (PORTFOLIO_HOSTS.has(host)) {
             const url = new URL(request.url);
-            // Already on the portfolio path — don't loop.
-            if (!url.pathname.startsWith("/portfolio")) {
+            const p = url.pathname;
+            // Jobtra is a separate app served at /jobtra. Its static files (assets,
+            // index.html) carry a dot and are excluded by the matcher, so they're
+            // served directly; only its dotless app paths reach here → serve its
+            // index so the SPA boots.
+            if (p === "/jobtra" || p.startsWith("/jobtra/")) {
+                return rewrite(new URL("/jobtra/index.html", url));
+            }
+            // Jobtra's AI backend. Let it fall through to the Vercel functions /
+            // rewrites rather than becoming the portfolio.
+            if (p.startsWith("/api/")) {
+                return next();
+            }
+            // Everything else on the subdomain is the portfolio.
+            if (!p.startsWith("/portfolio")) {
                 return rewrite(new URL("/portfolio", url));
             }
         }

@@ -1,0 +1,8 @@
+{
+  "name": "Jobtra",
+  "description": "Job application tracker by Phoxta with intelligent email sync for Indeed, Gmail, and recruiter responses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
