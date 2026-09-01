@@ -95,17 +95,34 @@ async function callAgent(payload: Json): Promise<Json> {
   return { ...data, __ok: res.ok };
 }
 
-/** Run the compose-and-send after the response has gone back to Twilio.
+/** Compose-and-send the reply, INLINE — before this handler returns to Twilio.
  *
- *  Deliberately the same guarded shape as agent-inbound's classifyLater and
- *  ops-maintenance's engage tick: `EdgeRuntime.waitUntil` where the runtime has
- *  it, and a plain await where it does not — because the alternative to awaiting
- *  is dropping a customer's message on the floor. The task never throws. */
+ *  It used to run in `EdgeRuntime.waitUntil`, after the response: ack Twilio in
+ *  milliseconds, compose in the background. The measured cost of that was a
+ *  THIRTEEN-MINUTE reply. A WhatsApp/SMS answer that needs a tool call or a RAG
+ *  lookup takes longer than the sliver of post-response budget Supabase keeps
+ *  the isolate alive for, so the background task was being terminated mid-send
+ *  and the message fell through to agent-catchup — the 5-minute cron backstop —
+ *  which delivered it two or three ticks later. Fast replies survived the hook;
+ *  every reply worth waiting for did not.
+ *
+ *  Awaiting here moves the work into the request's OWN lifetime, which gets the
+ *  full function budget (~150s), so the send completes for slow replies too.
+ *  Three facts make holding the webhook open until then free of cost:
+ *    • the reply never travelled in the TwiML response anyway — deliverAutoReply
+ *      sends it out of band over the REST API, so the webhook's timing has never
+ *      affected delivery, only WHETHER the send ran to completion;
+ *    • Twilio does not retry an inbound-message webhook on timeout (unlike a
+ *      status callback), so a compose slower than Twilio's 15s wait costs one
+ *      cosmetic 11200 in the Twilio console and nothing on the wire;
+ *    • the per-message claim (10-min TTL) already stops any second path — a
+ *      Twilio retry that did happen, or agent-catchup arriving early — from
+ *      composing a duplicate.
+ *  A compose that somehow outruns even the function budget still lands in the
+ *  queue for agent-catchup; the cron stays the backstop, it is no longer the
+ *  primary. The task never throws (its own catch files the message). */
 async function afterResponding(task: Promise<void>): Promise<void> {
-  // deno-lint-ignore no-explicit-any
-  const rt = (globalThis as any).EdgeRuntime;
-  if (rt?.waitUntil) rt.waitUntil(task);
-  else await task;
+  await task;
 }
 
 Deno.serve(async (req) => {
