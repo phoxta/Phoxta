@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   const hook = await tg("setWebhook", {
     url: webhookUrl,
     secret_token: want,
-    allowed_updates: ["message", "edited_message", "callback_query", "inline_query", "pre_checkout_query"],
+    allowed_updates: ["message", "edited_message", "callback_query", "inline_query"],
     drop_pending_updates: true,
   });
   const cmds = await setMyCommands([

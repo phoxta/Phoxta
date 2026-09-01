@@ -34,6 +34,56 @@ Deno.serve(async (req) => {
     // deno-lint-ignore no-explicit-any
     const s = event.data.object as any;
     const m = s.metadata || {};
+
+    // A customer paid a business through the operator's payment link. The charge
+    // settled in the BUSINESS's own connected account (direct charge), so
+    // `event.account` is the connected id and the money never touches Phoxta.
+    // We only record the sale and nudge the owner. `payment_reference` has a
+    // UNIQUE index, so a Stripe redelivery inserts nothing the second time.
+    if (m.kind === "operator_payment" && m.org_id) {
+      const admin = adminClient();
+      const ref = String(s.payment_intent ?? s.id ?? "");
+      const amount = Math.round(Number(s.amount_total ?? 0));
+      const currency = String(s.currency ?? "gbp").toUpperCase();
+      const email = String(s.customer_details?.email ?? "");
+      const name = String(s.customer_details?.name ?? "Customer");
+      const { error: insErr } = await admin.from("orders").insert({
+        organization_id: m.org_id,
+        customer_name: name,
+        customer_email: email || null,
+        status: "paid",
+        fulfillment_status: "unfulfilled",
+        total_cents: amount,
+        currency,
+        payment_reference: ref,
+        paid_at: new Date().toISOString(),
+      });
+      // A duplicate-key error just means this delivery is a redelivery — the sale
+      // is already recorded, so don't re-notify. Any other error we swallow: a
+      // webhook that 500s here would be retried forever for a payment that did
+      // land, and the owner would rather hear about it once than not at all.
+      const isDuplicate = insErr && /duplicate|unique/i.test(insErr.message ?? "");
+      if (!insErr) {
+        try {
+          const { sendMessage, esc } = await import("../_shared/telegram.ts");
+          const { data: links } = await admin
+            .from("telegram_links")
+            .select("telegram_user_id")
+            .eq("organization_id", m.org_id);
+          const money = `${currency} ${(amount / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+          const who = email ? `${esc(name)} (${esc(email)})` : esc(name);
+          for (const l of (links ?? [])) {
+            await sendMessage(
+              Number((l as { telegram_user_id: number | string }).telegram_user_id),
+              `💰 <b>Payment received</b>\n${money} from ${who}.`,
+            );
+          }
+        } catch { /* notifying is best-effort; the sale is already recorded */ }
+      }
+      void isDuplicate;
+      return json({ received: true });
+    }
+
     if (m.kind === "domain_purchase" && m.hostname && m.orgId) {
       const admin = adminClient();
 
@@ -236,6 +286,23 @@ Deno.serve(async (req) => {
         .from("subscriptions")
         .update({ status: "past_due", updated_at: new Date().toISOString() })
         .eq("stripe_subscription_id", subId);
+    }
+  }
+
+  // ── Connect onboarding lifecycle ────────────────────────────────────────────
+  // A business's connected account changed — most importantly, whether Stripe has
+  // finished vetting it enough to accept live charges. We mirror that flag so the
+  // dashboard and the operator know whether payment links will actually work,
+  // without having to poll Stripe on every page load.
+  if (event.type === "account.updated") {
+    // deno-lint-ignore no-explicit-any
+    const acct = event.data.object as any;
+    if (acct?.id) {
+      const admin = adminClient();
+      await admin
+        .from("organizations")
+        .update({ stripe_charges_enabled: !!acct.charges_enabled })
+        .eq("stripe_account_id", acct.id);
     }
   }
 

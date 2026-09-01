@@ -273,6 +273,11 @@ verify_jwt = true
 [functions.stripe-checkout]
 verify_jwt = true
 
+# Connect a business's own Stripe account so it can take customer payments.
+# Owner/admin only, so it must see the caller's JWT.
+[functions.stripe-connect]
+verify_jwt = true
+
 [functions.paystack-checkout]
 verify_jwt = true
 

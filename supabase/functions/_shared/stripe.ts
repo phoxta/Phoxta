@@ -90,3 +90,85 @@ export function cleanReturnUrl(raw: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+// ── Stripe Connect: tenants receive customer payments into their own account ──
+//
+// Standard connected accounts. The business owns the account and is the merchant
+// of record; Phoxta orchestrates. Charges are created ON the connected account
+// (the `stripeAccount` request option), so the money lands with the business and
+// never touches the platform balance.
+
+/** Create a Standard connected account for a business, or return the existing id. */
+export async function createStandardAccount(email?: string | null): Promise<{ id?: string; error?: string }> {
+  try {
+    const acct = await stripe.accounts.create({
+      type: "standard",
+      email: email || undefined,
+      metadata: { platform: "phoxta" },
+    });
+    return { id: acct.id };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** The hosted onboarding link the owner completes to activate their account. */
+export async function accountOnboardingLink(accountId: string, returnUrl: string, refreshUrl: string): Promise<{ url?: string; error?: string }> {
+  try {
+    const link = await stripe.accountLinks.create({
+      account: accountId,
+      return_url: returnUrl,
+      refresh_url: refreshUrl,
+      type: "account_onboarding",
+    });
+    return { url: link.url };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Has Stripe cleared this account to take charges? (Onboarding complete.) */
+export async function accountChargesEnabled(accountId: string): Promise<boolean> {
+  try {
+    const acct = await stripe.accounts.retrieve(accountId);
+    return !!acct.charges_enabled;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A Checkout Session ON the connected account — an ad-hoc amount the customer
+ * pays, settling with the business. Returns the hosted pay URL the owner sends
+ * on. `payload` carries the org id into the webhook (checkout.session.completed
+ * arrives with event.account = the connected account, and this metadata says
+ * which business it is).
+ */
+export async function checkoutOnAccount(
+  accountId: string,
+  p: { amount: number; currency: string; description: string; orgId: string; successUrl: string; cancelUrl: string },
+): Promise<{ url?: string; error?: string }> {
+  try {
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: p.currency.toLowerCase(),
+            product_data: { name: p.description.slice(0, 250) || "Payment" },
+            unit_amount: Math.round(p.amount),
+          },
+        }],
+        success_url: p.successUrl,
+        cancel_url: p.cancelUrl,
+        metadata: { kind: "operator_payment", org_id: p.orgId },
+        payment_intent_data: { metadata: { kind: "operator_payment", org_id: p.orgId } },
+      },
+      { stripeAccount: accountId },
+    );
+    return { url: session.url ?? undefined };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}

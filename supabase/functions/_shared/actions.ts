@@ -9,7 +9,6 @@ import { dispatch, placeAiCall } from "./dispatch.ts";
 import { autoReplyAllowed, deliverAutoReply, tenantSenderFrom } from "./autoReply.ts";
 import { orgReplyTo } from "./conversationEmail.ts";
 import { escapeLike } from "./tools.ts";
-import { createInvoiceLink } from "./telegram.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -321,21 +320,25 @@ export async function runWrite(admin: SupabaseClient, orgId: string, tool: strin
     return `Order ${String(a.order_id).slice(0, 8)} marked fulfilled.`;
   }
   if (tool === "create_payment_link") {
-    const { data: org } = await admin.from("organizations").select("name, currency").eq("id", orgId).maybeSingle();
-    const currency = String(a.currency ?? (org as Json)?.currency ?? "USD").toUpperCase();
-    const amount = Math.round(Number(a.amount) * 100); // Telegram wants the smallest unit
-    if (!(amount > 0)) throw new Error("Give a positive amount.");
-    const desc = String(a.description ?? `Payment to ${(org as Json)?.name ?? "us"}`);
-    // payload rides through to the successful_payment update so telegram-inbound
-    // knows which business the sale belongs to.
-    const res = await createInvoiceLink({ title: desc.slice(0, 32) || "Payment", description: desc, payload: `pay:${orgId}`, currency, amount });
-    if (!res.ok || !res.url) {
-      if (res.description === "no_provider") {
-        throw new Error("Payments aren't set up yet — connect a payment provider in @BotFather (/mybots → your bot → Payments) and set the TELEGRAM_PROVIDER_TOKEN secret.");
-      }
-      throw new Error(`Could not create the payment link: ${res.description ?? "unknown error"}`);
+    const { data: org } = await admin.from("organizations").select("name, stripe_account_id, stripe_charges_enabled").eq("id", orgId).maybeSingle();
+    const acct = String((org as Json)?.stripe_account_id ?? "");
+    if (!acct || !(org as Json)?.stripe_charges_enabled) {
+      throw new Error("Payments aren't set up yet — connect your Stripe account in the dashboard (Agent → Operator → Set up payments). Once it's connected I can make pay links that settle straight to you.");
     }
-    return `Here's a ${currency} ${Number(a.amount)} payment link for "${desc}" — send it to the customer: ${res.url}`;
+    const amount = Math.round(Number(a.amount) * 100); // Stripe wants the smallest unit
+    if (!(amount > 0)) throw new Error("Give a positive amount.");
+    const currency = String(a.currency ?? "gbp").toLowerCase();
+    const desc = String(a.description ?? `Payment to ${(org as Json)?.name ?? "us"}`);
+    const appUrl = (Deno.env.get("APP_URL") || "https://www.phoxta.com").replace(/\/+$/, "");
+    // Dynamic import so the Stripe SDK loads ONLY when a payment link is actually
+    // made — actions.ts is bundled into ~a dozen functions that must not carry it.
+    const { checkoutOnAccount } = await import("./stripe.ts");
+    const res = await checkoutOnAccount(acct, {
+      amount, currency, description: desc, orgId,
+      successUrl: `${appUrl}/?payment=success`, cancelUrl: `${appUrl}/?payment=cancelled`,
+    });
+    if (res.error || !res.url) throw new Error(`Could not create the payment link: ${res.error ?? "unknown error"}`);
+    return `Here's a ${currency.toUpperCase()} ${Number(a.amount)} payment link for "${desc}" — send it to the customer, and it settles straight to your Stripe: ${res.url}`;
   }
   if (tool === "set_reservation_status") {
     const { error } = await admin.from("reservations").update({ status: a.status }).eq("id", a.reservation_id).eq("organization_id", orgId);

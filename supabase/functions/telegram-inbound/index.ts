@@ -16,7 +16,7 @@ import { runWrite, recordAudit, actionTitle } from "../_shared/actions.ts";
 import { renderDesign } from "../_shared/render.ts";
 import { isAdminRole } from "../_shared/auth.ts";
 import {
-  answerCallback, answerInlineQuery, answerPreCheckout, chatAction, downloadFile, editReplyMarkup,
+  answerCallback, answerInlineQuery, chatAction, downloadFile, editReplyMarkup,
   esc, inlineKeyboard, sendMessage, sendPhotoUrl, sendVoiceBytes, transcribe, type Button,
 } from "../_shared/telegram.ts";
 
@@ -230,13 +230,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── Payment: the checkout confirmation. Telegram needs an answer within
-    //    ~10s or the payment fails; we have no reason to refuse, so approve. ──
-    if (update.pre_checkout_query) {
-      await answerPreCheckout(update.pre_checkout_query.id, true);
-      return OK();
-    }
-
     // ── Button taps ──
     if (update.callback_query) {
       const cq = update.callback_query;
@@ -291,33 +284,6 @@ Deno.serve(async (req) => {
     const chatId = msg.chat?.id;
     const tgUserId = Number(msg.from?.id);
     const text = String(msg.text ?? msg.caption ?? "").trim();
-
-    // ── Payment succeeded. The payer is a CUSTOMER (may not be linked); the
-    //    invoice payload carries the org id. Record the sale and tell the
-    //    business's linked owners. Best-effort DB write — the notification is
-    //    what must not be missed. ──
-    if (msg.successful_payment) {
-      const sp = msg.successful_payment;
-      const orgId = String(sp.invoice_payload ?? "").startsWith("pay:") ? String(sp.invoice_payload).slice(4) : "";
-      const amount = Number(sp.total_amount ?? 0) / 100;
-      const currency = String(sp.currency ?? "");
-      const payer = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ") || (msg.from?.username ? `@${msg.from.username}` : "a customer");
-      if (orgId) {
-        try {
-          await admin.from("orders").insert({
-            organization_id: orgId, customer_name: payer, total_cents: Math.round(Number(sp.total_amount ?? 0)),
-            currency, status: "paid", payment_reference: String(sp.provider_payment_charge_id ?? sp.telegram_payment_charge_id ?? ""),
-            source: "telegram",
-          });
-        } catch { /* schema mismatch must not lose the notification */ }
-        const { data: links } = await admin.from("telegram_links").select("telegram_user_id").eq("organization_id", orgId);
-        for (const l of (links as Json[] ?? [])) {
-          await sendMessage(Number(l.telegram_user_id), `💰 <b>Payment received</b>\n${esc(currency)} ${amount.toLocaleString()} from ${esc(payer)}.`);
-        }
-      }
-      await sendMessage(chatId, "✅ Payment received — thank you!");
-      return OK();
-    }
 
     // /start is the one command that works before linking.
     if (text.startsWith("/start")) { await handleStart(admin, msg, text.replace(/^\/start\s*/, "").trim()); return OK(); }

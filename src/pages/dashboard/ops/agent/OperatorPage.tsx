@@ -23,6 +23,8 @@ import {
     defaultToolMode,
     signOperatorFiles,
     connectTelegram,
+    connectStripe,
+    stripeConnectStatus,
     type OperatorAttachment,
     type OperatorMsg,
     type AgentAction,
@@ -218,6 +220,10 @@ const argsSummary = (args: Args | null): string => {
 export default function OperatorPage() {
     const { orgId, org } = useOutletContext<OpsContext>();
     const [tgBusy, setTgBusy] = useState(false);
+    const [payBusy, setPayBusy] = useState(false);
+    // null = not looked up yet; then whether the business's own Stripe account is
+    // connected and cleared for live charges, so payment links actually collect.
+    const [payStatus, setPayStatus] = useState<{ connected: boolean; chargesEnabled: boolean } | null>(null);
     const [msgs, setMsgs] = useState<OperatorMsg[]>([
         { role: "assistant", content: `Hi — I'm your AI operator for ${org.name}. Ask about your data, or tell me what to change (e.g. "set the wool coat price to 290", "mark the latest order fulfilled", "draft a blog post about new arrivals").` },
     ]);
@@ -268,6 +274,17 @@ export default function OperatorPage() {
             }
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [orgId]);
+
+    // Payment-account status: whether this business has connected its own Stripe
+    // and can take live charges. One read on load; Stripe redirects back here
+    // after onboarding, so a returning owner sees the fresh state.
+    useEffect(() => {
+        let active = true;
+        stripeConnectStatus(orgId).then((s) => {
+            if (active && !s.error) setPayStatus({ connected: s.connected, chargesEnabled: s.chargesEnabled });
+        });
+        return () => { active = false; };
     }, [orgId]);
 
     // Queue liveness: actions can be queued from any channel (SMS, WhatsApp,
@@ -439,7 +456,7 @@ export default function OperatorPage() {
                     </div>
                     <button
                         type="button"
-                        className="hrx-btn hrx-btn-primary"
+                        className="hrx-pill primary"
                         disabled={tgBusy}
                         onClick={async () => {
                             setTgBusy(true);
@@ -454,6 +471,58 @@ export default function OperatorPage() {
                     </button>
                 </section>
             </div>
+
+            {/* Take payments — connect the business's OWN Stripe account so the
+                operator's payment links collect money into it, not Phoxta's.
+                Hidden until status loads so we never flash "not connected". */}
+            {payStatus && (
+                <div className="col-12">
+                    <section className="hrx-card hrx-pad d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <div className="d-flex align-items-center gap-2" style={{ marginBottom: 2 }}>
+                                <h2 className="hrx-card-title m-0">Take payments</h2>
+                                {payStatus.chargesEnabled
+                                    ? <Chip tone="ok">Connected</Chip>
+                                    : payStatus.connected
+                                        ? <Chip tone="warn">Finish setup</Chip>
+                                        : null}
+                            </div>
+                            <p className="agx-note m-0">
+                                {payStatus.chargesEnabled
+                                    ? "Your Stripe account is live. When the operator sends a payment link, the money settles into your account."
+                                    : payStatus.connected
+                                        ? "Stripe still needs a few details before it will accept live payments. Finish setup to start collecting."
+                                        : "Connect your Stripe account so the operator can send customers payment links — money settles directly with you, not Phoxta."}
+                            </p>
+                        </div>
+                        {payStatus.chargesEnabled ? (
+                            <a
+                                className="hrx-pill"
+                                href="https://dashboard.stripe.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Open Stripe dashboard
+                            </a>
+                        ) : (
+                            <button
+                                type="button"
+                                className="hrx-pill primary"
+                                disabled={payBusy}
+                                onClick={async () => {
+                                    setPayBusy(true);
+                                    const { url, error: e } = await connectStripe(orgId, window.location.href);
+                                    setPayBusy(false);
+                                    if (e || !url) { toastError(e || "Could not start Stripe setup."); return; }
+                                    window.location.assign(url);
+                                }}
+                            >
+                                {payBusy ? "Opening Stripe…" : payStatus.connected ? "Finish Stripe setup" : "Set up payments"}
+                            </button>
+                        )}
+                    </section>
+                </div>
+            )}
 
             {/* Approvals lead the page — on a phone this is the first thing you see,
                 on desktop it spans the full width above the chat. */}

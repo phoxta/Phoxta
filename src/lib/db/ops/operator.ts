@@ -52,6 +52,21 @@ export async function connectTelegram(orgId: string): Promise<{ url: string | nu
   return { url: data?.url ?? null, error };
 }
 
+/** Start (or resume) connecting the business's OWN Stripe account, so the
+ *  operator's payment links collect money into the business's account rather
+ *  than Phoxta's. Returns a Stripe-hosted onboarding URL to open. */
+export async function connectStripe(orgId: string, returnUrl?: string): Promise<{ url: string | null; error: string | null }> {
+  const { data, error } = await invoke<{ url: string }>("stripe-connect", { organizationId: orgId, action: "start", returnUrl });
+  return { url: data?.url ?? null, error };
+}
+
+/** Whether the business's Stripe account is connected and cleared to take
+ *  live charges — refreshed from Stripe on each call. */
+export async function stripeConnectStatus(orgId: string): Promise<{ connected: boolean; chargesEnabled: boolean; error: string | null }> {
+  const { data, error } = await invoke<{ connected: boolean; chargesEnabled: boolean }>("stripe-connect", { organizationId: orgId, action: "status" });
+  return { connected: data?.connected ?? false, chargesEnabled: data?.chargesEnabled ?? false, error };
+}
+
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
   const { data, error } = await supabase.functions.invoke(fn, { body });
   if (error) {
