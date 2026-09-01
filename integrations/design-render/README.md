@@ -1,6 +1,6 @@
 # design-render
 
-A design document in, a PNG out — with no browser open.
+A design document in, a PNG (or JPEG) out — with no browser open.
 
 ## Why it exists
 
@@ -74,6 +74,31 @@ sudo docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
   caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
 
+## The endpoint's contract
+
+`POST /render` takes `{ doc, templateId?, scale?, format? }`:
+
+- **`format: "jpeg"`** returns `image/jpeg` (quality 0.9, alpha already
+  flattened onto the white artboard); anything else — or the field absent —
+  returns `image/png`. The option exists because Instagram's publish API takes
+  JPEG only.
+- Every response carries **`x-render-missing`**: the number of asset
+  references the export could not inline. On a delivered image it is `0`.
+- If ANY asset could not be inlined, the request **fails with 422** and a JSON
+  body listing the `missing` URLs, instead of delivering the image. This is
+  deliberate: the caller is an unattended pipeline, and a design published
+  with a silent hole where its photograph was is exactly the failure a person
+  at the download button would have caught. Fix or replace the asset and
+  retry — do not work around the 422.
+- A body over 4MB is answered with **413** before the socket closes (a design
+  document is tens of kilobytes; anything near a megabyte is not one).
+
+**Every route except `/health` requires the `x-render-secret` header.** The
+two static files (`/index.html`, `/render.js`) additionally accept requests
+from loopback with no header, because their one legitimate client is the
+Puppeteer page this very process opens against 127.0.0.1 — a page navigation
+cannot carry a custom header.
+
 ## Checking it
 
 ```bash
@@ -84,6 +109,12 @@ curl -X POST https://voice.phoxta.com/render/render \
   -H 'content-type: application/json' -H "x-render-secret: $RENDER_SECRET" \
   -d '{"doc":{"templateId":"v1","content":{"title":"Hello"},"images":{}},"scale":2}' \
   -o out.png
+
+# JPEG, for the Instagram path
+curl -X POST https://voice.phoxta.com/render/render \
+  -H 'content-type: application/json' -H "x-render-secret: $RENDER_SECRET" \
+  -d '{"doc":{"templateId":"v1","content":{"title":"Hello"},"images":{}},"format":"jpeg"}' \
+  -o out.jpg
 ```
 
 A cold first render pays for Chrome starting and the fonts arriving; after that

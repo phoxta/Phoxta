@@ -32,7 +32,9 @@
 // write: it is the id the gate authorised, or the request never gets this far.
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
-import { searchStockMany } from "../_shared/stock.ts";
+import { findStockMany } from "../_shared/stock.ts";
+import { makeImage, IMAGE_DAILY_CAP_MESSAGE, type ImageOrientation } from "../_shared/openai.ts";
+import { CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -172,85 +174,12 @@ async function audit(admin: Json, orgId: string, tool: string, args: Json, summa
 }
 
 /* ── Image generation ─────────────────────────────────────────────────────
-   Two models, one shape. gpt-image-1 is the good one and the one to ask for;
-   it is also gated behind organisation verification, so an account that has
-   not done that gets a 403 naming a model it cannot use. Falling back to
-   dall-e-3 there means the feature works on day one rather than after a
-   support ticket. The two disagree about parameters — dall-e-3 needs
-   response_format to return bytes, gpt-image-1 rejects that parameter
-   outright — so the request is built per model rather than patched. */
-
-type Orientation = "square" | "landscape" | "portrait";
-
-const SIZES: Record<string, Record<Orientation, string>> = {
-  "gpt-image-1": { square: "1024x1024", landscape: "1536x1024", portrait: "1024x1536" },
-  "dall-e-3": { square: "1024x1024", landscape: "1792x1024", portrait: "1024x1792" },
-};
-
-/** Ninety seconds. A large generation genuinely takes most of a minute, and a
- *  request that hangs past this has failed in a way retrying will not fix. */
-const GEN_TIMEOUT_MS = 90_000;
-
-function isMissingModel(status: number, detail: string): boolean {
-  const t = detail.toLowerCase();
-  if (t.includes("model_not_found") || t.includes("must be verified")) return true;
-  if (status === 404) return true;
-  if ((status === 400 || status === 403) && t.includes("model")) {
-    return t.includes("not found") || t.includes("does not exist") || t.includes("unsupported")
-      || t.includes("invalid") || t.includes("access") || t.includes("not have");
-  }
-  return false;
-}
-
-/** Turn a provider failure into something a person can act on. The upstream
- *  body is logged, never returned: it can carry account, quota and billing
- *  detail that is not this user's business. */
-function friendlyGenError(status: number, detail: string): string {
-  const t = detail.toLowerCase();
-  if (t.includes("moderation") || t.includes("content_policy") || t.includes("safety_violation")) {
-    return "The image model refused that prompt. Describe the picture differently and try again.";
-  }
-  if (status === 429 || t.includes("rate limit")) return "The image service is busy. Try again in a moment.";
-  if (status === 401 || status === 403) return "Image generation is not available on this account right now.";
-  return "That image could not be generated.";
-}
-
-async function callOpenAI(
-  key: string, model: string, prompt: string, size: string, signal: AbortSignal,
-): Promise<{ ok: true; bytes: Uint8Array } | { ok: false; status: number; detail: string }> {
-  const payload: Record<string, unknown> = { model, prompt, size, n: 1 };
-  // gpt-image-1 always returns base64 and rejects response_format; dall-e-3
-  // defaults to a URL that expires within the hour, so it must be asked.
-  if (model === "dall-e-3") payload.response_format = "b64_json";
-
-  const r = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    signal,
-  });
-
-  if (!r.ok) {
-    const detail = await r.text().catch(() => "");
-    console.error("design-assets generate failed", model, r.status, detail.slice(0, 400));
-    return { ok: false, status: r.status, detail };
-  }
-
-  const out = await r.json();
-  const b64 = out?.data?.[0]?.b64_json;
-  if (b64) return { ok: true, bytes: Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) };
-
-  // Belt and braces: if a model ever answers with a URL anyway, fetch it now.
-  // Storing an expiring URL on a design produces a post that renders today and
-  // is a broken image next week — the worst kind of failure, because it
-  // happens after everyone has stopped looking.
-  const url = out?.data?.[0]?.url;
-  if (url) {
-    const img = await fetch(url, { signal });
-    if (img.ok) return { ok: true, bytes: new Uint8Array(await img.arrayBuffer()) };
-  }
-  return { ok: false, status: 502, detail: "no image data" };
-}
+   The OpenAI client that used to live here privately — the dall-e-3 fallback,
+   the orientation sizes, the friendly errors — moved to _shared/openai.ts
+   (makeImage) so every image caller shares ONE client, one framing prompt and
+   one booking path into ai_usage. What stays in this file is what is genuinely
+   this endpoint's own: choosing the orientation, storing the bytes as an
+   ordinary asset, and the audit row. */
 
 /* ── The endpoint ─────────────────────────────────────────────────────────── */
 
@@ -263,7 +192,7 @@ Deno.serve(async (req) => {
     const orgId = String(body.orgId ?? "");
     const gate = await authorize(req, orgId);
     if (gate.error) return gate.error;
-    const { admin } = gate.ok;
+    const { admin, userId } = gate.ok;
     const action = String(body.action ?? "list");
 
     // ── list: this org's assets, newest first ────────────────────────────
@@ -343,51 +272,38 @@ Deno.serve(async (req) => {
 
     // ── generate ─────────────────────────────────────────────────────────
     if (action === "generate") {
-      const key = Deno.env.get("OPENAI_API_KEY");
-      if (!key) return json({ error: "Image generation is not configured." }, 503);
+      // Checked here as well as inside the client so a missing key answers
+      // 503 — "not set up" — rather than a generic generation failure.
+      if (!Deno.env.get("OPENAI_API_KEY")) return json({ error: "Image generation is not configured." }, 503);
 
       const prompt = String(body.prompt ?? body.query ?? "").trim().slice(0, 900);
       if (!prompt) return json({ error: "Describe the picture you want." }, 400);
       const wanted = String(body.orientation ?? body.size ?? "square");
-      const orientation: Orientation =
+      const orientation: ImageOrientation =
         wanted === "landscape" || wanted === "portrait" ? wanted : "square";
 
-      // A little direction, not a rewrite. Diffusion models render lettering as
-      // garbled shapes, and this picture is going under real type in the
-      // editor — so ask for the picture and leave the words to the canvas.
-      const framed = `${prompt}. High quality image for a social media graphic. No text, no words, no letters, no logos, no watermarks.`;
-
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), GEN_TIMEOUT_MS);
-      // Initialised to null rather than left definite-assignment-checked: the
-      // only path out of the try/catch below that reaches the check is a
-      // successful assignment, but making that implicit is how a later edit
-      // introduces an "used before assigned" that only shows up at deploy.
-      let result: Awaited<ReturnType<typeof callOpenAI>> | null = null;
+      // The shared client owns the framing prompt, the dall-e-3 fallback and
+      // the friendly errors — and, unlike the private copy this replaced, it
+      // checks the monthly cap and the daily image backstop BEFORE any money
+      // moves and books the spend into ai_usage after. The raw prompt goes in;
+      // makeImage adds the no-lettering framing itself.
+      let bytes: Uint8Array;
       try {
-        result = await callOpenAI(key, "gpt-image-1", framed, SIZES["gpt-image-1"][orientation], ctrl.signal);
-        if (!result.ok && isMissingModel(result.status, result.detail)) {
-          // The good model is unavailable to this account. Say so in the log,
-          // draw the picture anyway.
-          console.warn("design-assets falling back to dall-e-3");
-          result = await callOpenAI(key, "dall-e-3", framed, SIZES["dall-e-3"][orientation], ctrl.signal);
-        }
+        bytes = await makeImage(prompt, { admin, orgId, userId, feature: "design-asset", orientation });
       } catch (e) {
-        const aborted = (e as Error)?.name === "AbortError";
-        console.error("design-assets generate threw", e);
-        return json({
-          error: aborted
-            ? "The image took too long to draw. Try a simpler description."
-            : "That image could not be generated.",
-        }, 504);
-      } finally {
-        clearTimeout(timer);
+        const msg = String((e as Error)?.message ?? e);
+        // The two budget refusals are the contract and are compared exactly.
+        // 429 + limitReached is the shape every capped AI endpoint answers
+        // with, so the client shows its usual allowance message.
+        if (msg === CAP_REACHED_MESSAGE || msg === IMAGE_DAILY_CAP_MESSAGE) {
+          return json({ error: msg, limitReached: true }, 429);
+        }
+        // Everything else already arrives person-usable (moderation, busy,
+        // timeout) — the upstream detail was logged inside the client.
+        return json({ error: msg || "That image could not be generated." }, 502);
       }
 
-      if (!result) return json({ error: "That image could not be generated." }, 502);
-      if (!result.ok) return json({ error: friendlyGenError(result.status, result.detail) }, 502);
-
-      const { asset, error } = await store(admin, orgId, "gen", prompt, "image/png", result.bytes);
+      const { asset, error } = await store(admin, orgId, "gen", prompt, "image/png", bytes);
       if (error || !asset) return json({ error: error ?? "That image could not be saved." }, 502);
       await audit(admin, orgId, "design_asset_generate", { path: asset.path, orientation }, `Image generated: "${prompt.slice(0, 80)}".`);
       // `alt` carries the prompt so the design that uses it has a real
@@ -399,11 +315,13 @@ Deno.serve(async (req) => {
     if (action === "stock") {
       const query = String(body.query ?? "").trim().slice(0, 400);
       if (!query) return json({ error: "Say what the photograph should show." }, 400);
-      // An empty list is a real answer — "nothing matched" — and is reported as
-      // one. An error here would make the editor show a failure for a search
-      // that simply found nothing.
-      const photos = await searchStockMany(query, 24);
-      return json({ photos });
+      // An empty list is a real answer — "nothing matched" — and stays a 200.
+      // But "could not look" is a DIFFERENT answer: `unavailable` names why
+      // (no key, this org's hourly searches spent, Pexels down), so the UI can
+      // say "stock is temporarily unavailable" instead of the false "no
+      // match". The org id feeds the per-tenant hourly bucket in stock.ts.
+      const page = await findStockMany(query, 24, { orgId });
+      return json({ photos: page.photos, ...(page.unavailable ? { unavailable: page.unavailable } : {}) });
     }
 
     return json({ error: "Unknown action." }, 400);

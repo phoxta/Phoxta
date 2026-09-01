@@ -24,7 +24,12 @@ import { DESIGN_FONTS, slidesOf, type Deck, type DesignDoc } from "@/lib/designs
 
 declare global {
   interface Window {
-    renderDesign: (doc: DesignDoc | Deck, templateId: string, scale?: number) => Promise<string>;
+    renderDesign: (
+      doc: DesignDoc | Deck,
+      templateId: string,
+      scale?: number,
+      format?: "png" | "jpeg",
+    ) => Promise<{ dataUrl: string; missing: string[] }>;
     fontsReady: () => Promise<boolean>;
   }
 }
@@ -54,7 +59,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-window.renderDesign = async (raw, templateId, scale = 2) => {
+window.renderDesign = async (raw, templateId, scale = 2, format = "png") => {
   // The COVER — slide one. A carousel is many pictures and a post carries one.
   const doc = slidesOf(raw, templateId)[0];
 
@@ -70,8 +75,13 @@ window.renderDesign = async (raw, templateId, scale = 2) => {
 
     const svg = host.querySelector("svg");
     if (!svg) throw new Error("the design did not render");
-    const { blob } = await exportPng(svg as SVGSVGElement, doc, scale);
-    return await blobToDataUrl(blob);
+    // missing[] travels with the image, never gets swallowed here. The export
+    // drops any asset it cannot inline and records the URL; this page's caller
+    // is an UNATTENDED pipeline, so a discarded missing[] meant designs with a
+    // silent hole where the photograph was got published with nobody looking.
+    // The server turns a non-empty missing[] into a refusal.
+    const { blob, missing } = await exportPng(svg as SVGSVGElement, doc, scale, { format });
+    return { dataUrl: await blobToDataUrl(blob), missing };
   } finally {
     root.unmount();
     host.remove();

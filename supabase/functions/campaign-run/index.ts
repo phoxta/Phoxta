@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
     const campaigns = new Map<string, Json>();
     const loadCampaign = async (id: string): Promise<Json> => {
       if (!campaigns.has(id)) {
-        const { data } = await admin.from("campaigns").select("id, name, subject, body, channel").eq("id", id).maybeSingle();
+        const { data } = await admin.from("campaigns").select("id, name, subject, body, html, channel").eq("id", id).maybeSingle();
         campaigns.set(id, data ?? null);
       }
       return campaigns.get(id);
@@ -185,9 +185,21 @@ Deno.serve(async (req) => {
             : "";
           const text = campaign.body + (unsubLink ? `\n\n—\nUnsubscribe: ${unsubLink}` : "");
           const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-          const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#222">${
-            esc(campaign.body).replace(/\n/g, "<br/>")
-          }${unsubLink ? `<p style="margin:16px 0 0;font-size:12px;color:#888">—<br/><a href="${unsubLink}">Unsubscribe</a></p>` : ""}</div>`;
+          const unsubHtml = unsubLink
+            ? `<p style="margin:16px 0 0;font-size:12px;color:#888">—<br/><a href="${unsubLink}">Unsubscribe</a></p>`
+            : "";
+          // A campaign that carries a designed HTML body (the email-studio →
+          // Broadcasts bridge, 0133) is sent AS DESIGNED — escaping it would
+          // deliver literal angle brackets, which is exactly the failure the
+          // bridge shipped around by sending text-only before this column
+          // existed. The plain `body` still travels as the text alternative,
+          // and the unsubscribe footer is appended to BOTH shapes: the legal
+          // line must never depend on which branch built the markup.
+          const html = campaign.html && String(campaign.html).trim()
+            ? `${campaign.html}${unsubHtml}`
+            : `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#222">${
+              esc(campaign.body).replace(/\n/g, "<br/>")
+            }${unsubHtml}</div>`;
           const replyTo = await replyToFor(String(row.organization_id));
           if (!replyTo) {
             await finish("failed", "no address for this business could be found to receive replies — add a billing email in Settings, or connect Google");

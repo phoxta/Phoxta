@@ -27,8 +27,9 @@ import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
 import { assertWithinCap, CAP_REACHED_MESSAGE, meter } from "../_shared/meter.ts";
-import { searchStock } from "../_shared/stock.ts";
-import { makeImage } from "../_shared/openai.ts";
+import { findStock } from "../_shared/stock.ts";
+import { makeImage, IMAGE_DAILY_CAP_MESSAGE } from "../_shared/openai.ts";
+import { LIMITS } from "../_shared/social.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -188,6 +189,69 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // ── edit one planned post ───────────────────────────────────────────────
+    //
+    // THROUGH THE FUNCTION, NOT AT THE TABLE. social_posts is SELECT-only for
+    // members under RLS, so the console's old direct UPDATE matched zero rows
+    // and reported success — the edit showed locally, and on the day the OLD
+    // caption published. The rules the rest of the plan lives by are enforced
+    // where the write happens: only a draft can change (an approved post's
+    // caption is a plan the owner already signed off), and the caption obeys
+    // the same per-platform caps social-schedule enforces on its own queue.
+    if (action === "update_post") {
+      // The entry gate above authorised body.orgId; update_post's documented
+      // body names the org as organizationId, like the other member endpoints.
+      // The two must agree — reading organizationId unchecked would let a
+      // member of one business aim the write at another's post.
+      const claimedOrg = String(body?.organizationId ?? orgId);
+      if (claimedOrg !== orgId) return json({ error: "That post is not in this business." }, 403);
+
+      const planId = String(body?.planId ?? "");
+      const postId = String(body?.postId ?? "");
+      if (!planId || !postId) return json({ error: "Which post?" }, 400);
+
+      // Belongs to the plan AND the org — the ids arrive separately, and each
+      // alone proves nothing about the other.
+      const { data: post } = await admin.from("social_posts")
+        .select("id, status")
+        .eq("id", postId).eq("plan_id", planId).eq("organization_id", orgId).maybeSingle();
+      if (!post) return json({ error: "That post is not in this plan." }, 404);
+      if ((post as Json).status !== "draft") {
+        return json({ error: "Only drafts can be edited — this post is already queued." }, 409);
+      }
+
+      const patch: Json = {};
+      if (body?.caption !== undefined) {
+        const caption = String(body.caption ?? "").trim();
+        // The same caps social-schedule checks, against the channels this post
+        // is actually going to: a cap discovered at publish time is a failed
+        // post, a cap discovered here is a red field.
+        const { data: targets } = await admin.from("social_targets")
+          .select("platform").eq("post_id", postId);
+        const platforms = [...new Set(((targets ?? []) as Json[]).map((t) => String(t.platform)))];
+        const tooLong = platforms.filter((p) => caption.length > (LIMITS[p as keyof typeof LIMITS]?.caption ?? 2200));
+        if (tooLong.length) {
+          return json({ error: `That caption is too long for ${tooLong.join(", ")}.` }, 400);
+        }
+        patch.caption = caption;
+      }
+      if (body?.scheduledAt !== undefined) {
+        const at = new Date(String(body.scheduledAt));
+        if (Number.isNaN(at.getTime())) return json({ error: "That date does not parse." }, 400);
+        patch.scheduled_at = at.toISOString();
+      }
+      if (Object.keys(patch).length === 0) return json({ error: "Nothing to change." }, 400);
+
+      const { data: updated, error: uErr } = await admin.from("social_posts")
+        .update(patch).eq("id", postId).eq("organization_id", orgId)
+        // The same shape `get` returns per post, so the console can swap the
+        // row in place rather than refetching the whole plan.
+        .select("id, design_id, caption, scheduled_at, status, media_url, social_targets(platform, status)")
+        .single();
+      if (uErr || !updated) return json({ error: uErr?.message ?? "The post could not be saved." }, 500);
+      return json({ post: updated });
+    }
+
     // ── plan a month ────────────────────────────────────────────────────────
     const brief = String(body?.brief ?? "").trim().slice(0, 1000);
     const days = Math.min(MAX_DAYS, Math.max(1, Number(body?.days) || 30));
@@ -303,6 +367,14 @@ Deno.serve(async (req) => {
     const fallbackTemplate = layouts[0]?.id ?? "v1";
     const fixedTemplate = wantVary ? "" : (layouts.some((l) => l.id === asked) ? asked : fallbackTemplate);
 
+    // Degradations discovered while filling the month, reported at the end
+    // rather than thrown: the plan is thirty posts, and one exhausted image
+    // budget or one unreachable photo service must not cost the other
+    // twenty-nine.
+    let imageCapReason = "";
+    let stockUnavailable = "";
+    let stockUnavailablePosts = 0;
+
     let made = 0;
     for (const it of items) {
       // The hour is the business's LOCAL hour; wallClockToUtc turns it into the
@@ -319,9 +391,13 @@ Deno.serve(async (req) => {
 
       const query = String(it?.imageQuery ?? "");
       let image: Json = null;
-      if (imagery === "generated") {
+      if (imagery === "generated" && !imageCapReason) {
         try {
-          const bytes = await makeImage(query);
+          // admin+orgId turn the shared client's metering ON: the monthly cap
+          // and the daily image backstop are checked BEFORE each picture and
+          // the spend is booked into ai_usage after — a month of generated
+          // imagery used to be invisible to both.
+          const bytes = await makeImage(query, { admin, orgId, userId: actingUser, feature: "content-plan-image" });
           const path = `${orgId}/${crypto.randomUUID()}.png`;
           try { await admin.storage.createBucket(IMAGE_BUCKET, { public: true }); } catch { /* exists */ }
           const { error } = await admin.storage.from(IMAGE_BUCKET).upload(path, bytes, { contentType: "image/png", upsert: false });
@@ -329,15 +405,33 @@ Deno.serve(async (req) => {
             image = { url: admin.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl, alt: query, source: "generated" };
           }
         } catch (e) {
-          // One picture failing must not lose the month. It falls back to
-          // stock, which is a worse picture and a finished plan.
-          console.error("generated image failed, falling back to stock:", (e as Error)?.message);
+          const why = String((e as Error)?.message ?? e);
+          // The two budget refusals are the contract, compared exactly. Either
+          // one holds for the REST of this request too — a cap does not reset
+          // mid-plan — so the remaining posts degrade straight to stock
+          // without asking again, and the reason travels back on the response
+          // rather than failing a month the model already wrote.
+          if (why === CAP_REACHED_MESSAGE || why === IMAGE_DAILY_CAP_MESSAGE) {
+            imageCapReason = why;
+          } else {
+            // One picture failing must not lose the month. It falls back to
+            // stock, which is a worse picture and a finished plan.
+            console.error("generated image failed, falling back to stock:", why);
+          }
         }
       }
       if (!image) {
-        const photo = await searchStock(query).catch(() => null);
-        if (photo) {
+        // findStock, not searchStock: "no photograph matched" and "Pexels
+        // could not be asked" are different answers, and the second used to
+        // land as a silent no-photo post. The org id feeds the per-tenant
+        // hourly bucket in stock.ts.
+        const found = await findStock(query, { orgId });
+        if (found.photo) {
+          const photo = found.photo;
           image = { url: photo.url, alt: photo.alt ?? "", photographer: photo.photographer, photographerUrl: photo.photographerUrl, source: "pexels" };
+        } else if (found.unavailable) {
+          stockUnavailablePosts++;
+          if (!stockUnavailable) stockUnavailable = found.unavailable;
         }
       }
 
@@ -386,10 +480,26 @@ Deno.serve(async (req) => {
       latencyMs: Date.now() - started,
     });
 
+    // What degraded and why, said plainly. social_posts has no notes column,
+    // so the honest record of "these posts have stock instead of generated" or
+    // "these have no photograph" is the response the console shows the person
+    // who asked — a silent downgrade would read as the planner's choice.
+    const notes: string[] = [];
+    if (imageCapReason) {
+      notes.push(`Some posts use stock photography instead of generated imagery: ${imageCapReason}`);
+    }
+    if (stockUnavailablePosts > 0) {
+      notes.push(
+        `${stockUnavailablePosts} post(s) have no photograph — stock could not be searched (${stockUnavailable}). ` +
+        "Their designs still work; add pictures in the editor or regenerate later.",
+      );
+    }
+
     return json({
       ok: true, planId: plan.id,
       title: String(out?.title ?? ""), rationale: String(out?.rationale ?? ""),
       posts: made,
+      ...(notes.length ? { notes } : {}),
       note: "Nothing goes out until the plan is approved.",
     });
   } catch (err) {

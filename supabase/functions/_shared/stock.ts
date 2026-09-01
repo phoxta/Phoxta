@@ -37,55 +37,110 @@ type PexelsPhoto = {
 };
 
 /**
- * Find a photograph for `query`.
+ * "It found nothing" and "it could not look" are different answers.
  *
- * Returns null rather than throwing on every failure path — no key, a bad
- * response, a rate limit, a query nothing matches. The caller already has a
- * curated fallback on the slide, and losing a whole validation step because a
- * photo service was briefly unavailable would be an absurd trade.
+ * searchStock's null collapsed them, which was the right trade for a
+ * validation slide with a curated fallback and the wrong one for the graphics
+ * studio: a rate-limited afternoon at Pexels read as "no photograph of a
+ * bakery exists", and the person rewrote their search instead of waiting.
+ * `unavailable` carries the reason the service could not be asked; when it is
+ * absent, an empty result genuinely means nothing matched.
  */
-export async function searchStock(query: string): Promise<StockImage | null> {
+export type StockLookup = { photo: StockImage | null; unavailable?: string };
+export type StockPage = { photos: StockImage[]; unavailable?: string };
+
+/**
+ * The per-tenant bound on a SHARED quota.
+ *
+ * Pexels allows 200 requests an hour for the whole platform key, so one
+ * business regenerating a thirty-post plan a few times could spend everyone
+ * else's afternoon. The bucket is per isolate — a cold start forgets it and
+ * parallel isolates each carry their own — so it is a brake, not an exact
+ * meter; the exact meter would be a table, and a photo search does not earn a
+ * database round trip. Callers that pass no org (the idea/dossier slides,
+ * which run for anonymous visitors) are bounded by the shared 200/hr alone.
+ */
+const ORG_HOURLY = Math.max(1, Number(Deno.env.get("PEXELS_ORG_HOURLY") ?? "30"));
+const buckets = new Map<string, { hour: number; used: number }>();
+
+function underOrgBudget(orgId: string | undefined): boolean {
+  if (!orgId) return true;
+  const hour = Math.floor(Date.now() / 3_600_000);
+  const b = buckets.get(orgId);
+  if (!b || b.hour !== hour) {
+    buckets.set(orgId, { hour, used: 1 });
+    return true;
+  }
+  if (b.used >= ORG_HOURLY) return false;
+  b.used++;
+  return true;
+}
+
+/** One fetch against Pexels, with the failure kept distinct from the miss. */
+async function pexels(
+  params: string,
+  orgId?: string,
+): Promise<{ ok: true; photos: PexelsPhoto[] } | { ok: false; reason: string }> {
   const key = Deno.env.get("PEXELS_API_KEY");
-  const q = query.trim();
-  if (!key || !q) return null;
-
+  if (!key) return { ok: false, reason: "stock photography is not configured (PEXELS_API_KEY)" };
+  if (!underOrgBudget(orgId)) {
+    return { ok: false, reason: "this business has used this hour's stock-photo searches — try again shortly" };
+  }
   try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?per_page=5&orientation=landscape&size=medium&query=${encodeURIComponent(q)}`,
-      { headers: { Authorization: key } },
-    );
-    if (!res.ok) return null;
-
+    const res = await fetch(`https://api.pexels.com/v1/search?${params}`, { headers: { Authorization: key } });
+    if (!res.ok) return { ok: false, reason: `Pexels answered HTTP ${res.status}` };
     const data = await res.json() as { photos?: PexelsPhoto[] };
-    const photos = data.photos ?? [];
-    if (photos.length === 0) return null;
+    return { ok: true, photos: data.photos ?? [] };
+  } catch (e) {
+    return { ok: false, reason: `Pexels could not be reached: ${(e as Error)?.message ?? e}` };
+  }
+}
 
-    // Not photos[0]. Pexels orders by relevance, and the top hit for a business
-    // query is very often the most generic stock frame in the set — the one
-    // every other deck already uses. The second is nearly as relevant and much
-    // less worn. Deterministic, so re-resolving the same query is idempotent.
-    const pick = photos[Math.min(1, photos.length - 1)];
-    const src = pick.src ?? {};
-    const url = src.large ?? src.landscape ?? src.original;
-    if (!url) return null;
+/**
+ * Find a photograph for `query`, and say WHY when it could not look.
+ *
+ * The distinct-failure sibling of searchStock below, for callers with a person
+ * on the other end. Pass `orgId` wherever there is a tenant, so the hourly
+ * bucket above can do its work.
+ */
+export async function findStock(query: string, opts: { orgId?: string } = {}): Promise<StockLookup> {
+  const q = query.trim();
+  if (!q) return { photo: null };
 
-    return {
+  const res = await pexels(
+    `per_page=5&orientation=landscape&size=medium&query=${encodeURIComponent(q)}`,
+    opts.orgId,
+  );
+  if (!res.ok) return { photo: null, unavailable: res.reason };
+
+  const photos = res.photos;
+  if (photos.length === 0) return { photo: null };
+
+  // Not photos[0]. Pexels orders by relevance, and the top hit for a business
+  // query is very often the most generic stock frame in the set — the one
+  // every other deck already uses. The second is nearly as relevant and much
+  // less worn. Deterministic, so re-resolving the same query is idempotent.
+  const pick = photos[Math.min(1, photos.length - 1)];
+  const src = pick.src ?? {};
+  const url = src.large ?? src.landscape ?? src.original;
+  if (!url) return { photo: null };
+
+  return {
+    photo: {
       url,
       urlWide: src.landscape ?? url,
       alt: (pick.alt ?? q).slice(0, 200),
       photographer: (pick.photographer ?? "Pexels").slice(0, 120),
       photographerUrl: pick.photographer_url ?? "https://www.pexels.com",
       source: "pexels",
-    };
-  } catch {
-    return null;
-  }
+    },
+  };
 }
 
 /**
  * A page of results, for a picker.
  *
- * searchStock above answers "give me the one good photograph for this", which
+ * findStock above answers "give me the one good photograph for this", which
  * is what an automated slide needs. A person choosing for themselves needs the
  * opposite: everything that matched, in relevance order, including the generic
  * first hit that the automatic path deliberately skips — when someone is
@@ -96,20 +151,22 @@ export async function searchStock(query: string): Promise<StockImage | null> {
  * photo slots include tall cut-out figures, and a landscape-only search fills
  * them with something that has to be cropped to nothing.
  */
-export async function searchStockMany(query: string, perPage = 24): Promise<StockImage[]> {
-  const key = Deno.env.get("PEXELS_API_KEY");
+export async function findStockMany(
+  query: string,
+  perPage = 24,
+  opts: { orgId?: string } = {},
+): Promise<StockPage> {
   const q = query.trim();
-  if (!key || !q) return [];
+  if (!q) return { photos: [] };
 
-  try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?per_page=${Math.min(80, Math.max(1, perPage))}&query=${encodeURIComponent(q)}`,
-      { headers: { Authorization: key } },
-    );
-    if (!res.ok) return [];
-    const data = await res.json() as { photos?: PexelsPhoto[] };
+  const res = await pexels(
+    `per_page=${Math.min(80, Math.max(1, perPage))}&query=${encodeURIComponent(q)}`,
+    opts.orgId,
+  );
+  if (!res.ok) return { photos: [], unavailable: res.reason };
 
-    return (data.photos ?? []).flatMap((p) => {
+  return {
+    photos: res.photos.flatMap((p) => {
       const src = p.src ?? {};
       const url = src.large ?? src.original;
       if (!url) return [];
@@ -124,8 +181,22 @@ export async function searchStockMany(query: string, perPage = 24): Promise<Stoc
         photographerUrl: p.photographer_url ?? "https://www.pexels.com",
         source: "pexels" as const,
       }];
-    });
-  } catch {
-    return [];
-  }
+    }),
+  };
+}
+
+/**
+ * The original shapes, kept for the slide pipeline (idea-run, dossier-run,
+ * idea-image, dossier-image). Those callers have a curated fallback on the
+ * slide and genuinely do not care WHY there is no photograph — losing a whole
+ * validation step because a photo service was briefly unavailable would be an
+ * absurd trade. The graphics studio's callers use findStock/findStockMany and
+ * say which failure it was.
+ */
+export async function searchStock(query: string): Promise<StockImage | null> {
+  return (await findStock(query)).photo;
+}
+
+export async function searchStockMany(query: string, perPage = 24): Promise<StockImage[]> {
+  return (await findStockMany(query, perPage)).photos;
 }

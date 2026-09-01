@@ -30,7 +30,7 @@
 import { preflight, json } from "../_shared/cors.ts";
 import { authorize, isCronRequest } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
-import { renderDesign } from "../_shared/render.ts";
+import { renderDesign, designChangedSinceExport } from "../_shared/render.ts";
 import { publish, type SocialAccount } from "../_shared/social.ts";
 import { refreshInstagram } from "../_shared/socialOauth.ts";
 
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, claimed: 0, note: onlyPost ? await whyNothing(admin, onlyPost) : "" });
     }
 
-    let sent = 0, failed = 0, simulated = 0;
+    let sent = 0, failed = 0, simulated = 0, deferred = 0;
 
     for (const t of targets) {
       touched.add(t.post_id);
@@ -186,20 +186,83 @@ Deno.serve(async (req) => {
        * days that are weeks away, and most of them would be re-rendered anyway
        * if the plan were edited. So the render happens here, once, on the way
        * past — and is written back onto the post, so the second channel of the
-       * same post reuses it rather than rendering it again.
+       * same post reuses it rather than rendering it again. JPEG, because the
+       * platforms re-encode everything anyway and it uploads in a fraction of
+       * the bytes.
+       *
+       * A FAILED RENDER IS NOT ONE KIND OF FAILURE, and treating it as one was
+       * the bug that killed whole month-plans: three ticks against a down
+       * renderer burned all three attempts and failed every post, over an
+       * outage that was never a fact about any of them. The kinds (see
+       * _shared/render.ts) each get the response they deserve:
+       *
+       *   unreachable / config — a fact about the box, not the post. Publish
+       *     the last saved export if there is one (with an honest note), else
+       *     hand the claim back WITHOUT spending an attempt so the next tick
+       *     retries past the outage.
+       *   unrenderable — a fact about THIS design: the same doc gets the same
+       *     422 for ever, so retrying is spending attempts on a certainty.
+       *     Failed now, with the reason.
+       *   data — our own side (row or storage). Worth the normal retry budget.
        */
       let media = String(post.media_url ?? "");
-      if (!media && post.design_id) {
-        const shot = await renderDesign(admin, String(t.organization_id), String(post.design_id));
-        if ("error" in shot) {
+      let staleNote = "";
+
+      // The design row feeds two decisions: is the stored picture stale, and
+      // is there a saved export to fall back on when the renderer is down.
+      let design: Json = null;
+      if (post.design_id) {
+        const { data: d } = await admin.from("designs")
+          .select("png_url, png_at, updated_at")
+          .eq("id", post.design_id).eq("organization_id", t.organization_id).maybeSingle();
+        design = d;
+      }
+
+      // A stored media_url is only reused while it still shows the design as
+      // it now stands — whoever edited the design after the earlier export
+      // meant the edit to be what publishes.
+      if (post.design_id && (!media || designChangedSinceExport(design))) {
+        const shot = await renderDesign(admin, String(t.organization_id), String(post.design_id), { format: "jpeg" });
+        if (!("error" in shot)) {
+          media = shot.url;
+          await admin.from("social_posts").update({ media_url: media }).eq("id", t.post_id);
+        } else if (shot.kind === "unreachable" || shot.kind === "config") {
+          const stale = media || String(design?.png_url ?? "");
+          if (stale) {
+            // A slightly-old picture that goes out on time beats a post that
+            // dies over an outage on our side — and the note travels on the
+            // settled target so nobody is told it was the current export.
+            media = stale;
+            staleNote = "posted from the last saved export — the renderer was unreachable";
+          } else {
+            // Nothing saved to fall back on: DEFER. The claim (0122) set
+            // status='sending', claimed_at=now() and attempts+1 — handing the
+            // row back means undoing all three, so the outage costs waiting,
+            // not budget. The reaper cannot touch it either: it only fails
+            // rows still 'sending'.
+            await admin.from("social_targets").update({
+              status: "pending",
+              claimed_at: null,
+              attempts: Math.max(0, Number(t.attempts) - 1),
+              error: `Waiting for the renderer: ${shot.error}`,
+            }).eq("id", t.id);
+            deferred++;
+            continue;
+          }
+        } else if (shot.kind === "unrenderable") {
+          await admin.from("social_targets")
+            .update({ status: "failed", error: `The picture could not be made: ${shot.error}` })
+            .eq("id", t.id);
+          failed++;
+          continue;
+        } else {
+          // "data": the normal failure path, on the normal retry budget.
           await admin.from("social_targets")
             .update({ status: t.attempts >= 3 ? "failed" : "pending", error: `The picture could not be made: ${shot.error}` })
             .eq("id", t.id);
           failed++;
           continue;
         }
-        media = shot.url;
-        await admin.from("social_posts").update({ media_url: media }).eq("id", t.post_id);
       }
 
       const r = await publish(acct as SocialAccount, post.caption ?? "", media, post.options ?? {});
@@ -210,8 +273,11 @@ Deno.serve(async (req) => {
           external_post_id: r.externalId ?? "",
           permalink: r.permalink ?? "",
           // A simulated send is a success with a reason attached, so the
-          // console can say "nothing actually went out, and here is why".
-          error: r.error || (r.status === "simulated" ? "Simulated — no app configured." : ""),
+          // console can say "nothing actually went out, and here is why" —
+          // and a send that used the last saved export carries its own honest
+          // note beside anything the platform said.
+          error: [staleNote, r.error || (r.status === "simulated" ? "Simulated — no app configured." : "")]
+            .filter(Boolean).join(" · "),
           sent_at: new Date().toISOString(),
         }).eq("id", t.id);
       } else {
@@ -241,13 +307,16 @@ Deno.serve(async (req) => {
 
     const detail =
       `${sent} sent, ${simulated} simulated, ${failed} failed of ${targets.length} claimed` +
+      (deferred ? `; ${deferred} deferred until the renderer is reachable` : "") +
       (reaped.length ? `; gave up on channels of ${reaped.length} post(s) after 3 attempts` : "");
     // Every claimed channel failing is a broken tick (a platform down, an app
     // misconfigured), and a broken tick says so in its status code: the VM log
-    // sees only that. A member's single post failing is a 200 with the reason.
+    // sees only that. A tick where everything deferred is broken too — the
+    // renderer being down is exactly what the alarm exists for, and the detail
+    // names it. A member's single post failing is a 200 with the reason.
     const totalFailure = isCron && targets.length > 0 && sent === 0 && simulated === 0;
     await beat(!totalFailure, detail);
-    return json({ ok: !totalFailure, claimed: targets.length, sent, simulated, failed, reaped: reaped.length }, totalFailure ? 502 : 200);
+    return json({ ok: !totalFailure, claimed: targets.length, sent, simulated, failed, deferred, reaped: reaped.length }, totalFailure ? 502 : 200);
   } catch (err) {
     const msg = String((err as Error)?.message || err);
     await beat(false, msg);

@@ -47,6 +47,33 @@ function cleanOptions(v: Json): Json {
   return out;
 }
 
+/**
+ * The design's artboard shape, read where the queue is written.
+ *
+ * Instagram's FEED takes 4:5 through 1.91:1 and nothing else. A story-shaped
+ * design (1080×1920, 9:16) is outside that range, and the refusal used to
+ * arrive days later, in the worker, as an opaque container error nobody was
+ * watching. That is the one hard, knowable-in-advance violation — so it is
+ * refused at scheduling time, while the person can still fix it. Everything
+ * softer stays advisory with no block: X crops, LinkedIn letterboxes and
+ * TikTok pads, but they all TAKE the picture.
+ *
+ * Absent format means portrait (1080×1350) — every document saved before
+ * formats existed is one (see designs/types). A carousel stores
+ * { slides: [...] }; its slides share an artboard in the editor, so the first
+ * slide speaks for the deck.
+ */
+async function designFormat(admin: Json, orgId: string, designId: string): Promise<string> {
+  const { data } = await admin.from("designs")
+    .select("doc").eq("id", designId).eq("organization_id", orgId).maybeSingle();
+  const doc = (data as Json)?.doc;
+  const fmt = Array.isArray(doc?.slides) ? doc.slides[0]?.format : doc?.format;
+  return fmt === "square" || fmt === "story" ? fmt : "portrait";
+}
+
+const STORY_TO_FEED =
+  "That's a Story-shaped design — Instagram feed posts need portrait or square. Post it as a Story instead.";
+
 Deno.serve(async (req) => {
   const pf = preflight(req);
   if (pf) return pf;
@@ -110,6 +137,17 @@ Deno.serve(async (req) => {
           return json({ error: `That caption is too long for ${tooLong.map((t) => t.p).join(", ")}.` }, 400);
         }
 
+        const options = cleanOptions(body?.options ?? {});
+        // The one hard media-shape refusal (see designFormat). The story flag
+        // in the options (`alsoStory` — the only story signal InstagramOptions
+        // carries) is the person explicitly choosing the story surface for
+        // this picture, so their choice stands and it goes through.
+        if (body?.designId && usable.some((x) => x.platform === "instagram") && !options.instagram?.alsoStory) {
+          if ((await designFormat(admin, org.id, String(body.designId))) === "story") {
+            return json({ error: STORY_TO_FEED }, 400);
+          }
+        }
+
         const { data: post, error } = await admin.from("social_posts").insert({
           organization_id: org.id,
           design_id: body?.designId ?? null,
@@ -117,7 +155,7 @@ Deno.serve(async (req) => {
           caption,
           scheduled_at: at.toISOString(),
           status: "queued",
-          options: cleanOptions(body?.options ?? {}),
+          options,
           created_by: userId,
         }).select("id").single();
         if (error || !post) return json({ error: error?.message ?? "Could not queue it." }, 500);
@@ -152,7 +190,7 @@ Deno.serve(async (req) => {
       case "update": {
         const id = String(body?.id ?? "");
         const { data: post } = await admin.from("social_posts")
-          .select("id, status, social_targets(id, account_id, platform, status, claimed_at)")
+          .select("id, status, design_id, social_targets(id, account_id, platform, status, claimed_at)")
           .eq("organization_id", org.id).eq("id", id).maybeSingle();
         if (!post) return json({ error: "That post is not there." }, 404);
 
@@ -188,6 +226,16 @@ Deno.serve(async (req) => {
           return json({ error: `That caption is too long for ${tooLong.map((t) => t.p).join(", ")}.` }, 400);
         }
 
+        const options = cleanOptions(body?.options ?? {});
+        // The same hard refusal as at schedule time: an edit can ADD Instagram
+        // to a story-shaped post, and catching it here beats an opaque worker-
+        // side refusal on the day.
+        if ((post as Json).design_id && usable.some((x) => x.platform === "instagram") && !options.instagram?.alsoStory) {
+          if ((await designFormat(admin, org.id, String((post as Json).design_id))) === "story") {
+            return json({ error: STORY_TO_FEED }, 400);
+          }
+        }
+
         // Channels removed go entirely — a 'skipped' row would sit in the
         // console for ever saying nothing useful about a choice the owner
         // already reversed. Only unsent rows can be here at all; the guard
@@ -221,7 +269,7 @@ Deno.serve(async (req) => {
           caption,
           scheduled_at: at.toISOString(),
           status: "queued",
-          options: cleanOptions(body?.options ?? {}),
+          options,
         }).eq("organization_id", org.id).eq("id", id);
         if (uErr) return json({ error: uErr.message }, 500);
 

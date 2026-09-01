@@ -62,16 +62,21 @@ async function ensurePage(origin) {
   return page;
 }
 
-async function render(origin, doc, templateId, scale) {
+async function render(origin, doc, templateId, scale, format) {
   const run = queue.then(async () => {
     const p = await ensurePage(origin);
-    const dataUrl = await p.evaluate(
-      (d, t, s) => window.renderDesign(d, t, s),
-      doc, templateId, scale,
+    const out = await p.evaluate(
+      (d, t, s, f) => window.renderDesign(d, t, s, f),
+      doc, templateId, scale, format,
     );
-    const b64 = String(dataUrl).split(",")[1] ?? "";
+    const b64 = String(out?.dataUrl ?? "").split(",")[1] ?? "";
     if (!b64) throw new Error("the renderer returned nothing");
-    return Buffer.from(b64, "base64");
+    // missing[] is the export saying "this reference did not make it into the
+    // file". It MUST reach the caller: this endpoint serves an unattended
+    // pipeline, and a pipeline that publishes a design with a silent hole
+    // where the photograph was is exactly the failure a person at the
+    // download button would have caught.
+    return { buf: Buffer.from(b64, "base64"), missing: out?.missing ?? [] };
   });
   // Keep the queue moving even when one render throws.
   queue = run.then(() => undefined, () => undefined);
@@ -91,8 +96,19 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({ ok: true, browser: Boolean(browser) }));
   }
 
-  // The bundle, for the headless browser only.
+  // The bundle, for the headless browser only — and genuinely only. These two
+  // files used to be served to anyone who found the port, which mapped the
+  // service's internals for free. The one client that cannot present the
+  // secret is the Puppeteer page THIS process opens against 127.0.0.1 (a page
+  // navigation carries no custom headers), so loopback is allowed through and
+  // everything else needs the same secret as /render. /health stays open — it
+  // is the only route that is.
   if (url === "/render.js" || url === "/index.html") {
+    const loopback = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress);
+    if (!loopback && req.headers["x-render-secret"] !== SECRET) {
+      res.writeHead(401, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ error: "Not authorised." }));
+    }
     const file = path.join(DIST, url.slice(1));
     return fs.readFile(file, (e, b) => {
       if (e) { res.writeHead(404); return res.end(); }
@@ -107,19 +123,58 @@ const server = http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ error: "Not authorised." }));
     }
     let raw = "";
+    let refused = false;
     req.on("data", (c) => {
       raw += c;
       // A design document is tens of kilobytes; anything approaching a
-      // megabyte is not one.
-      if (raw.length > 4_000_000) req.destroy();
+      // megabyte is not one. Answer 413 BEFORE tearing the socket down — a
+      // bare req.destroy() hung up mid-request, so the worker on the other end
+      // saw ECONNRESET instead of a reason it could log, and retried a request
+      // that could never succeed.
+      if (raw.length > 4_000_000 && !refused) {
+        refused = true;
+        res.writeHead(413, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({ error: "Body too large — a design document is tens of kilobytes." }),
+          () => req.destroy(),
+        );
+      }
     });
     req.on("end", async () => {
+      if (refused) return;
       try {
         const body = JSON.parse(raw || "{}");
         if (!body?.doc) throw new Error("no doc given");
-        const png = await render(origin, body.doc, String(body.templateId ?? body.doc.templateId ?? ""), Number(body.scale) || 2);
-        res.writeHead(200, { "content-type": "image/png", "content-length": png.length });
-        res.end(png);
+        // "jpeg" is the one other format the exporter speaks (Instagram's
+        // publish API takes JPEG only); anything else means PNG.
+        const format = body.format === "jpeg" ? "jpeg" : "png";
+        const { buf, missing } = await render(
+          origin, body.doc, String(body.templateId ?? body.doc.templateId ?? ""),
+          Number(body.scale) || 2, format,
+        );
+        if (missing.length) {
+          // FAIL, do not deliver. The bytes encode fine with a hole where an
+          // asset was, and the caller is an unattended pipeline — this is the
+          // only moment anything can stop a holed design being published.
+          // 422: the request was well-formed; the document is not completely
+          // renderable.
+          res.writeHead(422, {
+            "content-type": "application/json",
+            "x-render-missing": String(missing.length),
+          });
+          return res.end(JSON.stringify({
+            error: "Some of the design's assets could not be inlined; refusing to deliver a holed image.",
+            missing,
+          }));
+        }
+        res.writeHead(200, {
+          "content-type": format === "jpeg" ? "image/jpeg" : "image/png",
+          "content-length": buf.length,
+          // Zero, explicitly, so the caller can rely on the header existing
+          // rather than reading absence as success.
+          "x-render-missing": "0",
+        });
+        res.end(buf);
       } catch (e) {
         console.error("render failed:", e?.message ?? e);
         res.writeHead(500, { "content-type": "application/json" });
@@ -129,6 +184,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Nothing else exists — and nothing else is even acknowledged without the
+  // secret. /health is the only open route on this service.
+  if (req.headers["x-render-secret"] !== SECRET) {
+    res.writeHead(401, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ error: "Not authorised." }));
+  }
   res.writeHead(404);
   res.end();
 });

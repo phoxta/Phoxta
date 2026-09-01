@@ -103,16 +103,11 @@ verify_jwt = false
 [functions.idea-run]
 verify_jwt = true
 
-# Finds a photograph (Pexels) or generates one (OpenAI) for a design's photo
 # The autopilot tick: takes the objectives that are due, decides one next
 # action for each, and runs it through the same governed tool path the operator
 # uses. Cron only -- it authorises off x-cron-secret and refuses a user token.
 [functions.objective-planner]
 verify_jwt = false
-
-# slot. Signed-in only: it spends both quotas and writes to tenant storage.
-[functions.image-library]
-verify_jwt = true
 
 # Writes a social post from a brief: copy, Pexels photographs, brand colours.
 # Signed-in only, since it spends model tokens and writes into a tenant library.

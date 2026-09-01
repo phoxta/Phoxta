@@ -13,6 +13,9 @@
 // embed() throws a clear error if a provider returns a different size, instead of a
 // cryptic insert failure. Set EMBED_DIM=1536 if you switch the column + provider to
 // OpenAI/Gemini.
+import { assertWithinCap, CAP_REACHED_MESSAGE } from "./meter.ts";
+import type { SupabaseClient } from "./supabaseAdmin.ts";
+
 const EXPECTED_DIM = parseInt(Deno.env.get("EMBED_DIM") ?? "1024", 10);
 
 function embedProvider(): "voyage" | "openai" | "gemini" | "local" {
@@ -174,55 +177,283 @@ async function speakOpenAI(text: string, voice: SpeechVoice, instructions?: stri
   return new Uint8Array(await res.arrayBuffer());
 }
 
-/** Render `text` to MP3 bytes. `voiceId` is the business's own Cartesia voice
- *  when it has one configured. Throws with BOTH providers' reasons if neither
- *  worked, so the caller can tell the owner what to fix rather than guess. */
+// ---------------------------------------------------------------------------
+// Image generation — the ONE client, and the place image spend is booked.
+//
+// This used to exist twice: design-assets carried the good client (dall-e-3
+// fallback, orientation sizes, friendly errors) and this file carried a bare
+// one — and NEITHER metered a single call. gpt-image-1 costs real money per
+// picture, the content planner asks for up to thirty in one request, and
+// every cent of it was invisible to the monthly cap and the cost dashboard.
+// One client, one framing prompt, one booking path.
+
+export type ImageOrientation = "square" | "landscape" | "portrait";
+
+export type MakeImageOpts = {
+  /** A WxH string ("1024x1536"). Only its SHAPE is used — each model has its
+   *  own pixel sizes, so the orientation is what survives a model fallback. */
+  size?: string;
+  orientation?: ImageOrientation;
+  /** With `orgId`, turns metering ON: the monthly token cap and the daily
+   *  image backstop are checked BEFORE the call, and the spend is booked into
+   *  ai_usage after it. Every product caller must pass these — the bare form
+   *  exists only so the client itself stays testable. */
+  admin?: SupabaseClient;
+  orgId?: string;
+  userId?: string | null;
+  /** ai_usage.feature — who asked. Defaults to "image". */
+  feature?: string;
+};
+
+/* Two models, one shape. gpt-image-1 is the good one and the one to ask for;
+   it is also gated behind organisation verification, so an account that has
+   not done that gets a 403 naming a model it cannot use. Falling back to
+   dall-e-3 there means the feature works on day one rather than after a
+   support ticket. The two disagree about parameters — dall-e-3 needs
+   response_format to return bytes, gpt-image-1 rejects that parameter
+   outright — so the request is built per model rather than patched. */
+const IMAGE_SIZES: Record<string, Record<ImageOrientation, string>> = {
+  "gpt-image-1": { square: "1024x1024", landscape: "1536x1024", portrait: "1024x1536" },
+  "dall-e-3": { square: "1024x1024", landscape: "1792x1024", portrait: "1024x1792" },
+};
+
+/** Ninety seconds. A large generation genuinely takes most of a minute, and a
+ *  request that hangs past this has failed in a way retrying will not fix. */
+const IMAGE_TIMEOUT_MS = 90_000;
+
 /**
- * Make a photograph that does not exist.
+ * WHAT ONE PICTURE IS BOOKED AT — the mapping the meter cannot do itself.
  *
- * Shared because two callers need it now — the editor's photo slot and the
- * content planner — and a second copy of the prompt is a second place for
- * "no text, no words, no logos" to be forgotten. That instruction is not
- * decoration: gpt-image-1 will happily letter a poster, and a headline baked
- * into the photograph sits underneath the design's own headline.
+ * meter() prices by token count through _shared/pricing.ts, which has no row
+ * for image models, so a call routed through it lands as cost 0 — the exact
+ * bug this exists to end. The row is therefore written here with cost_cents
+ * explicit:
  *
- * Returns bytes rather than a URL. OpenAI's hosted URLs expire, and the two
- * callers both need to store the file anyway.
+ *   gpt-image-1 → 25¢  (a portrait at default quality is ≈ $0.25; a square is
+ *                       less, and rounding UP is the right error for a cap)
+ *   dall-e-3    →  8¢  (standard 1024x1792 is $0.08)
+ *
+ * output_tokens carries a token EQUIVALENT of the same money — cents × 667,
+ * what the cents would buy at the balanced tier's $15/M output rate — so
+ * assertWithinCap's token sum sees image spend without pricing.ts having to
+ * learn about pixels. A gpt-image-1 picture depletes the monthly cap like a
+ * ~16,700-token reply, which is roughly what it costs.
  */
-export async function makeImage(prompt: string, size = "1024x1536"): Promise<Uint8Array> {
-  const key = Deno.env.get("OPENAI_API_KEY");
-  if (!key) throw new Error("Image generation is not configured.");
+const IMAGE_COST_CENTS: Record<string, number> = { "gpt-image-1": 25, "dall-e-3": 8 };
+const TOKENS_PER_CENT = 667;
+
+/** The per-org, per-day backstop UNDER the monthly cap: a runaway loop (or a
+ *  stolen session) can spend a month's images in one afternoon, and the
+ *  monthly cap only notices afterwards. Counted from ai_usage itself — rows
+ *  with tier 'image', whatever their feature string says, so every image
+ *  caller shares the one bound. */
+const IMAGE_DAILY_CAP = Math.max(1, Number(Deno.env.get("IMAGE_DAILY_CAP") ?? "40"));
+
+export const IMAGE_DAILY_CAP_MESSAGE =
+  "Today's image allowance for this business is used up. It resets at midnight UTC.";
+
+/** ai_usage.user_id is a uuid column; a label would fail the INSERT silently.
+ *  Same coercion meter() applies (its helper is not exported). */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function imagesToday(admin: SupabaseClient, orgId: string): Promise<number> {
+  const dayStart = new Date();
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const { count, error } = await admin
+    .from("ai_usage")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId)
+    .eq("tier", "image")
+    .gte("created_at", dayStart.toISOString());
+  if (error) {
+    // Fail OPEN on the backstop alone: the monthly cap was already checked,
+    // and refusing every image because a count query hiccuped would be a
+    // worse outage than one uncounted afternoon.
+    console.error("[phoxta] image daily count failed:", error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+/** Book one image into ai_usage. Never throws — metering must not break the
+ *  user-facing call, but a failure is logged loudly (see meter.ts for why). */
+async function meterImage(
+  admin: SupabaseClient,
+  orgId: string,
+  userId: string | null,
+  model: string,
+  feature: string,
+  latencyMs: number,
+): Promise<void> {
+  const cents = IMAGE_COST_CENTS[model] ?? 8;
+  try {
+    const { error } = await admin.from("ai_usage").insert({
+      organization_id: orgId,
+      user_id: userId && UUID_RE.test(userId) ? userId : null,
+      model,
+      feature,
+      tier: "image",
+      input_tokens: 0,
+      output_tokens: cents * TOKENS_PER_CENT,
+      cache_write_tokens: 0,
+      cache_read_tokens: 0,
+      latency_ms: latencyMs,
+      status: "ok",
+      cost_cents: cents,
+    });
+    if (error) console.error("[phoxta] image ai_usage insert failed:", error.message, { feature, model });
+  } catch (e) {
+    console.error("[phoxta] meterImage threw:", e instanceof Error ? e.message : String(e));
+  }
+}
+
+function isMissingModel(status: number, detail: string): boolean {
+  const t = detail.toLowerCase();
+  if (t.includes("model_not_found") || t.includes("must be verified")) return true;
+  if (status === 404) return true;
+  if ((status === 400 || status === 403) && t.includes("model")) {
+    return t.includes("not found") || t.includes("does not exist") || t.includes("unsupported")
+      || t.includes("invalid") || t.includes("access") || t.includes("not have");
+  }
+  return false;
+}
+
+/** Turn a provider failure into something a person can act on. The upstream
+ *  body is logged, never returned: it can carry account, quota and billing
+ *  detail that is not this user's business. */
+function friendlyGenError(status: number, detail: string): string {
+  const t = detail.toLowerCase();
+  if (t.includes("moderation") || t.includes("content_policy") || t.includes("safety_violation")) {
+    return "The image model refused that prompt. Describe the picture differently and try again.";
+  }
+  if (status === 429 || t.includes("rate limit")) return "The image service is busy. Try again in a moment.";
+  if (status === 401 || status === 403) return "Image generation is not available on this account right now.";
+  return "That image could not be generated.";
+}
+
+async function callImageModel(
+  key: string,
+  model: string,
+  prompt: string,
+  size: string,
+  signal: AbortSignal,
+): Promise<{ ok: true; bytes: Uint8Array } | { ok: false; status: number; detail: string }> {
+  const payload: Record<string, unknown> = { model, prompt, size, n: 1 };
+  // gpt-image-1 always returns base64 and rejects response_format; dall-e-3
+  // defaults to a URL that expires within the hour, so it must be asked.
+  if (model === "dall-e-3") payload.response_format = "b64_json";
 
   const r = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "gpt-image-1",
-      prompt: `${prompt}. Professional photography for a social media post. No text, no words, no letters, no logos, no watermarks.`,
-      size,
-      n: 1,
-    }),
+    body: JSON.stringify(payload),
+    signal,
   });
+
   if (!r.ok) {
     const detail = await r.text().catch(() => "");
-    console.error("image generation failed", r.status, detail.slice(0, 400));
-    // The upstream message is not passed through: it can carry account and
-    // billing detail that is not the caller's business.
-    throw new Error(r.status === 429 ? "Too many images at once. Try again shortly." : "That image could not be generated.");
+    console.error("image generation failed", model, r.status, detail.slice(0, 400));
+    return { ok: false, status: r.status, detail };
   }
 
   const out = await r.json();
   const b64 = out?.data?.[0]?.b64_json;
+  if (b64) return { ok: true, bytes: Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) };
+
+  // Belt and braces: if a model ever answers with a URL anyway, fetch it now.
+  // Storing an expiring URL on a design produces a post that renders today and
+  // is a broken image next week — the worst kind of failure, because it
+  // happens after everyone has stopped looking.
   const url = out?.data?.[0]?.url;
-  if (b64) return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
   if (url) {
-    const img = await fetch(url);
-    if (!img.ok) throw new Error("That image could not be saved.");
-    return new Uint8Array(await img.arrayBuffer());
+    const img = await fetch(url, { signal });
+    if (img.ok) return { ok: true, bytes: new Uint8Array(await img.arrayBuffer()) };
   }
-  throw new Error("That image could not be generated.");
+  return { ok: false, status: 502, detail: "no image data" };
 }
 
+/** "1024x1536" → portrait; the exact pixels are each model's own business. */
+function orientationOf(size: string | undefined): ImageOrientation | null {
+  const m = /^(\d+)x(\d+)$/.exec(String(size ?? ""));
+  if (!m) return null;
+  const w = Number(m[1]), h = Number(m[2]);
+  return w > h ? "landscape" : w < h ? "portrait" : "square";
+}
+
+/**
+ * Make a photograph that does not exist.
+ *
+ * Returns bytes rather than a URL. OpenAI's hosted URLs expire, and every
+ * caller needs to store the file anyway.
+ *
+ * The framing sentence is not decoration: gpt-image-1 will happily letter a
+ * poster, and a headline baked into the photograph sits underneath the
+ * design's own headline. One copy of it, here, so a second client cannot
+ * forget it again.
+ *
+ * Throws with a person-usable message: CAP_REACHED_MESSAGE or
+ * IMAGE_DAILY_CAP_MESSAGE (compare exactly) when the org is over budget, the
+ * friendly provider error otherwise.
+ */
+export async function makeImage(prompt: string, opts: MakeImageOpts = {}): Promise<Uint8Array> {
+  const key = Deno.env.get("OPENAI_API_KEY");
+  if (!key) throw new Error("Image generation is not configured.");
+
+  if (opts.admin && opts.orgId) {
+    const cap = await assertWithinCap(opts.admin, opts.orgId);
+    if (!cap.ok) throw new Error(CAP_REACHED_MESSAGE);
+    if ((await imagesToday(opts.admin, opts.orgId)) >= IMAGE_DAILY_CAP) {
+      throw new Error(IMAGE_DAILY_CAP_MESSAGE);
+    }
+  }
+
+  const orientation: ImageOrientation = opts.orientation ?? orientationOf(opts.size) ?? "portrait";
+  const framed =
+    `${prompt}. High quality photograph for a social media graphic. No text, no words, no letters, no logos, no watermarks.`;
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), IMAGE_TIMEOUT_MS);
+  const started = Date.now();
+  let model = "gpt-image-1";
+  // Initialised to null rather than left definite-assignment-checked: the only
+  // path out of the try/catch below that reaches the check is a successful
+  // assignment, but making that implicit is how a later edit introduces a
+  // "used before assigned" that only shows up at deploy.
+  let result: Awaited<ReturnType<typeof callImageModel>> | null = null;
+  try {
+    result = await callImageModel(key, model, framed, IMAGE_SIZES[model][orientation], ctrl.signal);
+    if (!result.ok && isMissingModel(result.status, result.detail)) {
+      // The good model is unavailable to this account. Say so in the log,
+      // draw the picture anyway.
+      console.warn("makeImage falling back to dall-e-3");
+      model = "dall-e-3";
+      result = await callImageModel(key, model, framed, IMAGE_SIZES[model][orientation], ctrl.signal);
+    }
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") {
+      throw new Error("The image took too long to draw. Try a simpler description.");
+    }
+    console.error("makeImage threw", e);
+    throw new Error("That image could not be generated.");
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!result) throw new Error("That image could not be generated.");
+  if (!result.ok) throw new Error(friendlyGenError(result.status, result.detail));
+
+  // Booked AFTER a successful draw: a refused prompt did not cost a picture,
+  // and the caps above already stopped the over-budget calls before any
+  // money moved.
+  if (opts.admin && opts.orgId) {
+    await meterImage(opts.admin, opts.orgId, opts.userId ?? null, model, opts.feature ?? "image", Date.now() - started);
+  }
+  return result.bytes;
+}
+
+/** Render `text` to MP3 bytes. `voiceId` is the business's own Cartesia voice
+ *  when it has one configured. Throws with BOTH providers' reasons if neither
+ *  worked, so the caller can tell the owner what to fix rather than guess. */
 export async function speak(
   text: string,
   voice: SpeechVoice = "alloy",

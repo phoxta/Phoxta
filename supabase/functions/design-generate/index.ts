@@ -20,7 +20,7 @@ import { requireUser } from "../_shared/auth.ts";
 import { adminClient } from "../_shared/supabaseAdmin.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
-import { searchStock } from "../_shared/stock.ts";
+import { findStock } from "../_shared/stock.ts";
 import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -159,11 +159,19 @@ Statistics must be short and plausible — "12+", "98%", "4.5". Never invent a s
     }
 
     // ── 2. Photographs ───────────────────────────────────────────────────
+    // findStock, not searchStock: "no photograph matched" and "Pexels could
+    // not be asked" are different answers, and the second one used to arrive
+    // here as a silent null — the design shipped with empty slots and nothing
+    // said a rate-limited hour at Pexels was why. The org id feeds the
+    // per-tenant hourly bucket in stock.ts, so one business regenerating all
+    // afternoon cannot spend the platform's shared quota.
     const images: Record<string, Json> = {};
+    let stockUnavailable = "";
     for (const slot of Object.keys(spec.images ?? {})) {
       const q = String((written?.imageQueries ?? {})[slot] ?? "").trim() || String(spec.images[slot] ?? "");
-      const image = await searchStock(q);
-      if (image) images[slot] = image;
+      const found = await findStock(q, { orgId });
+      if (found.photo) images[slot] = found.photo;
+      else if (found.unavailable && !stockUnavailable) stockUnavailable = found.unavailable;
     }
 
     // ── 3. Brand ─────────────────────────────────────────────────────────
@@ -183,6 +191,11 @@ Statistics must be short and plausible — "12+", "98%", "4.5". Never invent a s
         images,
         palette: Object.keys(palette).length ? palette : undefined,
       },
+      // The design still generates — empty photo slots are editable later —
+      // but when stock could not be SEARCHED the caller is told why, so the
+      // studio can say "stock is temporarily unavailable" instead of letting
+      // empty slots read as "nothing matched".
+      ...(stockUnavailable ? { stockUnavailable } : {}),
     });
   } catch (err) {
     return json({ error: String((err as Error)?.message || err) }, 500);
