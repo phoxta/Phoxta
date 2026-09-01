@@ -22,7 +22,41 @@ const FIGMA_INK = /#14194[eE]/g;
 const FIGMA_ACCENT = /#1[cC]56[fF][dD]/g;
 const FIGMA_INK_ALT = /#1[dD]1[bB]41/g;
 
+/* The cache is BOUNDED. It began as a bare module-level Map, which for the
+   vector pack was fine — a few hundred kilobytes, ever. But `inlineImage`
+   below caches PHOTOGRAPHS as data URIs, several megabytes each, and one
+   session browsing the library grid could pin hundreds of them for the life
+   of the tab. So: a simple LRU, capped at ~40 entries or ~64MB of string data
+   (a data-URI's length tracks its decoded size closely enough for a ceiling),
+   whichever trips first. A Map iterates in insertion order, so re-inserting
+   on read is all it takes to make eviction least-recently-used. */
+const MAX_ENTRIES = 40;
+const MAX_CHARS = 64 * 1024 * 1024;
+
 const cache = new Map<string, string>();
+let cachedChars = 0;
+
+function cacheGet(key: string): string | undefined {
+  const hit = cache.get(key);
+  if (hit !== undefined) { cache.delete(key); cache.set(key, hit); }
+  return hit;
+}
+
+function cachePut(key: string, value: string) {
+  // Something larger than the whole budget would evict everything else and
+  // still not help the next render; serve it uncached instead.
+  if (value.length > MAX_CHARS) return;
+  const prev = cache.get(key);
+  if (prev !== undefined) { cache.delete(key); cachedChars -= prev.length; }
+  cache.set(key, value);
+  cachedChars += value.length;
+  while (cache.size > MAX_ENTRIES || cachedChars > MAX_CHARS) {
+    const oldest = cache.keys().next().value;
+    if (oldest === undefined) break;
+    cachedChars -= cache.get(oldest)?.length ?? 0;
+    cache.delete(oldest);
+  }
+}
 
 /** Cache key: the same file recoloured two ways is two different assets. */
 const keyFor = (src: string, palette: Palette) => `${src}|${palette.ink}|${palette.accent}`;
@@ -36,7 +70,7 @@ const keyFor = (src: string, palette: Palette) => `${src}|${palette.ink}|${palet
  */
 export async function loadAsset(src: string, palette: Palette = DEFAULT_PALETTE): Promise<string> {
   const key = keyFor(src, palette);
-  const hit = cache.get(key);
+  const hit = cacheGet(key);
   if (hit) return hit;
 
   try {
@@ -55,7 +89,7 @@ export async function loadAsset(src: string, palette: Palette = DEFAULT_PALETTE)
     // characters often enough that btoa throws on them, and a data URI that
     // throws at load time is worse than a slightly longer one.
     const uri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-    cache.set(key, uri);
+    cachePut(key, uri);
     return uri;
   } catch {
     return src;
@@ -81,7 +115,7 @@ export async function loadAssets(srcs: string[], palette: Palette): Promise<Reco
 export async function inlineImage(url: string): Promise<string | null> {
   if (!url) return null;
   if (url.startsWith("data:")) return url;
-  const hit = cache.get(url);
+  const hit = cacheGet(url);
   if (hit) return hit;
 
   try {
@@ -94,7 +128,7 @@ export async function inlineImage(url: string): Promise<string | null> {
       fr.onerror = () => reject(fr.error);
       fr.readAsDataURL(blob);
     });
-    cache.set(url, uri);
+    cachePut(url, uri);
     return uri;
   } catch {
     return null;

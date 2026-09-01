@@ -6,7 +6,7 @@ import { fontStack, heightOf, layoutText, measure, type Line } from "./layout";
 import { plain } from "./rich";
 import { STROKE_ONLY, geometryOf } from "./shapes";
 import {
-  CANVAS_H, CANVAS_W, paint, resolvePalette,
+  formatDims, paint, resolvePalette,
   type ChipLayer, type Copy, type DesignDoc, type Layer, type Palette, type TextLayer,
 } from "./types";
 
@@ -111,6 +111,14 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: Copy | unde
   const x = l.align === "center" ? l.x + l.w / 2 : l.align === "right" ? l.x + l.w : l.x;
   const dy = valignOffset(l, lines);
 
+  // paint-order: SVG strokes text down the middle of the glyph outline, so a
+  // stroke drawn in the default order eats the fill from the edges in — at any
+  // width worth seeing, counters close up and an "e" reads as a blob. Real
+  // text outlining paints the stroke UNDER the fill; "stroke" first is exactly
+  // that switch, it serialises with the markup, and so the export agrees with
+  // the canvas without either knowing about the other.
+  const stroked = Boolean(l.strokeColor);
+
   return (
     <text
       x={x}
@@ -121,9 +129,10 @@ function TextLayerView({ l, value, palette }: { l: TextLayer; value: Copy | unde
       fontStyle={l.italic ? "italic" : undefined}
       letterSpacing={l.tracking}
       textAnchor={anchor}
-      stroke={l.strokeColor ? paint(l.strokeColor, palette) : undefined}
-      strokeWidth={l.strokeColor ? (l.strokeWidth ?? 1) : undefined}
-      strokeLinejoin={l.strokeColor ? "round" : undefined}
+      stroke={stroked ? paint(l.strokeColor, palette) : undefined}
+      strokeWidth={stroked ? (l.strokeWidth ?? 1) : undefined}
+      strokeLinejoin={stroked ? "round" : undefined}
+      paintOrder={stroked ? "stroke" : undefined}
       style={l.capitalize ? { textTransform: "capitalize" } : undefined}
     >
       {lines.map((line, i) => (
@@ -573,7 +582,9 @@ export function DesignSvg({
     const next = resolveDrag(d, dx, dy, ratio, mod.alt);
     if (d.handle !== "move") { if (live) { setGuides([]); setGaps([]); } return next; }
     const others = layersOf(doc).filter((l) => !chosen.includes(l.id));
-    const snapped = snapMove(next, others, zoom);
+    // The document's own artboard, so edge and centre snaps land on the page
+    // this design actually has rather than on portrait's.
+    const snapped = snapMove(next, others, zoom, formatDims(doc.format));
     // The commit frame still has to SNAP -- the released position must be the
     // one that was on screen -- but it must not repaint the guides. Publishing
     // them here is what left a dashed line and a gap badge stranded on the
@@ -722,18 +733,67 @@ export function DesignSvg({
   // shape, default colours — rather than a gap where the art should be.
   const asset = (s: string) => assetMap?.[s] ?? loaded[s] ?? s;
 
+  // The artboard is the DOCUMENT's, not the pack's — portrait is only the
+  // default. The page rect, the page clip and the default viewBox all draw
+  // from these two numbers, so a square document is square on every surface
+  // this one renderer serves.
+  const dims = formatDims(doc.format);
+  const h = height ?? (dims.h * width) / dims.w;
+
   // A design outlives the layout it was made from. Templates get renamed and
   // repacked; a saved design that points at an id which no longer exists still
   // holds its own materialised layers, and rendering nothing for it turned the
   // library grid into a blank tile with no explanation. Layers first, template
-  // second, and only give up when there is genuinely nothing to draw.
-  if (!layers.length) return null;
+  // second — and a CONTENT-ONLY document whose template left the pack has no
+  // layers at all, which used to be the one case that still rendered null: a
+  // blank tile with the owner's words locked unreachably inside it. It gets a
+  // tombstone instead — a labelled artboard that says what happened and lists
+  // the copy as plain lines, so the layout is lost but nothing anyone wrote is.
+  if (!layers.length) {
+    const strings = Object.values(doc.content ?? {})
+      .map((v) => plain(v).trim())
+      .filter(Boolean);
+    return (
+      <svg
+        viewBox={`0 0 ${dims.w} ${dims.h}`} width={width} height={h}
+        xmlns="http://www.w3.org/2000/svg" style={{ display: "block", maxWidth: "100%" }}
+        role="img" aria-label="This design's template was retired"
+      >
+        <rect x={0} y={0} width={dims.w} height={dims.h} fill="#ffffff" />
+        <rect
+          x={24} y={24} width={dims.w - 48} height={dims.h - 48} fill="none"
+          stroke="rgba(125,140,175,0.6)" strokeWidth={3} strokeDasharray="14 10"
+        />
+        <text
+          x={dims.w / 2} y={120} textAnchor="middle" fontSize={40} fontWeight={700}
+          fill="#14194e" fontFamily='"Plus Jakarta Sans", sans-serif'
+        >
+          This design&apos;s template was retired
+        </text>
+        <text
+          x={dims.w / 2} y={172} textAnchor="middle" fontSize={26}
+          fill="rgba(90,105,140,0.95)" fontFamily='"Plus Jakarta Sans", sans-serif'
+        >
+          Its text is preserved below
+        </text>
+        {strings.map((s, i) => (
+          <text
+            key={i} x={80} y={280 + i * 56} fontSize={30}
+            fill="#14194e" fontFamily='"Plus Jakarta Sans", sans-serif'
+          >
+            {/* One plain line per slot, truncated rather than wrapped: this is
+                a recovery surface, not a layout. */}
+            {s.length > 60 ? `${s.slice(0, 60)}…` : s}
+          </text>
+        ))}
+      </svg>
+    );
+  }
 
   const content = { ...(template?.content ?? {}), ...doc.content };
-  const h = height ?? (CANVAS_H * width) / CANVAS_W;
   const vb = viewport
     ? `${viewport.x} ${viewport.y} ${width / viewport.zoom} ${h / viewport.zoom}`
-    : `0 0 ${CANVAS_W} ${CANVAS_H}`;
+    : `0 0 ${dims.w} ${dims.h}`;
   const sel = chosen.map((id) => layers.find((l) => l.id === id)).filter(Boolean) as Layer[];
 
   return (
@@ -769,11 +829,11 @@ export function DesignSvg({
         The edge line stays editor-only. That is chrome — it says where the
         page ends — and it has no business in a PNG.
       */}
-      <rect x={0} y={0} width={CANVAS_W} height={CANVAS_H} fill="#ffffff" />
+      <rect x={0} y={0} width={dims.w} height={dims.h} fill="#ffffff" />
       {viewport && (
         <rect
           data-editor-only="artboard-edge"
-          x={0} y={0} width={CANVAS_W} height={CANVAS_H}
+          x={0} y={0} width={dims.w} height={dims.h}
           fill="none" stroke="rgba(0,0,0,0.14)" strokeWidth={1 / zoom}
         />
       )}
@@ -792,7 +852,7 @@ export function DesignSvg({
           be dragged back.
         */}
         <clipPath id={`${uid}-page`}>
-          <rect x={0} y={0} width={CANVAS_W} height={CANVAS_H} />
+          <rect x={0} y={0} width={dims.w} height={dims.h} />
         </clipPath>
         {layers.map((l) =>
           l.type === "gradient" ? (
@@ -800,16 +860,6 @@ export function DesignSvg({
               <stop offset="0%" stopColor={paint(l.from, palette)} />
               <stop offset="100%" stopColor={paint(l.to, palette)} />
             </linearGradient>
-          ) : null,
-        )}
-        {layers.map((l) =>
-          l.type === "image" && l.mask ? (
-            <clipPath key={l.id} id={`${uid}-mask-${l.id}`} clipPathUnits="objectBoundingBox">
-              {/* objectBoundingBox keeps the mask tied to the slot rather than
-                  to canvas coordinates, so the same mask works if the slot
-                  moves. */}
-              <rect x="0" y="0" width="1" height="1" />
-            </clipPath>
           ) : null,
         )}
       </defs>

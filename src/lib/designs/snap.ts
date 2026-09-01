@@ -39,6 +39,29 @@ const edgesX = (l: { x: number; w: number }) => [l.x, l.x + l.w / 2, l.x + l.w];
 const edgesY = (l: { y: number; h: number }) => [l.y, l.y + l.h / 2, l.y + l.h];
 
 /**
+ * The axis-aligned box a possibly-rotated layer occupies.
+ *
+ * Everything in this file reasons in axis-aligned space — snap candidates,
+ * marquee intersection, union bounds — and a rotated layer's x/y/w/h describe
+ * the box it had BEFORE it turned, not the one the eye sees. Snapping to the
+ * unrotated edges pulled layers toward lines that are not visibly there, and a
+ * marquee could miss art it clearly covered. Rotation is about the layer's own
+ * centre, so the AABB shares that centre and only the extents change.
+ */
+export function rotatedAabb(
+  l: { x: number; y: number; w: number; h: number; rotation?: number },
+): { x: number; y: number; w: number; h: number } {
+  const deg = l.rotation ?? 0;
+  if (!deg) return { x: l.x, y: l.y, w: l.w, h: l.h };
+  const r = (deg * Math.PI) / 180;
+  const c = Math.abs(Math.cos(r));
+  const s = Math.abs(Math.sin(r));
+  const w = l.w * c + l.h * s;
+  const h = l.w * s + l.h * c;
+  return { x: l.x + l.w / 2 - w / 2, y: l.y + l.h / 2 - h / 2, w, h };
+}
+
+/**
  * Where a moving box wants to sit.
  *
  * `box` is the position the pointer asks for; the result is the position it
@@ -50,24 +73,31 @@ export function snapMove(
   box: { x: number; y: number; w: number; h: number },
   others: Layer[],
   zoom: number,
+  /** The artboard, for the edge and centre candidates. Optional so every
+   *  existing caller keeps its meaning; the renderer passes the document's own
+   *  dimensions now that artboards come in more shapes than portrait. */
+  dims: { w: number; h: number } = { w: CANVAS_W, h: CANVAS_H },
 ): SnapResult {
   const t = THRESHOLD_PX / zoom;
 
   const candX: Edge[] = [
-    { at: 0, lo: 0, hi: CANVAS_H },
-    { at: CANVAS_W / 2, lo: 0, hi: CANVAS_H },
-    { at: CANVAS_W, lo: 0, hi: CANVAS_H },
+    { at: 0, lo: 0, hi: dims.h },
+    { at: dims.w / 2, lo: 0, hi: dims.h },
+    { at: dims.w, lo: 0, hi: dims.h },
   ];
   const candY: Edge[] = [
-    { at: 0, lo: 0, hi: CANVAS_W },
-    { at: CANVAS_H / 2, lo: 0, hi: CANVAS_W },
-    { at: CANVAS_H, lo: 0, hi: CANVAS_W },
+    { at: 0, lo: 0, hi: dims.w },
+    { at: dims.h / 2, lo: 0, hi: dims.w },
+    { at: dims.h, lo: 0, hi: dims.w },
   ];
 
   for (const o of others) {
     if (o.hidden) continue;
-    for (const at of edgesX(o)) candX.push({ at, lo: Math.min(o.y, box.y), hi: Math.max(o.y + o.h, box.y + box.h) });
-    for (const at of edgesY(o)) candY.push({ at, lo: Math.min(o.x, box.x), hi: Math.max(o.x + o.w, box.x + box.w) });
+    // Candidates come from the box the layer OCCUPIES, not the box it had
+    // before it was rotated — the eye lines things up against what it can see.
+    const b = rotatedAabb(o);
+    for (const at of edgesX(b)) candX.push({ at, lo: Math.min(b.y, box.y), hi: Math.max(b.y + b.h, box.y + box.h) });
+    for (const at of edgesY(b)) candY.push({ at, lo: Math.min(b.x, box.x), hi: Math.max(b.x + b.w, box.x + box.w) });
   }
 
   const guides: Guide[] = [];
@@ -124,6 +154,14 @@ function equalise(
 ): { x?: number; y?: number } {
   const out: { x?: number; y?: number } = {};
 
+  // Rotated layers are OUT of the rhythm on purpose. Their axis-aligned
+  // bounds are wider than the art they hold — a 45° card's AABB corners are
+  // empty space — so a gap measured to that box is not the gap the eye sees,
+  // and "equal spacing" against it would snap to a rhythm nobody can perceive.
+  // Better to not fire than to fire wrongly: this snap is invisible when it
+  // is right and maddening when it is not.
+  const flat = others.filter((o) => !o.hidden && !o.rotation);
+
   for (const axis of ["x", "y"] as const) {
     const pos = axis === "x" ? box.x : box.y;
     const size = axis === "x" ? box.w : box.h;
@@ -131,8 +169,7 @@ function equalise(
     const oSize = (o: Layer) => (axis === "x" ? o.w : o.h);
     // Only neighbours that actually overlap on the other axis are in the same
     // row or column; anything else is elsewhere on the page.
-    const inLine = others.filter((o) => {
-      if (o.hidden) return false;
+    const inLine = flat.filter((o) => {
       const a0 = axis === "x" ? box.y : box.x;
       const a1 = a0 + (axis === "x" ? box.h : box.w);
       const b0 = axis === "x" ? o.y : o.x;
@@ -164,16 +201,19 @@ function equalise(
  */
 function gapsFor(box: { x: number; y: number; w: number; h: number }, others: Layer[]): Gap[] {
   const gaps: Gap[] = [];
+  // Measured to the box each neighbour occupies — a gap to the pre-rotation
+  // box of a turned layer is a number that matches nothing on screen.
+  const boxes = others.filter((o) => !o.hidden).map((o) => rotatedAabb(o));
+  type B = { x: number; y: number; w: number; h: number };
 
   for (const axis of ["x", "y"] as const) {
     const pos = axis === "x" ? box.x : box.y;
     const size = axis === "x" ? box.w : box.h;
     const cross = axis === "x" ? box.y + box.h / 2 : box.x + box.w / 2;
-    const oPos = (o: Layer) => (axis === "x" ? o.x : o.y);
-    const oSize = (o: Layer) => (axis === "x" ? o.w : o.h);
+    const oPos = (o: B) => (axis === "x" ? o.x : o.y);
+    const oSize = (o: B) => (axis === "x" ? o.w : o.h);
 
-    const inLine = others.filter((o) => {
-      if (o.hidden) return false;
+    const inLine = boxes.filter((o) => {
       const a0 = axis === "x" ? box.y : box.x;
       const a1 = a0 + (axis === "x" ? box.h : box.w);
       const b0 = axis === "x" ? o.y : o.x;
@@ -323,21 +363,31 @@ export function zoomAt(v: Viewport, factor: number, cx: number, cy: number): Vie
   };
 }
 
-/** The union box of several layers — what a multi-selection is dragged by. */
+/** The union box of several layers — what a multi-selection is dragged by.
+ *  Rotated members contribute the box they OCCUPY: a union drawn from their
+ *  pre-rotation boxes cut the corners off anything turned 45°, and the group
+ *  frame visibly failed to contain its own contents. */
 export function boundsOf(layers: Layer[]): { x: number; y: number; w: number; h: number } | null {
   if (!layers.length) return null;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const l of layers) {
-    x0 = Math.min(x0, l.x); y0 = Math.min(y0, l.y);
-    x1 = Math.max(x1, l.x + l.w); y1 = Math.max(y1, l.y + l.h);
+    const b = rotatedAabb(l);
+    x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y);
+    x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h);
   }
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
-/** Layers whose box intersects a marquee. */
+/** Layers whose occupied box intersects a marquee. The rotated AABB is a
+ *  slightly generous hit area (its corners are empty for a turned layer), but
+ *  a marquee that MISSES art it visibly covers reads as broken, and generous
+ *  is how every other canvas resolves the same trade. */
 export function hitTest(layers: Layer[], box: { x: number; y: number; w: number; h: number }): string[] {
   return layers
     .filter((l) => !l.hidden && !l.locked)
-    .filter((l) => l.x < box.x + box.w && l.x + l.w > box.x && l.y < box.y + box.h && l.y + l.h > box.y)
+    .filter((l) => {
+      const b = rotatedAabb(l);
+      return b.x < box.x + box.w && b.x + b.w > box.x && b.y < box.y + box.h && b.y + b.h > box.y;
+    })
     .map((l) => l.id);
 }

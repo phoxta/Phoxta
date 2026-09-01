@@ -25,6 +25,29 @@
 export const CANVAS_W = 1080;
 export const CANVAS_H = 1350;
 
+/**
+ * The artboard sizes a document can be.
+ *
+ * Portrait is the pack's native size and the default — every template is drawn
+ * at 1080×1350 and every document saved before formats existed is one, which is
+ * why `DesignDoc.format` is optional and absent means portrait. The other two
+ * are the sizes the platforms actually take: square for feed posts everywhere,
+ * story for the 9:16 surfaces.
+ *
+ * The renderer, the exporter and the rasterisers all derive the artboard from
+ * the DOCUMENT via `formatDims` rather than from the constants above, so a
+ * square document is square on every surface at once — the constants stay for
+ * the template pack (drawn portrait, always) and for callers that predate
+ * formats.
+ */
+export type DesignFormat = "portrait" | "square" | "story";
+
+export function formatDims(f?: DesignFormat): { w: number; h: number } {
+  if (f === "square") return { w: 1080, h: 1080 };
+  if (f === "story") return { w: 1080, h: 1920 };
+  return { w: CANVAS_W, h: CANVAS_H };
+}
+
 export type Rgb = string;
 
 /**
@@ -256,7 +279,11 @@ export type ImageLayer = Base & {
   type: "image";
   slot: ImageSlot;
   radius?: number;
-  /** An exported shape that clips the photo — the blobs and circles. */
+  /** An exported shape that clips the photo — the blobs and circles.
+   *  NOTHING SETS THIS YET: the pack's extractor does not emit masks and the
+   *  editor has no control for them, so the renderer applies it when present
+   *  but no document carries one. Kept in the type because the render path
+   *  already honours it and removing it would strand any future import. */
   mask?: string;
   /**
    * The crop.
@@ -432,12 +459,28 @@ export type DesignDoc = {
   images: Partial<Record<ImageSlot, PlacedImage>>;
   /** Only the roles that differ from the template's default. */
   palette?: Partial<Palette>;
+  /** The artboard size. Absent means portrait — every document saved before
+   *  formats existed is one, so nothing had to be migrated. */
+  format?: DesignFormat;
+  /**
+   * Document schema version.
+   *
+   * THE CONVENTION: absent and `1` are the same document — everything saved so
+   * far. The stamp exists so that if this shape ever has to change
+   * incompatibly, the migration can ask "which era is this row from" instead of
+   * sniffing fields, which is how jsonb migrations go wrong. It is written by
+   * `emptyDoc` and by `materialise` (the moment a document starts owning its
+   * layers) rather than everywhere, because a version stamp that half the
+   * writers forget is worse than none.
+   */
+  v?: 1;
 };
 
 export const emptyDoc = (templateId: string): DesignDoc => ({
   templateId,
   content: {},
   images: {},
+  v: 1,
 });
 
 /**

@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { DesignSvg } from "@/lib/designs/render";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { slidesOf } from "@/lib/designs/types";
 import { getDesign, type Design } from "@/lib/db/designs";
 import { Link } from "react-router-dom";
@@ -135,6 +134,20 @@ const prettySize = (n?: number) =>
 
 // ---------------------------------------------------------------------------
 /**
+ * The design renderer, loaded only when a design actually appears in the chat.
+ *
+ * A static `import { DesignSvg }` here dragged the whole template pack —
+ * generated.ts, 107KB of Figma-extracted geometry — into the dashboard-home
+ * chunk, paid by every visitor on first paint for a preview most sessions
+ * never show. React.lazy defers that cost to the first message that attaches
+ * a design; the Suspense fallback is the same placeholder box the data fetch
+ * below already shows, so nothing renders differently while it loads.
+ */
+const LazyDesignSvg = lazy(() =>
+  import("@/lib/designs/render").then((m) => ({ default: m.DesignSvg })),
+);
+
+/**
  * A design, shown as the design rather than as a picture of one.
  *
  * The operator used to attach the design's stored PNG, which meant two things
@@ -160,10 +173,12 @@ export function DesignPreview({ id, title }: { id: string; title: string }) {
   if (!design) return <div className="opc-design opc-design--wait">Loading {title}…</div>;
 
   return (
-    <figure className="opc-design">
-      <DesignSvg doc={slidesOf(design.doc, design.template_id)[0]} width={240} />
-      <figcaption>{design.title}</figcaption>
-    </figure>
+    <Suspense fallback={<div className="opc-design opc-design--wait">Loading {title}…</div>}>
+      <figure className="opc-design">
+        <LazyDesignSvg doc={slidesOf(design.doc, design.template_id)[0]} width={240} />
+        <figcaption>{design.title}</figcaption>
+      </figure>
+    </Suspense>
   );
 }
 

@@ -1,4 +1,4 @@
-import { CANVAS_H, CANVAS_W, type DesignDoc, type ImageSlot, type Layer, type ShapeKind, type TextSlot } from "./types";
+import { formatDims, type DesignDoc, type DesignFormat, type ImageSlot, type Layer, type ShapeKind, type TextSlot } from "./types";
 import { layersOf } from "./templates";
 import { SHAPE_KINDS } from "./shapes";
 
@@ -21,7 +21,10 @@ import { SHAPE_KINDS } from "./shapes";
 /** Give the document its own copy of the layers, if it has not got one. */
 export function materialise(doc: DesignDoc): DesignDoc {
   if (doc.layers?.length) return doc;
-  return { ...doc, layers: layersOf(doc).map((l) => ({ ...l })) };
+  // `v: 1` establishes the version convention (see the type): the moment a
+  // document starts owning its layers is the moment its shape matters, so this
+  // is where the stamp goes rather than on every one of the forty mutators.
+  return { ...doc, v: 1, layers: layersOf(doc).map((l) => ({ ...l })) };
 }
 
 const withLayers = (doc: DesignDoc, next: Layer[]): DesignDoc => ({ ...materialise(doc), layers: next });
@@ -119,12 +122,13 @@ export function duplicateLayer(
   let images = { ...(doc.images ?? {}) };
   let shared = false;
 
+  // Slot accounting goes through freeTextSlot/freeImageSlot, the same
+  // functions addText and addImage use. This function used to keep its own
+  // copy of the arithmetic and the copies drifted: it claimed image slots from
+  // [image1..3] while addImage handed out all six, so duplicating a photo on a
+  // busy design reported "shared" with three slots standing empty.
   if (src.type === "text" || src.type === "chip") {
-    // Chips carry a TextSlot too, so both kinds count as occupying one.
-    const used = new Set(
-      layers.filter((l) => l.type === "text" || l.type === "chip").map((l) => l.slot),
-    );
-    const free = TEXT_SLOTS.find((sl) => !used.has(sl));
+    const free = freeTextSlot(layers);
     if (free) {
       copy = { ...copy, slot: free } as Layer;
       content = { ...content, [free]: content[src.slot] ?? "" };
@@ -132,8 +136,7 @@ export function duplicateLayer(
       shared = true;
     }
   } else if (src.type === "image") {
-    const used = new Set(layers.filter((l) => l.type === "image").map((l) => l.slot));
-    const free = (["image1", "image2", "image3"] as ImageSlot[]).find((sl) => !used.has(sl));
+    const free = freeImageSlot(layers);
     if (free) {
       copy = { ...copy, slot: free } as Layer;
       if (images[src.slot]) images = { ...images, [free]: images[src.slot] };
@@ -158,9 +161,9 @@ export function toggle(doc: DesignDoc, id: string, key: "locked" | "hidden"): De
    where the eye is and a new thing that appears behind the background reads
    as nothing having happened at all. */
 
-const centred = (w: number, h: number) => ({
-  x: Math.round((CANVAS_W - w) / 2),
-  y: Math.round((CANVAS_H - h) / 2),
+const centred = (w: number, h: number, dims: { w: number; h: number }) => ({
+  x: Math.round((dims.w - w) / 2),
+  y: Math.round((dims.h - h) / 2),
   w, h,
 });
 
@@ -170,6 +173,35 @@ const TEXT_SLOTS: TextSlot[] = [
   "cta", "point1", "point2", "point3", "phone", "website", "score",
 ];
 
+/** Every photo slot, in claim order. */
+const IMAGE_SLOTS: ImageSlot[] = ["image1", "image2", "image3", "image4", "image5", "image6"];
+
+/* ── Slot accounting ─────────────────────────────────────────────────────
+   ONE answer to "which slot is free", used by EVERY claimant — addText,
+   addImage and duplicateLayer. Each of those used to run its own count, and
+   two of the three were wrong in ways the other one had already fixed:
+   duplicateLayer searched only [image1..3] while addImage handed out six, and
+   addText counted only text layers while chips occupy TextSlots too — so a
+   design with a chip on "description" could grow a second text box on the same
+   slot, and the two boxes were the same words forever after. Arithmetic that
+   is duplicated drifts; arithmetic that is shared cannot. */
+
+/** The first free text slot — chips count, they carry a TextSlot of their own.
+ *  `prefer` wins when it is genuinely free. */
+export function freeTextSlot(layers: Layer[], prefer?: TextSlot): TextSlot | undefined {
+  const used = new Set(
+    layers.filter((l) => l.type === "text" || l.type === "chip").map((l) => l.slot),
+  );
+  if (prefer && !used.has(prefer)) return prefer;
+  return TEXT_SLOTS.find((s) => !used.has(s));
+}
+
+/** The first free image slot, out of all six. */
+export function freeImageSlot(layers: Layer[]): ImageSlot | undefined {
+  const used = new Set(layers.filter((l) => l.type === "image").map((l) => l.slot));
+  return IMAGE_SLOTS.find((s) => !used.has(s));
+}
+
 export function addText(doc: DesignDoc, slot?: TextSlot): { doc: DesignDoc; id: string } | null {
   // Copy lives in doc.content KEYED BY SLOT, so two text layers on the same slot
   // are literally the same words rendered twice — pressing "+ Text" again used
@@ -177,12 +209,11 @@ export function addText(doc: DesignDoc, slot?: TextSlot): { doc: DesignDoc; id: 
   // layer therefore claims a FREE slot, exactly as a photo claims a free image
   // slot, and the button says so when every slot is spoken for.
   const base = materialise(doc);
-  const used = new Set(layersOf(base).filter((l) => l.type === "text").map((l) => l.slot));
-  const chosen = slot && !used.has(slot) ? slot : TEXT_SLOTS.find((s) => !used.has(s));
+  const chosen = freeTextSlot(layersOf(base), slot);
   if (!chosen) return null;
   const id = freshId("text");
   const layer: Layer = {
-    id, name: "Text", type: "text", slot: chosen, ...centred(560, 160),
+    id, name: "Text", type: "text", slot: chosen, ...centred(560, 160, formatDims(doc.format)),
     size: 48, weight: 600, fill: "ink", lineHeight: 1.2, tracking: -1.4, accent: "accent",
   };
   const layers = [...layersOf(base), layer];
@@ -198,9 +229,10 @@ export function addRect(doc: DesignDoc, kind: ShapeKind = "rect"): { doc: Design
   // A line and an arrow are read along their length, so they arrive wide and
   // short; a star or a polygon reads as itself only in a roughly square box, and
   // arriving stretched would look like a mistake the user then has to correct.
-  const box = kind === "line" || kind === "arrow" ? centred(460, 120)
-    : kind === "rect" ? centred(420, 300)
-    : centred(360, 360);
+  const dims = formatDims(doc.format);
+  const box = kind === "line" || kind === "arrow" ? centred(460, 120, dims)
+    : kind === "rect" ? centred(420, 300, dims)
+    : centred(360, 360, dims);
   const layer: Layer = {
     id, name: label, type: "rect", ...box, fill: "accent",
     ...(kind === "rect" ? { radius: 24 } : { shape: kind }),
@@ -223,11 +255,10 @@ export function addRect(doc: DesignDoc, kind: ShapeKind = "rect"): { doc: Design
  * adding a frame that quietly mirrors another.
  */
 export function addImage(doc: DesignDoc): { doc: DesignDoc; id: string } | null {
-  const used = new Set(layersOf(doc).filter((l) => l.type === "image").map((l) => l.slot));
-  const slot = (["image1", "image2", "image3", "image4", "image5", "image6"] as ImageSlot[]).find((s) => !used.has(s));
+  const slot = freeImageSlot(layersOf(doc));
   if (!slot) return null;
   const id = freshId("image");
-  const layer: Layer = { id, name: "Photo", type: "image", slot, ...centred(480, 480), radius: 24 };
+  const layer: Layer = { id, name: "Photo", type: "image", slot, ...centred(480, 480, formatDims(doc.format)), radius: 24 };
   return { doc: withLayers(doc, [...layersOf(materialise(doc)), layer]), id };
 }
 
@@ -236,13 +267,16 @@ export function addImage(doc: DesignDoc): { doc: DesignDoc; id: string } | null 
 export function align(doc: DesignDoc, id: string, how: "left" | "hcentre" | "right" | "top" | "vcentre" | "bottom"): DesignDoc {
   const l = layersOf(doc).find((x) => x.id === id);
   if (!l) return doc;
+  // The document's own artboard, not the pack's portrait constants — aligning
+  // "bottom" on a square design must mean the square's bottom.
+  const dims = formatDims(doc.format);
   switch (how) {
     case "left": return updateLayer(doc, id, { x: 0 });
-    case "right": return updateLayer(doc, id, { x: CANVAS_W - l.w });
-    case "hcentre": return updateLayer(doc, id, { x: (CANVAS_W - l.w) / 2 });
+    case "right": return updateLayer(doc, id, { x: dims.w - l.w });
+    case "hcentre": return updateLayer(doc, id, { x: (dims.w - l.w) / 2 });
     case "top": return updateLayer(doc, id, { y: 0 });
-    case "bottom": return updateLayer(doc, id, { y: CANVAS_H - l.h });
-    case "vcentre": return updateLayer(doc, id, { y: (CANVAS_H - l.h) / 2 });
+    case "bottom": return updateLayer(doc, id, { y: dims.h - l.h });
+    case "vcentre": return updateLayer(doc, id, { y: (dims.h - l.h) / 2 });
   }
 }
 
@@ -416,13 +450,29 @@ export function scaleMany(
     ...doc,
     layers: layersOf(doc).map((l) => {
       if (!set.has(l.id)) return l;
-      const next: Layer = {
-        ...l,
-        x: to.x + (l.x - from.x) * sx,
-        y: to.y + (l.y - from.y) * sy,
-        w: Math.max(1, l.w * sx),
-        h: Math.max(1, l.h * sy),
-      };
+      // A ROTATED member cannot be stretched along the canvas axes: a rotated
+      // rectangle scaled by (sx, sy) in canvas space is a parallelogram, which
+      // this document has no way to represent. So a rotated member scales
+      // UNIFORMLY by the mean and is anchored by the centre of its rotated
+      // AABB — which, for a box rotated about its own centre, is the box's
+      // centre. Mapping its top-left corner instead (as the unrotated path
+      // does) placed the corner of the box nobody can see, and the visible
+      // footprint drifted out of the group with every resize.
+      const next: Layer = l.rotation
+        ? (() => {
+            const cx = to.x + (l.x + l.w / 2 - from.x) * sx;
+            const cy = to.y + (l.y + l.h / 2 - from.y) * sy;
+            const w = Math.max(1, l.w * st);
+            const h = Math.max(1, l.h * st);
+            return { ...l, x: cx - w / 2, y: cy - h / 2, w, h };
+          })()
+        : {
+            ...l,
+            x: to.x + (l.x - from.x) * sx,
+            y: to.y + (l.y - from.y) * sy,
+            w: Math.max(1, l.w * sx),
+            h: Math.max(1, l.h * sy),
+          };
       if ("radius" in next && next.radius) next.radius = next.radius * st;
       if ("strokeWidth" in next && next.strokeWidth) next.strokeWidth = next.strokeWidth * st;
       if (next.type === "text") {
@@ -432,4 +482,59 @@ export function scaleMany(
       return next;
     }),
   };
+}
+
+/* ── Formats ─────────────────────────────────────────────────────────────── */
+
+/**
+ * Re-lay a document out onto a different artboard.
+ *
+ * A STARTING POINT, NOT MAGIC. The pack's layouts were composed for portrait;
+ * no arithmetic recomposes a design for a different shape the way a person
+ * would. What this does is the honest mechanical version: materialise the
+ * layers, scale everything by the SMALLER of the two axis ratios (so nothing
+ * is stretched and nothing falls off), recentre the scaled block on the new
+ * artboard, and clamp anything that still pokes out back inside. The result is
+ * the whole design, legible, on the new page — with empty margins on one axis
+ * that the owner then fills or crops by hand. Pretending to do better than
+ * that (per-layer reflow, smart cropping) would move layers in ways nobody
+ * asked for and could not be undone by eye.
+ *
+ * Type sizes, radii, strokes and tracking scale with the geometry, exactly as
+ * `scaleMany` does for a group resize — a 96px headline in a shrunken layout
+ * that stayed 96px would overflow its own box.
+ */
+export function convertFormat(doc: DesignDoc, f: DesignFormat): DesignDoc {
+  const from = formatDims(doc.format);
+  const to = formatDims(f);
+  if (from.w === to.w && from.h === to.h) return { ...doc, format: f };
+
+  const base = materialise(doc);
+  const s = Math.min(to.w / from.w, to.h / from.h);
+  const ox = (to.w - from.w * s) / 2;
+  const oy = (to.h - from.h * s) / 2;
+
+  const layers = layersOf(base).map((l) => {
+    const next: Layer = {
+      ...l,
+      x: l.x * s + ox,
+      y: l.y * s + oy,
+      w: Math.max(1, l.w * s),
+      h: Math.max(1, l.h * s),
+    };
+    if ("radius" in next && next.radius) next.radius = next.radius * s;
+    if ("strokeWidth" in next && next.strokeWidth) next.strokeWidth = next.strokeWidth * s;
+    if (next.type === "text" || next.type === "chip") next.size = Math.max(4, next.size * s);
+    if (next.type === "text" && next.tracking) next.tracking = next.tracking * s;
+    // Clamp INSIDE the new artboard. The uniform scale already guarantees the
+    // block fits as a whole, but a layer that was deliberately hanging off the
+    // old page would land off the new one, invisible, and read as deleted.
+    next.x = Math.round(Math.min(Math.max(next.x, 0), Math.max(0, to.w - next.w)));
+    next.y = Math.round(Math.min(Math.max(next.y, 0), Math.max(0, to.h - next.h)));
+    next.w = Math.round(next.w);
+    next.h = Math.round(next.h);
+    return next;
+  });
+
+  return { ...base, layers, format: f };
 }

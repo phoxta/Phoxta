@@ -3,31 +3,37 @@ import { toast, toastError } from "@/lib/ops/feedback";
 import type { Design } from "@/lib/db/designs";
 import {
   type InstagramOptions as IgOptions,
-  type Limits, type SocialAccount, type SocialPlatform, PLATFORM_NAMES, EMPTY_IG_OPTIONS,
+  type Limits, type SocialAccount, type SocialPlatform, EMPTY_IG_OPTIONS,
   listSocialAccounts, scheduleSocialPost, writeSocialCaption,
 } from "@/lib/db/ops/social";
+import { uploadAsset } from "@/lib/db/ops/designAssets";
 import { InstagramOptions } from "./InstagramOptions";
 import { rasterise } from "./rasterise";
+import { SchedulePostForm, captionCap, localIso } from "./shared";
 
 /**
  * Putting a design out.
  *
- * The picture is rasterised through the SAME path the download button and the
- * email import use, so what is posted is what was downloaded — there is no
- * second renderer to drift.
+ * The picture is rasterised through the SAME renderer the download button and
+ * the email import use, so what is posted is what was downloaded — there is no
+ * second renderer to drift. It goes out as JPEG because Instagram accepts JPEG
+ * only; a PNG queued to Instagram fails at publish time, in a worker, where
+ * nobody is watching.
  *
- * The caption counter is per platform because the limits differ by a factor of
- * ten: X will take 280 characters and Instagram 2,200. Showing one number
- * against the shortest selected channel is what stops somebody writing a good
- * caption and then discovering at publish time that it was refused.
+ * The form itself — channels, caption with its tightest-cap counter, when —
+ * is SchedulePostForm, shared with the queue's inline editor so the two
+ * surfaces cannot drift apart. See designs/shared.tsx.
  *
  * Nothing is posted from the browser. This queues; the cron tick on the Oracle
  * box publishes. So closing the tab, or the laptop, changes nothing.
  */
-export function ScheduleDialog({ orgId, design, onClose }: {
+export function ScheduleDialog({ orgId, design, onClose, onConnectAccounts }: {
   orgId: string;
   design: Design;
   onClose: () => void;
+  /** Opens the Graphics page's Accounts dialog. Optional so the page owner can
+   *  wire it when ready; without it the empty state names the button instead. */
+  onConnectAccounts?: () => void;
 }) {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [limits, setLimits] = useState<Limits | null>(null);
@@ -69,20 +75,30 @@ export function ScheduleDialog({ orgId, design, onClose }: {
   }, [orgId]);
 
   const usable = accounts.filter((a) => a.status === "connected");
-
-  /** The tightest limit among the chosen channels — the one that will bite. */
-  const cap = useMemo(() => {
-    if (!limits || picked.length === 0) return null;
-    const chosen = usable.filter((a) => picked.includes(a.id));
-    return chosen.reduce<{ n: number; who: string } | null>((worst, a) => {
-      const n = limits[a.platform]?.caption ?? 2200;
-      return !worst || n < worst.n ? { n, who: PLATFORM_NAMES[a.platform] } : worst;
-    }, null);
-  }, [limits, picked, usable]);
-
+  const cap = useMemo(() => captionCap(limits, accounts, picked), [limits, accounts, picked]);
   const over = cap ? caption.length - cap.n : 0;
 
   const toInstagram = usable.some((a) => picked.includes(a.id) && a.platform === "instagram");
+
+  /**
+   * Rasterise the design and store the file the publisher will send.
+   *
+   * `renderJpeg` is arriving in rasterise.ts in a parallel change; until it
+   * lands, the PNG path stands in rather than the button failing — a fallback
+   * that costs nothing to keep, because it is the path this dialog always
+   * used. The upload goes through the same design-assets library either way
+   * (it derives the stored extension from the file's content type).
+   */
+  async function renderAndStore(): Promise<string> {
+    const mod = await import("./rasterise") as typeof import("./rasterise")
+      & { renderJpeg?: (d: Design) => Promise<Blob> };
+    if (!mod.renderJpeg) return rasterise(orgId, design);
+    const blob = await mod.renderJpeg(design);
+    const name = `${design.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "design"}.jpg`;
+    const { data, error } = await uploadAsset(orgId, new File([blob], name, { type: "image/jpeg" }));
+    if (error || !data) throw new Error(error ?? "The picture could not be stored.");
+    return data.url;
+  }
 
   const go = async () => {
     if (picked.length === 0) return toastError("Choose where it should go.");
@@ -92,7 +108,7 @@ export function ScheduleDialog({ orgId, design, onClose }: {
       // Rasterise now rather than at publish time: the design can change
       // between scheduling and posting, and what was approved is what should
       // go out.
-      const mediaUrl = await rasterise(orgId, design);
+      const mediaUrl = await renderAndStore();
       const at = new Date(when);
       const { error } = await scheduleSocialPost(orgId, {
         designId: design.id, mediaUrl, caption, scheduledAt: at.toISOString(), accountIds: picked,
@@ -147,80 +163,36 @@ export function ScheduleDialog({ orgId, design, onClose }: {
         {loading ? (
           <p className="dsn-note">Loading…</p>
         ) : usable.length === 0 ? (
-          <p className="dsn-note">
-            No accounts connected yet. Connect Instagram, LinkedIn, TikTok or X under Engage → Channels,
-            and they will appear here.
-          </p>
-        ) : (
           <>
-            <div className="emc__f">
-              <span>Where</span>
-              <div className="sow">
-                {usable.map((a) => (
-                  <label key={a.id} className={`sow__c${picked.includes(a.id) ? " is-on" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={picked.includes(a.id)}
-                      onChange={() => setPicked((p) =>
-                        p.includes(a.id) ? p.filter((x) => x !== a.id) : [...p, a.id])}
-                    />
-                    <span>{PLATFORM_NAMES[a.platform]}{a.handle ? ` · ${a.handle}` : ""}</span>
-                  </label>
-                ))}
-              </div>
-              {usable.length > 1 && (
-                <em>
-                  {picked.length === usable.length
-                    ? "Going to everything you have connected. Untick anything you want to hold back."
-                    : `${picked.length} of ${usable.length} — the rest will not get this post.`}
-                </em>
-              )}
-              {accounts.some((a) => a.status !== "connected") && (
-                <em>
-                  {accounts.filter((a) => a.status !== "connected").map((a) => PLATFORM_NAMES[a.platform]).join(", ")}
-                  {" "}needs reconnecting, so it is not listed.
-                </em>
-              )}
-            </div>
-
-            <label className="emc__f">
-              <span>
-                Caption
-                <button
-                  type="button" className="emc__ai" onClick={() => void write()}
-                  disabled={writing || busy}
-                  title="Write it from the words on the design"
-                >
-                  {writing ? "Writing…" : "Write it for me"}
-                </button>
-                {cap && (
-                  <span style={{ float: "right", fontWeight: 400, color: over > 0 ? "#D63D0B" : "var(--hrx-muted)" }}>
-                    {caption.length}/{cap.n} · {cap.who} is the tightest
-                  </span>
-                )}
-              </span>
-              <textarea ref={field} rows={6} value={caption}
-                        onChange={(e) => { setCaption(e.target.value); if (why) setWhy(""); }}
-                        placeholder="What the post says. The picture is the design." />
-              {why && <em style={{ color: "var(--hrx-muted)" }}>{why}</em>}
-              {limits && picked.length > 0 && (
-                <em>
-                  {usable.filter((a) => picked.includes(a.id))
-                    .map((a) => limits[a.platform]?.note)
-                    .filter((n, i, all) => n && all.indexOf(n) === i)
-                    .join(" ")}
-                </em>
-              )}
-            </label>
-
-            {toInstagram && <InstagramOptions design={design} value={ig} onChange={setIg} />}
-
-            <label className="emc__f">
-              <span>When</span>
-              <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
-              <em>It goes out on the first cron tick after this time — within five minutes.</em>
-            </label>
+            <p className="dsn-note">
+              No accounts connected yet. Instagram, LinkedIn, TikTok and X are connected from the
+              Accounts button at the top of this Graphics page — connect one and it will appear here.
+            </p>
+            {onConnectAccounts && (
+              <button type="button" className="dsn-btn" onClick={onConnectAccounts}>
+                Open Accounts
+              </button>
+            )}
           </>
+        ) : (
+          <SchedulePostForm
+            accounts={accounts}
+            limits={limits}
+            picked={picked}
+            onPicked={setPicked}
+            caption={caption}
+            onCaption={(v) => { setCaption(v); if (why) setWhy(""); }}
+            when={when}
+            onWhen={setWhen}
+            disabled={busy}
+            onWrite={() => void write()}
+            writing={writing}
+            why={why}
+            captionRef={field}
+            whenNote="It goes out on the first cron tick after this time — within five minutes."
+          >
+            {toInstagram && <InstagramOptions design={design} value={ig} onChange={setIg} />}
+          </SchedulePostForm>
         )}
         </div>
 
@@ -232,22 +204,6 @@ export function ScheduleDialog({ orgId, design, onClose }: {
           </button>
         </div>
       </div>
-      <style>{CSS}</style>
     </div>
   );
-}
-
-const CSS = `
-.sow{display:flex;flex-wrap:wrap;gap:7px}
-.sow__c{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;cursor:pointer;
-        border:1px solid var(--hrx-border);background:var(--hrx-bg);font-size:13px;color:var(--hrx-ink);
-        user-select:none}
-.sow__c.is-on{border-color:#1D1D1D;background:var(--hrx-card);font-weight:600}
-.sow__c input{margin:0;accent-color:#1D1D1D;width:15px;height:15px;cursor:pointer}
-`;
-
-/** `datetime-local` wants the local wall clock, not an ISO instant. */
-function localIso(d: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

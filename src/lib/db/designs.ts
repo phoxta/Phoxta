@@ -84,9 +84,28 @@ export async function createDesign(
 export async function saveDesign(
   id: string,
   patch: Partial<Pick<Design, "title" | "doc" | "status" | "template_id" | "brief">>,
-): Promise<{ error: string | null }> {
-  const { error } = await supabase.from("designs").update(patch).eq("id", id);
-  return { error: friendlyError(error?.message) };
+  /** The `updated_at` the caller loaded the row at — the concurrency token. */
+  expect?: { updatedAt: string },
+): Promise<{ error: string | null; conflict?: boolean; updatedAt?: string | null }> {
+  // OPTIMISTIC CONCURRENCY (when `expect` is given). An unconditional update
+  // here was last-write-wins: two tabs, or a tab and the operator agent,
+  // silently discarded each other's work. The designs_touch trigger (migration
+  // 0111) bumps updated_at on EVERY write, so the value the caller loaded is a
+  // fingerprint of the version it was editing — matching on it turns
+  // "overwrite whatever is there now" into "write only over what I read".
+  // Zero rows back with no error means somebody newer got there first; that is
+  // reported as `conflict` and NOT as an error, because it is the caller's
+  // decision who wins. Without `expect` the old unconditional write stands —
+  // that IS the caller choosing to overwrite.
+  let q = supabase.from("designs").update(patch).eq("id", id);
+  if (expect) q = q.eq("updated_at", expect.updatedAt);
+  const { data, error } = await q.select("updated_at");
+  if (error) return { error: friendlyError(error.message) };
+  const row = (data as { updated_at: string }[] | null)?.[0];
+  if (expect && !row) return { error: null, conflict: true };
+  // The fresh token, so the caller's NEXT save is guarded against everyone
+  // but itself.
+  return { error: null, updatedAt: row?.updated_at ?? null };
 }
 
 /**

@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { friendlyError } from "@/lib/friendlyError";
+import { listPlatformPosts } from "@/lib/db/platformPosts";
+import { resolveConsole } from "@/lib/ops/consoleConfig";
 import type { Block } from "@email";
 
 /**
@@ -74,3 +76,93 @@ export const sendEmail = (t: Partial<EmailTemplate> & { blocks: Block[] }, to: s
   call<{ ok: boolean; id?: string; skipped?: string; at?: string; resendable?: boolean }>(
     "send", { ...t, to, force },
   );
+
+// ── Where "From the blog" comes from ────────────────────────────────────────
+
+/** A tenant's own post, straight off blog_posts — the storefront blog, the
+ *  same table the calendar's blog lane reads. */
+export type TenantPost = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  cover_url: string | null;
+  author: string;
+  published_at: string | null;
+};
+
+/** One row of the picker's blog list, wherever the blog lives. A platform
+ *  entry opens through the email-studio function (emailFromPost, which knows
+ *  structured article blocks); a tenant entry carries its whole row, because
+ *  no function converts tenant posts — emailFromTenantPost below does. */
+export type BlogStart = { slug: string; title: string; excerpt: string; tenant?: TenantPost };
+
+/**
+ * Whose blog feeds the template picker.
+ *
+ * The platform org gets platform_posts — Phoxta's own editorial, written under
+ * Platform → Blog. Every other org gets ITS OWN blog_posts. It used to be
+ * platform_posts for everyone, which offered a tenant Phoxta's articles to
+ * mail to the tenant's customers: somebody else's content under their name.
+ * Platform-or-not mirrors the console registry — only the platform vertical's
+ * console carries the "platform" module.
+ */
+export async function listBlogStarts(
+  orgId: string,
+): Promise<{ data: BlogStart[]; source: "platform" | "tenant"; error: string | null }> {
+  const { data: org } = await supabase.from("organizations").select("vertical").eq("id", orgId).maybeSingle();
+  const isPlatform = resolveConsole((org as { vertical?: string | null } | null)?.vertical).modules.includes("platform");
+
+  if (isPlatform) {
+    const { posts, error } = await listPlatformPosts();
+    return {
+      data: posts
+        .filter((p) => p.status === "published")
+        .map((p) => ({ slug: p.slug, title: p.title, excerpt: p.excerpt })),
+      source: "platform",
+      error,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("blog_posts")
+    .select("id, slug, title, excerpt, body, cover_url, author, published_at")
+    .eq("organization_id", orgId)
+    .eq("status", "published")
+    .order("published_at", { ascending: false });
+  const rows = (data as TenantPost[] | null) ?? [];
+  return {
+    data: rows.map((p) => ({ slug: p.slug, title: p.title, excerpt: p.excerpt, tenant: p })),
+    source: "tenant",
+    error: friendlyError(error?.message),
+  };
+}
+
+/**
+ * A tenant post as an editable email. A platform post goes through fromPost on
+ * the edge function because its body is structured article blocks; a tenant
+ * post's body is one text column, so the shape is simpler and made right here:
+ * cover on top, byline under the title, paragraphs split on blank lines.
+ */
+export function emailFromTenantPost(p: TenantPost): Omit<EmailTemplate, "id" | "status" | "updated_at"> {
+  const date = p.published_at
+    ? new Date(p.published_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+    : "";
+  const paragraphs = p.body.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+  return {
+    name: p.title,
+    kind: "post",
+    subject: p.title,
+    preheader: p.excerpt,
+    strap: "From the blog",
+    footnote: "You are receiving this because you asked to hear from us.",
+    source_slug: p.slug,
+    blocks: [
+      { type: "section", label: "From the blog", title: p.title },
+      ...(p.cover_url ? [{ type: "figure", img: p.cover_url, alt: p.title } as Block] : []),
+      { type: "byline", author: p.author, date },
+      ...paragraphs.map((text): Block => ({ type: "text", text })),
+    ],
+  };
+}

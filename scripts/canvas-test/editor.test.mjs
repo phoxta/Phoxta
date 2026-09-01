@@ -1,6 +1,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import puppeteer from "puppeteer";
 
 const ROOT = process.argv[2];
@@ -8,7 +9,13 @@ const SP = process.argv[3];
 const MIME = { ".js": "text/javascript", ".svg": "image/svg+xml", ".css": "text/css",
                ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2" };
 
-const FONTS = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=DM+Sans:wght@400;500;700&display=swap";
+// Built from DESIGN_FONTS via the types bundle run.mjs puts in the scratch
+// dir before this suite — a hand-written copy of this URL drifted from the
+// registry once already, and a rig measuring text in different faces from the
+// app tests a different editor. A derived list cannot fall behind.
+const { DESIGN_FONTS } = await import(pathToFileURL(path.join(SP, "types.bundle.mjs")).href);
+const FONTS = "https://fonts.googleapis.com/css2?" +
+  DESIGN_FONTS.map((f) => `family=${f.query}`).join("&") + "&display=swap";
 
 const server = http.createServer((req, res) => {
   const url = req.url.split("?")[0];

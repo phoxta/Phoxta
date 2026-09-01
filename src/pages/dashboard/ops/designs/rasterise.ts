@@ -19,10 +19,10 @@ import { saveDesignPng, type Design } from "@/lib/db/designs";
  * render bakes the wrong line breaks into the file.
  */
 
-/** Render one design document to a PNG File, off-screen, from the same renderer
- *  the editor uses. Every caller here goes through this, so the file the agent
- *  sends is byte-for-byte the file the owner would have downloaded. */
-async function renderPng(doc: DesignDoc, title: string): Promise<File> {
+/** Mount one design off-screen and run it through the one exporter. Both file
+ *  formats share this mount so they cannot drift: a JPEG that mounted or
+ *  measured differently from the PNG would be a second renderer in disguise. */
+async function renderBlob(doc: DesignDoc, opts: { format?: "png" | "jpeg" } = {}): Promise<Blob> {
   const host = document.createElement("div");
   host.setAttribute("aria-hidden", "true");
   host.style.cssText = "position:fixed;left:-99999px;top:0;opacity:0;pointer-events:none";
@@ -36,13 +36,33 @@ async function renderPng(doc: DesignDoc, title: string): Promise<File> {
 
     const svg = host.querySelector("svg");
     if (!svg) throw new Error("The design did not render.");
-    const { blob } = await exportPng(svg as SVGSVGElement, doc, 2);
-    const name = `${title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "design"}.png`;
-    return new File([blob], name, { type: "image/png" });
+    const { blob } = await exportPng(svg as SVGSVGElement, doc, 2, opts);
+    return blob;
   } finally {
     root.unmount();
     host.remove();
   }
+}
+
+/** Render one design document to a PNG File, off-screen, from the same renderer
+ *  the editor uses. Every caller here goes through this, so the file the agent
+ *  sends is byte-for-byte the file the owner would have downloaded. */
+async function renderPng(doc: DesignDoc, title: string): Promise<File> {
+  const blob = await renderBlob(doc);
+  const name = `${title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "design"}.png`;
+  return new File([blob], name, { type: "image/png" });
+}
+
+/**
+ * The same render, as a JPEG.
+ *
+ * Exists for the schedule path: Instagram's publish API accepts JPEG only, so
+ * a scheduled post rendered as PNG bounced at the last hop — after the person
+ * who could fix it had closed the tab. Same mount, same renderer, same
+ * exporter; the only difference is the encoder at the very end.
+ */
+export async function renderJpeg(design: DesignDoc): Promise<Blob> {
+  return renderBlob(design, { format: "jpeg" });
 }
 
 async function store(orgId: string, doc: DesignDoc, title: string): Promise<DesignAsset> {

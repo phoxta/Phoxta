@@ -42,23 +42,69 @@ export function EmailIndex({ orgId }: { orgId: string }) {
     setOpen({ ...data.template } as Draft);
   }, []);
 
-  // Arriving from the blog console's "Send as email": open the post straight
-  // into the composer, and drop the parameters so a refresh does not reopen a
-  // second copy over unsaved work.
+  // ── the ?email= parameter, in both of its meanings ────────────────────────
+  // "post" (+ &slug=) is the blog console's send-as-email hand-off: consumed
+  // once and dropped, so a refresh does not reopen a second copy over unsaved
+  // work. Anything else is a saved email's id — a deep link that survives a
+  // refresh and can be handed to someone. Only OUR parameters are ever touched
+  // when writing or clearing: the page shell owns others (?mode=) and a wipe
+  // here would throw the reader back to the graphics tab.
+  const clearOwnParams = useCallback(() => {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("email");
+      next.delete("slug");
+      return next;
+    }, { replace: true });
+  }, [setParams]);
+
+  const writeEmailParam = useCallback((id: string) => {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("email", id);
+      next.delete("slug");
+      return next;
+    }, { replace: true });
+  }, [setParams]);
+
+  // The id the URL has already opened, so the effect below does not re-fetch
+  // it — over unsaved edits — every time the params object changes identity.
+  const fromUrl = useRef<string | null>(null);
+
+  const openSaved = useCallback(async (id: string) => {
+    fromUrl.current = id;
+    const { data, error } = await getEmail(id);
+    if (error || !data) {
+      fromUrl.current = null;
+      clearOwnParams();
+      return toastError(error ?? "Could not open it.");
+    }
+    setOpen(data.template);
+    writeEmailParam(id);
+  }, [clearOwnParams, writeEmailParam]);
+
   useEffect(() => {
-    if (params.get("email") !== "post") return;
-    const slug = params.get("slug");
-    setParams(new URLSearchParams(), { replace: true });
-    if (slug) void fromPost(slug);
-  }, [params, setParams, fromPost]);
+    const v = params.get("email");
+    if (!v) { fromUrl.current = null; return; }
+    if (v === "post") {
+      const slug = params.get("slug");
+      clearOwnParams();
+      if (slug) void fromPost(slug);
+      return;
+    }
+    if (fromUrl.current === v) return;
+    void openSaved(v);
+  }, [params, clearOwnParams, fromPost, openSaved]);
 
   if (open) {
     return (
       <EmailComposer
         orgId={orgId}
         initial={open}
-        onSaved={() => void load()}
-        onClose={() => { setOpen(null); void load(); }}
+        // The first save gives a new email its id — from then on the URL can
+        // say which email is open, so a refresh comes back to it.
+        onSaved={(id) => { fromUrl.current = id; writeEmailParam(id); void load(); }}
+        onClose={() => { setOpen(null); fromUrl.current = null; clearOwnParams(); void load(); }}
       />
     );
   }
@@ -89,11 +135,7 @@ export function EmailIndex({ orgId }: { orgId: string }) {
                 <button
                   type="button"
                   className="emc__cardMain"
-                  onClick={async () => {
-                    const { data, error } = await getEmail(r.id);
-                    if (error || !data) return toastError(error ?? "Could not open it.");
-                    setOpen(data.template);
-                  }}
+                  onClick={() => void openSaved(r.id)}
                 >
                   <span className="emc__cardName">{r.name}</span>
                   <span className="emc__cardSub">{r.subject || "No subject yet"}</span>
@@ -135,6 +177,7 @@ export function EmailIndex({ orgId }: { orgId: string }) {
 
       {picking && (
         <EmailTemplatePicker
+          orgId={orgId}
           onClose={() => setPicking(false)}
           onPickPreset={(d) => { setPicking(false); setOpen(d); }}
           onPickPost={(slug) => { setPicking(false); void fromPost(slug); }}

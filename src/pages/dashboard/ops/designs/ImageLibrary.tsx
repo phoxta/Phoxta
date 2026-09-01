@@ -109,6 +109,8 @@ export function ImageLibrary({ orgId, hint, onPick, onClose }: {
   const [q, setQ] = useState(hint ?? "");
   const [searching, setSearching] = useState(false);
   const [photos, setPhotos] = useState<LibraryImage[]>([]);
+  /** The stock photo currently being copied into the library, by URL. */
+  const [placing, setPlacing] = useState<string | null>(null);
 
   const filterRef = useRef<HTMLInputElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
@@ -204,6 +206,49 @@ export function ImageLibrary({ orgId, hint, onPick, onClose }: {
     if (error) return setErr(error);
     setAssets((list) => list.filter((x) => x.path !== a.path));
     setMade((list) => list.filter((x) => x.path !== a.path));
+  }
+
+  /**
+   * Place a stock photo — through the library, never by hot-link.
+   *
+   * The design used to store the pexels.com URL directly, which left the
+   * EXPORT responsible for fetching it: a fetch that depends on the page's CSP
+   * and the host's CORS headers at whatever future moment someone presses
+   * download. The Pexels case was patched once already; the CLASS stays open
+   * for any remote host a photo could ever come from. So the bytes are fetched
+   * NOW, while the person is looking at the picture and a failure has a face
+   * to report to, and stored through the same upload path every other asset
+   * uses — the document then carries a tenant-bucket URL that inlines forever.
+   *
+   * The Pexels credit travels UNCHANGED (photographer, URL, source): the
+   * licence requires attribution wherever the photograph appears, and the
+   * photographer does not stop existing because we cached their file.
+   *
+   * If the fetch or the upload fails, the remote URL is placed exactly as
+   * before — a working design with a documented export-time risk beats a dead
+   * click, and the export records the URL in missing[] if it later cannot be
+   * reached.
+   */
+  async function pickStock(im: LibraryImage) {
+    setPlacing(im.url);
+    setErr(null);
+    try {
+      const r = await fetch(im.url, { mode: "cors" });
+      if (!r.ok) throw new Error(`fetch ${r.status}`);
+      const blob = await r.blob();
+      const ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+      const base = (im.alt?.trim() || "stock photo").toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "stock-photo";
+      const file = new File([blob], `${base}.${ext}`, { type: blob.type || "image/jpeg" });
+      const { data, error } = await uploadAsset(orgId, file);
+      if (error || !data) throw new Error(error ?? "upload failed");
+      setAssets((a) => [data, ...a]);
+      onPick({ ...im, url: data.url, thumb: data.url });
+    } catch {
+      onPick(im);
+    } finally {
+      setPlacing(null);
+    }
   }
 
   async function draw() {
@@ -400,10 +445,14 @@ export function ImageLibrary({ orgId, hint, onPick, onClose }: {
               </button>
             </form>
             {err && <p className="dsn-lib__err" role="status">{err}</p>}
+            {placing && (
+              <p className="dsn-note" role="status">Saving the photo to your library…</p>
+            )}
             <div className="dsn-lib__grid">
               {photos.map((im, i) => (
                 <figure key={`${im.url}-${i}`}>
-                  <button type="button" onClick={() => onPick(im)} aria-label={im.alt ?? "Use this photograph"}>
+                  <button type="button" onClick={() => void pickStock(im)} disabled={placing !== null}
+                          aria-busy={placing === im.url} aria-label={im.alt ?? "Use this photograph"}>
                     <img src={im.thumb ?? im.url} alt={im.alt ?? ""} loading="lazy" width={160} height={200} />
                   </button>
                   {/* The credit is part of the licence, not decoration. */}

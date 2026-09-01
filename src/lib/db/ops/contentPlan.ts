@@ -88,32 +88,27 @@ export const approveContentPlan = (orgId: string, planId: string) =>
 export const rejectContentPlan = (orgId: string, planId: string) =>
   call<{ ok: true }>({ orgId, action: "reject", planId });
 
-/** Render one planned design early, so the month can be looked at before it is
- *  approved. The publisher would otherwise do this on the day. */
-export async function renderPlannedDesign(
-  orgId: string,
-  designId: string,
-): Promise<{ url: string | null; error: string | null }> {
-  try {
-    const { data, error } = await supabase.functions.invoke("design-render", { body: { orgId, designId } });
-    if (error) return { url: null, error: friendlyError(error.message) };
-    if (data?.error) return { url: null, error: String(data.error) };
-    return { url: String(data?.url ?? ""), error: null };
-  } catch (e) {
-    return { url: null, error: friendlyError(String((e as Error)?.message ?? e)) };
-  }
-}
-
+/**
+ * Change one planned post — the words, or the day.
+ *
+ * THROUGH THE FUNCTION, NOT AT THE TABLE. social_posts is SELECT-only under
+ * RLS (migration 0118), so the direct UPDATE this used to do matched zero rows
+ * and reported success — the edit showed locally, and on the day the OLD
+ * caption published. The `update_post` action holds the same rules the rest of
+ * the plan lives by: only a draft can change (409 otherwise — an approved
+ * post's caption is a plan the owner already signed off), and the caption cap
+ * is checked where the write happens (400).
+ */
 export async function updatePlannedPost(
+  orgId: string,
+  planId: string,
   postId: string,
-  updates: { caption?: string; scheduled_at?: string }
-): Promise<{ error: string | null }> {
-  try {
-    const { error } = await supabase.from("social_posts").update(updates).eq("id", postId);
-    return { error: error ? friendlyError(error.message) : null };
-  } catch (e) {
-    return { error: friendlyError(String((e as Error)?.message ?? e)) };
-  }
+  updates: { caption?: string; scheduledAt?: string },
+): Promise<{ post: PlannedPost | null; error: string | null }> {
+  // `organizationId` is what update_post reads; `orgId` rides along because the
+  // function's shared entry gate still wants it before it routes the action.
+  const { data, error } = await call<{ post: PlannedPost }>({
+    organizationId: orgId, orgId, action: "update_post", planId, postId, ...updates,
+  });
+  return { post: data?.post ?? null, error };
 }
-
-

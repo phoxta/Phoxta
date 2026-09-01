@@ -7,8 +7,15 @@
  * which is exactly what the toolbar does.
  */
 import { runsToHtml, htmlToRuns } from "./html.bundle.mjs";
+import { SWATCH_ROLES, paint, DEFAULT_PALETTE } from "./roles.bundle.mjs";
 
-const PALETTE = { ink: "#1D1D1D", accent: "#F0460E", white: "#FFFFFF", muted: "#585959", bg: "#F2F2F2" };
+// The REAL Palette shape — six roles, nothing more. This used to carry
+// "muted" and "bg", roles the Palette type does not have, so the suite
+// exercised a palette the app could never produce and passed while the
+// toolbar painted words black. Built from the shipped default (two roles
+// overridden so the assertions below have distinctive hexes) so its shape
+// cannot drift from the app's again.
+const PALETTE = { ...DEFAULT_PALETTE, ink: "#1D1D1D", accent: "#F0460E" };
 let pass = 0, fail = 0;
 const ok = (n, c, d = "") => { if (c) { pass++; return; } fail++; console.log("  FAIL  " + n + (d ? "  — " + d : "")); };
 
@@ -91,6 +98,16 @@ host.innerHTML = runsToHtml([{ text: "make THIS bigger" }], PALETTE);
   const runs = htmlToRuns(host, PALETTE);
   const big = runs.find((r) => r.scale === 1.5);
   ok("scale applies to just that word", big?.text === "THIS", JSON.stringify(runs));
+}
+
+// ── every toolbar swatch resolves to a paint ──────────────────────────────
+// SWATCH_ROLES comes from the toolbar itself; paint() and the palette from
+// types.ts. A role that is not a real palette role falls through paint() as
+// the literal string, renders black on the canvas, and fails here by not
+// being a hex — which is exactly how "muted" and "bg" would have been caught.
+for (const role of SWATCH_ROLES) {
+  const c = paint(role, PALETTE);
+  ok(`swatch "${role}" resolves to a colour`, /^#[0-9a-f]{6}$/i.test(c), `paint() returned "${c}"`);
 }
 
 console.log(`\nformat: ${pass} passed, ${fail} failed`);

@@ -2,7 +2,7 @@ import { inlineFontCss, inlineImage, loadAssets } from "./assets";
 import { getTemplate, layersOf } from "./templates";
 import { plain, toRuns } from "./rich";
 import {
-  CANVAS_H, CANVAS_W, DEFAULT_FONT, DESIGN_FONTS, fontNamed, resolvePalette,
+  DEFAULT_FONT, DESIGN_FONTS, fontNamed, formatDims, resolvePalette,
   type DesignDoc,
 } from "./types";
 
@@ -181,6 +181,13 @@ export async function exportPng(
   svgEl: SVGSVGElement,
   doc: DesignDoc,
   scale = DEFAULT_SCALE,
+  opts: {
+    /** "jpeg" for the platforms that refuse PNG — Instagram's publish API
+     *  takes JPEG only. Defaults to PNG, which every existing caller gets
+     *  without change. The artboard is white-filled before the draw either
+     *  way, so the alpha JPEG cannot carry is already flattened. */
+    format?: "png" | "jpeg";
+  } = {},
 ): Promise<ExportResult> {
   // Wrapping is measured against whatever face the canvas has right now, and
   // the export inlines the real one. Rasterising before the webfont has landed
@@ -209,9 +216,13 @@ export async function exportPng(
   // the middle of a 1080x1350 frame when fitted, or a crop of it when zoomed
   // in. It looks right in the editor, and wrong only in the file, which is the
   // worst place for a difference to appear.
-  clone.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
-  clone.setAttribute("width", String(CANVAS_W));
-  clone.setAttribute("height", String(CANVAS_H));
+  // The DOCUMENT's artboard, not the pack's portrait constants — the renderer
+  // already drew this SVG at the document's own size, and the export must
+  // frame the same rectangle or a square design comes back letterboxed.
+  const dims = formatDims(doc.format);
+  clone.setAttribute("viewBox", `0 0 ${dims.w} ${dims.h}`);
+  clone.setAttribute("width", String(dims.w));
+  clone.setAttribute("height", String(dims.h));
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
 
@@ -272,8 +283,8 @@ export async function exportPng(
     });
 
     const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_W * scale;
-    canvas.height = CANVAS_H * scale;
+    canvas.width = dims.w * scale;
+    canvas.height = dims.h * scale;
     const c = canvas.getContext("2d");
     if (!c) throw new Error("This browser would not give us a canvas to draw on.");
 
@@ -283,7 +294,12 @@ export async function exportPng(
     c.fillRect(0, 0, canvas.width, canvas.height);
     c.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    // JPEG at 0.9: visually indistinguishable for a social post and a fraction
+    // of the bytes. The white fill above has already flattened the alpha JPEG
+    // cannot carry, so both formats encode the same picture.
+    const jpeg = opts.format === "jpeg";
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, jpeg ? "image/jpeg" : "image/png", jpeg ? 0.9 : undefined));
     if (!blob) throw new Error("The image could not be encoded.");
 
     if (missing.length) {

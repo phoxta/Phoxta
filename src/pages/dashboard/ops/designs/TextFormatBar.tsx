@@ -39,8 +39,23 @@ const MARKS: Array<{ cmd: Mark; label: string; title: string; style?: React.CSSP
   { cmd: "strikeThrough", label: "S", title: "Strikethrough", style: { textDecoration: "line-through" } },
 ];
 
-/** The roles a word can be painted in, in the order they are worth reaching for. */
-const ROLES: PaintRole[] = ["accent", "ink", "white", "muted", "bg"];
+/**
+ * The roles a word can be painted in, in the order they are worth reaching for.
+ *
+ * TYPED AGAINST THE REAL PALETTE, deliberately narrow. This list once carried
+ * "muted" and "bg" — roles from an older palette that `Palette` never had —
+ * and paint() falls through to the literal string for anything it does not
+ * recognise, so both swatches painted every word BLACK while looking perfectly
+ * plausible in the toolbar. `PaintRole` accepts any string (it has to, for
+ * literal hexes), so it could not catch this; the narrow element type turns
+ * the whole drift class into a compile error, and the format suite asserts the
+ * same thing at runtime against the shipped palette.
+ *
+ * Exported for that suite; the toolbar below is the only other consumer.
+ */
+export const SWATCH_ROLES: ReadonlyArray<keyof Palette | "white" | "black"> = [
+  "accent", "accentSoft", "ink", "canvas", "white", "black",
+];
 
 export function TextFormatBar({ host, palette, onChanged }: {
   /** The contenteditable being edited. */
@@ -176,7 +191,7 @@ export function TextFormatBar({ host, palette, onChanged }: {
         </button>
       ))}
       <span className="txb__sep" />
-      {ROLES.map((r) => (
+      {SWATCH_ROLES.map((r) => (
         <button
           key={String(r)}
           type="button"

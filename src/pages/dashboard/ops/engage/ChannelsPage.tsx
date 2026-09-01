@@ -64,8 +64,11 @@ function instagramCard(social: SocialAccount[] | undefined, base: string): Chann
       name: "Instagram",
       blurb: "Schedule posts to your Instagram profile from Graphics. DMs arriving in this Inbox are not built yet.",
       state: { label: "Not connected", tone: "warn" },
-      detail: "Connect the account in Graphics to schedule posts",
-      manage: { to: `${base}/designs`, label: "Connect in Graphics" },
+      // Named to the button, not the page: "connect in Graphics" and the
+      // Graphics schedule dialog saying "connect under Engage → Channels" sent
+      // people in a circle with no third place that actually did it.
+      detail: "Connect the account from the Accounts button in Graphics to schedule posts",
+      manage: { to: `${base}/designs`, label: "Open Graphics → Accounts" },
     };
   }
   if (live.length === 0) {

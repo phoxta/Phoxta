@@ -3,7 +3,8 @@ import { Card } from "@/components/dash/Ui";
 import { toastError } from "@/lib/ops/feedback";
 import { createDesign, generateDesign, type Design } from "@/lib/db/designs";
 import { getTemplate } from "@/lib/designs/templates";
-import { emptyDoc, type DesignDoc, type TextSlot } from "@/lib/designs/types";
+import { convertFormat } from "@/lib/designs/edit";
+import { emptyDoc, type DesignDoc, type DesignFormat, type TextSlot } from "@/lib/designs/types";
 import { TemplatePicker } from "./TemplatePicker";
 
 /**
@@ -40,13 +41,19 @@ export function NewDesign({ orgId, onMade, extra }: {
   const [picking, setPicking] = useState(false);
   /** The brief box, for the same reason. */
   const [briefing, setBriefing] = useState(false);
+  /** The post's shape. ONE choice shared by both start paths — picked on the
+   *  Create dialog's tiles, remembered for the Templates path (whose picker
+   *  is another component), and changeable later from the editor's top bar. */
+  const [format, setFormat] = useState<DesignFormat>("portrait");
 
   async function fromTemplate(templateId: string) {
     const t = getTemplate(templateId);
     const { data, error } = await createDesign(orgId, {
       title: t ? `${t.name} post` : "New post",
       templateId,
-      doc: emptyDoc(templateId),
+      // Through convertFormat rather than a bare field write, so whatever
+      // re-fitting a non-portrait shape needs is the format's own code doing it.
+      doc: convertFormat(emptyDoc(templateId), format),
     });
     if (error || !data) return toastError(error ?? "Could not create that post.");
     onMade(data);
@@ -66,7 +73,7 @@ export function NewDesign({ orgId, onMade, extra }: {
       palette: data.palette as DesignDoc["palette"],
     };
     const { data: row, error: err2 } = await createDesign(orgId, {
-      title: data.title, templateId: data.templateId, doc, brief: text,
+      title: data.title, templateId: data.templateId, doc: convertFormat(doc, format), brief: text,
     });
     setBusy(false);
     if (err2 || !row) return toastError(err2 ?? "Could not save that post.");
@@ -91,6 +98,8 @@ export function NewDesign({ orgId, onMade, extra }: {
         <BriefDialog
           busy={busy}
           value={brief}
+          format={format}
+          onFormat={setFormat}
           onChange={setBrief}
           onClose={() => setBriefing(false)}
           onGo={() => void fromBrief()}
@@ -109,9 +118,11 @@ export function NewDesign({ orgId, onMade, extra }: {
 
 /** Describe the post and let the agent write it. A dialog rather than a box on
  *  the page, so the library of saved work is the first thing on screen. */
-function BriefDialog({ busy, value, onChange, onClose, onGo }: {
+function BriefDialog({ busy, value, format, onFormat, onChange, onClose, onGo }: {
   busy: boolean;
   value: string;
+  format: DesignFormat;
+  onFormat: (f: DesignFormat) => void;
   onChange: (v: string) => void;
   onClose: () => void;
   onGo: () => void;
@@ -134,6 +145,7 @@ function BriefDialog({ busy, value, onChange, onClose, onGo }: {
           Say what it should be about and the agent picks a layout, writes the words and finds the
           pictures. You can change any of it afterwards.
         </p>
+        <FormatTiles value={format} onChange={onFormat} disabled={busy} />
         <textarea
           ref={field}
           className="hrx-input dsn-input dsn-brief-dlg__in"
@@ -157,6 +169,44 @@ function BriefDialog({ busy, value, onChange, onClose, onGo }: {
           Prefer to start from a layout and fill it in yourself? Close this and press Templates.
         </p>
       </div>
+    </div>
+  );
+}
+
+/** The three shapes a post can be, with the pixels honest on the tile. The
+ *  captions are display copy; the dimensions that actually apply live with
+ *  the format's own code (formatDims in @/lib/designs/types), which the
+ *  renderer reads — a mismatch here is a wrong label, not a wrong picture. */
+const FORMAT_TILES: { f: DesignFormat; label: string; dims: string }[] = [
+  { f: "portrait", label: "Portrait", dims: "1080 × 1350" },
+  { f: "square", label: "Square", dims: "1080 × 1080" },
+  { f: "story", label: "Story", dims: "1080 × 1920" },
+];
+
+/** Three labelled tiles, not a dropdown: the choice is made once per post and
+ *  the caption IS the information — hiding "1080 × 1920" behind a click would
+ *  make everyone guess what "Story" means in pixels. */
+function FormatTiles({ value, onChange, disabled }: {
+  value: DesignFormat;
+  onChange: (f: DesignFormat) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="d-flex gap-2" role="group" aria-label="Post format">
+      {FORMAT_TILES.map(({ f, label, dims }) => (
+        <button
+          key={f} type="button"
+          className={`dsn-btn${value === f ? " dsn-btn--solid" : ""}`}
+          // The stacked label needs a column; dsn-btn lays out as a row.
+          style={{ flex: 1, flexDirection: "column", alignItems: "center", gap: 2 }}
+          aria-pressed={value === f}
+          onClick={() => onChange(f)}
+          disabled={disabled}
+        >
+          <span>{label}</span>
+          <span style={{ fontSize: 11, opacity: 0.7 }}>{dims}</span>
+        </button>
+      ))}
     </div>
   );
 }

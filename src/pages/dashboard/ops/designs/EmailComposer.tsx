@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/dash/Ui";
 import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
 import { renderBrochure, type Block } from "@email";
@@ -8,6 +9,7 @@ import {
 import {
   type EmailTemplate, saveEmail, sendEmail, sendTest,
 } from "@/lib/db/emailStudio";
+import { createCampaignFromEmail } from "@/lib/db/ops/marketing";
 import { DesignPicker } from "./DesignPicker";
 import { DesignLinks } from "./DesignLinks";
 import { EmailCanvas } from "./EmailCanvas";
@@ -66,8 +68,10 @@ export function EmailComposer({
   const [showText, setShowText] = useState(false);
   const [adding, setAdding] = useState<Path | null>(null);
   const [picking, setPicking] = useState(false);
-  const [busy, setBusy] = useState<"" | "saving" | "sending">("");
+  const [busy, setBusy] = useState<"" | "saving" | "sending" | "drafting">("");
   const [to, setTo] = useState("");
+  /** A broadcast draft has been made from this email — show the way there. */
+  const [bridged, setBridged] = useState(false);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
@@ -212,6 +216,46 @@ export function EmailComposer({
     toast("Sent to " + to + ".");
   };
 
+  // ── the audience path ─────────────────────────────────────────────────────
+  // One email, two exits. The buttons above reach ONE inbox; an audience send
+  // belongs to Engage → Broadcasts, which owns segments, opt-outs and the
+  // campaign-run queue. This hands Broadcasts a DRAFT — the DESIGNED email —
+  // and stops there: the audience is chosen where audiences live, and nothing
+  // is sent from here. Both shapes travel: `html` is this page's render, sent
+  // verbatim by campaign-run since 0133 (with the unsubscribe footer appended
+  // there — the legal line is the sender's job, not the designer's); `body` is
+  // the renderer's plain-text version, which doubles as the text alternative
+  // AND the whole email on a database that has not run 0133 yet
+  // (createCampaignFromEmail retries without the column in that case).
+  const toAudience = async () => {
+    let text = "";
+    let html = "";
+    try {
+      const r = renderBrochure({
+        subject: draft.subject || draft.name || "Phoxta",
+        preheader: draft.preheader,
+        strap: draft.strap || "Phoxta",
+        blocks: draft.blocks,
+        footnote: draft.footnote || undefined,
+      });
+      text = r.text;
+      html = r.html;
+    } catch {
+      return toastError("A block is broken — the preview shows which. Fix it first.");
+    }
+    setBusy("drafting");
+    const { id, error } = await createCampaignFromEmail(orgId, {
+      name: draft.name || "Untitled email",
+      subject: draft.subject || draft.name || "",
+      body: text,
+      html,
+    });
+    setBusy("");
+    if (error || !id) return toastError(error ?? "Could not create the draft.");
+    setBridged(true);
+    toast("Draft created in Broadcasts — choose your audience there.");
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); void save(); }
@@ -330,7 +374,7 @@ export function EmailComposer({
             </Card>
           )}
 
-          <Card title="Send">
+          <Card title="Send to one address">
             <label className="emc__f">
               <span>To</span>
               <input value={to} placeholder="you@phoxta.com" onChange={(e) => setTo(e.target.value)} />
@@ -344,9 +388,27 @@ export function EmailComposer({
               </button>
             </div>
             <p className="dsn-note mt-2">
+              Both buttons reach the one address above — for everyone at once, use the audience box below.
               A test is not written to the send ledger, so it will not use up this address&apos;s one copy of
               the real thing. A real send checks the opt-out list first and refuses a second copy.
             </p>
+          </Card>
+
+          <Card title="Send to your audience">
+            <p className="dsn-note">
+              Audience sends live in Broadcasts, next to the segments and the opt-out list. This puts a
+              draft there carrying this email exactly as designed (plus a plain-text version for mail
+              apps that prefer it) — you pick who gets it in Broadcasts, and nothing goes out until
+              you do.
+            </p>
+            <div className="d-flex gap-2 mt-2">
+              <button type="button" className="hrx-seeall opx-solid" disabled={busy !== ""} onClick={() => void toAudience()}>
+                {busy === "drafting" ? "Creating…" : "Create a broadcast draft"}
+              </button>
+              {bridged && (
+                <Link className="hrx-seeall" to="../engage/broadcasts">Open Broadcasts</Link>
+              )}
+            </div>
           </Card>
         </div>
 

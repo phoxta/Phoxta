@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toastError } from "@/lib/ops/feedback";
-import { listPlatformPosts, type PlatformPost } from "@/lib/db/platformPosts";
+import { type BlogStart, emailFromTenantPost, listBlogStarts } from "@/lib/db/emailStudio";
 import { PRESETS, type Draft } from "./emailPresets";
 
 /**
@@ -15,14 +15,21 @@ import { PRESETS, type Draft } from "./emailPresets";
  * "Newsletter" is what is already written in the blocks, not what kind of
  * thing it is — and two buttons that both mean "start one" is one button too
  * many.
+ *
+ * WHOSE blog is decided by the data layer (listBlogStarts): the platform org
+ * sees Phoxta's own posts, every other org sees its own storefront blog. A
+ * platform post opens through the edge function; a tenant post is converted
+ * here, so the pick lands in the composer either way.
  */
-export function EmailTemplatePicker({ onPickPreset, onPickPost, onClose }: {
+export function EmailTemplatePicker({ orgId, onPickPreset, onPickPost, onClose }: {
+  orgId: string;
   onPickPreset: (d: Draft) => void;
   onPickPost: (slug: string) => void;
   onClose: () => void;
 }) {
   const [q, setQ] = useState("");
-  const [posts, setPosts] = useState<PlatformPost[]>([]);
+  const [posts, setPosts] = useState<BlogStart[]>([]);
+  const [source, setSource] = useState<"platform" | "tenant">("tenant");
   const [loading, setLoading] = useState(true);
   const search = useRef<HTMLInputElement>(null);
 
@@ -35,12 +42,13 @@ export function EmailTemplatePicker({ onPickPreset, onPickPost, onClose }: {
 
   useEffect(() => {
     void (async () => {
-      const { posts, error } = await listPlatformPosts();
+      const { data, source: src, error } = await listBlogStarts(orgId);
       if (error) toastError(error);
-      setPosts(posts.filter((p) => p.status === "published"));
+      setPosts(data);
+      setSource(src);
       setLoading(false);
     })();
-  }, []);
+  }, [orgId]);
 
   const needle = q.trim().toLowerCase();
   const shownPresets = useMemo(
@@ -89,14 +97,21 @@ export function EmailTemplatePicker({ onPickPreset, onPickPost, onClose }: {
             <p className="dsn-note">Loading…</p>
           ) : shownPosts.length === 0 ? (
             <p className="dsn-note">
-              {posts.length === 0
-                ? "No posts written in the console yet — the blog's built-in articles live in the code, so they are not here. Write one under Platform → Blog and it will be."
-                : "No posts match that."}
+              {posts.length !== 0
+                ? "No posts match that."
+                : source === "platform"
+                  ? "No posts written in the console yet — the blog's built-in articles live in the code, so they are not here. Write one under Platform → Blog and it will be."
+                  : "Your site's blog has no published posts yet. Publish one — or ask the Operator to write one — and it will be here to send."}
             </p>
           ) : (
             <div className="emt-grid">
               {shownPosts.map((p) => (
-                <button key={p.id} type="button" className="emt-card" onClick={() => onPickPost(p.slug)}>
+                <button
+                  key={p.tenant?.id ?? p.slug}
+                  type="button"
+                  className="emt-card"
+                  onClick={() => (p.tenant ? onPickPreset(emailFromTenantPost(p.tenant)) : onPickPost(p.slug))}
+                >
                   <strong>{p.title}</strong>
                   <span>{p.excerpt}</span>
                 </button>

@@ -16,6 +16,24 @@ await build({
   bundle: true, format: "esm", outfile: path.join(tmp, "html.bundle.mjs"),
   alias: { "@": path.join(root, "src") }, logLevel: "error",
 });
+// The toolbar's swatch roles and the shipped palette, bundled from the REAL
+// modules rather than restated in the test. This is the net for the drift
+// where the toolbar's list carried "muted" and "bg" — roles the Palette does
+// not have — and two swatches painted every word black: the test asserts each
+// exported role resolves through the real paint().
+await build({
+  stdin: {
+    contents:
+      'export { SWATCH_ROLES } from "@/pages/dashboard/ops/designs/TextFormatBar";\n' +
+      'export { paint, DEFAULT_PALETTE } from "@/lib/designs/types";\n',
+    resolveDir: root,
+    loader: "ts",
+  },
+  bundle: true, format: "esm", outfile: path.join(tmp, "roles.bundle.mjs"),
+  alias: { "@": path.join(root, "src") },
+  define: { "process.env.NODE_ENV": '"production"' },
+  logLevel: "error",
+});
 fs.copyFileSync(new URL("./format.test.mjs", import.meta.url), path.join(tmp, "t.mjs"));
 fs.writeFileSync(path.join(tmp, "i.html"),
   `<!doctype html><body><script type="module" src="./t.mjs"></script></body>`);

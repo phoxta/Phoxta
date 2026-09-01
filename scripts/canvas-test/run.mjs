@@ -107,8 +107,7 @@ node([path.join(here, "editor.test.mjs"), root, tmp]);
 console.log("\n── typing habits ──────────────────────────────────────");
 node([path.join(here, "typing.test.mjs"), root, tmp]);
 
-console.log("
-── the schedule dialog fits the window ──────────────────────");
+console.log("\n── the schedule dialog fits the window ──────────────────────");
 await build({
   entryPoints: [path.join(here, "dialog-rig.tsx")],
   bundle: true, outfile: path.join(tmp, "dialog-rig.js"),

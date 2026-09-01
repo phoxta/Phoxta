@@ -1,13 +1,21 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import puppeteer from "puppeteer";
 
 const ROOT = process.argv[2];
 const SP = process.argv[3];
 const MIME = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml",
                ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2" };
-const FONTS = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=DM+Sans:wght@400;500;700&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;600;700&family=PT+Serif:ital@0;1&display=swap";
+// Built from DESIGN_FONTS — the one registry the editor and the exporter
+// already share — via the types bundle run.mjs builds into the scratch dir
+// before this suite runs. This URL was hand-written once and drifted (missing
+// faces, stale weight ranges), so the rig measured text against different
+// fonts from the app and the parity it certified was parity with nothing.
+const { DESIGN_FONTS } = await import(pathToFileURL(path.join(SP, "types.bundle.mjs")).href);
+const FONTS = "https://fonts.googleapis.com/css2?" +
+  DESIGN_FONTS.map((f) => `family=${f.query}`).join("&") + "&display=swap";
 
 const server = http.createServer((req, res) => {
   const url = req.url.split("?")[0];
@@ -209,6 +217,22 @@ check("both surfaces paint an opaque artboard first", opaque.tile && opaque.canv
   check("a layer dragged off the page is clipped to it",
         spill.strays === 0 || spill.clipped,
         `${spill.strays} layer(s) outside, clipped: ${spill.clipped}`);
+}
+
+// ── 7. missing[] tells the truth ─────────────────────────────────────────
+// The export drops any reference it cannot inline and RECORDS it — that
+// record is what the render service turns into a 422 so the unattended
+// pipeline cannot publish a holed design. Both halves of the contract are
+// pinned: a remote host that cannot be fetched lands in missing[], and a
+// data-URI photo never does.
+{
+  const remote = await page.evaluate(() => window.exportMissing("remote"));
+  check("a photo the export cannot fetch is recorded in missing[]",
+        Array.isArray(remote) && remote.length === 1 && String(remote[0]).includes("photos.invalid"),
+        JSON.stringify(remote));
+  const inline = await page.evaluate(() => window.exportMissing("data"));
+  check("a data-URI photo is never missing",
+        Array.isArray(inline) && inline.length === 0, JSON.stringify(inline));
 }
 
 console.log("");

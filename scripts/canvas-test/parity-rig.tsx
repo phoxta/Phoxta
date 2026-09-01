@@ -11,13 +11,17 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { DesignSvg } from "@/lib/designs/render";
-import { materialise, updateLayer, duplicateLayer, addText } from "@/lib/designs/edit";
-import { emptyDoc, type DesignDoc, type TextLayer } from "@/lib/designs/types";
+import { materialise, updateLayer, duplicateLayer, addImage, addText } from "@/lib/designs/edit";
+import { emptyDoc, type DesignDoc, type ImageSlot, type TextLayer } from "@/lib/designs/types";
 import { fitTo, zoomAt } from "@/lib/designs/snap";
 import { exportPng } from "@/lib/designs/export";
 
 const W = 520;
 const H = (W * 1350) / 1080;
+
+/** A 1×1 px PNG. Small enough to paste, real enough to decode. */
+const TINY_PNG =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
 /** A design someone has actually worked on: moved, turned, faded, recoloured,
  *  retyped with runs, with a layer added and another duplicated. */
@@ -68,12 +72,47 @@ function App() {
   const w = window as unknown as {
     doc: DesignDoc;
     exportView: () => Promise<{ w: number; h: number; url: string }>;
+    exportMissing: (kind: "remote" | "data") => Promise<string[]>;
   };
   w.doc = editorDoc;
   w.exportView = async () => {
     const svg = document.querySelector("#zoomed svg") as SVGSVGElement;
     const { blob, width, height } = await exportPng(svg, editorDoc, 1);
     return { w: width, h: height, url: URL.createObjectURL(blob) };
+  };
+  /* The canary for export-time inlining. A REMOTE photo host is a documented
+   * risk: the export fetches it at download time, under whatever CSP and CORS
+   * apply that day, and on failure the reference is dropped and RECORDED in
+   * missing[] rather than shipped as a silent hole. A data-URI photo needs no
+   * fetch and must never be missing. Both halves are pinned here so neither
+   * the drop-and-record path nor the inline path can regress quietly — the
+   * render service's 422 refusal is built on this exact contract. */
+  w.exportMissing = async (kind) => {
+    let d = materialise(emptyDoc("v2"));
+    const added = addImage(d);
+    if (!added) throw new Error("no free image slot in v2");
+    d = added.doc;
+    const slot = (d.layers!.find((l) => l.id === added.id) as { slot: ImageSlot }).slot;
+    const url = kind === "remote"
+      // .invalid cannot resolve (RFC 2606), so the fetch fails fast and
+      // deterministically — the same outcome as a host that refuses CORS.
+      ? "https://photos.invalid/pic.jpg"
+      : TINY_PNG;
+    d = { ...d, images: { ...d.images, [slot]: { url } } };
+    const host = document.createElement("div");
+    host.style.cssText = "position:fixed;left:-99999px;top:0";
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    try {
+      root.render(<DesignSvg doc={d} width={540} />);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const svg = host.querySelector("svg") as SVGSVGElement;
+      const { missing } = await exportPng(svg, d, 1);
+      return missing;
+    } finally {
+      root.unmount();
+      host.remove();
+    }
   };
   return (
     <div style={{ display: "flex", background: "#7a7a7a" }}>

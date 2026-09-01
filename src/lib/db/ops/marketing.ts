@@ -48,6 +48,63 @@ export async function createCampaign(
   return { error: friendlyError(error?.message) };
 }
 
+/**
+ * The email studio → Broadcasts bridge: a DRAFT campaign carrying a studio
+ * email's subject and its rendered PLAIN TEXT.
+ *
+ * Text on purpose, not timidity: campaign-run reads `campaigns.body` alone and
+ * wraps it in its own escaped HTML plus the unsubscribe footer
+ * (supabase/functions/campaign-run/index.ts), so HTML written into `body`
+ * would arrive as literal angle brackets. When campaigns grow an html column
+ * and campaign-run learns to read it, this helper is the one place the studio
+ * hands over. Never sends — the audience, the review and the send all live in
+ * Engage → Broadcasts. Returns the id so the caller can point at the draft.
+ */
+export async function createCampaignFromEmail(
+  orgId: string,
+  input: { name: string; subject: string; body: string; html?: string },
+): Promise<{ id: string | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from("campaigns")
+    .insert({
+      organization_id: orgId,
+      name: input.name.trim() || "Untitled email",
+      channel: "email",
+      subject: input.subject,
+      // `body` is the plain-text alternative and the pre-0133 fallback;
+      // `html` (when the column exists) is the DESIGNED email, sent verbatim
+      // by campaign-run with the unsubscribe footer appended. Passing both
+      // means the bridge keeps working against a database that has not run
+      // 0133 yet — PostgREST rejects the unknown column, so html is only
+      // included when provided AND the insert retries without it on that
+      // specific failure.
+      body: input.body,
+      ...(input.html ? { html: input.html } : {}),
+      audience: "all",
+      status: "draft",
+    })
+    .select("id")
+    .single();
+  if (error && input.html && /html/.test(error.message)) {
+    // Schema without 0133: retry as text-only rather than failing the bridge.
+    const retry = await supabase
+      .from("campaigns")
+      .insert({
+        organization_id: orgId,
+        name: input.name.trim() || "Untitled email",
+        channel: "email",
+        subject: input.subject,
+        body: input.body,
+        audience: "all",
+        status: "draft",
+      })
+      .select("id")
+      .single();
+    return { id: (retry.data as { id: string } | null)?.id ?? null, error: friendlyError(retry.error?.message) };
+  }
+  return { id: (data as { id: string } | null)?.id ?? null, error: friendlyError(error?.message) };
+}
+
 export async function scheduleCampaign(id: string, scheduledAt: string): Promise<{ error: string | null }> {
   const { error } = await supabase
     .from("campaigns")

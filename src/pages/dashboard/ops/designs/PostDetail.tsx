@@ -57,10 +57,10 @@ export function PostDetail({ post, onClose }: { post: SocialPost; onClose: () =>
 
           {anySent && (
             <p className="pdx__note">
-              Counts are read from the platform and refreshed on demand — use “Refresh likes and
-              comments” above. What people wrote in the comments is not readable: that needs a
-              separate Instagram permission this app has not been granted, so the post itself is the
-              place to read them.
+              Counts are read from the platform and refreshed on demand — use “Refresh metrics”
+              above. What people wrote in the comments is not readable: that needs a separate
+              Instagram permission this app has not been granted, so the post itself is the place
+              to read them.
             </p>
           )}
           {post.status === "published" && (
@@ -75,7 +75,6 @@ export function PostDetail({ post, onClose }: { post: SocialPost; onClose: () =>
       <div className="pdx__acts">
         <button type="button" className="dsn-btn" onClick={onClose}>Close</button>
       </div>
-      <style>{CSS}</style>
     </div>
   );
 }
@@ -91,8 +90,8 @@ function Channel({ t }: { t: SocialTarget }) {
       {t.status === "sent" && (
         known ? (
           <span className="pdx__n" title={t.metrics_at ? `As of ${new Date(t.metrics_at).toLocaleString("en-GB")}` : undefined}>
-            {t.likes !== null && <span>♥ {t.likes}</span>}
-            {t.comments !== null && <span>💬 {t.comments}</span>}
+            {t.likes !== null && <span>{t.likes} likes</span>}
+            {t.comments !== null && <span>{t.comments} comments</span>}
           </span>
         ) : (
           // Told apart deliberately: one of these is a limitation of ours and
@@ -111,24 +110,3 @@ function Channel({ t }: { t: SocialTarget }) {
     </div>
   );
 }
-
-const CSS = `
-.pdx{margin-top:10px;padding-top:10px;border-top:1px dashed var(--hrx-border)}
-.pdx__grid{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
-.pdx__art{border-radius:10px;border:1px solid var(--hrx-border);width:180px;height:auto;flex:none}
-.pdx__body{flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px}
-.pdx__cap{font-size:13.5px;line-height:1.5;color:var(--hrx-ink);white-space:pre-wrap}
-.pdx__ch{display:flex;flex-direction:column;gap:6px}
-.pdx__c{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:13px;
-        padding:7px 10px;border:1px solid var(--hrx-border);border-radius:10px;background:var(--hrx-bg)}
-.pdx__c.is-failed{border-color:#D63D0B}
-.pdx__st{color:var(--hrx-muted);font-size:12.5px}
-.pdx__n{display:inline-flex;gap:9px;font-weight:600;font-variant-numeric:tabular-nums}
-.pdx__unknown{color:var(--hrx-muted);font-size:12.5px}
-.pdx__err{color:#D63D0B;font-size:12.5px;flex-basis:100%}
-.pdx__opts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:0;font-size:12.5px}
-.pdx__opts dt{color:var(--hrx-muted)}
-.pdx__opts dd{margin:0;color:var(--hrx-ink)}
-.pdx__note{font-size:12.5px;color:var(--hrx-muted);margin:0;line-height:1.5}
-.pdx__acts{display:flex;justify-content:flex-end;margin-top:10px}
-`;
