@@ -38,9 +38,7 @@ import {
 } from 'lucide-react';
 import { ApplicationStatus, ConnectedAccount, EmailScanResult, JobApplication, LinkedEmail } from '../types';
 import { getStatusStyle, getSourceStyle, formatDate, triggerOfferConfetti } from '../utils/notionStyles';
-import appletConfig from '../../applet-config.json';
-
-declare const google: any;
+import { ACCESS_CODE_DEFAULT } from './AccessCodeAuth';
 
 interface EmailSyncHubProps {
   applications: JobApplication[];
@@ -184,24 +182,12 @@ export const EmailSyncHub: React.FC<EmailSyncHubProps> = ({
   // Handle adding an additional Gmail account
   const handleAddNewAccount = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAccountEmail.trim()) return;
-
-    const newAcc: ConnectedAccount = {
-      id: `acc-${Date.now()}`,
-      email: newAccountEmail.trim().toLowerCase(),
-      name: newAccountLabel.trim() || `${newAccountEmail.split('@')[0]} (Gmail)`,
-      provider: newAccountProvider,
-      status: 'active',
-      isPrimary: connectedAccounts.length === 0,
-      lastSyncedAt: 'Just added',
-      unreadCount: 0,
-    };
-
-    onAddAccount(newAcc);
+    // Connect a REAL Gmail via OAuth — the connected account is whichever Gmail
+    // you choose in the Google sign-in, so any inbox works. No local placeholder.
     setNewAccountEmail('');
     setNewAccountLabel('');
     setIsAddingAccount(false);
-    setGmailScanStatus(`Connected ${newAcc.email}! Ready to scan.`);
+    startGmailConnect();
   };
 
   // Handle Manual AI Parse with Online Lookup
@@ -250,50 +236,69 @@ export const EmailSyncHub: React.FC<EmailSyncHubProps> = ({
   };
 
   // Live Gmail Token acquisition via Firebase Auth & Google Identity Services
+  // After the OAuth redirect back to /jobtra?gmail=connected, clear the flag and
+  // kick off a scan (or report a failure).
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const g = params.get('gmail');
+      if (!g) return;
+      params.delete('gmail');
+      window.history.replaceState({}, '', window.location.pathname + (params.toString() ? `?${params}` : ''));
+      if (g === 'connected') {
+        setGmailScanStatus('Gmail connected! Scanning your inbox…');
+        setTimeout(() => { handleConnectAndScanAccount(); }, 500);
+      } else if (g === 'error') {
+        setGmailScanStatus('Gmail connection failed or was cancelled — please try connecting again.');
+      }
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Redirect to connect a Gmail via Phoxta's server-side OAuth (no Google Cloud
+  // setup — the consent shows "Phoxta", the owner's own app). Works for ANY Gmail.
+  const startGmailConnect = async () => {
+    try {
+      setGmailScanStatus('Opening Google sign-in…');
+      const res = await fetch(apiUrl('/api/gmail/connect-url'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const data = await res.json();
+      if (data?.url) { window.location.href = data.url; return; }
+      setGmailScanStatus(`Could not start Gmail sign-in: ${data?.error || 'unknown error'}`);
+    } catch (e: any) {
+      setGmailScanStatus(`Could not start Gmail sign-in: ${e?.message || e}`);
+    }
+  };
+
+  // Sync: fetch a fresh access token from the server (which refreshes it) and
+  // scan the inbox. If no Gmail is connected yet, kick off the connect flow.
   const handleConnectAndScanAccount = async (targetEmail?: string) => {
     const emailToScan = targetEmail || (connectedAccounts[0]?.email || 'primary email');
     setScanningAccountEmail(emailToScan);
     setIsScanning(true);
     setScanProgress(null);
-
-    // Connect via Google Identity Services Token Client (Gmail read-only scope).
     try {
-      if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-        setGmailScanStatus(`Connecting via Google Token Client for ${emailToScan}...`);
-
-        const client = google.accounts.oauth2.initTokenClient({
-          client_id: (appletConfig as any).oAuthClientId || '216222326411-56qp6tnu46uh8doq19jhf36m32h3qspn.apps.googleusercontent.com',
-          scope: 'https://www.googleapis.com/auth/gmail.readonly',
-          hint: targetEmail || undefined,
-          callback: async (tokenResponse: any) => {
-            if (tokenResponse && tokenResponse.access_token) {
-              setGmailScanStatus(`Connected to ${emailToScan}! Fetching Indeed, ATS & recruiter emails...`);
-              await fetchGmailJobMessages(tokenResponse.access_token, emailToScan);
-            } else if (tokenResponse?.error) {
-              console.warn('GSI Token error:', tokenResponse.error);
-              setGmailScanStatus(`Google OAuth notice: ${tokenResponse.error}. Loading scan results...`);
-              simulateAccountScan(emailToScan);
-            } else {
-              setGmailScanStatus('Authentication prompt cancelled.');
-              setIsScanning(false);
-              setScanningAccountEmail(null);
-            }
-          },
-          error_callback: (err: any) => {
-            console.warn('GSI Error Callback:', err);
-            simulateAccountScan(emailToScan);
-          }
-        });
-
-        client.requestAccessToken({ prompt: '' });
+      setGmailScanStatus(`Connecting to ${emailToScan}…`);
+      const res = await fetch(apiUrl('/api/gmail/token'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: ACCESS_CODE_DEFAULT, email: targetEmail }),
+      });
+      const data = await res.json();
+      if (data?.accessToken) {
+        setGmailScanStatus(`Connected to ${data.email || emailToScan}! Fetching Indeed, ATS & recruiter emails…`);
+        await fetchGmailJobMessages(data.accessToken, data.email || emailToScan);
         return;
       }
+      if (data?.error === 'no_gmail_connected' || data?.error === 'no_refresh_token') {
+        await startGmailConnect();
+        return;
+      }
+      setGmailScanStatus(`Gmail sync notice: ${data?.error || 'could not connect'}. Loading demo results…`);
+      simulateAccountScan(emailToScan);
     } catch (err: any) {
-      console.warn('OAuth prompt notice:', err);
+      console.warn('Gmail sync error:', err);
+      simulateAccountScan(emailToScan);
     }
-
-    // 3. If live OAuth is blocked by Google consent review, run simulation and allow manual paste
-    simulateAccountScan(emailToScan);
   };
 
   // Fetch actual messages via Gmail API with the acquired Bearer token, decode full body, and enrich missing info online

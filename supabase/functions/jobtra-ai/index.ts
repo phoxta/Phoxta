@@ -1990,7 +1990,83 @@ Requirements:
   }
 }
 
+// ── Gmail connection (Jobtra's own, on Phoxta's configured OAuth client) ────
+// Server-side so the tracker connects any Gmail with no new Google Cloud setup:
+// the consent screen shows "Phoxta" (the owner's own app) and the redirect URI
+// is already whitelisted. Tokens live in jobtra_gmail_connections (service-role
+// only). The token endpoint is gated by the app's access code.
+const GOOGLE_CLIENT_ID = () => Deno.env.get("GOOGLE_CLIENT_ID") || "";
+const GOOGLE_CLIENT_SECRET = () => Deno.env.get("GOOGLE_CLIENT_SECRET") || "";
+const GOOGLE_REDIRECT = () => `${SB_URL}/functions/v1/google-oauth`;
+const ACCESS_CODE = () => Deno.env.get("JOBTRA_ACCESS_CODE") || "082900";
+
+// State signed exactly like _shared/google.ts's signState so google-oauth's
+// verifyState accepts it (base64(JSON) + "." + HMAC-SHA256 with the client secret).
+async function signStateJobtra(payload: any): Promise<string> {
+  const data = btoa(JSON.stringify(payload));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(GOOGLE_CLIENT_SECRET()), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  return `${data}.${btoa(String.fromCharCode(...new Uint8Array(sig)))}`;
+}
+
+async function handleGmailConnectUrl(_body: any): Promise<Response> {
+  if (!GOOGLE_CLIENT_ID() || !GOOGLE_CLIENT_SECRET()) return json({ error: "Gmail isn't configured on the server." }, 400);
+  const state = await signStateJobtra({ jobtra: true, exp: Date.now() + 600_000 });
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID(),
+    redirect_uri: GOOGLE_REDIRECT(),
+    response_type: "code",
+    scope: "openid email https://www.googleapis.com/auth/gmail.modify",
+    access_type: "offline",
+    prompt: "consent",
+    include_granted_scopes: "true",
+    state,
+  });
+  return json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` });
+}
+
+const sbHeaders = { apikey: SB_SERVICE, Authorization: `Bearer ${SB_SERVICE}` };
+
+async function handleGmailToken(body: any): Promise<Response> {
+  if (String(body?.code || "") !== ACCESS_CODE()) return json({ error: "unauthorized" }, 401);
+  const email = body?.email ? String(body.email) : "";
+  const q = email ? `email=eq.${encodeURIComponent(email)}` : "order=updated_at.desc&limit=1";
+  const r = await fetch(`${SB_URL}/rest/v1/jobtra_gmail_connections?${q}&select=*`, { headers: sbHeaders });
+  const c = (await r.json())?.[0];
+  if (!c) return json({ error: "no_gmail_connected" }, 404);
+  let token = c.access_token;
+  const exp = c.token_expiry ? new Date(c.token_expiry).getTime() : 0;
+  if (!token || exp < Date.now() + 60_000) {
+    if (!c.refresh_token) return json({ error: "no_refresh_token" }, 400);
+    const rt = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ client_id: GOOGLE_CLIENT_ID(), client_secret: GOOGLE_CLIENT_SECRET(), refresh_token: c.refresh_token, grant_type: "refresh_token" }),
+    });
+    const tok = await rt.json().catch(() => ({}));
+    if (!tok?.access_token) return json({ error: "refresh_failed" }, 400);
+    token = tok.access_token;
+    await fetch(`${SB_URL}/rest/v1/jobtra_gmail_connections?email=eq.${encodeURIComponent(c.email)}`, {
+      method: "PATCH",
+      headers: { ...sbHeaders, "content-type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ access_token: token, token_expiry: new Date(Date.now() + (tok.expires_in ?? 3600) * 1000).toISOString(), updated_at: new Date().toISOString() }),
+    });
+  }
+  return json({ accessToken: token, email: c.email });
+}
+
+async function handleGmailDisconnect(body: any): Promise<Response> {
+  const email = String(body?.email || "");
+  if (!email) return json({ error: "email required" }, 400);
+  await fetch(`${SB_URL}/rest/v1/jobtra_gmail_connections?email=eq.${encodeURIComponent(email)}`, { method: "DELETE", headers: sbHeaders });
+  await fetch(`${SB_URL}/rest/v1/jobtra_connected_accounts?id=eq.${encodeURIComponent("gmail-" + email)}`, { method: "DELETE", headers: sbHeaders });
+  return json({ ok: true });
+}
+
 const POST_HANDLERS: Record<string, (body: any) => Promise<Response>> = {
+  'gmail/connect-url': handleGmailConnectUrl,
+  'gmail/token': handleGmailToken,
+  'gmail/disconnect': handleGmailDisconnect,
   'generate-cover-letter': handleGenerateCoverLetter,
   'parse-email': handleParseEmail,
   'generate-prep': handleGeneratePrep,

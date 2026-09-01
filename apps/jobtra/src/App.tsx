@@ -147,19 +147,10 @@ export default function App() {
           const filtered = (remoteAccounts || []).filter(
             (acc) => !['acc-1', 'acc-2'].includes(acc.id)
           );
-          if (filtered.length > 0) {
-            setConnectedAccounts(filtered);
-            localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(filtered));
-          } else {
-            // Seed initial primary connected account for adeyemioluwafemi2018@gmail.com
-            INITIAL_CONNECTED_ACCOUNTS.forEach((acc) => {
-              saveConnectedAccountToFirestore(acc).catch((err) =>
-                console.warn('Auto-seed account error:', err)
-              );
-            });
-            setConnectedAccounts(INITIAL_CONNECTED_ACCOUNTS);
-            localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(INITIAL_CONNECTED_ACCOUNTS));
-          }
+          // No dummy seed — accounts appear only after a real Gmail is connected
+          // via OAuth (which writes the account row server-side).
+          setConnectedAccounts(filtered);
+          localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(filtered));
         },
         (err) => console.warn('Firestore accounts sync issue:', err)
       );

@@ -59,18 +59,9 @@ export const INITIAL_BASE_CVS: BaseCV[] = [
   }
 ];
 
-export const INITIAL_CONNECTED_ACCOUNTS: ConnectedAccount[] = [
-  {
-    id: 'acc-primary',
-    email: 'adeyemioluwafemi2018@gmail.com',
-    name: 'Oluwafemi (Primary Gmail)',
-    provider: 'gmail',
-    status: 'active',
-    isPrimary: true,
-    lastSyncedAt: 'Ready to scan',
-    unreadCount: 0,
-  }
-];
+// No seeded/dummy account — a Gmail appears here only after it's connected via
+// OAuth (Email Sync Hub → Connect Gmail).
+export const INITIAL_CONNECTED_ACCOUNTS: ConnectedAccount[] = [];
 
 export const INITIAL_APPLICATIONS: JobApplication[] = [];
 
