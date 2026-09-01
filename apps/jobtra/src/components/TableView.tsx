@@ -265,7 +265,9 @@ export const TableView: React.FC<TableViewProps> = ({
                 <th className="px-3 py-2.5 font-medium min-w-[130px]">CV / Tailored</th>
                 <th className="px-3 py-2.5 font-medium min-w-[110px]">Salary</th>
                 <th className="px-3 py-2.5 font-medium min-w-[120px]">Location</th>
+                <th className="px-3 py-2.5 font-medium min-w-[100px]">Work Type</th>
                 <th className="px-3 py-2.5 font-medium min-w-[110px]">Source</th>
+                <th className="px-3 py-2.5 font-medium min-w-[90px]">Job Link</th>
                 <th className="px-3 py-2.5 font-medium min-w-[160px]">Recruiter Contact</th>
                 <th className="px-3 py-2.5 font-medium min-w-[110px]">Date Applied</th>
                 <th className="px-3 py-2.5 font-medium min-w-[180px]">Next Step / Interview</th>
@@ -396,11 +398,22 @@ export const TableView: React.FC<TableViewProps> = ({
                       )}
                     </td>
 
-                    {/* Location & Work Type */}
+                    {/* Location */}
                     <td className="px-3 py-2.5 text-neutral-600 text-[11px]">
                       <div className="flex items-center gap-1 truncate max-w-[140px]">
                         <span className="truncate">{app.location}</span>
                       </div>
+                    </td>
+
+                    {/* Work Type */}
+                    <td className="px-3 py-2.5">
+                      {app.workType ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-neutral-100 text-neutral-700 border border-neutral-200">
+                          {app.workType}
+                        </span>
+                      ) : (
+                        <span className="text-neutral-300 text-[11px]">—</span>
+                      )}
                     </td>
 
                     {/* Source */}
@@ -410,6 +423,23 @@ export const TableView: React.FC<TableViewProps> = ({
                       >
                         {app.source}
                       </span>
+                    </td>
+
+                    {/* Job Link */}
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      {app.jobUrl ? (
+                        <a
+                          href={app.jobUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                          title={app.jobUrl}
+                        >
+                          Open ↗
+                        </a>
+                      ) : (
+                        <span className="text-neutral-300 text-[11px]">—</span>
+                      )}
                     </td>
 
                     {/* Recruiter / Contact */}
@@ -486,7 +516,7 @@ export const TableView: React.FC<TableViewProps> = ({
 
               {/* Quick add bottom row */}
               <tr>
-                <td colSpan={12} className="px-3 py-2 bg-[#FCFBFA]">
+                <td colSpan={14} className="px-3 py-2 bg-[#FCFBFA]">
                   <button
                     onClick={onOpenNewModal}
                     className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-900 text-xs font-medium py-1 px-2 rounded hover:bg-neutral-200/50 transition cursor-pointer"
@@ -511,9 +541,11 @@ export const TableView: React.FC<TableViewProps> = ({
                 <td className="px-3 py-2"></td>
                 <td className="px-3 py-2"></td>
                 <td className="px-3 py-2"></td>
+                <td className="px-3 py-2"></td>
                 <td className="px-3 py-2">
                   {applications.filter((a) => a.source === 'Indeed').length} from Indeed
                 </td>
+                <td className="px-3 py-2"></td>
                 <td className="px-3 py-2"></td>
                 <td className="px-3 py-2"></td>
                 <td className="px-3 py-2 text-purple-700 font-medium">

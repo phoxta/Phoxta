@@ -875,8 +875,11 @@ Return strictly valid JSON matching this schema:
     } catch (_aiErr: any) {
       // Fallback below
     }
+    // The AI produced nothing usable (rate limit, or nothing to read — e.g. only
+    // a URL was given). Flag it so callers don't save this generic placeholder.
     return json({
       success: true,
+      fallback: true,
       data: {
         company: company || 'Hiring Organization',
         role: role || 'Target Position',
@@ -2063,7 +2066,79 @@ async function handleGmailDisconnect(body: any): Promise<Response> {
   return json({ ok: true });
 }
 
+// Pull readable job text out of a page's HTML — prefer a job-description
+// container, else fall back to the main/article/body text.
+function extractJobText(html: string): string {
+  let h = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ");
+  const strip = (s: string) => s
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&#39;/g, "'").replace(/&rsquo;/g, "'").replace(/&quot;/g, '"').replace(/&pound;/g, "£").replace(/&euro;/g, "€")
+    .replace(/\s+/g, " ").trim();
+  const patterns = [
+    /<(?:div|section|article)[^>]*(?:id|class)=["'][^"']*(?:jobDescription|job-description|jobdesc|description|job-details|posting-description|jobsearch-JobComponent)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|section|article)>/i,
+    /<article[^>]*>([\s\S]*?)<\/article>/i,
+    /<main[^>]*>([\s\S]*?)<\/main>/i,
+  ];
+  for (const p of patterns) {
+    const m = h.match(p);
+    if (m) { const t = strip(m[1] || ""); if (t.length > 300) return t; }
+  }
+  return strip(h.replace(/<head[\s\S]*?<\/head>/i, " "));
+}
+
+// POST /import-job-url — actually FETCH a job link server-side, extract the
+// posting text, and analyze it. Returns a clear error (never dummy data) when a
+// site blocks bots (e.g. Indeed) or has no readable description.
+async function handleImportJobUrl(body: any): Promise<Response> {
+  const url = String(body?.url || body?.jobUrl || "").trim();
+  if (!/^https?:\/\//i.test(url)) return json({ success: false, error: "Please provide a valid job URL (starting with http)." }, 400);
+  let html = "";
+  let finalUrl = url;
+  try {
+    const res = await fetch(url, {
+      redirect: "follow",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(20000),
+    });
+    finalUrl = res.url || url;
+    html = await res.text();
+  } catch (e) {
+    return json({ success: false, error: `Couldn't reach that link (${e instanceof Error ? e.message : String(e)}). Paste the job description text instead.` });
+  }
+  const title = (html.match(/<title>(.*?)<\/title>/is)?.[1] || "").trim();
+  const text = extractJobText(html);
+  // A challenge page: the TITLE says so, or the body is tiny AND carries a
+  // challenge marker. Don't flag a full, legitimate page just because it embeds
+  // a recaptcha widget somewhere.
+  const titleBlocked = /security check|just a moment|attention required|access denied|are you a robot|before you continue/i.test(title);
+  const shortBotBody = text.length < 200 && /verify you are human|unusual traffic|additional verification|enable javascript|px-captcha|hcaptcha|cf-challenge/i.test(html);
+  if (titleBlocked || shortBotBody) {
+    return json({ success: false, blocked: true, error: "This site blocks automated reading (Indeed and some others do). Open the posting, copy the job description, and paste it below — then click Auto-fill." });
+  }
+  if (!text || text.length < 200) {
+    return json({ success: false, error: "Couldn't find a readable job description at that link. Paste the description text below and click Auto-fill." });
+  }
+  // Hand the real text to the analyzer (which caches + returns structured data),
+  // then attach the fetched posting text so the description field gets filled.
+  const analyzeRes = await handleAnalyzeJob({ jobDescription: text.slice(0, 9000), jobUrl: finalUrl });
+  const data = await analyzeRes.json().catch(() => null);
+  if (!data || !data.success) return json({ success: false, error: "Couldn't analyze that posting. Paste the description text instead." });
+  data.extractedText = text.slice(0, 6000);
+  data.sourceUrl = finalUrl;
+  return json(data);
+}
+
 const POST_HANDLERS: Record<string, (body: any) => Promise<Response>> = {
+  'import-job-url': handleImportJobUrl,
   'gmail/connect-url': handleGmailConnectUrl,
   'gmail/token': handleGmailToken,
   'gmail/disconnect': handleGmailDisconnect,

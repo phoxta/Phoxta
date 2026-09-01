@@ -87,26 +87,47 @@ export const NewApplicationModal: React.FC<NewApplicationModalProps> = ({
     setAiSuccessMsg(null);
 
     try {
-      const res = await fetch(apiUrl('/api/analyze-job'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobUrl,
-          jobDescription,
-          company,
-          role,
-        }),
-      });
+      let json: any;
+      // A job URL with no pasted description → fetch and read the page server-side.
+      if (jobUrl.trim() && !jobDescription.trim()) {
+        setAiSuccessMsg('Reading the job posting…');
+        const res = await fetch(apiUrl('/api/import-job-url'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: jobUrl.trim() }),
+        });
+        json = await res.json();
+        setAiSuccessMsg(null);
+        if (!json.success) {
+          // Site blocked us or had no readable description — no dummy data saved.
+          setAiError(json.error || 'Could not read that job link. Paste the job description below and click Auto-fill.');
+          return;
+        }
+      } else {
+        const res = await fetch(apiUrl('/api/analyze-job'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobUrl, jobDescription, company, role }),
+        });
+        json = await res.json();
+      }
 
-      const json = await res.json();
+      // The AI produced only a generic placeholder — never fill/save that.
+      if (json.fallback) {
+        setAiError('Couldn\'t extract real details from that input. Paste the actual job description text and click Auto-fill.');
+        return;
+      }
+
       if (json.success && json.data) {
         const d = json.data;
         if (d.company && !company) setCompany(d.company);
         if (d.role && !role) setRole(d.role);
-        if (d.location && location === 'Remote') setLocation(d.location);
+        if (d.location && (location === 'Remote' || !location)) setLocation(d.location);
         if (d.workType) setWorkType(d.workType);
         if (d.salaryEstimate && !salary) setSalary(d.salaryEstimate);
-        if (d.extractedDescription && !jobDescription) setJobDescription(d.extractedDescription);
+        // Prefer the full fetched posting text, else the AI snippet.
+        if ((json.extractedText || d.extractedDescription) && !jobDescription) setJobDescription(json.extractedText || d.extractedDescription);
+        if (json.sourceUrl && !jobUrl) setJobUrl(json.sourceUrl);
 
         const adviceNotes = d.tailoringAdvice && d.tailoringAdvice.length > 0
           ? `\n\n🎯 AI Advice: ${d.tailoringAdvice.slice(0, 2).join(' • ')}`
