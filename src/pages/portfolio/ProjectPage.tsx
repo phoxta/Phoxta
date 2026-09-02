@@ -36,22 +36,7 @@ export default function ProjectPage() {
                             {BACK} Back to work
                         </Link>
                     </div>
-                    <span className="pf-cs__eyebrow d-inline-flex align-items-center gap-2 mb-15">
-                        <span className="pf-cs__dot" aria-hidden="true" />{cs.kicker}
-                    </span>
-                    <h1 className="pf-cs__title fz-ds-1 fw-600 lh-1 mb-0">{cs.name}</h1>
-                    <p className="pf-cs__tagline fz-font-lg mt-25 mb-0">{cs.tagline}</p>
-
-                    <div className="pf-cs__meta d-flex flex-wrap mt-50">
-                        {cs.meta.map((m) => (
-                            <div key={m.label} className="pf-cs__meta-item">
-                                <span className="pf-cs__meta-label">{m.label}</span>
-                                <span className="pf-cs__meta-value">{m.value}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="d-flex flex-wrap align-items-center gap-3 mt-40">
+                    <div className="d-flex flex-wrap align-items-center gap-3">
                         {cs.prototypeUrl && (
                             <a href={cs.prototypeUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__btn pf-cs__btn--solid d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
                                 View live prototype {ARROW}
