@@ -208,7 +208,7 @@ export default function ProjectPage() {
 
             {/* ── Design system ── */}
             {cs.designSystemUrl && (
-                <section className="pf-cs__sec pt-40 pb-40">
+                <section className="pf-cs__sec pt-40 pb-80">
                     <div className="container-2200 px-3 px-lg-4">
                         <span className="pf-cs__label d-block mb-25">Design system</span>
                         <div className="row g-3 g-lg-5 align-items-end mb-30">
@@ -234,27 +234,6 @@ export default function ProjectPage() {
                     </div>
                 </section>
             )}
-
-            {/* ── Outcome ── */}
-            <section className="pf-cs__sec pt-60 pb-80">
-                <div className="container-2200 px-3 px-lg-4">
-                    <div className="row g-4 g-lg-5">
-                        <div className="col-lg-4">
-                            <span className="pf-cs__label">What I took from it</span>
-                        </div>
-                        <div className="col-lg-8">
-                            <ul className="pf-cs__outcome list-unstyled m-0">
-                                {cs.outcome.map((o, i) => (
-                                    <li key={i} className="pf-cs__outcome-item d-flex gap-3">
-                                        <span className="pf-cs__outcome-dot" aria-hidden="true" />
-                                        <span className="pf-cs__body fz-font-lg">{o}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             {/* ── Next / CTA ── */}
             <section className="pf-cs__cta bg-neutral-950 text-white pt-100 pb-100">

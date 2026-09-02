@@ -29,7 +29,7 @@ export type CaseStudy = {
     designSystemUrl?: string;
     designSystemImage?: string;
     designSystemBlurb?: string;
-    outcome: string[];
+    outcome?: string[];
 };
 
 export const CASE_STUDIES: CaseStudy[] = [
@@ -110,11 +110,6 @@ export const CASE_STUDIES: CaseStudy[] = [
         designSystemImage: "/assets/imgs/portfolio/coir-six-ds.webp",
         designSystemBlurb:
             "Everything on the screens traces back to one source of truth. I documented Coir Six as a full design system — four founding principles, tokenised colour, type, spacing, radius and elevation, a component library (buttons, inputs, tags, avatars, cards, navigation and data-viz) and the page + responsive patterns — and exported the tokens as CSS variables and JSON so a new feature feels native on day one.",
-        outcome: [
-            "The three-intent hierarchy held up on both breakpoints with no special-casing — proof it was the structure, not the specific layout, doing the work.",
-            "Prototyping in real HTML/CSS caught spacing and reflow issues Figma had hidden, and handed engineering a build-ready front-end reference instead of a redline.",
-            "Clear next steps: an onboarding empty-state for brand-new learners and a streak-recovery flow, so motivation survives a missed day.",
-        ],
     },
 ];
 
