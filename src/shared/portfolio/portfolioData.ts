@@ -123,9 +123,27 @@ export const PROJECTS: Project[] = [
             "Set up product analytics to measure feature adoption and feed insight back into prioritisation.",
         ],
         tags: ["SaaS", "Design System", "AI", "Front-end"],
-        image: "/assets/imgs/pages/img-11.webp",
+        image: "/assets/imgs/portfolio/phoxta-project.webp",
         tone: "dark",
         link: "https://www.phoxta.com",
+    },
+    {
+        slug: "coir-six",
+        name: "Coir Six",
+        kicker: "E-learning platform",
+        role: "Product Designer",
+        period: "2024",
+        summary:
+            "A learning-management dashboard that turns scattered course progress, mentors and schedules into one calm, glanceable home — designed to keep self-paced learners motivated and returning every day.",
+        contributions: [
+            "Designed the learner home end to end — goal tracking, continue-watching, mentors and lessons — around a single glance-first hierarchy.",
+            "Built a lilac-led design system: reusable stat cards, course cards and a data-viz language for study streaks and weekly progress.",
+            "Made it fully responsive — the three-pane desktop console reflows into a focused, thumb-friendly mobile app with a bottom tab bar.",
+        ],
+        tags: ["Product Design", "Design System", "Dashboard", "Responsive"],
+        image: "/assets/imgs/portfolio/coir-six.webp",
+        tone: "light",
+        link: "/work/coir-six",
     },
     {
         slug: "northern-light",

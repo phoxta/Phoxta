@@ -73,6 +73,7 @@ function articleSlugs() {
 const ROUTES = [
     "/",
     "/portfolio",
+    "/portfolio/work/coir-six",
     "/about",
     "/marketplace",
     "/pricing",

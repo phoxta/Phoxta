@@ -39,9 +39,12 @@ export default function middleware(request: Request): Response {
             if (p.startsWith("/api/")) {
                 return next();
             }
-            // Everything else on the subdomain is the portfolio.
+            // Everything else on the subdomain is the portfolio. The root maps to
+            // the prerendered /portfolio; sub-pages (e.g. /work/coir-six) map to
+            // their prerendered /portfolio/<path> so the first paint is correct.
             if (!p.startsWith("/portfolio")) {
-                return rewrite(new URL("/portfolio", url));
+                const dest = p === "/" ? "/portfolio" : `/portfolio${p}`;
+                return rewrite(new URL(dest, url));
             }
         }
     } catch {

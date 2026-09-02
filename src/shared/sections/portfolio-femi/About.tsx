@@ -11,7 +11,7 @@ export default function About() {
     return (
         <section id="about" className="pf-about bg-neutral-0 overflow-hidden pt-120 pb-120">
             <div className="container-2200 px-3 px-lg-4">
-                <div className="row g-5">
+                <div className="row g-4 g-lg-5">
                     <div className="col-lg-5">
                         <span className="pf-eyebrow"><span className="pf-eyebrow__dot" aria-hidden="true" />About</span>
                         <h2 className="pf-section-title fz-60 fw-600 lh-1 mt-20 mb-0 at_fade_anim" data-fade-from="bottom">

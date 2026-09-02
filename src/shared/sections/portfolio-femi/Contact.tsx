@@ -13,7 +13,7 @@ export default function Contact() {
             <div className="container-2200 px-3 px-lg-4 text-center">
                 <span className="pf-eyebrow pf-eyebrow--light mx-auto"><span className="pf-eyebrow__dot" aria-hidden="true" />Contact</span>
                 <h2 className="pf-contact__title fz-120 fw-600 lh-1 mt-30 mb-0">
-                    Let's build something<br /><span className="pf-accent-word">worth shipping.</span>
+                    Let's build something <br /><span className="pf-accent-word">worth shipping.</span>
                 </h2>
                 <p className="pf-contact__lede fz-font-lg mx-auto mt-30 mb-0">
                     {PROFILE.availability} — from a focused product engagement to an ongoing design partnership.

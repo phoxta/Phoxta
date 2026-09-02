@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 import { PROJECTS } from "@/shared/portfolio/portfolioData";
 
@@ -106,6 +107,15 @@ export default function Work() {
                                                                     <li key={i}>{c}</li>
                                                                 ))}
                                                             </ul>
+                                                            {p.link && (p.link.startsWith("/") ? (
+                                                                <Link to={p.link} className="pf-work__cta d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                                                                    View case study {NAV_ARROW}
+                                                                </Link>
+                                                            ) : (
+                                                                <a href={p.link} target="_blank" rel="noopener noreferrer" className="pf-work__cta d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                                                                    Visit live site {NAV_ARROW}
+                                                                </a>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                     <div className="col-xxl-5 col-lg-6 col-md-5 offset-xxl-1 d-none d-md-block">

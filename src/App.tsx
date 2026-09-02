@@ -19,6 +19,7 @@ const TelegramMiniApp = lazy(() => import("@/pages/telegram/MiniApp"));
 // /portfolio on any host. Its own standalone layout (no Phoxta marketing chrome).
 const PortfolioLayout = lazy(() => import("@/layouts/PortfolioLayout"));
 const PortfolioPage = lazy(() => import("@/pages/portfolio/PortfolioPage"));
+const ProjectPage = lazy(() => import("@/pages/portfolio/ProjectPage"));
 // Solutions pages (linked from the nav's Solutions dropdown)
 const MarketingSolutionPage = lazy(() => import("@/pages/MarketingSolutionPage")); // /marketing
 const AiTechPage = lazy(() => import("@/pages/AiTechPage")); // /ai-tech
@@ -127,6 +128,7 @@ export default function App() {
         <Routes>
           <Route element={<PortfolioLayout />}>
             <Route path="/" element={<PortfolioPage />} />
+            <Route path="/work/:slug" element={<ProjectPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
@@ -255,6 +257,7 @@ export default function App() {
           root rewrites to (see vercel.json). */}
       <Route element={<PortfolioLayout />}>
         <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/portfolio/work/:slug" element={<ProjectPage />} />
       </Route>
       {/* /invest taken down 2026-08-18 (audit): the page offered securities
           (Growth Notes, APR figures) with no product, KYC, or filings behind

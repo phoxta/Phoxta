@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coir Six — Learning Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#6C5DD3; --primary-soft:#EEEBFB; --page:#F6F6FA; --card:#FFFFFF;
+    --line:#ECECF2; --ink:#1B1B23; --muted:#8A8A9E; --caption:#A8A8B8; --danger:#E5623B;
+    --font:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#DCDDE3;font-family:var(--font);color:var(--ink);-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+  svg{display:block}
+  .app{width:1352px;height:962px;background:var(--page);border-radius:24px;overflow:hidden;display:grid;grid-template-columns:216px 1fr 340px;column-gap:24px;padding-right:31px;box-shadow:0 30px 80px rgba(20,20,40,.12)}
+
+  .sidebar{background:#fff;border-right:1px solid var(--line);padding:38px 36px 44px;display:flex;flex-direction:column}
+  .logo{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:600;margin-bottom:56px}
+  .logo .mark{width:32px;height:32px;border-radius:50%;background:var(--primary);display:grid;place-items:center}
+  .group-label{font-size:11px;letter-spacing:.08em;color:var(--caption);font-weight:500;margin-bottom:10px}
+  .nav a{display:flex;align-items:center;gap:12px;padding:16px 0;font-size:17px;font-weight:500;color:var(--ink);text-decoration:none}
+  .nav a.danger{color:var(--danger)}
+  .friends{margin-top:26px}
+  .friend{display:flex;align-items:center;gap:14px;padding:10px 0}
+  .friend .name{font-size:14px;font-weight:500;line-height:1.2}
+  .friend .sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .settings{margin-top:auto}
+
+  .av{border-radius:50%;display:grid;place-items:center;font-weight:600;flex:none;position:relative;letter-spacing:.02em}
+  .av.s34{width:34px;height:34px;font-size:12px}
+  .av.s32{width:32px;height:32px;font-size:11px}
+  .av.s44{width:44px;height:44px;font-size:15px}
+  .av.s50{width:50px;height:50px;font-size:16px}
+  .av.s110{width:112px;height:112px;font-size:36px;overflow:hidden}
+  .av.plum{background:#F3E6F8;color:#8E44AD}
+  .av.sky{background:#E6F0FA;color:#2E6DB4}
+  .av.peach{background:#FCEBD9;color:#C0692B}
+  .av.lilac{background:var(--primary-soft);color:var(--primary)}
+  .av.mint{background:#E4F5EE;color:#2B8A61}
+  .av.rose{background:#FBE8F5;color:#C24A9A}
+  .av .plus{position:absolute;right:-2px;bottom:-2px;width:16px;height:16px;border-radius:50%;background:#1B1B23;border:2px solid #fff;display:grid;place-items:center}
+
+  .main{padding-top:30px;display:flex;flex-direction:column;min-width:0}
+  .topbar{height:46px;margin-bottom:28px}
+  .search{height:46px;border-radius:23px;background:#fff;border:1px solid #E6E6EE;display:flex;align-items:center;gap:10px;padding:0 16px;color:var(--caption);font-size:14px}
+
+  .hero{position:relative;height:220px;border-radius:20px;background:var(--primary);color:#fff;padding:24px;overflow:hidden;isolation:isolate}
+  .hero .glow{position:absolute;width:340px;height:340px;right:-40px;top:-90px;border-radius:50%;background:#9084E6;filter:blur(90px);opacity:.7;z-index:-1}
+  .hero .spark{position:absolute;color:#fff;pointer-events:none}
+  .hero .kicker{font-size:12px;letter-spacing:.14em;font-weight:600;opacity:.9}
+  .hero h1{font-size:30px;line-height:38px;font-weight:600;margin:22px 0 26px;max-width:460px}
+  .btn-join{display:inline-flex;align-items:center;gap:10px;background:#1B1B23;color:#fff;border:0;border-radius:24px;padding:8px 8px 8px 22px;font:600 14px var(--font);cursor:pointer}
+  .btn-join .circle{width:26px;height:26px;border-radius:50%;background:#fff;display:grid;place-items:center}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin:26px 0 28px}
+  .stat{background:#fff;border-radius:16px;padding:10px 14px 10px 10px;display:flex;align-items:center;gap:14px;height:70px}
+  .stat .ico{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;flex:none}
+  .stat .w{font-size:12px;color:var(--muted)}
+  .stat .t{font-size:16px;font-weight:600;margin-top:3px}
+  .stat .more{margin-left:auto;color:var(--muted)}
+
+  .sec-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .sec-head h2{font-size:20px;font-weight:600;flex:1}
+  .pager{width:32px;height:32px;border-radius:50%;border:1px solid #E6E6EE;background:#fff;display:grid;place-items:center;cursor:pointer}
+  .pager.fill{background:var(--primary);border-color:var(--primary);color:#fff}
+  .see-all{font-size:13px;color:var(--primary);text-decoration:underline}
+
+  .courses{background:#fff;border-radius:20px;padding:16px;display:flex;gap:22px;overflow:hidden;height:304px}
+  .course{width:254px;flex:none;display:flex;flex-direction:column;gap:12px}
+  .course .cover{position:relative;height:130px;border-radius:14px;overflow:hidden;background:#ddd}
+  .course .cover.c-fe{background:linear-gradient(135deg,#4A8FE0,#2E6DB4)}
+  .course .cover.c-ux{background:linear-gradient(135deg,#8A7BE6,#6C5DD3)}
+  .course .cover.c-br{background:linear-gradient(135deg,#E77FC8,#C24A9A)}
+  .course .save{position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center}
+  .tag{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;width:max-content}
+  .tag.fe{background:#E8F1FC;color:#4A8FE0}
+  .tag.ux{background:#EEEBFB;color:#6C5DD3}
+  .tag.br{background:#FBE8F5;color:#D35DB7}
+  .course h3{font-size:15px;font-weight:600;line-height:21px;height:42px;overflow:hidden}
+  .progress{height:3px;border-radius:2px;background:#ECECF2}
+  .progress i{display:block;height:100%;border-radius:2px;background:var(--primary)}
+  .mentor{display:flex;align-items:center;gap:10px;padding-top:4px}
+  .mentor .n{font-size:13px;font-weight:500}
+  .mentor .r{font-size:11px;color:var(--muted);margin-top:2px}
+
+  .lesson{margin-top:26px}
+  .lesson .sec-head{margin-bottom:10px}
+  .table{background:#fff;border-radius:20px 20px 0 0;overflow:hidden}
+  .table .hdr,.table .row{display:grid;grid-template-columns:56px 180px 180px 1fr 44px;align-items:center;padding:0 16px}
+  .table .hdr{height:34px;font-size:11px;letter-spacing:.06em;color:var(--caption);font-weight:500;border-bottom:1px solid var(--line)}
+  .table .row{height:64px}
+  .table .name{font-size:14px;font-weight:500}
+  .table .date{font-size:12px;color:var(--muted);margin-top:2px}
+  .table .desc{font-size:15px;font-weight:500;white-space:nowrap}
+  .table .act{width:28px;height:28px;border-radius:50%;border:1px solid var(--primary);display:grid;place-items:center;color:var(--primary);justify-self:end}
+
+  .right{padding-top:30px;display:flex;flex-direction:column}
+  .actions{height:46px;display:flex;align-items:center;justify-content:flex-end;gap:16px;margin-bottom:28px}
+  .icon-btn{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #E6E6EE;display:grid;place-items:center}
+  .actions .div{width:1px;height:30px;background:#DCDCE5}
+  .user{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:500}
+
+  .panel{background:#fff;border-radius:20px;padding:16px 16px 18px;flex:1}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+  .panel-head h2{font-size:20px;font-weight:600}
+  .ring{width:140px;height:140px;margin:0 auto;position:relative;display:grid;place-items:center}
+  .ring svg{position:absolute;inset:0}
+  .ring .badge{position:absolute;top:2px;right:2px;background:var(--primary);color:#fff;font-size:11px;font-weight:600;padding:4px 8px;border-radius:12px}
+  .greet{text-align:center;margin-top:16px}
+  .greet h3{font-size:18px;font-weight:600}
+  .greet p{font-size:12px;color:var(--muted);margin-top:4px}
+
+  .chart{background:var(--page);border-radius:16px;padding:14px 16px 12px;margin-top:22px;height:172px;display:grid;grid-template-columns:22px 1fr;column-gap:12px}
+  .chart .y{display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--muted);height:96px;padding-bottom:0}
+  .chart .plot{position:relative;height:96px}
+  .chart .grid{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between}
+  .chart .grid i{display:block;border-top:1px dashed #DCDCE5}
+  .chart .bars{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 6px}
+  .chart .bars b{width:40px;border-radius:6px 6px 0 0;background:#DCD9F3}
+  .chart .bars b.hi{background:var(--primary)}
+  .chart .x{grid-column:2;display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:14px;padding:0 6px}
+
+  .mentors-head{display:flex;align-items:center;justify-content:space-between;margin:26px 0 14px}
+  .mentors-head h2{font-size:20px;font-weight:600}
+  .add{width:28px;height:28px;border-radius:50%;border:1px solid #E6E6EE;background:#fff;display:grid;place-items:center}
+  .mentors{background:var(--page);border-radius:16px;padding:6px 20px 20px}
+  .mrow{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid #E6E6EE}
+  .mrow:last-of-type{border-bottom:0}
+  .mrow>div{flex:1;min-width:0}.mrow .n{font-size:14px;font-weight:500;white-space:nowrap}
+  .mrow .r{font-size:12px;color:var(--muted);margin-top:2px}
+  .follow{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border:1px solid #E6E6EE;background:#fff;border-radius:16px;padding:6px 12px;font:500 12px var(--font);color:var(--ink);cursor:pointer}
+  .btn-seeall{width:100%;height:42px;border:0;border-radius:12px;background:#EBE9F8;color:var(--primary);font:500 14px var(--font);margin-top:8px;cursor:pointer}
+
+  @media (max-width:1400px){body{padding:20px}.app{transform:scale(.9);transform-origin:top center}}
+  @media (max-width:1250px){.app{transform:scale(.78)}}
+  @media (max-width:1100px){.app{transform:scale(.68)}}
+
+  .m-only,.m-only-inline{display:none}
+  @media (max-width:768px){.d-only{display:none}.m-only-inline{display:inline}}
+  .m-stat{display:block}
+  @media (max-width:768px){
+    html,body{background:var(--page);padding:0;display:block;min-height:auto}
+    body{padding:0}
+    .app{width:100%;height:auto;min-height:100vh;display:block;border-radius:0;box-shadow:none;padding:0 0 92px;transform:none;background:var(--page)}
+    .m-only{display:flex}
+    .sidebar{display:none}
+    .m-appbar{position:sticky;top:0;z-index:20;background:var(--page);padding:14px 20px 8px;align-items:center;gap:12px}
+    .m-appbar .av{width:44px;height:44px}
+    .m-appbar .who{flex:1;min-width:0}
+    .m-appbar .hi{font-size:12px;color:var(--muted)}
+    .m-appbar .nm{font-size:17px;font-weight:600;line-height:1.2}
+    .m-appbar .icon-btn{position:relative}
+    .m-appbar .dot{position:absolute;top:11px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--danger);border:1.5px solid #fff}
+    .main{padding:0 20px}
+    .topbar{margin:6px 0 18px}
+    .search{height:48px;border-radius:14px}
+    .hero{height:auto;padding:22px 20px 20px;border-radius:20px}
+    .hero h1{font-size:24px;line-height:31px;margin:14px 0 20px;max-width:100%}
+    .hero .spark:nth-of-type(1){width:130px;height:130px;right:-52px;top:-56px;opacity:.5}
+    .hero .spark:nth-of-type(2){display:none}
+    .hero .spark:nth-of-type(3){right:26px;top:auto;bottom:22px;width:44px;height:44px;opacity:.45}
+    .stats{display:flex;gap:12px;margin:20px -20px 26px;padding:0 20px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 20px;scrollbar-width:none}
+    .stats::-webkit-scrollbar{display:none}
+    .stat{flex:0 0 200px;scroll-snap-align:start;height:72px;padding:10px 12px}
+    .stat .more{display:none}
+    .sec-head h2{font-size:18px}
+    .pager{display:none}
+    .courses{background:transparent;padding:0 20px;margin:0 -20px;height:auto;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 20px;scrollbar-width:none}
+    .courses::-webkit-scrollbar{display:none}
+    .course{width:240px;scroll-snap-align:start;background:#fff;border-radius:18px;padding:10px 12px 14px}
+    .course .cover{height:124px;border-radius:12px}
+    .course h3{font-size:14px;line-height:20px;height:40px}
+    .lesson{margin-top:28px}
+    .table{border-radius:18px}
+    .table .hdr{display:none}
+    .table .row{display:grid;grid-template-columns:44px 1fr 32px;grid-template-areas:"av name act" "av desc act";row-gap:6px;padding:14px 16px;height:auto;align-items:center}
+    .table .row>.av{grid-area:av;width:40px;height:40px}
+    .table .row>div:nth-child(2){grid-area:name}
+    .table .row>.tag{display:none}
+    .table .desc{grid-area:desc;font-size:14px;white-space:normal;color:var(--muted);font-weight:400}
+    .table .act{grid-area:act}
+    .right{padding:26px 20px 0}
+    .actions{display:none}
+    .panel{padding:0;background:transparent;flex:none}
+    .panel-head{margin-bottom:16px}
+    .panel-head h2{font-size:18px}
+    .m-stat{background:#fff;border-radius:20px;padding:18px 16px;display:flex;align-items:center;gap:18px}
+    .m-stat .ring{margin:0;width:104px;height:104px;flex:none}
+    .m-stat .ring svg{width:104px;height:104px}
+    .m-stat .ring .av{width:82px;height:82px}
+    .m-stat .ring .badge{top:-2px;right:-6px}
+    .m-stat .greet{text-align:left;margin:0}
+    .m-stat .greet h3{font-size:17px}
+    .chart{margin-top:14px;background:#fff}
+    .mentors-head{margin:26px 0 12px}
+    .mentors-head h2{font-size:18px}
+    .mentors{background:#fff;padding:4px 16px 16px}
+    .mrow{padding:12px 0}
+    .mrow .av{width:44px;height:44px}
+    .m-tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid var(--line);padding:10px 8px calc(10px + env(safe-area-inset-bottom));justify-content:space-around}
+    .m-tabbar a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--muted);text-decoration:none;min-width:56px}
+    .m-tabbar a.on{color:var(--primary)}
+    .m-tabbar a.on i{width:4px;height:4px;border-radius:50%;background:var(--primary);display:block}
+  }
+  @media (max-width:400px){
+    .main,.right,.m-appbar{padding-left:16px;padding-right:16px}
+    .stats,.courses{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;scroll-padding:0 16px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="m-appbar m-only">
+    <span class="av s44 lilac">JR</span>
+    <div class="who"><div class="hi">Good morning 🔥</div><div class="nm">Jason Ranti</div></div>
+    <span class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="dot"></span></span>
+  </header>
+
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="mark">
+        <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 1c.6 4 3 6.4 7 7-4 .6-6.4 3-7 7-.6-4-3-6.4-7-7 4-.6 6.4-3 7-7z" fill="#fff"/></svg>
+      </span>
+      Coir Six
+    </div>
+    <div class="group-label">OVERVIEW</div>
+    <nav class="nav">
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/></svg>Inbox</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 0 1 2 2v13.5L14.5 17 11 19.5V6H5z"/><path d="M5 4v14a2 2 0 0 0 2 2h4"/></svg>Lesson</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>Task</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M15 19a4.5 4.5 0 0 1 5.5-4.4"/></svg>Group</a>
+    </nav>
+    <div class="friends">
+      <div class="group-label">FRIENDS</div>
+      <div class="friend"><span class="av s34 plum">BM</span><div><div class="name">Bagas Mahpie</div><div class="sub">Friend</div></div></div>
+      <div class="friend"><span class="av s34 sky">SD</span><div><div class="name">Sir Dandy</div><div class="sub">Old Friend</div></div></div>
+      <div class="friend"><span class="av s34 peach">JT</span><div><div class="name">Jhon Tosan</div><div class="sub">Friend</div></div></div>
+    </div>
+    <div class="settings">
+      <div class="group-label">SETTINGS</div>
+      <nav class="nav">
+        <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Setting</a>
+        <a href="#" class="danger"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="M14 16l4-4-4-4"/><path d="M18 12H9"/></svg>Logout</a>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>
+        Search your course....
+      </div>
+    </div>
+
+    <section class="hero">
+      <span class="glow"></span>
+      <svg class="spark" style="right:40px;top:-46px" width="220" height="220" viewBox="0 0 100 100" opacity=".8"><path d="M50 0C52 30 70 48 100 50 70 52 52 70 50 100 48 70 30 52 0 50 30 48 48 30 50 0z" fill="#fff"/></svg>
+      <svg class="spark" style="right:290px;top:112px" width="70" height="70" viewBox="0 0 100 100" opacity=".45"><path d="M50 0C52 30 70 48 100 50 70 52 52 70 50 100 48 70 30 52 0 50 30 48 48 30 50 0z" fill="#fff"/></svg>
+      <svg class="spark" style="right:30px;top:60px" width="50" height="50" viewBox="0 0 100 100" opacity=".35"><path d="M50 0C52 30 70 48 100 50 70 52 52 70 50 100 48 70 30 52 0 50 30 48 48 30 50 0z" fill="#fff"/></svg>
+      <div class="kicker">ONLINE COURSE</div>
+      <h1>Sharpen Your Skills with Professional Online Courses</h1>
+      <button class="btn-join">Join Now <span class="circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></button>
+    </section>
+
+    <div class="stats">
+      <div class="stat"><span class="ico" style="background:#EEEBFB"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6C5DD3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l-9 9 1.5 4 4 1.5 9-9a2.5 2.5 0 0 0-3.5-3.5z"/><path d="M12 7l5 5"/><path d="M5.5 13.5l5 5"/></svg></span><div><div class="w">2/8 watched</div><div class="t">UI/UX Design</div></div><span class="more">⋮</span></div>
+      <div class="stat"><span class="ico" style="background:#FBE8F5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D35DB7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13V6a2 2 0 0 1 2-2h7l7 7-7 7-7-7z"/><circle cx="8.5" cy="8.5" r="1.3" fill="#D35DB7"/></svg></span><div><div class="w">3/8 watched</div><div class="t">Branding</div></div><span class="more">⋮</span></div>
+      <div class="stat"><span class="ico" style="background:#E8F1FC"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A8FE0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="13" rx="2"/><path d="M9 10l-2.5 2 2.5 2"/><path d="M15 10l2.5 2-2.5 2"/><path d="M13 9l-2 6"/></svg></span><div><div class="w">6/12 watched</div><div class="t">Front End</div></div><span class="more">⋮</span></div>
+    </div>
+
+    <div class="sec-head">
+      <h2>Continue Watching</h2>
+      <span class="pager"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+      <span class="pager fill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+    </div>
+
+    <div class="courses">
+      <article class="course">
+        <div class="cover c-fe"><span class="save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg></span></div>
+        <span class="tag fe"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="13" rx="2"/><path d="M9 10l-2.5 2 2.5 2"/><path d="M15 10l2.5 2-2.5 2"/></svg>FRONT END</span>
+        <h3>Beginner's Guide to Becoming a Professional Front-End Developer</h3>
+        <div class="progress"><i style="width:73%"></i></div>
+        <div class="mentor"><span class="av s32 peach">LS</span><div><div class="n">Leonardo Samsul</div><div class="r">Mentor</div></div></div>
+      </article>
+      <article class="course">
+        <div class="cover c-ux"><span class="save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg></span></div>
+        <span class="tag ux"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l-9 9 1.5 4 4 1.5 9-9a2.5 2.5 0 0 0-3.5-3.5z"/><path d="M12 7l5 5"/></svg>UI/UX DESIGN</span>
+        <h3>Optimizing User Experience with the Best UI/UX Design</h3>
+        <div class="progress"><i style="width:52%"></i></div>
+        <div class="mentor"><span class="av s32 rose">BS</span><div><div class="n">Bayu Salto</div><div class="r">Mentor</div></div></div>
+      </article>
+      <article class="course">
+        <div class="cover c-br"><span class="save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg></span></div>
+        <span class="tag br"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13V6a2 2 0 0 1 2-2h7l7 7-7 7-7-7z"/></svg>BRANDING</span>
+        <h3>Reviving and Refreshing Company Image</h3>
+        <div class="progress"><i style="width:36%"></i></div>
+        <div class="mentor"><span class="av s32 lilac">PS</span><div><div class="n">Padhang Satrio</div><div class="r">Mentor</div></div></div>
+      </article>
+    </div>
+
+    <section class="lesson">
+      <div class="sec-head"><h2>Your Lesson</h2><a class="see-all" href="#">See all</a></div>
+      <div class="table">
+        <div class="hdr"><span></span><span>MENTOR</span><span>TYPE</span><span>DESC</span><span style="justify-self:end">ACTION</span></div>
+        <div class="row">
+          <span class="av s34 lilac">PS</span>
+          <div><div class="name">Padhang Satrio</div><div class="date">2/16/2024</div></div>
+          <span class="tag ux"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l-9 9 1.5 4 4 1.5 9-9a2.5 2.5 0 0 0-3.5-3.5z"/><path d="M12 7l5 5"/></svg>UI/UX DESIGN</span>
+          <div class="desc">Understand Of UI/UX Design</div>
+          <span class="act"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <aside class="right">
+    <div class="actions">
+      <span class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M4 7l8 6 8-6"/></svg></span>
+      <span class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span>
+      <span class="div"></span>
+      <div class="user"><span class="av s44 lilac">JR</span>Jason Ranti</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Statistic</h2><span style="color:#8A8A9E">⋮</span></div>
+      <div class="m-stat">
+      <div class="ring">
+        <svg width="140" height="140" viewBox="0 0 140 140" fill="none">
+          <circle cx="70" cy="70" r="66" stroke="#E4E1F5" stroke-width="2"/>
+          <circle cx="70" cy="70" r="66" stroke="#6C5DD3" stroke-width="2" stroke-linecap="round" stroke-dasharray="415" stroke-dashoffset="282" transform="rotate(-90 70 70)"/>
+        </svg>
+        <span class="av s110 lilac">JR</span>
+        <span class="badge">32%</span>
+      </div>
+      <div class="greet">
+        <h3><span class="d-only">Good Morning Jason 🔥</span><span class="m-only-inline">32% of your target done</span></h3>
+        <p>Continue your learning to achieve your target!</p>
+      </div>
+      </div>
+
+      <div class="chart">
+        <div class="y"><span>60</span><span>40</span><span>20</span></div>
+        <div class="plot">
+          <div class="grid"><i></i><i></i><i></i></div>
+          <div class="bars"><b style="height:22px"></b><b class="hi" style="height:52px"></b><b style="height:22px"></b><b class="hi" style="height:88px"></b><b style="height:22px"></b></div>
+        </div>
+        <div class="x"><span>1-10 Aug</span><span>11-20 Aug</span><span>21-30 Aug</span></div>
+      </div>
+
+      <div class="mentors-head"><h2>Your mentor</h2><span class="add"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></div>
+      <div class="mentors">
+        <div class="mrow"><span class="av s50 sky">PS<span class="plus"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></span><div><div class="n">Padhang Satrio</div><div class="r">Mentor</div></div><button class="follow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/></svg>Follow</button></div>
+        <div class="mrow"><span class="av s50 peach">ZH<span class="plus"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></span><div><div class="n">Zakir Horizontal</div><div class="r">Mentor</div></div><button class="follow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/></svg>Follow</button></div>
+        <div class="mrow"><span class="av s50 mint">LS<span class="plus"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></span><div><div class="n">Leonardo Samsul</div><div class="r">Mentor</div></div><button class="follow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/></svg>Follow</button></div>
+        <button class="btn-seeall">See All</button>
+      </div>
+    </div>
+  </aside>
+
+  <nav class="m-tabbar m-only">
+    <a href="#" class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Home<i></i></a>
+    <a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 0 1 2 2v13.5L14.5 17 11 19.5V6H5z"/><path d="M5 4v14a2 2 0 0 0 2 2h4"/></svg>Lesson</a>
+    <a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>Task</a>
+    <a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M15 19a4.5 4.5 0 0 1 5.5-4.4"/></svg>Group</a>
+    <a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/></svg>Inbox</a>
+  </nav>
+</div>
+</body>
+</html>

@@ -16,11 +16,11 @@ export default function PortfolioFooter() {
                             <span className="pf-brand__name text-white">{PROFILE.name}</span>
                         </a>
                         <p className="pf-footer__line mt-20 mb-0">
-                            {PROFILE.role} — {PROFILE.location}.<br />
+                            {PROFILE.role} — {PROFILE.location}. <br />
                             {PROFILE.availability}.
                         </p>
                     </div>
-                    <div className="col-6 col-lg-3">
+                    <div className="col-12 col-sm-6 col-lg-3">
                         <p className="pf-foot-label mb-15">Explore</p>
                         <ul className="list-unstyled d-flex flex-column gap-2 m-0">
                             {NAV.map((item) => (
@@ -30,7 +30,7 @@ export default function PortfolioFooter() {
                             ))}
                         </ul>
                     </div>
-                    <div className="col-6 col-lg-3">
+                    <div className="col-12 col-sm-6 col-lg-3">
                         <p className="pf-foot-label mb-15">Contact</p>
                         <ul className="list-unstyled d-flex flex-column gap-2 m-0">
                             <li><a href={`mailto:${PROFILE.email}`} className="pf-foot-link">{PROFILE.email}</a></li>

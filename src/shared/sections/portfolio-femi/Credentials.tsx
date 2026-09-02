@@ -4,7 +4,7 @@ export default function Credentials() {
     return (
         <section id="credentials" className="pf-cred bg-neutral-50 overflow-hidden pt-120 pb-120">
             <div className="container-2200 px-3 px-lg-4">
-                <div className="row g-5">
+                <div className="row g-4 g-lg-5">
                     <div className="col-lg-5">
                         <span className="pf-eyebrow"><span className="pf-eyebrow__dot" aria-hidden="true" />Education</span>
                         <h2 className="pf-section-title fz-60 fw-600 lh-1 mt-20 mb-40">

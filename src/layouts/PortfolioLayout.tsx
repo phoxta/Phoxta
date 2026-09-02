@@ -36,7 +36,7 @@ const PORTFOLIO_CSS = `
 
 /* ── Header ─────────────────────────────────────────────── */
 .pf-header{position:fixed;top:0;left:0;right:0;z-index:1000;padding:14px 0;transition:padding .3s ease,background .3s ease,box-shadow .3s ease,border-color .3s ease;border-bottom:1px solid transparent}
-.pf-header.is-scrolled{padding:8px 0;background:rgba(254,254,254,.82);backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);border-bottom-color:var(--pf-line);box-shadow:0 6px 30px -20px rgba(0,0,0,.4)}
+.pf-header.is-scrolled{padding:8px 0;background:rgba(254,254,254,.97);backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);border-bottom-color:var(--pf-line);box-shadow:0 6px 30px -20px rgba(0,0,0,.4)}
 .pf-header__bar{gap:16px}
 .pf-brand__mark{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--pf-ink);color:#fff;font-weight:700;font-size:15px;letter-spacing:.02em}
 .pf-brand__mark--photo{overflow:hidden;padding:0;background:#fff;border:1px solid var(--pf-line)}
@@ -124,6 +124,86 @@ const PORTFOLIO_CSS = `
 .pf-hero__photo img{aspect-ratio:5/6;object-position:top center}
 .pf-hero__badge{position:absolute;left:16px;bottom:16px;z-index:2;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#fff;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.22);padding:8px 14px;border-radius:999px}
 .pf-hero__badge-dot{width:8px;height:8px;border-radius:50%;background:var(--pf-accent);box-shadow:0 0 0 0 rgba(240,70,14,.5);animation:pf-pulse 2s infinite}
+
+/* Work-card CTA → case study / live site */
+.pf-work__cta{color:var(--pf-accent);font-size:15px;width:max-content;transition:gap .2s ease,opacity .2s ease}
+.pf-work__cta svg{transition:transform .2s ease}
+.pf-work__cta:hover{color:var(--pf-accent);opacity:.85}
+.pf-work__cta:hover svg{transform:translateX(3px)}
+
+/* ── Project case study (/work/:slug) ──────────────────────── */
+.pf-cs{--cs-accent:#6C5DD3;background:var(--pf-paper);color:var(--pf-ink)}
+.pf-cs__dot{width:8px;height:8px;border-radius:50%;background:var(--cs-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--cs-accent) 22%,transparent);flex:none}
+.pf-cs__eyebrow{font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--pf-muted)}
+.pf-cs__label{font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--pf-muted)}
+.pf-cs__body{color:var(--pf-muted);line-height:1.65}
+.pf-cs__h2{color:var(--pf-ink);letter-spacing:-.02em;font-size:clamp(26px,3.4vw,44px)!important}
+.pf-cs__h3{color:var(--pf-ink);letter-spacing:-.01em}
+
+/* Hero — dark band so the header + the light UI shot both read well */
+.pf-cs__hero{position:relative;background:var(--pf-dark);color:#fff;overflow:hidden}
+.pf-cs__hero::before{content:"";position:absolute;width:620px;height:620px;right:-120px;top:-260px;border-radius:50%;background:var(--cs-accent);filter:blur(160px);opacity:.4;pointer-events:none}
+.pf-cs__hero>.container-2200{position:relative;z-index:1}
+.pf-cs__hero .pf-cs__eyebrow{color:rgba(255,255,255,.72)}
+.pf-cs__back{color:rgba(255,255,255,.7)}
+.pf-cs__back:hover{color:#fff}
+.pf-cs__title{color:#fff;letter-spacing:-.03em}
+.pf-cs__tagline{color:rgba(255,255,255,.82);max-width:44ch;line-height:1.4}
+.pf-cs__meta{gap:0;border-top:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14)}
+.pf-cs__meta-item{padding:18px 34px 18px 0;margin-right:34px;border-right:1px solid rgba(255,255,255,.14);display:flex;flex-direction:column;gap:6px}
+.pf-cs__meta-item:last-child{border-right:0;margin-right:0}
+.pf-cs__meta-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.pf-cs__meta-value{font-size:15px;font-weight:600;color:#fff}
+@media (max-width:575px){.pf-cs__meta-item{border-right:0;padding:12px 0;margin-right:0;flex:0 0 50%}}
+
+.pf-cs__btn{padding:13px 22px;border-radius:999px;font-size:14.5px;transition:transform .2s ease,background .2s ease,color .2s ease,border-color .2s ease}
+.pf-cs__btn:hover{transform:translateY(-2px)}
+.pf-cs__btn--solid{background:#fff;color:var(--pf-ink)}
+.pf-cs__btn--solid:hover{background:var(--cs-accent);color:#fff}
+.pf-cs__btn--ghost{border:1.5px solid rgba(255,255,255,.35);color:#fff}
+.pf-cs__btn--ghost:hover{border-color:#fff;color:#fff}
+.pf-cs__btn--light{background:#fff;color:var(--pf-ink)}
+.pf-cs__btn--light:hover{background:var(--pf-accent);color:#fff}
+.pf-cs__btn--outline{border:1.5px solid rgba(255,255,255,.35);color:#fff}
+.pf-cs__btn--outline:hover{border-color:#fff;color:#fff}
+
+.pf-cs__shot{border-radius:18px;overflow:hidden;border:1px solid var(--pf-line);box-shadow:0 40px 90px -60px rgba(15,14,25,.7);background:#fff}
+.pf-cs__shot--hero{border-color:rgba(255,255,255,.12)}
+.pf-cs__shot img{display:block}
+.pf-cs__shot--phone{max-width:340px;border-radius:26px}
+
+/* Body sections */
+.pf-cs__divider{border-top:1px solid var(--pf-line)}
+.pf-cs__lead{color:var(--pf-ink);letter-spacing:-.01em;line-height:1.35!important}
+.pf-cs__goal{background:#fff;border:1px solid var(--pf-line);border-radius:18px;padding:26px}
+.pf-cs__goal-no{font-size:14px;font-weight:700;color:var(--cs-accent);letter-spacing:.04em}
+.pf-cs__goal-title{font-size:18px;font-weight:600;color:var(--pf-ink)}
+.pf-cs__goal-body{color:var(--pf-muted);font-size:14.5px;line-height:1.55}
+
+.pf-cs__process{counter-reset:step}
+.pf-cs__step{display:flex;gap:24px;padding:26px 0;border-top:1px solid var(--pf-line)}
+.pf-cs__step:first-child{border-top:0;padding-top:0}
+.pf-cs__step-no{font-size:14px;font-weight:700;color:var(--cs-accent);flex:none;padding-top:4px;min-width:28px}
+.pf-cs__step-title{font-size:19px;font-weight:600;color:var(--pf-ink)}
+
+.pf-cs__wide{background:#fff;border:1px solid var(--pf-line);border-radius:22px;padding:40px}
+.pf-cs__wide-copy{max-width:70ch}
+
+.pf-cs__palette{gap:14px}
+.pf-cs__swatch{display:flex;flex-direction:column;gap:8px}
+.pf-cs__swatch-chip{display:flex;align-items:flex-end;justify-content:flex-start;width:120px;height:76px;border-radius:12px;padding:8px 10px;font-size:11px;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--pf-line)}
+.pf-cs__swatch-name{font-size:12.5px;font-weight:600;color:var(--pf-ink)}
+.pf-cs__chips{gap:9px}
+.pf-cs__chip{font-size:13px;font-weight:500;color:var(--pf-ink);background:#fff;border:1px solid var(--pf-line);border-radius:999px;padding:8px 15px}
+
+.pf-cs__outcome-item{padding:16px 0;border-top:1px solid var(--pf-line)}
+.pf-cs__outcome-item:first-child{border-top:0}
+.pf-cs__outcome-dot{width:9px;height:9px;border-radius:50%;background:var(--cs-accent);flex:none;margin-top:10px}
+
+/* CTA band */
+.pf-cs__cta .pf-cs__eyebrow--light{color:rgba(255,255,255,.7)}
+.pf-cs__cta-title{color:#fff;letter-spacing:-.02em}
+.pf-cs__cta-lede{color:rgba(255,255,255,.72);max-width:52ch}
 
 /* ── Clients marquee ───────────────────────────────────────── */
 .pf-clients{background:var(--pf-dark)!important}
@@ -213,7 +293,7 @@ const PORTFOLIO_CSS = `
 .pf-contact{background:var(--pf-dark)!important}
 .pf-contact__title{color:#fff;letter-spacing:-.03em;font-size:clamp(40px,8vw,104px)!important;text-wrap:balance}
 .pf-contact__lede{color:rgba(255,255,255,.66);max-width:52ch;line-height:1.55}
-.pf-contact__link{color:rgba(255,255,255,.82);font-size:15.5px;text-decoration:none;transition:color .2s ease}
+.pf-contact__link{color:rgba(255,255,255,.82);font-size:15.5px;text-decoration:none;transition:color .2s ease;overflow-wrap:anywhere}
 .pf-contact__link:hover{color:#fff}
 .pf-contact__link--static{cursor:default}
 .pf-contact__sep{color:rgba(255,255,255,.3)}
@@ -223,7 +303,7 @@ const PORTFOLIO_CSS = `
 .pf-brand--footer .pf-brand__mark{background:var(--pf-accent)}
 .pf-footer__line{color:rgba(255,255,255,.6);font-size:14.5px;line-height:1.6;max-width:44ch}
 .pf-foot-label{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45)}
-.pf-foot-link{color:rgba(255,255,255,.72);font-size:14.5px;text-decoration:none;transition:color .2s ease}
+.pf-foot-link{color:rgba(255,255,255,.72);font-size:14.5px;text-decoration:none;transition:color .2s ease;overflow-wrap:anywhere}
 .pf-foot-link:hover{color:var(--pf-accent)}
 .pf-footer__base{border-top:1px solid rgba(255,255,255,.12)}
 .pf-footer__fine{font-size:12.5px;color:rgba(255,255,255,.42)}
