@@ -146,6 +146,24 @@ export const PROJECTS: Project[] = [
         link: "/work/coir-six",
     },
     {
+        slug: "ferne",
+        name: "Ferne",
+        kicker: "Botanical skincare storefront",
+        role: "Product & Web Designer",
+        period: "2024",
+        summary:
+            "The full storefront for a traceable, small-batch skincare brand — an editorial homepage, a faceted shop, rich product pages and a friction-light cart-to-checkout flow. A complete, shoppable experience, not a landing page.",
+        contributions: [
+            "Designed and built the complete storefront — ten page types from homepage to order confirmation — as one coherent editorial brand.",
+            "Built a data-driven, faceted catalogue (filter by concern, category, price, refillability) with live search, a ⌘K command palette and a mini-cart drawer.",
+            "Shipped a considered product page (size variants, honest stock, farm-traced ingredients, reviews) and a validated three-step checkout that never stalls.",
+        ],
+        tags: ["E-commerce", "Web Design", "Design System", "Front-end"],
+        image: "/assets/imgs/portfolio/ferne.webp",
+        tone: "light",
+        link: "/work/ferne",
+    },
+    {
         slug: "northern-light",
         name: "Northern Light School Division",
         kicker: "Internal HR platform",

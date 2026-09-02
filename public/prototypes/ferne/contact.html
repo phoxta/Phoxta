@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Help & contact — Ferne</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<main class="page"><div class="wrap">
+  <div class="page-head"><div class="crumbs"><a href="index.html">Home</a> / <b>Help</b></div><h1 class="serif">How can we <em>help?</em></h1><p>Real people, Birmingham, Monday to Friday. We answer within one working day.</p></div>
+  <div class="contact-grid">
+    <div><div class="info-tile"><b>Email</b>hello@ferne.co.uk</div><div class="info-tile"><b>Studio &amp; collection point</b>14 Gibb Street, Digbeth, Birmingham B9 4AA<br>Mon–Fri 10–6, Sat 11–4</div><div class="info-tile"><b>Returns</b>30 days, opened or not. Start one from your <a class="link" href="account.html#orders">account</a> and we'll send a prepaid label.</div>
+      <div class="card-box" style="margin-top:12px"><h3 class="serif" style="font-size:24px;font-weight:400;margin-bottom:14px">Send a message</h3><form class="form-grid" data-contact novalidate><div class="field"><label>Name</label><input required></div><div class="field"><label>Email</label><input type="email" required></div><div class="field span"><label>Topic</label><select><option>Order question</option><option>Return or exchange</option><option>Product advice</option><option>Wholesale / stockists</option><option>Press</option></select></div><div class="field span"><label>Message</label><textarea required></textarea></div><div class="span"><button class="btn sm plain">Send <span class="arr">→</span></button></div></form></div></div>
+    <div id="faq"><div class="eyebrow" style="margin-bottom:12px">Frequently asked</div><div class="faq" data-faq></div></div>
+  </div>
+</div></main>
+<script src="assets/data.js"></script><script src="assets/app.js"></script>
+<script>
+document.addEventListener("ferne:ready",()=>{const {D,$,esc,UI}=Ferne;$("[data-faq]").innerHTML=D.faqs.map(f=>`<details><summary>${esc(f.q)}</summary><div class="a">${esc(f.a)}</div></details>`).join("");
+  $("[data-contact]").addEventListener("submit",e=>{e.preventDefault();const f=e.target;let ok=true;[...f.querySelectorAll("[required]")].forEach(i=>{const bad=!i.value.trim()||(i.type==="email"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i.value));i.closest(".field").classList.toggle("err",bad);if(bad)ok=false;});if(!ok)return;f.innerHTML=`<div class="span" style="padding:8px 0;font-weight:600">✓ Thanks — we'll reply within one working day.</div>`;UI.toast("Message sent");});
+});
+</script></body></html>

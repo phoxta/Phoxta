@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order confirmed — Ferne</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<main class="page"><div class="wrap" style="max-width:820px">
+  <div class="confirm"><div class="tick"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div>
+    <div class="eyebrow">Thank you</div><h1 class="serif">Your ritual is on its <em>way</em></h1><p class="muted" style="margin-top:12px">We've emailed a receipt to <b data-email></b>.</p><div class="order-no">Order <b data-id></b></div></div>
+  <div class="timeline"><div><b>✓ Confirmed</b>Just now</div><div class="next"><b>Packed</b>Within 24 hours</div><div class="next"><b>Shipped</b><span data-eta></span></div><div class="next"><b>Delivered</b>Tracking by email</div></div>
+  <div class="card-box"><h3 class="serif" style="font-size:24px;font-weight:400;margin-bottom:12px">Items</h3><div data-lines></div><div data-sums style="margin-top:12px"></div></div>
+  <div class="about-grid"><div class="info-tile"><b>Deliver to</b><span data-addr></span></div><div class="info-tile"><b>What next</b>Track this order and start returns from your <a class="link" href="account.html#orders">account</a>. Questions? <a class="link" href="contact.html">Contact us</a>.</div></div>
+  <div style="text-align:center;margin-top:32px"><a class="btn" href="shop.html">Continue shopping <span class="arr">→</span></a></div>
+</div></main>
+<script src="assets/data.js"></script><script src="assets/app.js"></script>
+<script>
+document.addEventListener("ferne:ready",()=>{const {$,qs,money,esc,Orders}=Ferne;const o=Orders.all().find(x=>x.id===qs.get("id"))||Orders.all()[0];if(!o){location.replace("shop.html");return;}
+  $("[data-id]").textContent=o.id;$("[data-email]").textContent=o.address.email;$("[data-eta]").textContent=o.ship.eta;$("[data-addr]").textContent=`${o.address.first} ${o.address.last}, ${o.address.addr}, ${o.address.city} ${o.address.postcode}, ${o.address.country}`;
+  $("[data-lines]").innerHTML=o.lines.map(l=>`<div class="line" style="grid-template-columns:52px 1fr auto;padding:10px 0"><div class="ph" style="width:52px;height:62px"><img src="${l.img}" alt=""></div><div><b>${esc(l.name)}</b><small>${esc(l.size)} × ${l.qty}</small></div><div class="amt">${money(l.total)}</div></div>`).join("");
+  const t=o.totals;$("[data-sums]").innerHTML=`<div class="sum"><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.discount?`<div class="sum"><span>Discount</span><span class="free">−${money(t.discount)}</span></div>`:""}<div class="sum"><span>Delivery · ${o.ship.name}</span><span>${t.shipping?money(t.shipping):"Free"}</span></div><div class="sum total"><span>Total paid</span><span>${money(t.total)}</span></div>`;});
+</script></body></html>

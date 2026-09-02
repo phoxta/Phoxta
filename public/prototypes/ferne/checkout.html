@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkout — Ferne</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<main class="page"><div class="wrap">
+  <div class="page-head" style="padding-bottom:16px"><h1 class="serif">Checkout</h1></div>
+  <div class="cart-layout">
+    <div>
+      <div class="steps-bar" data-steps></div>
+      <div class="co-step on" data-step="1"><h2>Contact &amp; delivery address</h2>
+        <form class="form-grid" data-f1 novalidate>
+          <div class="field span"><label>Email</label><input type="email" name="email" required placeholder="you@email.com"><span class="msg">Enter a valid email</span></div>
+          <div class="field"><label>First name</label><input name="first" required><span class="msg">Required</span></div>
+          <div class="field"><label>Last name</label><input name="last" required><span class="msg">Required</span></div>
+          <div class="field span"><label>Address</label><input name="addr" required placeholder="Street and number"><span class="msg">Required</span></div>
+          <div class="field"><label>City</label><input name="city" required><span class="msg">Required</span></div>
+          <div class="field"><label>Postcode</label><input name="postcode" required placeholder="B1 1AA"><span class="msg">Enter a valid UK postcode</span></div>
+          <div class="field span"><label>Country</label><select name="country"><option>United Kingdom</option><option>Ireland</option><option>France</option><option>Germany</option><option>United States</option></select></div>
+          <div class="field span"><label>Phone (for delivery updates)</label><input name="phone" type="tel" placeholder="Optional"></div>
+          <label class="check span"><input type="checkbox" name="news" checked> Email me harvest updates and offers</label>
+        </form>
+        <div class="co-nav"><a class="link" href="cart.html">← Back to bag</a><button class="btn" data-next="2">Continue to delivery <span class="arr">→</span></button></div></div>
+      <div class="co-step" data-step="2"><h2>Delivery method</h2><div class="opt-list" data-ship></div>
+        <div class="co-nav"><button class="link" data-back="1">← Back</button><button class="btn" data-next="3">Continue to payment <span class="arr">→</span></button></div></div>
+      <div class="co-step" data-step="3"><h2>Payment</h2>
+        <div class="opt-list" style="margin-bottom:18px"><label class="opt-card on"><input type="radio" name="pm" value="card" checked><div><b>Card</b><small>Visa, Mastercard, Amex</small></div></label><label class="opt-card"><input type="radio" name="pm" value="apple"><div><b>Apple Pay / Google Pay</b><small>Pay with your saved wallet</small></div></label><label class="opt-card"><input type="radio" name="pm" value="klarna"><div><b>Klarna</b><small>Pay in 3, interest-free</small></div></label></div>
+        <div data-card-form><div class="card-visual"><div style="display:flex;justify-content:space-between;font-size:11px;opacity:.6"><span>FERNE · SECURE</span><span>💳</span></div><div style="margin-top:22px;font-size:18px" data-cv-num>•••• •••• •••• ••••</div><div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px"><span data-cv-name>YOUR NAME</span><span data-cv-exp>MM/YY</span></div></div>
+          <form class="form-grid" data-f3 novalidate>
+            <div class="field span"><label>Card number</label><input name="num" inputmode="numeric" placeholder="1234 5678 9012 3456" maxlength="19" required><span class="msg">Enter a 16-digit card number</span></div>
+            <div class="field span"><label>Name on card</label><input name="cname" required><span class="msg">Required</span></div>
+            <div class="field"><label>Expiry</label><input name="exp" placeholder="MM/YY" maxlength="5" required><span class="msg">MM/YY</span></div>
+            <div class="field"><label>CVC</label><input name="cvc" inputmode="numeric" maxlength="4" placeholder="123" required><span class="msg">3–4 digits</span></div>
+          </form></div>
+        <div class="review-block" style="margin-top:18px"><div><b>Deliver to</b><br><span data-addr-review></span></div><a class="link" data-back="1" href="#">Edit</a></div>
+        <div class="secure">🔒 Payments are encrypted. Replace this form with your Stripe / Adyen element in production.</div>
+        <div class="co-nav"><button class="link" data-back="2">← Back</button><button class="btn sage" data-place>Place order <span class="arr">→</span></button></div></div>
+    </div>
+    <aside class="summary-box"><h3>Order summary</h3><div data-mini></div><div data-sums></div><div class="promo"><input placeholder="Promo code" data-promo-in><button class="btn sm plain ghost" data-promo-btn>Apply</button></div><div class="small muted" data-promo-msg style="margin-top:6px"></div></aside>
+  </div>
+</div></main>
+<script src="assets/data.js"></script><script src="assets/app.js"></script>
+<script>
+document.addEventListener("ferne:ready",()=>{const {D,UI,$,$$,money,esc,Cart,Store,Orders,Auth}=Ferne;
+  if(!Cart.count()){location.replace("cart.html");return;}
+  let step=1,ship="standard";const saved=Store.get("checkout",{});const u=Auth.user();
+  const f1=$("[data-f1]");Object.entries({...(u?{email:u.email}:{}),...saved}).forEach(([k,v])=>{if(f1[k]&&typeof v==="string")f1[k].value=v;});
+  const stepsUI=()=>{$("[data-steps]").innerHTML=["Information","Delivery","Payment"].map((s,i)=>i+1===step?`<b><i>${i+1}</i>${s}</b>`:`<span class="${i+1<step?"done":""}"><i>${i+1<step?"✓":i+1}</i>${s}</span>`).join('<span style="opacity:.4">›</span>');$$(".co-step").forEach(s=>s.classList.toggle("on",+s.dataset.step===step));window.scrollTo({top:0,behavior:"smooth"});};
+  const sums=()=>{const t=Cart.totals(ship),lines=Cart.lines();$("[data-mini]").innerHTML=lines.map(l=>`<div class="line" style="grid-template-columns:52px 1fr auto;padding:10px 0"><div class="ph" style="width:52px;height:62px"><img src="${l.p.img}" alt=""></div><div><b>${esc(l.p.name)}</b><small>${esc(l.s.label)} × ${l.qty}</small></div><div class="amt">${money(l.total)}</div></div>`).join("");
+    $("[data-sums]").innerHTML=`<div class="sum"><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.discount?`<div class="sum"><span>Discount (${t.promo})</span><span class="free">−${money(t.discount)}</span></div>`:""}<div class="sum"><span>Delivery · ${t.ship.name}</span><span class="${t.shipping?"":"free"}">${t.shipping?money(t.shipping):"Free"}</span></div><div class="sum total"><span>Total</span><span>${money(t.total)}</span></div>`;$("[data-promo-in]").value=t.promo||"";};
+  const shipUI=()=>{const t=Cart.totals(ship);$("[data-ship]").innerHTML=D.shipping.map(s=>{const free=s.id!=="collect"&&(t.sub-t.discount>=D.freeShippingThreshold||Cart.promo()==="FREESHIP");return`<label class="opt-card ${s.id===ship?"on":""}"><input type="radio" name="ship" value="${s.id}" ${s.id===ship?"checked":""}><div><b>${s.name}</b><small>${s.eta}</small></div><span class="p">${s.price===0||free?"Free":money(s.price)}</span></label>`;}).join("");};
+  $("[data-ship]").addEventListener("change",e=>{ship=e.target.value;shipUI();sums();});
+  const validate=(form,rules)=>{let ok=true;[...form.querySelectorAll(".field")].forEach(f=>{const i=f.querySelector("input,select");const r=rules[i.name];const bad=r?!r(i.value.trim()):(i.required&&!i.value.trim());f.classList.toggle("err",bad);if(bad)ok=false;});return ok;};
+  const r1={email:v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),first:v=>v.length>1,last:v=>v.length>1,addr:v=>v.length>3,city:v=>v.length>1,postcode:v=>f1.country.value!=="United Kingdom"||/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(v),country:()=>true,phone:()=>true};
+  $$("[data-next]").forEach(b=>b.addEventListener("click",()=>{if(step===1){if(!validate(f1,r1)){UI.toast("Check the highlighted fields");return;}const d=Object.fromEntries(new FormData(f1));Store.set("checkout",d);$("[data-addr-review]").textContent=`${d.first} ${d.last}, ${d.addr}, ${d.city} ${d.postcode}, ${d.country}`;}step=+b.dataset.next;stepsUI();}));
+  $$("[data-back]").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();step=+b.dataset.back;stepsUI();}));
+  const f3=$("[data-f3]");f3.num.addEventListener("input",e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,16).replace(/(.{4})/g,"$1 ").trim();$("[data-cv-num]").textContent=(e.target.value||"•••• •••• •••• ••••");});
+  f3.cname.addEventListener("input",e=>$("[data-cv-name]").textContent=e.target.value.toUpperCase()||"YOUR NAME");f3.exp.addEventListener("input",e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,4).replace(/(\d{2})(\d)/,"$1/$2");$("[data-cv-exp]").textContent=e.target.value||"MM/YY";});
+  $$("input[name=pm]").forEach(r=>r.addEventListener("change",()=>{$$(".opt-card").forEach(c=>c.classList.toggle("on",c.querySelector("input").checked));$("[data-card-form]").classList.toggle("hide",r.value!=="card"&&r.checked);}));
+  $("[data-place]").addEventListener("click",()=>{const pm=$("input[name=pm]:checked").value;
+    if(pm==="card"&&!validate(f3,{num:v=>v.replace(/\s/g,"").length===16,cname:v=>v.length>1,exp:v=>/^(0[1-9]|1[0-2])\/\d{2}$/.test(v),cvc:v=>/^\d{3,4}$/.test(v)})){UI.toast("Check your card details");return;}
+    const d=Store.get("checkout",{});const t=Cart.totals(ship);const order={id:"FE-"+Date.now().toString(36).toUpperCase().slice(-6),date:new Date().toISOString(),lines:Cart.lines().map(l=>({id:l.id,name:l.p.name,size:l.s.label,qty:l.qty,img:l.p.img,total:l.total})),totals:t,ship:t.ship,address:d,pm,status:"Confirmed"};
+    if(!Auth.user())Auth.login(d.email,d.first);Orders.place(order);Cart.clear();$("[data-place]").disabled=true;$("[data-place]").textContent="Processing…";setTimeout(()=>location.href="order.html?id="+order.id,900);});
+  $("[data-promo-btn]").addEventListener("click",()=>{const c=$("[data-promo-in]").value.trim().toUpperCase();const m=$("[data-promo-msg]");if(D.promos[c]){Store.set("promo",c);m.textContent="Code applied.";m.style.color="var(--sage)";}else{Store.set("promo",null);m.textContent=c?"That code isn't valid.":"";m.style.color="#C0392B";}shipUI();sums();});
+  stepsUI();shipUI();sums();
+});
+</script></body></html>

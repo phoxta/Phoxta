@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product — Ferne</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<main class="page"><div class="wrap">
+  <div class="crumbs" style="margin-bottom:24px"><a href="index.html">Home</a> / <a href="shop.html">Shop</a> / <a data-cat-link href="#"></a> / <b data-name></b></div>
+  <div class="pdp">
+    <div class="gallery"><div class="thumbs" data-thumbs></div><div class="main"><img data-main alt=""><span class="tag" data-tag></span></div></div>
+    <div class="buy-col">
+      <div class="eyebrow" data-cat></div>
+      <h1 class="serif" data-name></h1>
+      <p class="tagline" data-tagline></p>
+      <div class="rating-row"><span class="stars" data-stars></span><b data-rating></b><a class="link" href="#reviews" data-rc></a></div>
+      <div class="price"><span data-price></span><span class="price-old" data-old></span></div>
+      <p class="desc" data-desc></p>
+      <div class="opt"><label>Size <span data-size-lbl></span></label><div class="select-pill" data-sizes></div></div>
+      <div class="actions"><div class="qty"><button data-qty="-1">−</button><span data-qty-v>1</span><button data-qty="1">+</button></div><button class="btn block" data-buy>Add to bag <span class="arr" data-price-btn></span></button><button class="icon-btn" data-wish-btn aria-label="Save"></button></div>
+      <div class="stock" data-stock><i></i><span></span></div>
+      <div class="perks"><div><i>✓</i>Free UK delivery over £40</div><div><i>↺</i>30-day returns, even opened</div><div><i>♻</i>Refillable glass</div><div><i>✿</i>Fragrance-free, vegan</div></div>
+      <div class="acc">
+        <details open><summary>Ingredients</summary><div class="a" data-ing></div></details>
+        <details><summary>How to use</summary><div class="a" data-how></div></details>
+        <details><summary>Skin type</summary><div class="a" data-skin></div></details>
+        <details><summary>Shipping &amp; returns</summary><div class="a">Standard delivery £3.95 (free over £40), 3–5 working days. Express next-day £6.95. Returns accepted within 30 days, opened or not — start one from your account.</div></details>
+      </div>
+    </div>
+  </div>
+  <section class="rev-sec" id="reviews">
+    <div class="rev-summary"><div class="eyebrow">Reviews</div><div class="big" data-rating2></div><div class="stars" data-stars2></div><div class="small muted" data-rc2></div><div class="bars" data-bars></div><button class="btn sm block" style="margin-top:20px" data-write>Write a review <span class="arr">✎</span></button></div>
+    <div><div class="card-box hide" data-review-form><h3 class="serif" style="font-size:24px;font-weight:400;margin-bottom:14px">Your review</h3><form class="form-grid" data-rf><div class="field"><label>Name</label><input required placeholder="Your name"></div><div class="field"><label>Skin type</label><select><option>Dry</option><option>Oily</option><option>Combination</option><option>Sensitive</option><option>Normal</option></select></div><div class="field span"><label>Rating</label><div class="select-pill" data-rf-stars></div></div><div class="field span"><label>Title</label><input required placeholder="Sum it up"></div><div class="field span"><label>Review</label><textarea required placeholder="How did it work for you?"></textarea></div><div class="span" style="display:flex;gap:10px"><button class="btn sm plain">Submit review</button><button type="button" class="btn sm plain ghost" data-cancel>Cancel</button></div></form></div><div class="rev-list" data-reviews></div></div>
+  </section>
+  <section class="related"><h2 class="serif">You might also <em>like</em></h2><div class="grid4" data-related></div></section>
+</div></main>
+<div class="sticky-buy"><div><b data-name-s></b><div class="small muted" data-price-s></div></div><button class="btn sm" data-buy-s>Add to bag <span class="arr">→</span></button></div>
+<script src="assets/data.js"></script><script src="assets/app.js"></script>
+<script>
+document.addEventListener("ferne:ready",()=>{const {D,UI,$,$$,qs,money,esc,prod,Wish,Cart,I,stars,Store}=Ferne;
+  const p=prod(qs.get("id"))||D.products[0];document.title=p.name+" — Ferne";
+  let size=p.sizes[0],qty=1;
+  const cat=D.categories.find(c=>c.id===p.category);
+  $("[data-cat-link]").textContent=cat.name;$("[data-cat-link]").href="shop.html?cat="+cat.id;
+  $$("[data-name],[data-name-s]").forEach(e=>e.textContent=p.name);$("[data-cat]").textContent=cat.name;$("[data-tagline]").textContent=p.tagline;
+  $("[data-stars]").textContent=stars(p.rating);$("[data-rating]").textContent=p.rating.toFixed(1);$("[data-desc]").textContent=p.description;
+  $("[data-old]").textContent=p.compareAt?money(p.compareAt):"";$("[data-tag]").textContent=p.bestseller?"Best seller":p.isNew?"New":"";if(!$("[data-tag]").textContent)$("[data-tag]").remove();
+  $("[data-ing]").textContent=p.ingredients;$("[data-how]").textContent=p.howTo;$("[data-skin]").textContent=p.skinType;
+  $("[data-thumbs]").innerHTML=p.gallery.map((g,i)=>`<img src="${g}" class="${i?"":"on"}" data-i="${i}" alt="">`).join("");$("[data-main]").src=p.gallery[0];
+  $("[data-thumbs]").addEventListener("click",e=>{const im=e.target.closest("img");if(!im)return;$$("[data-thumbs] img").forEach(x=>x.classList.remove("on"));im.classList.add("on");$("[data-main]").src=p.gallery[+im.dataset.i];});
+  const paint=()=>{$("[data-price]").textContent=money(size.price);$("[data-price-btn]").textContent=money(size.price*qty);$("[data-price-s]").textContent=money(size.price)+" · "+size.label;$("[data-size-lbl]").textContent=size.label;$("[data-qty-v]").textContent=qty;
+    $$("[data-sizes] button").forEach(b=>b.classList.toggle("on",b.dataset.s===size.id));
+    const st=$("[data-stock]");st.className="stock "+(p.stock===0?"out":p.stock<20?"low":"");st.querySelector("span").textContent=p.stock===0?"Sold out — we'll email you when it's back":p.stock<20?`Only ${p.stock} left in this batch`:"In stock · ships today before 2pm";
+    $$("[data-buy],[data-buy-s]").forEach(b=>{b.disabled=p.stock===0;if(p.stock===0)b.firstChild.textContent="Notify me ";});
+    const w=$("[data-wish-btn]");w.innerHTML=Wish.has(p.id)?I.heartFill:I.heart;};
+  $("[data-sizes]").innerHTML=p.sizes.map(s=>`<button data-s="${s.id}">${esc(s.label)} · ${money(s.price)}</button>`).join("");
+  $("[data-sizes]").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;size=p.sizes.find(s=>s.id===b.dataset.s);paint();});
+  $$("[data-qty]").forEach(b=>b.addEventListener("click",()=>{qty=Math.max(1,Math.min(10,qty+ +b.dataset.qty));paint();}));
+  $$("[data-buy],[data-buy-s]").forEach(b=>b.addEventListener("click",()=>{if(p.stock===0){UI.toast("We'll email you when it's back");return;}Cart.add(p.id,size.id,qty);}));
+  $("[data-wish-btn]").addEventListener("click",()=>{Wish.toggle(p.id);paint();});
+  paint();
+  // reviews
+  const own=Store.get("myreviews",{})[p.id]||[];const revs=[...own,...(D.reviews[p.id]||[])];
+  const rc=p.reviewCount+own.length;$("[data-rc]").textContent=`${rc} reviews`;$("[data-rc2]").textContent=`Based on ${rc} verified reviews`;$("[data-rating2]").textContent=p.rating.toFixed(1);$("[data-stars2]").textContent=stars(p.rating);
+  const dist=[72,20,5,2,1];$("[data-bars]").innerHTML=dist.map((v,i)=>`<div><span>${5-i}★</span><i><b style="width:${v}%"></b></i><span>${v}%</span></div>`).join("");
+  const rl=()=>{$("[data-reviews]").innerHTML=revs.length?revs.map(r=>`<div class="rev-item"><div class="top"><img src="${r.av||"assets/img/av8.jpg"}" alt=""><div><b>${esc(r.name)}</b><small>${esc(r.skin)} skin · ${I.check} Verified buyer</small></div><span class="d">${new Date(r.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</span></div><div class="stars" style="margin-top:12px">${stars(r.rating)}</div><h5>${esc(r.title)}</h5><p>${esc(r.body)}</p></div>`).join(""):`<div class="empty"><b>No written reviews yet</b>Be the first.</div>`;};
+  rl();
+  let rating=5;$("[data-rf-stars]").innerHTML=[5,4,3,2,1].map(n=>`<button type="button" data-n="${n}" class="${n===5?"on":""}">${n} ★</button>`).join("");
+  $("[data-rf-stars]").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;rating=+b.dataset.n;$$("[data-rf-stars] button").forEach(x=>x.classList.toggle("on",x===b));});
+  $("[data-write]").addEventListener("click",()=>{$("[data-review-form]").classList.remove("hide");$("[data-review-form]").scrollIntoView({behavior:"smooth"});});
+  $("[data-cancel]").addEventListener("click",()=>$("[data-review-form]").classList.add("hide"));
+  $("[data-rf]").addEventListener("submit",e=>{e.preventDefault();const f=e.target;const r={name:f[0].value,skin:f[1].value,rating,title:f.querySelectorAll("input")[1].value,body:f.querySelector("textarea").value,date:new Date().toISOString()};
+    const mine=Store.get("myreviews",{});(mine[p.id]=mine[p.id]||[]).unshift(r);Store.set("myreviews",mine);revs.unshift(r);rl();f.reset();$("[data-review-form]").classList.add("hide");UI.toast("Thanks — your review is live");});
+  // related
+  $("[data-related]").innerHTML=D.products.filter(x=>x.id!==p.id&&(x.category===p.category||x.concerns.some(c=>p.concerns.includes(c)))).slice(0,4).map(x=>UI.productCard(x)).join("");UI.refreshWish();
+  // recently viewed
+  const rv=Store.get("recent",[]).filter(x=>x!==p.id);rv.unshift(p.id);Store.set("recent",rv.slice(0,8));
+});
+</script></body></html>

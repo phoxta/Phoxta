@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop — Ferne</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<main class="page"><div class="wrap">
+  <div class="page-head"><div class="crumbs"><a href="index.html">Home</a> / <b data-crumb>Shop</b></div><h1 class="serif" data-title>All products</h1><p data-sub>Nine formulas. Four actives. Every one traceable to the farm.</p></div>
+  <div class="shop">
+    <aside class="filters-side">
+      <div class="filters-head"><b style="font-family:var(--serif);font-size:22px;font-weight:400">Filters</b><button class="icon-btn" data-close>✕</button></div>
+      <div class="fgroup"><h4>Category</h4><div class="opts" data-f="cat"></div></div>
+      <div class="fgroup"><h4>Skin concern</h4><div class="opts" data-f="concern"></div></div>
+      <div class="fgroup"><h4>Price <span data-price-lbl></span></h4><div class="range"><span>£0</span><input type="range" min="0" max="100" value="100" step="5" data-price><span>£100</span></div></div>
+      <div class="fgroup"><h4>Availability</h4><div class="opts"><label class="check"><input type="checkbox" data-instock> In stock only</label><label class="check"><input type="checkbox" data-refill> Refillable</label></div></div>
+      <div class="fgroup" style="border:0;display:flex;gap:14px;align-items:center"><button class="link" data-clear>Clear all filters</button><button class="btn sm plain filter-toggle" data-close style="margin-left:auto">Show results</button></div>
+    </aside>
+    <section>
+      <div class="shop-top"><button class="btn sm ghost filter-toggle" data-filters>Filters</button><span class="count" data-count></span>
+        <div class="sort">Sort by <select data-sort><option value="featured">Featured</option><option value="new">Newest</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option><option value="rating">Top rated</option></select></div></div>
+      <div class="active-chips" data-chips></div>
+      <div class="grid3" data-grid></div>
+    </section>
+  </div>
+</div></main>
+<script src="assets/data.js"></script><script src="assets/app.js"></script>
+<script>
+document.addEventListener("ferne:ready",()=>{const {D,UI,$,$$,qs,esc}=Ferne;
+  const state={cat:qs.get("cat")?[qs.get("cat")]:[],concern:[],price:100,instock:false,refill:false,sort:qs.get("sort")||"featured",q:qs.get("q")||""};
+  const cats=D.categories;
+  $("[data-f=cat]").innerHTML=cats.map(c=>`<label class="check"><input type="checkbox" value="${c.id}" ${state.cat.includes(c.id)?"checked":""}> ${c.name}<span class="n">${D.products.filter(p=>p.category===c.id).length}</span></label>`).join("");
+  $("[data-f=concern]").innerHTML=D.concerns.map(c=>`<label class="check"><input type="checkbox" value="${c}"> ${c}<span class="n">${D.products.filter(p=>p.concerns.includes(c)).length}</span></label>`).join("");
+  $("[data-sort]").value=state.sort;
+  const head=()=>{const c=state.cat.length===1&&cats.find(x=>x.id===state.cat[0]);
+    $("[data-title]").textContent=state.q?`Results for “${state.q}”`:c?c.name:"All products";$("[data-crumb]").textContent=c?c.name:"Shop";
+    $("[data-sub]").textContent=c?c.blurb+".":state.q?"":"Nine formulas. Four actives. Every one traceable to the farm.";};
+  const render=()=>{
+    let list=D.products.filter(p=>(!state.cat.length||state.cat.includes(p.category))&&(!state.concern.length||state.concern.some(c=>p.concerns.includes(c)))&&p.price<=state.price&&(!state.instock||p.stock>0)&&(!state.refill||p.sizes.some(s=>/refill/i.test(s.label)))&&(!state.q||[p.name,p.tagline,...p.concerns,p.category].join(" ").toLowerCase().includes(state.q.toLowerCase())));
+    const s={featured:(a,b)=>(b.bestseller-a.bestseller)||(b.reviewCount-a.reviewCount),new:(a,b)=>(b.isNew-a.isNew),"price-asc":(a,b)=>a.price-b.price,"price-desc":(a,b)=>b.price-a.price,rating:(a,b)=>b.rating-a.rating}[state.sort];
+    list.sort(s);
+    $("[data-count]").textContent=`${list.length} product${list.length===1?"":"s"}`;
+    $("[data-grid]").innerHTML=list.length?list.map(p=>UI.productCard(p)).join(""):`<div class="empty" style="grid-column:1/-1"><b>Nothing matches those filters</b>Try widening your search.</div>`;
+    const chips=[...state.cat.map(c=>["cat",c,cats.find(x=>x.id===c).name]),...state.concern.map(c=>["concern",c,c]),...(state.price<100?[["price",null,"Under £"+state.price]]:[]),...(state.instock?[["instock",null,"In stock"]]:[]),...(state.refill?[["refill",null,"Refillable"]]:[]),...(state.q?[["q",null,`“${state.q}”`]]:[])];
+    $("[data-chips]").innerHTML=chips.map(c=>`<button class="chip on" data-rmf="${c[0]}" data-v="${esc(c[1]||"")}">${esc(c[2])} ✕</button>`).join("");
+    $("[data-price-lbl]").textContent=state.price<100?"≤ £"+state.price:"";
+    head();UI.refreshWish();
+  };
+  $("[data-f=cat]").addEventListener("change",()=>{state.cat=$$("[data-f=cat] input:checked").map(i=>i.value);render();});
+  $("[data-f=concern]").addEventListener("change",()=>{state.concern=$$("[data-f=concern] input:checked").map(i=>i.value);render();});
+  $("[data-price]").addEventListener("input",e=>{state.price=+e.target.value;render();});
+  $("[data-instock]").addEventListener("change",e=>{state.instock=e.target.checked;render();});
+  $("[data-refill]").addEventListener("change",e=>{state.refill=e.target.checked;render();});
+  $("[data-sort]").addEventListener("change",e=>{state.sort=e.target.value;render();});
+  $("[data-clear]").addEventListener("click",()=>{Object.assign(state,{cat:[],concern:[],price:100,instock:false,refill:false,q:""});$$(".filters-side input[type=checkbox]").forEach(i=>i.checked=false);$("[data-price]").value=100;render();});
+  $("[data-filters]").addEventListener("click",()=>$(".filters-side").classList.add("open"));
+  $("[data-chips]").addEventListener("click",e=>{const b=e.target.closest("[data-rmf]");if(!b)return;const k=b.dataset.rmf,v=b.dataset.v;
+    if(k==="cat"||k==="concern"){state[k]=state[k].filter(x=>x!==v);$(`[data-f=${k}] input[value="${v}"]`).checked=false;}else if(k==="price"){state.price=100;$("[data-price]").value=100;}else if(k==="q"){state.q="";}else{state[k]=false;$(`[data-${k}]`).checked=false;}render();});
+  render();
+});
+</script></body></html>

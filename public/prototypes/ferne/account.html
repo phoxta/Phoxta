@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account — Ferne</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<main class="page"><div class="wrap">
+  <div data-auth class="hide"><div class="auth-box"><div class="eyebrow">Welcome</div><h1 class="serif" data-auth-title>Sign in</h1><p class="muted small" style="margin-bottom:20px">Track orders, manage refills and keep your wishlist.</p>
+    <form class="form-grid" data-auth-form novalidate><div class="field span hide" data-name-field><label>Name</label><input name="name" placeholder="Your name"></div><div class="field span"><label>Email</label><input name="email" type="email" required placeholder="you@email.com"><span class="msg">Enter a valid email</span></div><div class="field span"><label>Password</label><input name="pw" type="password" required placeholder="••••••••"><span class="msg">At least 6 characters</span></div><button class="btn block span" style="margin-top:6px">Continue <span class="arr">→</span></button></form>
+    <div class="sw"><span data-sw-txt>New here?</span> <a class="link" data-sw href="#">Create an account</a></div><p class="small muted" style="text-align:center;margin-top:16px">Demo auth — stored in your browser only. Connect to your identity provider in production.</p></div></div>
+  <div data-dash class="hide">
+    <div class="page-head"><div class="crumbs"><a href="index.html">Home</a> / <b>Account</b></div><h1 class="serif">Hello, <span data-uname></span></h1><p>Member since <span data-since></span></p></div>
+    <div class="acct">
+      <nav class="acct-nav"><a href="#orders" class="on">📦 Orders</a><a href="#wishlist">♡ Wishlist</a><a href="#refills">↺ Refills &amp; routine</a><a href="#details">👤 Details &amp; address</a><a href="#" data-logout>→ Sign out</a></nav>
+      <div>
+        <div class="acct-pane on" data-pane="orders"><div class="stat-tiles"><div><b data-st-orders>0</b><small>Orders</small></div><div><b data-st-spent>£0</b><small>Total spent</small></div><div><b data-st-wish>0</b><small>Saved items</small></div></div><div data-orders></div></div>
+        <div class="acct-pane" data-pane="wishlist"><div class="grid3" data-wish-grid></div></div>
+        <div class="acct-pane" data-pane="refills"><div class="card-box"><h3 class="serif" style="font-size:24px;font-weight:400">Your routine</h3><p class="muted small" style="margin:6px 0 18px">Based on what you've bought and viewed. Refill pods are 20–25% cheaper than first purchase.</p><div class="opt-list" data-refills></div></div></div>
+        <div class="acct-pane" data-pane="details"><div class="card-box"><h3 class="serif" style="font-size:24px;font-weight:400;margin-bottom:16px">Details</h3><form class="form-grid" data-details><div class="field"><label>Name</label><input name="name"></div><div class="field"><label>Email</label><input name="email" type="email"></div><div class="field span"><label>Default address</label><input name="addr" placeholder="Street"></div><div class="field"><label>City</label><input name="city"></div><div class="field"><label>Postcode</label><input name="postcode"></div><div class="span"><button class="btn sm plain">Save changes</button></div></form></div></div>
+      </div>
+    </div>
+  </div>
+</div></main>
+<script src="assets/data.js"></script><script src="assets/app.js"></script>
+<script>
+document.addEventListener("ferne:ready",()=>{const {D,UI,$,$$,money,esc,prod,Auth,Orders,Wish,Store}=Ferne;
+  let signup=false;const u=Auth.user();
+  const show=()=>{$("[data-auth]").classList.toggle("hide",!!Auth.user());$("[data-dash]").classList.toggle("hide",!Auth.user());};
+  $("[data-sw]").addEventListener("click",e=>{e.preventDefault();signup=!signup;$("[data-auth-title]").textContent=signup?"Create account":"Sign in";$("[data-name-field]").classList.toggle("hide",!signup);$("[data-sw-txt]").textContent=signup?"Already have an account?":"New here?";$("[data-sw]").textContent=signup?"Sign in":"Create an account";});
+  $("[data-auth-form]").addEventListener("submit",e=>{e.preventDefault();const f=e.target;let ok=true;const em=f.email.value.trim();f.email.closest(".field").classList.toggle("err",!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em));f.pw.closest(".field").classList.toggle("err",f.pw.value.length<6);if($$(".field.err",f).length)return;Auth.login(em,f.name.value.trim());UI.toast(signup?"Account created":"Welcome back");location.reload();});
+  if(u){$("[data-uname]").textContent=u.name;$("[data-since]").textContent=new Date(u.since).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+    const orders=Orders.all();$("[data-st-orders]").textContent=orders.length;$("[data-st-spent]").textContent=money(orders.reduce((a,o)=>a+o.totals.total,0));$("[data-st-wish]").textContent=Wish.ids().length;
+    $("[data-orders]").innerHTML=orders.length?orders.map(o=>`<div class="order-card"><div class="top"><div><b>${o.id}</b><div class="small muted">${new Date(o.date).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})} · ${o.ship.name}</div></div><span class="badge">${o.status}</span><div style="font-weight:600">${money(o.totals.total)}</div></div><div class="items">${o.lines.map(l=>`<img src="${l.img}" title="${esc(l.name)}" alt="">`).join("")}</div><div style="display:flex;gap:16px;margin-top:14px"><a class="link" href="order.html?id=${o.id}">View order</a><a class="link" href="#" data-reorder="${o.id}">Buy again</a><a class="link" href="contact.html">Start a return</a></div></div>`).join(""):`<div class="empty"><b>No orders yet</b>Your first ritual is waiting.<br><br><a class="btn sm" href="shop.html">Shop <span class="arr">→</span></a></div>`;
+    const wg=()=>{const w=Wish.ids().map(prod).filter(Boolean);$("[data-wish-grid]").innerHTML=w.length?w.map(p=>UI.productCard(p)).join(""):`<div class="empty" style="grid-column:1/-1"><b>Nothing saved yet</b>Tap the heart on any product.</div>`;UI.refreshWish();};wg();window.addEventListener("ferne:wish",wg);
+    const bought=new Set(orders.flatMap(o=>o.lines.map(l=>l.id)));const recent=Store.get("recent",[]);const ids=[...bought,...recent].filter((v,i,a)=>a.indexOf(v)===i).slice(0,4);
+    $("[data-refills]").innerHTML=(ids.length?ids:["cloud-cleanser","morning-oil","dew-cream"]).map(id=>{const p=prod(id);const r=p.sizes.find(s=>/refill/i.test(s.label));return`<div class="opt-card"><img src="${p.img}" style="width:48px;height:58px;border-radius:8px;object-fit:cover" alt=""><div><b>${esc(p.name)}</b><small>${r?`Refill ${r.label} · ${money(r.price)}`:`${p.sizes[0].label} · ${money(p.price)}`}</small></div><button class="btn sm plain" style="margin-left:auto" data-add="${p.id}" data-size="${(r||p.sizes[0]).id}">${r?"Refill":"Reorder"}</button></div>`;}).join("");
+    const d=Store.get("checkout",{});const df=$("[data-details]");df.name.value=u.name;df.email.value=u.email;["addr","city","postcode"].forEach(k=>df[k].value=d[k]||"");
+    df.addEventListener("submit",e=>{e.preventDefault();Auth.login(df.email.value,df.name.value);Store.set("checkout",{...d,addr:df.addr.value,city:df.city.value,postcode:df.postcode.value});UI.toast("Details saved");});
+    document.addEventListener("click",e=>{const r=e.target.closest("[data-reorder]");if(!r)return;e.preventDefault();const o=orders.find(x=>x.id===r.dataset.reorder);o.lines.forEach(l=>{const p=prod(l.id);const s=p.sizes.find(x=>x.label===l.size)||p.sizes[0];Ferne.Cart.add(l.id,s.id,l.qty);});});
+    $("[data-logout]").addEventListener("click",e=>{e.preventDefault();Auth.logout();location.reload();});
+    const go=h=>{const k=(h||"#orders").slice(1);$$(".acct-nav a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+k));$$(".acct-pane").forEach(p=>p.classList.toggle("on",p.dataset.pane===k));};
+    $$(".acct-nav a[href^='#']").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();history.replaceState(null,"",a.getAttribute("href"));go(a.getAttribute("href"));}));go(location.hash);}
+  show();
+});
+</script></body></html>

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your bag — Ferne</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<main class="page"><div class="wrap">
+  <div class="page-head"><div class="crumbs"><a href="index.html">Home</a> / <b>Bag</b></div><h1 class="serif">Your bag <span class="muted" data-n></span></h1></div>
+  <div class="cart-layout">
+    <div><div class="ship-bar" data-shipbar></div><div class="cart-lines" data-lines></div><a class="link" href="shop.html" style="display:inline-block;margin-top:18px">← Continue shopping</a></div>
+    <aside class="summary-box"><h3>Summary</h3><div data-sums></div>
+      <div class="promo"><input placeholder="Promo code" data-promo-in><button class="btn sm plain ghost" data-promo-btn>Apply</button></div><div class="small muted" data-promo-msg style="margin-top:6px"></div>
+      <a class="btn block" href="checkout.html" style="margin-top:18px" data-co>Checkout <span class="arr">→</span></a>
+      <div class="pay-icons"><span>VISA</span><span>MASTERCARD</span><span>AMEX</span><span>APPLE PAY</span><span>G PAY</span><span>KLARNA</span></div>
+      <div class="secure">🔒 Secure checkout · 30-day returns</div></aside>
+  </div>
+  <section class="related"><h2 class="serif">Complete the <em>ritual</em></h2><div class="grid4" data-upsell></div></section>
+</div></main>
+<script src="assets/data.js"></script><script src="assets/app.js"></script>
+<script>
+document.addEventListener("ferne:ready",()=>{const {D,UI,$,$$,money,esc,Cart,Store}=Ferne;
+  const render=()=>{const lines=Cart.lines(),t=Cart.totals();$("[data-n]").textContent=Cart.count()?`(${Cart.count()})`:"";
+    const left=Math.max(0,D.freeShippingThreshold-t.sub);$("[data-shipbar]").innerHTML=lines.length?`${left>0?`Add <b>${money(left)}</b> for free UK delivery`:"<b>You've unlocked free UK delivery</b>"}<div class="bar"><i style="width:${Math.min(100,t.sub/D.freeShippingThreshold*100)}%"></i></div>`:"";
+    $("[data-lines]").innerHTML=lines.length?lines.map(l=>`<div class="line"><div class="ph"><a href="product.html?id=${l.id}"><img src="${l.p.img}" alt=""></a></div><div><b><a href="product.html?id=${l.id}">${esc(l.p.name)}</a></b><small>${esc(l.p.tagline)} · ${esc(l.s.label)}</small><div style="margin-top:10px;display:flex;gap:14px;align-items:center"><div class="qty sm"><button data-q="-1" data-id="${l.id}" data-size="${l.size}">−</button><span>${l.qty}</span><button data-q="1" data-id="${l.id}" data-size="${l.size}">+</button></div><a class="rm" data-rm data-id="${l.id}" data-size="${l.size}" href="#">Remove</a><a class="rm" data-wish="${l.id}" href="#">Save for later</a></div></div><div class="amt">${money(l.total)}<div class="small muted" style="font-weight:400">${money(l.s.price)} each</div></div></div>`).join(""):`<div class="empty"><b>Your bag is empty</b>Add a ritual or two.<br><br><a class="btn sm" href="shop.html">Shop best-sellers <span class="arr">→</span></a></div>`;
+    $("[data-sums]").innerHTML=`<div class="sum"><span>Subtotal</span><span>${money(t.sub)}</span></div>${t.discount?`<div class="sum"><span>Discount (${t.promo})</span><span class="free">−${money(t.discount)}</span></div>`:""}<div class="sum"><span>Estimated shipping</span><span class="${t.shipping?"":"free"}">${t.shipping?money(t.shipping):"Free"}</span></div><div class="sum total"><span>Total</span><span>${money(t.total)}</span></div>`;
+    $("[data-co]").classList.toggle("hide",!lines.length);$("[data-promo-in]").value=t.promo||"";
+    const ids=lines.map(l=>l.id);$("[data-upsell]").innerHTML=D.products.filter(p=>!ids.includes(p.id)&&p.stock>0).slice(0,4).map(p=>UI.productCard(p)).join("");UI.refreshWish();};
+  $("[data-promo-btn]").addEventListener("click",()=>{const c=$("[data-promo-in]").value.trim().toUpperCase();const m=$("[data-promo-msg]");if(D.promos[c]){Store.set("promo",c);m.textContent="Code applied.";m.style.color="var(--sage)";}else{Store.set("promo",null);m.textContent=c?"That code isn't valid.":"";m.style.color="#C0392B";}render();});
+  window.addEventListener("ferne:cartchange",render);render();
+});
+</script></body></html>
