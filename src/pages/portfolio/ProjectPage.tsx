@@ -57,6 +57,11 @@ export default function ProjectPage() {
                                 View live prototype {ARROW}
                             </a>
                         )}
+                        {cs.designSystemUrl && (
+                            <a href={cs.designSystemUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__btn pf-cs__btn--ghost d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                                Design system {ARROW}
+                            </a>
+                        )}
                         <a href={`mailto:${PROFILE.email}`} className="pf-cs__btn pf-cs__btn--ghost d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
                             Work with me
                         </a>
@@ -200,6 +205,35 @@ export default function ProjectPage() {
                     </div>
                 </div>
             </section>
+
+            {/* ── Design system ── */}
+            {cs.designSystemUrl && (
+                <section className="pf-cs__sec pt-40 pb-40">
+                    <div className="container-2200 px-3 px-lg-4">
+                        <span className="pf-cs__label d-block mb-25">Design system</span>
+                        <div className="row g-3 g-lg-5 align-items-end mb-30">
+                            <div className="col-lg-8">
+                                <h2 className="pf-cs__h2 fz-60 fw-600 lh-1 mb-0">One source of truth, fully documented.</h2>
+                            </div>
+                            <div className="col-lg-4 text-lg-end">
+                                <a href={cs.designSystemUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__btn pf-cs__btn--dark d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                                    Explore the full system {ARROW}
+                                </a>
+                            </div>
+                        </div>
+                        {cs.designSystemBlurb && (
+                            <p className="pf-cs__body fz-font-lg mb-40" style={{ maxWidth: "74ch" }}>{cs.designSystemBlurb}</p>
+                        )}
+                        {cs.designSystemImage && (
+                            <a href={cs.designSystemUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__ds-shot d-block">
+                                <div className="pf-cs__shot">
+                                    <img src={cs.designSystemImage} alt={`${cs.name} design system documentation`} width={1600} height={1138} loading="lazy" className="w-100" />
+                                </div>
+                            </a>
+                        )}
+                    </div>
+                </section>
+            )}
 
             {/* ── Outcome ── */}
             <section className="pf-cs__sec pt-60 pb-80">

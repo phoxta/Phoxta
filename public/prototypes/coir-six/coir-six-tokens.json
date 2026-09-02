@@ -1,0 +1,165 @@
+{
+  "color": {
+    "brand": {
+      "primary": "#6C5DD3",
+      "primary-hover": "#5B4CC4",
+      "primary-soft": "#EEEBFB",
+      "primary-glow": "#9084E6"
+    },
+    "accent": {
+      "blue": "#4A8FE0",
+      "blue-soft": "#E8F1FC",
+      "pink": "#D35DB7",
+      "pink-soft": "#FBE8F5",
+      "mint": "#2B8A61",
+      "mint-soft": "#E4F5EE",
+      "peach": "#C0692B",
+      "peach-soft": "#FCEBD9",
+      "danger": "#E5623B"
+    },
+    "surface": {
+      "page": "#F6F6FA",
+      "card": "#FFFFFF",
+      "subtle": "#EBE9F8",
+      "border": "#ECECF2",
+      "border-strong": "#DCDCE5",
+      "chart-track": "#DCD9F3"
+    },
+    "text": {
+      "primary": "#1B1B23",
+      "secondary": "#8A8A9E",
+      "caption": "#A8A8B8",
+      "on-brand": "#FFFFFF",
+      "link": "#6C5DD3"
+    },
+    "canvas": {
+      "backdrop": "#DCDDE3"
+    }
+  },
+  "typography": {
+    "family": {
+      "base": "'Plus Jakarta Sans', system-ui, sans-serif"
+    },
+    "scale": {
+      "display": {
+        "size": 30,
+        "line": 38,
+        "weight": 600,
+        "tracking": 0
+      },
+      "h1": {
+        "size": 22,
+        "line": 28,
+        "weight": 600
+      },
+      "h2": {
+        "size": 20,
+        "line": 26,
+        "weight": 600
+      },
+      "h3": {
+        "size": 18,
+        "line": 24,
+        "weight": 600
+      },
+      "title": {
+        "size": 16,
+        "line": 22,
+        "weight": 600
+      },
+      "body-lg": {
+        "size": 17,
+        "line": 24,
+        "weight": 500
+      },
+      "body": {
+        "size": 15,
+        "line": 21,
+        "weight": 500
+      },
+      "body-sm": {
+        "size": 14,
+        "line": 20,
+        "weight": 500
+      },
+      "caption": {
+        "size": 12,
+        "line": 16,
+        "weight": 400
+      },
+      "overline": {
+        "size": 11,
+        "line": 14,
+        "weight": 500,
+        "tracking": 0.08,
+        "case": "upper"
+      },
+      "tag": {
+        "size": 11,
+        "line": 14,
+        "weight": 600,
+        "case": "upper"
+      }
+    }
+  },
+  "space": {
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "5": 20,
+    "6": 24,
+    "7": 28,
+    "8": 32,
+    "10": 40,
+    "12": 48
+  },
+  "radius": {
+    "xs": 6,
+    "sm": 12,
+    "md": 14,
+    "lg": 16,
+    "xl": 20,
+    "2xl": 24,
+    "pill": 999
+  },
+  "size": {
+    "control-sm": 28,
+    "control-md": 32,
+    "control-lg": 44,
+    "control-xl": 48,
+    "avatar-xs": 32,
+    "avatar-sm": 34,
+    "avatar-md": 44,
+    "avatar-lg": 50,
+    "avatar-xl": 110,
+    "icon-sm": 14,
+    "icon-md": 18,
+    "icon-lg": 20
+  },
+  "stroke": {
+    "hairline": 1,
+    "icon": 1.8,
+    "progress": 3
+  },
+  "shadow": {
+    "app": "0 30px 80px rgba(20,20,40,.12)",
+    "card-hover": "0 8px 24px rgba(27,27,35,.08)"
+  },
+  "layout": {
+    "desktop": {
+      "app-width": 1352,
+      "sidebar": 216,
+      "right-panel": 340,
+      "gutter": 24,
+      "card-gap": 24
+    },
+    "mobile": {
+      "breakpoint": 768,
+      "gutter": 20,
+      "tabbar-height": 72,
+      "course-card": 240,
+      "chip": 200
+    }
+  }
+}

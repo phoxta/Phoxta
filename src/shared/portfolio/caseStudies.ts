@@ -26,6 +26,9 @@ export type CaseStudy = {
     palette: Swatch[];
     typeNote: string;
     components: string[];
+    designSystemUrl?: string;
+    designSystemImage?: string;
+    designSystemBlurb?: string;
     outcome: string[];
 };
 
@@ -90,15 +93,23 @@ export const CASE_STUDIES: CaseStudy[] = [
             },
         ],
         palette: [
-            { name: "Primary", hex: "#6C5DD3" },
-            { name: "Primary soft", hex: "#EEEBFB", ink: true },
+            { name: "Brand", hex: "#6C5DD3" },
+            { name: "Brand soft", hex: "#EEEBFB", ink: true },
             { name: "Ink", hex: "#1B1B23" },
             { name: "Page", hex: "#F6F6FA", ink: true },
-            { name: "Accent warm", hex: "#E5623B" },
+            { name: "Front End", hex: "#4A8FE0" },
+            { name: "UI/UX", hex: "#D35DB7" },
+            { name: "Success", hex: "#2B8A61" },
+            { name: "People", hex: "#C0692B" },
+            { name: "Destructive", hex: "#E5623B" },
         ],
         typeNote:
-            "Plus Jakarta Sans throughout, on a tight 12 / 14 / 16 / 20 / 30px scale. Captions stay muted and quiet; headings carry weight without shouting — the type does the ranking so the layout doesn't have to.",
+            "Plus Jakarta Sans on a deliberately narrow 11–30px scale, ranked by weight — SemiBold for anything scannable, Regular for supporting copy — so colour (ink → muted → caption) carries the hierarchy and the layout never has to shout. Category colour is semantic: blue always means Front End, purple UI/UX, pink Branding — a colour means the same thing everywhere.",
         components: ["Stat card", "Course card", "Colour-coded avatar system", "Completion ring & bar chart", "Category & type pills", "Left nav rail", "Mobile tab bar"],
+        designSystemUrl: "/prototypes/coir-six/design-system.html",
+        designSystemImage: "/assets/imgs/portfolio/coir-six-ds.webp",
+        designSystemBlurb:
+            "Everything on the screens traces back to one source of truth. I documented Coir Six as a full design system — four founding principles, tokenised colour, type, spacing, radius and elevation, a component library (buttons, inputs, tags, avatars, cards, navigation and data-viz) and the page + responsive patterns — and exported the tokens as CSS variables and JSON so a new feature feels native on day one.",
         outcome: [
             "The three-intent hierarchy held up on both breakpoints with no special-casing — proof it was the structure, not the specific layout, doing the work.",
             "Prototyping in real HTML/CSS caught spacing and reflow issues Figma had hidden, and handed engineering a build-ready front-end reference instead of a redline.",

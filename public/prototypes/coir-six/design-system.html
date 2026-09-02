@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coir Six Design System</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===================== TOKENS ===================== */
+:root{
+  --primary:#6C5DD3;--primary-hover:#5B4CC4;--primary-soft:#EEEBFB;--primary-glow:#9084E6;
+  --blue:#4A8FE0;--blue-soft:#E8F1FC;--pink:#D35DB7;--pink-soft:#FBE8F5;--mint:#2B8A61;--mint-soft:#E4F5EE;--peach:#C0692B;--peach-soft:#FCEBD9;--danger:#E5623B;
+  --page:#F6F6FA;--card:#FFFFFF;--subtle:#EBE9F8;--line:#ECECF2;--line-strong:#DCDCE5;--track:#DCD9F3;
+  --ink:#1B1B23;--muted:#8A8A9E;--caption:#A8A8B8;--backdrop:#DCDDE3;
+  --font:'Plus Jakarta Sans',system-ui,sans-serif;
+  --r-xs:6px;--r-sm:12px;--r-md:14px;--r-lg:16px;--r-xl:20px;--r-2xl:24px;--r-pill:999px;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;--s10:40px;--s12:48px;
+  --shadow-app:0 30px 80px rgba(20,20,40,.12);--shadow-hover:0 8px 24px rgba(27,27,35,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);color:var(--ink);background:var(--page);-webkit-font-smoothing:antialiased}
+svg{display:block}
+a{color:inherit}
+
+/* ===================== DOC SHELL ===================== */
+.doc{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.toc{position:sticky;top:0;height:100vh;overflow:auto;background:#fff;border-right:1px solid var(--line);padding:32px 28px}
+.toc .brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px;margin-bottom:6px}
+.toc .brand .mark{width:28px;height:28px;border-radius:50%;background:var(--primary);display:grid;place-items:center}
+.toc .ver{font-size:12px;color:var(--muted);margin-bottom:28px}
+.toc h5{font-size:11px;letter-spacing:.08em;color:var(--caption);font-weight:500;margin:22px 0 8px}
+.toc a{display:block;font-size:14px;font-weight:500;padding:7px 0;text-decoration:none;color:var(--ink)}
+.toc a:hover{color:var(--primary)}
+.content{padding:48px 64px 120px;max-width:1180px}
+.hero-doc{background:var(--primary);color:#fff;border-radius:var(--r-2xl);padding:40px;position:relative;overflow:hidden;margin-bottom:56px}
+.hero-doc .k{font-size:12px;letter-spacing:.14em;font-weight:600;opacity:.9}
+.hero-doc h1{font-size:34px;line-height:42px;font-weight:600;margin:14px 0 12px;max-width:560px}
+.hero-doc p{font-size:15px;line-height:23px;opacity:.9;max-width:560px}
+.hero-doc .spark{position:absolute;right:-30px;top:-70px;width:260px;opacity:.7}
+section{margin-bottom:72px;scroll-margin-top:24px}
+h2.sec{font-size:26px;font-weight:600;margin-bottom:6px}
+p.lead{font-size:15px;line-height:23px;color:var(--muted);max-width:720px;margin-bottom:28px}
+h3.sub{font-size:16px;font-weight:600;margin:32px 0 14px}
+.note{border-left:3px solid var(--primary);background:var(--primary-soft);padding:12px 16px;border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:14px;line-height:21px;margin:18px 0;max-width:720px}
+.note b{font-weight:600}
+.spec{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;margin-top:12px}
+.spec-row{display:flex;flex-wrap:wrap;gap:20px;align-items:center}
+code,.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--page);border:1px solid var(--line);padding:2px 6px;border-radius:4px;color:var(--ink)}
+table.t{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;font-size:14px}
+table.t th{text-align:left;font-size:11px;letter-spacing:.06em;color:var(--caption);font-weight:500;padding:12px 16px;border-bottom:1px solid var(--line)}
+table.t td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.t tr:last-child td{border-bottom:0}
+.dont-do{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.dd{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:18px}
+.dd .lbl{font-size:12px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.dd.ok .lbl{color:var(--mint)}.dd.no .lbl{color:var(--danger)}
+.dd p{font-size:13px;color:var(--muted);line-height:19px;margin-top:10px}
+
+/* ===================== COLOR ===================== */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.sw{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.sw .chip{height:84px}
+.sw .m{padding:10px 12px}
+.sw .n{font-size:13px;font-weight:600}
+.sw .h{font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px}
+.sw .u{font-size:11px;color:var(--caption);margin-top:6px;line-height:15px}
+.pairs{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.pair{border-radius:var(--r-lg);padding:16px;display:flex;align-items:center;gap:12px}
+.pair .ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none}
+.pair .n{font-size:14px;font-weight:600}.pair .h{font-size:11px;font-family:ui-monospace,monospace;opacity:.8}
+
+/* ===================== TYPE ===================== */
+.type-row{display:grid;grid-template-columns:150px 1fr 220px;align-items:baseline;gap:20px;padding:16px 0;border-bottom:1px solid var(--line)}
+.type-row:last-child{border-bottom:0}
+.type-row .tn{font-size:12px;color:var(--muted);font-family:ui-monospace,monospace}
+.type-row .tm{font-size:12px;color:var(--caption)}
+.t-display{font-size:30px;line-height:38px;font-weight:600}
+.t-h1{font-size:22px;line-height:28px;font-weight:600}
+.t-h2{font-size:20px;line-height:26px;font-weight:600}
+.t-h3{font-size:18px;line-height:24px;font-weight:600}
+.t-title{font-size:16px;line-height:22px;font-weight:600}
+.t-body-lg{font-size:17px;line-height:24px;font-weight:500}
+.t-body{font-size:15px;line-height:21px;font-weight:500}
+.t-body-sm{font-size:14px;line-height:20px;font-weight:500}
+.t-caption{font-size:12px;line-height:16px;font-weight:400;color:var(--muted)}
+.t-overline{font-size:11px;line-height:14px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--caption)}
+.t-tag{font-size:11px;line-height:14px;font-weight:600;text-transform:uppercase}
+
+/* ===================== SPACING / RADIUS ===================== */
+.scale{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.scale .b{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.scale .b i{display:block;background:var(--primary);border-radius:3px}
+.radii{display:flex;gap:18px;flex-wrap:wrap}
+.radii .b{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.radii .b i{display:block;width:72px;height:72px;background:#fff;border:1.5px solid var(--primary)}
+.grid-demo{display:grid;grid-template-columns:216px 1fr 340px;gap:24px;height:120px}
+.grid-demo div{background:var(--primary-soft);border:1px dashed var(--primary);border-radius:var(--r-sm);display:grid;place-items:center;font-size:12px;color:var(--primary);font-weight:600}
+.grid-demo-m{width:240px;border:1px solid var(--line);border-radius:28px;background:var(--page);padding:14px 12px 10px;display:flex;flex-direction:column;gap:8px;height:300px}
+.grid-demo-m div{background:var(--primary-soft);border:1px dashed var(--primary);border-radius:8px;display:grid;place-items:center;font-size:11px;color:var(--primary);font-weight:600}
+
+/* ===================== COMPONENTS ===================== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:var(--r-pill);font:600 14px var(--font);cursor:pointer;height:44px;padding:0 22px;transition:.15s}
+.btn.primary{background:var(--ink);color:#fff}.btn.primary:hover{background:#000}
+.btn.brand{background:var(--primary);color:#fff}.btn.brand:hover{background:var(--primary-hover)}
+.btn.tonal{background:var(--subtle);color:var(--primary);border-radius:var(--r-sm);font-weight:500}
+.btn.outline{background:#fff;color:var(--ink);border:1px solid var(--line-strong);font-weight:500;height:32px;padding:0 12px;font-size:12px}
+.btn.outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn.icon{width:44px;padding:0;background:#fff;border:1px solid var(--line-strong)}
+.btn.icon.sm{width:32px;height:32px}
+.btn.icon.brand{background:var(--primary);border:0}
+.btn.icon.xs{width:28px;height:28px}
+.btn.circle-tail{padding:0 8px 0 22px}
+.btn .tail{width:26px;height:26px;border-radius:50%;background:#fff;display:grid;place-items:center}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+.input{height:46px;border-radius:var(--r-pill);background:#fff;border:1px solid var(--line-strong);display:flex;align-items:center;gap:10px;padding:0 16px;font-size:14px;color:var(--caption);width:320px}
+.input.focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);color:var(--ink)}
+.input.sq{border-radius:var(--r-md)}
+
+.tag{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:var(--r-xs);font-size:11px;font-weight:600;text-transform:uppercase}
+.tag.fe{background:var(--blue-soft);color:var(--blue)}.tag.ux{background:var(--primary-soft);color:var(--primary)}.tag.br{background:var(--pink-soft);color:var(--pink)}.tag.ok{background:var(--mint-soft);color:var(--mint)}.tag.warn{background:var(--peach-soft);color:var(--peach)}
+.badge{background:var(--primary);color:#fff;font-size:11px;font-weight:600;padding:4px 8px;border-radius:12px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--danger);border:1.5px solid #fff;display:inline-block}
+
+.av{border-radius:50%;display:grid;place-items:center;font-weight:600;position:relative;flex:none;overflow:visible}
+.av.s32{width:32px;height:32px;font-size:11px}.av.s34{width:34px;height:34px;font-size:12px}.av.s44{width:44px;height:44px;font-size:15px}.av.s50{width:50px;height:50px;font-size:16px}.av.s110{width:110px;height:110px;font-size:36px}
+.av.lilac{background:var(--primary-soft);color:var(--primary)}.av.sky{background:var(--blue-soft);color:var(--blue)}.av.peach{background:var(--peach-soft);color:var(--peach)}.av.rose{background:var(--pink-soft);color:var(--pink)}.av.mint{background:var(--mint-soft);color:var(--mint)}.av.plum{background:#F3E6F8;color:#8E44AD}
+.av .plus{position:absolute;right:-2px;bottom:-2px;width:16px;height:16px;border-radius:50%;background:var(--ink);border:2px solid #fff;display:grid;place-items:center}
+.ring{width:140px;height:140px;position:relative;display:grid;place-items:center}
+.ring svg{position:absolute;inset:0}
+.ring .badge{position:absolute;top:2px;right:2px}
+
+.card{background:#fff;border-radius:var(--r-xl);padding:16px}
+.stat{background:#fff;border-radius:var(--r-lg);padding:10px 14px 10px 10px;display:flex;align-items:center;gap:14px;height:70px;width:240px}
+.stat .ico{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;flex:none}
+.stat .w{font-size:12px;color:var(--muted)}.stat .t{font-size:16px;font-weight:600;margin-top:3px}.stat .more{margin-left:auto;color:var(--muted)}
+.course{width:254px;display:flex;flex-direction:column;gap:12px;background:#fff;border-radius:18px;padding:12px}
+.course .cover{position:relative;height:130px;border-radius:var(--r-md);background:linear-gradient(135deg,#C9C3F2,#6C5DD3)}
+.course .save{position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center}
+.course h4{font-size:15px;font-weight:600;line-height:21px}
+.progress{height:3px;border-radius:2px;background:var(--line)}.progress i{display:block;height:100%;border-radius:2px;background:var(--primary)}
+.person{display:flex;align-items:center;gap:10px}.person .n{font-size:13px;font-weight:500}.person .r{font-size:11px;color:var(--muted);margin-top:2px}
+.list{background:var(--page);border-radius:var(--r-lg);padding:6px 20px 20px;width:340px}
+.lrow{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--line-strong)}.lrow:last-of-type{border-bottom:0}
+.lrow .n{font-size:14px;font-weight:500}.lrow .r{font-size:12px;color:var(--muted);margin-top:2px}.lrow .btn{margin-left:auto}
+.nav{width:180px}
+.nav a{display:flex;align-items:center;gap:12px;padding:14px 0;font-size:17px;font-weight:500;text-decoration:none}
+.nav a.on{color:var(--primary)}.nav a.danger{color:var(--danger)}
+.tabbar{width:360px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:12px 8px 10px;display:flex;justify-content:space-around}
+.tabbar a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--muted);text-decoration:none;min-width:56px}
+.tabbar a.on{color:var(--primary)}.tabbar a.on i{width:4px;height:4px;border-radius:50%;background:var(--primary);display:block}
+.chart{background:var(--page);border-radius:var(--r-lg);padding:14px 16px 12px;width:320px;display:grid;grid-template-columns:22px 1fr;column-gap:12px}
+.chart .y{display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--muted);height:96px}
+.chart .plot{position:relative;height:96px}
+.chart .grid{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between}.chart .grid i{display:block;border-top:1px dashed var(--line-strong)}
+.chart .bars{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 6px}
+.chart .bars b{width:40px;border-radius:6px 6px 0 0;background:var(--track)}.chart .bars b.hi{background:var(--primary)}
+.chart .x{grid-column:2;display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:14px;padding:0 6px}
+.table{background:#fff;border-radius:var(--r-xl);overflow:hidden;width:100%}
+.table .hdr,.table .row{display:grid;grid-template-columns:56px 180px 180px 1fr 44px;align-items:center;padding:0 16px}
+.table .hdr{height:34px;font-size:11px;letter-spacing:.06em;color:var(--caption);font-weight:500;border-bottom:1px solid var(--line)}
+.table .row{height:64px}.table .name{font-size:14px;font-weight:500}.table .date{font-size:12px;color:var(--muted)}.table .desc{font-size:15px;font-weight:500}
+.hero{position:relative;height:200px;border-radius:var(--r-xl);background:var(--primary);color:#fff;padding:24px;overflow:hidden;max-width:640px}
+.hero .glow{position:absolute;width:300px;height:300px;right:-40px;top:-90px;border-radius:50%;background:var(--primary-glow);filter:blur(80px);opacity:.7}
+.hero .k{font-size:12px;letter-spacing:.14em;font-weight:600;opacity:.9}
+.hero h3{font-size:26px;line-height:33px;font-weight:600;margin:14px 0 20px;max-width:380px}
+.icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px}
+.icons .i{background:#fff;border:1px solid var(--line);border-radius:var(--r-sm);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.states{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px}
+.states .st{background:#fff;border:1px solid var(--line);border-radius:var(--r-sm);padding:14px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.states .lbl{font-size:11px;color:var(--caption);letter-spacing:.06em;text-transform:uppercase}
+@media (max-width:900px){.doc{grid-template-columns:1fr}.toc{display:none}.content{padding:24px 20px 80px}.grid-demo{grid-template-columns:1fr}.type-row{grid-template-columns:1fr}.dont-do{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="doc">
+<!-- ================= TOC ================= -->
+<nav class="toc">
+  <div class="brand"><span class="mark"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 1c.6 4 3 6.4 7 7-4 .6-6.4 3-7 7-.6-4-3-6.4-7-7 4-.6 6.4-3 7-7z" fill="#fff"/></svg></span>Coir Six DS</div>
+  <div class="ver">v1.0 · Sept 2026</div>
+  <h5>FOUNDATIONS</h5>
+  <a href="#principles">Principles</a><a href="#color">Colour</a><a href="#type">Typography</a><a href="#space">Spacing &amp; layout</a><a href="#radius">Radius &amp; elevation</a><a href="#icons">Iconography</a>
+  <h5>COMPONENTS</h5>
+  <a href="#buttons">Buttons</a><a href="#inputs">Inputs</a><a href="#tags">Tags &amp; badges</a><a href="#avatars">Avatars</a><a href="#cards">Cards</a><a href="#nav">Navigation</a><a href="#data">Data display</a>
+  <h5>PATTERNS</h5>
+  <a href="#patterns">Page patterns</a><a href="#responsive">Responsive rules</a><a href="#usage">Usage &amp; tokens</a>
+</nav>
+
+<!-- ================= CONTENT ================= -->
+<main class="content">
+<div class="hero-doc">
+  <svg class="spark" viewBox="0 0 100 100"><path d="M50 0C52 30 70 48 100 50 70 52 52 70 50 100 48 70 30 52 0 50 30 48 48 30 50 0z" fill="#fff"/></svg>
+  <div class="k">DESIGN SYSTEM</div>
+  <h1>Coir Six — foundations, components and patterns for learning products</h1>
+  <p>Everything on this page is derived from the Coir Six dashboard. Use the tokens as the single source of truth, compose screens from the components, and follow the patterns so new features feel native to the product on day one.</p>
+</div>
+
+<!-- PRINCIPLES -->
+<section id="principles">
+  <h2 class="sec">Principles</h2>
+  <p class="lead">Four rules that explain why Coir Six looks the way it does. When a decision isn't covered below, fall back to these.</p>
+  <div class="dont-do" style="grid-template-columns:repeat(2,1fr)">
+    <div class="dd"><div class="lbl" style="color:var(--primary)">01 · Calm surface, one loud colour</div><p>Backgrounds are near-white and desaturated. Brand purple is reserved for the primary action, the current selection, progress, and the hero. If everything is purple, nothing is.</p></div>
+    <div class="dd"><div class="lbl" style="color:var(--primary)">02 · Soft geometry</div><p>Large radii (16–24px) on containers, pills on controls, circles for avatars and icon buttons. Nothing has a sharp corner; friendliness is structural, not decorative.</p></div>
+    <div class="dd"><div class="lbl" style="color:var(--primary)">03 · Hierarchy through weight, not size</div><p>A narrow type scale (11–30px) with SemiBold for anything scannable and Regular for supporting copy. Colour (ink → muted → caption) does the rest.</p></div>
+    <div class="dd"><div class="lbl" style="color:var(--primary)">04 · Category colour is semantic</div><p>Blue = Front End, Purple = UI/UX, Pink = Branding, Mint = success, Peach = warmth/people, Orange = destructive. A colour always means the same thing.</p></div>
+  </div>
+</section>
+
+<!-- COLOR -->
+<section id="color">
+  <h2 class="sec">Colour</h2>
+  <p class="lead">Every colour is a token. Never hard-code a hex in a screen — reference the role (e.g. <code>text/secondary</code>) so themes and fixes propagate.</p>
+  <h3 class="sub">Brand</h3>
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#6C5DD3"></div><div class="m"><div class="n">brand/primary</div><div class="h">#6C5DD3</div><div class="u">Primary CTA, active nav, progress, hero, links</div></div></div>
+    <div class="sw"><div class="chip" style="background:#5B4CC4"></div><div class="m"><div class="n">brand/primary-hover</div><div class="h">#5B4CC4</div><div class="u">Hover/pressed on brand fills</div></div></div>
+    <div class="sw"><div class="chip" style="background:#EEEBFB"></div><div class="m"><div class="n">brand/primary-soft</div><div class="h">#EEEBFB</div><div class="u">Tinted icon wells, UI/UX tag, avatar fallback</div></div></div>
+    <div class="sw"><div class="chip" style="background:#9084E6"></div><div class="m"><div class="n">brand/primary-glow</div><div class="h">#9084E6</div><div class="u">Blurred glow inside hero only</div></div></div>
+  </div>
+  <h3 class="sub">Surface &amp; text</h3>
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#F6F6FA"></div><div class="m"><div class="n">surface/page</div><div class="h">#F6F6FA</div><div class="u">App background, inset panels</div></div></div>
+    <div class="sw"><div class="chip" style="background:#FFFFFF;border-bottom:1px solid var(--line)"></div><div class="m"><div class="n">surface/card</div><div class="h">#FFFFFF</div><div class="u">Cards, sidebar, controls</div></div></div>
+    <div class="sw"><div class="chip" style="background:#EBE9F8"></div><div class="m"><div class="n">surface/subtle</div><div class="h">#EBE9F8</div><div class="u">Tonal buttons (See All)</div></div></div>
+    <div class="sw"><div class="chip" style="background:#ECECF2"></div><div class="m"><div class="n">surface/border</div><div class="h">#ECECF2</div><div class="u">Hairlines, dividers, progress track</div></div></div>
+    <div class="sw"><div class="chip" style="background:#DCDCE5"></div><div class="m"><div class="n">surface/border-strong</div><div class="h">#DCDCE5</div><div class="u">Control outlines, chart gridlines</div></div></div>
+    <div class="sw"><div class="chip" style="background:#1B1B23"></div><div class="m"><div class="n">text/primary</div><div class="h">#1B1B23</div><div class="u">Headings, body, primary button fill</div></div></div>
+    <div class="sw"><div class="chip" style="background:#8A8A9E"></div><div class="m"><div class="n">text/secondary</div><div class="h">#8A8A9E</div><div class="u">Roles, meta, axis labels</div></div></div>
+    <div class="sw"><div class="chip" style="background:#A8A8B8"></div><div class="m"><div class="n">text/caption</div><div class="h">#A8A8B8</div><div class="u">Overlines, placeholders, table headers</div></div></div>
+    <div class="sw"><div class="chip" style="background:#DCDDE3"></div><div class="m"><div class="n">canvas/backdrop</div><div class="h">#DCDDE3</div><div class="u">Behind the app shell (presentation only)</div></div></div>
+  </div>
+  <h3 class="sub">Semantic accent pairs</h3>
+  <p class="lead" style="margin-bottom:14px">Each accent ships as a strong + soft pair. Strong goes on icons and text, soft goes behind them. Never put strong on strong.</p>
+  <div class="pairs">
+    <div class="pair" style="background:#E8F1FC;color:#4A8FE0"><span class="ic" style="background:#fff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A8FE0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="13" rx="2"/><path d="M9 10l-2.5 2 2.5 2M15 10l2.5 2-2.5 2"/></svg></span><div><div class="n">Blue · Front End</div><div class="h">#4A8FE0 / #E8F1FC</div></div></div>
+    <div class="pair" style="background:#EEEBFB;color:#6C5DD3"><span class="ic" style="background:#fff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6C5DD3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l-9 9 1.5 4 4 1.5 9-9a2.5 2.5 0 0 0-3.5-3.5z"/><path d="M12 7l5 5"/></svg></span><div><div class="n">Purple · UI/UX</div><div class="h">#6C5DD3 / #EEEBFB</div></div></div>
+    <div class="pair" style="background:#FBE8F5;color:#D35DB7"><span class="ic" style="background:#fff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D35DB7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13V6a2 2 0 0 1 2-2h7l7 7-7 7-7-7z"/></svg></span><div><div class="n">Pink · Branding</div><div class="h">#D35DB7 / #FBE8F5</div></div></div>
+    <div class="pair" style="background:#E4F5EE;color:#2B8A61"><span class="ic" style="background:#fff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2B8A61" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="n">Mint · Success</div><div class="h">#2B8A61 / #E4F5EE</div></div></div>
+    <div class="pair" style="background:#FCEBD9;color:#C0692B"><span class="ic" style="background:#fff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0692B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><div class="n">Peach · People / warmth</div><div class="h">#C0692B / #FCEBD9</div></div></div>
+    <div class="pair" style="background:#FCEBE5;color:#E5623B"><span class="ic" style="background:#fff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E5623B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M14 16l4-4-4-4M18 12H9"/></svg></span><div><div class="n">Orange · Destructive</div><div class="h">#E5623B / #FCEBE5</div></div></div>
+  </div>
+  <div class="note"><b>Contrast.</b> <code>text/primary</code> on white is 15.6:1, <code>text/secondary</code> is 3.9:1 (fine for ≥14px medium), <code>text/caption</code> is 2.6:1 — use it only for non-essential labels and never below 11px.</div>
+</section>
+
+<!-- TYPOGRAPHY -->
+<section id="type">
+  <h2 class="sec">Typography</h2>
+  <p class="lead">One family — <b>Plus Jakarta Sans</b> — in four weights (400 / 500 / 600 / 700). The scale is deliberately tight; differentiation comes from weight and colour.</p>
+  <div class="spec">
+    <div class="type-row"><div class="tn">display</div><div class="t-display">Sharpen Your Skills</div><div class="tm">30 / 38 · SemiBold · hero only</div></div>
+    <div class="type-row"><div class="tn">h1</div><div class="t-h1">Coir Six</div><div class="tm">22 / 28 · SemiBold · wordmark, page title</div></div>
+    <div class="type-row"><div class="tn">h2</div><div class="t-h2">Continue Watching</div><div class="tm">20 / 26 · SemiBold · section headers</div></div>
+    <div class="type-row"><div class="tn">h3</div><div class="t-h3">Good Morning Jason</div><div class="tm">18 / 24 · SemiBold · card headline</div></div>
+    <div class="type-row"><div class="tn">title</div><div class="t-title">UI/UX Design</div><div class="tm">16 / 22 · SemiBold · stat title, mentor name</div></div>
+    <div class="type-row"><div class="tn">body-lg</div><div class="t-body-lg">Dashboard</div><div class="tm">17 / 24 · Medium · nav items, user name</div></div>
+    <div class="type-row"><div class="tn">body</div><div class="t-body">Optimizing User Experience with the Best UI/UX Design</div><div class="tm">15 / 21 · SemiBold · card titles (2-line clamp)</div></div>
+    <div class="type-row"><div class="tn">body-sm</div><div class="t-body-sm">Padhang Satrio</div><div class="tm">14 / 20 · Medium · list names, buttons</div></div>
+    <div class="type-row"><div class="tn">caption</div><div class="t-caption">Continue your learning to achieve your target!</div><div class="tm">12 / 16 · Regular · meta, roles, dates</div></div>
+    <div class="type-row"><div class="tn">overline</div><div class="t-overline">Overview</div><div class="tm">11 / 14 · Medium · +8% tracking · group labels, table headers</div></div>
+    <div class="type-row"><div class="tn">tag</div><div class="t-tag" style="color:var(--primary)">UI/UX Design</div><div class="tm">11 / 14 · SemiBold · uppercase · tags only</div></div>
+  </div>
+</section>
+
+<!-- SPACING -->
+<section id="space">
+  <h2 class="sec">Spacing &amp; layout</h2>
+  <p class="lead">A 4-pt base. Component padding uses 8–16, gaps between siblings use 12–24, and sections breathe at 24–32.</p>
+  <div class="spec"><div class="scale">
+    <div class="b"><i style="width:4px;height:4px"></i>4</div><div class="b"><i style="width:8px;height:8px"></i>8</div><div class="b"><i style="width:12px;height:12px"></i>12</div><div class="b"><i style="width:16px;height:16px"></i>16</div><div class="b"><i style="width:20px;height:20px"></i>20</div><div class="b"><i style="width:24px;height:24px"></i>24</div><div class="b"><i style="width:32px;height:32px"></i>32</div><div class="b"><i style="width:40px;height:40px"></i>40</div><div class="b"><i style="width:48px;height:48px"></i>48</div>
+  </div></div>
+  <h3 class="sub">Desktop shell — 1352 × 962, three regions</h3>
+  <div class="spec"><div class="grid-demo"><div>Sidebar 216</div><div>Main · fluid · 24 gutters</div><div>Right panel 340</div></div></div>
+  <h3 class="sub">Mobile shell — single column, 20px gutters, 72px tab bar</h3>
+  <div class="spec"><div class="grid-demo-m"><div style="height:40px">App bar</div><div style="height:36px">Search</div><div style="height:70px">Hero</div><div style="height:40px">Rails (edge-to-edge, snap)</div><div style="flex:1">Stacked cards</div><div style="height:36px">Tab bar (fixed)</div></div></div>
+  <div class="note"><b>Rule.</b> Content never touches the app edge except horizontal rails, which bleed by the gutter width and use <code>scroll-padding</code> equal to the gutter so the first card lands on the grid.</div>
+</section>
+
+<!-- RADIUS -->
+<section id="radius">
+  <h2 class="sec">Radius &amp; elevation</h2>
+  <p class="lead">Radius scales with the size of the thing. Elevation is nearly absent — borders and background steps do the separating.</p>
+  <div class="spec"><div class="radii">
+    <div class="b"><i style="border-radius:6px"></i>xs 6 · tags</div><div class="b"><i style="border-radius:12px"></i>sm 12 · tonal btn, inputs (mobile)</div><div class="b"><i style="border-radius:14px"></i>md 14 · thumbnails</div><div class="b"><i style="border-radius:16px"></i>lg 16 · small cards, inset panels</div><div class="b"><i style="border-radius:20px"></i>xl 20 · cards, hero</div><div class="b"><i style="border-radius:24px"></i>2xl 24 · app shell</div><div class="b"><i style="border-radius:999px"></i>pill · buttons, search</div>
+  </div></div>
+  <table class="t" style="margin-top:16px"><tr><th>Level</th><th>Treatment</th><th>Used for</th></tr>
+  <tr><td>0</td><td><code>surface/page</code> background</td><td>App background, inset chart &amp; list panels</td></tr>
+  <tr><td>1</td><td><code>surface/card</code> white, no border</td><td>Cards on page background</td></tr>
+  <tr><td>1b</td><td>white + 1px <code>border-strong</code></td><td>Controls that sit on white (search, icon buttons)</td></tr>
+  <tr><td>2</td><td><code>0 8px 24px rgba(27,27,35,.08)</code></td><td>Hover on interactive cards only</td></tr>
+  <tr><td>3</td><td><code>0 30px 80px rgba(20,20,40,.12)</code></td><td>App shell on backdrop (presentation)</td></tr></table>
+</section>
+
+<!-- ICONS -->
+<section id="icons">
+  <h2 class="sec">Iconography</h2>
+  <p class="lead">Outline icons on a 24 grid, 1.8px stroke, round caps and joins, rendered at 20 (nav), 18 (controls), 14 (inline). Filled variants are only used for the sparkle motif and the "more" dots.</p>
+  <div class="icons">
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>dashboard</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/></svg>inbox</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 0 1 2 2v13.5L14.5 17 11 19.5V6H5z"/><path d="M5 4v14a2 2 0 0 0 2 2h4"/></svg>lesson</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>task</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M15 19a4.5 4.5 0 0 1 5.5-4.4"/></svg>group</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>setting</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M14 16l4-4-4-4M18 12H9"/></svg>logout</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>search</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M4 7l8 6 8-6"/></svg>mail</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>bell</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>heart</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l-9 9 1.5 4 4 1.5 9-9a2.5 2.5 0 0 0-3.5-3.5z"/><path d="M12 7l5 5M5.5 13.5l5 5"/></svg>uiux</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13V6a2 2 0 0 1 2-2h7l7 7-7 7-7-7z"/><circle cx="8.5" cy="8.5" r="1.3" fill="#1B1B23"/></svg>branding</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="13" rx="2"/><path d="M9 10l-2.5 2 2.5 2M15 10l2.5 2-2.5 2M13 9l-2 6"/></svg>frontend</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/></svg>follow</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>open</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>chevron</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>plus</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 24 24" fill="#1B1B23"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>more</div>
+    <div class="i"><svg width="22" height="22" viewBox="0 0 100 100"><path d="M50 0C52 30 70 48 100 50 70 52 52 70 50 100 48 70 30 52 0 50 30 48 48 30 50 0z" fill="#6C5DD3"/></svg>sparkle</div>
+  </div>
+</section>
+
+<!-- BUTTONS -->
+<section id="buttons">
+  <h2 class="sec">Buttons</h2>
+  <p class="lead">Five variants, one job each. Height 44 for primary actions, 32 for inline actions, 28 for row actions. Corners are always full pills except the tonal block button.</p>
+  <div class="spec"><div class="spec-row">
+    <button class="btn primary circle-tail">Join Now <span class="tail"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></button>
+    <button class="btn brand">Continue</button>
+    <button class="btn tonal" style="width:180px">See All</button>
+    <button class="btn outline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/></svg>Follow</button>
+    <button class="btn icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></button>
+    <button class="btn icon sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="btn icon sm brand"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button class="btn icon xs" style="border-color:var(--primary);color:var(--primary)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg></button>
+  </div></div>
+  <table class="t" style="margin-top:16px"><tr><th>Variant</th><th>Fill / stroke</th><th>Size</th><th>When</th></tr>
+  <tr><td>Primary (ink)</td><td><code>text/primary</code>, white label, optional white circle tail</td><td>44 · pill</td><td>The one hero CTA on a page</td></tr>
+  <tr><td>Brand</td><td><code>brand/primary</code>, white label</td><td>44 · pill</td><td>Primary action inside a form or sheet</td></tr>
+  <tr><td>Tonal</td><td><code>surface/subtle</code>, purple label</td><td>42 · 12 radius, full-width</td><td>Secondary "see more" at the end of a list</td></tr>
+  <tr><td>Outline</td><td>white, 1px <code>border-strong</code></td><td>32 · pill</td><td>Repeated row actions (Follow)</td></tr>
+  <tr><td>Icon</td><td>white circle, 1px border; brand-filled when it's the "next" direction</td><td>44 / 32 / 28</td><td>Toolbar, pagination, row open</td></tr></table>
+  <h3 class="sub">States</h3>
+  <div class="states">
+    <div class="st"><span class="lbl">Default</span><button class="btn brand">Continue</button></div>
+    <div class="st"><span class="lbl">Hover</span><button class="btn brand" style="background:var(--primary-hover)">Continue</button></div>
+    <div class="st"><span class="lbl">Focus</span><button class="btn brand" style="outline:2px solid var(--primary);outline-offset:2px">Continue</button></div>
+    <div class="st"><span class="lbl">Disabled</span><button class="btn brand" disabled>Continue</button></div>
+    <div class="st"><span class="lbl">Loading</span><button class="btn brand" style="opacity:.8"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="40 20"><circle cx="12" cy="12" r="9"/></svg>Saving</button></div>
+  </div>
+</section>
+
+<!-- INPUTS -->
+<section id="inputs">
+  <h2 class="sec">Inputs</h2>
+  <p class="lead">Text inputs match the search field: 46px, leading icon, caption-coloured placeholder, focus ring in <code>primary-soft</code>. Pill on desktop toolbars, 14px radius in mobile and forms.</p>
+  <div class="spec"><div class="spec-row">
+    <div class="input"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>Search your course....</div>
+    <div class="input focus"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>Front-end</div>
+    <div class="input sq"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>Mobile / form variant</div>
+  </div></div>
+</section>
+
+<!-- TAGS -->
+<section id="tags">
+  <h2 class="sec">Tags &amp; badges</h2>
+  <p class="lead">Tags classify content and always carry the category icon. Badges announce a number or state. Dots flag unread.</p>
+  <div class="spec"><div class="spec-row">
+    <span class="tag fe"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="13" rx="2"/><path d="M9 10l-2.5 2 2.5 2M15 10l2.5 2-2.5 2"/></svg>Front End</span>
+    <span class="tag ux"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l-9 9 1.5 4 4 1.5 9-9a2.5 2.5 0 0 0-3.5-3.5z"/><path d="M12 7l5 5"/></svg>UI/UX Design</span>
+    <span class="tag br"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13V6a2 2 0 0 1 2-2h7l7 7-7 7-7-7z"/></svg>Branding</span>
+    <span class="tag ok">Completed</span><span class="tag warn">Due soon</span>
+    <span class="badge">32%</span><span class="badge" style="background:var(--danger)">3</span>
+    <span class="dot"></span>
+  </div></div>
+</section>
+
+<!-- AVATARS -->
+<section id="avatars">
+  <h2 class="sec">Avatars</h2>
+  <p class="lead">Always circular. Photo when available, otherwise initials on a soft accent tint chosen deterministically from the name. The <b>+</b> affordance is an ink circle with a white ring, bottom-right.</p>
+  <div class="spec"><div class="spec-row" style="align-items:flex-end">
+    <span class="av s32 peach">LS</span><span class="av s34 plum">BM</span><span class="av s44 lilac">JR</span><span class="av s50 sky">PS<span class="plus"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></span>
+    <div class="ring"><svg width="140" height="140" viewBox="0 0 140 140" fill="none"><circle cx="70" cy="70" r="66" stroke="#E4E1F5" stroke-width="2"/><circle cx="70" cy="70" r="66" stroke="#6C5DD3" stroke-width="2" stroke-linecap="round" stroke-dasharray="415" stroke-dashoffset="282" transform="rotate(-90 70 70)"/></svg><span class="av s110 lilac">J</span><span class="badge">32%</span></div>
+  </div></div>
+  <table class="t" style="margin-top:16px"><tr><th>Size</th><th>px</th><th>Use</th></tr><tr><td>xs</td><td>32</td><td>Mentor line under a course card</td></tr><tr><td>sm</td><td>34</td><td>Sidebar friends, table rows</td></tr><tr><td>md</td><td>44</td><td>App bar / header user</td></tr><tr><td>lg</td><td>50</td><td>Mentor list (with + affordance)</td></tr><tr><td>xl</td><td>110</td><td>Progress ring (2px track at r66, badge top-right)</td></tr></table>
+</section>
+
+<!-- CARDS -->
+<section id="cards">
+  <h2 class="sec">Cards</h2>
+  <p class="lead">White, 20px radius, 16px padding, no border. Inset panels inside a card use <code>surface/page</code> at 16px radius. Photos sit in a 14px-radius well.</p>
+  <div class="spec"><div class="spec-row" style="align-items:flex-start">
+    <div class="stat"><span class="ico" style="background:var(--primary-soft)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6C5DD3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l-9 9 1.5 4 4 1.5 9-9a2.5 2.5 0 0 0-3.5-3.5z"/><path d="M12 7l5 5M5.5 13.5l5 5"/></svg></span><div><div class="w">2/8 watched</div><div class="t">UI/UX Design</div></div><span class="more">&#8942;</span></div>
+    <article class="course">
+      <div class="cover"><span class="save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg></span></div>
+      <span class="tag fe"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="13" rx="2"/><path d="M9 10l-2.5 2 2.5 2M15 10l2.5 2-2.5 2"/></svg>Front End</span>
+      <h4>Beginner's Guide to Becoming a Professional Front-End Developer</h4>
+      <div class="progress"><i style="width:73%"></i></div>
+      <div class="person"><span class="av s32 peach">LS</span><div><div class="n">Leonardo Samsul</div><div class="r">Mentor</div></div></div>
+    </article>
+    <div class="hero" style="width:340px;height:auto"><span class="glow"></span><div class="k">ONLINE COURSE</div><h3>Sharpen Your Skills with Professional Courses</h3><button class="btn primary circle-tail">Join Now <span class="tail"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1B1B23" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></button></div>
+  </div></div>
+  <div class="dont-do">
+    <div class="dd ok"><div class="lbl">✓ Do</div><div class="course" style="width:220px"><div class="cover" style="height:90px"></div><span class="tag ux">UI/UX Design</span><h4 style="font-size:14px">One tag, one title, one progress bar</h4><div class="progress"><i style="width:40%"></i></div></div><p>Clamp titles to two lines; keep a single category tag; progress bar spans full width at 3px.</p></div>
+    <div class="dd no"><div class="lbl">✕ Don't</div><div class="course" style="width:220px;border:1px solid var(--line);box-shadow:var(--shadow-hover)"><div class="cover" style="height:90px;border-radius:2px"></div><div style="display:flex;gap:6px"><span class="tag ux">UI/UX</span><span class="tag fe">Web</span><span class="tag br">Pro</span></div><h4 style="font-size:14px;color:var(--primary)">Purple titles, sharp thumbnails, stacked tags and a permanent shadow</h4></div><p>No borders or resting shadows on cards, no sharp image corners, never colour body text purple, never stack tags.</p></div>
+  </div>
+</section>
+
+<!-- NAV -->
+<section id="nav">
+  <h2 class="sec">Navigation</h2>
+  <p class="lead">Desktop uses a white sidebar with overline group labels and 17px items; mobile uses a five-slot bottom tab bar. The destructive item (Logout) is the only orange text in the product.</p>
+  <div class="spec"><div class="spec-row" style="align-items:flex-start;gap:48px">
+    <nav class="nav"><div class="t-overline" style="margin-bottom:6px">Overview</div>
+      <a class="on" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 0 1 2 2v13.5L14.5 17 11 19.5V6H5z"/><path d="M5 4v14a2 2 0 0 0 2 2h4"/></svg>Lesson</a>
+      <a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>Task</a>
+      <a class="danger" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M14 16l4-4-4-4M18 12H9"/></svg>Logout</a>
+    </nav>
+    <nav class="tabbar">
+      <a class="on" href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Home<i></i></a>
+      <a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 0 1 2 2v13.5L14.5 17 11 19.5V6H5z"/><path d="M5 4v14a2 2 0 0 0 2 2h4"/></svg>Lesson</a>
+      <a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>Task</a>
+      <a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M15 19a4.5 4.5 0 0 1 5.5-4.4"/></svg>Group</a>
+      <a href="#"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/></svg>Inbox</a>
+    </nav>
+  </div></div>
+</section>
+
+<!-- DATA -->
+<section id="data">
+  <h2 class="sec">Data display</h2>
+  <p class="lead">Lists, tables and charts all live on an inset <code>surface/page</code> panel or in a white card — never both. Charts use the brand colour only for the bars that matter.</p>
+  <div class="spec"><div class="spec-row" style="align-items:flex-start">
+    <div class="list">
+      <div class="lrow"><span class="av s50 sky">PS<span class="plus"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></span><div><div class="n">Padhang Satrio</div><div class="r">Mentor</div></div><button class="btn outline">Follow</button></div>
+      <div class="lrow"><span class="av s50 peach">ZH</span><div><div class="n">Zakir Horizontal</div><div class="r">Mentor</div></div><button class="btn outline">Follow</button></div>
+      <button class="btn tonal" style="width:100%;margin-top:8px">See All</button>
+    </div>
+    <div class="chart"><div class="y"><span>60</span><span>40</span><span>20</span></div><div class="plot"><div class="grid"><i></i><i></i><i></i></div><div class="bars"><b style="height:22px"></b><b class="hi" style="height:52px"></b><b style="height:22px"></b><b class="hi" style="height:88px"></b><b style="height:22px"></b></div></div><div class="x"><span>1-10 Aug</span><span>11-20 Aug</span><span>21-30 Aug</span></div></div>
+  </div>
+  <div class="table" style="margin-top:20px;border:1px solid var(--line)"><div class="hdr"><span></span><span>MENTOR</span><span>TYPE</span><span>DESC</span><span style="justify-self:end">ACTION</span></div><div class="row"><span class="av s34 lilac">PS</span><div><div class="name">Padhang Satrio</div><div class="date">2/16/2004</div></div><span class="tag ux">UI/UX Design</span><div class="desc">Understand Of UI/UX Design</div><button class="btn icon xs" style="justify-self:end;border-color:var(--primary);color:var(--primary)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg></button></div></div></div>
+  <div class="note"><b>Mobile rule.</b> Tables never scroll sideways. Below 768px a row collapses to <i>avatar · name+meta stacked · trailing action</i>, and the column header row is dropped.</div>
+</section>
+
+<!-- PATTERNS -->
+<section id="patterns">
+  <h2 class="sec">Page patterns</h2>
+  <p class="lead">Recurring compositions. Reuse them rather than inventing new layouts for the same intent.</p>
+  <table class="t"><tr><th>Pattern</th><th>Anatomy</th><th>Notes</th></tr>
+  <tr><td><b>Section header</b></td><td>h2 · spacer · trailing control (pager pair, "See all" link, or + button)</td><td>Only one trailing control type per header. 14px gap below.</td></tr>
+  <tr><td><b>Promo hero</b></td><td>Brand fill · overline · display text (max 2 lines) · ink pill CTA · sparkle motif top-right + blurred glow</td><td>One per page, always first in the main column. Sparkle never overlaps text.</td></tr>
+  <tr><td><b>Stat strip</b></td><td>3 stat cards in a row (desktop) / snap rail of 200px chips (mobile)</td><td>Icon well uses the category's soft tint; the "more" menu hides on mobile.</td></tr>
+  <tr><td><b>Media rail</b></td><td>White container with 16px padding holding 254px cards at 22px gap; overflow clipped (desktop) · edge-to-edge snap rail of 240px self-contained cards (mobile)</td><td>The clipped third card signals scrollability on desktop; on mobile cards get their own white background instead.</td></tr>
+  <tr><td><b>Progress ring</b></td><td>140px ring (2px track + brand arc, 12 o'clock start) · 110px avatar · % badge at top-right · greeting below</td><td>On mobile rotate to landscape: ring left, copy right, so the card stays short.</td></tr>
+  <tr><td><b>Person list</b></td><td>Inset page-tinted panel · rows of avatar(50) · name/role · outline action · hairline dividers · tonal "See All"</td><td>Max 3 rows before "See All".</td></tr>
+  <tr><td><b>App bar (mobile)</b></td><td>Avatar 44 · greeting caption + name · single icon button with unread dot</td><td>Sticky. Replaces both the sidebar and the desktop header.</td></tr></table>
+</section>
+
+<!-- RESPONSIVE -->
+<section id="responsive">
+  <h2 class="sec">Responsive rules</h2>
+  <div class="spec"><table class="t" style="border:0">
+  <tr><th>Breakpoint</th><th>Behaviour</th></tr>
+  <tr><td>≥ 1400</td><td>Fixed 1352px shell centred on backdrop, 24px radius, app shadow.</td></tr>
+  <tr><td>769 – 1400</td><td>Shell scales proportionally (0.9 → 0.68). No reflow — the composition is the product.</td></tr>
+  <tr><td>≤ 768</td><td>Native-app mode: sidebar → bottom tab bar, header → app bar, grids → snap rails, tables → stacked rows, right panel → stacked cards. 20px gutters (16px under 400px).</td></tr></table></div>
+  <div class="note"><b>Touch targets.</b> Every tappable element is ≥ 44 × 44 on mobile, including the 32px Follow button (extend the hit area with padding, not by enlarging the visual).</div>
+</section>
+
+<!-- USAGE -->
+<section id="usage">
+  <h2 class="sec">Usage &amp; tokens</h2>
+  <p class="lead">Two companion files ship with this guide: <code>coir-six-tokens.json</code> (for Figma Tokens / Style Dictionary) and <code>coir-six-tokens.css</code> (drop into any web project). Import the CSS and every component here works by class name.</p>
+  <div class="spec"><pre class="code" style="white-space:pre-wrap;padding:16px;line-height:19px">&lt;link rel="stylesheet" href="coir-six-tokens.css"&gt;
+
+.my-card { background: var(--color-surface-card); border-radius: var(--radius-xl); padding: var(--space-4); }
+.my-cta  { background: var(--color-text-primary); color: var(--color-text-on-brand); border-radius: var(--radius-pill); height: var(--size-control-lg); }
+.my-tag  { background: var(--color-accent-blue-soft); color: var(--color-accent-blue); font-size: var(--type-tag-size); }</pre></div>
+  <h3 class="sub">Naming convention</h3>
+  <p class="lead" style="margin-bottom:0"><code>category / role / modifier</code> — e.g. <code>color/brand/primary-soft</code>, <code>type/body-sm</code>, <code>radius/xl</code>. Roles describe purpose, never appearance, so a rebrand only touches the values.</p>
+</section>
+</main>
+</div>
+</body>
+</html>

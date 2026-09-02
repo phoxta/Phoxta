@@ -166,6 +166,13 @@ const PORTFOLIO_CSS = `
 .pf-cs__btn--light:hover{background:var(--pf-accent);color:#fff}
 .pf-cs__btn--outline{border:1.5px solid rgba(255,255,255,.35);color:#fff}
 .pf-cs__btn--outline:hover{border-color:#fff;color:#fff}
+.pf-cs__btn--dark{background:var(--pf-ink);color:#fff}
+.pf-cs__btn--dark:hover{background:var(--cs-accent);color:#fff}
+
+.pf-cs__ds-shot{transition:transform .3s ease}
+.pf-cs__ds-shot:hover{transform:translateY(-4px)}
+.pf-cs__ds-shot .pf-cs__shot{transition:box-shadow .3s ease}
+.pf-cs__ds-shot:hover .pf-cs__shot{box-shadow:0 50px 110px -60px rgba(15,14,25,.75)}
 
 .pf-cs__shot{border-radius:18px;overflow:hidden;border:1px solid var(--pf-line);box-shadow:0 40px 90px -60px rgba(15,14,25,.7);background:#fff}
 .pf-cs__shot--hero{border-color:rgba(255,255,255,.12)}
