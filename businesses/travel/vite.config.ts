@@ -1,14 +1,40 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
 const r = (p: string) => path.resolve(__dirname, p);
 
+// Next-style static image imports. The template (a Next.js port) reads `img.src`
+// on imported assets in ~40 places (hero/why-us avatars, blog authors, airline
+// logos…). Vite exports an asset as a plain URL string, so every one of those
+// reads was `undefined` — hence the empty avatar circles. Wrap each image export
+// as `{ src, toString() }`: `img.src` works, and any plain-string use (template
+// literals, <img src={img}>, the next/image shim) still coerces to the URL.
+const IMAGE_RE = /\.(png|jpe?g|webp|gif|avif|svg)$/i;
+function nextStaticImages(): Plugin {
+    return {
+        name: "phoxta:next-static-images",
+        enforce: "post",
+        transform(code, id) {
+            const [file, query = ""] = id.split("?");
+            if (!IMAGE_RE.test(file) || /(^|&)(raw|url|inline)(&|=|$)/.test(query)) return null;
+            const m = code.match(/^\s*export default\s+([^\n;]+);?\s*$/m);
+            if (!m) return null;
+            return {
+                code:
+                    `const __src = ${m[1]};\n` +
+                    `export default { src: __src, toString() { return __src; }, [Symbol.toPrimitive]() { return __src; } };`,
+                map: null,
+            };
+        },
+    };
+}
+
 // next/* imports are aliased to local shims so the template's component/page code
 // runs unchanged on Vite + React Router (see src/shims/*).
 export default defineConfig({
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), nextStaticImages()],
     // The template reads process.env.NEXT_PUBLIC_THEME_DIR at runtime (RTL/LTR);
     // `process` doesn't exist in the browser under Vite, so inline it as LTR.
     define: {
