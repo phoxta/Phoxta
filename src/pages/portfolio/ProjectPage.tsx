@@ -1,7 +1,10 @@
 import { Link, useParams, Navigate } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { findCaseStudy, type CaseStudy } from "@/shared/portfolio/caseStudies";
-import { PROFILE, PORTFOLIO_URL, PROJECTS, type Project } from "@/shared/portfolio/portfolioData";
+import { PROFILE, PORTFOLIO_URL, PROJECTS, responsiveSrcSet, type Project } from "@/shared/portfolio/portfolioData";
+
+/** Absolute URL on the portfolio host for social cards (the default helper points at www.phoxta.com). */
+const absoluteOnPortfolio = (path: string) => `${PORTFOLIO_URL}${path.replace(/^\//, "")}`;
 
 const ARROW = (
     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -67,7 +70,9 @@ function ProjectBrief({ p }: { p: Project }) {
                 title={`${p.name} — ${p.kicker} · ${PROFILE.shortName}`}
                 description={p.summary}
                 canonicalUrl={`${PORTFOLIO_URL}work/${p.slug}`}
-                image={p.image}
+                image={absoluteOnPortfolio(p.image)}
+                siteName={PROFILE.shortName}
+                twitterHandle={null}
             />
 
             <section className="pf-cs__hero pt-150 pb-60">
@@ -91,7 +96,7 @@ function ProjectBrief({ p }: { p: Project }) {
                 </div>
                 <div className="container-2200 px-3 px-lg-4 mt-60">
                     <div className="pf-cs__shot pf-cs__shot--hero">
-                        <img src={p.image} alt={`${p.name} — ${p.kicker}`} width={1600} height={1000} loading="eager" className="w-100" />
+                        <img src={p.image} srcSet={responsiveSrcSet(p.image)} sizes="(max-width: 1440px) 100vw, 1400px" alt={`${p.name} — ${p.kicker}`} width={1600} height={1000} loading="eager" fetchPriority="high" className="w-100" />
                     </div>
                 </div>
             </section>
@@ -144,19 +149,29 @@ function ProjectBrief({ p }: { p: Project }) {
 
 /* ── Full case study ───────────────────────────────────────────────── */
 function CaseStudyPage({ cs }: { cs: CaseStudy }) {
+    const project = PROJECTS.find((p) => p.slug === cs.slug);
     return (
         <div className="pf-cs" style={{ "--cs-accent": cs.accent } as React.CSSProperties}>
             <PageMeta
                 title={`${cs.name} — ${cs.kicker.split(" · ")[0]} · ${PROFILE.shortName}`}
                 description={cs.tagline}
                 canonicalUrl={`${PORTFOLIO_URL}work/${cs.slug}`}
-                image={cs.hero}
+                image={absoluteOnPortfolio(cs.hero)}
+                siteName={PROFILE.shortName}
+                twitterHandle={null}
             />
 
             {/* ── Hero ── */}
             <section className="pf-cs__hero pt-150 pb-60">
                 <div className="container-2200 px-3 px-lg-4">
+                    {/* The hero is image-led on purpose; the document still needs its heading. */}
+                    <h1 className="visually-hidden">{cs.name} — {cs.kicker}</h1>
                     <BackLink />
+                    {project && (
+                        <div className="mb-20">
+                            <span className="pf-badge pf-badge--light">{project.badge}</span>
+                        </div>
+                    )}
                     <div className="d-flex flex-wrap align-items-center gap-3">
                         {cs.prototypeUrl && (
                             <a href={cs.prototypeUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__btn pf-cs__btn--solid d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
@@ -176,7 +191,7 @@ function CaseStudyPage({ cs }: { cs: CaseStudy }) {
 
                 <div className="container-2200 px-3 px-lg-4 mt-60">
                     <div className="pf-cs__shot pf-cs__shot--hero">
-                        <img src={cs.hero} alt={cs.heroAlt} width={1600} height={1120} loading="eager" className="w-100" />
+                        <img src={cs.hero} srcSet={responsiveSrcSet(cs.hero)} sizes="(max-width: 1440px) 100vw, 1400px" alt={cs.heroAlt} width={1600} height={1120} loading="eager" fetchPriority="high" className="w-100" />
                     </div>
                 </div>
             </section>
@@ -273,7 +288,7 @@ function CaseStudyPage({ cs }: { cs: CaseStudy }) {
                                     {h.image && (
                                         <div className="col-lg-7">
                                             <div className="pf-cs__shot">
-                                                <img src={h.image} alt={h.imageAlt || h.title} width={1600} height={1120} loading="lazy" className="w-100" />
+                                                <img src={h.image} srcSet={responsiveSrcSet(h.image)} sizes="(max-width: 991px) 100vw, 58vw" alt={h.imageAlt || h.title} width={1600} height={1120} loading="lazy" className="w-100" />
                                             </div>
                                         </div>
                                     )}
@@ -333,7 +348,7 @@ function CaseStudyPage({ cs }: { cs: CaseStudy }) {
                         {cs.designSystemImage && (
                             <a href={cs.designSystemUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__ds-shot d-block">
                                 <div className="pf-cs__shot">
-                                    <img src={cs.designSystemImage} alt={`${cs.name} design system documentation`} width={1600} height={1138} loading="lazy" className="w-100" />
+                                    <img src={cs.designSystemImage} srcSet={responsiveSrcSet(cs.designSystemImage)} sizes="(max-width: 1440px) 100vw, 1400px" alt={`${cs.name} design system documentation`} width={1600} height={1138} loading="lazy" className="w-100" />
                                 </div>
                             </a>
                         )}

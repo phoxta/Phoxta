@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
-import { PROJECTS } from "@/shared/portfolio/portfolioData";
+import { PROJECTS, responsiveSrcSet } from "@/shared/portfolio/portfolioData";
 import { findCaseStudy } from "@/shared/portfolio/caseStudies";
 
 // Selected work in the "What we do" format from phoxta.com/marketing
@@ -64,15 +64,26 @@ export default function Work() {
                                         const href = `/work/${p.slug}`;
                                         const label = findCaseStudy(p.slug) ? "View case study" : "View project";
                                         return (
-                                            <div key={p.slug} className="item">
+                                            <div key={p.slug} className="item" role="listitem">
                                                 <div className="container bg-neutral-50 rounded-4 pf-work__card">
                                                     <Link to={href} className="pf-work__shot" aria-label={`${label}: ${p.name}`}>
-                                                        <img src={p.image} alt={`${p.name} — ${p.kicker}`} width={1600} height={1000} loading="lazy" />
+                                                        <img
+                                                            src={p.image}
+                                                            srcSet={responsiveSrcSet(p.image)}
+                                                            sizes="(max-width: 991px) 100vw, 66vw"
+                                                            alt={`${p.name} — ${p.kicker}`}
+                                                            width={1600}
+                                                            height={1000}
+                                                            loading="lazy"
+                                                        />
                                                         <span className="pf-work__peek" aria-hidden="true">{label} {NAV_ARROW}</span>
                                                     </Link>
                                                     <div className="pf-work__foot">
                                                         <div className="pf-work__copy">
-                                                            <span className="pf-work__kicker d-block">{p.kicker} · {p.period}</span>
+                                                            <span className="pf-work__kicker d-flex align-items-center flex-wrap gap-2">
+                                                                <span className="pf-badge">{p.badge}</span>
+                                                                <span>{p.kicker} · {p.period}</span>
+                                                            </span>
                                                             <h4 className="pf-work__name text-scale-anim">
                                                                 <Link to={href} className="pf-work__name-link">{p.name}</Link>
                                                             </h4>

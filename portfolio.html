@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      femi.phoxta.com — the portfolio's OWN entry. It shares the Phoxta design
+      system (main.css, Bootstrap grid, spacing utilities) but none of the
+      marketing site's vendor stylesheets, icon fonts, dashboard font or auth /
+      Supabase code. Prerendered per route by scripts/prerender.mjs; the edge
+      middleware serves those snapshots on the femi host.
+    -->
+    <title>Femi Adeyemi — Product Designer</title>
+    <meta name="description" content="Oluwafemi Adeyemi is a product designer with 7+ years taking software from research and systems to shipped, production-ready interfaces." />
+    <link rel="icon" href="/assets/imgs/portfolio/femi-adeyemi-96.webp" type="image/webp" />
+    <link rel="apple-touch-icon" href="/assets/imgs/portfolio/femi-adeyemi-400.webp" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,100..1000&display=swap" />
+    <link rel="stylesheet" href="/assets/css/vendors/bootstrap.min.css" />
+    <link rel="stylesheet" href="/assets/css/vendors/spacing.css" />
+    <link rel="stylesheet" href="/assets/css/main.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/portfolio-main.tsx"></script>
+  </body>
+</html>

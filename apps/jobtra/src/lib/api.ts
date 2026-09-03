@@ -10,3 +10,17 @@ export function apiUrl(path: string): string {
     const route = path.replace(/^\/?api\//, "").replace(/^\/+/, "");
     return `${BASE}/${route}`;
 }
+
+/**
+ * Headers for endpoints that act on the owner's data (Gmail token/disconnect).
+ * The edge function verifies the session JWT and checks it belongs to the
+ * workspace owner — the access code is no longer sent over the wire.
+ */
+export async function authHeaders(): Promise<Record<string, string>> {
+    const { supabase } = await import("./cloud");
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token
+        ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+        : { "Content-Type": "application/json" };
+}

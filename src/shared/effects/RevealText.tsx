@@ -12,13 +12,10 @@ export default function RevealText({ children }: { children: ReactNode }) {
 
     tokens.forEach((token) => {
       if (/^\s+$/.test(token)) {
-        for (let s = 0; s < token.length; s++) {
-          out.push(
-            <span key={`${keyPrefix}-${keyStart.current++}`} className="split-char" style={{ display: "inline-block" }}>
-              {"\u00A0"}
-            </span>,
-          );
-        }
+        // A plain space, not an inline-block NBSP span: browsers collapse a
+        // normal space at a line start, so a wrapped line never begins with a
+        // visible indent (the NBSP version did \u2014 "\u2423and ship them.").
+        out.push(" ");
       } else {
         out.push(
           <span

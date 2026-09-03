@@ -17,9 +17,11 @@ export default function Hero() {
         <section
             id="top"
             className="home-3-section-8 pf-hero pf-hero--dark bg-cover bg-neutral-900 overflow-hidden pt-150 pb-120"
-            data-background="/assets/imgs/pages/bg-img-3.webp"
-            style={{ backgroundImage: "url(/assets/imgs/pages/bg-img-3.webp)", backgroundSize: "cover" }}
+            data-background="/assets/imgs/portfolio/hero-bg.webp"
+            style={{ backgroundImage: "url(/assets/imgs/portfolio/hero-bg.webp)", backgroundSize: "cover" }}
         >
+            {/* The portrait is the LCP element: ask for it before the bundle finishes parsing. */}
+            <link rel="preload" as="image" href="/assets/imgs/portfolio/femi-adeyemi-400.webp" imageSrcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi.webp 900w" imageSizes="(max-width: 991px) 90vw, 360px" fetchPriority="high" />
             <div className="container-2200 px-3 px-lg-4">
                 <div className="row g-4 g-lg-5 align-items-center">
                     <div className="col-lg-7 me-auto">
@@ -35,20 +37,23 @@ export default function Hero() {
                             production-ready interfaces with hands-on front-end development.
                         </p>
                         <div className="at-btn-group at-btn-group-transparent at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
-                            <a href="#work" onClick={onAnchorClick("work", 88)} className="at-btn-circle">{ARROW_CIRCLE}</a>
+                            <a href="#work" onClick={onAnchorClick("work", 88)} className="at-btn-circle" aria-label="Jump to my work">{ARROW_CIRCLE}</a>
                             <a href="#work" onClick={onAnchorClick("work", 88)} className="at-btn z-index-1">View my work</a>
-                            <a href={`mailto:${PROFILE.email}`} className="at-btn-circle">{ARROW_CIRCLE}</a>
+                            <a href={`mailto:${PROFILE.email}`} className="at-btn-circle" aria-label={`Email ${PROFILE.shortName}`}>{ARROW_CIRCLE}</a>
                         </div>
                     </div>
                     <div className="col-lg-4">
                         <div className="pf-hero__photo p-relative rounded-4 overflow-hidden">
                             <img
-                                src={PROFILE.photo}
+                                src="/assets/imgs/portfolio/femi-adeyemi-400.webp"
+                                srcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi.webp 900w"
+                                sizes="(max-width: 991px) 90vw, 360px"
                                 alt={PROFILE.name}
                                 width={360}
                                 height={432}
                                 className="img-cover w-100 h-100"
                                 loading="eager"
+                                fetchPriority="high"
                             />
                             <span className="pf-hero__badge">
                                 <span className="pf-hero__badge-dot" aria-hidden="true" />

@@ -12,7 +12,9 @@ export default function PortfolioFooter() {
                 <div className="row g-4 align-items-start">
                     <div className="col-lg-6">
                         <a href="#top" onClick={onAnchorClick("top", 0)} className="pf-brand pf-brand--footer d-inline-flex align-items-center gap-2 text-decoration-none">
-                            <span className="pf-brand__mark" aria-hidden="true">{PROFILE.monogram}</span>
+                            <span className="pf-brand__mark pf-brand__mark--photo" aria-hidden="true">
+                                <img src="/assets/imgs/portfolio/femi-adeyemi-96.webp" alt="" width={40} height={40} loading="lazy" />
+                            </span>
                             <span className="pf-brand__name text-white">{PROFILE.name}</span>
                         </a>
                         <p className="pf-footer__line mt-20 mb-0">

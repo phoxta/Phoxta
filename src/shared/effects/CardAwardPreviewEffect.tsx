@@ -39,8 +39,9 @@ export default function CardAwardPreviewEffect() {
       if (!preview) {
         preview = document.createElement("div");
         preview.className = "card-award-preview card-award-hover-preview";
+        // No src until a card is hovered: an empty src="" makes the browser
+        // request the page URL as an image and counts as a broken image.
         const previewImg = document.createElement("img");
-        previewImg.src = "";
         previewImg.alt = "";
         preview.appendChild(previewImg);
         document.body.appendChild(preview);

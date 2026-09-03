@@ -117,7 +117,7 @@ export const CASE_STUDIES: CaseStudy[] = [
         kicker: "E-learning platform · Product Design",
         tagline: "A calm, glance-first learning dashboard that keeps self-paced students coming back.",
         summary:
-            "Coir Six is an online-learning platform where the hardest problem isn't the content — it's momentum. I designed the learner's home: a single screen that answers “where was I, how am I doing, and what's next?” the moment it loads, and holds its shape from a three-pane desktop console down to a one-handed mobile app.",
+            "Coir Six is a self-initiated concept: an online-learning platform where the hardest problem isn't the content — it's momentum. I designed the learner's home: a single screen that answers “where was I, how am I doing, and what's next?” the moment it loads, and holds its shape from a three-pane desktop console down to a one-handed mobile app.",
         hero: "/assets/imgs/portfolio/coir-six.webp",
         heroAlt: "Coir Six learning dashboard — desktop",
         accent: "#6C5DD3",
@@ -196,7 +196,7 @@ export const CASE_STUDIES: CaseStudy[] = [
         kicker: "Skincare e-commerce · Product & Web Design",
         tagline: "A botanical skincare storefront built to earn trust and convert — from the hero to the last step of checkout.",
         summary:
-            "Ferne is a small-batch botanical skincare brand whose whole promise is traceability — every active tied to a farm you can name. I designed and built the full storefront: an editorial homepage, a faceted shop, rich product pages and a friction-light cart-to-confirmation flow. A complete, shoppable experience — not a landing page.",
+            "Ferne is a self-initiated concept for a small-batch botanical skincare brand whose whole promise is traceability — every active tied to a farm you can name. I designed and built the full storefront: an editorial homepage, a faceted shop, rich product pages and a friction-light cart-to-confirmation flow. A complete, shoppable experience — not a landing page.",
         hero: "/assets/imgs/portfolio/ferne.webp",
         heroAlt: "Ferne skincare storefront — homepage",
         accent: "#5F6F52",

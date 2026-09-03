@@ -32,6 +32,10 @@ type Props = {
      * would produce the wrong host.
      */
     canonicalUrl?: string;
+    /** og:site_name override — the portfolio is Femi's site, not Phoxta's. */
+    siteName?: string;
+    /** twitter:site handle; pass null to omit the tag (no account for this site). */
+    twitterHandle?: string | null;
 };
 
 /**
@@ -50,6 +54,8 @@ export default function PageMeta({
     noindex = false,
     jsonLd,
     canonicalUrl,
+    siteName = SITE_NAME,
+    twitterHandle = TWITTER_HANDLE,
 }: Props) {
     const location = useLocation();
     const url = canonicalUrl ?? absoluteUrl(path ?? location.pathname);
@@ -64,7 +70,7 @@ export default function PageMeta({
 
             {/* Open Graph */}
             <meta property="og:type" content={type} />
-            <meta property="og:site_name" content={SITE_NAME} />
+            <meta property="og:site_name" content={siteName} />
             <meta property="og:title" content={title} />
             <meta property="og:description" content={description} />
             <meta property="og:url" content={url} />
@@ -73,7 +79,7 @@ export default function PageMeta({
 
             {/* Twitter */}
             <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:site" content={TWITTER_HANDLE} />
+            {twitterHandle ? <meta name="twitter:site" content={twitterHandle} /> : null}
             <meta name="twitter:title" content={title} />
             <meta name="twitter:description" content={description} />
             <meta name="twitter:image" content={ogImage} />

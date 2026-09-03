@@ -126,7 +126,7 @@ const PORTFOLIO_CSS = `
 .pf-hero__badge-dot{width:8px;height:8px;border-radius:50%;background:var(--pf-accent);box-shadow:0 0 0 0 rgba(240,70,14,.5);animation:pf-pulse 2s infinite}
 
 /* Work-card CTA → case study / live site */
-.pf-work__cta{color:var(--pf-accent);font-size:15px;width:max-content;flex:none;transition:gap .2s ease,opacity .2s ease}
+.pf-work__cta{color:var(--pf-accent);font-size:15px;width:max-content;flex:none;min-height:44px;padding:8px 0;transition:gap .2s ease,opacity .2s ease}
 .pf-work__cta svg{transition:transform .2s ease}
 .pf-work__cta:hover{color:var(--pf-accent);opacity:.85}
 .pf-work__cta:hover svg{transform:translateX(3px)}
@@ -147,6 +147,21 @@ const PORTFOLIO_CSS = `
 .pf-work__name-link:hover{color:var(--pf-accent)}
 .pf-cs__brief-list{display:flex;flex-direction:column;gap:14px}
 .pf-cs__brief-item .pf-cs__outcome-dot{margin-top:11px}
+
+/* ── Audit fixes (3 Sep 2026): tap targets, focus, contrast, mobile ── */
+.pf-nav .pf-nav__link{display:inline-block;padding:12px 6px}
+.pf-foot-link{display:inline-block;padding:8px 0}
+.pf-work__name-link{display:inline-block;padding:6px 0;margin:-6px 0}
+.pf-contact__item{display:inline-flex;align-items:center;min-height:44px}
+.pf-contact__item+.pf-contact__item::before{content:"·";color:rgba(255,255,255,.4);margin:0 16px}
+.pf-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--pf-muted);border:1px solid var(--pf-line);border-radius:999px;padding:3px 9px;line-height:1.3;white-space:nowrap}
+.pf-badge--light{color:rgba(255,255,255,.85);border-color:rgba(255,255,255,.32)}
+.fx-portfolio :focus-visible{outline:2px solid var(--pf-accent);outline-offset:3px;border-radius:4px}
+/* Accent numbers failed 4.5:1 on light accents (Wander sky, Aurelia powder blue): ink carries the number, the accent stays on the dot/glow. */
+.pf-cs__goal-no,.pf-cs__step-no{color:var(--pf-ink)}
+/* The ticker is decorative; overflow clip keeps it non-scrollable so it needs no keyboard focus. */
+.pf-clients .rfm-marquee-container{overflow:clip}
+@media (max-width:991px){.pf-work__nav{display:none}}
 .pf-work__foot{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:16px 8px 8px}
 .pf-work__copy{min-width:0}
 .pf-work__kicker{font-size:12.5px;color:var(--pf-muted);letter-spacing:.02em;margin-bottom:3px}
@@ -356,7 +371,7 @@ export default function PortfolioLayout() {
         <div className="fx-portfolio">
             <style>{PORTFOLIO_CSS}</style>
             <SmoothScrollEffect />
-            <GlobalEffects />
+            <GlobalEffects lean />
             <ThemeRouteSync />
             <PortfolioHeader />
             <div id="smooth-wrapper">

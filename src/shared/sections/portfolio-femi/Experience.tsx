@@ -8,7 +8,7 @@ export default function Experience() {
                     <div className="col-lg-8">
                         <span className="pf-eyebrow pf-eyebrow--light">Experience</span>
                         <h2 className="pf-section-title fz-60 fw-600 lh-1 mt-20 mb-0 text-white">
-                            Where I've Worked
+                            Where I've worked
                         </h2>
                     </div>
                     <div className="col-lg-4 mt-3 mt-lg-0">

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Private tools on this host
+Disallow: /jobtra
+
+Sitemap: https://femi.phoxta.com/sitemap.xml

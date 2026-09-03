@@ -129,6 +129,18 @@ async function run() {
     let ok = 0;
     const failedRoutes = [];
 
+    // The portfolio has its own entry (dist/portfolio.html). Vite's preview
+    // server would answer /portfolio/* with the main SPA shell, so for those
+    // routes the document request is answered from portfolio.html instead —
+    // the snapshot then carries the lean bundle, not the marketing site's.
+    let portfolioShell = null;
+    try {
+        portfolioShell = readFileSync(resolve(DIST, "portfolio.html"), "utf8");
+    } catch {
+        console.warn("[prerender] dist/portfolio.html not found — portfolio routes will use the main shell.");
+    }
+    const isPortfolioRoute = (route) => route === "/portfolio" || route.startsWith("/portfolio/");
+
     /**
      * Prerendering is a network-shaped job on a shared build machine, and one
      * route occasionally takes longer than the timeout for no reason to do with
@@ -149,6 +161,16 @@ async function run() {
         const page = await browser.newPage();
         try {
             await page.setViewport({ width: 1366, height: 900 });
+            if (portfolioShell && isPortfolioRoute(route)) {
+                await page.setRequestInterception(true);
+                page.on("request", (r) => {
+                    if (r.resourceType() === "document" && isPortfolioRoute(new URL(r.url()).pathname)) {
+                        r.respond({ status: 200, contentType: "text/html; charset=utf-8", body: portfolioShell });
+                    } else {
+                        r.continue();
+                    }
+                });
+            }
             await page.goto(`${base}${route}`, {
                 waitUntil: "networkidle0",
                 timeout: 45000 * attempt,

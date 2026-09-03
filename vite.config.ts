@@ -26,6 +26,12 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      // Two HTML entries: the Phoxta SPA and the portfolio's own lean entry
+      // (portfolio.html → src/portfolio-main.tsx), prerendered per route.
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        portfolio: path.resolve(__dirname, "portfolio.html"),
+      },
       output: {
         // Split out the large, React-free libs into cacheable chunks (these have
         // no dependency back into the app/React graph, so no circular chunks).

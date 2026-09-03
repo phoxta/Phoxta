@@ -19,7 +19,6 @@ const PERSON_JSONLD = {
     description: PROFILE.lede,
     url: PORTFOLIO_URL,
     email: `mailto:${PROFILE.email}`,
-    telephone: PROFILE.phone,
     address: { "@type": "PostalAddress", addressCountry: "GB" },
     knowsAbout: [
         "Product Design",
@@ -43,7 +42,9 @@ export default function PortfolioPage() {
                 title="Femi Adeyemi — Product Designer"
                 description="Oluwafemi Adeyemi is a product designer with 7+ years taking software from research and systems to shipped, production-ready interfaces — with hands-on front-end in React, Next.js and TypeScript."
                 canonicalUrl={PORTFOLIO_URL}
-                image="/assets/imgs/pages/img-101.webp"
+                image={`${PORTFOLIO_URL}assets/imgs/portfolio/og-card.png`}
+                siteName={PROFILE.shortName}
+                twitterHandle={null}
                 jsonLd={PERSON_JSONLD}
             />
             <Hero />

@@ -1,18 +1,37 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Lock, KeyRound, ArrowRight, ShieldCheck, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { apiUrl } from '../lib/api';
+import { supabase } from '../lib/cloud';
 
 interface AccessCodeAuthProps {
   onSuccess: () => void;
-  correctCode?: string;
 }
 
 export const ACCESS_AUTH_STORAGE_KEY = 'jobtra_auth_authenticated_v1';
-export const ACCESS_CODE_DEFAULT = '082900';
 
-export const AccessCodeAuth: React.FC<AccessCodeAuthProps> = ({
-  onSuccess,
-  correctCode = ACCESS_CODE_DEFAULT,
-}) => {
+/**
+ * The access code is verified ON THE SERVER and exchanged for the workspace
+ * owner's Supabase session (jobtra-ai `session` route). The data tables are
+ * readable only by that session (migration 0144), so the code in the browser
+ * bundle no longer guards anything by itself.
+ */
+async function exchangeCodeForSession(code: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await fetch(apiUrl('/api/session'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 429) return { ok: false, error: 'Too many attempts. Wait a few minutes and try again.' };
+  if (!res.ok || !data?.access_token || !data?.refresh_token) {
+    return { ok: false, error: data?.error === 'unauthorized' ? 'Incorrect access code. Please enter the valid code.' : (data?.error || 'Could not unlock the workspace. Try again.') };
+  }
+  const { error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export const AccessCodeAuth: React.FC<AccessCodeAuthProps> = ({ onSuccess }) => {
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [singleInput, setSingleInput] = useState('');
   const [useSingleInput, setUseSingleInput] = useState(false);
@@ -31,34 +50,38 @@ export const AccessCodeAuth: React.FC<AccessCodeAuthProps> = ({
     }
   }, [useSingleInput]);
 
-  const verifyCode = (codeToTest: string) => {
+  const verifyCode = async (codeToTest: string) => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
 
-    // Normalize
     const cleanCode = codeToTest.trim();
-
-    if (cleanCode === correctCode) {
-      if (rememberDevice) {
-        localStorage.setItem(ACCESS_AUTH_STORAGE_KEY, 'true');
-      } else {
-        sessionStorage.setItem(ACCESS_AUTH_STORAGE_KEY, 'true');
-      }
-      setTimeout(() => {
-        setIsSubmitting(false);
-        onSuccess();
-      }, 200);
+    let failure: string | null = null;
+    if (!cleanCode) {
+      failure = 'Please enter the access code';
     } else {
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setError('Incorrect access code. Please enter the valid code.');
-        setIsShaking(true);
-        setTimeout(() => setIsShaking(false), 600);
-        // Clear digits
-        setDigits(['', '', '', '', '', '']);
-        setSingleInput('');
-        inputRefs.current[0]?.focus();
-      }, 250);
+      const result = await exchangeCodeForSession(cleanCode);
+      if (result.ok === false) failure = result.error;
+    }
+
+    setIsSubmitting(false);
+    if (failure === null) {
+      try {
+        if (rememberDevice) {
+          localStorage.setItem(ACCESS_AUTH_STORAGE_KEY, 'true');
+        } else {
+          sessionStorage.setItem(ACCESS_AUTH_STORAGE_KEY, 'true');
+        }
+      } catch {}
+      onSuccess();
+    } else {
+      setError(failure);
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 600);
+      // Clear digits
+      setDigits(['', '', '', '', '', '']);
+      setSingleInput('');
+      inputRefs.current[0]?.focus();
     }
   };
 

@@ -28,12 +28,31 @@ import {
   testFirestoreConnection,
   purgeLegacyDemoData,
   clearAllApplicationsFromFirestore,
+  onCloudProblem,
+  supabase,
 } from './lib/cloud';
 
 const STORAGE_KEY = 'notion_job_tracker_apps_v2';
 const EMAIL_QUEUE_KEY = 'notion_job_tracker_emails_v2';
 const ACCOUNTS_STORAGE_KEY = 'notion_job_tracker_accounts_v2';
 const CVS_STORAGE_KEY = 'notion_job_tracker_cvs_v2';
+
+/**
+ * A unique id, not a timestamp.
+ *
+ * Ids were `app-${Date.now()}`, and rows are written with UPSERT — so two
+ * applications created in the same millisecond shared an id and the second
+ * silently OVERWROTE the first. The email sync creates several in one pass,
+ * which is exactly the shape that collides; the stored data still carries ids a
+ * millisecond apart from it. randomUUID has no such window. The `app-` prefix
+ * stays so old and new ids read alike.
+ */
+const newAppId = (): string => {
+  const rand = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `app-${rand}`;
+};
 
 export default function App() {
   // Applications state
@@ -83,7 +102,10 @@ export default function App() {
   // Cloud status
   const [isFirebaseConnected, setIsFirebaseConnected] = useState(true);
 
-  // Access code authentication state ("082900")
+  // Workspace gate. The real lock is the owner's Supabase session (the access
+  // code is exchanged for it server-side); the storage flag only remembers that
+  // this device unlocked before, so the gate doesn't flash while the session
+  // is being read back from storage.
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
       return (
@@ -94,12 +116,23 @@ export default function App() {
       return false;
     }
   });
+  useEffect(() => {
+    let alive = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (alive && !data.session) setIsAuthenticated(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) setIsAuthenticated(false);
+    });
+    return () => { alive = false; sub.subscription.unsubscribe(); };
+  }, []);
 
   const handleLockWorkspace = () => {
     try {
       localStorage.removeItem(ACCESS_AUTH_STORAGE_KEY);
       sessionStorage.removeItem(ACCESS_AUTH_STORAGE_KEY);
     } catch {}
+    void supabase.auth.signOut();
     setIsAuthenticated(false);
   };
 
@@ -108,6 +141,29 @@ export default function App() {
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
+
+  /**
+   * What the app is allowed to tell you.
+   *
+   * Every failure path here used to end in console.warn: a save that failed, a
+   * load that returned nothing because the request errored, an add that was
+   * silently treated as a duplicate. All of them looked identical from the
+   * outside — the row was simply not there. This is the one channel that says
+   * why, and it is deliberately shown for successes-with-a-catch too ("already
+   * tracking this one"), because those are the cases people report as bugs.
+   */
+  const [notice, setNotice] = useState<{ kind: 'error' | 'info'; text: string } | null>(null);
+  const say = (kind: 'error' | 'info', text: string) => {
+    setNotice({ kind, text });
+    // Errors stay until dismissed; an informational note gets out of the way.
+    if (kind === 'info') window.setTimeout(() => setNotice((n) => (n && n.text === text ? null : n)), 5000);
+  };
+
+  // Storage failures reach the UI instead of the console (see cloud.ts).
+  useEffect(() => onCloudProblem(({ op, what, message }) => {
+    const verb = op === 'save' ? 'save' : op === 'delete' ? 'delete' : 'load';
+    say('error', `Couldn't ${verb} your ${what}: ${message}. Nothing was lost locally — check your connection and try again.`);
+  }), []);
 
   // Filters and sorting
   const [searchQuery, setSearchQuery] = useState('');
@@ -291,7 +347,7 @@ export default function App() {
     const role = parts[1]?.trim() || (parts[0]?.trim() ? `${parts[0].trim()} Role` : 'Target Position');
 
     const newApp: JobApplication = {
-      id: `app-${Date.now()}`,
+      id: newAppId(),
       company: company || 'New Company',
       role: role || 'Target Position',
       status,
@@ -307,9 +363,10 @@ export default function App() {
     };
 
     setApplications((prev) => [newApp, ...prev]);
-    saveApplicationToFirestore(newApp).catch((err) =>
-      console.warn('Firestore quick add error:', err)
-    );
+    saveApplicationToFirestore(newApp).catch(() => {
+      // Same rule as the modal add: if it did not store, it does not stay.
+      setApplications((prev) => prev.filter((a) => a.id !== newApp.id));
+    });
   };
 
   // Add full application from modal — with de-duplication so the same job isn't
@@ -322,13 +379,21 @@ export default function App() {
       (norm(a.company) !== '' && norm(a.company) === norm(newApp.company) && norm(a.role) === norm(newApp.role))
     );
     if (dup) {
+      // SAY SO. This silently opened the existing record and dropped the new
+      // one, which is indistinguishable from a failed save — and it fires on
+      // company+role alone, so a second role at a company you already track
+      // looked like the app refusing to save.
       setSelectedApplication(dup);
+      say('info', `You're already tracking ${dup.role} at ${dup.company} — opened it instead of adding a duplicate.`);
       return;
     }
     setApplications((prev) => [newApp, ...prev]);
-    saveApplicationToFirestore(newApp).catch((err) =>
-      console.warn('Supabase add application error:', err)
-    );
+    saveApplicationToFirestore(newApp).catch(() => {
+      // cloud.ts has already reported WHY. Take the card back off the board so
+      // what is on screen matches what is stored — leaving it there is how a
+      // failed save looked fine until the next refetch quietly removed it.
+      setApplications((prev) => prev.filter((a) => a.id !== newApp.id));
+    });
   };
 
   // Update existing application
@@ -368,25 +433,44 @@ export default function App() {
     );
   };
 
-  // Purge junk dummy applications (e.g. old "Target Company" or "Helping Hands" placeholders)
+  /**
+   * Purge placeholder applications — the ones the importer invented.
+   *
+   * This deleted from the DATABASE, permanently, with no confirmation, anything
+   * whose company was blank or matched a generic name. Two problems: a real
+   * employer can legitimately be called "Company", and a real application you
+   * had filled in by hand could still be sitting under a blank company — both
+   * were destroyed on one click of a button whose natural use is "tidy up the
+   * junk the AI made". Now it only takes rows with NOTHING of yours in them,
+   * and it tells you exactly what it is about to remove.
+   */
   const handlePurgeJunkApplications = () => {
     const junkCompNames = ['target company', 'helping hands', 'unknown', 'hiring organization', 'company'];
-    const junkIds: string[] = [];
+    // Anything you touched is not junk, whatever the company says.
+    const hasYourWork = (app: JobApplication) =>
+      !!(app.jobUrl || (app.notes || '').trim() || app.appliedCvId || app.contactName || app.contactEmail ||
+        (app.linkedEmails && app.linkedEmails.length) || (app.interviewRounds && app.interviewRounds.length) ||
+        app.nextStepDate || app.salary);
 
-    setApplications((prev) =>
-      prev.filter((app) => {
-        const compLower = (app.company || '').trim().toLowerCase();
-        const isJunk = !compLower || junkCompNames.includes(compLower);
-        if (isJunk) {
-          junkIds.push(app.id);
-          deleteApplicationFromFirestore(app.id).catch((err) =>
-            console.warn('Firestore delete junk application error:', err)
-          );
-          return false;
-        }
-        return true;
-      })
+    const doomed = applications.filter((app) => {
+      const compLower = (app.company || '').trim().toLowerCase();
+      return (!compLower || junkCompNames.includes(compLower)) && !hasYourWork(app);
+    });
+
+    if (doomed.length === 0) {
+      say('info', 'Nothing to clean up — no placeholder applications found.');
+      return;
+    }
+    const list = doomed.slice(0, 8).map((a) => `• ${a.company || '(no company)'} — ${a.role || '(no role)'}`).join('\n');
+    const more = doomed.length > 8 ? `\n…and ${doomed.length - 8} more` : '';
+    if (!window.confirm(`Permanently delete ${doomed.length} placeholder application(s)?\n\n${list}${more}\n\nThis cannot be undone.`)) return;
+
+    const junkIds: string[] = doomed.map((a) => a.id);
+    setApplications((prev) => prev.filter((app) => !junkIds.includes(app.id)));
+    junkIds.forEach((id) =>
+      deleteApplicationFromFirestore(id).catch(() => { /* cloud.ts surfaces the reason */ })
     );
+    say('info', `Removed ${junkIds.length} placeholder application(s).`);
 
     // Also clear incoming queue of dummy entries
     setIncomingEmails((prev) =>
@@ -475,7 +559,7 @@ export default function App() {
     } else {
       // Create new application
       const newApp: JobApplication = {
-        id: `app-${Date.now()}`,
+        id: newAppId(),
         company: parsedData.company,
         role: parsedData.role || 'Position Applied',
         status: detectedStatus,
@@ -503,9 +587,9 @@ export default function App() {
       };
 
       setApplications((prev) => [newApp, ...prev]);
-      saveApplicationToFirestore(newApp).catch((err) =>
-        console.warn('Firestore save application error:', err)
-      );
+      saveApplicationToFirestore(newApp).catch(() => {
+        setApplications((prev) => prev.filter((a) => a.id !== newApp.id));
+      });
     }
 
     // Remove from incoming queue
@@ -535,13 +619,20 @@ export default function App() {
         // Search filter
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
+          // Every field is coerced before .toLowerCase(). These were called
+          // bare, so a single row missing `notes` (or company, location,
+          // source) threw inside this useMemo the moment anyone typed in the
+          // search box — which unmounts the board AND the table, i.e. every
+          // application vanishes at once. The rows are clean today; that is not
+          // a reason for one bad row to be able to take down the workspace.
+          const hay = (v: unknown) => String(v ?? '').toLowerCase();
           const matches =
-            app.company.toLowerCase().includes(q) ||
-            app.role.toLowerCase().includes(q) ||
-            app.location.toLowerCase().includes(q) ||
-            app.source.toLowerCase().includes(q) ||
-            app.notes.toLowerCase().includes(q) ||
-            (app.tags && app.tags.some((t) => t.toLowerCase().includes(q)));
+            hay(app.company).includes(q) ||
+            hay(app.role).includes(q) ||
+            hay(app.location).includes(q) ||
+            hay(app.source).includes(q) ||
+            hay(app.notes).includes(q) ||
+            (Array.isArray(app.tags) && app.tags.some((t) => hay(t).includes(q)));
           if (!matches) return false;
         }
 
@@ -572,6 +663,33 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white text-[#37352F] flex flex-col selection:bg-blue-100 selection:text-blue-900 font-sans">
+      {/* The one place the app admits something went wrong. Errors persist until
+          dismissed — a save failure that fades after three seconds is barely
+          better than the console.warn it replaced. */}
+      {notice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] max-w-[min(38rem,92vw)] flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-xs ${
+            notice.kind === 'error'
+              ? 'bg-red-50 border-red-200 text-red-900'
+              : 'bg-neutral-900 border-neutral-800 text-white'
+          }`}
+        >
+          <span className="flex-1 leading-relaxed">{notice.text}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            aria-label="Dismiss"
+            className={`shrink-0 font-semibold px-1.5 rounded cursor-pointer ${
+              notice.kind === 'error' ? 'hover:bg-red-100 text-red-700' : 'hover:bg-white/15 text-white/80'
+            }`}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Sticky Notion Top Bar */}
       <NotionTopNav
         onOpenNewModal={() => setIsNewModalOpen(true)}
@@ -716,10 +834,7 @@ export default function App() {
 
       {/* Access Code Passcode Lock Gate */}
       {!isAuthenticated && (
-        <AccessCodeAuth
-          correctCode="082900"
-          onSuccess={() => setIsAuthenticated(true)}
-        />
+        <AccessCodeAuth onSuccess={() => setIsAuthenticated(true)} />
       )}
     </div>
   );

@@ -33,8 +33,8 @@ export const SOCIALS: { label: string; href: string }[] = [
 export const STATS = [
     { value: "7+", label: "Years in product design" },
     { value: "6", label: "Industries shipped in" },
-    { value: "15k", label: "Users on a tool I designed & built" },
-    { value: "∞", label: "Design handed off as production code" },
+    { value: "15k", label: "Staff served by an HR tool I designed & built" },
+    { value: "5", label: "Live storefronts designed & shipped" },
 ] as const;
 
 // Header + section anchors. Order is the on-page order.
@@ -105,6 +105,8 @@ export type Project = {
     tone: "light" | "dark";
     /** A live URL for the project, when one exists publicly. */
     link?: string;
+    /** How the work came about — shown on the card so concept work is never mistaken for a client engagement. */
+    badge: "Live product" | "Phoxta blueprint" | "Concept project" | "Client work";
 };
 
 // Selected work, most recent first. Images are decorative texture from the
@@ -113,7 +115,7 @@ export const PROJECTS: Project[] = [
     {
         slug: "phoxta",
         name: "Phoxta",
-        kicker: "AI operations platform",
+        kicker: "AI business platform",
         role: "Founder & Lead Product Designer",
         period: "2025 — Now",
         summary:
@@ -129,6 +131,7 @@ export const PROJECTS: Project[] = [
         image: "/assets/imgs/portfolio/phoxta-project.webp",
         tone: "dark",
         link: "/work/phoxta",
+        badge: "Live product",
     },
     {
         slug: "coir-six",
@@ -148,6 +151,7 @@ export const PROJECTS: Project[] = [
         image: "/assets/imgs/portfolio/coir-six.webp",
         tone: "light",
         link: "/work/coir-six",
+        badge: "Concept project",
     },
     {
         slug: "ferne",
@@ -167,6 +171,7 @@ export const PROJECTS: Project[] = [
         image: "/assets/imgs/portfolio/ferne.webp",
         tone: "light",
         link: "/work/ferne",
+        badge: "Concept project",
     },
     {
         slug: "saveur",
@@ -186,6 +191,7 @@ export const PROJECTS: Project[] = [
         image: "/assets/imgs/portfolio/saveur.webp",
         tone: "dark",
         link: "/work/saveur",
+        badge: "Phoxta blueprint",
     },
     {
         slug: "wander",
@@ -205,6 +211,7 @@ export const PROJECTS: Project[] = [
         image: "/assets/imgs/portfolio/wander.webp",
         tone: "light",
         link: "/work/wander",
+        badge: "Phoxta blueprint",
     },
     {
         slug: "aurelia",
@@ -224,6 +231,7 @@ export const PROJECTS: Project[] = [
         image: "/assets/imgs/portfolio/aurelia.webp",
         tone: "light",
         link: "/work/aurelia",
+        badge: "Phoxta blueprint",
     },
 ];
 
@@ -305,3 +313,15 @@ export const CERTIFICATIONS = [
 
 // femi.phoxta.com is the canonical home of this portfolio.
 export const PORTFOLIO_URL = "https://femi.phoxta.com/";
+
+/**
+ * Responsive candidates for a portfolio image. Every image under
+ * /assets/imgs/portfolio/ that is at least 960px wide ships 480 and 960px
+ * variants (scratchpad img-variants.mjs), so a 390px phone no longer downloads
+ * a 1600px file to show it at 336px. Pass `false` for images without variants.
+ */
+export function responsiveSrcSet(src: string, hasVariants = true): string | undefined {
+    if (!hasVariants || !src.endsWith(".webp")) return undefined;
+    const base = src.replace(/\.webp$/, "");
+    return `${base}-480.webp 480w, ${base}-960.webp 960w, ${src} 1600w`;
+}

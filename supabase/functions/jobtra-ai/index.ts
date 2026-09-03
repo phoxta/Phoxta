@@ -2002,6 +2002,67 @@ const GOOGLE_CLIENT_ID = () => Deno.env.get("GOOGLE_CLIENT_ID") || "";
 const GOOGLE_CLIENT_SECRET = () => Deno.env.get("GOOGLE_CLIENT_SECRET") || "";
 const GOOGLE_REDIRECT = () => `${SB_URL}/functions/v1/google-oauth`;
 const ACCESS_CODE = () => Deno.env.get("JOBTRA_ACCESS_CODE") || "082900";
+const OWNER_EMAIL = () => (Deno.env.get("JOBTRA_OWNER_EMAIL") || "femi@phoxta.com").toLowerCase();
+const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY") || "";
+
+// ── Workspace session ───────────────────────────────────────────────────────
+// The tracker's tables are readable only by the owner's authenticated session
+// (migration 0144). The browser exchanges the access code here — verified on
+// the server, rate-limited per IP — for that session. No email is sent: the
+// magic link is generated with the service key and verified immediately.
+const sessionAttempts = new Map<string, { n: number; until: number }>();
+const SESSION_MAX_ATTEMPTS = 5;
+const SESSION_WINDOW_MS = 15 * 60_000;
+
+function clientIp(req?: Request): string {
+  const xf = req?.headers.get("x-forwarded-for") || "";
+  return xf.split(",")[0].trim() || req?.headers.get("cf-connecting-ip") || "unknown";
+}
+
+async function handleSession(body: any, req?: Request): Promise<Response> {
+  const ip = clientIp(req);
+  const now = Date.now();
+  const hit = sessionAttempts.get(ip);
+  if (hit && hit.until > now && hit.n >= SESSION_MAX_ATTEMPTS) return json({ error: "too_many_attempts" }, 429);
+
+  const code = String(body?.code || "");
+  // Constant-time-ish compare: same length check + char loop, so timing doesn't leak the length.
+  const expected = ACCESS_CODE();
+  let ok = code.length === expected.length;
+  for (let i = 0; i < expected.length; i++) ok = (code.charCodeAt(i) === expected.charCodeAt(i)) && ok;
+  if (!ok) {
+    const cur = hit && hit.until > now ? hit : { n: 0, until: now + SESSION_WINDOW_MS };
+    sessionAttempts.set(ip, { n: cur.n + 1, until: cur.until });
+    return json({ error: "unauthorized" }, 401);
+  }
+  sessionAttempts.delete(ip);
+
+  const gl = await fetch(`${SB_URL}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: { ...sbHeaders, "content-type": "application/json" },
+    body: JSON.stringify({ type: "magiclink", email: OWNER_EMAIL() }),
+  }).then((r) => r.json()).catch(() => null);
+  const hashed = gl?.properties?.hashed_token ?? gl?.hashed_token;
+  if (!hashed) return json({ error: "session_unavailable" }, 502);
+  const session = await fetch(`${SB_URL}/auth/v1/verify`, {
+    method: "POST",
+    headers: { apikey: SB_ANON, "content-type": "application/json" },
+    body: JSON.stringify({ type: "magiclink", token_hash: hashed }),
+  }).then((r) => r.json()).catch(() => null);
+  if (!session?.access_token || !session?.refresh_token) return json({ error: "session_unavailable" }, 502);
+  return json({ access_token: session.access_token, refresh_token: session.refresh_token, expires_in: session.expires_in, expires_at: session.expires_at });
+}
+
+/** True when the request carries a valid Supabase session for the workspace owner. */
+async function isOwnerRequest(req?: Request): Promise<boolean> {
+  const auth = req?.headers.get("authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  if (!token) return false;
+  const r = await fetch(`${SB_URL}/auth/v1/user`, { headers: { apikey: SB_ANON, Authorization: `Bearer ${token}` } }).catch(() => null);
+  if (!r || !r.ok) return false;
+  const u = await r.json().catch(() => null);
+  return String(u?.email || "").toLowerCase() === OWNER_EMAIL();
+}
 
 // State signed exactly like _shared/google.ts's signState so google-oauth's
 // verifyState accepts it (base64(JSON) + "." + HMAC-SHA256 with the client secret).
@@ -2030,8 +2091,8 @@ async function handleGmailConnectUrl(_body: any): Promise<Response> {
 
 const sbHeaders = { apikey: SB_SERVICE, Authorization: `Bearer ${SB_SERVICE}` };
 
-async function handleGmailToken(body: any): Promise<Response> {
-  if (String(body?.code || "") !== ACCESS_CODE()) return json({ error: "unauthorized" }, 401);
+async function handleGmailToken(body: any, req?: Request): Promise<Response> {
+  if (!(await isOwnerRequest(req))) return json({ error: "unauthorized" }, 401);
   const email = body?.email ? String(body.email) : "";
   const q = email ? `email=eq.${encodeURIComponent(email)}` : "order=updated_at.desc&limit=1";
   const r = await fetch(`${SB_URL}/rest/v1/jobtra_gmail_connections?${q}&select=*`, { headers: sbHeaders });
@@ -2058,7 +2119,8 @@ async function handleGmailToken(body: any): Promise<Response> {
   return json({ accessToken: token, email: c.email });
 }
 
-async function handleGmailDisconnect(body: any): Promise<Response> {
+async function handleGmailDisconnect(body: any, req?: Request): Promise<Response> {
+  if (!(await isOwnerRequest(req))) return json({ error: "unauthorized" }, 401);
   const email = String(body?.email || "");
   if (!email) return json({ error: "email required" }, 400);
   await fetch(`${SB_URL}/rest/v1/jobtra_gmail_connections?email=eq.${encodeURIComponent(email)}`, { method: "DELETE", headers: sbHeaders });
@@ -2122,22 +2184,110 @@ async function handleImportJobUrl(body: any): Promise<Response> {
   const titleBlocked = /security check|just a moment|attention required|access denied|are you a robot|before you continue/i.test(title);
   const shortBotBody = text.length < 200 && /verify you are human|unusual traffic|additional verification|enable javascript|px-captcha|hcaptcha|cf-challenge/i.test(html);
   if (titleBlocked || shortBotBody) {
-    return json({ success: false, blocked: true, error: "This site blocks automated reading (Indeed and some others do). Open the posting, copy the job description, and paste it below — then click Auto-fill." });
+    return json({ success: false, blocked: true, error: `${siteName(finalUrl)} blocks automated reading. Open the posting, copy the job description, and paste it below — then click Auto-fill.` });
   }
   if (!text || text.length < 200) {
-    return json({ success: false, error: "Couldn't find a readable job description at that link. Paste the description text below and click Auto-fill." });
+    return json({ success: false, error: `Couldn't find a readable job description at that ${siteName(finalUrl)} link. Paste the description text below and click Auto-fill.` });
+  }
+  /**
+   * A DEAD LISTING IS NOT A JOB.
+   *
+   * A challenge page is caught above; an expired or deleted posting is not. Its
+   * title says "Page not found", its body is a few hundred characters of
+   * multilingual site chrome, and it sails past every check here — so the
+   * analyzer was handed navigation furniture and dutifully invented a job from
+   * it. A dead LinkedIn URL produced, verbatim:
+   *     company: "LinkedIn", role: "Not Found / Expired Job Listing"
+   * and that row was saved to the user's board. The junk in the data —
+   * "Hiring Organization", "Indeed" as a company name — came in this way.
+   *
+   * Checked on the TITLE and the first slice of body text, because that is
+   * where a 404 announces itself; the words appear in plenty of legitimate
+   * postings further down ("this role is not remote").
+   */
+  const deadListing = /page not found|page can'?t be found|no longer (available|accepting|active)|this (job|listing|position) (has )?(expired|closed|been removed|is no longer)|404 error|not found \(404\)/i;
+  if (deadListing.test(title) || deadListing.test(text.slice(0, 600))) {
+    return json({
+      success: false,
+      expired: true,
+      error: `That ${siteName(finalUrl)} posting looks expired or removed — the page has no job on it. Paste the job description text below instead.`,
+    });
   }
   // Hand the real text to the analyzer (which caches + returns structured data),
   // then attach the fetched posting text so the description field gets filled.
   const analyzeRes = await handleAnalyzeJob({ jobDescription: text.slice(0, 9000), jobUrl: finalUrl });
   const data = await analyzeRes.json().catch(() => null);
   if (!data || !data.success) return json({ success: false, error: "Couldn't analyze that posting. Paste the description text instead." });
+  /**
+   * Last gate: believe the page, not the model.
+   *
+   * Even on a real page the analyzer sometimes returns a placeholder rather than
+   * admitting it found nothing — "Hiring Organization", the job board's own name
+   * as the employer, a role that describes the error page. Saving that is worse
+   * than saving nothing, because it looks like a tracked application and it is
+   * the client's junk-purge that later deletes it.
+   */
+  const bad = placeholderExtraction(data.data, finalUrl);
+  if (bad) {
+    return json({
+      success: false,
+      error: `Read that page but couldn't identify the ${bad} from it. Paste the job description text below and click Auto-fill.`,
+    });
+  }
   data.extractedText = text.slice(0, 6000);
   data.sourceUrl = finalUrl;
   return json(data);
 }
 
-const POST_HANDLERS: Record<string, (body: any) => Promise<Response>> = {
+/** "Indeed", "LinkedIn", "smartrecruiters.com" — for error messages that name
+ *  the site the person is actually looking at. */
+function siteName(u: string): string {
+  try {
+    const host = new URL(u).hostname.replace(/^www\./, "");
+    const known: Record<string, string> = {
+      "indeed.com": "Indeed", "uk.indeed.com": "Indeed", "linkedin.com": "LinkedIn",
+      "glassdoor.com": "Glassdoor", "glassdoor.co.uk": "Glassdoor", "totaljobs.com": "Totaljobs",
+      "reed.co.uk": "Reed", "otta.com": "Otta", "welcometothejungle.com": "Welcome to the Jungle",
+    };
+    return known[host] ?? known[host.split(".").slice(-2).join(".")] ?? host;
+  } catch {
+    return "that";
+  }
+}
+
+/** Placeholder names the analyzer falls back to when it has not really read a
+ *  posting. Kept in step with the client's junk list (App.tsx) — a name that is
+ *  worth refusing on the way IN is the same one worth purging later. */
+const PLACEHOLDER_NAMES = new Set([
+  "hiring organization", "target company", "helping hands", "unknown", "company",
+  "n/a", "not specified", "not found", "confidential", "various", "employer",
+]);
+
+/**
+ * Pure aggregators: sites that list other companies' jobs. If the extractor
+ * comes back with one of these AS the employer it read the page header, not the
+ * posting — that is where the "Indeed" row in the data came from.
+ *
+ * LinkedIn is deliberately absent. It aggregates AND hires, so "LinkedIn" on a
+ * linkedin.com posting can be the truth; rejecting it would refuse a real job.
+ * Its dead pages are caught by the role check instead, which is what actually
+ * fired on the expired listing ("Not Found / Expired Job Listing").
+ */
+const AGGREGATOR_SITES = new Set(["indeed", "glassdoor", "totaljobs", "reed", "cv-library", "jobsite", "otta"]);
+
+function placeholderExtraction(d: any, url: string): string | null {
+  const company = String(d?.company ?? "").trim().toLowerCase();
+  const role = String(d?.role ?? "").trim().toLowerCase();
+  const site = siteName(url).toLowerCase();
+  const junky = (s: string) =>
+    !s || PLACEHOLDER_NAMES.has(s) || /not found|expired|no longer|page not found|404/.test(s);
+  if (!company || junky(company)) return "employer";
+  if (!role || junky(role)) return "role";
+  if (company === site && AGGREGATOR_SITES.has(site)) return "employer";
+  return null;
+}
+
+const POST_HANDLERS: Record<string, (body: any, req?: Request) => Promise<Response>> = {
   'import-job-url': handleImportJobUrl,
   'gmail/connect-url': handleGmailConnectUrl,
   'gmail/token': handleGmailToken,
@@ -2155,6 +2305,7 @@ const POST_HANDLERS: Record<string, (body: any) => Promise<Response>> = {
   'batch-evaluate-bullets': handleBatchEvaluateBullets,
   'google-docs/pull': handleGoogleDocsPull,
   'google-docs/push': handleGoogleDocsPush,
+  'session': handleSession,
 };
 
 Deno.serve(async (req) => {
@@ -2189,5 +2340,5 @@ Deno.serve(async (req) => {
   }
 
   const body = await req.json().catch(() => ({}));
-  return await handler(body);
+  return await handler(body, req);
 });

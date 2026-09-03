@@ -35,7 +35,16 @@ import CursorTrailEffect from "@/shared/effects/CursorTrailEffect";
  * Mirrors Next.js `components/layout/ClientEffects.tsx`.
  * SPA navigation doesn't remount MainLayout like Next App Router does, so we key by pathname.
  */
-export default function GlobalEffects() {
+type Props = {
+  /**
+   * Skip the effects that inject third-party scripts (jQuery + Magnific Popup,
+   * the cursor trail, the throwable scene) and the award hover preview. The
+   * portfolio uses none of them, and they cost ~40 KB compressed per visit.
+   */
+  lean?: boolean;
+};
+
+export default function GlobalEffects({ lean = false }: Props) {
   const location = useLocation();
   const key = location.pathname;
 
@@ -56,12 +65,12 @@ export default function GlobalEffects() {
       <ScrollRotateMoveEffect key={`rotate-move-${key}`} />
       <ScrollRotateIdleEffect key={`rotate-idle-${key}`} />
       <AtBrandScrollEffect key={`brand-scroll-${key}`} />
-      <CardAwardPreviewEffect key={`card-award-${key}`} />
+      {!lean && <CardAwardPreviewEffect key={`card-award-${key}`} />}
       <AtItemAnimeEffect key={`at-item-anime-${key}`} />
       <FadeAnimEffect key={`fade-${key}`} />
       <ScaleImageScrollEffect key={`scale-img-${key}`} />
       <CharAnimEffect key={`char-anim-${key}`} />
-      <ThrowableEffect key={`throwable-${key}`} />
+      {!lean && <ThrowableEffect key={`throwable-${key}`} />}
       <CarouselTickerEffect key={`carousel-ticker-${key}`} />
       <Home8Sec8PinEffect key={`h8s8pin-${key}`} />
       <TextScrambleEffect key={`text-scramble-${key}`} />
@@ -71,8 +80,8 @@ export default function GlobalEffects() {
       <Home10Sec6PinEffect key={`h10s6pin-${key}`} />
       <Home12Sec2StackEffect key={`h12s2stack-${key}`} />
       <Home15Sec6FlipEffect key={`h15s6flip-${key}`} />
-      <MagnificPopupEffect key={`magnific-${key}`} />
-      <CursorTrailEffect key={`cursor-trail-${key}`} />
+      {!lean && <MagnificPopupEffect key={`magnific-${key}`} />}
+      {!lean && <CursorTrailEffect key={`cursor-trail-${key}`} />}
     </>
   );
 }

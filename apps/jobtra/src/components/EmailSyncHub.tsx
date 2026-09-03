@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { ApplicationStatus, ConnectedAccount, EmailScanResult, JobApplication, LinkedEmail } from '../types';
 import { getStatusStyle, getSourceStyle, formatDate, triggerOfferConfetti } from '../utils/notionStyles';
-import { ACCESS_CODE_DEFAULT } from './AccessCodeAuth';
+import { authHeaders } from '../lib/api';
 
 interface EmailSyncHubProps {
   applications: JobApplication[];
@@ -280,8 +280,8 @@ export const EmailSyncHub: React.FC<EmailSyncHubProps> = ({
       setGmailScanStatus(`Connecting to ${emailToScan}…`);
       const res = await fetch(apiUrl('/api/gmail/token'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: ACCESS_CODE_DEFAULT, email: targetEmail }),
+        headers: await authHeaders(),
+        body: JSON.stringify({ email: targetEmail }),
       });
       const data = await res.json();
       if (data?.accessToken) {

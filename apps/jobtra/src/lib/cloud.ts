@@ -12,8 +12,12 @@ import { JobApplication, ConnectedAccount, BaseCV } from "../types";
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
 const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
+// The tables are readable only by the workspace owner's authenticated session
+// (migration 0144). The access-code screen exchanges the code server-side for
+// that session and stores it here; supabase-js refreshes it automatically and
+// sends it with every query and realtime subscription.
 export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false },
+    auth: { persistSession: true, autoRefreshToken: true, storageKey: "jobtra-auth" },
 });
 
 const T_APPS = "jobtra_applications";
@@ -23,11 +27,38 @@ const T_CVS = "jobtra_base_cvs";
 // deno-lint-ignore no-explicit-any
 type Row = { id: string; data: any };
 
+/**
+ * EVERY FAILURE IN HERE USED TO BE A console.warn.
+ *
+ * The app writes optimistically: the new application goes into React state
+ * first and the row is written afterwards. When that write failed, the only
+ * trace was a line in a console nobody had open — the card sat on the board
+ * looking saved until the next refetch replaced state with what the database
+ * actually held, and then it was simply gone. "It doesn't save, it disappears"
+ * is exactly what a silent write failure looks like from the outside.
+ *
+ * So the storage layer now reports. The UI subscribes and shows the reason; the
+ * console logging stays for the details.
+ */
+export type CloudProblem = { op: "save" | "delete" | "load"; what: string; message: string };
+let reportProblem: (p: CloudProblem) => void = () => {};
+
+/** Register the UI's error sink. Returns an unsubscribe. */
+export function onCloudProblem(fn: (p: CloudProblem) => void): () => void {
+    reportProblem = fn;
+    return () => { reportProblem = () => {}; };
+}
+
+/** The table name as a person would say it, for a message they have to read. */
+const label = (table: string) =>
+    table === T_APPS ? "application" : table === T_CVS ? "CV" : "connected account";
+
 async function upsertRow(table: string, id: string, data: unknown): Promise<void> {
     const clean = JSON.parse(JSON.stringify(data));
     const { error } = await supabase.from(table).upsert({ id, data: clean, updated_at: new Date().toISOString() });
     if (error) {
         console.error(`[jobtra] upsert ${table}/${id} failed:`, error.message);
+        reportProblem({ op: "save", what: label(table), message: error.message });
         throw new Error(error.message);
     }
 }
@@ -36,6 +67,7 @@ async function deleteRow(table: string, id: string): Promise<void> {
     const { error } = await supabase.from(table).delete().eq("id", id);
     if (error) {
         console.error(`[jobtra] delete ${table}/${id} failed:`, error.message);
+        reportProblem({ op: "delete", what: label(table), message: error.message });
         throw new Error(error.message);
     }
 }
@@ -44,6 +76,10 @@ async function fetchAll<T>(table: string): Promise<T[]> {
     const { data, error } = await supabase.from(table).select("id, data");
     if (error) {
         console.warn(`[jobtra] fetch ${table} failed:`, error.message);
+        // Returning [] on a failed read is what makes a broken connection look
+        // like an empty board. Say so rather than showing an empty workspace as
+        // though it were the truth.
+        reportProblem({ op: "load", what: `${label(table)}s`, message: error.message });
         return [];
     }
     return (data as Row[] | null ?? []).map((r) => r.data as T);

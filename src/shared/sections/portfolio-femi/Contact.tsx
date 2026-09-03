@@ -26,17 +26,16 @@ export default function Contact() {
                     </a>
                 </div>
 
-                <div className="pf-contact__row d-flex flex-wrap justify-content-center gap-4 mt-50">
-                    <a href={`mailto:${PROFILE.email}`} className="pf-contact__link">{PROFILE.email}</a>
-                    <span className="pf-contact__sep" aria-hidden="true">·</span>
-                    <span className="pf-contact__link pf-contact__link--static">{PROFILE.location}</span>
+                {/* Separators live INSIDE each item (CSS ::before) so a wrapped row never strands a lone dot. */}
+                <ul className="pf-contact__row list-unstyled d-flex flex-wrap justify-content-center m-0 mt-50">
+                    <li className="pf-contact__item"><a href={`mailto:${PROFILE.email}`} className="pf-contact__link">{PROFILE.email}</a></li>
+                    <li className="pf-contact__item"><span className="pf-contact__link pf-contact__link--static">{PROFILE.location}</span></li>
                     {socials.map((s) => (
-                        <span key={s.label} className="d-inline-flex align-items-center gap-4">
-                            <span className="pf-contact__sep" aria-hidden="true">·</span>
+                        <li key={s.label} className="pf-contact__item">
                             <a href={s.href} target="_blank" rel="noopener noreferrer" className="pf-contact__link">{s.label}</a>
-                        </span>
+                        </li>
                     ))}
-                </div>
+                </ul>
             </div>
         </section>
     );
