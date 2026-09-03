@@ -1,0 +1,2709 @@
+/* main.css purged for femi.phoxta.com — regenerate with scratchpad/purge-portfolio-css.mjs after portfolio changes */
+@charset "UTF-8";
+/*-----------------------------------------------------------------------------------
+
+    Template Name: Orisa - Creative Portfolio Agency HTML Template
+    Author: AliThemes
+    Support: https://alithemes.ticksy.com/
+    Description: Orisa - Creative Portfolio Agency HTML Template
+    Version: 1.0.0
+
+
+
+**********************************************/
+/*----------------------------------------*/
+/*  1.1 Default
+/*----------------------------------------*/
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,100..1000&display=swap"');
+/* beautify ignore:start */
+.back-to-top-wrapper, a, button, p, input, select, textarea, li {
+  transition: all 0.3s ease-out;
+}
+
+/* transform */
+/* beautify ignore:start */
+
+.fz-120 {
+  font-size: 80px;
+}
+
+@media screen and (min-width: 1441px) {
+  .fz-120 {
+    font-size: 120px;
+  }
+  .col-xxl-10 {
+    flex: 0 0 auto;
+    width: 66.66666667% !important;
+  }
+}
+.fz-60 {
+  font-size: 60px;
+}
+
+.bar {
+  width: 10vw;
+  height: 105vh;
+  background: #1d1d1d;
+}
+
+/* Text Truncation */
+
+.at-brand-item {
+  display: flex;
+  width: 180px;
+  height: 180px;
+  padding: 0 29px 0 30px;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 16px;
+  border: 1px solid var(--at-neutral-100, #dfdfdf);
+  background: var(--at-neutral-0, #fefefe);
+}
+@media only screen and (min-width: 768px) and (max-width: 991px), (max-width: 574.98px) {
+  .at-brand-item {
+    width: 165px;
+    height: 165px;
+  }
+}
+
+.navigation-sec4home3 .item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--at-neutral-100);
+  transition: all 0.3s ease;
+}
+.navigation-sec4home3 .item .content span {
+  flex: 0 0 60px;
+}
+.navigation-sec4home3 .item .content .h6 {
+  flex: 1;
+}
+.navigation-sec4home3 .item .content svg {
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+.navigation-sec4home3 .item.active {
+  background-color: var(--at-neutral-100);
+}
+.navigation-sec4home3 .item.active .content {
+  margin: 0 16px;
+  transition: all 0.3s ease;
+}
+.navigation-sec4home3 .item.active svg {
+  opacity: 1;
+}
+
+/* Allow page scroll when cursor is in empty area; children (.client-capsule-wrapper > *) keep pointer-events: auto for drag */
+
+.reveal-text.indent .split-line:first-child {
+  padding-left: 20px;
+}
+
+@media (max-width: 574.98px) {
+  .reveal-text.indent .split-line:first-child {
+    padding-left: 0;
+  }
+}
+
+:root {
+  /**
+  @font family declaration
+  */
+  --at-ff-body: 'DM Sans', sans-serif;
+  --at-ff-heading: 'DM Sans', sans-serif;
+  --at-ff-fontawesome: "Font Awesome 6 Pro";
+  /**
+  @font size declaration
+  */
+  --at-fz-body: 14px;
+  --at-fz-font-label: 12px;
+  --at-fz-font-sm: 13px;
+  --at-fz-font-md: 16px;
+  --at-fz-font-lg: 20px;
+  --at-fz-font-xl: 22px;
+  --at-fz-font-2xl: 28px;
+  --at-fz-font-3xl: 32px;
+  --at-fz-ds-1: 124px;
+  --at-fz-24: 24px;
+  --at-fz-10: 10px;
+  /**
+  @color declaration
+  */
+  --at-common-white: #ffffff;
+  --at-common-white-rgb: 255, 255, 255;
+  --at-common-black: #1e1e1e;
+  --at-common-black-rgb: 30, 30, 30;
+  --at-common-bubbles: #e1eeb7;
+  --at-common-dark-white: #1e1e1e;
+  --at-common-dark-white-rgb: 30, 30, 30;
+  --at-common-dark-black: #FFFFFF;
+  --at-common-dark-black-rgb: 255, 255, 255;
+  --at-common-dark-bubbles: #040403;
+  --at-neutral-0: #FEFEFE;
+  --at-neutral-0-rgb: 254, 254, 254;
+  --at-neutral-50: #F2F2F2;
+  --at-neutral-50-rgb: 242, 242, 242;
+  --at-neutral-100: #DFDFDF;
+  --at-neutral-200: #CDCCCC;
+  --at-neutral-300: #B7B7B7;
+  --at-neutral-400: #8A8A8A;
+  --at-neutral-500: #585959;
+  --at-neutral-600: #444444;
+  --at-neutral-700: #303030;
+  --at-neutral-800: #212121;
+  --at-neutral-900: #1D1D1D;
+  --at-neutral-950: #0F0F0F;
+  --at-neutral-dark-0: #0C0C0C;
+  --at-neutral-dark-0-rgb: 12, 12, 12;
+  --at-neutral-dark-50: #141414;
+  --at-neutral-dark-50-rgb: 20, 20, 20;
+  --at-neutral-dark-100: #212121;
+  --at-neutral-dark-200: #2D2D2D;
+  --at-neutral-dark-300: #404040;
+  --at-neutral-dark-400: #7A7A7A;
+  --at-neutral-dark-500: #B3B3B3;
+  --at-neutral-dark-600: #C9C9C9;
+  --at-neutral-dark-700: #535353;
+  --at-neutral-dark-800: #EAEAEA;
+  --at-neutral-dark-900: #EFEFEF;
+  --at-neutral-dark-950: #F4F4F4;
+  --at-grey-1: #5e5959;
+  --at-grey-2: #f3f3f3;
+  --at-grey-3: #b6bcc6;
+  --at-grey-4: #f6f6f6;
+  --at-grey-5: #d7cdcd;
+  --at-theme-primary: #F0460E;
+  --at-gradient-primary: linear-gradient(90deg, #a020f0 0%, #00ffd1 100%);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/*---------------------------------
+	typography css start 
+---------------------------------*/
+body {
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: normal;
+  color: var(--at-neutral-900);
+  background-color: var(--at-neutral-0);
+  font-family: var(--at-ff-body);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-top: 0px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0em;
+  transition: color 0.3s ease-out;
+  color: var(--at-neutral-900);
+  font-family: var(--at-ff-body);
+}
+
+h1,
+.h1 {
+  font-size: 70px;
+}
+
+h2,
+.h2 {
+  font-size: 60px;
+}
+
+h3,
+.h3 {
+  font-size: 52px;
+}
+
+h4,
+.h4 {
+  font-size: 38px;
+}
+
+h5 {
+  font-size: 26px;
+}
+
+h6,
+.h6 {
+  font-size: 20px;
+}
+
+.fz-font-lg {
+  font-size: 18px !important;
+}
+
+@media screen and (min-width: 1401px) {
+  h1,
+  .h1 {
+    font-size: 84px;
+  }
+  h2,
+  .h2 {
+    font-size: 72px;
+  }
+  h3,
+  .h3 {
+    font-size: 64px;
+  }
+  h4,
+  .h4 {
+    font-size: 48px;
+  }
+  h5 {
+    font-size: 34px;
+  }
+  h6,
+  .h6 {
+    font-size: 24px;
+  }
+  .fz-font-lg {
+    font-size: 20px !important;
+  }
+}
+ul {
+  margin: 0px;
+  padding: 0px;
+}
+
+p {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 15px;
+  letter-spacing: -2%;
+  line-height: 1.2;
+  font-family: var(--at-ff-body);
+  color: var(--at-neutral-500);
+}
+
+a:not([href]):not([class]),
+a:not([href]):not([class]):hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:focus,
+.button:focus {
+  text-decoration: none;
+  outline: none;
+}
+
+a:focus,
+a:hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+a,
+button {
+  color: inherit;
+  outline: none;
+  border: none;
+  background: transparent;
+}
+
+button:hover {
+  cursor: pointer;
+}
+
+button:focus {
+  outline: 0;
+}
+
+input[type=text],
+input[type=email],
+input[type=tel],
+input[type=number],
+input[type=password],
+input[type=url],
+textarea {
+  outline: none;
+  height: 56px;
+  width: 100%;
+  line-height: 56px;
+  font-size: 14px;
+  color: var(--at-neutral-900);
+}
+input[type=text]::-moz-placeholder,
+input[type=email]::-moz-placeholder,
+input[type=tel]::-moz-placeholder,
+input[type=number]::-moz-placeholder,
+input[type=password]::-moz-placeholder,
+input[type=url]::-moz-placeholder,
+textarea::-moz-placeholder {
+  /* Firefox 19+ */
+  color: var(--at-neutral-500);
+}
+input[type=text]::-moz-placeholder, input[type=email]::-moz-placeholder, input[type=tel]::-moz-placeholder, input[type=number]::-moz-placeholder, input[type=password]::-moz-placeholder, input[type=url]::-moz-placeholder, textarea::-moz-placeholder {
+  /* MODERN BROWSER */
+  color: var(--at-neutral-500);
+}
+input[type=text]::placeholder,
+input[type=email]::placeholder,
+input[type=tel]::placeholder,
+input[type=number]::placeholder,
+input[type=password]::placeholder,
+input[type=url]::placeholder,
+textarea::placeholder {
+  /* MODERN BROWSER */
+  color: var(--at-neutral-500);
+}
+input[type=text]:focus,
+input[type=email]:focus,
+input[type=tel]:focus,
+input[type=number]:focus,
+input[type=password]:focus,
+input[type=url]:focus,
+textarea:focus {
+  border-color: var(--at-neutral-900);
+}
+input[type=text]:focus::-moz-placeholder, input[type=email]:focus::-moz-placeholder, input[type=tel]:focus::-moz-placeholder, input[type=number]:focus::-moz-placeholder, input[type=password]:focus::-moz-placeholder, input[type=url]:focus::-moz-placeholder, textarea:focus::-moz-placeholder {
+  opacity: 0;
+}
+input[type=text]:focus::placeholder,
+input[type=email]:focus::placeholder,
+input[type=tel]:focus::placeholder,
+input[type=number]:focus::placeholder,
+input[type=password]:focus::placeholder,
+input[type=url]:focus::placeholder,
+textarea:focus::placeholder {
+  opacity: 0;
+}
+
+textarea {
+  line-height: 1.4;
+  padding-top: 17px;
+  padding-bottom: 17px;
+}
+
+input[type=color] {
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  border-radius: 50%;
+}
+
+*::-moz-selection {
+  background: var(--at-neutral-900);
+  color: var(--at-neutral-0);
+  text-shadow: none;
+}
+
+::-moz-selection {
+  background: var(--at-neutral-900);
+  color: var(--at-neutral-0);
+  text-shadow: none;
+}
+
+::selection {
+  background: var(--at-neutral-900);
+  color: var(--at-neutral-0);
+  text-shadow: none;
+}
+
+*::-moz-placeholder {
+  color: var(--at-neutral-900);
+  font-size: 14px;
+  opacity: 1;
+}
+
+*::placeholder {
+  color: var(--at-neutral-900);
+  font-size: 14px;
+  opacity: 1;
+}
+
+/*---------------------------------
+    1.1 Common Classes
+---------------------------------*/
+
+.clear {
+  clear: both;
+}
+
+.z-index-1 {
+  position: relative;
+  z-index: 1;
+}
+
+.z-index-3 {
+  position: relative;
+  z-index: 3;
+}
+
+.p-relative {
+  position: relative;
+}
+
+.img-cover {
+  width: 100%;
+  height: 100%;
+  -o-object-fit: cover;
+     object-fit: cover;
+}
+
+.bg-cover {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+@media (min-width: 1400px) {
+  .container-2200 {
+    max-width: 2200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+/* Give page content more breathing room from the screen edges.
+   Overrides Bootstrap's default ~12px container padding (main.css loads
+   after bootstrap.min.css). Scales with viewport, capped on large screens. */
+.container {
+  padding-left: clamp(20px, 4vw, 56px);
+  padding-right: clamp(20px, 4vw, 56px);
+}
+
+/* Font weight */
+
+.fw-400 {
+  font-weight: 400;
+}
+
+.fw-500 {
+  font-weight: 500;
+}
+
+.fw-600 {
+  font-weight: 600;
+}
+
+/* Font size */
+
+/* Used ~300x across the operating console for helper/meta text. */
+
+/* ── Operating console helpers ─────────────────────────────────────────── */
+
+/* Tab strip: a single horizontally-scrollable line. With 9 tabs this wrapped
+   to four rows on a phone and ate the whole first screen. */
+/* Dashboard page chrome that stays put while only the content scrolls.
+   Pins to the top of the dashboard's scroll container (see DashboardLayout —
+   the main column no longer scrolls, its inner region does), so a page header
+   and its tabs never ride up with the content beneath them.
+   The negative margin swallows <main>'s `py-4` top padding and re-adds it
+   inside the sticky box, so no content is visible in the strip above the
+   pinned header. The background must stay opaque for the same reason —
+   --at-neutral-50 is the app card's canvas colour. */
+
+/* Spacing below pinned chrome must be PADDING, not margin: a margin is outside the
+   painted box, so content scrolling past would flash through the gap before it
+   slid under. Applied by the sticky blocks in place of their old mb-* utility. */
+
+/* Wide content (tables, matrices) scrolls inside its own box instead of
+   being clipped by a rounded `overflow-hidden` card. */
+
+/* Comfortable hit area for the console's small text buttons on touch. */
+
+/* Numeric display sizes used by the console's KPI tiles. */
+
+.fz-font-lg {
+  font-size: var(--at-fz-font-lg);
+}
+
+.fz-font-xl {
+  font-size: var(--at-fz-font-xl);
+}
+
+.fz-font-2xl {
+  font-size: var(--at-fz-font-2xl);
+}
+
+/* Color */
+
+.common-black {
+  color: var(--at-common-black) !important;
+}
+
+.neutral-500 {
+  color: var(--at-neutral-500) !important;
+}
+
+/* Background Color */
+
+.bg-neutral-0 {
+  background-color: var(--at-neutral-0) !important;
+}
+
+.bg-neutral-50 {
+  background-color: var(--at-neutral-50) !important;
+}
+
+.bg-neutral-900 {
+  background-color: var(--at-neutral-900) !important;
+}
+
+.bg-neutral-950 {
+  background-color: var(--at-neutral-950) !important;
+}
+
+/*---------------------------------
+    Footer Fixed Bottom Effect (Kanso Style)
+---------------------------------*/
+#smooth-content {
+  pointer-events: none;
+}
+#smooth-content > * {
+  pointer-events: auto;
+}
+#smooth-content main {
+  position: relative;
+  z-index: 2;
+  will-change: transform;
+  min-height: 100vh;
+}
+#smooth-content .footer-placeholder {
+  pointer-events: none;
+}
+
+.footer-fixed-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1;
+  transform-origin: center bottom;
+  will-change: transform;
+}
+.footer-fixed-bottom .at-footer-area {
+  position: relative;
+  z-index: 1;
+}
+
+.footer-placeholder {
+  width: 100%;
+  pointer-events: none;
+}
+
+/*---------------------------------
+    1.2 Default Spacing
+---------------------------------*/
+
+@media only screen and (min-width: 1200px) and (max-width: 1399px), only screen and (min-width: 992px) and (max-width: 1199px), only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
+  .pt-150 {
+    padding-top: 100px;
+  }
+}
+
+@media only screen and (min-width: 1200px) and (max-width: 1399px), only screen and (min-width: 992px) and (max-width: 1199px), only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
+  .pt-120 {
+    padding-top: 80px;
+  }
+}
+
+@media only screen and (min-width: 1200px) and (max-width: 1399px), only screen and (min-width: 992px) and (max-width: 1199px), only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
+  .pt-100 {
+    padding-top: 60px;
+  }
+}
+
+@media only screen and (min-width: 1200px) and (max-width: 1399px), only screen and (min-width: 992px) and (max-width: 1199px), only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
+  .pb-120 {
+    padding-bottom: 80px;
+  }
+}
+
+@media only screen and (min-width: 1200px) and (max-width: 1399px), only screen and (min-width: 992px) and (max-width: 1199px), only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
+  .pb-100 {
+    padding-bottom: 60px;
+  }
+}
+
+@media only screen and (min-width: 1200px) and (max-width: 1399px), only screen and (min-width: 992px) and (max-width: 1199px) {
+  /* Font size */
+  .fz-font-lg {
+    font-size: 20px !important;
+  }
+  .fz-font-xl {
+    font-size: 22px !important;
+  }
+  .fz-font-2xl {
+    font-size: 26px !important;
+  }
+  h1,
+  .h1 {
+    font-size: 58px;
+  }
+  h2,
+  .h2 {
+    font-size: 50px;
+  }
+  h3,
+  .h3 {
+    font-size: 42px;
+  }
+  h4,
+  .h4 {
+    font-size: 30px;
+  }
+  h5 {
+    font-size: 28px;
+  }
+  h6,
+  .h6 {
+    font-size: 20px;
+  }
+  .fz-120 {
+    font-size: 84px;
+  }
+  .fz-60 {
+    font-size: 60px;
+  }
+  .scroll-section .pb-80 {
+    padding-bottom: 0;
+  }
+}
+@media only screen and (min-width: 768px) and (max-width: 991px) {
+  /* Font size */
+  .fz-font-lg {
+    font-size: 18px !important;
+  }
+  .fz-font-xl {
+    font-size: 20px !important;
+  }
+  .fz-font-2xl {
+    font-size: 24px !important;
+  }
+  h1,
+  .h1 {
+    font-size: 54px;
+  }
+  h2,
+  .h2 {
+    font-size: 52px;
+  }
+  h3,
+  .h3 {
+    font-size: 40px;
+  }
+  h4,
+  .h4 {
+    font-size: 36px;
+  }
+  h5 {
+    font-size: 24px;
+  }
+  h6,
+  .h6 {
+    font-size: 20px;
+  }
+  .fz-120 {
+    font-size: 100px;
+  }
+  .fz-60 {
+    font-size: 60px;
+  }
+  .scroll-section .pb-80 {
+    padding-bottom: 0;
+  }
+  br {
+    display: none;
+  }
+}
+@media (max-width: 574.98px) {
+  /* Font size */
+  .fz-font-lg {
+    font-size: 16px !important;
+  }
+  .fz-font-xl {
+    font-size: 18px !important;
+  }
+  .fz-font-2xl {
+    font-size: 22px !important;
+  }
+  h1,
+  .h1 {
+    font-size: 50px;
+  }
+  h2,
+  .h2 {
+    font-size: 42px;
+  }
+  h3,
+  .h3 {
+    font-size: 36px;
+  }
+  h4,
+  .h4 {
+    font-size: 30px;
+  }
+  h5 {
+    font-size: 20px;
+  }
+  h6,
+  .h6 {
+    font-size: 16px;
+  }
+  .fz-120 {
+    font-size: 90px;
+  }
+  .fz-60 {
+    font-size: 60px;
+  }
+  br {
+    display: none;
+  }
+  .scroll-section .pb-80 {
+    padding-bottom: 0;
+  }
+}
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1750px;
+  }
+}
+/* HEADER CSS */
+/*----------------------------------------*/
+/*  3.2 Header main
+/*----------------------------------------*/
+.at-header-sidebar-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50px;
+}
+
+/*----------------------------------------*/
+/*  Header 7 (toggle inline nav)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Header 8 — primary-coloured CTA button
+/*----------------------------------------*/
+
+:root {
+  --basic-ease: cubic-bezier(.625, .05, 0, 1);
+}
+
+.at-title-text span {
+  display: inline-block;
+  text-shadow: 0 1.05em var(--at-theme-primary);
+  transition: translate 0.3s var(--basic-ease), text-shadow 0.1s 0.15s ease;
+}
+
+/* Header 12 (Home 12) */
+
+/* Header 14 (Home 14 — Photography Showcase) */
+
+/*----------------------------------------*/
+/*  5.2 Postbox css
+/*----------------------------------------*/
+.postbox-item:not(:last-child) {
+  border-bottom: 1px solid rgba(30, 30, 30, 0.08);
+  padding-bottom: 50px;
+  margin-bottom: 60px;
+}
+.postbox-scroll-zoom .postbox-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+}
+.postbox-scroll-zoom .postbox-scroll-zoom-img {
+  width: 100%;
+  height: 100%;
+  -o-object-fit: cover;
+     object-fit: cover;
+  clip-path: inset(calc(50% - 50px) calc(50% - 100px) calc(50% - 50px) calc(50% - 100px) round 4px);
+  will-change: clip-path;
+  position: relative;
+  z-index: 2;
+}
+.postbox-scroll-zoom .postbox-scroll-zoom-play {
+  z-index: 3;
+}
+.postbox-scroll-zoom .postbox-scroll-zoom-marquee {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: stretch;
+  padding: 4% 0;
+  pointer-events: none;
+  overflow: hidden;
+  will-change: opacity;
+}
+
+@keyframes postbox-marquee-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+@keyframes postbox-marquee-right {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+/*----------------------------------------*/
+/*  5.1 Blog css
+/*----------------------------------------*/
+
+/* Blog card 2 – horizontal 3-column layout  */
+
+/* Blog card 3 – sidebar Flash news (compact horizontal) */
+
+/* Product card – shop archive */
+
+/*----------------------------------------*/
+/*  4.1 Mobile Menu
+/*----------------------------------------*/
+/* Top-level links render white over dark backgrounds (e.g. homepage hero nav).
+   Scoped to direct children so dropdown-panel links keep their dark colour. */
+
+/*----------------------------------------*/
+/*  4.x Main menu — text swap hover animation
+/*  Wrapper .at-link-swap is injected by main.js (section 47c)
+/*----------------------------------------*/
+
+/* Trigger swap on the parent <li>:hover so the hit area covers the
+   entire menu item (incl. empty space inside .menu-light.style-1
+   where <a> is shorter than the 48px container). */
+
+/*----------------------------------------*/
+/*  4.3 offcanvas scss
+/*----------------------------------------*/
+.body-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 995;
+  width: 100%;
+  height: 100%;
+  background: rgba(24, 24, 24, 0.5);
+  visibility: hidden;
+  opacity: 0;
+  transition: 0.45s ease-in-out;
+}
+.body-overlay.apply {
+  opacity: 1;
+  visibility: visible;
+}
+.body-overlay:hover {
+  cursor: url(../imgs/icons/cross-out.webp), pointer;
+}
+
+.at-offcanvas {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 460px;
+  bottom: 0;
+  box-shadow: 0 16px -32px 0 rgba(0, 0, 0, 0.8);
+  background-color: var(--at-common-white);
+  z-index: 997;
+  padding: 50px;
+  scrollbar-width: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: 0.45s ease-in-out;
+  overflow-y: scroll;
+}
+@media (max-width: 574.98px) {
+  .at-offcanvas {
+    width: 100%;
+    padding: 40px 35px;
+  }
+}
+@media only screen and (min-width: 576px) and (max-width: 767px) {
+  .at-offcanvas {
+    width: 400px;
+    padding: 40px;
+  }
+}
+.at-offcanvas.opened {
+  opacity: 1;
+  visibility: visible;
+  right: 0;
+  transition: all 0.4s cubic-bezier(0.785, 0.135, 0.15, 0.86);
+  transition-duration: 0.6s;
+}
+
+.at-offcanvas-2-area.menu-open,
+.at-offcanvas-2-area.menu-open-temp {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: auto;
+  height: 100%;
+  transition: all 0s 2s;
+  width: 600px;
+  z-index: 1000;
+}
+@media only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
+  .at-offcanvas-2-area.menu-open,
+  .at-offcanvas-2-area.menu-open-temp {
+    width: 100%;
+  }
+}
+
+.at-offcanvas-2-area {
+  position: fixed;
+  left: 100%;
+}
+
+/*----------------------------------------*/
+/*  4.2 Mobile Menu
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  6.1 Footer Style 1
+/*----------------------------------------*/
+
+.text-scale-anim {
+  white-space: pre-wrap;
+  transform-origin: top left;
+}
+
+.at-letter-span {
+  display: inline-block;
+}
+
+.at-word-span {
+  display: inline-block;
+}
+
+/*----------------------------------------*/
+/*  Footer Style 2
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Footer style 7 (Home 7)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Footer style 8 (Home 8)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Footer style 9 (Home 9)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Footer style 10 (Home 10)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Footer style 11 (Home 11)
+/*----------------------------------------*/
+@keyframes footer11-grid {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(57px, 57px);
+  }
+}
+@keyframes footer11-scan {
+  0% {
+    top: -40%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    top: 115%;
+    opacity: 0;
+  }
+}
+
+/* Footer 12 (Home 12) — Always-dark CTA + main footer */
+
+/* ── CTA strip ──────────────────────────────────── */
+
+/* `input.` selector matches the global theme rule `input[type="email"]` in
+   specificity (1 element + 1 class) AND comes later in source order, so this
+   reliably overrides the theme's height: 56px / line-height: 56px on this
+   input only — without touching the global rule. */
+
+/* ── Footer main ────────────────────────────────── */
+
+/* Brand */
+
+/* Socials — uses .at-hero-social pill pattern (shared with footer-1).
+   Compound selector (.at-hero-social.footer-12__socials) keeps specificity
+   above the global .at-hero-social rule from _hero.scss, which is loaded
+   later in the cascade and would otherwise win on equal specificity. */
+
+/* Column links */
+
+/* Hours column */
+
+/* ── Bottom bar ─────────────────────────────────── */
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 574.98px) {
+  /* On mobile the pill wrapper looks cramped; lay out as two stacked
+     full-width controls with their own rounded corners — no outer pill. */
+}
+/* Footer 13 — Architecture */
+
+/* ── Meta bar ────────────────────────────────── */
+
+/* ── Body ────────────────────────────────────── */
+
+/* ── Top row ─────────────────────────────────── */
+
+/* Brand */
+
+/* Newsletter form */
+
+/* Link columns */
+
+/* ── Studios row ─────────────────────────────── */
+
+/* ── Big brand text ──────────────────────────── */
+
+/* ── Legal bar ───────────────────────────────── */
+
+/* ── Responsive ──────────────────────────────── */
+/* Desktop fine-tuning (range-based) */
+/* Tablet & phone (≤1199px): stack top row, shrink paddings */
+/* Tablet portrait & phone (≤991px): 2-col link cols, single-col studios, stacked legal */
+/* Phone (≤767px): single-col link cols, form wraps */
+/* Small phone (≤574px) */
+/* ===========================================================
+   Footer 14 — Photography Studio
+
+   Designed dark in light mode. Inverts to light-on-dark via
+   the --at-neutral-* token swap in dark mode (handled centrally
+   in components/_dark-mode.scss).
+   =========================================================== */
+
+/* ===========================================================
+   Footer 15 — Fashion Agency
+
+   Layout: 2x2 panel grid of dark rounded cards.
+   Row 1: nav+social (64.5%)  |  newsletter (35.5%)
+   Row 2: brand+services (35.5%) | contact+legal (64.5%)
+
+   Always-dark surface (does not swap in dark mode) — uses
+   literal hex tokens to match Figma frame intent.
+   =========================================================== */
+
+/* ── Grid ────────────────────────────────────────────────── */
+/* 3-col grid with staggered spans: row 1 = 2/3 + 1/3,
+   row 2 = 1/3 + 2/3 (zigzag panel layout). */
+
+/* ── Panel 1 — Nav + social ─────────────────────────────── */
+
+/* ── Panel 2 — Newsletter ───────────────────────────────── */
+
+/* ── Panel 3 — Brand + services ─────────────────────────── */
+
+/* ── Panel 4 — Contact + legal ──────────────────────────── */
+
+/* ── Responsive ─────────────────────────────────────────── */
+/* Tablet landscape — stack panel 1 (nav + social) vertically */
+/* Tablet portrait — single column stack */
+/* Phone */
+/* Small phone (≤574.98px) — explicit rules; ranges do NOT cascade */
+/*----------------------------------------*/
+/*  7.1 about css
+/*----------------------------------------*/
+.at-about-svg-wrap {
+  position: relative;
+  transform: translateY(-100px);
+}
+.at-about-svg-wrap > svg:nth-child(1) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  top: 34px;
+}
+.at-about-svg-wrap > svg:nth-child(3) {
+  position: absolute;
+  left: 56px;
+  top: 34px;
+}
+
+/*----------------------------------------*/
+/*  sec-4 about contact form 
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  About 2 - Sec 3 Our Journey / card-award-2
+/*----------------------------------------*/
+/*----------------------------------------*/
+/*  sec-2-about: process cards (scroll-section)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  7.14 hero css
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-1-home-4 (Orisa AI Solutions Hero)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-3-home-4 (How We Work Process Cards)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-4-home-4 (Featured Case Card)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  7.22 service css
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  7.17 portfolio
+/*----------------------------------------*/
+:root {
+  --numOfSlides: 5;
+  --slidingAT: 1.3s;
+  --controlSize: 60px;
+}
+
+/*----------------------------------------*/
+/*  Award Card Styles
+/*----------------------------------------*/
+.card-award:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--at-neutral-900);
+  transition: all 0.3s ease;
+  background-color: var(--at-neutral-900);
+}
+.card-award:hover .card-award-title {
+  transition: all 0.3s ease;
+  color: var(--at-common-white);
+}
+.card-award-title {
+  color: var(--at-common-black, #1d1d1d);
+  line-height: 1.4;
+  margin-bottom: 4px;
+  font-family: var(--at-ff-body);
+  transition: all 0.3s ease;
+  letter-spacing: -0.01em;
+}
+@media (max-width: 574.98px) {
+  .card-award-title {
+    font-size: 14px;
+  }
+}
+
+/* Card award expanded image preview (follows cursor, top-right of cursor, rotated -15deg) */
+.card-award-preview {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 280px;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  will-change: transform;
+  transform-origin: left bottom;
+}
+.card-award-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+  -o-object-fit: cover;
+     object-fit: cover;
+}
+@media (max-width: 767px) {
+  .card-award-preview {
+    display: none !important;
+  }
+}
+
+/*  testimonial css start */
+
+.scroll-section .wrapper {
+  position: relative;
+  height: auto;
+}
+.scroll-section .list {
+  height: 100%;
+  position: relative;
+}
+.scroll-section .item {
+  min-height: 100vh;
+  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: auto;
+}
+.scroll-section .item:first-child {
+  min-height: 100%;
+  height: 100%;
+}
+.scroll-section .item:not(:first-child) {
+  position: absolute;
+}
+
+/*  testimonial css end */
+/*----------------------------------------*/
+/*  Team Card Styles
+/*----------------------------------------*/
+/*----------------------------------------*/
+/*  Team Card 2 (Home 4 Sec 6) - Social overlay on hover
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  7.11 faq css
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  7.3 banner
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  7.13 gallery css
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Content product right – shop details 
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Shop cart – list & items 
+/*----------------------------------------*/
+
+/* Cart item card */
+
+/*----------------------------------------*/
+/*  Shop cart – summary 
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Shop checkout – Billing Details & Payment 
+/*----------------------------------------*/
+/* Billing Details */
+
+/* Payment */
+
+/*----------------------------------------*/
+/*  7.23 skill css
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-6-about: skill cards
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Home 2 Section 11 - Price plan toggle
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  Home 2 Section 11 - Pricing cards
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-2-home-5 - Why Orisa 3 columns
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  at-brand-scroll - Vertical random scroll of 3 logos in each brand cell
+/*----------------------------------------*/
+.at-brand-scroll .at-brand-item .brand {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+.at-brand-scroll {
+  /* Viewport: show only 1 logo, fixed height = 1 slide */
+}
+.at-brand-scroll .brand-logo-viewport {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 70px;
+  flex-shrink: 0;
+  margin: auto;
+}
+@media only screen and (min-width: 768px) and (max-width: 991px), (max-width: 574.98px) {
+  .at-brand-scroll .brand-logo-viewport {
+    height: 50px;
+  }
+}
+.at-brand-scroll .brand-logo-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  will-change: transform;
+}
+.at-brand-scroll .brand-logo-slide {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 70px;
+  min-height: 70px;
+  flex-shrink: 0;
+}
+@media only screen and (min-width: 768px) and (max-width: 991px), (max-width: 574.98px) {
+  .at-brand-scroll .brand-logo-slide {
+    height: 60px;
+    min-height: 60px;
+  }
+}
+.at-brand-scroll .brand-logo-slide img {
+  max-width: 100%;
+  max-height: 100%;
+  -o-object-fit: contain;
+     object-fit: contain;
+  display: block;
+}
+
+/*----------------------------------------*/
+/*  block-journey - Career Path & Expertise
+/*  Header CTA: Book A Call Now | Hero card: SINCE 2012 + overlay | Journey list
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-1-home-7 (Advancing Startup Innovation Hero)
+/*----------------------------------------*/
+
+/* --- sec-1-home-7 on a phone -------------------------------------------
+   The hero is a two-column split on desktop: the photograph is absolutely
+   positioned across the left half and the copy sits in the right column. Below
+   992px the rules above switch the photograph back into normal flow, but they
+   never released `max-width: 50%` -- so on a phone it stayed pinned to half
+   the screen, leaving a tall empty band of background beside it and the proof
+   overlay (the avatar stack and its scrim) floating over that emptiness rather
+   than over the picture.
+
+   Three things are needed, and all three are load-bearing:
+     - the wrapper spans the screen
+     - the zoom-animation div inside it takes the wrapper's height, or the
+       image falls back to its intrinsic ratio and fills a third of the box
+     - the empty left column stops reserving space it no longer holds
+   anything in. */
+@media (max-width: 991.98px) {
+  /* The animation wrapper is a plain div, so `height: 100%` on the image
+     resolves against nothing and the photograph collapses. */
+  /* Its only job was to reserve the left half of the split, which does not
+     exist at this width. */
+  /* A long uppercase word in a narrow column has nowhere to go; without this
+     it runs under the edge of the screen rather than wrapping. */
+  /* The arrow is positioned off the headline's top-right corner and only makes
+     sense beside a wide block of type. */
+}
+@media (max-width: 574.98px) {
+  /* Shorter than the 520px the tablet rule gives it: a phone screen is mostly
+     hero otherwise, and the copy below is the part that sells. */
+}
+
+/* --- Startup School signup ---------------------------------------------
+   The offer restated beside the form, and the state that replaces the form
+   once it has been sent. A submitted form left on screen with a banner over it
+   invites a second submission and leaves the person unsure the first one
+   worked. */
+
+/*----------------------------------------*/
+/*  sec-2-home-7 (We Power the World's Fastest Growing Startups)
+/*----------------------------------------*/
+
+.at-item-anime.marque {
+  overflow: hidden;
+  border-radius: 16px;
+}
+.at-item-anime.marque img {
+  transition: transform 0.6s ease;
+}
+.at-item-anime.marque:hover img {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+  transition: transform 0.6s ease;
+}
+
+/*----------------------------------------*/
+/*  sec-4-home-7 (Our mission — dual reveal-text headline + locations)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-5-home-7 (Specialized services + accordion + throwable logos)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-6-home-7 (The Process — Growth Engine)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-7-home-7 (CTA — Ready to Build the Future?)
+/*----------------------------------------*/
+
+@keyframes sec7Home7Spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+/*----------------------------------------*/
+/*  sec-8-home-7 (Team — Dedicated Team + Staggered Portrait Grid)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-9-home-7 (Marquee — carouselTicker + GSAP scroll-move)
+/*  Structure mirrors Home 3 sec-2: .carouselTicker > ul.carouselTicker__list
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-10-home-7 (Insights for Founders — blog grid)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-11-home-7 (Get in touch — contact form)
+/*----------------------------------------*/
+
+/*------------------------------------------------------------------
+  Home 8 — Section 1: Hero
+------------------------------------------------------------------*/
+
+/*----------------------------------------*/
+/*  Home 8 — Section 2 (Orange marquee — carouselTicker-left)
+/*  Brand-1 bar, 32px semibold white, 20px gap, 16px star
+/*----------------------------------------*/
+
+/*------------------------------------------------------------------
+  Home 8 — Section 3 (About block + staggered photos)
+------------------------------------------------------------------*/
+
+/*----------------------------------------*/
+/*  Home 8 — Section 4 (Services + Home 1 sec-4 GSAP hover stack)
+/*----------------------------------------*/
+
+/*------------------------------------------------------------------
+  Home 8 — Section 6 (Selected works)
+------------------------------------------------------------------*/
+
+/*------------------------------------------------------------------
+  Home 8 — Section 7 (Image rails with scroll-move-right/left)
+------------------------------------------------------------------*/
+
+/*------------------------------------------------------------------
+  Home 8 — Section 8 (Testimonials)
+------------------------------------------------------------------*/
+.sec-8-home-8 {
+  background: var(--at-neutral-50);
+  padding-top: clamp(70px, 6vw, 130px);
+  padding-bottom: clamp(70px, 6vw, 130px);
+}
+.sec-8-home-8__stage {
+  position: relative;
+  min-height: 1150px;
+}
+.sec-8-home-8__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -58%);
+  text-align: center;
+  width: min(595px, 92vw);
+}
+.sec-8-home-8__group {
+  position: absolute;
+  width: 408px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+@media (max-width: 1399px) {
+  .sec-8-home-8__stage {
+    min-height: auto;
+  }
+  .sec-8-home-8__center {
+    position: static;
+    transform: none;
+    margin: 0 auto 40px;
+  }
+  .sec-8-home-8__group {
+    position: static;
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto 24px;
+  }
+}
+
+/*------------------------------------------------------------------
+  Home 8 — Section 9 (CTA)
+------------------------------------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-1-home-9 (Modern Agency Hero)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-2-home-9 (Home 9 — stats / odometer row)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-3-home-9 (Home 9 — about + 3 pillars)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-4-home-9 (Home 9 — Selected work)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-5-home-9 (Home 9 — Marquee / contact)
+/*----------------------------------------*/
+
+@keyframes sec5-home-9-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+/*----------------------------------------*/
+/*  sec-6-home-9 (Home 9 — Meet our team)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-7-home-9 (Home 9 — Collective)
+/*----------------------------------------*/
+
+@keyframes sec-7-home-9-deco-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*----------------------------------------*/
+/*  Home 10 — placeholder section spacing
+/*----------------------------------------*/
+
+/*------------------------------------------------------------------
+  Home 10 — Section 1: Creative 3D Studio Hero
+------------------------------------------------------------------*/
+@keyframes h10-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/*----------------------------------------*/
+/*  sec-2-home-10 (Home 10 — Panoramic scene)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-3-home-10 (Home 10 — Selected projects / masonry)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-4-home-10 (Home 10 — Our services)
+/*----------------------------------------*/
+.sec-4-home-10 {
+  position: relative;
+  padding-top: clamp(56px, 7vw, 120px);
+  padding-bottom: clamp(64px, 9vw, 140px);
+  background: var(--at-neutral-900, #1d1d1d);
+  color: var(--at-neutral-0, #fefefe);
+}
+.sec-4-home-10__title-block {
+  text-align: center;
+}
+@media (min-width: 992px) {
+  .sec-4-home-10__title-block {
+    grid-column: 2;
+    grid-row: 1/span 2;
+    align-self: center;
+    justify-self: center;
+    z-index: 1;
+    max-width: min(520px, 100%);
+    padding: clamp(12px, 2vw, 28px) 0;
+    pointer-events: none;
+  }
+}
+
+/*----------------------------------------*/
+/*  sec-5-home-10 (Home 10 — About + metrics)
+/*----------------------------------------*/
+.sec-5-home-10 {
+  position: relative;
+  padding-top: clamp(48px, 6vw, 100px);
+  padding-bottom: clamp(56px, 8vw, 140px);
+  background: var(--at-neutral-50, #f2f2f2);
+}
+.sec-5-home-10__intro-row {
+  margin-bottom: clamp(40px, 6vw, 88px);
+  position: relative;
+  z-index: 3;
+}
+.sec-5-home-10__stats {
+  position: relative;
+  z-index: 1;
+  align-items: flex-start;
+}
+@media (min-width: 768px) {
+  .sec-5-home-10__stat--1 {
+    align-items: flex-start;
+    text-align: left;
+    margin-right: auto;
+  }
+  .sec-5-home-10__stat--2 {
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: clamp(48px, 9vw, 160px);
+  }
+  .sec-5-home-10__stat--3 {
+    align-items: flex-end;
+    text-align: right;
+    margin-left: auto;
+    margin-top: clamp(96px, 16vw, 280px);
+  }
+}
+
+/*----------------------------------------*/
+/*  sec-6-home-10 (Home 10 — Meet the team)
+/*----------------------------------------*/
+.sec-6-home-10 {
+  position: relative;
+  padding-top: clamp(48px, 6vw, 100px);
+  padding-bottom: clamp(56px, 8vw, 140px);
+  background: var(--at-neutral-0, #fefefe);
+  overflow: hidden;
+}
+.sec-6-home-10__title-block {
+  text-align: center;
+}
+@media (min-width: 1200px) {
+  .sec-6-home-10__title-block {
+    grid-column: 2;
+    grid-row: 1/span 2;
+    align-self: center;
+    justify-self: center;
+    z-index: 2;
+    max-width: min(765px, 100%);
+    padding: clamp(16px, 3vw, 48px) 0;
+    pointer-events: none;
+  }
+}
+
+/*==================================================================
+  Home 11 — Motion & Video Creative Studio
+==================================================================*/
+
+/*------------------------------------------------------------------
+  Section 1 — Cinematic Hero
+------------------------------------------------------------------*/
+@keyframes scroll-line-drop {
+  0% {
+    top: -40%;
+  }
+  100% {
+    top: 140%;
+  }
+}
+
+/*------------------------------------------------------------------
+  Section 2 — Trusted Clients Marquee
+------------------------------------------------------------------*/
+
+/*------------------------------------------------------------------
+  Section 3 — About Studio
+------------------------------------------------------------------*/
+
+/*------------------------------------------------------------------
+  Section 4 — Featured Works
+------------------------------------------------------------------*/
+
+/*------------------------------------------------------------------
+  Section 5 — Services (modernized)
+------------------------------------------------------------------*/
+
+/*------------------------------------------------------------------
+  Section 6 — Studio Process
+------------------------------------------------------------------*/
+
+/*------------------------------------------------------------------
+  Section 7 — Testimonials
+------------------------------------------------------------------*/
+
+/*------------------------------------------------------------------
+  Section 8 — Call to Action
+------------------------------------------------------------------*/
+
+/* Home 12 / Section 1 — Hero (Pure Design. Potent Storytelling) */
+
+/* ── Social proof pill ───────────────────────────── */
+
+/* ── Headline ────────────────────────────────────── */
+
+/* ── Subline ─────────────────────────────────────── */
+
+/* ── CTAs ────────────────────────────────────────── */
+
+/* ── Image strip — Swiper marquee ────────────────── */
+
+/* ── Responsive ──────────────────────────────────── */
+/* Home 12 / Section 2 — Selected Projects */
+
+/* ── Section header ─────────────────────────────── */
+
+/* ── Cards container ────────────────────────────── */
+.sec-2-home-12__cards {
+  display: flex;
+  flex-direction: column;
+  row-gap: 32px;
+  margin-inline: auto;
+  max-width: 1280px;
+}
+
+/* ── Project card ───────────────────────────────── */
+.card-home-12-project {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  padding: 32px;
+  background-color: var(--at-neutral-0);
+  border: 1px solid var(--at-neutral-100);
+  border-radius: 24px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 18px 40px -28px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  /* JS-driven stack: ScrollTrigger pins each card; transform-origin keeps the
+     scale-down "tucking under" feel anchored at the top of each card. */
+  transform-origin: 50% 0%;
+  will-change: transform;
+}
+.card-home-12-project:hover, .card-home-12-project:focus-visible {
+  border-color: var(--at-neutral-300);
+  box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.12);
+  color: inherit;
+}
+
+/* ── Responsive ─────────────────────────────────── */
+@media only screen and (min-width: 1200px) and (max-width: 1399px) {
+  .card-home-12-project {
+    gap: 32px;
+    padding: 24px;
+  }
+}
+@media only screen and (min-width: 992px) and (max-width: 1199px) {
+  .card-home-12-project {
+    gap: 24px;
+    padding: 20px;
+  }
+}
+@media only screen and (min-width: 768px) and (max-width: 991px) {
+  .sec-2-home-12__cards {
+    row-gap: 24px;
+  }
+  .card-home-12-project {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 24px;
+    padding: 20px;
+  }
+}
+@media only screen and (min-width: 576px) and (max-width: 767px) {
+  .sec-2-home-12__cards {
+    row-gap: 20px;
+  }
+  .card-home-12-project {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+    padding: 16px;
+  }
+}
+@media (max-width: 574.98px) {
+  .card-home-12-project {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    padding: 14px;
+    border-radius: 20px;
+  }
+}
+/* Home 12 / Section 3 — Our Services */
+
+/* ── Section header ─────────────────────────────── */
+
+/* ── Services grid ──────────────────────────────── */
+
+/* ── Service card ───────────────────────────────── */
+
+/* ── Responsive ─────────────────────────────────── */
+/* Home 12 / Section 4 — Process Philosophy */
+
+/* ── Section header ─────────────────────────────── */
+
+/* ── Cards row ──────────────────────────────────── */
+
+/* ── Process card ───────────────────────────────── */
+
+/* ── Responsive ─────────────────────────────────── */
+/* Home 12 / Section 5 — Pricing */
+
+/* ── Dot pattern background ─────────────────────── */
+
+/* ── Section header ─────────────────────────────── */
+
+/* ── Tables row ─────────────────────────────────── */
+
+/* ── Pricing card ───────────────────────────────── */
+
+/* ── Features list ──────────────────────────────── */
+
+/* ── Custom pricing CTA ─────────────────────────── */
+
+/* ── Responsive ─────────────────────────────────── */
+/* Home 12 / Section 6 — About + Brand logos (dark) */
+
+/* ── Top bar with line ──────────────────────────── */
+
+/* ── Lede paragraph ─────────────────────────────── */
+
+/* ── Brand logos — Swiper marquee ────────────────── */
+
+/* ── Responsive ─────────────────────────────────── */
+/* Home 12 / Section 7 — Testimonials */
+
+/* ── Section header ─────────────────────────────── */
+
+/* ── Cards row (3 staggered columns) ────────────── */
+
+/* ── Testimonial card ───────────────────────────── */
+
+/* ── Responsive ─────────────────────────────────── */
+/* Home 12 / Section 8 — FAQ accordion */
+
+/* ── Section header ─────────────────────────────── */
+
+/* ── List ───────────────────────────────────────── */
+
+/* ── Accordion item (native <details>) ──────────── */
+
+/* ── Responsive ─────────────────────────────────── */
+/* Home 13 / Section 1 — Hero (Orisa® Architecture) */
+
+/* ── Top row ─────────────────────────────────── */
+
+/* ── Hero card ───────────────────────────────── */
+
+/* ── Main slider ─────────────────────────────── */
+
+/* ── Vertical nav buttons ────────────────────── */
+
+/* ── Thumbs slider ───────────────────────────── */
+
+/* ── Responsive ──────────────────────────────── */
+/* Cascading mobile pivot: stack top row + wrap brand from tablet down */
+/* Home 13 / Section 2 — About Us */
+
+/* ── Top row ─────────────────────────────────── */
+
+/* ── Left column ─────────────────────────────── */
+
+/* ── Right column ────────────────────────────── */
+
+/* ── Stats row ───────────────────────────────── */
+
+/* ── Responsive ──────────────────────────────── */
+/* Cascading mobile pivot: stack top grid for tablet & phone */
+/* Cascading mobile pivot: single-column media grid for phone */
+/* Home 13 / Section 3 — Selected Projects */
+
+/* ── Header ──────────────────────────────────── */
+
+/* ── Project list ────────────────────────────── */
+
+/* ── Card meta (left) ────────────────────────── */
+
+/* ── Card media (middle) ─────────────────────── */
+
+/* ── Card info (right) ───────────────────────── */
+
+/* ── Responsive ──────────────────────────────── */
+/* Cascading mobile pivot: stack header for tablet & phone */
+/* Cascading mobile pivot: single-column card layout for phone */
+/* Home 13 / Section 4 — Build with us CTA */
+
+/* ── Top meta bar ────────────────────────────── */
+
+/* ── Heading ─────────────────────────────────── */
+
+/* ── Bottom row ──────────────────────────────── */
+
+/* ── Responsive ──────────────────────────────── */
+/* Cascading mobile pivot: stack bottom row + left-align contact for tablet & phone */
+/* Phone: hide center coord bar; loosen card */
+/* Home 13 / Section 5 — Our Expertise */
+
+/* ── Header ──────────────────────────────────── */
+
+/* ── List ────────────────────────────────────── */
+
+/* ── Card ────────────────────────────────────── */
+
+/* ── Responsive ──────────────────────────────── */
+/* Cascading mobile pivot: stack header + card-head for tablet & phone */
+/* Cascading mobile pivot: single-column card layout for phone */
+/* Home 13 / Section 6 — Our Process Timeline */
+
+/* ── Header ──────────────────────────────────── */
+
+/* ── Timeline ────────────────────────────────── */
+
+/* Active phase state */
+
+@keyframes sec-6-home-13-ripple {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(4);
+  }
+}
+/* ── Responsive ──────────────────────────────── */
+/* Cascading mobile pivot: single-column header for tablet & phone */
+/* Cascading mobile pivot: single-column timeline for phone */
+/* Home 13 / Section 7 — Testimonial */
+
+/* ── Media ───────────────────────────────────── */
+
+/* ── Content ─────────────────────────────────── */
+
+/* ── Head ────────────────────────────────────── */
+
+/* ── Quote ───────────────────────────────────── */
+
+/* ── CTA ─────────────────────────────────────── */
+
+/* ── Responsive ──────────────────────────────── */
+/* Stack inner as flex column on tablet & phone */
+/* Home 13 / Section 8 — The Orisa Distinction */
+
+/* ── Top wrapper ─────────────────────────────── */
+
+/* ── Body ────────────────────────────────────── */
+
+/* ── Left ────────────────────────────────────── */
+
+/* ── List ────────────────────────────────────── */
+
+/* Active / hover state */
+
+/* ── Responsive ──────────────────────────────── */
+/* Stack body as flex column on tablet & phone */
+/* Cascading mobile pivot: stack top wrapper for tablet & phone */
+/* Cascading mobile pivot: shrink row grid for small phones */
+/* ===========================================================
+   Section 1 — Home 14 (Photography Hero)
+   =========================================================== */
+
+/* ===========================================================
+   Section 2 — Home 14 (The Studio)
+   =========================================================== */
+
+/* ===========================================================
+   Section 3 — Home 14 (Selected Series)
+   =========================================================== */
+
+/* ===========================================================
+   Section 4 — Home 14 (Gallery / Archive)
+   =========================================================== */
+
+/* ===========================================================
+   Section 5 — Home 14 (Services list)
+
+   Note: this section uses an inverted (dark) palette in light mode.
+   In dark mode it inherits inverse colors via the --at-neutral-*
+   token swap, becoming light-on-dark.
+   =========================================================== */
+
+/* ===========================================================
+   Section 6 — Home 14 (Our Process)
+   =========================================================== */
+
+/* ===========================================================
+   Section 7 — Home 14 (Client Stories / Testimonial)
+   =========================================================== */
+
+/* ===========================================================
+   Section 8 — Home 14 (Recognition Index: Press + Awards)
+   =========================================================== */
+@keyframes sec8home14TickerScroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* ===========================================================
+   Section 9 — Home 14 (From the Feed)
+   =========================================================== */
+
+/* ===========================================================
+   Section 1 — Home 15 (Agency Hero)
+   =========================================================== */
+@keyframes secOneHome15ScrollLine {
+  0%, 100% {
+    transform: scaleY(0.4);
+    transform-origin: top;
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleY(1);
+    transform-origin: top;
+    opacity: 0.9;
+  }
+}
+
+/* ===========================================================
+   Section 2 — Home 15 (About Us)
+   =========================================================== */
+
+@keyframes sec-2-home-15-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(74, 222, 128, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+}
+/* ===========================================================
+   Section 3 — Home 15 (Brand strip with auto-marquee)
+   =========================================================== */
+
+/* ===========================================================
+   Section 4 — Home 15 (Selected work)
+   =========================================================== */
+.sec-4-home-15__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 92px;
+}
+@media only screen and (min-width: 1200px) and (max-width: 1399px) {
+  .sec-4-home-15__cards {
+    gap: 72px;
+  }
+}
+@media only screen and (min-width: 992px) and (max-width: 1199px), only screen and (min-width: 768px) and (max-width: 991px) {
+  .sec-4-home-15__cards {
+    gap: 56px;
+  }
+}
+@media only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
+  .sec-4-home-15__cards {
+    gap: 40px;
+  }
+}
+.sec-4-home-15__card {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1428/1011;
+  overflow: hidden;
+  border-radius: 16px;
+  background-color: var(--at-neutral-200);
+  text-decoration: none;
+}
+@media (max-width: 574.98px) {
+  .sec-4-home-15__card {
+    border-radius: 12px;
+    aspect-ratio: 4/5;
+  }
+}
+.sec-4-home-15__card:hover, .sec-4-home-15__card:focus-visible {
+  color: inherit;
+}
+
+/* ===========================================================
+   Section 5 — Home 15 (From idea to final project)
+   =========================================================== */
+
+/*----------------------------------------*/
+/*  sec-6-home-15 (Home 15 — Meet our team + throwable logos)
+/*----------------------------------------*/
+.sec-6-home-15__member {
+  min-width: 0;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+@media (min-width: 1200px) {
+  .sec-6-home-15__member {
+    max-width: 407px;
+  }
+}
+
+/*----------------------------------------*/
+/*  sec-7-home-15 (Home 15 — What we do)
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  sec-8-home-15 (Home 15 — Testimonials)
+/*----------------------------------------*/
+
+/* ===========================================================
+   Section 9 — Home 15 (Inside / Article & blogs)
+   =========================================================== */
+
+/* Slideshow — 6 layout variants in one partial.
+   Wrapper: .slideshow
+     - default (no modifier)        → Horizontal Cinema
+     - .is-split                    → Editorial Split + Orbital
+     - .is-stack                    → Typographic Stack + bottom progress bar
+     - .is-curtain                  → Diagonal Curtain Reveal
+     - .is-zstack                   → 3D Z-Stack Reveal
+     - .is-vista                    → Slideshow-faithful vertical scroll + central minimap
+   All rules scoped under the wrapper to avoid global pollution.
+*/
+
+/*----------------------------------------*/
+/*  Portfolio Details 3 — Editorial Split
+/*----------------------------------------*/
+/* JS injects `.anim-zoomin-wrap` around every `.anim-zoomin` <img>.
+   Our image hosts position the <img> as absolute fill inside an
+   aspect-ratio box — make the injected wrap fill the same box. */
+
+/* ---------- shared plus glyph ---------- */
+
+/* ===========================================
+   SEC 1 — Hero split
+   =========================================== */
+
+/* ===========================================
+   SEC 2 — 3-col Intro
+   =========================================== */
+
+/* ===========================================
+   SEC 3 — Bento Gallery
+   =========================================== */
+
+/* ===========================================
+   SEC 4 — Process timeline (dark)
+   =========================================== */
+
+/* ===========================================
+   SEC 5 — Quote overlay
+   =========================================== */
+
+/* ===========================================
+   SEC 6 — Solution + Outcome (2-col w/ divider)
+   =========================================== */
+
+/* ===========================================
+   SEC 7 — Big image strip
+   =========================================== */
+
+/* ===========================================
+   SEC 8 — Related projects (2 large cards)
+   =========================================== */
+
+/*----------------------------------------*/
+/*  Portfolio Details 4 — Sticky Sidebar + Chapters
+/*  Brand accent: var(--at-theme-primary) (#F0460E)
+/*----------------------------------------*/
+/* JS injects `.anim-zoomin-wrap` around every `.anim-zoomin` <img>.
+   Image hosts use absolute-fill img inside aspect-ratio box. */
+
+/* =========================================================
+   SEC 1 — Compact title block
+   ========================================================= */
+
+/* =========================================================
+   SEC 2 — Sticky sidebar + chapters
+   ========================================================= */
+
+/* =========================================================
+   SEC 3 — Pull-quote callout (centered)
+   ========================================================= */
+
+/* =========================================================
+   SEC 4 — Visual showcase 3 rows
+   ========================================================= */
+
+/* =========================================================
+   SEC 5 — Next project banner
+   ========================================================= */
+
+/*----------------------------------------*/
+/*  Portfolio Details 5 — Swiper Fade + Cinematic
+/*  Brand accent: var(--at-theme-primary) (#F0460E)
+/*----------------------------------------*/
+/* JS injects `.anim-zoomin-wrap` around every `.anim-zoomin` <img>.
+   Image hosts use absolute-fill img inside aspect-ratio box. */
+
+/* =========================================================
+   SEC 1 — Swiper fade hero (full-bleed)
+   ========================================================= */
+
+/* =========================================================
+   SEC 2 — Project brief strip
+   ========================================================= */
+
+/* =========================================================
+   SEC 3 — Services + Stats (2-col)
+   ========================================================= */
+
+/* =========================================================
+   SEC 4 — Image grid asymmetric (magazine)
+   ========================================================= */
+
+/* =========================================================
+   SEC 5 — Vertical timeline alternating L/R
+   ========================================================= */
+
+/* =========================================================
+   SEC 6 — Awards & Recognition (dark)
+   ========================================================= */
+
+/* =========================================================
+   SEC 7 — Next project side-by-side (light)
+   ========================================================= */
+
+/*----------------------------------------*/
+/*  Portfolio Details 6 — Editorial + Marquee + Accordion
+/*  Brand accent: var(--at-theme-primary)
+/*----------------------------------------*/
+/* JS injects `.anim-zoomin-wrap` — fit aspect-ratio hosts */
+
+/* =========================================================
+   SEC 1 — Hero + marquee strip
+   ========================================================= */
+
+@keyframes pd6-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-33.3333%);
+  }
+}
+/* =========================================================
+   SEC 2 — Magazine 2-col + drop cap
+   ========================================================= */
+
+/* =========================================================
+   SEC 3 — Horizontal scroll Swiper gallery
+   ========================================================= */
+
+/* =========================================================
+   SEC 4 — Stats grid (4 inline with dot dividers)
+   ========================================================= */
+
+/* =========================================================
+   SEC 5 — Quote + portrait side-by-side
+   ========================================================= */
+
+/* =========================================================
+   SEC 6 — Accordion FAQ "Project details"
+   ========================================================= */
+
+/* =========================================================
+   SEC 7 — Next project compact dark card
+   ========================================================= */
+
+/*----------------------------------------*/
+/*  2.3 Back to top
+/*----------------------------------------*/
+.back-to-top-wrapper {
+  position: fixed;
+  right: 50px;
+  bottom: 0;
+  height: 44px;
+  width: 44px;
+  cursor: pointer;
+  display: block;
+  border-radius: 50%;
+  z-index: 99;
+  opacity: 0;
+  visibility: hidden;
+}
+@media (max-width: 574.98px) {
+  .back-to-top-wrapper {
+    right: 20px;
+    bottom: 20px;
+  }
+}
+
+.back-to-top-btn {
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+  line-height: 44px;
+  text-align: center;
+  background: var(--at-common-white);
+  box-shadow: 0px 8px 16px rgba(3, 4, 28, 0.3);
+  color: var(--at-common-black);
+  border-radius: 50%;
+  transition: all 0.3s ease-out;
+}
+.back-to-top-btn svg {
+  transform: translateY(-2px);
+}
+.back-to-top-btn:hover {
+  transform: translateY(-4px);
+}
+
+/*----------------------------------------*/
+/*  2.5 Buttons
+/*----------------------------------------*/
+.at-btn {
+  gap: 8px;
+  line-height: 1;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.05em;
+  padding: 17px 25px;
+  text-transform: capitalize;
+  color: #FEFEFE;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1D1D1D;
+  border-radius: 50px;
+}
+.at-btn:hover {
+  color: #FEFEFE;
+}
+.at-btn:hover span span.text-1 {
+  transform: translateY(-150%);
+}
+.at-btn:hover span span.text-2 {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.at-btn:hover i svg:first-child {
+  transform: translate(16px, -16px);
+}
+.at-btn:hover i svg:last-child {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(13px, -13px);
+}
+.at-btn span {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  display: inline-block;
+}
+.at-btn span span.text-1 {
+  position: relative;
+  display: block;
+  transition: 0.3s;
+}
+.at-btn span span.text-2 {
+  position: absolute;
+  top: 100%;
+  display: block;
+  transition: 0.3s;
+}
+.at-btn i {
+  position: relative;
+  overflow: hidden;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  margin-left: 4px;
+}
+.at-btn i svg {
+  transform: translateY(-2px);
+  position: absolute;
+  bottom: -1px;
+  left: 1px;
+  transition: all 0.2s ease-out;
+}
+.at-btn i svg:last-child {
+  left: -12px;
+  bottom: -12px;
+  transform: translate(0, 0);
+  opacity: 0;
+}
+.at-btn.active {
+  background: var(--at-neutral-900);
+  border-color: var(--at-neutral-900);
+  color: var(--at-neutral-0);
+}
+.at-btn-group {
+  display: flex;
+  width: -moz-fit-content;
+  width: fit-content;
+}
+.at-btn-group > *:nth-child(1) {
+  transform: scale3d(0.5, 0.5, 1);
+  margin-inline-end: -52px;
+}
+.at-btn-group > *:nth-child(2) {
+  transform: scale3d(1, 1, 1);
+}
+.at-btn-group > *:nth-child(3) {
+  transform: scale3d(1, 1, 1);
+  margin-inline-start: 0;
+}
+.at-btn-group:hover > *:nth-child(1) {
+  transform: scale3d(1, 1, 1);
+  margin-inline-end: 0;
+  background: #1D1D1D;
+}
+.at-btn-group:hover > *:nth-child(2) {
+  transform: scale3d(1, 1, 1);
+  background: #1D1D1D;
+}
+.at-btn-group:hover > *:nth-child(3) {
+  transform: scale3d(0.5, 0.5, 1);
+  margin-inline-start: -52px;
+  background: #1D1D1D;
+}
+.at-btn-group .at-btn-circle {
+  text-align: center;
+  width: 50px;
+  height: 50px;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.5;
+  border-radius: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  background-color: #1D1D1D;
+  color: #FEFEFE;
+}
+.at-btn-group .at-btn-circle i {
+  transform: rotate(-45deg);
+}
+.at-btn-group-transparent .at-btn {
+  background: #FEFEFE;
+  border: 1px solid rgba(38, 38, 38, 0.1);
+  color: #1D1D1D;
+}
+.at-btn-group-transparent .at-btn-circle {
+  background-color: #FEFEFE;
+  color: #1D1D1D;
+  border: 1px solid rgba(38, 38, 38, 0.1);
+}
+.at-btn-group-transparent:hover > *:nth-child(2) {
+  background: #FEFEFE;
+}
+.at-btn-group-transparent:hover > *:nth-child(1) {
+  background: #FEFEFE;
+}
+
+/*----------------------------------------*/
+/*  2.1 Animations
+/*----------------------------------------*/
+@keyframes rotate-infinite {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes rotate-infinite-2 {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes animate-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2), 0 0 0 0 rgba(255, 255, 255, 0.2);
+  }
+  40% {
+    box-shadow: 0 0 0 50px rgba(255, 109, 74, 0), 0 0 0 0 rgba(255, 255, 255, 0.2);
+  }
+  80% {
+    box-shadow: 0 0 0 50px rgba(255, 109, 74, 0), 0 0 0 30px rgba(255, 109, 74, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 109, 74, 0), 0 0 0 30px rgba(255, 109, 74, 0);
+  }
+}
+@keyframes arrowLineRotation {
+  to {
+    transform: rotate(180deg);
+  }
+}
+@keyframes arrowLineRotationRev {
+  to {
+    transform: rotate(-180deg);
+  }
+}
+
+/*----------------------------------------*/
+/*  2.10 Preloader
+/*----------------------------------------*/
+#preloader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background-color: var(--at-theme-primary);
+}
+
+@keyframes preloader {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1, 1);
+    opacity: 0;
+  }
+}
+/*--- end of preloader ---*/
+/*----------------------------------------*/
+/*  2.11 search style
+/*----------------------------------------*/
+
+/*----------------------------------------*/
+/*  2.8 Magic Cursor
+/*----------------------------------------*/
+
+#magic-cursor {
+  position: absolute;
+  display: none;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  z-index: 99999;
+  opacity: 0;
+  top: 0;
+  left: 0;
+}
+
+/* Disable magic cursor on tablet/mobile (≤991px) and on touch/no-hover devices. */
+@media (max-width: 991.98px), (hover: none), (pointer: coarse) {
+  #magic-cursor,
+  #ball {
+    display: none !important;
+  }
+}
+#ball {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  border-radius: 50%;
+  color: transparent;
+  justify-content: center;
+  mix-blend-mode: difference;
+  background-color: var(--at-common-black);
+}
+
+/* Ball view 
+============= */
+
+/* Ball drag 
+============= */
+
+/* Ball close 
+============== */
+
+/*----------------------------------------*/
+/*  2.9 Nice Select
+/*----------------------------------------*/
+
+[data-bs-theme=dark] {
+  --at-common-white: var(--at-common-dark-white);
+  --at-common-white-rgb: var(--at-common-dark-white-rgb);
+  --at-common-black: var(--at-common-dark-black);
+  --at-common-black-rgb: var(--at-common-dark-black-rgb);
+  --at-common-bubbles: var(--at-common-dark-bubbles);
+  --at-neutral-0: var(--at-neutral-dark-0);
+  --at-neutral-0-rgb: var(--at-neutral-dark-0-rgb);
+  --at-neutral-50: var(--at-neutral-dark-50);
+  --at-neutral-50-rgb: var(--at-neutral-dark-50-rgb);
+  --at-neutral-100: var(--at-neutral-dark-100);
+  --at-neutral-200: var(--at-neutral-dark-200);
+  --at-neutral-300: var(--at-neutral-dark-300);
+  --at-neutral-400: var(--at-neutral-dark-400);
+  --at-neutral-500: var(--at-neutral-dark-500);
+  --at-neutral-600: var(--at-neutral-dark-600);
+  --at-neutral-700: var(--at-neutral-dark-700);
+  --at-neutral-800: var(--at-neutral-dark-800);
+  --at-neutral-900: var(--at-neutral-dark-900);
+  --at-neutral-950: var(--at-neutral-dark-950);
+}
+.card-award {
+  padding: 15px 20px;
+  border-radius: 16px;
+}
+/*# sourceMappingURL=main.css.map */
+
+/*----------------------------------------*/
+/*  Phoxta dashboard (app shell)
+/*----------------------------------------*/
