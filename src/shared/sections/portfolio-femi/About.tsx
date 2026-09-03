@@ -13,7 +13,7 @@ export default function About() {
                     <div className="col-lg-5">
                         <span className="pf-eyebrow"><span className="pf-eyebrow__dot" aria-hidden="true" />About</span>
                         <h2 className="pf-section-title fz-60 fw-600 lh-1 mt-20 mb-0 at_fade_anim" data-fade-from="bottom">
-                            A designer who thinks in products, not just pixels.
+                            I design useful, intuitive, and human-centered products.
                         </h2>
                     </div>
                     <div className="col-lg-7">
