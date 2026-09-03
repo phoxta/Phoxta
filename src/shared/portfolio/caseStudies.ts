@@ -232,15 +232,19 @@ export const CASE_STUDIES: CaseStudy[] = [
             },
             {
                 title: "A shop that works like a catalogue",
-                body: "Faceted filters — category, concern, price, stock, refillable — plus sort, live search and deep links (?cat=face). The catalogue is data-driven, so it swaps to a real commerce API without the UI changing.",
+                body: "Faceted filters — category, skin concern, price, stock, refillable — sit in a quiet left rail with live counts, while every card leads with the product, an “Add to bag” and the price, then the name, a one-line promise and the size. The catalogue is data-driven, so it swaps to a real commerce API without the UI changing.",
                 image: "/assets/imgs/portfolio/ferne-shop.webp",
                 imageAlt: "Ferne shop with faceted filters",
             },
             {
+                title: "A best-sellers shelf that sells the routine",
+                body: "On the homepage the four best-sellers sit under one clinical, plant-led promise — calm, hydrate and rebuild the skin barrier — with The Ritual Set bundling cleanse, treat and seal. Each card shares the shop's anatomy, so a shopper can add to bag without leaving the home page, or step across to “Shop all products”.",
+                image: "/assets/imgs/portfolio/ferne-bestsellers.webp",
+                imageAlt: "Ferne best-sellers shelf",
+            },
+            {
                 title: "A product page built for a considered buy",
                 body: "Gallery, size variants with live pricing, honest stock (“ships today before 2pm”), a full ingredient list traced to farm, a rating breakdown and write-a-review — plus a mobile sticky buy-bar so the action is always in reach.",
-                image: "/assets/imgs/portfolio/ferne-product.webp",
-                imageAlt: "Ferne product page",
             },
             {
                 title: "Cart to confirmation, no dead ends",
@@ -249,9 +253,6 @@ export const CASE_STUDIES: CaseStudy[] = [
             {
                 title: "One brand, every breakpoint",
                 body: "A sticky header, mini-cart and menu drawers, a ⌘K search palette and toasts tie the store together; below 768px it becomes a clean, thumb-first mobile shop — the same system, re-weighted for one hand.",
-                image: "/assets/imgs/portfolio/ferne-mobile.webp",
-                imageAlt: "Ferne responsive mobile storefront",
-                wide: true,
             },
         ],
         palette: [
@@ -385,27 +386,30 @@ export const CASE_STUDIES: CaseStudy[] = [
                 imageAlt: "Wander homepage search",
             },
             {
-                title: "A results page that compares for you",
-                body: "Filters with live counts sit under the search; below, every card carries the same five facts — badge, title, place, chips for duration and group size, price per guest and rating — so eight thousand experiences can be skimmed like a shelf. Pagination is honest rather than infinite.",
-                image: "/assets/imgs/portfolio/wander-search.webp",
-                imageAlt: "Wander experience search results",
+                title: "Cards you can compare at a glance",
+                body: "Every experience card carries the same five facts in the same places — a badge, the title, the meeting point, chips for duration and group size, then price per guest and rating. Shelves like “Experiences in Osaka” scroll sideways behind paired arrows, so a traveller skims eight thousand listings the way they'd skim a shelf.",
+                image: "/assets/imgs/portfolio/wander-shelf.webp",
+                imageAlt: "Wander experience cards shelf",
+            },
+            {
+                title: "Proof first, then the ask",
+                body: "The host section leads with numbers a traveller can check — earnings paid out to hosts, guest arrivals, a 4.9 rating over tens of thousands of verified reviews — floated over one travel photograph, with “Become a host” and the community of hosts beneath. Trust is shown before anyone is asked to list.",
+                image: "/assets/imgs/portfolio/wander-why.webp",
+                imageAlt: "Wander — why customers rely on us",
+            },
+            {
+                title: "Inspiration as a front door",
+                body: "City cards — Mexico City, Ljubljana, Baceno, Wellington — carry a live count of available experiences and open straight into a category page that behaves exactly like search results. It gives the marketing team landing pages, and gives travellers a way in when they don't yet know what to type.",
+                image: "/assets/imgs/portfolio/wander-inspiration.webp",
+                imageAlt: "Wander destination inspiration cards",
             },
             {
                 title: "A listing page that books itself",
                 body: "A four-photo gallery leads, then title, place, rating and a verified host. The booking card — price per person, date, guests, name, email — sits beside the content and stays in reach, so the decision and the action are never on different screens.",
-                image: "/assets/imgs/portfolio/wander-experience.webp",
-                imageAlt: "Wander experience listing with booking card",
-            },
-            {
-                title: "Categories as front doors",
-                body: "City and theme pages — Florence, Mexico City, Bonifacio — reuse the same card anatomy with a place-led hero, giving the marketing team landing pages that behave exactly like search results, and giving travellers a way in when they don't know what to type.",
             },
             {
                 title: "Thumb-first on the road",
                 body: "On a phone the search collapses to a single “Where to?” bar, the hero keeps its proof points, and a bottom tab bar — Home, Wishlists, Account — plus a floating “Ask us” keep the four things a traveller does within thumb reach.",
-                image: "/assets/imgs/portfolio/wander-mobile.webp",
-                imageAlt: "Wander on mobile",
-                wide: true,
             },
         ],
         palette: [
