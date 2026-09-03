@@ -19,6 +19,10 @@ export type CaseStudy = {
     meta: MetaItem[];
     tags: string[];
     prototypeUrl?: string;
+    /** Label for the prototype button — defaults to "View live prototype". */
+    prototypeLabel?: string;
+    /** Heading for the Process section — defaults to a generic line. */
+    processTitle?: string;
     challenge: string;
     goals: { title: string; body: string }[];
     process: { phase: string; body: string }[];
@@ -33,6 +37,97 @@ export type CaseStudy = {
 };
 
 export const CASE_STUDIES: CaseStudy[] = [
+    {
+        slug: "phoxta",
+        name: "Phoxta",
+        kicker: "AI business platform · Product Design",
+        tagline: "An AI-native platform that turns starting a business into choosing one — designed and built end to end.",
+        summary:
+            "Phoxta builds complete, ready-to-run businesses — storefronts, bookings, content sites — on one shared backend, packages each as a cloneable blueprint and sells it in a marketplace. Every buyer gets a working, AI-operated company on day one. As founder and lead product designer I own the whole surface — the marketing site, the marketplace, the owner dashboard and the multi-tenant operating console — and build the React front end that ships it.",
+        hero: "/assets/imgs/portfolio/phoxta-project.webp",
+        heroAlt: "Phoxta — marketing site homepage",
+        accent: "#F0460E",
+        meta: [
+            { label: "Role", value: "Founder & Lead Product Designer" },
+            { label: "Timeline", value: "2025 — now" },
+            { label: "Platform", value: "Multi-tenant web app" },
+            { label: "Tools", value: "Figma · React · TypeScript · Supabase" },
+        ],
+        tags: ["SaaS", "Product Design", "Design System", "AI", "Front-end"],
+        prototypeUrl: "https://www.phoxta.com",
+        prototypeLabel: "Visit the live product",
+        processTitle: "From an idea to a business that already works.",
+        challenge:
+            "Shopify, WordPress and Salesforce are tools, not businesses — the buyer still has to assemble everything and design the AI layer themselves. Phoxta's promise is the opposite: a business that already works. That sets a hard design bar. A first-time owner has to understand what they've bought in one screen, run CRM, commerce, content, inbox and automations without training, and trust an AI operator to act on their behalf — while operators, buyers and investors all share one product without ever seeing each other's data.",
+        goals: [
+            { title: "Own it in one screen", body: "The dashboard answers “what do I own, is it live, what needs me?” before the owner scrolls." },
+            { title: "One console, every business", body: "CRM, commerce, content, engagement and billing as one config-driven console — the same UI for a restaurant and a fashion store." },
+            { title: "AI you can delegate to", body: "An operator that reads, drafts and acts — inside explicit permissions, approvals and an audit trail." },
+            { title: "Design that ships", body: "A Figma-to-React system so the site, console and emails stay one brand while a small team moves fast." },
+        ],
+        process: [
+            { phase: "Research & positioning", body: "Phoxta started from watching three capable friends fail to launch — none needed a website builder; all needed a running business they could rebrand. I mapped what a buyer actually needs on day one, then benchmarked site builders, commerce platforms and the new wave of AI-agent products to find where “AI-native” could be structural rather than a feature." },
+            { phase: "Information architecture", body: "Split the product into three surfaces on one core — public storefronts, the marketplace and the management console — and modelled the console as modules keyed by business type. A vertical is “which modules are on and how the site is composed”, not a new design." },
+            { phase: "Design system", body: "Built the system in Figma and shipped it as React: tokens, a pill-and-card language, one-line page headers with tabs, a distinct console theme, and shared empty / loading / approval states reused across roughly thirty dashboard tabs — so a new feature looks native the day it lands." },
+            { phase: "Build, measure, iterate", body: "Designed in code alongside the build — React, TypeScript, Supabase — so prototypes became production. Every AI feature is metered and capped per business, which means the design of a feature includes what it costs, and usage feeds what gets built next." },
+        ],
+        highlights: [
+            {
+                title: "A home that reads like ownership",
+                body: "The owner's dashboard opens with what they own, whether it's live and what needs them. The AI operator sits in the middle as a conversation, not a widget — ask it to send a brochure or check stock and it does, with every action logged. Revenue, setup progress and the business card keep the whole picture on one screen.",
+                image: "/assets/imgs/portfolio/phoxta-dashboard.webp",
+                imageAlt: "Phoxta owner dashboard with the AI operator",
+            },
+            {
+                title: "A console that works like a task board",
+                body: "Every business runs from the same config-driven console — Overview, Engage, CRM, Invoicing, Help Center, Graphics, Operator, Settings. Inbox conversations, marketing emails and voice calls land in one board by status, so the owner triages by glance instead of by app. Panels and terminology switch per business type.",
+                image: "/assets/imgs/portfolio/phoxta-console.webp",
+                imageAlt: "Phoxta operating console overview",
+            },
+            {
+                title: "An AI operator with permissions",
+                body: "The operator isn't a chatbot; it has governed write tools. Each action is off, ask-me or autopilot; anything set to approve waits in a queue with its reasoning attached, and daily limits on actions, calls and emails keep autonomy inside a budget. Owners can run it from Telegram without opening the dashboard at all.",
+            },
+            {
+                title: "A content studio for non-designers",
+                body: "Graphics turns a brand into a month of social posts: eighteen template families, an AI planner that writes the strategy and captions in the business's own voice, a schedule calendar and a pro SVG canvas for edits. It's the surface owners touch most, so it got the most polish.",
+                image: "/assets/imgs/portfolio/phoxta-graphics.webp",
+                imageAlt: "Phoxta graphics and content studio",
+            },
+            {
+                title: "A marketplace of businesses, not templates",
+                body: "Each blueprint is a live, verified business with a demo you can click through and a one-time price — a fashion store, a restaurant with orders, a car rental, guided experiences, a furniture shop. A big, plain typographic hero and full-bleed screenshots do the selling.",
+                image: "/assets/imgs/portfolio/phoxta-marketplace.webp",
+                imageAlt: "Phoxta marketplace of business blueprints",
+            },
+            {
+                title: "One backend, many storefronts",
+                body: "Aurelia, Saveur, Carento, Gearo and the travel site are separate brands on the same tenant-scoped API: products, orders and bookings flow straight into the console, and each gets its own AI stylist, concierge or trip assistant. Branding is data — logo, palette, type — applied when the domain resolves.",
+                image: "/assets/imgs/portfolio/phoxta-storefront.webp",
+                imageAlt: "Aurelia — a Phoxta-built fashion storefront",
+            },
+            {
+                title: "Built for the phone in the pocket",
+                body: "The site and console are responsive by system, not by exception: the hero, blueprint shelf and category chips reflow to a thumb-first layout, and the dashboard's one-line header-plus-tabs pattern keeps every console tab usable on a small screen.",
+                image: "/assets/imgs/portfolio/phoxta-mobile.webp",
+                imageAlt: "Phoxta on mobile",
+                wide: true,
+            },
+        ],
+        palette: [
+            { name: "Brand", hex: "#F0460E" },
+            { name: "Ink", hex: "#0F0F0F" },
+            { name: "Paper", hex: "#FEFEFE", ink: true },
+            { name: "Neutral 50", hex: "#F2F2F2", ink: true },
+            { name: "Console blue", hex: "#195CE5" },
+            { name: "Console orange", hex: "#FE5F2B" },
+            { name: "Muted", hex: "#585959" },
+            { name: "Line", hex: "#DFDFDF", ink: true },
+        ],
+        typeNote:
+            "DM Sans carries the marketing site — big, tight display sizes on a neutral scale from near-black to off-white — with one Phoxta orange reserved for actions and proof. The console switches to Figtree on a cooler white ground with a blue primary, so running a business feels distinct from buying one while staying the same family: pills, full-round radii, one-line headers with tabs, hairline borders.",
+        components: ["Pill nav & tabs", "One-line page header", "Business card", "Kanban board", "Operator chat & approval queue", "Stat & setup cards", "Blueprint card", "Config-driven console modules", "Empty / loading / approval states"],
+    },
     {
         slug: "coir-six",
         name: "Coir Six",
@@ -51,6 +146,7 @@ export const CASE_STUDIES: CaseStudy[] = [
         ],
         tags: ["Product Design", "Design System", "Dashboard", "Data-viz", "Responsive"],
         prototypeUrl: "/prototypes/coir-six/index.html",
+        processTitle: "From momentum problem to daily habit.",
         challenge:
             "Self-paced learners drop off the moment a platform makes them work to find their place. The early Coir Six dashboard buried progress inside a profile, gave five different content types the same visual weight, and offered no reason to come back tomorrow. The brief was to turn the home screen into a daily habit — motivating, instantly legible, and honest about how far along you actually are.",
         goals: [
@@ -129,6 +225,7 @@ export const CASE_STUDIES: CaseStudy[] = [
         ],
         tags: ["E-commerce", "Web Design", "Design System", "Front-end", "Responsive"],
         prototypeUrl: "/prototypes/ferne/index.html",
+        processTitle: "From brand promise to confirmed order.",
         challenge:
             "Premium skincare lives or dies on trust and flow. Shoppers bounce when a store feels generic, hides the “why”, or turns buying into a chore. Ferne's brand rests on one claim — traceable, farm-named ingredients — so the storefront had to make that credible on every screen and then get out of the way, turning browsing into a bag and a bag into a confirmed order without a single stumble.",
         goals: [

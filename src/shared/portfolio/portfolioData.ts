@@ -97,6 +97,8 @@ export type Project = {
     role: string;
     period: string;
     summary: string;
+    /** One line for the Selected-work card — the screenshot does the talking. */
+    blurb: string;
     contributions: string[];
     tags: string[];
     image: string;
@@ -116,6 +118,7 @@ export const PROJECTS: Project[] = [
         period: "2025 — Now",
         summary:
             "An AI-powered SaaS platform for planning, launching and scaling a business. I own the product design end to end — from problem framing to the shipped interface — and build the front end alongside it.",
+        blurb: "An AI-native platform that builds, clones and runs whole businesses — marketplace, storefronts and an operating console on one backend.",
         contributions: [
             "Designed the multi-tenant operations console, marketplace and CRM, turning complex operator workflows into clear, task-focused screens.",
             "Built and maintain a Figma-to-React design system that keeps the web app, marketing site and emails consistent.",
@@ -125,7 +128,7 @@ export const PROJECTS: Project[] = [
         tags: ["SaaS", "Design System", "AI", "Front-end"],
         image: "/assets/imgs/portfolio/phoxta-project.webp",
         tone: "dark",
-        link: "https://www.phoxta.com",
+        link: "/work/phoxta",
     },
     {
         slug: "coir-six",
@@ -135,6 +138,7 @@ export const PROJECTS: Project[] = [
         period: "2024",
         summary:
             "A learning-management dashboard that turns scattered course progress, mentors and schedules into one calm, glanceable home — designed to keep self-paced learners motivated and returning every day.",
+        blurb: "A glance-first learning dashboard that shows self-paced students where they are, how they're doing and what's next.",
         contributions: [
             "Designed the learner home end to end — goal tracking, continue-watching, mentors and lessons — around a single glance-first hierarchy.",
             "Built a lilac-led design system: reusable stat cards, course cards and a data-viz language for study streaks and weekly progress.",
@@ -153,6 +157,7 @@ export const PROJECTS: Project[] = [
         period: "2024",
         summary:
             "The full storefront for a traceable, small-batch skincare brand — an editorial homepage, a faceted shop, rich product pages and a friction-light cart-to-checkout flow. A complete, shoppable experience, not a landing page.",
+        blurb: "A complete botanical-skincare storefront — editorial home, faceted shop, rich product pages and a three-step checkout.",
         contributions: [
             "Designed and built the complete storefront — ten page types from homepage to order confirmation — as one coherent editorial brand.",
             "Built a data-driven, faceted catalogue (filter by concern, category, price, refillability) with live search, a ⌘K command palette and a mini-cart drawer.",
@@ -171,6 +176,7 @@ export const PROJECTS: Project[] = [
         period: "2025",
         summary:
             "A secure internal web app — timesheets, expenses and approvals — for a Canadian organisation of roughly 15,000 staff, designed and shipped to production.",
+        blurb: "A secure timesheets, expenses and approvals app for ~15,000 staff — role-based dashboards, designed and shipped to production.",
         contributions: [
             "Mapped employee and manager journeys, then designed role-based dashboards and approval flows that surface only what each user needs.",
             "Built responsive components in Tailwind, including dashboard analytics, data visualisation and animated statistics.",
@@ -189,6 +195,7 @@ export const PROJECTS: Project[] = [
         period: "2022 — 2023",
         summary:
             "Consumer health platform where I translated product concepts into flows, prototypes and a design system, validated with real users before build.",
+        blurb: "Consumer-health flows, prototypes and a design system, validated with real users before a line of code was written.",
         contributions: [
             "Turned concepts into user flows, journey maps, sketches and wireframes.",
             "Ran research with product and marketing — interviews, surveys and competitor analysis — to find real pain points.",
@@ -207,6 +214,7 @@ export const PROJECTS: Project[] = [
         period: "2020 — 2024",
         summary:
             "Led visual design strategy across MOD Group's subsidiaries and partners — campaign identities, web layouts and a modular framework that sped everything up.",
+        blurb: "Campaign identities, web layouts and a modular design framework that kept a group of subsidiaries on one brand.",
         contributions: [
             "Designed campaign identities, marketing visuals, website layouts and social content that strengthened brand recognition.",
             "Introduced a modular design framework and a structured feedback loop that cut iteration cycles.",
@@ -224,6 +232,7 @@ export const PROJECTS: Project[] = [
         period: "2019 — 2020",
         summary:
             "Localised application interfaces for the West Africa region and built the visual systems behind technical documentation and executive reporting.",
+        blurb: "Localised app interfaces for West Africa, plus the visual system behind technical documentation and executive reporting.",
         contributions: [
             "Adapted app content and UI to regional user needs across the region.",
             "Developed wireframes, icons and infographics for documentation and training.",
@@ -241,6 +250,7 @@ export const PROJECTS: Project[] = [
         period: "2024 — 2025",
         summary:
             "Co-founded a studio delivering websites, digital products and creative-tech for clients, leading both the design and the engineering.",
+        blurb: "A creative-technology studio's design and engineering practice — standards, tooling and delivery, led end to end.",
         contributions: [
             "Led multidisciplinary design and engineering teams end to end.",
             "Set design and development standards, review processes and quality benchmarks.",

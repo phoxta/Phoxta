@@ -126,10 +126,26 @@ const PORTFOLIO_CSS = `
 .pf-hero__badge-dot{width:8px;height:8px;border-radius:50%;background:var(--pf-accent);box-shadow:0 0 0 0 rgba(240,70,14,.5);animation:pf-pulse 2s infinite}
 
 /* Work-card CTA → case study / live site */
-.pf-work__cta{color:var(--pf-accent);font-size:15px;width:max-content;transition:gap .2s ease,opacity .2s ease}
+.pf-work__cta{color:var(--pf-accent);font-size:15px;width:max-content;flex:none;transition:gap .2s ease,opacity .2s ease}
 .pf-work__cta svg{transition:transform .2s ease}
 .pf-work__cta:hover{color:var(--pf-accent);opacity:.85}
 .pf-work__cta:hover svg{transform:translateX(3px)}
+
+/* Selected work — compact pinned nav + screenshot-led cards */
+.pf-work__nav .item{padding:7px 0}
+.pf-work__nav .item .content span{flex:0 0 38px;font-size:12px;letter-spacing:.02em}
+.pf-work__nav .item .content h6{flex:1;font-size:14px;font-weight:600;line-height:1.3;color:var(--pf-ink)}
+.pf-work__nav .item .content svg{width:12px;height:12px;flex:none;margin-left:8px}
+.pf-work__nav .item.active .content{margin:0 10px}
+.pf-work__card{padding:14px 14px 10px}
+.pf-work__shot{border-radius:14px;overflow:hidden;aspect-ratio:16/10;background:#fff;border:1px solid var(--pf-line)}
+.pf-work__shot img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+.pf-work__foot{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:16px 8px 8px}
+.pf-work__copy{min-width:0}
+.pf-work__kicker{font-size:12.5px;color:var(--pf-muted);letter-spacing:.02em;margin-bottom:3px}
+.pf-work__name{font-size:20px;font-weight:600;color:var(--pf-ink);letter-spacing:-.01em;margin:0 0 4px;line-height:1.2}
+.pf-work__blurb{font-size:14.5px;color:var(--pf-muted);line-height:1.5;margin:0;max-width:64ch}
+@media (max-width:767px){.pf-work__foot{flex-direction:column;align-items:flex-start;gap:12px}.pf-work__card{padding:10px 10px 8px}}
 
 /* ── Project case study (/work/:slug) ──────────────────────── */
 .pf-cs{--cs-accent:#6C5DD3;background:var(--pf-paper);color:var(--pf-ink)}

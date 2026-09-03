@@ -39,7 +39,7 @@ export default function ProjectPage() {
                     <div className="d-flex flex-wrap align-items-center gap-3">
                         {cs.prototypeUrl && (
                             <a href={cs.prototypeUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__btn pf-cs__btn--solid d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
-                                View live prototype {ARROW}
+                                {cs.prototypeLabel ?? "View live prototype"} {ARROW}
                             </a>
                         )}
                         {cs.designSystemUrl && (
@@ -106,7 +106,7 @@ export default function ProjectPage() {
                     <div className="row g-4 g-lg-5">
                         <div className="col-lg-4">
                             <span className="pf-cs__label">Process</span>
-                            <h2 className="pf-cs__h2 fz-60 fw-600 lh-1 mt-20 mb-0">From momentum problem to daily habit.</h2>
+                            <h2 className="pf-cs__h2 fz-60 fw-600 lh-1 mt-20 mb-0">{cs.processTitle ?? "From problem to shipped product."}</h2>
                         </div>
                         <div className="col-lg-8">
                             <ol className="pf-cs__process list-unstyled m-0">

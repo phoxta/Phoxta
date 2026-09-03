@@ -75,6 +75,7 @@ const ROUTES = [
     "/portfolio",
     "/portfolio/work/coir-six",
     "/portfolio/work/ferne",
+    "/portfolio/work/phoxta",
     "/about",
     "/marketplace",
     "/pricing",
