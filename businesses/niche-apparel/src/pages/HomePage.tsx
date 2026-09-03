@@ -21,7 +21,7 @@ export default function HomePage() {
                         <div className="p-relative h-100 d-flex align-items-center">
                             <div className="px-4 px-lg-5" style={{ maxWidth: 620 }}>
                                 <p className="text-white text-uppercase mb-3" style={{ letterSpacing: 4, fontSize: 13, opacity: 0.85 }}>Autumn / Winter 2026</p>
-                                <h1 className="text-white fw-600 lh-1 mb-3" style={{ fontSize: "clamp(40px, 5.5vw, 84px)" }}>Effortless<br />modern wardrobe</h1>
+                                <h1 className="text-white fw-600 lh-1 mb-3" style={{ fontSize: "clamp(40px, 5.5vw, 84px)" }}>Style for <br />each moment</h1>
                                 <p className="text-white mb-4" style={{ maxWidth: 440, fontSize: 17, opacity: 0.8 }}>Considered essentials designed to last — delivered to your door, with an AI stylist to help you choose.</p>
                                 <div className="d-flex gap-3 flex-wrap">
                                     <Link to="/shop?c=new" className="at-btn bg-white text-dark"><span><span className="text-1">Shop New In</span><span className="text-2">Shop New In</span></span></Link>
