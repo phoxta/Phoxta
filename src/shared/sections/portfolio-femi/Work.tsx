@@ -23,7 +23,7 @@ const NAV_ARROW = (
 export default function Work() {
     return (
         <section id="work" className="pf-work sec-4-home-3 bg-neutral-0 pt-120 pb-60 overflow-hidden">
-            <div className="container">
+            <div className="container-2200 px-3 px-lg-4">
                 <div className="row g-4 align-items-end">
                     <div className="col-xxl-10 col-12">
                         <span className="at-btn common-black text-uppercase bg-transparent mb-10 rounded-0 p-0">
@@ -39,7 +39,7 @@ export default function Work() {
                     </div>
                 </div>
             </div>
-            <div className="container section-fix pt-60">
+            <div className="container-2200 px-3 px-lg-4 section-fix pt-60">
                 <div className="row g-4">
                     <div className="col-xxl-2 col-lg-3 h-100">
                         <ul className="list-unstyled navigation-sec4home3 navigation-active-item section-title-pin pf-work__nav h-100">

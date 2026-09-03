@@ -20,7 +20,7 @@ export default function Hero() {
             data-background="/assets/imgs/pages/bg-img-3.webp"
             style={{ backgroundImage: "url(/assets/imgs/pages/bg-img-3.webp)", backgroundSize: "cover" }}
         >
-            <div className="container">
+            <div className="container-2200 px-3 px-lg-4">
                 <div className="row g-4 g-lg-5 align-items-center">
                     <div className="col-lg-7 me-auto">
                         <span className="pf-hero__eyebrow d-inline-flex align-items-center gap-2 mb-20">
