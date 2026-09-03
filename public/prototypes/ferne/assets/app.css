@@ -107,7 +107,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .story .panel{border-radius:var(--r-xl);padding:56px;background:var(--sage);color:#F3F0EA;display:flex;flex-direction:column;min-height:480px}
 .story .panel h3{font-size:40px;line-height:1.1;font-weight:300;margin-top:18px;max-width:440px}
 .story .panel p{margin-top:20px;font-size:15px;line-height:1.7;opacity:.85;max-width:420px}
-.story .panel .eyebrow{color:#F3F0EA;opacity:.75}
+.story .panel .eyebrow{color:#F3F0EA;opacity:.92}
 .story .panel .btn{margin-top:auto;background:#F3F0EA;color:var(--ink);width:max-content}
 .story .panel .btn .arr{background:var(--ink);color:#fff}
 .story .photo{border-radius:var(--r-xl);overflow:hidden;position:relative;background:var(--sand)}
@@ -214,7 +214,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .news .box{background:var(--ink);color:#F3F0EA;border-radius:var(--r-xl);padding:56px;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;position:relative;overflow:hidden}
 .news h2{font-size:40px;line-height:1.1;font-weight:300;margin-top:12px}
 .news p{margin-top:14px;font-size:15px;opacity:.75;max-width:420px;line-height:1.6}
-.news .eyebrow{color:#F3F0EA;opacity:.6}
+.news .eyebrow{color:#F3F0EA;opacity:.92}
 .news form{display:flex;background:#fff;border-radius:var(--pill);padding:6px;gap:6px;max-width:460px;justify-self:end;width:100%}
 .news input{flex:1;border:0;outline:0;background:transparent;padding:0 18px;font:inherit;font-size:14px;color:var(--ink);min-width:0}
 .news .btn{height:46px}

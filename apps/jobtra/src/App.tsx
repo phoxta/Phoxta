@@ -131,7 +131,9 @@ export default function App() {
     try {
       localStorage.removeItem(ACCESS_AUTH_STORAGE_KEY);
       sessionStorage.removeItem(ACCESS_AUTH_STORAGE_KEY);
-    } catch {}
+    } catch {
+      /* storage unavailable (private mode) — the sign-out below still applies */
+    }
     void supabase.auth.signOut();
     setIsAuthenticated(false);
   };
@@ -172,8 +174,11 @@ export default function App() {
   const [priorityFilter, setPriorityFilter] = useState<PriorityLevel | 'All'>('All');
   const [sortBy, setSortBy] = useState<'dateApplied' | 'company' | 'priority' | 'nextStep'>('dateApplied');
 
-  // 1. Firebase Firestore real-time synchronization for Applications, Accounts & Base CVs
+  // 1. Real-time synchronization for Applications, Accounts & Base CVs.
+  //    Only once the workspace is unlocked: before that there is no session and
+  //    every query would be refused (401) by row-level security.
   useEffect(() => {
+    if (!isAuthenticated) return;
     let unsubscribeApps: () => void = () => {};
     let unsubscribeAccounts: () => void = () => {};
     let unsubscribeCVs: () => void = () => {};
@@ -236,7 +241,7 @@ export default function App() {
       unsubscribeAccounts();
       unsubscribeCVs();
     };
-  }, []);
+  }, [isAuthenticated]);
 
   // Local storage backup
   useEffect(() => {

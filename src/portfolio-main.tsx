@@ -38,11 +38,22 @@ function PortfolioApp() {
     );
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-    <React.StrictMode>
-        <BrowserRouter>
-            <PortfolioApp />
-        </BrowserRouter>
-        <Analytics />
-    </React.StrictMode>,
-);
+// Every route is prerendered, so the HTML already shows the page. Mounting React
+// synchronously would run a multi-second render (on a throttled phone) BEFORE the
+// browser's first paint and push LCP to ~7 s. Yield one frame first: the browser
+// paints the prerendered markup, then React takes over the identical DOM.
+function mount() {
+    ReactDOM.createRoot(document.getElementById("root")!).render(
+        <React.StrictMode>
+            <BrowserRouter>
+                <PortfolioApp />
+            </BrowserRouter>
+            <Analytics />
+        </React.StrictMode>,
+    );
+}
+if (document.getElementById("root")?.childElementCount) {
+    requestAnimationFrame(() => setTimeout(mount, 0));
+} else {
+    mount();
+}
