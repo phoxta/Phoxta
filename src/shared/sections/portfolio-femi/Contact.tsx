@@ -15,10 +15,6 @@ export default function Contact() {
                 <h2 className="pf-contact__title fz-120 fw-600 lh-1 mt-30 mb-0">
                     Let's build something <br /><span className="pf-accent-word">worth shipping.</span>
                 </h2>
-                <p className="pf-contact__lede fz-font-lg mx-auto mt-30 mb-0">
-                    {PROFILE.availability} — from a focused product engagement to an ongoing design partnership.
-                    Tell me what you're building.
-                </p>
 
                 <div className="d-flex flex-wrap justify-content-center gap-3 mt-50">
                     <a href={`mailto:${PROFILE.email}`} className="pf-btn pf-btn--light">

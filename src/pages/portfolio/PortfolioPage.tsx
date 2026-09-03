@@ -47,12 +47,12 @@ export default function PortfolioPage() {
                 jsonLd={PERSON_JSONLD}
             />
             <Hero />
-            <Clients />
-            <About />
             <Work />
+            <About />
+            <Clients />
             <Capabilities />
-            <Experience />
             <Skills />
+            <Experience />
             <Credentials />
             <Contact />
         </>

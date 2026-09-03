@@ -28,11 +28,11 @@ export default function Hero() {
                             {PROFILE.role} · {PROFILE.location}
                         </span>
                         <h1 className="reveal-text mb-0 text-white pe-lg-4">
-                            <RevealText>I design digital products people actually use — and ship them.</RevealText>
+                            <RevealText>I design digital products and ship them.</RevealText>
                         </h1>
                         <p className="text-white fz-xl py-4" style={{ opacity: 0.85, maxWidth: 560 }}>
                             Product designer with 7+ years taking software from research and wireframes to polished,
-                            production-ready interfaces — with hands-on front-end in React, Next.js and TypeScript.
+                            production-ready interfaces with hands-on front-end development.
                         </p>
                         <div className="at-btn-group at-btn-group-transparent at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
                             <a href="#work" onClick={onAnchorClick("work", 88)} className="at-btn-circle">{ARROW_CIRCLE}</a>
@@ -52,7 +52,7 @@ export default function Hero() {
                             />
                             <span className="pf-hero__badge">
                                 <span className="pf-hero__badge-dot" aria-hidden="true" />
-                                {PROFILE.availability}
+                                {PROFILE.name}
                             </span>
                         </div>
                     </div>

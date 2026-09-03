@@ -6,9 +6,9 @@ export default function Experience() {
             <div className="container-2200 px-3 px-lg-4">
                 <div className="row align-items-end pb-60">
                     <div className="col-lg-8">
-                        <span className="pf-eyebrow pf-eyebrow--light"><span className="pf-eyebrow__dot" aria-hidden="true" />Experience</span>
+                        <span className="pf-eyebrow pf-eyebrow--light">Experience</span>
                         <h2 className="pf-section-title fz-60 fw-600 lh-1 mt-20 mb-0 text-white">
-                            Seven years, from Lagos to the UK.
+                            Where I've Worked
                         </h2>
                     </div>
                     <div className="col-lg-4 mt-3 mt-lg-0">

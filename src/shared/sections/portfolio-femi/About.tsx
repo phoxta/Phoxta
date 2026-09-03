@@ -1,5 +1,3 @@
-import { PROFILE } from "@/shared/portfolio/portfolioData";
-
 const PRINCIPLES = [
     { title: "Start with the user", body: "Research and behaviour data lead the decision, not opinion. I map the journey before I open Figma." },
     { title: "Design for feasibility", body: "I design knowing how it gets built. Front-end skills mean fewer surprises and a tighter design-to-code loop." },
@@ -17,13 +15,6 @@ export default function About() {
                         <h2 className="pf-section-title fz-60 fw-600 lh-1 mt-20 mb-0 at_fade_anim" data-fade-from="bottom">
                             A designer who thinks in products, not just pixels.
                         </h2>
-                        <div className="pf-about__card mt-40">
-                            <span className="pf-about__mono" aria-hidden="true">{PROFILE.monogram}</span>
-                            <div>
-                                <p className="pf-about__name mb-0">{PROFILE.name}</p>
-                                <p className="pf-about__meta mb-0">{PROFILE.role} · {PROFILE.location}</p>
-                            </div>
-                        </div>
                     </div>
                     <div className="col-lg-7">
                         <p className="pf-about__lead fz-font-lg mb-30 at_fade_anim" data-fade-from="bottom">

@@ -6,9 +6,8 @@ export default function Credentials() {
             <div className="container-2200 px-3 px-lg-4">
                 <div className="row g-4 g-lg-5">
                     <div className="col-lg-5">
-                        <span className="pf-eyebrow"><span className="pf-eyebrow__dot" aria-hidden="true" />Education</span>
                         <h2 className="pf-section-title fz-60 fw-600 lh-1 mt-20 mb-40">
-                            Grounded in maths, business &amp; data.
+                            Education
                         </h2>
                         <ul className="list-unstyled d-flex flex-column gap-3 m-0">
                             {EDUCATION.map((e) => (
