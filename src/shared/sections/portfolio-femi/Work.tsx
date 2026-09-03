@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 import { PROJECTS } from "@/shared/portfolio/portfolioData";
+import { findCaseStudy } from "@/shared/portfolio/caseStudies";
 
 // Selected work in the "What we do" format from phoxta.com/marketing
 // (sec-4-home-3): a compact pinned numbered nav on the left and a scroll-driven
 // stack of screenshot-led cards on the right — one big shot, one line of copy,
-// one CTA. The screenshot does the talking.
+// one CTA. Every card links to /work/:slug (a full case study when one exists,
+// otherwise a project brief built from the same data).
 
 const ARROW_SVG = (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -58,31 +60,32 @@ export default function Work() {
                         <div className="scroll-section vertical-section section">
                             <div className="wrapper">
                                 <div role="list" className="list">
-                                    {PROJECTS.map((p) => (
-                                        <div key={p.slug} className="item">
-                                            <div className="container bg-neutral-50 rounded-4 pf-work__card">
-                                                <div className="pf-work__shot">
-                                                    <img src={p.image} alt={`${p.name} — ${p.kicker}`} width={1600} height={1000} loading="lazy" />
-                                                </div>
-                                                <div className="pf-work__foot">
-                                                    <div className="pf-work__copy">
-                                                        <span className="pf-work__kicker d-block">{p.kicker} · {p.period}</span>
-                                                        <h4 className="pf-work__name text-scale-anim">{p.name}</h4>
-                                                        <p className="pf-work__blurb">{p.blurb}</p>
-                                                    </div>
-                                                    {p.link && (p.link.startsWith("/") ? (
-                                                        <Link to={p.link} className="pf-work__cta d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
-                                                            View case study {NAV_ARROW}
+                                    {PROJECTS.map((p) => {
+                                        const href = `/work/${p.slug}`;
+                                        const label = findCaseStudy(p.slug) ? "View case study" : "View project";
+                                        return (
+                                            <div key={p.slug} className="item">
+                                                <div className="container bg-neutral-50 rounded-4 pf-work__card">
+                                                    <Link to={href} className="pf-work__shot" aria-label={`${label}: ${p.name}`}>
+                                                        <img src={p.image} alt={`${p.name} — ${p.kicker}`} width={1600} height={1000} loading="lazy" />
+                                                        <span className="pf-work__peek" aria-hidden="true">{label} {NAV_ARROW}</span>
+                                                    </Link>
+                                                    <div className="pf-work__foot">
+                                                        <div className="pf-work__copy">
+                                                            <span className="pf-work__kicker d-block">{p.kicker} · {p.period}</span>
+                                                            <h4 className="pf-work__name text-scale-anim">
+                                                                <Link to={href} className="pf-work__name-link">{p.name}</Link>
+                                                            </h4>
+                                                            <p className="pf-work__blurb">{p.blurb}</p>
+                                                        </div>
+                                                        <Link to={href} className="pf-work__cta d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                                                            {label} {NAV_ARROW}
                                                         </Link>
-                                                    ) : (
-                                                        <a href={p.link} target="_blank" rel="noopener noreferrer" className="pf-work__cta d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
-                                                            Visit live site {NAV_ARROW}
-                                                        </a>
-                                                    ))}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

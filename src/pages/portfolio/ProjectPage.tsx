@@ -1,7 +1,7 @@
 import { Link, useParams, Navigate } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
-import { findCaseStudy } from "@/shared/portfolio/caseStudies";
-import { PROFILE, PORTFOLIO_URL } from "@/shared/portfolio/portfolioData";
+import { findCaseStudy, type CaseStudy } from "@/shared/portfolio/caseStudies";
+import { PROFILE, PORTFOLIO_URL, PROJECTS, type Project } from "@/shared/portfolio/portfolioData";
 
 const ARROW = (
     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -14,11 +14,136 @@ const BACK = (
     </svg>
 );
 
+/** /work/:slug — a full case study when one exists, otherwise a brief built from the project data. */
 export default function ProjectPage() {
     const { slug } = useParams();
     const cs = findCaseStudy(slug);
-    if (!cs) return <Navigate to="/" replace />;
+    if (cs) return <CaseStudyPage cs={cs} />;
+    const project = PROJECTS.find((p) => p.slug === slug);
+    if (project) return <ProjectBrief p={project} />;
+    return <Navigate to="/" replace />;
+}
 
+function BackLink() {
+    return (
+        <div className="mb-40">
+            <Link to="/" className="pf-cs__back d-inline-flex align-items-center gap-2 fw-500 text-decoration-none">
+                {BACK} Back to work
+            </Link>
+        </div>
+    );
+}
+
+function CtaBand() {
+    return (
+        <section className="pf-cs__cta bg-neutral-950 text-white pt-100 pb-100">
+            <div className="container-2200 px-3 px-lg-4 text-center">
+                <span className="pf-cs__eyebrow pf-cs__eyebrow--light d-inline-flex align-items-center gap-2 mb-20 mx-auto">
+                    <span className="pf-cs__dot" aria-hidden="true" />Next
+                </span>
+                <h2 className="pf-cs__cta-title fz-120 fw-600 lh-1 mb-0">Like how this thinks?</h2>
+                <p className="pf-cs__cta-lede fz-font-lg mx-auto mt-25 mb-40">
+                    {PROFILE.availability}. Tell me what you're building and let's make it clear, usable and shipped.
+                </p>
+                <div className="d-flex flex-wrap justify-content-center gap-3">
+                    <a href={`mailto:${PROFILE.email}`} className="pf-cs__btn pf-cs__btn--light d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                        Get in touch {ARROW}
+                    </a>
+                    <Link to="/" className="pf-cs__btn pf-cs__btn--outline d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                        See all work
+                    </Link>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+/* ── Project brief: projects without a long-form study ─────────────── */
+function ProjectBrief({ p }: { p: Project }) {
+    const external = p.link && !p.link.startsWith("/") ? p.link : undefined;
+    return (
+        <div className="pf-cs" style={{ "--cs-accent": "#F0460E" } as React.CSSProperties}>
+            <PageMeta
+                title={`${p.name} — ${p.kicker} · ${PROFILE.shortName}`}
+                description={p.summary}
+                canonicalUrl={`${PORTFOLIO_URL}work/${p.slug}`}
+                image={p.image}
+            />
+
+            <section className="pf-cs__hero pt-150 pb-60">
+                <div className="container-2200 px-3 px-lg-4">
+                    <BackLink />
+                    <span className="pf-cs__eyebrow d-inline-flex align-items-center gap-2 mb-20">
+                        <span className="pf-cs__dot" aria-hidden="true" />{p.kicker}
+                    </span>
+                    <h1 className="pf-cs__title fz-120 fw-600 lh-1 mb-20">{p.name}</h1>
+                    <p className="pf-cs__tagline fz-font-xl mb-35">{p.summary}</p>
+                    <div className="d-flex flex-wrap align-items-center gap-3">
+                        {external && (
+                            <a href={external} target="_blank" rel="noopener noreferrer" className="pf-cs__btn pf-cs__btn--solid d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                                Visit live site {ARROW}
+                            </a>
+                        )}
+                        <a href={`mailto:${PROFILE.email}`} className="pf-cs__btn pf-cs__btn--ghost d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                            Work with me
+                        </a>
+                    </div>
+                </div>
+                <div className="container-2200 px-3 px-lg-4 mt-60">
+                    <div className="pf-cs__shot pf-cs__shot--hero">
+                        <img src={p.image} alt={`${p.name} — ${p.kicker}`} width={1600} height={1000} loading="eager" className="w-100" />
+                    </div>
+                </div>
+            </section>
+
+            <section className="pf-cs__sec pt-80 pb-80">
+                <div className="container-2200 px-3 px-lg-4">
+                    <div className="row g-4 g-lg-5">
+                        <div className="col-lg-4">
+                            <span className="pf-cs__label">Role</span>
+                        </div>
+                        <div className="col-lg-8">
+                            <p className="pf-cs__lead fz-font-2xl fw-400 lh-1 mb-2">{p.role}</p>
+                            <p className="pf-cs__body fz-font-lg mb-0">{p.period}</p>
+                        </div>
+                    </div>
+                    <div className="row g-4 g-lg-5 mt-40 pt-20 pf-cs__divider">
+                        <div className="col-lg-4">
+                            <span className="pf-cs__label">What I did</span>
+                        </div>
+                        <div className="col-lg-8">
+                            <ul className="pf-cs__brief-list list-unstyled m-0">
+                                {p.contributions.map((c) => (
+                                    <li key={c} className="pf-cs__brief-item d-flex gap-3">
+                                        <span className="pf-cs__outcome-dot" aria-hidden="true" />
+                                        <p className="pf-cs__body fz-font-lg mb-0">{c}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                    <div className="row g-4 g-lg-5 mt-40 pt-20 pf-cs__divider">
+                        <div className="col-lg-4">
+                            <span className="pf-cs__label">Focus</span>
+                        </div>
+                        <div className="col-lg-8">
+                            <div className="pf-cs__chips d-flex flex-wrap">
+                                {p.tags.map((t) => (
+                                    <span key={t} className="pf-cs__chip">{t}</span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <CtaBand />
+        </div>
+    );
+}
+
+/* ── Full case study ───────────────────────────────────────────────── */
+function CaseStudyPage({ cs }: { cs: CaseStudy }) {
     return (
         <div className="pf-cs" style={{ "--cs-accent": cs.accent } as React.CSSProperties}>
             <PageMeta
@@ -31,11 +156,7 @@ export default function ProjectPage() {
             {/* ── Hero ── */}
             <section className="pf-cs__hero pt-150 pb-60">
                 <div className="container-2200 px-3 px-lg-4">
-                    <div className="mb-40">
-                        <Link to="/" className="pf-cs__back d-inline-flex align-items-center gap-2 fw-500 text-decoration-none">
-                            {BACK} Back to work
-                        </Link>
-                    </div>
+                    <BackLink />
                     <div className="d-flex flex-wrap align-items-center gap-3">
                         {cs.prototypeUrl && (
                             <a href={cs.prototypeUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__btn pf-cs__btn--solid d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
@@ -163,7 +284,7 @@ export default function ProjectPage() {
                 </div>
             </section>
 
-            {/* ── Design system ── */}
+            {/* ── Visual system ── */}
             <section className="pf-cs__sec pt-60 pb-40">
                 <div className="container-2200 px-3 px-lg-4">
                     <div className="row g-4 g-lg-5">
@@ -220,26 +341,7 @@ export default function ProjectPage() {
                 </section>
             )}
 
-            {/* ── Next / CTA ── */}
-            <section className="pf-cs__cta bg-neutral-950 text-white pt-100 pb-100">
-                <div className="container-2200 px-3 px-lg-4 text-center">
-                    <span className="pf-cs__eyebrow pf-cs__eyebrow--light d-inline-flex align-items-center gap-2 mb-20 mx-auto">
-                        <span className="pf-cs__dot" aria-hidden="true" />Next
-                    </span>
-                    <h2 className="pf-cs__cta-title fz-120 fw-600 lh-1 mb-0">Like how this thinks?</h2>
-                    <p className="pf-cs__cta-lede fz-font-lg mx-auto mt-25 mb-40">
-                        {PROFILE.availability}. Tell me what you're building and let's make it clear, usable and shipped.
-                    </p>
-                    <div className="d-flex flex-wrap justify-content-center gap-3">
-                        <a href={`mailto:${PROFILE.email}`} className="pf-cs__btn pf-cs__btn--light d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
-                            Get in touch {ARROW}
-                        </a>
-                        <Link to="/" className="pf-cs__btn pf-cs__btn--outline d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
-                            See all work
-                        </Link>
-                    </div>
-                </div>
-            </section>
+            <CtaBand />
         </div>
     );
 }

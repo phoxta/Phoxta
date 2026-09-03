@@ -138,8 +138,15 @@ const PORTFOLIO_CSS = `
 .pf-work__nav .item .content svg{width:12px;height:12px;flex:none;margin-left:8px}
 .pf-work__nav .item.active .content{margin:0 10px}
 .pf-work__card{padding:14px 14px 10px}
-.pf-work__shot{border-radius:14px;overflow:hidden;aspect-ratio:16/10;background:#fff;border:1px solid var(--pf-line)}
-.pf-work__shot img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+.pf-work__shot{position:relative;display:block;border-radius:14px;overflow:hidden;aspect-ratio:16/10;background:#fff;border:1px solid var(--pf-line);cursor:pointer}
+.pf-work__shot img{display:block;width:100%;height:100%;object-fit:cover;object-position:top;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.pf-work__shot:hover img,.pf-work__shot:focus-visible img{transform:scale(1.025)}
+.pf-work__peek{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--pf-ink);background:rgba(255,255,255,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--pf-line);padding:9px 14px;border-radius:999px;opacity:0;transform:translateY(6px);transition:opacity .25s ease,transform .25s ease;pointer-events:none;box-shadow:0 10px 30px -14px rgba(0,0,0,.35)}
+.pf-work__shot:hover .pf-work__peek,.pf-work__shot:focus-visible .pf-work__peek{opacity:1;transform:none}
+.pf-work__name-link{color:inherit;text-decoration:none;transition:color .2s ease}
+.pf-work__name-link:hover{color:var(--pf-accent)}
+.pf-cs__brief-list{display:flex;flex-direction:column;gap:14px}
+.pf-cs__brief-item .pf-cs__outcome-dot{margin-top:11px}
 .pf-work__foot{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:16px 8px 8px}
 .pf-work__copy{min-width:0}
 .pf-work__kicker{font-size:12.5px;color:var(--pf-muted);letter-spacing:.02em;margin-bottom:3px}
