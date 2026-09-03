@@ -40,8 +40,15 @@
 #
 # After any deploy, confirm nothing drifted:
 #   GET https://api.supabase.com/v1/projects/{ref}/functions   → group by verify_jwt
-# Healthy tally as of 2026-08-19: false = 21, true = 23.
-# twilio-status was added 2026-08-27 (false), so the tally is now false = 22.
+# Healthy tally as of 2026-09-02: false = 36, true = 47, across 83 functions.
+#
+# mig-runner is deliberately absent. It ran arbitrary SQL against SUPABASE_DB_URL
+# behind a shared secret, which was the only way to apply migrations on this
+# project (`supabase db push` believes 0121-0140 are unapplied and would re-run a
+# destructive sweep). It was deleted from the platform, the repo and the secrets
+# on 2026-09-02 once 0143 was applied. If migrations are needed again, recreate
+# it, use it, and delete it again in the same sitting — an always-on arbitrary-SQL
+# endpoint is not worth the convenience of not retyping it.
 
 project_id = "ktgleoqvdikngocygdkn"
 
@@ -112,6 +119,20 @@ verify_jwt = false
 # Writes a social post from a brief: copy, Pexels photographs, brand colours.
 # Signed-in only, since it spends model tokens and writes into a tenant library.
 [functions.content-plan]
+verify_jwt = true
+
+# The content engine's stage machine. One stage per request, driven from the
+# browser, because a whole month does not fit in one function's lifetime.
+[functions.content-plan-run]
+verify_jwt = true
+
+# How a business sounds — derived from its own writing, approved by its owner.
+[functions.brand-voice]
+verify_jwt = true
+
+# Agrees the LOOK of a month before the copy is written: proposes art
+# directions, and reads a reference the owner uploads into a real layout.
+[functions.design-reference]
 verify_jwt = true
 
 [functions.design-render]

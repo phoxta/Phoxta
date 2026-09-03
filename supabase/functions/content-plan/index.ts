@@ -28,8 +28,8 @@ import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
 import { assertWithinCap, CAP_REACHED_MESSAGE, meter } from "../_shared/meter.ts";
 import { findStock } from "../_shared/stock.ts";
-import { makeImage, IMAGE_DAILY_CAP_MESSAGE } from "../_shared/openai.ts";
 import { LIMITS } from "../_shared/social.ts";
+import { contextDigest, gatherBusinessContext } from "../_shared/businessContext.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -38,8 +38,6 @@ type Json = any;
 const MAX_DAYS = 60;
 /** More than this and nobody reads the plan they are approving. */
 const MAX_POSTS = 30;
-/** Generated pictures land here, in the business's own public bucket. */
-const IMAGE_BUCKET = "design-assets";
 
 /**
  * The layouts, as the client knows them.
@@ -53,14 +51,35 @@ const IMAGE_BUCKET = "design-assets";
  * own layouts its own designs use — and every id that comes back is checked
  * against this list before it reaches a row.
  */
-type Layout = { id: string; purpose: string };
+type Slot = { slot: string; max: number };
+type Layout = { id: string; purpose: string; slots: Slot[]; images: Record<string, string> };
 
+/**
+ * The client already sends `{id, purpose, slots, images}` — the same shape
+ * design-generate consumes (see `catalogue()` in src/lib/designs/templates.ts).
+ * This used to keep the first two fields and drop the rest, which is why a
+ * planned post filled `title` and `subtitle` and left every other slot of a
+ * richer layout empty: the planner could not see that the slots existed.
+ * Parsed here exactly as design-generate parses it.
+ */
 function readCatalogue(v: unknown): Layout[] {
   if (!Array.isArray(v)) return [];
-  return v
-    .filter((t: Json) => t && typeof t.id === "string")
-    .slice(0, 40)
-    .map((t: Json) => ({ id: String(t.id).slice(0, 20), purpose: String(t.purpose ?? "").slice(0, 200) }));
+  const out: Layout[] = [];
+  for (const t of v as Json[]) {
+    if (!t || typeof t.id !== "string") continue;
+    out.push({
+      id: String(t.id).slice(0, 20),
+      purpose: String(t.purpose ?? "").slice(0, 300),
+      slots: Array.isArray(t.slots)
+        ? t.slots
+          .filter((s: Json) => s && typeof s.slot === "string")
+          .slice(0, 24)
+          .map((s: Json) => ({ slot: String(s.slot).slice(0, 30), max: Math.max(3, Math.min(400, Number(s.max) || 60)) }))
+        : [],
+      images: typeof t.images === "object" && t.images ? t.images : {},
+    });
+  }
+  return out.slice(0, 40);
 }
 
 const HOUSE = [
@@ -258,16 +277,16 @@ Deno.serve(async (req) => {
     const count = Math.min(MAX_POSTS, Math.max(1, Number(body?.posts) || 12));
     const startsOn = String(body?.startsOn ?? "").trim() || new Date().toISOString().slice(0, 10);
     /**
-     * Where the pictures come from.
+     * Where the pictures come from: STOCK, always.
      *
-     * STOCK BY DEFAULT, and that is not timidity. Pexels is real photography,
-     * free, and instant; generated imagery costs real money per picture, and a
-     * month of it is thirty charges for a plan the owner has not approved yet.
-     * A business that wants a look nothing in a stock library has can ask for
-     * it — and pays for it knowingly.
+     * Pexels is real photography, free and instant. Generated imagery costs
+     * real money per picture, and a month of it is thirty charges for a plan
+     * the owner has not approved yet — and a richer layout has several photo
+     * slots per post, so the bill multiplies by slots as well as by posts.
+     * The owner regenerates the individual pictures they care about in the
+     * editor after approving, which is one knowing charge instead of ninety
+     * speculative ones. `imagery` on the request body is ignored.
      */
-    const imagery = String(body?.imagery ?? "stock") === "generated" ? "generated" : "stock";
-
     const layouts = readCatalogue(body?.catalogue);
     const asked = String(body?.templateId ?? "").trim();
     // Varying is only possible when the caller told us what the layouts are.
@@ -277,6 +296,12 @@ Deno.serve(async (req) => {
 
     const { data: org } = await admin.from("organizations")
       .select("name, vertical, branding, timezone").eq("id", orgId).maybeSingle();
+    // Everything true about this business, read once. This used to be four
+    // columns and twenty product names, which is why the month came out generic:
+    // what actually sells, what customers actually ask, what a real review said
+    // and which offer is actually running were all sitting unread in the same
+    // database. See _shared/businessContext.ts.
+    const ctx = await gatherBusinessContext(admin, orgId);
     // The business's own zone (migration 0129). The planner picks an HOUR — local,
     // "when a customer is on their phone" — and scheduled_at must hold the UTC
     // instant of that local hour (see wallClockToUtc). 'UTC' when unset reproduces
@@ -292,25 +317,25 @@ Deno.serve(async (req) => {
       return json({ error: "No social accounts are connected, so there is nowhere for a plan to go. Connect one in Graphics → Accounts." }, 400);
     }
 
-    // What the business sells, so the plan is about it rather than about
-    // small businesses in general.
-    const { data: products } = await admin.from("products")
-      .select("name, description").eq("organization_id", orgId).eq("status", "active").limit(20);
+    // The layouts on offer, with the slots each one really has — so the planner
+    // writes the copy a layout can actually hold instead of a headline and a
+    // subtitle for a template with eleven slots.
+    const choices = wantVary ? layouts : layouts.filter((l) => l.id === (layouts.some((l2) => l2.id === asked) ? asked : layouts[0]?.id));
+    const menu = (choices.length ? choices : layouts).map((t) =>
+      `- ${t.id}: ${t.purpose}\n  slots: ${t.slots.map((s) => `${s.slot} (max ${s.max} chars)`).join(", ") || "none"}\n  photos: ${Object.entries(t.images).map(([s, d]) => `${s} — ${d}`).join("; ") || "none"}`,
+    ).join("\n");
 
     const user = [
-      `THE BUSINESS: ${(org as Json)?.name ?? "a small business"}${(org as Json)?.vertical ? `, trading in ${(org as Json).vertical}` : ""}.`,
-      products?.length
-        ? `WHAT IT SELLS:\n${products.map((p: Json) => `- ${p.name}${p.description ? `: ${String(p.description).slice(0, 140)}` : ""}`).join("\n")}`
-        : "It has no catalogue loaded, so write about the trade rather than about specific products.",
+      contextDigest(ctx),
       brief ? `\nWHAT THE OWNER WANTS FROM THIS MONTH: ${brief}` : "",
       "",
       `PLAN ${count} POSTS across ${days} days starting ${startsOn}. Spread them — not one a day for ${count} days and then nothing.`,
       `Times are the business's own local time (${tz}) — pick the hour a customer there is actually on their phone; Phoxta converts it to the right moment.`,
       `They are going to: ${[...new Set(channels.map((c) => c.platform))].join(", ")}.`,
       wantVary
-        ? "\nTHE LAYOUTS YOU MAY USE, and what each is for. Pick the one that suits each post rather than the same one every time:\n" +
-          layouts.map((l) => `- ${l.id}: ${l.purpose}`).join("\n")
-        : "",
+        ? "\nTHE LAYOUTS YOU MAY USE. Pick the one that suits each post rather than the same one every time, and fill EVERY slot the layout you pick lists:"
+        : "\nTHE LAYOUT EVERY POST USES. Fill every slot it lists:",
+      menu,
       "",
       "Return JSON only:",
       "{",
@@ -320,17 +345,19 @@ Deno.serve(async (req) => {
       '    "date": "YYYY-MM-DD",',
       `    "hour": number — 0-23, the business's local hour (${tz}) it should go out,`,
       '    "angle": string — what this post is doing, in three or four words,',
-      '    "headline": string — the words ON the picture. Under 60 characters,',
-      '    "subhead": string — a supporting line on the picture, under 90 characters. May be empty,',
+      '    "content": { "<slot>": string } — the words ON the picture: every slot the chosen layout lists, and no others, each within its character max,',
+      '    "imageQueries": { "<photo slot>": string } — 3 to 6 words naming a PHOTOGRAPHABLE scene for each photo slot the layout lists. Concrete: "baker sliding tray into oven", never "success" or "growth",',
       '    "caption": string — the post caption, WITHOUT hashtags,',
-      '    "hashtags": string[] — a handful, each starting with #,',
-      '    "imageQuery": string — what the photograph behind it should be of, in a few words' +
+      '    "hashtags": string[] — a handful, each starting with #' +
         (wantVary ? "," : ""),
       wantVary
         ? '    "layout": string — the id of the layout that suits THIS post, from the list above'
         : "",
       "  }]",
       "}",
+      "",
+      "In a title/headline slot only, you may wrap one to three words in *asterisks* to paint them in the accent colour.",
+      "Statistics must be short and plausible — '12+', '98%', '4.5' — and only if the data above supports them.",
     ].filter(Boolean).join("\n");
 
     // Don't spend a model turn a plan the business cannot afford would only
@@ -344,7 +371,11 @@ Deno.serve(async (req) => {
       model: modelFor("balanced"),
       system: HOUSE,
       user,
-      maxTokens: 8000,
+      // Raised from 8000: a post now carries every slot its layout defines and
+      // an image query per photo slot, not a headline and a subhead, so thirty
+      // posts is materially more output. Truncation here loses whole posts off
+      // the end of the array, which is exactly the failure nobody notices.
+      maxTokens: 14000,
     });
 
     const items = (Array.isArray(out?.posts) ? out.posts : []).slice(0, count);
@@ -368,10 +399,8 @@ Deno.serve(async (req) => {
     const fixedTemplate = wantVary ? "" : (layouts.some((l) => l.id === asked) ? asked : fallbackTemplate);
 
     // Degradations discovered while filling the month, reported at the end
-    // rather than thrown: the plan is thirty posts, and one exhausted image
-    // budget or one unreachable photo service must not cost the other
-    // twenty-nine.
-    let imageCapReason = "";
+    // rather than thrown: the plan is thirty posts, and one unreachable photo
+    // service must not cost the other twenty-nine.
     let stockUnavailable = "";
     let stockUnavailablePosts = 0;
 
@@ -389,60 +418,45 @@ Deno.serve(async (req) => {
         ? (layouts.some((l) => l.id === String(it?.layout)) ? String(it.layout) : fallbackTemplate)
         : fixedTemplate;
 
-      const query = String(it?.imageQuery ?? "");
-      let image: Json = null;
-      if (imagery === "generated" && !imageCapReason) {
-        try {
-          // admin+orgId turn the shared client's metering ON: the monthly cap
-          // and the daily image backstop are checked BEFORE each picture and
-          // the spend is booked into ai_usage after — a month of generated
-          // imagery used to be invisible to both.
-          const bytes = await makeImage(query, { admin, orgId, userId: actingUser, feature: "content-plan-image" });
-          const path = `${orgId}/${crypto.randomUUID()}.png`;
-          try { await admin.storage.createBucket(IMAGE_BUCKET, { public: true }); } catch { /* exists */ }
-          const { error } = await admin.storage.from(IMAGE_BUCKET).upload(path, bytes, { contentType: "image/png", upsert: false });
-          if (!error) {
-            image = { url: admin.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl, alt: query, source: "generated" };
-          }
-        } catch (e) {
-          const why = String((e as Error)?.message ?? e);
-          // The two budget refusals are the contract, compared exactly. Either
-          // one holds for the REST of this request too — a cap does not reset
-          // mid-plan — so the remaining posts degrade straight to stock
-          // without asking again, and the reason travels back on the response
-          // rather than failing a month the model already wrote.
-          if (why === CAP_REACHED_MESSAGE || why === IMAGE_DAILY_CAP_MESSAGE) {
-            imageCapReason = why;
-          } else {
-            // One picture failing must not lose the month. It falls back to
-            // stock, which is a worse picture and a finished plan.
-            console.error("generated image failed, falling back to stock:", why);
-          }
-        }
+      // The layout this post actually uses, so its real slots can be filled.
+      const spec = layouts.find((l) => l.id === templateId) ?? layouts[0];
+
+      // Keep only slots this template really has, and cut anything over budget.
+      // The model is asked for limits, not bound to them, and a headline that
+      // overflows its box is the one failure a reader always notices. Same rule
+      // as design-generate — this used to write `title` and `subtitle` and
+      // nothing else, whatever the layout offered.
+      const content: Record<string, string> = {};
+      for (const { slot, max } of (spec?.slots ?? [])) {
+        const raw = String((it?.content ?? {})[slot] ?? "").trim();
+        if (!raw) continue;
+        content[slot] = raw.length > max ? `${raw.slice(0, max - 1).trimEnd()}…` : raw;
       }
-      if (!image) {
+
+      // A photograph per photo slot the layout defines, not one for `image1`.
+      // Stock only: a month of generated pictures is thirty real charges for a
+      // plan nobody has approved yet, so the owner regenerates the ones they
+      // want in the editor after approving instead.
+      const images: Record<string, Json> = {};
+      for (const slot of Object.keys(spec?.images ?? {})) {
+        const q = String((it?.imageQueries ?? {})[slot] ?? "").trim()
+          || String((spec?.images ?? {})[slot] ?? "")
+          || String(it?.angle ?? "");
         // findStock, not searchStock: "no photograph matched" and "Pexels
         // could not be asked" are different answers, and the second used to
         // land as a silent no-photo post. The org id feeds the per-tenant
         // hourly bucket in stock.ts.
-        const found = await findStock(query, { orgId });
+        const found = await findStock(q, { orgId });
         if (found.photo) {
           const photo = found.photo;
-          image = { url: photo.url, alt: photo.alt ?? "", photographer: photo.photographer, photographerUrl: photo.photographerUrl, source: "pexels" };
+          images[slot] = { url: photo.url, alt: photo.alt ?? "", photographer: photo.photographer, photographerUrl: photo.photographerUrl, source: "pexels" };
         } else if (found.unavailable) {
-          stockUnavailablePosts++;
           if (!stockUnavailable) stockUnavailable = found.unavailable;
         }
       }
+      if (Object.keys(spec?.images ?? {}).length && !Object.keys(images).length) stockUnavailablePosts++;
 
-      const doc = {
-        templateId,
-        content: {
-          title: String(it?.headline ?? "").slice(0, 120),
-          subtitle: String(it?.subhead ?? "").slice(0, 160),
-        },
-        images: image ? { image1: image } : {},
-      };
+      const doc = { templateId, content, images };
 
       const { data: design } = await admin.from("designs").insert({
         organization_id: orgId,
@@ -481,13 +495,12 @@ Deno.serve(async (req) => {
     });
 
     // What degraded and why, said plainly. social_posts has no notes column,
-    // so the honest record of "these posts have stock instead of generated" or
-    // "these have no photograph" is the response the console shows the person
-    // who asked — a silent downgrade would read as the planner's choice.
+    // so the honest record of "these have no photograph" is the response the
+    // console shows the person who asked — a silent downgrade would read as
+    // the planner's choice. `coverage` travels with it for the same reason:
+    // a month written without reviews or without sales history is a weaker
+    // month, and the owner is entitled to know which inputs were empty.
     const notes: string[] = [];
-    if (imageCapReason) {
-      notes.push(`Some posts use stock photography instead of generated imagery: ${imageCapReason}`);
-    }
     if (stockUnavailablePosts > 0) {
       notes.push(
         `${stockUnavailablePosts} post(s) have no photograph — stock could not be searched (${stockUnavailable}). ` +
@@ -499,6 +512,10 @@ Deno.serve(async (req) => {
       ok: true, planId: plan.id,
       title: String(out?.title ?? ""), rationale: String(out?.rationale ?? ""),
       posts: made,
+      // What the plan was actually written from, and what was missing. An empty
+      // data source is a quality hit the owner can DO something about, so it is
+      // reported rather than silently absorbed.
+      coverage: ctx.coverage,
       ...(notes.length ? { notes } : {}),
       note: "Nothing goes out until the plan is approved.",
     });

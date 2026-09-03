@@ -60,6 +60,12 @@ const I_CAL = <svg width="16" height="16" viewBox="0 0 24 24" {...ln} aria-hidde
  *  sit that is not on top of somebody's design. */
 const HINT = "Double-click text to write in it · Ctrl + scroll zooms · Space + drag pans once you are zoomed in · Ctrl + drag marquees over artwork · Shift keeps a corner proportional";
 
+/** Format names, in one place. A chained ternary silently produced "Story" for
+ *  every format it had not been told about when a fourth one was added. */
+const FORMAT_LABEL: Record<DesignFormat, string> = {
+  portrait: "Portrait", square: "Square", story: "Story", landscape: "Landscape",
+};
+
 export function Editor({ design, orgName, onClose, onConnectAccounts }: {
   design: Design;
   orgName: string;
@@ -859,9 +865,9 @@ export function Editor({ design, orgName, onClose, onConnectAccounts }: {
             on the canvas — a slide is an ordinary design — and goes through
             apply(), so a mis-switch is one Ctrl+Z away from undone. */}
         <div className="dsn-seg" role="group" aria-label="Post format" style={{ flex: "0 0 auto" }}>
-          {(["portrait", "square", "story"] as const).map((f) => {
+          {(["portrait", "square", "story", "landscape"] as const).map((f) => {
             const d = formatDims(f);
-            const label = f === "portrait" ? "Portrait" : f === "square" ? "Square" : "Story";
+            const label = FORMAT_LABEL[f];
             return (
               <button
                 key={f} type="button"

@@ -19,7 +19,12 @@
     "shared:check": "node scripts/sync-shared.mjs --check",
     "test:canvas": "node scripts/canvas-test/run.mjs",
     "test:email": "node scripts/email-test/run.mjs",
-    "demo:tiktok": "node scripts/tiktok-demo/record.mjs"
+    "test:cadence": "deno run --check scripts/cadence-test/run.ts",
+    "test:content-validate": "deno run --check scripts/content-validate-test/run.ts",
+    "demo:tiktok": "node scripts/tiktok-demo/record.mjs",
+    "test:voice-guards": "deno run --check scripts/voice-guards-test/run.ts",
+    "test:caption-for": "deno run --check scripts/caption-for-test/run.ts",
+    "test:replica": "deno run --check scripts/replica-test/run.ts"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",

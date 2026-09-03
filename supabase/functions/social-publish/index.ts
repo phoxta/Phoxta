@@ -31,7 +31,7 @@ import { preflight, json } from "../_shared/cors.ts";
 import { authorize, isCronRequest } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { renderDesign, designChangedSinceExport } from "../_shared/render.ts";
-import { publish, type SocialAccount } from "../_shared/social.ts";
+import { captionFor, publish, type SocialAccount } from "../_shared/social.ts";
 import { refreshInstagram } from "../_shared/socialOauth.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       touched.add(t.post_id);
 
       const { data: post } = await admin
-        .from("social_posts").select("caption, media_url, options, design_id").eq("id", t.post_id).maybeSingle();
+        .from("social_posts").select("caption, captions, media_url, options, design_id").eq("id", t.post_id).maybeSingle();
       const { data: acct } = await admin
         .from("social_accounts")
         .select("id, platform, external_id, handle, access_token, refresh_token, token_expiry, status")
@@ -265,7 +265,18 @@ Deno.serve(async (req) => {
         }
       }
 
-      const r = await publish(acct as SocialAccount, post.caption ?? "", media, post.options ?? {});
+      // Per-platform copy where it exists, the single caption where it does
+      // not. Falling back rather than requiring `captions` keeps every post
+      // written before this existed — and every one an owner typed by hand —
+      // publishing exactly as it did.
+      //
+      // The object branch is for rows the planner wrote before the column was
+      // settled on finished text: it stored { caption, hashtags } per platform.
+      // Those rows are already in the database, and String()-ing one would
+      // publish the literal text "[object Object]" under the business's name.
+      const forThis = captionFor(post, (acct as SocialAccount).platform);
+
+      const r = await publish(acct as SocialAccount, forThis, media, post.options ?? {});
       if (r.ok) {
         if (r.status === "simulated") simulated++; else sent++;
         await admin.from("social_targets").update({

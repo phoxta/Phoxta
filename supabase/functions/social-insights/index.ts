@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // same twenty for ever.
     const { data: rows, error } = await admin
       .from("social_targets")
-      .select("id, account_id, platform, external_post_id, permalink, metrics_at")
+      .select("id, post_id, account_id, platform, external_post_id, permalink, metrics_at, social_posts(scheduled_at)")
       .eq("organization_id", orgId)
       .eq("status", "sent")
       .neq("external_post_id", "")
@@ -92,6 +92,36 @@ Deno.serve(async (req) => {
         // that works.
         ...(got.permalink ? { permalink: got.permalink } : {}),
       }).eq("id", t.id);
+
+      // AND append the reading, rather than only overwriting the snapshot.
+      //
+      // The columns above answer "how is this post doing now" and are wiped on
+      // every refresh, so they can never answer "did teaching beat promoting"
+      // or "is this post still climbing" — both of which need two readings and
+      // the age of the post at each. This row is that history (0143).
+      //
+      // hours_since_publish is stored, not derived later: it is a fact about
+      // THIS reading, and recomputing it from now() at query time would re-date
+      // every historical row every time anyone looked.
+      const publishedAt = Date.parse(String((t as Json).social_posts?.scheduled_at ?? ""));
+      await admin.from("social_metrics").insert({
+        organization_id: orgId,
+        target_id: t.id,
+        post_id: t.post_id,
+        platform: t.platform,
+        read_at: now,
+        // NULL rather than 0 when we do not know when it went out. An unknown
+        // age is not an age of zero, and a zero here would make an unmeasurable
+        // post look like the freshest one in the sample.
+        hours_since_publish: Number.isNaN(publishedAt)
+          ? null
+          : Math.round(((Date.now() - publishedAt) / 3_600_000) * 10) / 10,
+        likes: got.likes,
+        comments: got.comments,
+        // Everything else stays NULL until the platform actually tells us.
+        // Writing 0 for "Instagram did not grant us the impressions scope"
+        // would be indistinguishable from a post nobody saw.
+      });
       refreshed++;
     }
 

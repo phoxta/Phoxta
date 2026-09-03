@@ -1541,3 +1541,172 @@
 .pdx__opts dd { margin: 0; color: var(--hrx-ink); }
 .pdx__note { font-size: 12.5px; color: var(--hrx-muted); margin: 0; line-height: 1.5; }
 .pdx__acts { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+/* ── The content engine: progress, strategy review, refusals ────────────────
+   The strategy screen is the product — it is where an owner decides whether to
+   trust the month — so it reads as a document rather than as a form. */
+
+.pln-running { padding: 40px 28px; text-align: center; }
+.pln-running-label { font-size: 17px; font-weight: 650; color: var(--hrx-ink); margin: 0 0 4px; }
+.pln-running-desc { font-size: 13px; color: var(--hrx-muted); margin: 0 0 18px; }
+.pln-running-read { font-size: 12px; color: var(--hrx-muted); margin: 14px 0 0; }
+.pln-progress { height: 6px; border-radius: 999px; background: var(--hrx-soft); overflow: hidden; max-width: 420px; margin: 0 auto; }
+.pln-progress > span { display: block; height: 100%; background: var(--hrx-ink); border-radius: 999px; transition: width .5s ease; }
+
+.pln-strategy { padding: 22px 26px 28px; max-width: 760px; margin: 0 auto; }
+
+.pln-coverage { border: 1px solid var(--hrx-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; background: var(--hrx-soft); }
+.pln-coverage-read { margin: 0; font-size: 13px; font-weight: 600; color: var(--hrx-ink); }
+.pln-coverage-gap { margin: 6px 0 0; font-size: 12.5px; color: var(--hrx-muted); }
+
+.pln-thesis { margin-bottom: 26px; }
+.pln-thesis-title { font-size: 22px; font-weight: 680; color: var(--hrx-ink); margin: 0 0 8px; letter-spacing: -0.01em; }
+.pln-thesis-body { font-size: 15px; line-height: 1.6; color: var(--hrx-ink); margin: 0 0 10px; }
+.pln-measure { font-size: 13px; color: var(--hrx-muted); margin: 0; }
+
+.pln-block { margin-bottom: 24px; }
+.pln-block-title { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--hrx-muted); margin: 0 0 12px; }
+
+.pln-obs-list, .pln-lang-list, .pln-refuse-list, .pln-gap-list, .pln-offers { list-style: none; margin: 0; padding: 0; }
+.pln-obs { padding: 12px 0; border-bottom: 1px solid var(--hrx-border); }
+.pln-obs:last-child { border-bottom: 0; }
+.pln-obs-what { font-size: 14.5px; font-weight: 600; color: var(--hrx-ink); margin: 0 0 5px; }
+.pln-obs-evidence { font-size: 13px; color: var(--hrx-muted); margin: 0 0 4px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.pln-obs-chip { font-size: 11px; font-weight: 650; padding: 2px 8px; border-radius: 999px; background: var(--hrx-soft); border: 1px solid var(--hrx-border); color: var(--hrx-ink); white-space: nowrap; }
+.pln-obs-so { font-size: 13px; color: var(--hrx-ink); margin: 0; font-style: italic; }
+
+.pln-lang { padding: 8px 0; font-size: 13.5px; display: flex; gap: 10px; flex-wrap: wrap; }
+.pln-lang-quote { color: var(--hrx-ink); }
+.pln-lang-idea { color: var(--hrx-muted); }
+
+.pln-aud { padding: 10px 0; border-bottom: 1px solid var(--hrx-border); }
+.pln-aud:last-of-type { border-bottom: 0; }
+.pln-aud-name { font-size: 14.5px; font-weight: 650; color: var(--hrx-ink); margin: 0 0 3px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.pln-aud-primary { font-size: 11px; font-weight: 600; color: var(--hrx-muted); }
+.pln-aud-who, .pln-aud-obj { font-size: 13px; color: var(--hrx-muted); margin: 0 0 3px; }
+.pln-notfor { font-size: 13px; color: var(--hrx-ink); margin: 12px 0 0; }
+
+.pln-pillars { display: grid; gap: 14px; }
+.pln-pillar-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+.pln-pillar-name { font-size: 14px; font-weight: 650; color: var(--hrx-ink); }
+.pln-pillar-share { font-size: 13px; font-weight: 650; color: var(--hrx-muted); }
+.pln-pillar-bar { height: 5px; border-radius: 999px; background: var(--hrx-soft); overflow: hidden; margin-bottom: 6px; }
+.pln-pillar-bar > span { display: block; height: 100%; background: var(--hrx-ink); border-radius: 999px; }
+.pln-pillar-why { font-size: 13px; color: var(--hrx-muted); margin: 0 0 5px; }
+.pln-funnel-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--hrx-soft); border: 1px solid var(--hrx-border); color: var(--hrx-muted); }
+
+.pln-campaign { border: 1px solid var(--hrx-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+.pln-campaign-name { font-size: 14.5px; font-weight: 650; color: var(--hrx-ink); margin: 0 0 4px; }
+.pln-campaign-anchor { font-size: 13px; color: var(--hrx-ink); margin: 0 0 4px; }
+.pln-campaign-why { font-size: 13px; color: var(--hrx-muted); margin: 0; }
+
+.pln-offers li { font-size: 13px; color: var(--hrx-ink); padding: 3px 0; }
+.pln-offers code { background: var(--hrx-soft); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
+
+/* Refusals get the same weight as the plan. A strategy with no refusal in it
+   is a wish list, and burying them would make it one. */
+.pln-block--refuse .pln-refuse-list li,
+.pln-block--gaps .pln-gap-list li { font-size: 13.5px; color: var(--hrx-ink); padding: 6px 0 6px 16px; position: relative; }
+.pln-block--refuse .pln-refuse-list li::before { content: "—"; position: absolute; left: 0; color: var(--hrx-muted); }
+.pln-block--gaps .pln-gap-list li { color: var(--hrx-muted); }
+.pln-block--gaps .pln-gap-list li::before { content: "?"; position: absolute; left: 0; }
+
+.pln-dropped { margin: 18px 26px 0; border: 1px solid var(--hrx-border); border-radius: 10px; padding: 12px 14px; background: var(--hrx-soft); }
+.pln-dropped-title { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--hrx-muted); margin: 0 0 6px; }
+.pln-dropped ul { margin: 0; padding-left: 16px; }
+.pln-dropped li { font-size: 12.5px; color: var(--hrx-ink); padding: 2px 0; }
+
+.pln-strategy-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--hrx-border); }
+.pln-btn-ghost { border: 1px solid var(--hrx-border); background: var(--hrx-card); color: var(--hrx-ink); border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.pln-btn-ghost:hover:not(:disabled) { background: var(--hrx-soft); }
+
+/* ── How you sound ──────────────────────────────────────────────────────────
+ * The voice dialog. It borrows the strategy screen's evidence vocabulary on
+ * purpose — an owner meets the same "claim, then where it came from" shape in
+ * both places, so the habit of looking for the chip transfers.
+ */
+.vcx { padding: 20px 24px 26px; max-width: 720px; margin: 0 auto; }
+.vcx-status { font-size: 12px; font-weight: 600; color: var(--hrx-muted); }
+.vcx-status.is-approved { color: var(--hrx-ink); }
+/* pln-btn-primary is `width:100%; max-width:400px` because it was written for
+   the setup screen's centred column. In a row that makes every button 400px
+   wide and wraps them onto separate lines, so the width is reset here. */
+.vcx-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 14px 0 4px; }
+.vcx-actions .pln-btn-primary { width: auto; max-width: none; padding: 11px 22px; font-size: 14px; box-shadow: none; }
+.vcx-actions .pln-btn-primary:hover:not(:disabled) { transform: none; box-shadow: none; }
+/* The approve button is the one that matters once a description exists, so it
+   sits at the end of the row and is the only one carrying primary weight. */
+.vcx-actions .vcx-approve { margin-left: auto; }
+.vcx-body { margin-top: 18px; }
+.vcx-sec { margin-bottom: 18px; }
+.vcx-wide { width: 100%; margin-bottom: 12px; }
+.vcx-not { font-size: 12.5px; color: var(--hrx-muted); margin: 0; font-style: italic; }
+.vcx-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.vcx-facts li { font-size: 13.5px; color: var(--hrx-ink); }
+.vcx-facts b { font-weight: 650; margin-right: 8px; }
+.vcx-quotes { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.vcx-quotes li { font-size: 14px; color: var(--hrx-ink); line-height: 1.5; }
+.vcx-proof { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.vcx-proof li { font-size: 13.5px; color: var(--hrx-ink); }
+.vcx-eg { padding: 10px 0; border-bottom: 1px solid var(--hrx-border); }
+.vcx-eg:last-child { border-bottom: 0; }
+.vcx-eg-ctx { font-size: 12.5px; font-weight: 650; color: var(--hrx-muted); margin: 0 0 6px; }
+.vcx-eg-good { font-size: 14px; color: var(--hrx-ink); margin: 0 0 4px; padding-left: 10px; border-left: 2px solid var(--hrx-ink); }
+.vcx-eg-bad { font-size: 14px; color: var(--hrx-muted); margin: 0 0 4px; padding-left: 10px; border-left: 2px solid var(--hrx-border); text-decoration: line-through; text-decoration-color: var(--hrx-border); }
+/* A proposal is not an observation, and must not be allowed to look like one. */
+.pln-obs-chip.is-proposal { background: transparent; border-style: dashed; color: var(--hrx-muted); }
+
+/* The entry point on the setup screen. */
+.pln-voice-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pln-voice-state { font-size: 12.5px; color: var(--hrx-muted); }
+
+/* ── Caption takes and the crop warning ─────────────────────────────────────
+ * Three cards where there used to be one caption and a confirm dialog. They
+ * are buttons, not radio inputs, because taking one is an action with an
+ * immediate visible result rather than a selection to be submitted later.
+ */
+.spf-takes { display: grid; gap: 8px; margin-top: 10px; }
+.spf-take { text-align: left; display: grid; gap: 5px; padding: 11px 13px; border: 1px solid var(--hrx-border); border-radius: 10px; background: var(--hrx-card); cursor: pointer; font: inherit; transition: border-color .12s, background .12s; }
+.spf-take:hover:not(:disabled) { border-color: var(--hrx-ink); background: var(--hrx-soft); }
+.spf-take:disabled { opacity: .6; cursor: default; }
+.spf-take__t { font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--hrx-muted); }
+/* Clamped, not truncated with an ellipsis mid-word: the first line of a caption
+   is the part that decides whether it gets read, so it must be legible here. */
+.spf-take__c { font-size: 13.5px; line-height: 1.5; color: var(--hrx-ink); white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.spf-take__w { font-size: 12.5px; color: var(--hrx-muted); }
+.spf-take__p { font-size: 11.5px; color: var(--hrx-muted); font-style: italic; }
+.spf-warn { color: var(--hrx-muted); }
+
+/* Two edits on a planned post — the words and the picture — because the plan
+   writes both, and "the caption is right, the photo is wrong" had nowhere to go. */
+.pln-post-acts { display: inline-flex; gap: 10px; align-items: center; }
+
+/* ── The look of a month ────────────────────────────────────────────────────
+ * Three ways in, deliberately kept apart: your own artwork (rebuilt), a
+ * suggested direction, and a reference off the web (direction only). They do
+ * not share a button, because they are not the same offer.
+ */
+.lkx { padding: 20px 24px 28px; max-width: 860px; margin: 0 auto; }
+.lkx-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.lkx-actions .pln-btn-primary { width: auto; max-width: none; padding: 11px 22px; font-size: 14px; box-shadow: none; }
+.lkx-actions .pln-btn-primary:hover:not(:disabled) { transform: none; box-shadow: none; }
+.lkx-url { flex: 1 1 320px; min-width: 0; }
+
+/* A rebuilt upload, next to what it says about itself. */
+.lkx-built { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hrx-border); }
+.lkx-built__art { flex: 0 0 auto; border: 1px solid var(--hrx-border); border-radius: 10px; overflow: hidden; background: var(--hrx-soft); line-height: 0; }
+.lkx-built__side { flex: 1 1 300px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+
+.lkx-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin-top: 14px; }
+.lkx-card { text-align: left; display: grid; gap: 6px; padding: 0 0 12px; border: 1px solid var(--hrx-border); border-radius: 12px; background: var(--hrx-card); cursor: pointer; font: inherit; overflow: hidden; transition: border-color .12s, transform .12s; }
+.lkx-card:hover:not(:disabled) { border-color: var(--hrx-ink); transform: translateY(-1px); }
+.lkx-card:disabled { opacity: .6; cursor: default; }
+.lkx-card__mood { width: 100%; height: 130px; object-fit: cover; display: block; }
+.lkx-card__name { font-size: 14.5px; font-weight: 700; color: var(--hrx-ink); padding: 0 12px; }
+.lkx-card__feels { font-size: 12.5px; color: var(--hrx-muted); line-height: 1.45; padding: 0 12px; }
+.lkx-card__comp { font-size: 12px; color: var(--hrx-muted); font-style: italic; line-height: 1.4; padding: 0 12px; }
+
+/* The palette as colour, not as six hex codes nobody can picture. */
+.lkx-swatches { display: flex; gap: 4px; padding: 2px 12px; }
+.lkx-swatch { width: 20px; height: 20px; border-radius: 5px; border: 1px solid rgba(0,0,0,.12); display: inline-block; }
+.lkx-built__side .lkx-swatches { padding-left: 0; }

@@ -4,7 +4,7 @@ import { toast, toastError, confirmDanger } from "@/lib/ops/feedback";
 import { PostDetail } from "./PostDetail";
 import { SchedulePostForm, captionCap, localIso } from "./shared";
 import {
-  type Limits, type SocialAccount, type SocialPlatform, type SocialPost,
+  type CaptionVariant, type Limits, type SocialAccount, type SocialPlatform, type SocialPost,
   PLATFORM_NAMES, cancelSocialPost, deleteSocialPost, listSocialAccounts, listSocialPosts,
   refreshSocialInsights, retrySocialPost, sendSocialPostNow, updateSocialPost, writeSocialCaption, scheduleSocialPost,
 } from "@/lib/db/ops/social";
@@ -468,9 +468,19 @@ function PostEditor({ orgId, post, accounts, limits, onClose, onSaved }: {
   const [busy, setBusy] = useState(false);
   const [writing, setWriting] = useState(false);
   const [why, setWhy] = useState("");
+  const [steer, setSteer] = useState("");
+  const [variants, setVariants] = useState<CaptionVariant[]>([]);
+  /** Seeded from the post so an edit that only moves the time keeps the
+   *  per-platform copy it was queued with. */
+  const [captions, setCaptions] = useState<Record<string, string>>(post.captions ?? {});
 
   const cap = useMemo(() => captionCap(limits, accounts, picked), [limits, accounts, picked]);
-  const over = cap ? caption.length - cap.n : 0;
+  /** Same reasoning as the schedule dialog: the tightest-cap block is about one
+   *  caption serving every channel, so it lifts once each has its own. */
+  const perPlatform = usable
+    .filter((a) => picked.includes(a.id))
+    .every((a) => !!captions[a.platform]) && picked.length > 0;
+  const over = cap && !perPlatform ? caption.length - cap.n : 0;
 
   /**
    * A channel already on the post whose account has since expired.
@@ -488,7 +498,7 @@ function PostEditor({ orgId, post, accounts, limits, onClose, onSaved }: {
     setBusy(true);
     const at = new Date(when);
     const { error } = await updateSocialPost(orgId, {
-      id: post.id, caption, scheduledAt: at.toISOString(), accountIds: picked,
+      id: post.id, caption, captions, scheduledAt: at.toISOString(), accountIds: picked,
       // The stored options ride along unchanged: social-schedule rewrites the
       // whole options column on update, so omitting them here would strip a
       // post's Instagram collaborators for the crime of fixing a typo.
@@ -504,15 +514,24 @@ function PostEditor({ orgId, post, accounts, limits, onClose, onSaved }: {
    *  here — which may not be the ones it was first written for. */
   const write = async () => {
     if (!post.design_id) return toastError("This post is not linked to a design, so there are no words to write from.");
-    if (caption.trim() && !window.confirm("Replace what you have written?")) return;
     const platforms = usable.filter((a) => picked.includes(a.id)).map((a) => a.platform as SocialPlatform);
     setWriting(true);
-    const { data, error } = await writeSocialCaption(orgId, { designId: post.design_id, platforms });
+    const { data, error } = await writeSocialCaption(orgId, { designId: post.design_id, platforms, steer });
     setWriting(false);
     if (error) return toastError(error);
     if (!data) return;
-    setCaption(data.full);
-    setWhy(data.why);
+    setVariants(data.variants ?? []);
+    setWhy("");
+  };
+
+  /** Nothing is replaced until one is taken — which is why this no longer asks
+   *  "Replace what you have written?" before running the writer. */
+  const take = (v: CaptionVariant) => {
+    const lead = usable.filter((a) => picked.includes(a.id))[0]?.platform;
+    setCaption(v.full[lead ?? ""] ?? Object.values(v.full)[0] ?? "");
+    setCaptions(v.full);
+    setWhy(v.why);
+    setVariants([]);
   };
 
   return (
@@ -523,13 +542,22 @@ function PostEditor({ orgId, post, accounts, limits, onClose, onSaved }: {
         picked={picked}
         onPicked={setPicked}
         caption={caption}
-        onCaption={(v) => { setCaption(v); if (why) setWhy(""); }}
+        onCaption={(v) => {
+          setCaption(v);
+          if (why) setWhy("");
+          // Edited by hand, the per-platform set no longer matches the box.
+          if (Object.keys(captions).length) setCaptions({});
+        }}
         when={when}
         onWhen={setWhen}
         disabled={busy}
         onWrite={post.design_id ? () => void write() : undefined}
         writing={writing}
         why={why}
+        steer={steer}
+        onSteer={setSteer}
+        variants={variants}
+        onTake={take}
         whereNote={orphaned.length > 0
           ? `${orphaned.join(", ")} needs reconnecting, so it will come off this post when you save.`
           : undefined}

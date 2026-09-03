@@ -1,9 +1,9 @@
 import { Suspense, lazy, useEffect, useState, type ReactNode, type Ref } from "react";
 import {
-  type Limits, type SocialAccount, PLATFORM_NAMES,
+  type CaptionVariant, type Limits, type SocialAccount, type SocialPlatform, PLATFORM_NAMES,
 } from "@/lib/db/ops/social";
 import { getDesign, type Design } from "@/lib/db/designs";
-import { slidesOf } from "@/lib/designs/types";
+import { formatMismatch, slidesOf, type DesignFormat } from "@/lib/designs/types";
 
 /**
  * What the studio's scheduling surfaces share.
@@ -57,6 +57,7 @@ export function SchedulePostForm({
   accounts, limits, picked, onPicked,
   caption, onCaption, when, onWhen,
   disabled = false, onWrite, writing = false, why = "",
+  steer, onSteer, variants, onTake, format,
   captionRef, whereNote, whenNote, children,
 }: {
   /** Every account, connected or not — the form names the expired ones. */
@@ -75,6 +76,18 @@ export function SchedulePostForm({
   writing?: boolean;
   /** The one line of reasoning the caption writer came back with. */
   why?: string;
+  /** What this particular post is FOR, in the owner's words. The caption writer
+   *  has always accepted this and nothing has ever sent it — so every caption
+   *  so far was written from the artwork alone, with no idea what the post was
+   *  meant to achieve. */
+  steer?: string;
+  onSteer?: (v: string) => void;
+  /** Three takes to choose between, once the writer has run. */
+  variants?: CaptionVariant[];
+  onTake?: (v: CaptionVariant) => void;
+  /** The design's shape, so the form can say when a chosen platform will crop
+   *  it. Advice only — nothing is reshaped without being asked. */
+  format?: DesignFormat;
   captionRef?: Ref<HTMLTextAreaElement>;
   /** A surface-specific sentence under the channel pills. */
   whereNote?: string;
@@ -85,6 +98,8 @@ export function SchedulePostForm({
   const usable = accounts.filter((a) => a.status === "connected");
   const cap = captionCap(limits, accounts, picked);
   const over = cap ? caption.length - cap.n : 0;
+  const pickedPlatforms = usable.filter((a) => picked.includes(a.id)).map((a) => a.platform);
+  const mismatches = format ? formatMismatch(format, pickedPlatforms) : [];
 
   return (
     <>
@@ -119,7 +134,29 @@ export function SchedulePostForm({
           </em>
         )}
         {whereNote && <em>{whereNote}</em>}
+        {/* Said here, next to the channel that causes it, rather than at save
+            time — a crop warning after the fact is a complaint, not help. */}
+        {mismatches.map((m) => (
+          <em key={m.platform} className="spf-warn">
+            {PLATFORM_NAMES[m.platform as SocialPlatform] ?? m.platform}: {m.note}
+          </em>
+        ))}
       </div>
+
+      {/* The steer. It goes ABOVE the caption because it is an input to writing
+          it, not a note about it — put underneath, it reads as something you
+          fill in afterwards, which is too late to be used. */}
+      {onSteer && (
+        <label className="emc__f">
+          <span>What is this post for?</span>
+          <input
+            type="text" value={steer ?? ""} disabled={disabled}
+            onChange={(e) => onSteer(e.target.value)}
+            placeholder="Optional — e.g. push the Saturday slots, or answer the question we keep getting"
+          />
+          <em>The writer reads this before it writes. Without it, it only has the words on the artwork.</em>
+        </label>
+      )}
 
       <label className="emc__f">
         <span>
@@ -145,6 +182,38 @@ export function SchedulePostForm({
           placeholder="What the post says. The picture is the design."
         />
         {why && <em>{why}</em>}
+
+        {/* THREE CARDS INSTEAD OF A CONFIRM DIALOG. When the writer returned
+            one caption, using it overwrote whatever was in the box — which is
+            why both call sites asked "Replace what you have written?" first.
+            Offered as a choice, nothing is replaced until something is picked,
+            and the question stops needing to be asked. */}
+        {!!variants?.length && onTake && (
+          <div className="spf-takes">
+            {variants.map((v, i) => {
+              const platform = pickedPlatforms[0] ?? Object.keys(v.full)[0];
+              const text = v.full[platform] ?? Object.values(v.full)[0] ?? "";
+              const per = Object.keys(v.captions);
+              return (
+                <button
+                  type="button" key={i} className="spf-take"
+                  onClick={() => onTake(v)} disabled={disabled}
+                  title="Use this one"
+                >
+                  <span className="spf-take__t">{v.label}</span>
+                  <span className="spf-take__c">{text}</span>
+                  {v.why && <span className="spf-take__w">{v.why}</span>}
+                  {per.length > 1 && (
+                    <span className="spf-take__p">
+                      Written separately for {per.map((p) => PLATFORM_NAMES[p as SocialPlatform] ?? p).join(", ")}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {limits && picked.length > 0 && (
           <em>
             {usable.filter((a) => picked.includes(a.id))
@@ -183,6 +252,22 @@ const DesignSvgLazy = lazy(() =>
  * tiles already use, so the preview is client-side, current by construction,
  * and works wherever the console does.
  */
+/**
+ * A document that is not saved yet, drawn.
+ *
+ * The reference dialog needs this: a layout rebuilt from an uploaded picture
+ * has to be looked at BEFORE anyone agrees to make a month in it, and at that
+ * point there is no design row to fetch. Same renderer as everywhere else, so
+ * what is approved is what will be drawn.
+ */
+export function DocArt({ doc, width = 280 }: { doc: unknown; width?: number }) {
+  return (
+    <Suspense fallback={<p className="dsn-note">Drawing it…</p>}>
+      <DesignSvgLazy doc={doc as never} width={width} />
+    </Suspense>
+  );
+}
+
 export function DesignArt({ designId, width = 280 }: { designId: string; width?: number }) {
   const [design, setDesign] = useState<Design | null>(null);
   const [gone, setGone] = useState(false);

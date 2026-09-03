@@ -40,12 +40,46 @@ export const CANVAS_H = 1350;
  * the template pack (drawn portrait, always) and for callers that predate
  * formats.
  */
-export type DesignFormat = "portrait" | "square" | "story";
+export type DesignFormat = "portrait" | "square" | "story" | "landscape";
 
 export function formatDims(f?: DesignFormat): { w: number; h: number } {
   if (f === "square") return { w: 1080, h: 1080 };
   if (f === "story") return { w: 1080, h: 1920 };
+  // 1.91:1 — the ratio LinkedIn and X actually render a link card and an image
+  // post at. A portrait design posted there is letterboxed with grey bars, or
+  // centre-cropped, and either way the words near the top and bottom go.
+  if (f === "landscape") return { w: 1200, h: 628 };
   return { w: CANVAS_W, h: CANVAS_H };
+}
+
+/**
+ * What each platform actually shows well.
+ *
+ * Advice, not enforcement. A design is the owner's, and silently reshaping one
+ * at publish time would change what they approved — so this exists to say
+ * "LinkedIn will letterbox this" at the moment they choose where it goes, and
+ * to offer the conversion, rather than to make the decision for them.
+ */
+export const PLATFORM_FORMAT: Record<string, { best: DesignFormat; note: string }> = {
+  instagram: { best: "portrait", note: "Instagram gives portrait the most height in the feed." },
+  tiktok: { best: "story", note: "TikTok is full-screen vertical." },
+  linkedin: { best: "landscape", note: "LinkedIn shows landscape at full width; taller images get cropped." },
+  x: { best: "landscape", note: "X crops tall images to about 16:9 in the timeline." },
+};
+
+/** Which picked platforms will not show this shape well, if any. */
+export function formatMismatch(
+  f: DesignFormat | undefined,
+  platforms: string[],
+): { platform: string; note: string; best: DesignFormat }[] {
+  const have = f ?? "portrait";
+  return platforms
+    .map((p) => ({ p, spec: PLATFORM_FORMAT[p] }))
+    .filter((x) => x.spec && x.spec.best !== have)
+    // Square is the safe middle: it is never the best shape anywhere and never
+    // badly wrong either, so flagging it would be noise on every post.
+    .filter(() => have !== "square")
+    .map((x) => ({ platform: x.p, note: x.spec.note, best: x.spec.best }));
 }
 
 export type Rgb = string;
@@ -511,6 +545,22 @@ export function asDeck(v: DesignDoc | Deck | null | undefined, templateId = "v1"
 /** The slides, for anything that only needs to read them. */
 export const slidesOf = (v: DesignDoc | Deck | null | undefined, templateId?: string) =>
   asDeck(v, templateId).slides;
+
+/**
+ * The artboard shape of a design, whether it is a single post or a carousel.
+ *
+ * A Deck has no `format` of its own — its slides carry one, and they share an
+ * artboard in the editor, so the first slide speaks for the deck. Anything with
+ * no format at all is portrait: every document saved before formats existed is
+ * one. `social-schedule` carries the same rule for the story-to-feed refusal,
+ * and the two must agree or the console would advise one shape while the
+ * scheduler refused another.
+ */
+export function docFormat(v: DesignDoc | Deck | null | undefined): DesignFormat {
+  if (!v) return "portrait";
+  const f = "slides" in v ? v.slides?.[0]?.format : v.format;
+  return f === "square" || f === "story" || f === "landscape" ? f : "portrait";
+}
 
 /**
  * The palette a design actually paints with.

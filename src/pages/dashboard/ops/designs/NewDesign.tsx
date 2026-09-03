@@ -181,9 +181,10 @@ const FORMAT_TILES: { f: DesignFormat; label: string; dims: string }[] = [
   { f: "portrait", label: "Portrait", dims: "1080 × 1350" },
   { f: "square", label: "Square", dims: "1080 × 1080" },
   { f: "story", label: "Story", dims: "1080 × 1920" },
+  { f: "landscape", label: "Landscape", dims: "1200 × 628" },
 ];
 
-/** Three labelled tiles, not a dropdown: the choice is made once per post and
+/** Labelled tiles, not a dropdown: the choice is made once per post and
  *  the caption IS the information — hiding "1080 × 1920" behind a click would
  *  make everyone guess what "Story" means in pixels. */
 function FormatTiles({ value, onChange, disabled }: {

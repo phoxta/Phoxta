@@ -22,6 +22,7 @@ import { callJson } from "../_shared/anthropic.ts";
 import { modelFor } from "../_shared/models.ts";
 import { findStock } from "../_shared/stock.ts";
 import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
+import { voiceBlock } from "../_shared/voice.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -110,13 +111,21 @@ Deno.serve(async (req) => {
   photos: ${Object.entries(t.images).map(([s, d]) => `${s} — ${d}`).join("; ") || "none"}`,
     ).join(NL);
 
+    // Words on artwork are the shortest copy this business publishes and the
+    // most exposed, so they benefit most from sounding like them rather than
+    // like a template.
+    const voice = await voiceBlock(admin, orgId);
+
     const t0 = Date.now();
+    const HOUSE =
+      "You write social posts for a small business. Reply with JSON only. " +
+      "Write like a person, not a brochure: no 'unlock', no 'elevate', no 'in today's fast-paced world'. " +
+      "Respect every character limit exactly — copy that overflows its slot is worse than copy that is short.";
     const { data: written, inTok, outTok, cacheWriteTok, cacheReadTok, model } = await callJson<Json>({
       model: modelFor("balanced"),
-      system:
-        "You write social posts for a small business. Reply with JSON only. " +
-        "Write like a person, not a brochure: no 'unlock', no 'elevate', no 'in today's fast-paced world'. " +
-        "Respect every character limit exactly — copy that overflows its slot is worse than copy that is short.",
+      system: voice ? `${HOUSE}
+
+${voice}` : HOUSE,
       user: `Business: ${orgName}${(org as Json)?.vertical ? ` (${(org as Json).vertical})` : ""}
 Brief: ${brief}
 

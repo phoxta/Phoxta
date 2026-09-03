@@ -3,13 +3,14 @@ import { toast, toastError } from "@/lib/ops/feedback";
 import type { Design } from "@/lib/db/designs";
 import {
   type InstagramOptions as IgOptions,
-  type Limits, type SocialAccount, type SocialPlatform, EMPTY_IG_OPTIONS,
+  type CaptionVariant, type Limits, type SocialAccount, type SocialPlatform, EMPTY_IG_OPTIONS,
   listSocialAccounts, scheduleSocialPost, writeSocialCaption,
 } from "@/lib/db/ops/social";
 import { uploadAsset } from "@/lib/db/ops/designAssets";
 import { InstagramOptions } from "./InstagramOptions";
 import { rasterise } from "./rasterise";
 import { SchedulePostForm, captionCap, localIso } from "./shared";
+import { docFormat } from "@/lib/designs/types";
 
 /**
  * Putting a design out.
@@ -48,6 +49,12 @@ export function ScheduleDialog({ orgId, design, onClose, onConnectAccounts }: {
   /** Writing the caption, and the one line of reasoning it comes back with. */
   const [writing, setWriting] = useState(false);
   const [why, setWhy] = useState("");
+  const [steer, setSteer] = useState("");
+  const [variants, setVariants] = useState<CaptionVariant[]>([]);
+  /** Per-platform copy, kept beside the single caption. The publisher prefers
+   *  it when present, so LinkedIn gets the LinkedIn version rather than a
+   *  compromise trimmed to X's 280 characters. */
+  const [captions, setCaptions] = useState<Record<string, string>>({});
   const field = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -76,7 +83,19 @@ export function ScheduleDialog({ orgId, design, onClose, onConnectAccounts }: {
 
   const usable = accounts.filter((a) => a.status === "connected");
   const cap = useMemo(() => captionCap(limits, accounts, picked), [limits, accounts, picked]);
-  const over = cap ? caption.length - cap.n : 0;
+  /**
+   * Is every picked channel covered by its own caption?
+   *
+   * The tightest-cap block below exists because ONE caption had to satisfy
+   * every platform at once. When each has its own, that reason is gone — and
+   * enforcing it anyway would refuse a perfectly valid Instagram caption for
+   * being longer than X's 280, which is exactly the compromise per-platform
+   * copy was written to end. The server still checks each on its own.
+   */
+  const perPlatform = usable
+    .filter((a) => picked.includes(a.id))
+    .every((a) => !!captions[a.platform]) && picked.length > 0;
+  const over = cap && !perPlatform ? caption.length - cap.n : 0;
 
   const toInstagram = usable.some((a) => picked.includes(a.id) && a.platform === "instagram");
 
@@ -111,7 +130,8 @@ export function ScheduleDialog({ orgId, design, onClose, onConnectAccounts }: {
       const mediaUrl = await renderAndStore();
       const at = new Date(when);
       const { error } = await scheduleSocialPost(orgId, {
-        designId: design.id, mediaUrl, caption, scheduledAt: at.toISOString(), accountIds: picked,
+        designId: design.id, mediaUrl, caption, captions,
+        scheduledAt: at.toISOString(), accountIds: picked,
         // Only when Instagram is going to receive it. Storing them against a
         // post that is going nowhere near Instagram would leave the console
         // showing collaborators on a post that can never have any.
@@ -135,21 +155,31 @@ export function ScheduleDialog({ orgId, design, onClose, onConnectAccounts }: {
    * in the body, and X counts the hashtags inside its 280. A caption written for
    * one platform and posted to another is a caption refused at publish time.
    *
-   * It REPLACES the box, so anything already typed is confirmed first — the
-   * button sits next to the words it would overwrite.
+   * It REPLACES NOTHING. Three takes come back and the box only changes when
+   * one is picked, so the "Replace what you have written?" confirm this used
+   * to open — the tell that the button was destructive — is gone with it.
    */
   const write = async () => {
     const platforms = usable
       .filter((a) => picked.includes(a.id))
       .map((a) => a.platform as SocialPlatform);
-    if (caption.trim() && !window.confirm("Replace what you have written?")) return;
     setWriting(true);
-    const { data, error } = await writeSocialCaption(orgId, { designId: design.id, platforms });
+    const { data, error } = await writeSocialCaption(orgId, { designId: design.id, platforms, steer });
     setWriting(false);
     if (error) return toastError(error);
     if (!data) return;
-    setCaption(data.full);
-    setWhy(data.why);
+    setVariants(data.variants ?? []);
+    setWhy("");
+  };
+
+  /** Taking one: its per-platform copy is kept alongside the caption, so each
+   *  channel publishes the version written for it. */
+  const take = (v: CaptionVariant) => {
+    const lead = usable.filter((a) => picked.includes(a.id))[0]?.platform;
+    setCaption(v.full[lead ?? ""] ?? Object.values(v.full)[0] ?? "");
+    setCaptions(v.full);
+    setWhy(v.why);
+    setVariants([]);
     field.current?.focus();
   };
 
@@ -181,13 +211,25 @@ export function ScheduleDialog({ orgId, design, onClose, onConnectAccounts }: {
             picked={picked}
             onPicked={setPicked}
             caption={caption}
-            onCaption={(v) => { setCaption(v); if (why) setWhy(""); }}
+            onCaption={(v) => {
+              setCaption(v);
+              if (why) setWhy("");
+              // Typed over by hand, the per-platform set no longer matches what
+              // is on screen — and publishing the stale set would send words
+              // the owner never saw. Dropping it falls back to this caption.
+              if (Object.keys(captions).length) setCaptions({});
+            }}
             when={when}
             onWhen={setWhen}
             disabled={busy}
             onWrite={() => void write()}
             writing={writing}
             why={why}
+            steer={steer}
+            onSteer={setSteer}
+            variants={variants}
+            onTake={take}
+            format={docFormat(design.doc)}
             captionRef={field}
             whenNote="It goes out on the first cron tick after this time — within five minutes."
           >

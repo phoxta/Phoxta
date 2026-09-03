@@ -83,6 +83,9 @@ export type SocialPost = {
   status: "draft" | "queued" | "published" | "failed" | "part" | "cancelled";
   created_at: string;
   options: PostOptions | null;
+  /** Per-platform copy, when the writer produced it. Empty for posts written
+   *  before this existed and for captions typed by hand. */
+  captions: Record<string, string> | null;
   social_targets: SocialTarget[];
 };
 
@@ -146,8 +149,25 @@ export const listSocialPosts = (orgId: string) =>
 
 export const scheduleSocialPost = (
   orgId: string,
-  p: { designId?: string; mediaUrl: string; caption: string; scheduledAt: string; accountIds: string[]; options?: PostOptions },
+  p: {
+    designId?: string; mediaUrl: string; caption: string; scheduledAt: string;
+    accountIds: string[]; options?: PostOptions;
+    /** Per-platform copy. The publisher prefers it over `caption`. */
+    captions?: Record<string, string>;
+  },
 ) => call<{ id: string; at: string }>(orgId, "schedule", p);
+
+/** One complete take on the post: what it says on each platform it is going to. */
+export type CaptionVariant = {
+  /** Two or three words naming the angle, so three cards are tellable apart. */
+  label: string;
+  captions: Record<string, string>;
+  hashtags: Record<string, string[]>;
+  /** Caption plus hashtags, which is what actually gets posted. */
+  full: Record<string, string>;
+  hook: string;
+  why: string;
+};
 
 /**
  * Write the caption and the hashtags for a design.
@@ -164,7 +184,12 @@ export async function writeSocialCaption(
   orgId: string,
   p: { designId: string; platforms: SocialPlatform[]; steer?: string },
 ): Promise<{
-  data: { caption: string; hashtags: string[]; hook: string; why: string; cap: number; full: string } | null;
+  data: {
+    /** Three takes to choose between. Offering one made the button destructive:
+     *  taking it meant overwriting whatever was already in the box. */
+    variants: CaptionVariant[];
+    caption: string; hashtags: string[]; hook: string; why: string; cap: number; full: string;
+  } | null;
   error: string | null;
 }> {
   try {
@@ -195,7 +220,10 @@ export async function writeSocialCaption(
  */
 export const updateSocialPost = (
   orgId: string,
-  p: { id: string; caption: string; scheduledAt: string; accountIds: string[]; options?: PostOptions },
+  p: {
+    id: string; caption: string; scheduledAt: string; accountIds: string[];
+    options?: PostOptions; captions?: Record<string, string>;
+  },
 ) => call<{ at: string }>(orgId, "update", p);
 
 /**

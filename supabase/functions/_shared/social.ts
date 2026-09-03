@@ -499,3 +499,34 @@ export const LIMITS: Record<SocialAccount["platform"], { caption: number; note: 
   x: { caption: 280, note: "Long posts need a paid tier; 280 is what a free app can rely on." },
   tiktok: { caption: 2200, note: "Until the app is audited, TikTok only allows private posts." },
 };
+
+
+/** Just the caption-bearing shape of a social_posts row. */
+export type CaptionSource = {
+  caption?: string | null;
+  // deno-lint-ignore no-explicit-any
+  captions?: Record<string, any> | null;
+} | null | undefined;
+
+/**
+ * The words this platform actually gets.
+ *
+ * `social_posts.captions` holds finished text per platform. It briefly held
+ * `{ caption, hashtags }` objects instead, written by the planner, and those
+ * rows are still in the database — so the object shape is read rather than
+ * coerced. `String({...})` is "[object Object]", and this is the last code
+ * between a stored value and a public post under the business's name, which
+ * makes a silent coercion here the most expensive kind of shrug.
+ */
+export function captionFor(post: CaptionSource, platform: string): string {
+  const v = (post?.captions ?? {})[platform];
+  if (typeof v === "string" && v.trim()) return v;
+  if (v && typeof v === "object") {
+    const text = String(v.caption ?? "").trim();
+    const tags = (Array.isArray(v.hashtags) ? v.hashtags : [])
+      .map((h: unknown) => String(h).trim()).filter(Boolean)
+      .map((h: string) => (h.startsWith("#") ? h : `#${h}`));
+    if (text) return tags.length ? `${text}\n\n${tags.join(" ")}` : text;
+  }
+  return String(post?.caption ?? "");
+}

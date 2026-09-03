@@ -260,7 +260,21 @@ export default function DesignsPage() {
           three tables is not worth fetching for a dialog nobody opened. */}
       <CalendarDialog orgId={orgId} open={calendarOpen} onClose={() => setCalendarOpen(false)} />
 
-      <PlanDialog orgId={orgId} open={planOpen} onClose={() => setPlanOpen(false)} />
+      <PlanDialog
+        orgId={orgId}
+        open={planOpen}
+        onClose={() => setPlanOpen(false)}
+        /* Editing a planned post's artwork closes the plan and opens that
+           design in the editor, through the SAME ?design= route the library
+           uses — so the effect above fetches it even though a planned design
+           is not in `rows`, and Back returns here rather than to the library. */
+        onEditDesign={(id) => {
+          setPlanOpen(false);
+          const next = new URLSearchParams(params);
+          next.set("design", id);
+          setParams(next);
+        }}
+      />
 
       {scheduling && (
         <ScheduleDialog orgId={orgId} design={scheduling} onClose={() => setScheduling(null)} />

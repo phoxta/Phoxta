@@ -132,9 +132,24 @@ function recordOk(p: Provider) {
  * stopped — with another provider configured and sitting idle the whole time.
  * A key that is unpaid, expired or revoked is a fact about that provider, not
  * about the request, and the next provider is exactly the right thing to try.
+ *
+ * AND ONE 400, for the same reason. Gemini's OpenAI-compatible layer rejects the
+ * second turn of any tool-using run that its thinking produced:
+ *   400 "Function call is missing a thought_signature in functionCall parts"
+ * The signature is a Gemini-only artefact, it is not returned anywhere in that
+ * layer's response (only the native API exposes it — Google's own errors on this
+ * endpoint point at the native/Interactions API), so there is nothing we can
+ * echo back and no request we could have sent that would have worked. That
+ * makes it a fact about the endpoint, not about the request: on xAI, the local
+ * box or Anthropic the very same messages succeed. Left non-retriable it killed
+ * every multi-tool Gemini run outright — the operator, ai_task automations, the
+ * storefront agent — while a working provider sat idle.
  */
+const GEMINI_THOUGHT_SIGNATURE_400 = /thought_signature/i;
+
 function retriable(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
+  if (GEMINI_THOUGHT_SIGNATURE_400.test(msg)) return true;
   if (/\b(401|402|403|429|500|502|503|504|529)\b/.test(msg)) return true;
   if (e instanceof TypeError) return true; // network failure
   if (e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError")) return true;
@@ -189,7 +204,17 @@ async function withFallback<T>(model: string, run: (p: Provider) => Promise<T>, 
       return out;
     } catch (e) {
       lastErr = e;
-      recordFail(p);
+      // The thought-signature 400 is not a flake to count towards five: every
+      // remaining turn of a tool-using run would hit it again, one wasted call
+      // and one "failed" usage row each. Open the circuit on the first one so
+      // the rest of this run — and anything else in this isolate for the next
+      // minute — goes straight to a provider that can finish it.
+      if (GEMINI_THOUGHT_SIGNATURE_400.test(e instanceof Error ? e.message : String(e))) {
+        breaker[p].openUntil = Date.now() + COOLDOWN_MS;
+        breaker[p].fails = 0;
+      } else {
+        recordFail(p);
+      }
       if (stats) stats.failed += 1;
       if (i < providers.length - 1 && retriable(e)) continue;
       throw e;
@@ -328,8 +353,43 @@ export function callMessages(opts: { model: string; system: string; messages: Ms
   return withFallback(opts.model, (p) => callMessagesVia(p, opts));
 }
 
+/**
+ * A picture handed to the model along with the words.
+ *
+ * `url` may be an https URL or a `data:image/...;base64,...` URI. Both work on
+ * every provider here, and a data URI is what an upload becomes — so a caller
+ * never has to make a private asset publicly reachable just to ask about it.
+ */
+export type VisionImage = { url: string; mime?: string };
+
+/**
+ * The user turn, as content parts, in the shape this provider wants.
+ *
+ * The two families genuinely differ — OpenAI takes `image_url`, Anthropic takes
+ * an `image` block with a source — and the difference is invisible to callers
+ * so that failover between them keeps working with pictures attached.
+ */
+function visionContent(p: Provider, text: string, images: VisionImage[]): Json {
+  if (!images.length) return text;
+  if (openAiLike(p)) {
+    return [
+      { type: "text", text },
+      ...images.map((i) => ({ type: "image_url", image_url: { url: i.url } })),
+    ];
+  }
+  return [
+    { type: "text", text },
+    ...images.map((i) => {
+      const m = /^data:([^;]+);base64,(.+)$/.exec(i.url);
+      return m
+        ? { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } }
+        : { type: "image", source: { type: "url", url: i.url } };
+    }),
+  ];
+}
+
 // --- JSON-structured completion -------------------------------------------
-export async function callJson<T = Json>(opts: { model: string; system: string; user: string; maxTokens?: number }): Promise<{ data: T; inTok: number; outTok: number; cacheWriteTok: number; cacheReadTok: number; model: string }> {
+export async function callJson<T = Json>(opts: { model: string; system: string; user: string; maxTokens?: number; images?: VisionImage[] }): Promise<{ data: T; inTok: number; outTok: number; cacheWriteTok: number; cacheReadTok: number; model: string }> {
   const system = opts.system + "\n\nRespond with ONLY valid JSON — no prose, no markdown fences.";
   const r = await withFallback(opts.model, async (p) => {
     if (openAiLike(p)) {
@@ -349,7 +409,10 @@ export async function callJson<T = Json>(opts: { model: string; system: string; 
           ...(p === "xai" || (p === "local" && Deno.env.get("LOCAL_JSON_MODE") === "1")
             ? { response_format: { type: "json_object" } }
             : {}),
-          messages: [{ role: "system", content: system }, { role: "user", content: opts.user }],
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: visionContent(p, opts.user, opts.images ?? []) },
+          ],
         }),
         signal: timeoutSignal(),
       });
@@ -364,7 +427,10 @@ export async function callJson<T = Json>(opts: { model: string; system: string; 
         model: data.model ?? opts.model,
       } as CallResult;
     }
-    return await callMessagesVia(p, { model: opts.model, system, messages: [{ role: "user", content: opts.user }], maxTokens: opts.maxTokens ?? 1024 });
+    return await callMessagesVia(p, {
+      model: opts.model, system, maxTokens: opts.maxTokens ?? 1024,
+      messages: [{ role: "user", content: visionContent(p, opts.user, opts.images ?? []) }],
+    });
   });
 
   let raw = r.text.trim();
@@ -376,7 +442,17 @@ export async function callJson<T = Json>(opts: { model: string; system: string; 
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error("model did not return valid JSON");
+    // "did not return valid JSON" is true of both a model that wrote an
+    // apology and a model that wrote a perfect object and got cut off at
+    // maxTokens — and the two call for opposite fixes. Truncation is
+    // detectable, so say which it was: a caller that has to guess between
+    // "retry" and "raise the budget" guesses wrong at least half the time.
+    const looksTruncated = raw.length > 200 && !/[}\]]\s*$/.test(raw);
+    throw new Error(
+      looksTruncated
+        ? `model's JSON was cut off after ${r.outTok} tokens — the reply needs a bigger maxTokens or a shorter schema`
+        : "model did not return valid JSON",
+    );
   }
   return { data: parsed, inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, model: r.model };
 }
@@ -389,7 +465,34 @@ export async function callJson<T = Json>(opts: { model: string; system: string; 
 // blocks", it is the sequence of what the model said, what tools it asked for
 // and what those tools returned — which reads the same everywhere.
 
-type ToolCall = { id: string; name: string; args: Json };
+/**
+ * `extra` — whatever the provider hung on the tool call that is not part of the
+ * OpenAI shape, kept so it can be handed straight back.
+ *
+ * Gemini returns a THOUGHT SIGNATURE with every function call it makes while
+ * thinking, and requires it back on the next turn: rebuilding the call from
+ * id/name/args alone (which is all this type used to carry) returns
+ *   400 "Function call is missing a thought_signature in functionCall parts"
+ * and, being a 400, is correctly not failed over to another provider. So any
+ * Gemini run that used TWO tool turns died on the second — the operator, an
+ * ai_task automation, the storefront agent. Thinking is on for Gemini by
+ * default (see reasoningFor), so this was every multi-tool Gemini run.
+ *
+ * The field is kept opaque rather than named: whatever key Google puts it under
+ * round-trips unread, so a rename upstream cannot silently reintroduce the bug.
+ */
+type ToolCall = { id: string; name: string; args: Json; extra?: Json };
+
+/** Non-OpenAI keys on a returned tool_call. `index` is stream bookkeeping and
+ *  must not be replayed; the rest is the provider's own. */
+const TOOL_CALL_KNOWN_KEYS = new Set(["id", "type", "index", "function"]);
+function providerExtras(tc: Json): Json | undefined {
+  const extra: Record<string, Json> = {};
+  for (const [k, v] of Object.entries((tc ?? {}) as Record<string, Json>)) {
+    if (!TOOL_CALL_KNOWN_KEYS.has(k) && v !== null && v !== undefined) extra[k] = v;
+  }
+  return Object.keys(extra).length ? extra : undefined;
+}
 type Step =
   | { kind: "assistant"; text: string; calls: ToolCall[] }
   | { kind: "tools"; results: { id: string; name: string; output: string }[] };
@@ -443,7 +546,7 @@ function truncateToolOutput(out: string, max = TOOL_OUTPUT_MAX): string {
   return out.slice(0, cut > max / 2 ? cut : max) + `\n…[truncated ${out.length - max} characters — narrow the query]`;
 }
 
-function openAiMessages(opts: AgentOpts, steps: Step[]): Json[] {
+function openAiMessages(opts: AgentOpts, steps: Step[], p: Provider): Json[] {
   const out: Json[] = [
     { role: "system", content: opts.system },
     ...(opts.history ?? []).map((m) => ({ role: m.role, content: m.content })),
@@ -455,7 +558,17 @@ function openAiMessages(opts: AgentOpts, steps: Step[]): Json[] {
         role: "assistant",
         content: s.text || "",
         ...(s.calls.length
-          ? { tool_calls: s.calls.map((c) => ({ id: c.id, type: "function", function: { name: c.name, arguments: JSON.stringify(c.args ?? {}) } })) }
+          ? {
+            tool_calls: s.calls.map((c) => ({
+              id: c.id,
+              type: "function",
+              // Gemini's own, and only ever returned to Gemini: another
+              // provider did not issue it and has no use for it. A step
+              // replayed across a failover therefore drops it.
+              ...(p === "gemini" && c.extra ? c.extra : {}),
+              function: { name: c.name, arguments: JSON.stringify(c.args ?? {}) },
+            })),
+          }
           : {}),
       });
     } else {
@@ -499,7 +612,7 @@ async function readOpenAiStream(res: Response, turn: number, onDelta?: (t: strin
   let text = "";
   let usage: Json = null;
   let model: string | undefined;
-  const partial = new Map<number, { id: string; name: string; args: string }>();
+  const partial = new Map<number, { id: string; name: string; args: string; extra?: Json }>();
 
   const handleLine = (line: string) => {
     if (!line.startsWith("data:")) return;
@@ -525,6 +638,10 @@ async function readOpenAiStream(res: Response, turn: number, onDelta?: (t: strin
       if (tc.id) cur.id = tc.id;
       if (tc.function?.name) cur.name += tc.function.name;
       if (tc.function?.arguments) cur.args += tc.function.arguments;
+      // The thought signature arrives on whichever chunk carries it — merged
+      // rather than assigned, so a later argument-only chunk cannot erase it.
+      const ex = providerExtras(tc);
+      if (ex) cur.extra = { ...(cur.extra ?? {}), ...ex };
       partial.set(i, cur);
     }
   };
@@ -548,7 +665,7 @@ async function readOpenAiStream(res: Response, turn: number, onDelta?: (t: strin
       try {
         args = JSON.parse(c.args || "{}");
       } catch { /* leave {} */ }
-      return { id: safeId(c.id, turn, i), name: c.name, args };
+      return { id: safeId(c.id, turn, i), name: c.name, args, extra: c.extra };
     });
   return { text, calls, usage, model };
 }
@@ -568,7 +685,7 @@ async function agentStep(p: Provider, opts: AgentOpts, steps: Step[], turn: numb
         model,
         max_tokens: maxTokensFor(p, model, requested),
         ...reasoningFor(p, model),
-        messages: openAiMessages(opts, steps),
+        messages: openAiMessages(opts, steps, p),
         tools: toOpenAITools(opts.tools),
         tool_choice: "auto",
         ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
@@ -597,7 +714,7 @@ async function agentStep(p: Provider, opts: AgentOpts, steps: Step[], turn: numb
       try {
         args = JSON.parse(tc.function?.arguments ?? "{}");
       } catch { /* leave {} */ }
-      return { id: safeId(tc.id, turn, i), name: tc.function?.name ?? "", args };
+      return { id: safeId(tc.id, turn, i), name: tc.function?.name ?? "", args, extra: providerExtras(tc) };
     });
     return {
       text: (m.content ?? "").trim(),

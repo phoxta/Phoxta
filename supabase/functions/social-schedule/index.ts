@@ -15,6 +15,24 @@ import { LIMITS } from "../_shared/social.ts";
 type Json = any;
 
 /**
+ * Per-platform captions, narrowed to the platforms this post is going to.
+ *
+ * Anything sent for a platform not among the targets is dropped rather than
+ * stored: a caption kept for a channel that is not receiving the post is
+ * invisible to the owner and would come back to life the day somebody adds
+ * that channel — publishing words nobody has looked at since.
+ */
+function cleanCaptions(v: Json, platforms: string[]): Record<string, string> {
+  if (!v || typeof v !== "object") return {};
+  const out: Record<string, string> = {};
+  for (const p of platforms) {
+    const text = String((v as Record<string, unknown>)[p] ?? "").trim();
+    if (text) out[p] = text;
+  }
+  return out;
+}
+
+/**
  * The per-platform options, cleaned on the way in.
  *
  * NOT trusted from the browser. These end up as parameters on a Meta API call,
@@ -68,7 +86,7 @@ async function designFormat(admin: Json, orgId: string, designId: string): Promi
     .select("doc").eq("id", designId).eq("organization_id", orgId).maybeSingle();
   const doc = (data as Json)?.doc;
   const fmt = Array.isArray(doc?.slides) ? doc.slides[0]?.format : doc?.format;
-  return fmt === "square" || fmt === "story" ? fmt : "portrait";
+  return fmt === "square" || fmt === "story" || fmt === "landscape" ? fmt : "portrait";
 }
 
 const STORY_TO_FEED =
@@ -101,7 +119,7 @@ Deno.serve(async (req) => {
       case "list": {
         const { data, error } = await admin
           .from("social_posts")
-          .select("id, design_id, media_url, caption, scheduled_at, status, created_at, options, social_targets(id, account_id, platform, status, permalink, error, likes, comments, metrics_at)")
+          .select("id, design_id, media_url, caption, captions, scheduled_at, status, created_at, options, social_targets(id, account_id, platform, status, permalink, error, likes, comments, metrics_at)")
           .eq("organization_id", org.id)
           .order("scheduled_at", { ascending: false })
           .limit(60);
@@ -130,11 +148,26 @@ Deno.serve(async (req) => {
         const usable = (accts ?? []) as Json[];
         if (usable.length !== accountIds.length) return json({ error: "One of those accounts is not yours." }, 403);
 
+        // Per-platform copy, where the writer produced it. Only the platforms
+        // actually being posted to are kept: a stored caption for a channel
+        // that is not receiving this post is dead weight that would come back
+        // to life if the post were later edited to include it.
+        const captions = cleanCaptions(body?.captions, usable.map((x) => String(x.platform)));
+
+        // Each platform is measured against ITS OWN text, which is the whole
+        // point of writing them separately — before this, one caption had to
+        // clear the tightest limit in the set, so adding X to a post silently
+        // capped Instagram at 280 characters.
         const tooLong = usable
-          .map((x) => ({ p: x.platform as keyof typeof LIMITS, max: LIMITS[x.platform as keyof typeof LIMITS]?.caption ?? 2200 }))
-          .filter((x) => caption.length > x.max);
+          .map((x) => {
+            const p = x.platform as keyof typeof LIMITS;
+            return { p, max: LIMITS[p]?.caption ?? 2200, text: captions[String(p)] ?? caption };
+          })
+          .filter((x) => x.text.length > x.max);
         if (tooLong.length) {
-          return json({ error: `That caption is too long for ${tooLong.map((t) => t.p).join(", ")}.` }, 400);
+          return json({
+            error: `That caption is too long for ${tooLong.map((t) => `${t.p} (${t.text.length}/${t.max})`).join(", ")}.`,
+          }, 400);
         }
 
         const options = cleanOptions(body?.options ?? {});
@@ -153,6 +186,7 @@ Deno.serve(async (req) => {
           design_id: body?.designId ?? null,
           media_url: media,
           caption,
+          captions,
           scheduled_at: at.toISOString(),
           status: "queued",
           options,
@@ -219,11 +253,20 @@ Deno.serve(async (req) => {
         const usable = (accts ?? []) as Json[];
         if (usable.length !== accountIds.length) return json({ error: "One of those accounts is not yours." }, 403);
 
+        // Same rule as scheduling: each platform measured against its own text.
+        // Narrowed to the channels this edit keeps, so removing a channel also
+        // removes the caption written for it.
+        const captions = cleanCaptions(body?.captions, usable.map((x) => String(x.platform)));
         const tooLong = usable
-          .map((x) => ({ p: x.platform as keyof typeof LIMITS, max: LIMITS[x.platform as keyof typeof LIMITS]?.caption ?? 2200 }))
-          .filter((x) => caption.length > x.max);
+          .map((x) => {
+            const p = x.platform as keyof typeof LIMITS;
+            return { p, max: LIMITS[p]?.caption ?? 2200, text: captions[String(p)] ?? caption };
+          })
+          .filter((x) => x.text.length > x.max);
         if (tooLong.length) {
-          return json({ error: `That caption is too long for ${tooLong.map((t) => t.p).join(", ")}.` }, 400);
+          return json({
+            error: `That caption is too long for ${tooLong.map((t) => `${t.p} (${t.text.length}/${t.max})`).join(", ")}.`,
+          }, 400);
         }
 
         const options = cleanOptions(body?.options ?? {});
