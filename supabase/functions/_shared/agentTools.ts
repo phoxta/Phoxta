@@ -13,6 +13,7 @@
 import type { SupabaseClient } from "./supabaseAdmin.ts";
 import type { Tool } from "./anthropic.ts";
 import { READ_TOOLS, MARKETPLACE_TOOLS, toolRunner, escapeLike } from "./tools.ts";
+import { SENDABLE_FILE_EXT } from "./media.ts";
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -38,8 +39,14 @@ export type ProductCard = {
 };
 
 /** Inline media a tool attaches to the reply (rendered inside the chat bubble
- *  on web; text-only channels ignore it, exactly like cards). */
-export type MediaItem = { type: "image"; url: string; alt?: string };
+ *  on web; text-only channels ignore it, exactly like cards).
+ *
+ *  `type` is the broad kind, not the MIME type: a surface decides how to render
+ *  by it, and a renderer that only knows "image" simply shows nothing for the
+ *  rest rather than breaking — which is why the model is told, per channel,
+ *  whether to name the file in its words as well. */
+export type MediaKind = "image" | "video" | "audio" | "document";
+export type MediaItem = { type: MediaKind; url: string; alt?: string };
 
 export type AgentCtx = {
   conversationId: string | null;
@@ -67,18 +74,18 @@ export type AgentCtx = {
    *  additive, absent by default, ignored by text-only channels. */
   media?: MediaItem[];
   /**
-   * What find_picture last showed the model, so attach_picture can only ever
-   * name something that actually exists.
+   * What find_media last showed the model, so attach_media can only ever name
+   * something that actually exists.
    *
    * Held for the length of one turn and nowhere else. The alternative — letting
-   * attach_picture take a URL — would let a model that had read a customer's own
+   * attach_media take a URL — would let a model that had read a customer's own
    * message put an arbitrary URL on a business's outbound message, which is a
    * business unknowingly forwarding a stranger's link to its own customers.
    */
-  pictureShortlist?: { ref: string; name: string; url: string; kind: "photo" | "design" }[];
-  /** Why the agent chose the picture it attached — recorded on the message and
-   *  in the audit line, because an unexplained attachment is not a choice. */
-  pictureReason?: string;
+  mediaShortlist?: { ref: string; name: string; url: string; source: MediaSource; type: MediaKind }[];
+  /** Why the agent chose the file it attached — recorded on the message and in
+   *  the audit line, because an unexplained attachment is not a choice. */
+  mediaReason?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -280,27 +287,30 @@ const COMMON_WRITE_TOOLS: Tool[] = [
  */
 const PICTURE_TOOLS: Tool[] = [
   {
-    name: "find_picture",
+    name: "find_media",
     description:
-      "Search this business's OWN picture library — photographs it uploaded, images it generated, and the designs it made (menus, price lists, posters). " +
-      "Use it when a picture would answer the question better than words: 'what does it look like', 'send me the menu', 'do you have a photo of it'. " +
-      "Returns the pictures it holds with a reference for each. It sends nothing — call attach_picture with one of these references to actually show it.",
+      "Search everything this business can SEND: its product photographs, the pictures it uploaded or generated, the designs it made (menus, price lists, posters), " +
+      "and any document, video or audio file in its library — brochures, price lists, spec sheets, walkthroughs. " +
+      "Use it whenever a file would answer better than words: 'what does it look like', 'send me the menu', 'do you have a brochure', 'can I see it', 'send me the spec'. " +
+      "Each result says what kind of file it is and where it came from — a `product` result is the catalogue photograph of that item, which is usually the right answer to 'what does it look like'. " +
+      "It sends nothing: call attach_media with one of these references to actually send it.",
     input_schema: {
       type: "object",
-      properties: { query: { type: "string", description: "What the picture should be of, in a few words." } },
+      properties: { query: { type: "string", description: "What the file should be of or about, in a few words." } },
       required: ["query"],
     },
   },
   {
-    name: "attach_picture",
+    name: "attach_media",
     description:
-      "Show the customer ONE picture from the library, alongside your reply. The reference must be one find_picture just returned — never invent one. " +
-      "Only attach a picture that genuinely answers what was asked; a decorative or roughly-related picture is worse than none. One picture per reply.",
+      "Send the customer ONE file from the library alongside your reply — a photograph, a document, a video or an audio file. " +
+      "The reference must be one find_media just returned; never invent one. " +
+      "Only attach something that genuinely answers what was asked: a decorative or roughly-related file is worse than none. One file per reply.",
     input_schema: {
       type: "object",
       properties: {
-        ref: { type: "string", description: "The reference from find_picture." },
-        reason: { type: "string", description: "Why this picture answers this customer's question." },
+        ref: { type: "string", description: "The reference from find_media." },
+        reason: { type: "string", description: "Why this file answers this customer's question." },
       },
       required: ["ref", "reason"],
     },
@@ -313,6 +323,31 @@ const BOOKING_TOOL_NAMES = new Set(
 const LEAD_TOOL_NAMES = new Set(["capture_lead", "qualify_lead"]);
 
 const isWrite = new Set([...BOOKING_TOOL_NAMES, ...COMMON_WRITE_TOOLS.map((t) => t.name)]);
+
+/**
+ * EVERY tool this runner implements — not just the writes.
+ *
+ * The runner delegates anything outside this set to the shared read runner,
+ * which answers "Unknown tool." for a name it does not know. The media tools
+ * are declared here and implemented here but were never in that set, so
+ * find_picture and attach_picture were advertised to the model on every
+ * channel, called by it, and answered "Unknown tool." every single time. The
+ * model then apologised in its own words — "I don't have a photo of that",
+ * "I can't access the media library" — so the failure looked like an empty
+ * library rather than a tool that was never reachable. No picture the agent
+ * chose has ever been sent.
+ *
+ * Derived from the declarations rather than typed out again: a tool added to
+ * PICTURE_TOOLS is dispatchable the moment it exists, which is the property
+ * whose absence caused this.
+ */
+const HANDLED_HERE = new Set([
+  ...isWrite,
+  ...PICTURE_TOOLS.map((t) => t.name),
+  // The pre-rename names, still accepted by the branches below.
+  "find_picture",
+  "attach_picture",
+]);
 
 /** The tool surface for one business: read tools + the booking tools that match
  *  its vertical, filtered by the owner's enabled capabilities (a missing key
@@ -331,7 +366,7 @@ export function buildAgentTools(mode: BookingMode, capabilities?: Record<string,
     ...COMMON_WRITE_TOOLS,
     // `pictures` follows the same absent-means-on rule as the rest, so a
     // business that has never opened its capability list still gets them — the
-    // library being empty is answered by find_picture in one cheap turn.
+    // library being empty is answered by find_media in one cheap turn.
     ...(on("pictures") ? PICTURE_TOOLS : []),
   ];
   if (!on("leads")) tools = tools.filter((t) => !LEAD_TOOL_NAMES.has(t.name));
@@ -375,10 +410,14 @@ function assetLabel(file: string): string {
   return raw.replace(/\.[a-z0-9]{2,5}$/i, "").replace(/[-_]+/g, " ").trim() || file;
 }
 
-/** Only the two types WhatsApp will carry are worth offering. A WebP in the
- *  library is a real picture, but attaching one fails the whole message, so the
- *  agent is never shown one to choose. */
-const SENDABLE_EXT = /\.(png|jpe?g)$/i;
+/** What the library will offer the agent: everything WhatsApp carries inline
+ *  (JPEG/PNG, MP4, MP3/AAC/AMR, PDF and the Office formats) plus the few that
+ *  travel fine as a link. The gate that decides inline-or-link is media.ts,
+ *  which owns the per-type rules; this only decides what is worth showing.
+ *
+ *  A WebP is still absent on purpose: it is a real picture, and attaching one
+ *  fails the whole message, so the agent is never shown one to choose. */
+const SENDABLE_EXT = SENDABLE_FILE_EXT;
 
 function pictureScore(name: string, query: string): number {
   const words = (s: string) => new Set((s.toLowerCase().match(/[a-z][a-z0-9'-]{2,}/g) ?? []).map((w) => w.replace(/(ies|es|s)$/, "")));
@@ -398,13 +437,94 @@ function pictureScore(name: string, query: string): number {
  *  choice stays a decision rather than a scan. */
 const PICTURE_SHORTLIST = 6;
 
-async function searchPictures(
+/** Where a file came from. Shown to the model because it is the strongest
+ *  signal about what the file IS: a `product` is the catalogue photograph of
+ *  the thing being asked about, a `design` is something the business made to be
+ *  shown, an `asset` is whatever was uploaded to the library. */
+export type MediaSource = "product" | "design" | "asset";
+
+/** MIME kind from a file name — the library search only ever has the URL. The
+ *  authoritative check is media.ts, which reads the host's Content-Type before
+ *  anything is attached; this is only to label the shortlist for the model. */
+function kindOfFile(url: string): MediaKind {
+  const ext = (/\.([a-z0-9]{2,5})(?:\?|#|$)/i.exec(url)?.[1] ?? "").toLowerCase();
+  if (/^(mp4)$/.test(ext)) return "video";
+  if (/^(mp3|m4a|aac|amr|3gp)$/.test(ext)) return "audio";
+  if (/^(pdf|docx?|pptx?|xlsx?|csv|txt)$/.test(ext)) return "document";
+  return "image";
+}
+
+/**
+ * The result carries WHY it is empty.
+ *
+ * Each of the three sources is wrapped in its own try/catch so a business with
+ * no graphics studio still gets its product photographs — but that also meant a
+ * source that FAILED and a source that was genuinely empty produced the same
+ * answer: "this business has nothing". The model then tells a customer their
+ * catalogue has no pictures because a query errored, which is the same class of
+ * untruth as the empty-catalogue bug. `failures` is what the difference is.
+ */
+type MediaHit = { ref: string; name: string; url: string; source: MediaSource; type: MediaKind };
+type MediaSearch = { hits: MediaHit[]; scanned: number; failures: string[]; matchedQuery: boolean };
+
+async function searchMedia(
   admin: SupabaseClient,
   orgId: string,
   query: string,
-): Promise<{ ref: string; name: string; url: string; kind: "photo" | "design" }[]> {
-  const out: { name: string; url: string; kind: "photo" | "design" }[] = [];
+): Promise<MediaSearch> {
+  const out: { name: string; url: string; source: MediaSource; type: MediaKind }[] = [];
   const seen = new Set<string>();
+  const failures: string[] = [];
+
+  /**
+   * PRODUCT PHOTOGRAPHS — the catalogue, which this search did not reach.
+   *
+   * media.ts opens by describing what the agent may attach: "a product
+   * photograph, a menu, a price list, a design the business made". Two of those
+   * four were true. The library read `designs` and the asset bucket and nothing
+   * else, so "what does the wool coat look like?" was answered with "I don't
+   * have a picture of that" while the photograph sat in products.image_url,
+   * where the storefront had been showing it to the same customer all along.
+   *
+   * First, and matched on the product NAME, because when a customer asks what
+   * something looks like the answer is nearly always the thing itself.
+   */
+  try {
+    const { data, error } = await admin
+      .from("products")
+      .select("name, image_url, gallery, status")
+      .eq("organization_id", orgId)
+      .eq("status", "active")
+      .limit(200);
+    if (error) throw new Error(error.message);
+    for (const p of ((data as Json[] | null) ?? [])) {
+      const name = String(p?.name ?? "").trim();
+      if (!name) continue;
+      // image_url first, then the gallery — one entry per product keeps a
+      // six-photo listing from filling the whole shortlist on its own.
+      //
+      // ABSOLUTE https IS THE ONLY REQUIREMENT, and deliberately not a file
+      // extension. Real catalogues do not look like a filesystem: the live data
+      // here holds `…unsplash.com/photo-1551504734…?w=600&h=400` — no extension
+      // anywhere in it — and demanding one skipped every product photo a CDN
+      // serves, which is most of them. media.ts asks the host what the file
+      // actually is before anything is attached, so a picture that turns out to
+      // be a WebP goes as a link instead of being invisible from the start.
+      //
+      // What this DOES drop is the relative path (`/assets/imgs/product-1.webp`),
+      // which several storefronts store: Twilio fetches the URL itself and has
+      // no site to resolve it against, so it is not a picture anyone could send.
+      const gallery = Array.isArray(p?.gallery) ? p.gallery : [];
+      const url = [p?.image_url, ...gallery]
+        .map((u) => String(u ?? "").trim())
+        .find((u) => /^https:\/\//i.test(u));
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      out.push({ name, url, source: "product", type: kindOfFile(url) });
+    }
+  } catch (e) {
+    { const why = String((e as Error)?.message || e); failures.push(`product photographs: ${why}`); console.warn("[phoxta] products unavailable to the media search:", why); }
+  }
 
   // Designs first: a design is something the business MADE to be shown — a menu,
   // a price list, a poster — so it is nearly always the better answer.
@@ -425,12 +545,12 @@ async function searchPictures(
       if (!url || !/^https:\/\//i.test(url)) continue;
       const path = String(d?.png_path ?? "").trim();
       if (path) seen.add(path);
-      out.push({ name: String(d?.title ?? "").trim() || "Untitled design", url, kind: "design" });
+      out.push({ name: String(d?.title ?? "").trim() || "Untitled design", url, source: "design", type: kindOfFile(url) });
     }
   } catch (e) {
     // A business that has never opened the studio has no designs and no PNGs;
     // that is not a failure, and the photographs below still answer.
-    console.warn("[phoxta] designs unavailable to the picture search:", String((e as Error)?.message || e));
+    { const why = String((e as Error)?.message || e); failures.push(`designs: ${why}`); console.warn("[phoxta] designs unavailable to the media search:", why); }
   }
 
   try {
@@ -447,19 +567,38 @@ async function searchPictures(
       const path = `${orgId}/${file}`;
       // A design's own render is already in the list under its real title.
       if (seen.has(path)) continue;
-      out.push({ name: assetLabel(file), url: admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl, kind: "photo" });
+      {
+        const publicUrl = admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+        out.push({ name: assetLabel(file), url: publicUrl, source: "asset", type: kindOfFile(file) });
+      }
     }
   } catch (e) {
-    console.warn("[phoxta] picture library unreadable:", String((e as Error)?.message || e));
+    { const why = String((e as Error)?.message || e); failures.push(`the asset library: ${why}`); console.warn("[phoxta] media library unreadable:", why); }
   }
 
   const scored = out.map((p, i) => ({ p, score: pictureScore(p.name, query), i }));
-  const matched = scored.filter((s) => s.score > 0);
-  // No word matched anything. The list is NOT handed over unfiltered: showing
-  // the model six unrelated pictures is how it ends up attaching one of them.
-  if (matched.length === 0) return [];
+  const strong = scored.filter((s) => s.score > 0);
+
+  /**
+   * A QUERY THAT MATCHES NOTHING IS NOT AN EMPTY LIBRARY.
+   *
+   * The filter used to return [] on a miss, and the tool then said "this
+   * business has nothing" — which the model faithfully passed on as "we have no
+   * photo of the Lobster Bisque" to a customer whose photograph was sitting in
+   * the catalogue, found by nothing worse than the model having searched for
+   * "photo" or "the dish" instead of the dish's exact name. The library is
+   * matched on FILE NAMES; a customer's words are not file names.
+   *
+   * So a miss falls back to the library itself, flagged as unmatched. Nothing is
+   * sent by this tool: the model must still name one file and say why before
+   * attach_media will do anything, and it is told plainly that a roughly-related
+   * file is worse than none. That check is what makes showing the list safe;
+   * refusing to show it only ever produced a confident falsehood.
+   */
+  const matched = strong.length ? strong : scored;
   matched.sort((a, b) => (b.score - a.score) || (a.i - b.i));
-  return matched.slice(0, PICTURE_SHORTLIST).map((s, i) => ({ ref: `pic${i + 1}`, ...s.p }));
+  const hits = matched.slice(0, PICTURE_SHORTLIST).map((s, i) => ({ ref: `pic${i + 1}`, ...s.p }));
+  return { hits, scanned: out.length, failures, matchedQuery: strong.length > 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -689,7 +828,7 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
       }
       return JSON.stringify(catalogue);
     }
-    if (!isWrite.has(name)) return readRun(name, input);
+    if (!HANDLED_HERE.has(name)) return readRun(name, input);
 
     // ---------------- check_availability (vertical-aware) ----------------
     // ── Customer self-service ────────────────────────────────────────────
@@ -1035,36 +1174,68 @@ export function agentToolRunner(admin: SupabaseClient, orgId: string, ctx: Agent
       return "Callback scheduled.";
     }
 
-    // ── The business's own pictures ────────────────────────────────────────
-    if (name === "find_picture") {
-      const found = await searchPictures(admin, orgId, String(input.query ?? ""));
-      ctx.pictureShortlist = found;
-      if (found.length === 0) {
-        return "This business has no pictures in its library that match that. Answer in words — do not describe a picture you cannot send.";
-      }
-      return JSON.stringify(
-        found.map((p) => ({ ref: p.ref, name: p.name, kind: p.kind })),
+    // ── The business's own files ───────────────────────────────────────────
+    // The find_picture / attach_picture names are still accepted: a conversation
+    // mid-flight when this deployed has them in its history, and a model that
+    // reaches for the name it just saw should not get "unknown tool".
+    if (name === "find_media" || name === "find_picture") {
+      const q = String(input.query ?? "");
+      const found = await searchMedia(admin, orgId, q);
+      ctx.mediaShortlist = found.hits;
+      // On the message, so an owner reading the thread can see why their
+      // customer was or was not sent a file — the library size and the words
+      // that were searched are the two things that explain every outcome here.
+      ctx.actions.push(
+        `Searched the library for "${q}" — ${found.scanned} file(s), ${found.matchedQuery ? `${found.hits.length} matched` : "no name match"}` +
+        (found.failures.length ? ` (unreadable: ${found.failures.join("; ")})` : ""),
       );
+      if (found.hits.length === 0) {
+        // WHY it is empty, because the two reasons need different replies. A
+        // library that genuinely holds nothing is a fact to tell the customer;
+        // a library that could not be READ is our problem, and an agent that
+        // reports it as "we have no photos of that" is stating something false
+        // about the business's catalogue on the business's behalf.
+        if (found.failures.length) {
+          return `The library could not be read (${found.failures.join("; ")}). Do NOT tell the customer this business has no pictures — say you cannot get to them right now and offer to have someone follow up.`;
+        }
+        return "This business has nothing in its library to send. Answer in words — never describe a file you cannot send.";
+      }
+      const list = found.hits.map((p) => ({ ref: p.ref, name: p.name, type: p.type, source: p.source }));
+      // Say whether these ARE the answer or merely everything there is. Without
+      // that the model treats a fallback list as a match and attaches the first
+      // thing on it, which is how a business sends a customer the wrong photo.
+      return found.matchedQuery
+        ? JSON.stringify(list)
+        : `Nothing matched those words. This is the whole library (${found.scanned} file(s)) — attach one ONLY if it genuinely answers what was asked, otherwise answer in words: ${JSON.stringify(list)}`;
     }
 
-    if (name === "attach_picture") {
+    if (name === "attach_media" || name === "attach_picture") {
       const ref = String(input.ref ?? "").trim();
       const reason = String(input.reason ?? "").trim();
-      const shortlist = ctx.pictureShortlist ?? [];
+      const shortlist = ctx.mediaShortlist ?? [];
       if (shortlist.length === 0) {
-        return "Call find_picture first — you can only attach a picture this business actually has.";
+        return "Call find_media first — you can only send a file this business actually has.";
       }
       const hit = shortlist.find((p) => p.ref === ref);
       if (!hit) {
-        return `There is no picture with the reference "${ref}". Use one of: ${shortlist.map((p) => p.ref).join(", ")}.`;
+        return `There is no file with the reference "${ref}". Use one of: ${shortlist.map((p) => p.ref).join(", ")}.`;
       }
-      if (!reason) return "Say why this picture answers the customer's question, then attach it.";
-      // ONE per reply. WhatsApp carries a single image per message, and an agent
-      // that attaches three has stopped answering and started decorating.
-      ctx.media = [{ type: "image", url: hit.url, alt: hit.name }];
-      ctx.pictureReason = reason;
-      ctx.actions.push(`Showed the customer "${hit.name}"`);
-      return `Attached "${hit.name}". Write your reply as normal — refer to the picture naturally; it travels with the message. Do not paste its link.`;
+      if (!reason) return "Say why this file answers the customer's question, then attach it.";
+      // ONE per reply. A free-form WhatsApp message carries a single media
+      // object — Twilio ignores any further MediaUrl — and an agent that
+      // attaches three has stopped answering and started decorating.
+      ctx.media = [{ type: hit.type, url: hit.url, alt: hit.name }];
+      ctx.mediaReason = reason;
+      ctx.actions.push(`Sent the customer "${hit.name}"`);
+      // WHAT THE MODEL IS TOLD DEPENDS ON WHERE THE FILE IS GOING. On WhatsApp
+      // every kind rides the message, so pasting the link as well is noise. In
+      // web chat the bubble renders pictures and video; a document has no
+      // renderer there, so the reply has to carry the link or the customer is
+      // told about a brochure they were never given.
+      const rides = ctx.channel === "whatsapp" || ((ctx.channel ?? "web") === "web" && hit.type !== "document");
+      return rides
+        ? `Attached "${hit.name}" (${hit.type}). Write your reply as normal — refer to it naturally; it travels with the message. Do not paste its link.`
+        : `Attached "${hit.name}" (${hit.type}). This channel cannot show it inline, so it will reach them as a link — name the file in your reply so they know what is arriving.`;
     }
 
     if (name === "escalate_to_human") {

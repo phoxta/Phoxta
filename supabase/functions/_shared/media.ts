@@ -1,41 +1,88 @@
-// Phoxta — what a picture has to be before it may ride an outbound message.
+// Phoxta — what a FILE has to be before it may ride an outbound message.
 //
-// The agent can now attach ONE picture to a reply — a product photograph, a menu,
-// a price list, a design the business made in the graphics studio. Everything in
+// The agent can attach ONE file to a reply — a product photograph, a menu,
+// a price list, a design, a brochure, a spec sheet, a video. Everything in
 // this file exists because of a single fact about Twilio: it does not accept the
 // bytes, it accepts a URL and fetches it itself, and a URL it cannot use fails
 // THE WHOLE MESSAGE rather than just the attachment.
 //
-// So a bad link does not cost the customer a picture. It costs them the reply.
+// So a bad link does not cost the customer a file. It costs them the reply.
 //
 // That is why the check happens HERE, before the send, rather than being left to
 // the provider's error code afterwards:
 //
 //   • https only. Twilio will not fetch http, and a link the customer cannot
 //     open is not a fallback either.
-//   • image/jpeg or image/png. WhatsApp accepts those two for an image message;
-//     a WebP or an AVIF — both of which the asset library happily stores, and
-//     both of which a modern camera roll produces — is rejected at Meta's end
-//     with the whole message attached to it.
-//   • 5MB. The asset library's own ceiling is 10MB (design-assets/index.ts), so
-//     a perfectly ordinary stored photograph can be twice what WhatsApp will
-//     take.
+//   • a content type WhatsApp actually carries — the WHATSAPP_MEDIA table below.
+//     A WebP or an AVIF, both of which the asset library happily stores and a
+//     modern camera roll produces, is rejected at Meta's end with the whole
+//     message attached to it.
+//   • under that type's ceiling: 5MB for an image, 16MB for video, audio and
+//     documents. The asset library's own ceiling is 10MB
+//     (design-assets/index.ts), so a perfectly ordinary stored photograph can be
+//     twice what WhatsApp will take.
 //   • the size has to be KNOWN. A server that will not say how big a file is has
 //     not proved it is under the limit, and "probably fine" is how the whole
 //     message gets dropped.
 //
-// When a picture fails any of that the reply still goes — as text, with the link
-// in it. A customer who was told "here's the menu" and got nothing is worse off
-// than one who got a link.
+// When a file fails any of that the reply still goes — as text, with the link in
+// it. A customer who was told "here's the menu" and got nothing is worse off
+// than one who got a link. And when a file passes every check here and Twilio
+// still refuses it — a codec no header describes — autoReply resends the reply
+// without the attachment rather than losing it.
 export type OutboundMedia = { url: string; alt?: string };
 
-/** WhatsApp's own ceiling for an image message. Twilio documents 5MB for the
- *  media it fetches; Meta rejects beyond it. */
+/** WhatsApp's ceiling for an IMAGE message — the tightest of the lot, and the
+ *  one most files run into. Everything else it carries gets 16MB. */
 export const WHATSAPP_MAX_MEDIA_BYTES = 5 * 1024 * 1024;
+const WHATSAPP_MAX_FILE_BYTES = 16 * 1024 * 1024;
 
 /** The two raster types a WhatsApp image message may carry. Deliberately not
  *  webp/gif/avif: the asset library stores those and WhatsApp refuses them. */
 export const WHATSAPP_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
+
+/**
+ * EVERYTHING WhatsApp will carry, and how big each may be.
+ *
+ * Twilio's own table (twilio.com/docs/whatsapp/guidance-whatsapp-media-messages):
+ * images 5MB; audio, video and documents 16MB. `kind` is what the owner sees in
+ * the audit line and what the model is told it sent — "document", not
+ * "application/vnd.openxmlformats-officedocument.wordprocessingml.document".
+ *
+ * TWO FORMATS TWILIO LISTS ARE DELIBERATELY ABSENT, for the same reason WebP is:
+ * this file can read a Content-Type header and a byte count, and nothing else.
+ *   • audio/ogg — accepted ONLY when the stream is Opus. A Vorbis .ogg has an
+ *     identical content type, passes every check here, and is refused at Meta's
+ *     end, which fails the whole message.
+ *   • image/webp — Twilio lists it, Meta rejects it on an image message.
+ * A format whose acceptance depends on something no header exposes is one this
+ * module cannot honestly clear, so those go as links. MP4 is in: the container
+ * carries the same codec risk in theory (H.264 + AAC required), but in practice
+ * essentially every MP4 a business holds is exactly that, and a rejected send is
+ * now retried without the attachment rather than lost (see autoReply).
+ */
+const WHATSAPP_MEDIA: Record<string, { kind: string; max: number }> = {
+  "image/jpeg": { kind: "image", max: WHATSAPP_MAX_MEDIA_BYTES },
+  "image/png": { kind: "image", max: WHATSAPP_MAX_MEDIA_BYTES },
+  "video/mp4": { kind: "video", max: WHATSAPP_MAX_FILE_BYTES },
+  "audio/mpeg": { kind: "audio", max: WHATSAPP_MAX_FILE_BYTES },
+  "audio/mp3": { kind: "audio", max: WHATSAPP_MAX_FILE_BYTES },
+  "audio/aac": { kind: "audio", max: WHATSAPP_MAX_FILE_BYTES },
+  "audio/amr": { kind: "audio", max: WHATSAPP_MAX_FILE_BYTES },
+  "audio/3gpp": { kind: "audio", max: WHATSAPP_MAX_FILE_BYTES },
+  "application/pdf": { kind: "document", max: WHATSAPP_MAX_FILE_BYTES },
+  "application/msword": { kind: "document", max: WHATSAPP_MAX_FILE_BYTES },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { kind: "document", max: WHATSAPP_MAX_FILE_BYTES },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": { kind: "document", max: WHATSAPP_MAX_FILE_BYTES },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { kind: "document", max: WHATSAPP_MAX_FILE_BYTES },
+  "application/vnd.ms-excel": { kind: "document", max: WHATSAPP_MAX_FILE_BYTES },
+  "application/vnd.ms-powerpoint": { kind: "document", max: WHATSAPP_MAX_FILE_BYTES },
+};
+
+/** File extensions worth offering the model at all — the sendable set above,
+ *  plus the ones that travel perfectly well as a link. Exported so the agent's
+ *  library search and this gate cannot drift apart. */
+export const SENDABLE_FILE_EXT = /\.(png|jpe?g|mp4|mp3|m4a|aac|amr|3gp|pdf|docx?|pptx?|xlsx?|csv|txt)$/i;
 
 /** How long we wait to learn what is behind a URL. Generous enough for object
  *  storage on a cold cache, short enough that a dead host does not eat the
@@ -107,37 +154,42 @@ async function probe(url: string): Promise<{ status: number; type: string; bytes
 }
 
 /**
- * May this picture go on a WhatsApp message?
+ * May this file go on a WhatsApp message?
  *
  * Answers with a REASON when it may not, because that reason is what the owner
  * reads on the message in the Inbox — "the agent sent a link instead" is only
  * useful next to "the file is a WebP and WhatsApp only takes JPEG or PNG".
  */
-export async function checkWhatsappImage(m: OutboundMedia): Promise<MediaVerdict> {
+export async function checkWhatsappMedia(m: OutboundMedia): Promise<MediaVerdict> {
   const url = clean(m.url);
-  const alt = clean(m.alt) || "Picture";
+  const alt = clean(m.alt) || "Attachment";
   const no = (reason: string): MediaVerdict => ({ ok: false, url, alt, reason });
 
-  if (!url) return no("there was no link to the picture");
-  if (url.length > MAX_URL_CHARS) return no("the link to the picture is too long to send");
+  if (!url) return no("there was no link to the file");
+  if (url.length > MAX_URL_CHARS) return no("the link to the file is too long to send");
   if (!/^https:\/\/[^\s"'<>]+$/i.test(url)) {
-    return no("WhatsApp only fetches pictures over https, and this link is not one");
+    return no("WhatsApp only fetches files over https, and this link is not one");
   }
 
   const found = await probe(url);
-  if (!found) return no("the picture could not be reached, so WhatsApp would not have been able to fetch it either");
-  if (found.status >= 400) return no(`the picture's host answered ${found.status}, so WhatsApp could not have fetched it`);
-  if (!found.type) return no("the picture's host did not say what kind of file it is");
-  if (!WHATSAPP_IMAGE_TYPES.has(found.type)) {
-    return no(`WhatsApp only accepts JPEG and PNG images, and this file is ${found.type}`);
+  if (!found) return no("the file could not be reached, so WhatsApp would not have been able to fetch it either");
+  if (found.status >= 400) return no(`the file's host answered ${found.status}, so WhatsApp could not have fetched it`);
+  if (!found.type) return no("the file's host did not say what kind of file it is");
+  const rule = WHATSAPP_MEDIA[found.type];
+  if (!rule) {
+    return no(`WhatsApp does not carry ${found.type} files, so it went as a link instead`);
   }
-  if (found.bytes < 0) return no("the picture's host did not say how large the file is, so it could not be checked against WhatsApp's 5MB limit");
-  if (found.bytes === 0) return no("the picture is empty");
-  if (found.bytes > WHATSAPP_MAX_MEDIA_BYTES) {
-    return no(`the picture is ${inMb(found.bytes)} and WhatsApp only accepts images up to 5MB`);
+  const cap = rule.max === WHATSAPP_MAX_MEDIA_BYTES ? "5MB" : "16MB";
+  if (found.bytes < 0) return no(`the file's host did not say how large it is, so it could not be checked against WhatsApp's ${cap} limit`);
+  if (found.bytes === 0) return no("the file is empty");
+  if (found.bytes > rule.max) {
+    return no(`the ${rule.kind} is ${inMb(found.bytes)} and WhatsApp only accepts ${rule.kind === "image" ? "images" : `${rule.kind}s`} up to ${cap}`);
   }
   return { ok: true, url, alt, contentType: found.type, bytes: found.bytes };
 }
+
+/** The previous name, kept so nothing that still imports it breaks. */
+export const checkWhatsappImage = checkWhatsappMedia;
 
 /**
  * The link, written into the message itself.

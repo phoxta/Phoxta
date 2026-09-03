@@ -49,7 +49,7 @@ import { sendConversationEmail, type ThreadContext } from "./conversationEmail.t
 import { twilioSend, twilioStatusCallback } from "./dispatch.ts";
 import { normalizeE164 } from "./telephony.ts";
 import { replySubject } from "./mailText.ts";
-import { checkWhatsappImage, withMediaLink, type MediaVerdict, type OutboundMedia } from "./media.ts";
+import { checkWhatsappMedia, withMediaLink, type MediaVerdict, type OutboundMedia } from "./media.ts";
 
 // Re-exported so the transports keep one import for "everything about answering
 // automatically", while agentCore can take the pure text helpers on their own.
@@ -1797,7 +1797,7 @@ async function transportSend(
       customerMessageId: o.customerMessageId ?? null,
       channel: o.channel,
     });
-    const r = waTemplate
+    let r = waTemplate
       ? await twilioSend(o.channel, o.to, waTemplate.rendered, {
         from,
         contentSid: waTemplate.contentSid,
@@ -1809,6 +1809,27 @@ async function transportSend(
         statusCallback,
         ...(media.kind === "attached" ? { mediaUrls: [media.url] } : {}),
       });
+
+    // THE ATTACHMENT MUST NEVER COST THE REPLY.
+    //
+    // media.ts clears a file on what a Content-Type header and a byte count can
+    // prove, which is everything WhatsApp checks except the things only the
+    // bytes reveal: an MP4 that is not H.264/AAC, a PDF whose host mislabelled
+    // it, a signed URL that expired between the probe and the send. Those come
+    // back as a Twilio rejection of the WHOLE message — the customer gets
+    // nothing, on a thread the Inbox then shows as answered.
+    //
+    // So one retry, text-only, with the file as a link. This exists because the
+    // agent can now attach video, audio and documents, whose acceptance depends
+    // on codecs and container internals no header exposes; with images alone the
+    // pre-send check was very nearly sufficient on its own.
+    if (!r.ok && media.kind === "attached") {
+      console.warn(`[phoxta] WhatsApp rejected the attachment (${r.errorCode ?? "no code"}) — resending as a link: ${media.url}`);
+      r = await twilioSend(o.channel, o.to, withMediaLink(o.text, { url: media.url, alt: media.alt }), {
+        from,
+        statusCallback,
+      });
+    }
     const failure = r.ok ? null : twilioFailure(r.errorCode, o.channel);
     return {
       ok: r.ok,
@@ -1873,7 +1894,7 @@ async function decideMedia(o: AutoReplySend, windowOpen: boolean): Promise<Media
     // Kept as the honest fallback rather than a silent attach.
     return { kind: "linked", url, alt, why: "WhatsApp's 24-hour window had closed, so the picture could not be attached" };
   }
-  const verdict: MediaVerdict = await checkWhatsappImage({ url, alt });
+  const verdict: MediaVerdict = await checkWhatsappMedia({ url, alt });
   if (verdict.ok) {
     return { kind: "attached", url: verdict.url, alt: verdict.alt, contentType: verdict.contentType, bytes: verdict.bytes };
   }

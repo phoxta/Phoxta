@@ -774,12 +774,14 @@ export async function respondCore(
   const pictureNote = !picturesEnabled(config.capabilities)
     ? ""
     : params.channel === "voice"
-      ? "\nYou are on a phone call: the customer cannot see anything. Never offer to show them a picture — describe it, or offer to text it to them.\n"
-      : params.channel === "whatsapp" || params.channel === "web"
-        ? "\nYou can SHOW this customer a picture from the business's own library — a product photograph, a menu, a price list, a design it made. Call find_picture, then attach_picture with the one that genuinely answers the question. It travels with your reply, so refer to it naturally and never paste its link. A picture that only roughly fits is worse than none: answer in words instead.\n"
-        : params.channel === "sms"
-          ? "\nYou can show this customer a picture from the business's own library with find_picture and attach_picture. On a text message it arrives as a link they tap, and every link costs the business extra message segments — so only attach one when the picture IS the answer.\n"
-          : "\nYou can show this customer a picture from the business's own library with find_picture and attach_picture. On email it arrives as a link in the message. Only attach one when the picture genuinely answers the question.\n";
+      ? "\nYou are on a phone call: the customer cannot see anything. Never offer to show them a picture or a document — describe it, or offer to text it to them.\n"
+      : params.channel === "whatsapp"
+        ? "\nYou can SEND this customer a file from the business's own library — a product photograph, a menu, a price list, a design it made, a brochure or spec sheet, a video, an audio clip. Call find_media, then attach_media with the one that genuinely answers the question. WhatsApp carries pictures, video, audio and documents, and it travels with your reply — so refer to it naturally and never paste its link. One file per reply, and a file that only roughly fits is worse than none: answer in words instead.\n"
+        : params.channel === "web"
+          ? "\nYou can SHOW this customer a file from the business's own library — a product photograph, a menu, a price list, a design it made, a video. Call find_media, then attach_media with the one that genuinely answers the question. Pictures and video render in the chat; a document reaches them as a link, so name it in your words. A file that only roughly fits is worse than none: answer in words instead.\n"
+          : params.channel === "sms"
+            ? "\nYou can send this customer a file from the business's own library with find_media and attach_media. On a text message it arrives as a link they tap, and every link costs the business extra message segments — so only attach one when the file IS the answer.\n"
+            : "\nYou can send this customer a file from the business's own library with find_media and attach_media. On email it arrives as a link in the message. Only attach one when the file genuinely answers the question.\n";
 
   // MEMORY IS DATA, NOT POLICY. Both memory blocks are text the customer
   // produced in earlier conversations, extracted by a cheap model and read back
@@ -805,6 +807,17 @@ export async function respondCore(
     `Enabled capabilities: ${caps}.`,
     `Use your tools to ACT, not just talk: ${actVerbs}.`,
     "NEVER invent availability, times, prices or confirmations — only state what a tool actually returned, and if a tool says something isn't configured or available, tell the customer honestly and offer a follow-up instead.",
+    // WHY THIS IS HERE. Asked on WhatsApp to "text this number and explain what
+    // you do", the agent answered: "I'm designed to assist you within this
+    // conversation only… This keeps your privacy and security safe." Declining
+    // was right — messaging a number a stranger supplies is cold outreach, and
+    // on WhatsApp it is a policy breach that can cost the business its number.
+    // The ANSWER was wrong twice over: it gave a false reason (nothing about
+    // that request threatens the asker's privacy; the constraint is consent, and
+    // it belongs to the person who would be messaged), and it read as a generic
+    // chatbot rather than as this business. A refusal is a moment the business
+    // is being judged, so it says what is true and what happens next instead.
+    "You act inside this conversation and through your tools, and nowhere else. If you are asked to contact SOMEONE ELSE — text, call, email or message a number or address the customer gives you — decline plainly and give the real reason: the business does not message people who have not asked to hear from it. Never attribute a refusal to your design, your programming, your privacy rules or your being an AI. Then offer what you genuinely can do: write the message or the link for them to pass on themselves, take the details for a person here to pick up, or arrange a callback — but only using a tool you actually have.",
     isAfterHours
       ? "It is currently OUTSIDE business hours — still help fully, capture the lead, book if possible, and offer a callback; never send anyone to voicemail."
       : "It is within business hours.",
@@ -871,7 +884,7 @@ export async function respondCore(
         // this a moment later with what actually reached the wire, which can
         // be a link rather than an attachment (see deliverAutoReply).
         ...((ctx.media ?? []).length
-          ? { media: ctx.media, picture_reason: ctx.pictureReason ?? "" }
+          ? { media: ctx.media, picture_reason: ctx.mediaReason ?? "" }
           : {}),
         guardrails: { input_injection: inGuard.injection, output_flags: out.flags },
       })]);
