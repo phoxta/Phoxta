@@ -4,3 +4,15 @@
 businesses/
 integrations/
 supabase/
+
+# Local scratch — tokens, minted sessions, captured responses.
+#
+# THIS FILE REPLACES .gitignore FOR VERCEL UPLOADS. When a .vercelignore exists
+# the CLI stops consulting .gitignore entirely, so anything protected only there
+# is protected only from git — and gets uploaded into the deployment source,
+# which is readable by everyone on the team. These are named here explicitly for
+# that reason.
+*.tmp
+*.tmp.json
+.env
+.env.*
