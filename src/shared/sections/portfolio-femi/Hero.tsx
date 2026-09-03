@@ -21,7 +21,7 @@ export default function Hero() {
             style={{ backgroundImage: "url(/assets/imgs/portfolio/hero-bg.webp)", backgroundSize: "cover" }}
         >
             {/* The portrait is the LCP element: ask for it before the bundle finishes parsing. */}
-            <link rel="preload" as="image" href="/assets/imgs/portfolio/femi-adeyemi-400.webp" imageSrcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi.webp 900w" imageSizes="(max-width: 991px) 90vw, 360px" fetchPriority="high" />
+            <link rel="preload" as="image" href="/assets/imgs/portfolio/femi-adeyemi-400.webp" imageSrcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi-720.webp 720w, /assets/imgs/portfolio/femi-adeyemi.webp 900w" imageSizes="(max-width: 991px) 86vw, 340px" fetchPriority="high" />
             <div className="container-2200 px-3 px-lg-4">
                 <div className="row g-4 g-lg-5 align-items-center">
                     <div className="col-lg-7 me-auto">
@@ -46,8 +46,8 @@ export default function Hero() {
                         <div className="pf-hero__photo p-relative rounded-4 overflow-hidden">
                             <img
                                 src="/assets/imgs/portfolio/femi-adeyemi-400.webp"
-                                srcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi.webp 900w"
-                                sizes="(max-width: 991px) 90vw, 360px"
+                                srcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi-720.webp 720w, /assets/imgs/portfolio/femi-adeyemi.webp 900w"
+                                sizes="(max-width: 991px) 86vw, 340px"
                                 alt={PROFILE.name}
                                 width={360}
                                 height={432}

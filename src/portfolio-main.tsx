@@ -8,10 +8,19 @@
 // app with a dynamic import and take over the identical DOM. On an empty root
 // (dev server, no prerender) mount immediately.
 const root = document.getElementById("root");
-const boot = () => import("./portfolio-app").then((m) => m.mount());
+let booted = false;
+const boot = () => {
+    if (booted) return;
+    booted = true;
+    void import("./portfolio-app").then((m) => m.mount());
+};
 
 if (root && root.childElementCount > 0) {
-    requestAnimationFrame(() => setTimeout(boot, 0));
+    // Let the images that ARE the page (portrait, hero) finish before the app's
+    // chunks compete for bandwidth: boot on `load`, or after 4 s at the latest.
+    if (document.readyState === "complete") requestAnimationFrame(() => setTimeout(boot, 0));
+    else window.addEventListener("load", () => requestAnimationFrame(() => setTimeout(boot, 0)), { once: true });
+    setTimeout(boot, 4000);
 } else {
-    void boot();
+    boot();
 }
