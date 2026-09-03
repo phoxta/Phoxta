@@ -158,7 +158,7 @@ const PORTFOLIO_CSS = `
 .pf-badge--light{color:rgba(255,255,255,.85);border-color:rgba(255,255,255,.32)}
 .fx-portfolio :focus-visible{outline:2px solid var(--pf-accent);outline-offset:3px;border-radius:4px}
 /* Accent numbers failed 4.5:1 on light accents (Wander sky, Aurelia powder blue): ink carries the number, the accent stays on the dot/glow. */
-.pf-cs__goal-no,.pf-cs__step-no{color:var(--pf-ink)}
+.pf-cs .pf-cs__goal-no,.pf-cs .pf-cs__step-no{color:var(--pf-ink)}
 /* The ticker is decorative; overflow clip keeps it non-scrollable so it needs no keyboard focus. */
 .pf-clients .rfm-marquee-container{overflow:clip}
 @media (max-width:991px){.pf-work__nav{display:none}}

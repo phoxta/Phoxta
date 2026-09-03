@@ -6,6 +6,22 @@ import { PROFILE, PORTFOLIO_URL, PROJECTS, responsiveSrcSet, type Project } from
 /** Absolute URL on the portfolio host for social cards (the default helper points at www.phoxta.com). */
 const absoluteOnPortfolio = (path: string) => `${PORTFOLIO_URL}${path.replace(/^\//, "")}`;
 
+/**
+ * Text colour for a palette swatch, chosen by the swatch's relative luminance so the
+ * hex label always clears WCAG AA (mid-tones such as sky blue or copper fail with
+ * white text; the manual `ink` flag couldn't know that).
+ */
+function swatchInk(hex: string): string {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) return "#fff";
+    const [r, g, b] = [0, 2, 4].map((i) => {
+        const c = parseInt(m[1].slice(i, i + 2), 16) / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return luminance > 0.18 ? "#1B1B23" : "#fff";
+}
+
 const ARROW = (
     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M12.1716 8.77806L8.55964e-06 8.77806L1.47897e-06 6.77807L12.1716 6.77807L6.80761 1.41412L8.22183 -9.53337e-05L16 7.77806L8.22181 15.5562L6.80759 14.142L12.1716 8.77806Z" fill="currentColor" />
@@ -311,7 +327,7 @@ function CaseStudyPage({ cs }: { cs: CaseStudy }) {
                             <div className="pf-cs__palette d-flex flex-wrap mb-40">
                                 {cs.palette.map((s) => (
                                     <div key={s.name} className="pf-cs__swatch">
-                                        <span className="pf-cs__swatch-chip" style={{ background: s.hex, color: s.ink ? "#1B1B23" : "#fff" }}>{s.hex}</span>
+                                        <span className="pf-cs__swatch-chip" style={{ background: s.hex, color: swatchInk(s.hex) }}>{s.hex}</span>
                                         <span className="pf-cs__swatch-name">{s.name}</span>
                                     </div>
                                 ))}
