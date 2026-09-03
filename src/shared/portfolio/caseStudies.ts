@@ -73,45 +73,28 @@ export const CASE_STUDIES: CaseStudy[] = [
         ],
         highlights: [
             {
-                title: "A home that reads like ownership",
-                body: "The owner's dashboard opens with what they own, whether it's live and what needs them. The AI operator sits in the middle as a conversation, not a widget — ask it to send a brochure or check stock and it does, with every action logged. Revenue, setup progress and the business card keep the whole picture on one screen.",
-                image: "/assets/imgs/portfolio/phoxta-dashboard.webp",
-                imageAlt: "Phoxta owner dashboard with the AI operator",
+                title: "A front door that sells the outcome, not the software",
+                body: "The cover above is the whole pitch in one screen: “Own a business that already works.” over a shelf of live blueprints and the categories you can buy into — no feature grid, no jargon. The site's job is to make the promise credible within a scroll and hand the visitor to the marketplace; the product proves itself once they're inside.",
+            },
+            {
+                title: "A home that reads like ownership — with an operator that acts",
+                body: "The owner's dashboard opens with what they own, whether it's live and what needs them, and the AI operator sits in the middle as a conversation rather than a widget. It isn't a chatbot: it has governed write tools, each set to off, ask-me or autopilot, an approval queue with the reasoning attached, and daily limits on actions, calls and emails. Owners can run it from Telegram without opening the dashboard at all.",
             },
             {
                 title: "A console that works like a task board",
                 body: "Every business runs from the same config-driven console — Overview, Engage, CRM, Invoicing, Help Center, Graphics, Operator, Settings. Inbox conversations, marketing emails and voice calls land in one board by status, so the owner triages by glance instead of by app. Panels and terminology switch per business type.",
-                image: "/assets/imgs/portfolio/phoxta-console.webp",
-                imageAlt: "Phoxta operating console overview",
-            },
-            {
-                title: "An AI operator with permissions",
-                body: "The operator isn't a chatbot; it has governed write tools. Each action is off, ask-me or autopilot; anything set to approve waits in a queue with its reasoning attached, and daily limits on actions, calls and emails keep autonomy inside a budget. Owners can run it from Telegram without opening the dashboard at all.",
             },
             {
                 title: "A content studio for non-designers",
                 body: "Graphics turns a brand into a month of social posts: eighteen template families, an AI planner that writes the strategy and captions in the business's own voice, a schedule calendar and a pro SVG canvas for edits. It's the surface owners touch most, so it got the most polish.",
-                image: "/assets/imgs/portfolio/phoxta-graphics.webp",
-                imageAlt: "Phoxta graphics and content studio",
             },
             {
-                title: "A marketplace of businesses, not templates",
-                body: "Each blueprint is a live, verified business with a demo you can click through and a one-time price — a fashion store, a restaurant with orders, a car rental, guided experiences, a furniture shop. A big, plain typographic hero and full-bleed screenshots do the selling.",
-                image: "/assets/imgs/portfolio/phoxta-marketplace.webp",
-                imageAlt: "Phoxta marketplace of business blueprints",
-            },
-            {
-                title: "One backend, many storefronts",
-                body: "Aurelia, Saveur, Carento, Gearo and the travel site are separate brands on the same tenant-scoped API: products, orders and bookings flow straight into the console, and each gets its own AI stylist, concierge or trip assistant. Branding is data — logo, palette, type — applied when the domain resolves.",
-                image: "/assets/imgs/portfolio/phoxta-storefront.webp",
-                imageAlt: "Aurelia — a Phoxta-built fashion storefront",
+                title: "A marketplace of businesses — and the storefronts behind it",
+                body: "Each blueprint is a live, verified business with a demo you can click through and a one-time price: a fashion store, a restaurant with orders, a car rental, guided experiences, a furniture shop. They are separate brands on one tenant-scoped API — products, orders and bookings flow straight into the console, each gets its own AI stylist, concierge or trip assistant, and branding is data applied when the domain resolves.",
             },
             {
                 title: "Built for the phone in the pocket",
                 body: "The site and console are responsive by system, not by exception: the hero, blueprint shelf and category chips reflow to a thumb-first layout, and the dashboard's one-line header-plus-tabs pattern keeps every console tab usable on a small screen.",
-                image: "/assets/imgs/portfolio/phoxta-mobile.webp",
-                imageAlt: "Phoxta on mobile",
-                wide: true,
             },
         ],
         palette: [
@@ -283,6 +266,234 @@ export const CASE_STUDIES: CaseStudy[] = [
         typeNote:
             "Fraunces — an optical serif — carries headlines and product names for an editorial, apothecary feel; Manrope keeps body copy and UI crisp. Warm sand grounds the whole store and sage is the single accent, used for actions and proof points, never decoration. Corners stay soft (12–32px radii) so the brand feels calm and tactile.",
         components: ["Product card", "Faceted filter rail", "Mini-cart drawer", "Search palette (⌘K)", "Variant & quantity selector", "Review breakdown", "Multi-step checkout", "Toasts & cookie banner"],
+    },
+    {
+        slug: "saveur",
+        name: "Saveur",
+        kicker: "Restaurant ordering · Product Design",
+        tagline: "A restaurant site that takes the order, books the table and answers the phone.",
+        summary:
+            "Saveur is Phoxta's restaurant blueprint: a digital-first kitchen with online ordering for pickup and dine-in, table reservations, special-order quotes for catering and events, live order tracking and an AI concierge that knows where your food is. I designed the whole guest journey — seven page types on one editorial system — and the data model that lets it clone for the next restaurant.",
+        hero: "/assets/imgs/portfolio/saveur.webp",
+        heroAlt: "Saveur restaurant storefront — homepage",
+        accent: "#B45309",
+        meta: [
+            { label: "Role", value: "Lead Product Designer" },
+            { label: "Timeline", value: "2026" },
+            { label: "Scope", value: "Home · Menu · Special orders · Reservations · Track · Account" },
+            { label: "Tools", value: "Figma · React · Supabase" },
+        ],
+        tags: ["Restaurant", "E-commerce", "Bookings", "AI", "Responsive"],
+        prototypeUrl: "https://saveur-demo.dine.phoxta.com",
+        prototypeLabel: "Visit the live site",
+        processTitle: "From a menu online to a kitchen that never misses an order.",
+        challenge:
+            "Most restaurant websites are a PDF menu and a phone number, so the actual ordering happens on delivery apps that take a commission and keep the customer relationship. The brief was to make ordering, reserving and asking a question as easy as the big apps — but on the restaurant's own domain, in its own voice, with every order, booking and request landing with the owner instead of a marketplace.",
+        goals: [
+            { title: "Order in a scroll", body: "A menu that filters by course and diet and adds to a bag without leaving the page — no PDF, no phone call." },
+            { title: "Book a table without a call", body: "Reservations and special orders — catering, bulk, custom bakes, events — as short forms that come back with a confirmation or a quote." },
+            { title: "Never wonder where the food is", body: "A live order-status timeline with an honest ETA, and a concierge that can answer “where's my order?” without staff." },
+            { title: "One kitchen, one console", body: "Menu items are products, orders are orders — everything runs from the same Phoxta console the owner already uses." },
+        ],
+        process: [
+            { phase: "Journeys & IA", body: "Mapped the four real guest journeys — order for pickup or dine-in, reserve, request something special, track — and structured seven page types around them: home, menu, special orders, reservations, track, contact and account." },
+            { phase: "Brand & foundations", body: "Set an editorial, evening-service tone: Playfair Display headlines over dark photographic heroes, Inter for menus and forms, warm cream pages, burgundy for the order action and copper for the highlight." },
+            { phase: "Interaction & build", body: "Built the menu as a filterable catalogue with a bag, the reservation and special-order forms with real validation, the order-tracking timeline and the concierge launcher — as a working React storefront, not static frames." },
+            { phase: "Blueprint & harden", body: "Made everything data-driven — dishes as products, requests as records, branding as tenant data — and wrote the responsive rules, so the same site clones cleanly for the next restaurant." },
+        ],
+        highlights: [
+            {
+                title: "A menu built to be ordered from",
+                body: "Courses as pills, dietary filters a click away, GF/DF/V badges on each dish and a single “Add” on every row. Photography stays small and consistent so the list scans like a menu and works like a shop — the bag follows the guest around the site.",
+                image: "/assets/imgs/portfolio/saveur-menu.webp",
+                imageAlt: "Saveur menu with course and dietary filters",
+            },
+            {
+                title: "Special orders without the phone tag",
+                body: "Catering, bulk orders, custom bakes and private events share one request flow: pick the type, say when, how many and roughly how much, and the kitchen comes back with a quote. Everyday orders are nudged back to the menu, because that's faster for everyone.",
+                image: "/assets/imgs/portfolio/saveur-special.webp",
+                imageAlt: "Saveur special orders request form",
+            },
+            {
+                title: "Track it like a parcel",
+                body: "Received → In the kitchen → Ready → Completed, with an estimated time and the current step called out. The concierge in the corner knows the order status, so the question that used to interrupt the pass now answers itself.",
+                image: "/assets/imgs/portfolio/saveur-track.webp",
+                imageAlt: "Saveur live order tracking",
+            },
+            {
+                title: "A concierge that knows the room",
+                body: "The AI concierge is trained on the menu, hours and policies, and can see live order status — so it answers allergen questions, suggests a dish and tells a guest their food is packed, in the restaurant's own tone. Anything it can't answer goes to the owner's inbox.",
+            },
+            {
+                title: "One-handed at the table",
+                body: "Below the tablet breakpoint the hero, menu and forms reflow to a single thumb-first column with full-width actions — order, reserve and concierge always in reach — because half of restaurant traffic arrives from a phone at the table or on the way home.",
+                image: "/assets/imgs/portfolio/saveur-mobile.webp",
+                imageAlt: "Saveur on mobile",
+                wide: true,
+            },
+        ],
+        palette: [
+            { name: "Copper", hex: "#B45309" },
+            { name: "Burgundy", hex: "#7A1F2B" },
+            { name: "Cream", hex: "#FBF7F0", ink: true },
+            { name: "Ink", hex: "#1C1917" },
+            { name: "Paper", hex: "#FFFFFF", ink: true },
+        ],
+        typeNote:
+            "Playfair Display carries headlines and dish names for an evening-service, white-tablecloth feel; Inter keeps menus, forms and the tracking timeline crisp. Pages sit on warm cream, heroes on dark photography, and colour is reserved for two jobs: burgundy for the order action, copper for the highlight and the concierge.",
+        components: ["Menu row with dietary badges", "Course & dietary filter pills", "Bag", "Reservation form", "Special-order request", "Order-status timeline", "Concierge launcher"],
+    },
+    {
+        slug: "wander",
+        name: "Wander",
+        kicker: "Experiences booking · Product Design",
+        tagline: "Find, compare and book a guide-led experience — with a trip assistant a tap away.",
+        summary:
+            "Wander is Phoxta's experiences blueprint: a marketplace of guide-led activities where travellers search by place, dates and guests, filter thousands of listings and book from the detail page. The demo tenant runs as “Ceepii” — the same product, rebranded through data. I designed the search, listing and booking journey and the responsive system around it.",
+        hero: "/assets/imgs/portfolio/wander.webp",
+        heroAlt: "Wander experiences homepage",
+        accent: "#2F7BF5",
+        meta: [
+            { label: "Role", value: "Lead Product Designer" },
+            { label: "Timeline", value: "2026" },
+            { label: "Scope", value: "Search · Categories · Listing · Booking · Wishlists · Blog" },
+            { label: "Tools", value: "Figma · React · Supabase" },
+        ],
+        tags: ["Travel", "Bookings", "Marketplace", "AI", "Responsive"],
+        prototypeUrl: "https://travel-demo.travel.phoxta.com",
+        prototypeLabel: "Visit the live site",
+        processTitle: "From “where to?” to a confirmed booking.",
+        challenge:
+            "Experience marketplaces are dense: dozens of filters, cards that all look alike and a booking step buried under the fold. Travellers arrive with three things in mind — where, when and how many — so the brief was to make those three the entire interface, keep listings comparable at a glance, and make booking on the detail page feel as light as saving something to a wishlist.",
+        goals: [
+            { title: "Three inputs, then results", body: "Location, dates and guests as one pill — the search is the hero, and everything else waits until you've answered it." },
+            { title: "Cards you can compare", body: "Price per guest, duration, group size and rating in the same place on every card, so choosing is a scan rather than a study." },
+            { title: "Book without leaving the page", body: "A booking card that stays in reach beside the gallery — date, guests, name, email — and a request that lands with the host." },
+            { title: "Help on every screen", body: "An “Ask us” trip assistant available everywhere, trained on the listings, so questions never dead-end." },
+        ],
+        process: [
+            { phase: "Research & IA", body: "Benchmarked the leading experience marketplaces and mapped the traveller's path — inspire, search, compare, decide, book, keep — into home, search, category, listing, wishlist, blog and contact pages, with hosts as first-class objects." },
+            { phase: "Design system", body: "A bright, optimistic kit: Sora headlines with an italic serif accent, Inter for UI, a vivid sky blue as the single brand colour, pill search and filter chips with counts, and one card anatomy reused for listings, categories and hosts." },
+            { phase: "Interaction & build", body: "Built the search pill, filters, paginated results, the listing page with gallery and booking card, wishlists and the assistant as a working storefront on Phoxta's shared bookings model — availability and reservation requests come from the same backend as every other Phoxta business." },
+            { phase: "Responsive & tenancy", body: "Wrote the mobile rules — a bottom tab bar for Home, Wishlists and Account, a compact search at the top — and made branding tenant data, which is why the demo runs as Ceepii without a line of code changing." },
+        ],
+        highlights: [
+            {
+                title: "Three inputs, then the world",
+                body: "The homepage is a search bar on a sky: location, a date range and guests, with social proof underneath and nothing competing. The headline pairs a bold sans with an italic serif for “experiences” — the one flourish in an otherwise plain system.",
+                image: "/assets/imgs/portfolio/wander.webp",
+                imageAlt: "Wander homepage search",
+            },
+            {
+                title: "A results page that compares for you",
+                body: "Filters with live counts sit under the search; below, every card carries the same five facts — badge, title, place, chips for duration and group size, price per guest and rating — so eight thousand experiences can be skimmed like a shelf. Pagination is honest rather than infinite.",
+                image: "/assets/imgs/portfolio/wander-search.webp",
+                imageAlt: "Wander experience search results",
+            },
+            {
+                title: "A listing page that books itself",
+                body: "A four-photo gallery leads, then title, place, rating and a verified host. The booking card — price per person, date, guests, name, email — sits beside the content and stays in reach, so the decision and the action are never on different screens.",
+                image: "/assets/imgs/portfolio/wander-experience.webp",
+                imageAlt: "Wander experience listing with booking card",
+            },
+            {
+                title: "Categories as front doors",
+                body: "City and theme pages — Florence, Mexico City, Bonifacio — reuse the same card anatomy with a place-led hero, giving the marketing team landing pages that behave exactly like search results, and giving travellers a way in when they don't know what to type.",
+            },
+            {
+                title: "Thumb-first on the road",
+                body: "On a phone the search collapses to a single “Where to?” bar, the hero keeps its proof points, and a bottom tab bar — Home, Wishlists, Account — plus a floating “Ask us” keep the four things a traveller does within thumb reach.",
+                image: "/assets/imgs/portfolio/wander-mobile.webp",
+                imageAlt: "Wander on mobile",
+                wide: true,
+            },
+        ],
+        palette: [
+            { name: "Sky", hex: "#2F7BF5" },
+            { name: "Mint", hex: "#6EA69F" },
+            { name: "Ink", hex: "#111111" },
+            { name: "Paper", hex: "#FFFFFF", ink: true },
+            { name: "Cloud", hex: "#F4F6F8", ink: true },
+        ],
+        typeNote:
+            "Sora gives headlines a rounded, friendly confidence; an italic serif is used for exactly one word per headline; Inter runs everything else. One saturated sky blue does the branding on its own, with mint reserved for the assistant and the search action, so the photography in the cards stays the most colourful thing on the page.",
+        components: ["Search pill (location · dates · guests)", "Filter chips with counts", "Experience card", "Photo gallery", "Booking card", "Host badge", "Wishlist heart", "Bottom tab bar"],
+    },
+    {
+        slug: "aurelia",
+        name: "Aurelia",
+        kicker: "Fashion e-commerce · Product Design",
+        tagline: "A considered fashion store with an AI stylist — on a backend it shares with every other Phoxta business.",
+        summary:
+            "Aurelia is Phoxta's flagship fashion blueprint: an editorial storefront with a filterable collection, product pages with size and colour variants, cart, checkout, order tracking and an AI stylist. It is a real multi-tenant store — each buyer's copy resolves by hostname, seeds its own catalogue and applies its own branding — and products and orders flow straight into the operating console.",
+        hero: "/assets/imgs/portfolio/aurelia.webp",
+        heroAlt: "Aurelia fashion storefront — homepage",
+        accent: "#85ACD6",
+        meta: [
+            { label: "Role", value: "Lead Product Designer" },
+            { label: "Timeline", value: "2026" },
+            { label: "Scope", value: "Home · Shop · Product · Cart · Checkout · Track order · Account" },
+            { label: "Tools", value: "Figma · React · Supabase" },
+        ],
+        tags: ["Fashion", "E-commerce", "Multi-tenant", "AI", "Responsive"],
+        prototypeUrl: "https://aurelia-demo.aurelia.phoxta.com",
+        prototypeLabel: "Visit the live site",
+        processTitle: "From lookbook to checkout, one calm system.",
+        challenge:
+            "Fashion e-commerce lives on imagery and dies on friction. The store had to look like a campaign rather than a template, hold up with any catalogue — because it is cloned for many buyers, each with different products — and help a shopper choose without stealing the show. The brief: editorial first, no dead ends from hero to order confirmation, and an AI stylist that feels like a service, not a widget.",
+        goals: [
+            { title: "Editorial first", body: "A hero and collection that read like a lookbook — big photography, quiet type, one accent." },
+            { title: "Any catalogue, same store", body: "Cards, filters and product pages that stay composed whether a tenant sells twelve pieces or twelve hundred." },
+            { title: "A product page that answers everything", body: "Sizes, colours, stock, shipping, returns, reviews and the stylist — in one scroll, with the buy action always visible." },
+            { title: "Help choosing, on demand", body: "An AI stylist trained on the tenant's own catalogue, one tap away on every page and silent until asked." },
+        ],
+        process: [
+            { phase: "Brand & tokens", body: "Poppins for headlines, Inter for UI, near-white paper and a single powder-blue accent for actions — a palette that steps back so product photography carries the store, and that tenants can swap through branding data." },
+            { phase: "Journeys & IA", body: "Mapped discover → browse → decide → buy → track into home, shop, product, cart, checkout, track-order, about, contact and account, with Women / Men / New In / Sale as the only top-level filters." },
+            { phase: "Interaction & build", body: "Built the campaign hero, the collection with category pills and sort, the product page with variants, stock badges and quantity, the cart-to-checkout flow, order tracking and the stylist launcher as a working React storefront." },
+            { phase: "Multi-tenancy", body: "Every copy resolves by hostname, auto-seeds its own catalogue on first visit and applies the owner's logo, palette and type at resolve time; products and orders sync to the Phoxta console, so the store and the business are one system." },
+        ],
+        highlights: [
+            {
+                title: "A hero that behaves like a campaign",
+                body: "Season, headline, one line of promise and two actions over full-bleed photography — the same structure a fashion house uses for a drop. The header is airy and the accent stays out of the picture until there is something to click.",
+                image: "/assets/imgs/portfolio/aurelia.webp",
+                imageAlt: "Aurelia campaign hero",
+            },
+            {
+                title: "The collection as a lookbook",
+                body: "A collection banner, then Women / Men / New In / Sale pills, a sort control and a clean grid with New and Sale badges. Everything is data-driven, so a tenant with a different catalogue gets the same composure — the layout never depends on how many products there are.",
+                image: "/assets/imgs/portfolio/aurelia-shop.webp",
+                imageAlt: "Aurelia shop collection with category pills",
+            },
+            {
+                title: "A product page that answers everything",
+                body: "A four-image gallery on the left; on the right, brand, name, price, a short description, size and colour variants with unavailable options struck through, quantity, Add to cart and Buy it now, then shipping, returns and reviews. Stock is shown honestly rather than hidden.",
+                image: "/assets/imgs/portfolio/aurelia-product.webp",
+                imageAlt: "Aurelia product page with variants",
+            },
+            {
+                title: "A stylist, not a chatbot",
+                body: "The AI stylist is scoped to the tenant's own catalogue and brand voice: it suggests pieces for an occasion, answers fit and fabric questions and links straight to product pages. It lives as a quiet corner button so the store never feels interrupted.",
+            },
+            {
+                title: "Editorial on a phone",
+                body: "The hero keeps its full-bleed photography and both actions on a small screen; the collection becomes a two-column lookbook and the product page stacks gallery over details with the buy actions kept in reach — the same system, re-weighted for one hand.",
+                image: "/assets/imgs/portfolio/aurelia-mobile.webp",
+                imageAlt: "Aurelia on mobile",
+                wide: true,
+            },
+        ],
+        palette: [
+            { name: "Powder blue", hex: "#85ACD6" },
+            { name: "Ink", hex: "#1B1B1B" },
+            { name: "Paper", hex: "#FEFEFE", ink: true },
+            { name: "Stone", hex: "#F2F2F2", ink: true },
+            { name: "Muted", hex: "#6B7280" },
+        ],
+        typeNote:
+            "Poppins gives headlines and product names a modern, geometric confidence; Inter handles everything transactional. The store is deliberately near-monochrome — near-white paper, soft stone panels, dark ink — with one powder-blue accent for actions and the stylist, so the photography is always the most vivid element on the page.",
+        components: ["Campaign hero", "Category pills & sort", "Product card with badges", "Gallery grid", "Variant selector", "Cart & checkout", "Order tracking", "AI stylist launcher"],
     },
 ];
 
