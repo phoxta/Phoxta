@@ -8,7 +8,7 @@ import { isTrustedTransport } from "../_shared/internalProof.ts";
 import { modelFor } from "../_shared/models.ts";
 import { runAgent, type AgentResult, type Msg } from "../_shared/anthropic.ts";
 import { speak, SPEECH_VOICES, type SpeechVoice } from "../_shared/openai.ts";
-import { READ_TOOLS, OWNER_READ_TOOLS, OPERATOR_READ_TOOLS, MEMORY_TOOLS, toolRunner, memoryContext } from "../_shared/tools.ts";
+import { READ_TOOLS, OWNER_READ_TOOLS, OPERATOR_READ_TOOLS, MARKETPLACE_OPERATOR_TOOLS, MEMORY_TOOLS, toolRunner, memoryContext } from "../_shared/tools.ts";
 import { WRITE_TOOLS, isWriteTool, executeAction } from "../_shared/actions.ts";
 import { isAdminRole } from "../_shared/auth.ts";
 import { meter, assertWithinCap, CAP_REACHED_MESSAGE } from "../_shared/meter.ts";
@@ -207,8 +207,47 @@ Deno.serve(async (req) => {
           : await read(name, input);
 
     const mem = await memoryContext(ctx.admin, orgId as string);
-    const { data: cfg } = await ctx.admin.from("agent_config").select("procedures").eq("organization_id", orgId).maybeSingle();
+    const { data: cfg } = await ctx.admin.from("agent_config").select("procedures, owner_procedures, capabilities").eq("organization_id", orgId).maybeSingle();
+    /**
+     * Whose rules these are.
+     *
+     * `procedures` belongs to the CUSTOMER-facing agent. On the platform org it
+     * says "you are the first person a prospect meets at Phoxta" and forbids
+     * naming margins, costs or roadmap — so the operator, reading the same
+     * field, qualified the OWNER like a lead and withheld their own numbers
+     * from them. `owner_procedures` (0140) is this agent's own field.
+     *
+     * The fallback stays, because every tenant who wrote procedures before 0140
+     * wrote them into the only box that existed and the operator has been
+     * reading them ever since. Inherited rules are framed as the customer
+     * agent's, not as this one's role — see PROCEDURES below.
+     */
+    const ownerProcedures = String(cfg?.owner_procedures ?? "").trim();
     const procedures = String(cfg?.procedures ?? "").trim();
+    const PROCEDURES = ownerProcedures
+      ? `\n\nOPERATING PROCEDURES (set by the owner — follow exactly):\n${ownerProcedures}`
+      : procedures
+        ? `\n\nThe rules below are the ones this business's CUSTOMER-FACING agent follows; no operator procedures have been set. ` +
+          `Follow the business policy in them — prices, refunds, what the business will and will not do. Do NOT adopt any customer-facing ` +
+          `role they assign you, do not pitch or qualify the person you are talking to, and read any "never reveal" limit in them as ` +
+          `protecting the business from OUTSIDERS: you are talking to the owner, who is entitled to their own data.\n${procedures}`
+        : "";
+    /**
+     * The blueprint catalogue, on the one org that sells one.
+     *
+     * The operator already inherits this org's `procedures`, and on the platform
+     * org those say "always call list_blueprints before naming, counting or
+     * pricing anything for sale" (migration 0088). The tool was never in the
+     * operator's list, so the model fell back to list_products — the org's own
+     * product rows, empty on the platform org — and told the owner that Phoxta
+     * "has no active business products listed for sale" while five blueprints
+     * were live and buyable. Procedures that name a tool the agent does not hold
+     * do not fail loudly; they get answered from the nearest tool that exists.
+     *
+     * Same explicit `=== true` gate as buildAgentTools: absent means off, so no
+     * other tenant's operator carries a catalogue it cannot sell.
+     */
+    const marketplace = (cfg?.capabilities as Json)?.marketplace === true;
     const system =
       `You are the AI operator for "${ctx.org.name}" (${ctx.org.vertical || "small business"}). ` +
       `You help the owner run the business. Answer from their real data using the read tools, and make changes using the write tools. ` +
@@ -216,7 +255,7 @@ Deno.serve(async (req) => {
       `You can also RECORD AUDIO: the speak tool renders a script to a voice note attached to your reply, so you can let the owner hear a call opening, a pitch or a greeting. If recording is unavailable, still write the script — the chat can read any message aloud in the browser's own voice at no cost. Never say you are unable to produce audio. ` +
       `Be concise and concrete; when you change something, state exactly what changed. Some write actions need the owner's approval — ` +
       `if a tool reports an action was queued, tell the owner to approve it in Agent → Operator. Use the remember tool when the owner shares a lasting preference or fact. Never invent data — always use a tool.` +
-      (procedures ? `\n\nOPERATING PROCEDURES (set by the owner — follow exactly):\n${procedures}` : "") +
+      PROCEDURES +
       (mem ? `\n\nWhat you remember about this business:\n${mem}` : "");
 
     const t0 = Date.now();
@@ -226,7 +265,7 @@ Deno.serve(async (req) => {
       system,
       userMessage: message,
       history,
-      tools: [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS, ...WRITE_TOOLS, SPEAK_TOOL, SHOW_DESIGN_TOOL],
+      tools: [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...(marketplace ? MARKETPLACE_OPERATOR_TOOLS : []), ...MEMORY_TOOLS, ...WRITE_TOOLS, SPEAK_TOOL, SHOW_DESIGN_TOOL],
       toolRunner: runner,
       maxTurns: 8,
       maxTokens: 1500,

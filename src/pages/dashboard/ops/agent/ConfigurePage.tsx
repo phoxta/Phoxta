@@ -227,6 +227,7 @@ export default function ConfigurePage() {
         display_name: next.display_name,
         persona: next.persona,
         procedures: next.procedures,
+        owner_procedures: next.owner_procedures,
         greeting: next.greeting,
         tone: next.tone,
         business_hours: next.business_hours,
@@ -567,7 +568,7 @@ export default function ConfigurePage() {
                 </div>
                 <div className="col-12">
                   <label className="hrx-field mb-0">
-                    <span>Operating procedures</span>
+                    <span>Operating procedures — customer-facing agent</span>
                     <textarea
                       className="form-control"
                       rows={4}
@@ -576,7 +577,23 @@ export default function ConfigurePage() {
                       placeholder={"Plain-English rules the agent must always follow, e.g.:\n• If an order is unshipped, offer an exchange before a refund.\n• Never promise delivery dates — say \"usually 3–5 business days\".\n• Discounts above 10% need my approval."}
                     />
                   </label>
-                  <p className="agx-note mt-1 mb-0">These are hard rules — the agent follows them over its own judgment, on every channel.</p>
+                  <p className="agx-note mt-1 mb-0">Hard rules the agent follows over its own judgment, on every channel your customers reach you on.</p>
+                </div>
+                <div className="col-12">
+                  <label className="hrx-field mb-0">
+                    <span>Operating procedures — your AI operator</span>
+                    <textarea
+                      className="form-control"
+                      rows={4}
+                      value={config.owner_procedures ?? ""}
+                      onChange={(e) => patch({ owner_procedures: e.target.value })}
+                      placeholder={"Rules for the operator that works for YOU, e.g.:\n• Lead with the number, then the explanation.\n• Never schedule a post without showing me the design first.\n• Flag anything unpaid for more than 14 days."}
+                    />
+                  </label>
+                  <p className="agx-note mt-1 mb-0">
+                    Only your operator sees these — a customer never does. Leave it empty and the operator follows the
+                    customer-facing rules above, minus anything in them that assigns it a sales role.
+                  </p>
                 </div>
                 <div className="col-12">
                   <label className="hrx-field mb-0">

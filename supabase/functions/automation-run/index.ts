@@ -8,7 +8,7 @@ import { authorize, requireUser, isAdminRole } from "../_shared/auth.ts";
 import { adminClient, type SupabaseClient } from "../_shared/supabaseAdmin.ts";
 import { modelFor } from "../_shared/models.ts";
 import { runAgent } from "../_shared/anthropic.ts";
-import { READ_TOOLS, OWNER_READ_TOOLS, OPERATOR_READ_TOOLS, MEMORY_TOOLS, toolRunner, memoryContext } from "../_shared/tools.ts";
+import { READ_TOOLS, OWNER_READ_TOOLS, OPERATOR_READ_TOOLS, MARKETPLACE_OPERATOR_TOOLS, MEMORY_TOOLS, toolRunner, memoryContext } from "../_shared/tools.ts";
 import { WRITE_TOOLS, isWriteTool, executeAction } from "../_shared/actions.ts";
 import { meter } from "../_shared/meter.ts";
 import { dispatch } from "../_shared/dispatch.ts";
@@ -125,6 +125,15 @@ async function runOne(admin: SupabaseClient, automation: Json, opts: { isAdmin: 
       : await read(name, input);
 
   const mem = await memoryContext(admin, orgId);
+  // This runs as the OPERATOR, unattended: the owner's procedures apply (0140),
+  // and on the org that sells blueprints the live catalogue has to be reachable
+  // — a briefing that reads list_products on the platform org sees zero rows and
+  // reports the marketplace as empty. Same explicit gate as everywhere else.
+  const { data: acfg } = await admin.from("agent_config")
+    .select("capabilities, owner_procedures").eq("organization_id", orgId).maybeSingle();
+  const agentCfg = acfg as { capabilities?: Record<string, boolean>; owner_procedures?: string } | null;
+  const marketplace = agentCfg?.capabilities?.marketplace === true;
+  const procedures = String(agentCfg?.owner_procedures ?? "").trim();
   // Briefing memory (audit 2026-08-18): briefings used to repeat themselves —
   // feed the previous run's output back so each briefing reports what CHANGED.
   let previous = "";
@@ -144,6 +153,7 @@ async function runOne(admin: SupabaseClient, automation: Json, opts: { isAdmin: 
       ? "Carry out the owner's instruction using your tools; write actions may require their approval. "
       : "Produce a concise, concrete briefing from the business's REAL data using the read tools. Plain text, a few short lines. ") +
     "Never invent data — always use a tool." +
+    (procedures ? `\n\nOPERATING PROCEDURES (set by the owner — follow exactly):\n${procedures}` : "") +
     (previous ? `\n\nYour PREVIOUS briefing said:\n${previous}\n\nDo not repeat it — lead with what changed since, and only restate a number when it moved.` : "") +
     (mem ? `\n\nWhat you remember about this business:\n${mem}` : "");
 
@@ -151,9 +161,12 @@ async function runOne(admin: SupabaseClient, automation: Json, opts: { isAdmin: 
   const model = modelFor("balanced");
   const r = await runAgent({
     model, system, userMessage: instruction,
-    tools: isTask
-      ? [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS, ...WRITE_TOOLS]
-      : [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS],
+    tools: [
+      ...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS,
+      ...(marketplace ? MARKETPLACE_OPERATOR_TOOLS : []),
+      ...MEMORY_TOOLS,
+      ...(isTask ? WRITE_TOOLS : []),
+    ],
     toolRunner: runner, maxTurns: 6, maxTokens: 1200,
   });
   await meter(admin, { organizationId: orgId, userId: "automation", model: r.model, feature: "automation", tier: "balanced", inTok: r.inTok, outTok: r.outTok, cacheWriteTok: r.cacheWriteTok, cacheReadTok: r.cacheReadTok, latencyMs: Date.now() - t0 });

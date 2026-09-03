@@ -7,7 +7,7 @@ import { preflight, json } from "../_shared/cors.ts";
 import { authorize } from "../_shared/auth.ts";
 import { modelFor } from "../_shared/models.ts";
 import { runAgent } from "../_shared/anthropic.ts";
-import { READ_TOOLS, OWNER_READ_TOOLS, OPERATOR_READ_TOOLS, MEMORY_TOOLS, toolRunner } from "../_shared/tools.ts";
+import { READ_TOOLS, OWNER_READ_TOOLS, OPERATOR_READ_TOOLS, MARKETPLACE_OPERATOR_TOOLS, MEMORY_TOOLS, toolRunner } from "../_shared/tools.ts";
 import { assertWithinCap, CAP_REACHED_MESSAGE, meter } from "../_shared/meter.ts";
 import type { SupabaseClient } from "../_shared/supabaseAdmin.ts";
 
@@ -89,11 +89,25 @@ Deno.serve(async (req) => {
     // happens to open on an assistant turn would 400 the whole request.
     while (history.length && history[0].role === "assistant") history.shift();
 
+    // The blueprint catalogue, on the one org that sells one — the same gate the
+    // operator and the public agent use (absent means off). Without it this
+    // assistant answers "what do we sell?" from list_products, which on the
+    // platform org is empty, and reports a catalogue of five as nothing at all.
+    const { data: acfg } = await admin.from("agent_config")
+      .select("capabilities, owner_procedures").eq("organization_id", orgId).maybeSingle();
+    const cfg = acfg as { capabilities?: Record<string, boolean>; owner_procedures?: string } | null;
+    const marketplace = cfg?.capabilities?.marketplace === true;
+    // The OWNER's procedures (0140), never the customer-facing agent's — this
+    // assistant only ever talks to the business. Empty for every tenant who has
+    // not written any, so this adds nothing to the prompt by default.
+    const procedures = String(cfg?.owner_procedures ?? "").trim();
+
     const system =
       `You are the AI business assistant for "${org.name}", a ${org.vertical || "small"} business on Phoxta. ` +
       "Help the owner run and grow the business — drafting, planning, summarising and answering operational questions. " +
       "ALWAYS use the tools to look up the business's real data (products, metrics, orders, knowledge) before answering — never invent prices, products, policies or numbers. " +
-      "Be concrete and concise. Respond only with your final answer.";
+      "Be concrete and concise. Respond only with your final answer." +
+      (procedures ? `\n\nOPERATING PROCEDURES (set by the owner — follow exactly):\n${procedures}` : "");
 
     model = modelFor("balanced");
     const run = await runAgent({
@@ -101,7 +115,7 @@ Deno.serve(async (req) => {
       system,
       userMessage: message,
       history,
-      tools: [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...MEMORY_TOOLS],
+      tools: [...READ_TOOLS, ...OWNER_READ_TOOLS, ...OPERATOR_READ_TOOLS, ...(marketplace ? MARKETPLACE_OPERATOR_TOOLS : []), ...MEMORY_TOOLS],
       toolRunner: toolRunner(admin, orgId),
       maxTokens: 1024,
     });

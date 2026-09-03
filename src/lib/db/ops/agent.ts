@@ -8,8 +8,11 @@ export type AgentConfig = {
   organization_id: string;
   display_name: string;
   persona: string;
-  /** Plain-English operating procedures — hard rules injected into every agent prompt. */
+  /** Hard rules for the CUSTOMER-facing agent, on every channel. */
   procedures: string;
+  /** Hard rules for the OWNER-facing operator (0140). Never seen by a customer;
+   *  when empty the operator falls back to `procedures`. */
+  owner_procedures: string;
   greeting: string;
   tone: string;
   model_tier: "cheap" | "balanced" | "complex";
