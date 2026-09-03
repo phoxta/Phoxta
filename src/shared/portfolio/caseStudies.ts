@@ -1,7 +1,8 @@
 // Long-form project case studies for femi.phoxta.com/work/:slug.
 // One entry per project that has a dedicated study page. Content follows a
-// standard product-design case-study spine: context → challenge → goals →
-// process → design decisions → system → outcome.
+// standard product-design case-study spine: context → challenge → objectives →
+// process → design decisions → visual system. Written in project voice, not
+// first person: the engagement, the team, the decisions and the rationale.
 
 export type MetaItem = { label: string; value: string };
 export type Highlight = { title: string; body: string; image?: string; imageAlt?: string; wide?: boolean };
@@ -41,9 +42,9 @@ export const CASE_STUDIES: CaseStudy[] = [
         slug: "phoxta",
         name: "Phoxta",
         kicker: "AI business platform · Product Design",
-        tagline: "An AI-native platform that turns starting a business into choosing one — designed and built end to end.",
+        tagline: "An AI-native, multi-tenant platform that turns starting a business into choosing one.",
         summary:
-            "Phoxta builds complete, ready-to-run businesses — storefronts, bookings, content sites — on one shared backend, packages each as a cloneable blueprint and sells it in a marketplace. Every buyer gets a working, AI-operated company on day one. As founder and lead product designer I own the whole surface — the marketing site, the marketplace, the owner dashboard and the multi-tenant operating console — and build the React front end that ships it.",
+            "Phoxta builds complete, ready-to-run businesses — storefronts, bookings, content sites — on one shared backend, packages each as a cloneable blueprint and sells it through a marketplace. Every buyer receives a working, AI-operated company on day one. The product-design remit covers the entire surface area: the marketing site, the marketplace, the owner dashboard and the multi-tenant operating console, delivered as a Figma-to-React design system and shipped in production code.",
         hero: "/assets/imgs/portfolio/phoxta-project.webp",
         heroAlt: "Phoxta — marketing site homepage",
         accent: "#F0460E",
@@ -58,43 +59,43 @@ export const CASE_STUDIES: CaseStudy[] = [
         prototypeLabel: "Visit the live product",
         processTitle: "From an idea to a business that already works.",
         challenge:
-            "Shopify, WordPress and Salesforce are tools, not businesses — the buyer still has to assemble everything and design the AI layer themselves. Phoxta's promise is the opposite: a business that already works. That sets a hard design bar. A first-time owner has to understand what they've bought in one screen, run CRM, commerce, content, inbox and automations without training, and trust an AI operator to act on their behalf — while operators, buyers and investors all share one product without ever seeing each other's data.",
+            "Incumbent platforms — Shopify, WordPress, Salesforce — are tools, not businesses: the buyer still assembles everything and designs the AI layer themselves. Phoxta's value proposition is the inverse, a business that already works, and that sets a demanding design bar. A first-time owner has to understand what they have bought from a single screen, operate CRM, commerce, content, inbox and automations without training, and delegate to an AI operator with confidence — while operators, buyers and investors share one product under strict tenant isolation.",
         goals: [
-            { title: "Own it in one screen", body: "The dashboard answers “what do I own, is it live, what needs me?” before the owner scrolls." },
-            { title: "One console, every business", body: "CRM, commerce, content, engagement and billing as one config-driven console — the same UI for a restaurant and a fashion store." },
-            { title: "AI you can delegate to", body: "An operator that reads, drafts and acts — inside explicit permissions, approvals and an audit trail." },
-            { title: "Design that ships", body: "A Figma-to-React system so the site, console and emails stay one brand while a small team moves fast." },
+            { title: "Ownership in one screen", body: "The dashboard answers “what do I own, is it live, what needs attention?” above the fold, before any navigation." },
+            { title: "One console, every vertical", body: "CRM, commerce, content, engagement and billing as a single config-driven console — the same UI serves a restaurant and a fashion retailer." },
+            { title: "Delegable AI", body: "An operator that reads, drafts and acts inside explicit permissions, an approval queue and an audit trail." },
+            { title: "A system that ships", body: "A Figma-to-React design system that keeps the site, console and transactional email consistent while a small team moves fast." },
         ],
         process: [
-            { phase: "Research & positioning", body: "Phoxta started from watching three capable friends fail to launch — none needed a website builder; all needed a running business they could rebrand. I mapped what a buyer actually needs on day one, then benchmarked site builders, commerce platforms and the new wave of AI-agent products to find where “AI-native” could be structural rather than a feature." },
-            { phase: "Information architecture", body: "Split the product into three surfaces on one core — public storefronts, the marketplace and the management console — and modelled the console as modules keyed by business type. A vertical is “which modules are on and how the site is composed”, not a new design." },
-            { phase: "Design system", body: "Built the system in Figma and shipped it as React: tokens, a pill-and-card language, one-line page headers with tabs, a distinct console theme, and shared empty / loading / approval states reused across roughly thirty dashboard tabs — so a new feature looks native the day it lands." },
-            { phase: "Build, measure, iterate", body: "Designed in code alongside the build — React, TypeScript, Supabase — so prototypes became production. Every AI feature is metered and capped per business, which means the design of a feature includes what it costs, and usage feeds what gets built next." },
+            { phase: "Discovery & positioning", body: "The brief originated in three failed launches by capable founders — none needed a website builder; all needed a running business they could rebrand. Discovery mapped the buyer's day-one jobs to be done, then benchmarked site builders, commerce platforms and the emerging class of AI-agent products to locate where “AI-native” could be structural rather than a feature." },
+            { phase: "Information architecture", body: "The product was structured as three surfaces on one core — public storefronts, the marketplace and the management console — with the console modelled as modules keyed by business type. A vertical is a configuration (which modules are enabled and how the site is composed), not a new design." },
+            { phase: "Design system", body: "Tokens, a pill-and-card component language, one-line page headers with tabs, a distinct console theme and shared empty, loading and approval states were defined in Figma and implemented as React components, then reused across roughly thirty dashboard views so new features land looking native." },
+            { phase: "Build, measure, iterate", body: "Design and engineering ran in the same codebase — React, TypeScript, Supabase — so prototypes graduated to production without a handoff gap. Every AI capability is metered and capped per tenant, which makes cost part of the design brief, and usage informs the roadmap." },
         ],
         highlights: [
             {
                 title: "A front door that sells the outcome, not the software",
-                body: "The cover above is the whole pitch in one screen: “Own a business that already works.” over a shelf of live blueprints and the categories you can buy into — no feature grid, no jargon. The site's job is to make the promise credible within a scroll and hand the visitor to the marketplace; the product proves itself once they're inside.",
+                body: "The cover above is the entire pitch in one viewport: “Own a business that already works.” over a shelf of live blueprints and the categories available to buy into — no feature grid, no jargon. The site's job is to make the promise credible within a scroll and route the visitor to the marketplace; the product proves itself once they are inside.",
             },
             {
                 title: "A home that reads like ownership — with an operator that acts",
-                body: "The owner's dashboard opens with what they own, whether it's live and what needs them, and the AI operator sits in the middle as a conversation rather than a widget. It isn't a chatbot: it has governed write tools, each set to off, ask-me or autopilot, an approval queue with the reasoning attached, and daily limits on actions, calls and emails. Owners can run it from Telegram without opening the dashboard at all.",
+                body: "The owner's dashboard opens with what they own, whether it is live and what needs attention, and the AI operator sits at the centre as a conversation rather than a widget. It is not a chatbot: it has governed write tools, each set to off, ask-me or autopilot, an approval queue with reasoning attached, and daily limits on actions, calls and emails. Owners can run it from Telegram without opening the dashboard.",
             },
             {
                 title: "A console that works like a task board",
-                body: "Every business runs from the same config-driven console — Overview, Engage, CRM, Invoicing, Help Center, Graphics, Operator, Settings. Inbox conversations, marketing emails and voice calls land in one board by status, so the owner triages by glance instead of by app. Panels and terminology switch per business type.",
+                body: "Every business runs from the same config-driven console — Overview, Engage, CRM, Invoicing, Help Center, Graphics, Operator, Settings. Inbox conversations, marketing emails and voice calls land in one board grouped by status, so triage happens by glance rather than by application. Panels and terminology switch per business type.",
             },
             {
                 title: "A content studio for non-designers",
-                body: "Graphics turns a brand into a month of social posts: eighteen template families, an AI planner that writes the strategy and captions in the business's own voice, a schedule calendar and a pro SVG canvas for edits. It's the surface owners touch most, so it got the most polish.",
+                body: "Graphics turns a brand into a month of social content: eighteen template families, an AI planner that drafts the strategy and captions in the business's own voice, a scheduling calendar and a professional SVG canvas for edits. It is the surface owners touch most often, so it received the deepest polish.",
             },
             {
                 title: "A marketplace of businesses — and the storefronts behind it",
-                body: "Each blueprint is a live, verified business with a demo you can click through and a one-time price: a fashion store, a restaurant with orders, a car rental, guided experiences, a furniture shop. They are separate brands on one tenant-scoped API — products, orders and bookings flow straight into the console, each gets its own AI stylist, concierge or trip assistant, and branding is data applied when the domain resolves.",
+                body: "Each blueprint is a live, verified business with a clickable demo and a one-time price: a fashion store, a restaurant with ordering, a car rental, guided experiences, a furniture shop. They are separate brands on one tenant-scoped API — products, orders and bookings flow straight into the console, each carries its own AI stylist, concierge or trip assistant, and branding is data applied at domain resolution.",
             },
             {
-                title: "Built for the phone in the pocket",
-                body: "The site and console are responsive by system, not by exception: the hero, blueprint shelf and category chips reflow to a thumb-first layout, and the dashboard's one-line header-plus-tabs pattern keeps every console tab usable on a small screen.",
+                title: "Responsive by system",
+                body: "The site and console are responsive by system, not by exception: the hero, blueprint shelf and category chips reflow to a thumb-first layout, and the dashboard's one-line header-plus-tabs pattern keeps every console view usable on a small screen.",
             },
         ],
         palette: [
@@ -108,16 +109,16 @@ export const CASE_STUDIES: CaseStudy[] = [
             { name: "Line", hex: "#DFDFDF", ink: true },
         ],
         typeNote:
-            "DM Sans carries the marketing site — big, tight display sizes on a neutral scale from near-black to off-white — with one Phoxta orange reserved for actions and proof. The console switches to Figtree on a cooler white ground with a blue primary, so running a business feels distinct from buying one while staying the same family: pills, full-round radii, one-line headers with tabs, hairline borders.",
+            "DM Sans carries the marketing site — large, tight display sizes on a neutral scale from near-black to off-white — with a single brand orange reserved for actions and proof points. The console switches to Figtree on a cooler white ground with a blue primary, so operating a business reads as distinct from buying one while staying in the same family: pills, full-round radii, one-line headers with tabs, hairline borders.",
         components: ["Pill nav & tabs", "One-line page header", "Business card", "Kanban board", "Operator chat & approval queue", "Stat & setup cards", "Blueprint card", "Config-driven console modules", "Empty / loading / approval states"],
     },
     {
         slug: "coir-six",
         name: "Coir Six",
         kicker: "E-learning platform · Product Design",
-        tagline: "A calm, glance-first learning dashboard that keeps self-paced students coming back.",
+        tagline: "A glance-first learning dashboard designed to bring self-paced students back every day.",
         summary:
-            "Coir Six is a self-initiated concept: an online-learning platform where the hardest problem isn't the content — it's momentum. I designed the learner's home: a single screen that answers “where was I, how am I doing, and what's next?” the moment it loads, and holds its shape from a three-pane desktop console down to a one-handed mobile app.",
+            "Coir Six is an online-learning platform where the core retention risk is momentum rather than content. The engagement redesigned the learner home — the return-visit surface — into a single screen that answers “where was I, how am I doing, and what is next?” on load, and defined a responsive system that carries the three-pane desktop console down to a one-handed mobile layout. Deliverables were the end-to-end UX, a documented design system and a working HTML/CSS prototype used as the front-end reference.",
         hero: "/assets/imgs/portfolio/coir-six.webp",
         heroAlt: "Coir Six learning dashboard — desktop",
         accent: "#6C5DD3",
@@ -131,29 +132,29 @@ export const CASE_STUDIES: CaseStudy[] = [
         prototypeUrl: "/prototypes/coir-six/index.html",
         processTitle: "From momentum problem to daily habit.",
         challenge:
-            "Self-paced learners drop off the moment a platform makes them work to find their place. The early Coir Six dashboard buried progress inside a profile, gave five different content types the same visual weight, and offered no reason to come back tomorrow. The brief was to turn the home screen into a daily habit — motivating, instantly legible, and honest about how far along you actually are.",
+            "Self-paced learners churn the moment a platform makes them work to find their place. The incumbent dashboard buried progress inside a profile, gave five content types equal visual weight and offered no reason to return tomorrow. The brief: turn the home screen into a daily habit — motivating, instantly legible and honest about how far along the learner actually is — without adding onboarding or instruction.",
         goals: [
-            { title: "Resume in a glance", body: "Answer “where was I?” in under a second — the learner should continue, never re-navigate." },
-            { title: "Make progress felt", body: "Surface effort as visible momentum, not a number hidden two screens deep." },
+            { title: "Resume in a glance", body: "Answer “where was I?” in under a second; the learner continues rather than re-navigates." },
+            { title: "Make progress felt", body: "Surface effort as visible momentum, not a number two screens deep." },
             { title: "One clear rhythm", body: "Give every content type — courses, lessons, mentors — a scannable, predictable place." },
-            { title: "Hold on any screen", body: "The same hierarchy has to work at 1440px and at 390px, one-handed." },
+            { title: "Hold on any screen", body: "One hierarchy that works at 1440px and at 390px, one-handed." },
         ],
         process: [
-            { phase: "Research & audit", body: "Mapped the self-paced learner journey and audited how Coursera, Skillshare and Datacamp handle a returning student. What worked everywhere: a persistent progress anchor and a single “continue” shortcut. What didn't: dense card grids with no hierarchy and progress locked away in settings." },
-            { phase: "Information architecture", body: "Reorganised everything into three intents — Navigate, Do, and Track & connect — and gave each its own column, so the eye always knows which region answers which question before it reads a word." },
-            { phase: "Wireframes", body: "Low-fidelity layouts pressure-tested the three-pane balance and, just as importantly, the mobile reflow — settling column widths and what survives the collapse to a phone before any colour went down." },
-            { phase: "Visual design & prototype", body: "A lilac-led visual system, then a working HTML/CSS prototype to test real spacing, motion and the responsive breakpoints in a browser — which doubled as a clean front-end reference for engineering." },
+            { phase: "Discovery & competitive audit", body: "The self-paced learner journey was mapped and the returning-student experience of Coursera, Skillshare and DataCamp audited. Patterns that worked everywhere: a persistent progress anchor and a single “continue” shortcut. Patterns that failed: dense card grids without hierarchy and progress locked away in settings." },
+            { phase: "Information architecture", body: "Content was reorganised into three intents — Navigate, Do, and Track & connect — each owning a column, so the eye knows which region answers which question before reading a word." },
+            { phase: "Wireframes & validation", body: "Low-fidelity layouts pressure-tested the three-pane balance and, critically, the mobile reflow — settling column widths and what survives the collapse to a phone before any visual design." },
+            { phase: "Visual design, prototype & handoff", body: "A lilac-led visual system was built into a working HTML/CSS prototype to validate spacing, motion and breakpoints in a real browser; the prototype doubled as the front-end reference for engineering." },
         ],
         highlights: [
             {
                 title: "One screen, three intents",
-                body: "Navigation lives on the left, the day's work sits in the centre, and progress and people stay pinned to the right. Splitting the home by intent — not by feature — means the learner never hunts across the page for their place; each column has a job and keeps to it.",
+                body: "Navigation sits on the left, the day's work in the centre, and progress and people stay pinned to the right. Splitting the home by intent rather than by feature means the learner never hunts across the page; each column has one job and keeps to it.",
                 image: "/assets/imgs/portfolio/coir-six.webp",
                 imageAlt: "Coir Six three-pane dashboard layout",
             },
             {
                 title: "Progress you can feel",
-                body: "A single completion ring, a weekly study-time chart and per-track “watched” counters turn invisible effort into visible momentum. The ring wraps the learner's own avatar, so progress feels personal — and it's the quiet reason to open the app again tomorrow.",
+                body: "A single completion ring, a weekly study-time chart and per-track “watched” counters convert invisible effort into visible momentum. The ring wraps the learner's own avatar so progress reads as personal — the quiet retention hook that brings the learner back tomorrow.",
             },
             {
                 title: "Continue, don't restart",
@@ -161,7 +162,7 @@ export const CASE_STUDIES: CaseStudy[] = [
             },
             {
                 title: "A social layer that motivates",
-                body: "Mentors and friends keep self-paced learning from feeling solitary. Following, quick messages and “your mentor” live one tap away on the right rail — present enough to encourage, quiet enough never to crowd the actual work.",
+                body: "Mentors and peers keep self-paced learning from feeling solitary. Following, quick messages and “your mentor” live one tap away on the right rail — present enough to encourage, restrained enough never to crowd the work.",
             },
             {
                 title: "Built to reflow, not rebuild",
@@ -188,15 +189,15 @@ export const CASE_STUDIES: CaseStudy[] = [
         designSystemUrl: "/prototypes/coir-six/design-system.html",
         designSystemImage: "/assets/imgs/portfolio/coir-six-ds.webp",
         designSystemBlurb:
-            "Everything on the screens traces back to one source of truth. I documented Coir Six as a full design system — four founding principles, tokenised colour, type, spacing, radius and elevation, a component library (buttons, inputs, tags, avatars, cards, navigation and data-viz) and the page + responsive patterns — and exported the tokens as CSS variables and JSON so a new feature feels native on day one.",
+            "Everything on the screens traces back to one source of truth. Coir Six is documented as a full design system — four founding principles, tokenised colour, type, spacing, radius and elevation, a component library (buttons, inputs, tags, avatars, cards, navigation and data-viz) and the page and responsive patterns — with tokens exported as CSS variables and JSON so a new feature feels native on day one.",
     },
     {
         slug: "ferne",
         name: "Ferne",
         kicker: "Skincare e-commerce · Product & Web Design",
-        tagline: "A botanical skincare storefront built to earn trust and convert — from the hero to the last step of checkout.",
+        tagline: "A botanical skincare storefront built to earn trust and convert — from hero to order confirmation.",
         summary:
-            "Ferne is a self-initiated concept for a small-batch botanical skincare brand whose whole promise is traceability — every active tied to a farm you can name. I designed and built the full storefront: an editorial homepage, a faceted shop, rich product pages and a friction-light cart-to-confirmation flow. A complete, shoppable experience — not a landing page.",
+            "Ferne is a small-batch botanical skincare brand whose proposition is traceability — every active tied to a farm the customer can name. The engagement covered the complete direct-to-consumer storefront: an editorial homepage, a faceted shop, rich product detail pages and a friction-light cart-to-confirmation flow across ten page types, designed and implemented as a working front end rather than static screens.",
         hero: "/assets/imgs/portfolio/ferne.webp",
         heroAlt: "Ferne skincare storefront — homepage",
         accent: "#5F6F52",
@@ -210,45 +211,45 @@ export const CASE_STUDIES: CaseStudy[] = [
         prototypeUrl: "/prototypes/ferne/index.html",
         processTitle: "From brand promise to confirmed order.",
         challenge:
-            "Premium skincare lives or dies on trust and flow. Shoppers bounce when a store feels generic, hides the “why”, or turns buying into a chore. Ferne's brand rests on one claim — traceable, farm-named ingredients — so the storefront had to make that credible on every screen and then get out of the way, turning browsing into a bag and a bag into a confirmed order without a single stumble.",
+            "Premium skincare converts on trust and flow. Shoppers bounce when a store feels generic, hides the “why”, or turns purchasing into a chore. Ferne's brand rests on a single claim — traceable, farm-named ingredients — so the storefront had to make that credible on every screen and then step aside, converting browsing into a bag and a bag into a confirmed order without a single dead end.",
         goals: [
-            { title: "Make the promise felt", body: "Put traceability — farms, batch numbers, provenance — where it reassures, never where it clutters." },
-            { title: "Browse without friction", body: "A shop that filters, sorts and searches the way a real catalogue is used — by concern, category, price, stock." },
+            { title: "Make the promise felt", body: "Place traceability — farms, batch numbers, provenance — where it reassures, never where it clutters." },
+            { title: "Browse without friction", body: "A shop that filters, sorts and searches the way a real catalogue is used — by concern, category, price and stock." },
             { title: "A product page that sells", body: "Everything a considered purchase needs — variants, honest stock, reviews, ingredients — in one calm scroll." },
             { title: "Checkout that never stalls", body: "Carry the shopper from cart to confirmation with real validation, clear costs and zero dead ends." },
         ],
         process: [
-            { phase: "Brand & foundations", body: "Set the voice — warm, plain-spoken, editorial — and a token system (sage on warm sand, Fraunces + Manrope) before a single page, so every screen would read as one brand." },
-            { phase: "Journeys & IA", body: "Mapped the real shopper paths — discover → compare → decide → buy → return — and structured ten page types around them (home, shop, product, cart, checkout, order, account, journal, about, contact)." },
-            { phase: "Interaction & prototype", body: "Designed the flows, then built them as a working front end — data-driven catalogue, cart, wishlist, promo codes, ⌘K search, mini-cart drawer — to test the whole journey in a browser, not just static frames." },
-            { phase: "Systemise & harden", body: "Componentised product cards, drawers, filters and forms; wrote the responsive rules (tablet ≤1100, mobile ≤768) and the form validation so the store holds together on any device." },
+            { phase: "Brand & foundations", body: "Voice (warm, plain-spoken, editorial) and a token system — sage on warm sand, Fraunces with Manrope — were established before any page, so every screen would read as one brand." },
+            { phase: "Journeys & IA", body: "The shopper paths — discover → compare → decide → buy → return — were mapped and ten page types structured around them: home, shop, product, cart, checkout, order, account, journal, about and contact." },
+            { phase: "Interaction & prototype", body: "Flows were designed and then built as a working front end — data-driven catalogue, cart, wishlist, promo codes, ⌘K search, mini-cart drawer — so the whole journey could be tested in a browser rather than in static frames." },
+            { phase: "Systemise & harden", body: "Product cards, drawers, filters and forms were componentised; responsive rules (tablet ≤1100px, mobile ≤768px) and form validation were specified so the store holds together on any device." },
         ],
         highlights: [
             {
                 title: "An editorial hero that says why",
-                body: "The homepage opens with a serif promise and the product in-hand — not a slider — then a trust row (dermatologist-tested, traceable, refillable glass) and a marquee of proof points that back the botanical claim before the first scroll.",
+                body: "The homepage opens with a serif promise and the product in-hand — not a slider — followed by a trust row (dermatologist-tested, traceable, refillable glass) and a marquee of proof points that substantiate the botanical claim before the first scroll.",
                 image: "/assets/imgs/portfolio/ferne.webp",
                 imageAlt: "Ferne homepage hero",
             },
             {
                 title: "A shop that works like a catalogue",
-                body: "Faceted filters — category, skin concern, price, stock, refillable — sit in a quiet left rail with live counts, while every card leads with the product, an “Add to bag” and the price, then the name, a one-line promise and the size. The catalogue is data-driven, so it swaps to a real commerce API without the UI changing.",
+                body: "Faceted filters — category, skin concern, price, stock, refillable — sit in a quiet left rail with live counts, while every card leads with the product, an “Add to bag” and the price, then the name, a one-line promise and the size. The catalogue is data-driven, so it swaps to a live commerce API without the UI changing.",
                 image: "/assets/imgs/portfolio/ferne-shop.webp",
                 imageAlt: "Ferne shop with faceted filters",
             },
             {
                 title: "A best-sellers shelf that sells the routine",
-                body: "On the homepage the four best-sellers sit under one clinical, plant-led promise — calm, hydrate and rebuild the skin barrier — with The Ritual Set bundling cleanse, treat and seal. Each card shares the shop's anatomy, so a shopper can add to bag without leaving the home page, or step across to “Shop all products”.",
+                body: "On the homepage the four best-sellers sit under one clinical, plant-led promise — calm, hydrate and rebuild the skin barrier — with The Ritual Set bundling cleanse, treat and seal. Each card shares the shop's anatomy, so a shopper can add to bag without leaving the home page or step across to “Shop all products”.",
                 image: "/assets/imgs/portfolio/ferne-bestsellers.webp",
                 imageAlt: "Ferne best-sellers shelf",
             },
             {
                 title: "A product page built for a considered buy",
-                body: "Gallery, size variants with live pricing, honest stock (“ships today before 2pm”), a full ingredient list traced to farm, a rating breakdown and write-a-review — plus a mobile sticky buy-bar so the action is always in reach.",
+                body: "Gallery, size variants with live pricing, honest stock (“ships today before 2pm”), a full ingredient list traced to farm, a rating breakdown and write-a-review — plus a mobile sticky buy bar so the primary action is always within reach.",
             },
             {
                 title: "Cart to confirmation, no dead ends",
-                body: "The cart has line editing, save-for-later, promo codes and a free-delivery progress bar; the checkout is three steps with real validation (email, UK postcode, card) and a receipt-style confirmation. Cart, wishlist and orders persist, so nothing is ever lost.",
+                body: "The cart supports line editing, save-for-later, promo codes and a free-delivery progress bar; checkout is three steps with real validation (email, UK postcode, card) and a receipt-style confirmation. Cart, wishlist and orders persist, so nothing is lost between sessions.",
             },
             {
                 title: "One brand, every breakpoint",
@@ -272,9 +273,9 @@ export const CASE_STUDIES: CaseStudy[] = [
         slug: "saveur",
         name: "Saveur",
         kicker: "Restaurant ordering · Product Design",
-        tagline: "A restaurant site that takes the order, books the table and answers the phone.",
+        tagline: "A restaurant storefront that takes the order, books the table and answers the phone.",
         summary:
-            "Saveur is Phoxta's restaurant blueprint: a digital-first kitchen with online ordering for pickup and dine-in, table reservations, special-order quotes for catering and events, live order tracking and an AI concierge that knows where your food is. I designed the whole guest journey — seven page types on one editorial system — and the data model that lets it clone for the next restaurant.",
+            "Saveur is Phoxta's restaurant blueprint: a digital-first kitchen with online ordering for pickup and dine-in, table reservations, special-order quotes for catering and events, live order tracking and an AI concierge that knows the order status. The engagement covered the full guest journey — seven page types on one editorial system — and the data model that lets the storefront clone for the next restaurant without redesign.",
         hero: "/assets/imgs/portfolio/saveur.webp",
         heroAlt: "Saveur restaurant storefront — homepage",
         accent: "#B45309",
@@ -289,48 +290,43 @@ export const CASE_STUDIES: CaseStudy[] = [
         prototypeLabel: "Visit the live site",
         processTitle: "From a menu online to a kitchen that never misses an order.",
         challenge:
-            "Most restaurant websites are a PDF menu and a phone number, so the actual ordering happens on delivery apps that take a commission and keep the customer relationship. The brief was to make ordering, reserving and asking a question as easy as the big apps — but on the restaurant's own domain, in its own voice, with every order, booking and request landing with the owner instead of a marketplace.",
+            "Most restaurant websites are a PDF menu and a phone number, so the actual ordering happens on third-party delivery apps that take a commission and own the customer relationship. The brief was to make ordering, reserving and asking a question as easy as the aggregator apps — on the restaurant's own domain, in its own voice — with every order, booking and request landing with the operator rather than a marketplace.",
         goals: [
-            { title: "Order in a scroll", body: "A menu that filters by course and diet and adds to a bag without leaving the page — no PDF, no phone call." },
-            { title: "Book a table without a call", body: "Reservations and special orders — catering, bulk, custom bakes, events — as short forms that come back with a confirmation or a quote." },
-            { title: "Never wonder where the food is", body: "A live order-status timeline with an honest ETA, and a concierge that can answer “where's my order?” without staff." },
-            { title: "One kitchen, one console", body: "Menu items are products, orders are orders — everything runs from the same Phoxta console the owner already uses." },
+            { title: "Order in a scroll", body: "A menu that filters by course and dietary need and adds to a bag without leaving the page — no PDF, no phone call." },
+            { title: "Book a table without a call", body: "Reservations and special orders — catering, bulk, custom bakes, events — as short forms that return a confirmation or a quote." },
+            { title: "Never wonder where the food is", body: "A live order-status timeline with an honest ETA, and a concierge that answers “where is my order?” without staff." },
+            { title: "One kitchen, one console", body: "Menu items are products, orders are orders — everything runs from the same Phoxta console the operator already uses." },
         ],
         process: [
-            { phase: "Journeys & IA", body: "Mapped the four real guest journeys — order for pickup or dine-in, reserve, request something special, track — and structured seven page types around them: home, menu, special orders, reservations, track, contact and account." },
-            { phase: "Brand & foundations", body: "Set an editorial, evening-service tone: Playfair Display headlines over dark photographic heroes, Inter for menus and forms, warm cream pages, burgundy for the order action and copper for the highlight." },
-            { phase: "Interaction & build", body: "Built the menu as a filterable catalogue with a bag, the reservation and special-order forms with real validation, the order-tracking timeline and the concierge launcher — as a working React storefront, not static frames." },
-            { phase: "Blueprint & harden", body: "Made everything data-driven — dishes as products, requests as records, branding as tenant data — and wrote the responsive rules, so the same site clones cleanly for the next restaurant." },
+            { phase: "Journeys & IA", body: "The four guest journeys — order for pickup or dine-in, reserve, request something special, track — were mapped and seven page types structured around them: home, menu, special orders, reservations, track, contact and account." },
+            { phase: "Brand & foundations", body: "An editorial, evening-service tone was set: Playfair Display headlines over dark photographic heroes, Inter for menus and forms, warm cream pages, burgundy for the order action and copper for the highlight." },
+            { phase: "Interaction & build", body: "The menu was built as a filterable catalogue with a bag, the reservation and special-order forms with real validation, the order-tracking timeline and the concierge launcher — as a working React storefront wired to the Phoxta backend." },
+            { phase: "Blueprint & harden", body: "Everything was made data-driven — dishes as products, requests as records, branding as tenant data — and responsive rules were written, so the same site clones cleanly for the next restaurant." },
         ],
         highlights: [
             {
+                title: "A front door set for evening service",
+                body: "The cover above is the whole positioning in one frame: a full-bleed table scene, an established-date eyebrow, a serif headline about flavour and craft, and two actions — Order online, Reserve a table — with the concierge in the corner. Nothing else competes; the site's first job is appetite and the second is the order.",
+            },
+            {
                 title: "A menu built to be ordered from",
-                body: "Courses as pills, dietary filters a click away, GF/DF/V badges on each dish and a single “Add” on every row. Photography stays small and consistent so the list scans like a menu and works like a shop — the bag follows the guest around the site.",
-                image: "/assets/imgs/portfolio/saveur-menu.webp",
-                imageAlt: "Saveur menu with course and dietary filters",
+                body: "Courses as pills, dietary filters a click away, GF/DF/V badges on each dish and a single “Add” on every row. Photography stays small and consistent so the list scans like a menu and behaves like a shop — the bag follows the guest across the site.",
             },
             {
                 title: "Special orders without the phone tag",
-                body: "Catering, bulk orders, custom bakes and private events share one request flow: pick the type, say when, how many and roughly how much, and the kitchen comes back with a quote. Everyday orders are nudged back to the menu, because that's faster for everyone.",
-                image: "/assets/imgs/portfolio/saveur-special.webp",
-                imageAlt: "Saveur special orders request form",
+                body: "Catering, bulk orders, custom bakes and private events share one request flow: choose the type, state when, how many and roughly how much, and the kitchen returns a quote. Everyday orders are redirected to the menu, because that is faster for everyone.",
             },
             {
-                title: "Track it like a parcel",
-                body: "Received → In the kitchen → Ready → Completed, with an estimated time and the current step called out. The concierge in the corner knows the order status, so the question that used to interrupt the pass now answers itself.",
-                image: "/assets/imgs/portfolio/saveur-track.webp",
-                imageAlt: "Saveur live order tracking",
+                title: "Tracked like a parcel",
+                body: "Received → In the kitchen → Ready → Completed, with an estimated time and the current step called out. The concierge is aware of order status, so the question that used to interrupt the pass now answers itself.",
             },
             {
                 title: "A concierge that knows the room",
-                body: "The AI concierge is trained on the menu, hours and policies, and can see live order status — so it answers allergen questions, suggests a dish and tells a guest their food is packed, in the restaurant's own tone. Anything it can't answer goes to the owner's inbox.",
+                body: "The AI concierge is grounded in the menu, hours and policies and can read live order status — so it answers allergen questions, suggests a dish and tells a guest their food is packed, in the restaurant's own tone. Anything it cannot answer routes to the operator's inbox.",
             },
             {
                 title: "One-handed at the table",
-                body: "Below the tablet breakpoint the hero, menu and forms reflow to a single thumb-first column with full-width actions — order, reserve and concierge always in reach — because half of restaurant traffic arrives from a phone at the table or on the way home.",
-                image: "/assets/imgs/portfolio/saveur-mobile.webp",
-                imageAlt: "Saveur on mobile",
-                wide: true,
+                body: "Below the tablet breakpoint the hero, menu and forms reflow to a single thumb-first column with full-width actions — order, reserve and concierge always in reach — because much of restaurant traffic arrives from a phone at the table or on the way home.",
             },
         ],
         palette: [
@@ -341,7 +337,7 @@ export const CASE_STUDIES: CaseStudy[] = [
             { name: "Paper", hex: "#FFFFFF", ink: true },
         ],
         typeNote:
-            "Playfair Display carries headlines and dish names for an evening-service, white-tablecloth feel; Inter keeps menus, forms and the tracking timeline crisp. Pages sit on warm cream, heroes on dark photography, and colour is reserved for two jobs: burgundy for the order action, copper for the highlight and the concierge.",
+            "Playfair Display carries headlines and dish names for an evening-service, white-tablecloth register; Inter keeps menus, forms and the tracking timeline crisp. Pages sit on warm cream, heroes on dark photography, and colour is reserved for two jobs: burgundy for the order action, copper for the highlight and the concierge.",
         components: ["Menu row with dietary badges", "Course & dietary filter pills", "Bag", "Reservation form", "Special-order request", "Order-status timeline", "Concierge launcher"],
     },
     {
@@ -350,7 +346,7 @@ export const CASE_STUDIES: CaseStudy[] = [
         kicker: "Experiences booking · Product Design",
         tagline: "Find, compare and book a guide-led experience — with a trip assistant a tap away.",
         summary:
-            "Wander is Phoxta's experiences blueprint: a marketplace of guide-led activities where travellers search by place, dates and guests, filter thousands of listings and book from the detail page. The demo tenant runs as “Ceepii” — the same product, rebranded through data. I designed the search, listing and booking journey and the responsive system around it.",
+            "Wander is Phoxta's experiences blueprint: a marketplace of guide-led activities where travellers search by place, dates and guests, filter thousands of listings and book from the detail page. The demo tenant runs as “Ceepii” — the same product, rebranded through data. The engagement covered the search, listing and booking journey, the responsive system around it and the per-tenant branding layer.",
         hero: "/assets/imgs/portfolio/wander.webp",
         heroAlt: "Wander experiences homepage",
         accent: "#2F7BF5",
@@ -365,18 +361,18 @@ export const CASE_STUDIES: CaseStudy[] = [
         prototypeLabel: "Visit the live site",
         processTitle: "From “where to?” to a confirmed booking.",
         challenge:
-            "Experience marketplaces are dense: dozens of filters, cards that all look alike and a booking step buried under the fold. Travellers arrive with three things in mind — where, when and how many — so the brief was to make those three the entire interface, keep listings comparable at a glance, and make booking on the detail page feel as light as saving something to a wishlist.",
+            "Experience marketplaces are dense: dozens of filters, cards that all look alike and a booking step buried below the fold. Travellers arrive with three things in mind — where, when and how many — so the brief was to make those three the entire interface, keep listings comparable at a glance, and make booking on the detail page feel as light as saving to a wishlist.",
         goals: [
-            { title: "Three inputs, then results", body: "Location, dates and guests as one pill — the search is the hero, and everything else waits until you've answered it." },
+            { title: "Three inputs, then results", body: "Location, dates and guests as one pill — the search is the hero, and everything else waits until it is answered." },
             { title: "Cards you can compare", body: "Price per guest, duration, group size and rating in the same place on every card, so choosing is a scan rather than a study." },
             { title: "Book without leaving the page", body: "A booking card that stays in reach beside the gallery — date, guests, name, email — and a request that lands with the host." },
-            { title: "Help on every screen", body: "An “Ask us” trip assistant available everywhere, trained on the listings, so questions never dead-end." },
+            { title: "Help on every screen", body: "An “Ask us” trip assistant available everywhere, grounded in the listings, so questions never dead-end." },
         ],
         process: [
-            { phase: "Research & IA", body: "Benchmarked the leading experience marketplaces and mapped the traveller's path — inspire, search, compare, decide, book, keep — into home, search, category, listing, wishlist, blog and contact pages, with hosts as first-class objects." },
+            { phase: "Discovery & IA", body: "Leading experience marketplaces were benchmarked and the traveller's path — inspire, search, compare, decide, book, keep — mapped into home, search, category, listing, wishlist, blog and contact pages, with hosts as first-class objects." },
             { phase: "Design system", body: "A bright, optimistic kit: Sora headlines with an italic serif accent, Inter for UI, a vivid sky blue as the single brand colour, pill search and filter chips with counts, and one card anatomy reused for listings, categories and hosts." },
-            { phase: "Interaction & build", body: "Built the search pill, filters, paginated results, the listing page with gallery and booking card, wishlists and the assistant as a working storefront on Phoxta's shared bookings model — availability and reservation requests come from the same backend as every other Phoxta business." },
-            { phase: "Responsive & tenancy", body: "Wrote the mobile rules — a bottom tab bar for Home, Wishlists and Account, a compact search at the top — and made branding tenant data, which is why the demo runs as Ceepii without a line of code changing." },
+            { phase: "Interaction & build", body: "The search pill, filters, paginated results, the listing page with gallery and booking card, wishlists and the assistant were built as a working storefront on Phoxta's shared bookings model — availability and reservation requests come from the same backend as every other Phoxta business." },
+            { phase: "Responsive & tenancy", body: "Mobile rules were written — a bottom tab bar for Home, Wishlists and Account, a compact search at the top — and branding was made tenant data, which is why the demo runs as Ceepii without a line of code changing." },
         ],
         highlights: [
             {
@@ -387,7 +383,7 @@ export const CASE_STUDIES: CaseStudy[] = [
             },
             {
                 title: "Cards you can compare at a glance",
-                body: "Every experience card carries the same five facts in the same places — a badge, the title, the meeting point, chips for duration and group size, then price per guest and rating. Shelves like “Experiences in Osaka” scroll sideways behind paired arrows, so a traveller skims eight thousand listings the way they'd skim a shelf.",
+                body: "Every experience card carries the same five facts in the same places — a badge, the title, the meeting point, chips for duration and group size, then price per guest and rating. Shelves such as “Experiences in Osaka” scroll sideways behind paired arrows, so a traveller skims eight thousand listings the way they would skim a shelf.",
                 image: "/assets/imgs/portfolio/wander-shelf.webp",
                 imageAlt: "Wander experience cards shelf",
             },
@@ -399,7 +395,7 @@ export const CASE_STUDIES: CaseStudy[] = [
             },
             {
                 title: "Inspiration as a front door",
-                body: "City cards — Mexico City, Ljubljana, Baceno, Wellington — carry a live count of available experiences and open straight into a category page that behaves exactly like search results. It gives the marketing team landing pages, and gives travellers a way in when they don't yet know what to type.",
+                body: "City cards — Mexico City, Ljubljana, Baceno, Wellington — carry a live count of available experiences and open straight into a category page that behaves exactly like search results. It gives the marketing team landing pages and gives travellers a way in when they do not yet know what to type.",
                 image: "/assets/imgs/portfolio/wander-inspiration.webp",
                 imageAlt: "Wander destination inspiration cards",
             },
@@ -420,16 +416,16 @@ export const CASE_STUDIES: CaseStudy[] = [
             { name: "Cloud", hex: "#F4F6F8", ink: true },
         ],
         typeNote:
-            "Sora gives headlines a rounded, friendly confidence; an italic serif is used for exactly one word per headline; Inter runs everything else. One saturated sky blue does the branding on its own, with mint reserved for the assistant and the search action, so the photography in the cards stays the most colourful thing on the page.",
+            "Sora gives headlines a rounded, friendly confidence; an italic serif is used for exactly one word per headline; Inter runs everything else. One saturated sky blue does the branding on its own, with mint reserved for the assistant and the search action, so the photography in the cards stays the most colourful element on the page.",
         components: ["Search pill (location · dates · guests)", "Filter chips with counts", "Experience card", "Photo gallery", "Booking card", "Host badge", "Wishlist heart", "Bottom tab bar"],
     },
     {
         slug: "aurelia",
         name: "Aurelia",
         kicker: "Fashion e-commerce · Product Design",
-        tagline: "A considered fashion store with an AI stylist — on a backend it shares with every other Phoxta business.",
+        tagline: "A considered fashion store with an AI stylist — on a backend shared with every other Phoxta business.",
         summary:
-            "Aurelia is Phoxta's flagship fashion blueprint: an editorial storefront with a filterable collection, product pages with size and colour variants, cart, checkout, order tracking and an AI stylist. It is a real multi-tenant store — each buyer's copy resolves by hostname, seeds its own catalogue and applies its own branding — and products and orders flow straight into the operating console.",
+            "Aurelia is Phoxta's flagship fashion blueprint: an editorial storefront with a filterable collection, product pages with size and colour variants, cart, checkout, order tracking and an AI stylist. It is a genuinely multi-tenant store — each buyer's copy resolves by hostname, seeds its own catalogue and applies its own branding — and products and orders flow straight into the operating console. The engagement covered the storefront end to end, from campaign hero to order confirmation.",
         hero: "/assets/imgs/portfolio/aurelia.webp",
         heroAlt: "Aurelia fashion storefront — homepage",
         accent: "#85ACD6",
@@ -444,17 +440,17 @@ export const CASE_STUDIES: CaseStudy[] = [
         prototypeLabel: "Visit the live site",
         processTitle: "From lookbook to checkout, one calm system.",
         challenge:
-            "Fashion e-commerce lives on imagery and dies on friction. The store had to look like a campaign rather than a template, hold up with any catalogue — because it is cloned for many buyers, each with different products — and help a shopper choose without stealing the show. The brief: editorial first, no dead ends from hero to order confirmation, and an AI stylist that feels like a service, not a widget.",
+            "Fashion e-commerce lives on imagery and dies on friction. The store had to read as a campaign rather than a template, hold its composure with any catalogue — it is cloned for many buyers, each with different products — and help a shopper choose without upstaging the merchandise. The brief: editorial first, no dead ends from hero to order confirmation, and an AI stylist that behaves like a service rather than a widget.",
         goals: [
             { title: "Editorial first", body: "A hero and collection that read like a lookbook — big photography, quiet type, one accent." },
             { title: "Any catalogue, same store", body: "Cards, filters and product pages that stay composed whether a tenant sells twelve pieces or twelve hundred." },
             { title: "A product page that answers everything", body: "Sizes, colours, stock, shipping, returns, reviews and the stylist — in one scroll, with the buy action always visible." },
-            { title: "Help choosing, on demand", body: "An AI stylist trained on the tenant's own catalogue, one tap away on every page and silent until asked." },
+            { title: "Help choosing, on demand", body: "An AI stylist grounded in the tenant's own catalogue, one tap away on every page and silent until asked." },
         ],
         process: [
-            { phase: "Brand & tokens", body: "Poppins for headlines, Inter for UI, near-white paper and a single powder-blue accent for actions — a palette that steps back so product photography carries the store, and that tenants can swap through branding data." },
-            { phase: "Journeys & IA", body: "Mapped discover → browse → decide → buy → track into home, shop, product, cart, checkout, track-order, about, contact and account, with Women / Men / New In / Sale as the only top-level filters." },
-            { phase: "Interaction & build", body: "Built the campaign hero, the collection with category pills and sort, the product page with variants, stock badges and quantity, the cart-to-checkout flow, order tracking and the stylist launcher as a working React storefront." },
+            { phase: "Brand & tokens", body: "Poppins for headlines, Inter for UI, near-white paper and a single powder-blue accent for actions — a palette that steps back so product photography carries the store, and one that tenants can swap through branding data." },
+            { phase: "Journeys & IA", body: "Discover → browse → decide → buy → track was mapped into home, shop, product, cart, checkout, track-order, about, contact and account, with Women / Men / New In / Sale as the only top-level filters." },
+            { phase: "Interaction & build", body: "The campaign hero, the collection with category pills and sort, the product page with variants, stock badges and quantity, the cart-to-checkout flow, order tracking and the stylist launcher were built as a working React storefront." },
             { phase: "Multi-tenancy", body: "Every copy resolves by hostname, auto-seeds its own catalogue on first visit and applies the owner's logo, palette and type at resolve time; products and orders sync to the Phoxta console, so the store and the business are one system." },
         ],
         highlights: [
@@ -466,7 +462,7 @@ export const CASE_STUDIES: CaseStudy[] = [
             },
             {
                 title: "The collection as a lookbook",
-                body: "A collection banner, then Women / Men / New In / Sale pills, a sort control and a clean grid with New and Sale badges. Everything is data-driven, so a tenant with a different catalogue gets the same composure — the layout never depends on how many products there are.",
+                body: "A collection banner, then Women / Men / New In / Sale pills, a sort control and a clean grid with New and Sale badges. Everything is data-driven, so a tenant with a different catalogue inherits the same composure — the layout never depends on how many products there are.",
                 image: "/assets/imgs/portfolio/aurelia-shop.webp",
                 imageAlt: "Aurelia shop collection with category pills",
             },

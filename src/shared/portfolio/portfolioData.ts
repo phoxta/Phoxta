@@ -105,8 +105,8 @@ export type Project = {
     tone: "light" | "dark";
     /** A live URL for the project, when one exists publicly. */
     link?: string;
-    /** How the work came about — shown on the card so concept work is never mistaken for a client engagement. */
-    badge: "Live product" | "Phoxta blueprint" | "Concept project" | "Client work";
+    /** Engagement type, shown on the card and the study hero. */
+    badge: "Live product" | "Phoxta blueprint" | "Product design" | "Design & build";
 };
 
 // Selected work, most recent first. Images are decorative texture from the
@@ -119,11 +119,11 @@ export const PROJECTS: Project[] = [
         role: "Founder & Lead Product Designer",
         period: "2025 — Now",
         summary:
-            "An AI-powered SaaS platform for planning, launching and scaling a business. I own the product design end to end — from problem framing to the shipped interface — and build the front end alongside it.",
+            "An AI-native, multi-tenant SaaS platform for launching and operating a business. End-to-end product design — from problem framing and information architecture to a Figma-to-React design system — shipped in production code.",
         blurb: "An AI-native platform that builds, clones and runs whole businesses — marketplace, storefronts and an operating console on one backend.",
         contributions: [
             "Designed the multi-tenant operations console, marketplace and CRM, turning complex operator workflows into clear, task-focused screens.",
-            "Built and maintain a Figma-to-React design system that keeps the web app, marketing site and emails consistent.",
+            "Established and maintain a Figma-to-React design system governing the web app, marketing site and transactional email.",
             "Designed an AI social command centre (sentiment, forecasting, recommendations) and an AI graphics generator with layer decomposition and PSD export.",
             "Set up product analytics to measure feature adoption and feed insight back into prioritisation.",
         ],
@@ -145,13 +145,13 @@ export const PROJECTS: Project[] = [
         contributions: [
             "Designed the learner home end to end — goal tracking, continue-watching, mentors and lessons — around a single glance-first hierarchy.",
             "Built a lilac-led design system: reusable stat cards, course cards and a data-viz language for study streaks and weekly progress.",
-            "Made it fully responsive — the three-pane desktop console reflows into a focused, thumb-friendly mobile app with a bottom tab bar.",
+            "Defined the responsive system — the three-pane desktop console reflows into a focused, thumb-first mobile layout with a bottom tab bar.",
         ],
         tags: ["Product Design", "Design System", "Dashboard", "Responsive"],
         image: "/assets/imgs/portfolio/coir-six.webp",
         tone: "light",
         link: "/work/coir-six",
-        badge: "Concept project",
+        badge: "Product design",
     },
     {
         slug: "ferne",
@@ -171,7 +171,7 @@ export const PROJECTS: Project[] = [
         image: "/assets/imgs/portfolio/ferne.webp",
         tone: "light",
         link: "/work/ferne",
-        badge: "Concept project",
+        badge: "Design & build",
     },
     {
         slug: "saveur",
@@ -181,11 +181,11 @@ export const PROJECTS: Project[] = [
         period: "2026",
         summary:
             "A digital-first restaurant storefront — online ordering for pickup and dine-in, table reservations, special-order quotes, live order tracking and an AI concierge — designed as a cloneable Phoxta blueprint.",
-        blurb: "A restaurant storefront with online ordering, table reservations, catering quotes, live order tracking and an AI concierge.",
+        blurb: "A restaurant storefront with online ordering, table reservations, catering quotes, live order tracking and an AI concierge — as a cloneable blueprint.",
         contributions: [
             "Designed the full guest journey — menu to bag to tracked order — plus reservations and special-order requests, as seven page types on one editorial system.",
-            "Turned the menu into a product catalogue with course and dietary filters, so ordering happens in a scroll rather than a phone call.",
-            "Built the order-status timeline and wired the AI concierge to it, so “where's my food?” is answered without staff.",
+            "Modelled the menu as a filterable product catalogue with course and dietary facets, moving order capture from phone to self-service.",
+            "Specified the order-status timeline and grounded the AI concierge in it, deflecting order-status enquiries from front-of-house staff.",
         ],
         tags: ["Restaurant", "E-commerce", "Bookings", "AI"],
         image: "/assets/imgs/portfolio/saveur.webp",
@@ -225,7 +225,7 @@ export const PROJECTS: Project[] = [
         contributions: [
             "Designed an editorial storefront that reads like a campaign, not a template — hero, lookbook-style collection and calm product pages.",
             "Specified the product page to answer everything a considered buy needs: sizes, colours, stock, shipping, returns and reviews in one scroll.",
-            "Made it genuinely multi-tenant — each buyer's copy resolves by hostname, seeds its own catalogue and applies its own branding, with orders flowing into the console.",
+            "Architected the storefront as genuinely multi-tenant — each instance resolves by hostname, seeds its own catalogue and applies its own branding, with orders syncing to the operating console.",
         ],
         tags: ["Fashion", "E-commerce", "Multi-tenant", "AI"],
         image: "/assets/imgs/portfolio/aurelia.webp",
