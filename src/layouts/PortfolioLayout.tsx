@@ -232,6 +232,8 @@ const PORTFOLIO_CSS = `
 .pf-cs__step-title{font-size:19px;font-weight:600;color:var(--pf-ink)}
 
 .pf-cs__wide{background:#fff;border:1px solid var(--pf-line);border-radius:22px;padding:40px}
+.pf-cs__note{background:#fff;border:1px solid var(--pf-line);border-radius:18px;padding:26px 28px}
+.pf-cs__note .pf-cs__h3{letter-spacing:-.01em}
 .pf-cs__wide-copy{max-width:70ch}
 
 .pf-cs__palette{gap:14px}

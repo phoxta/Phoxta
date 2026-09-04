@@ -1,6 +1,6 @@
 import { Link, useParams, Navigate } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
-import { findCaseStudy, type CaseStudy } from "@/shared/portfolio/caseStudies";
+import { findCaseStudy, type CaseStudy, type Highlight } from "@/shared/portfolio/caseStudies";
 import { PROFILE, PORTFOLIO_URL, PROJECTS, responsiveSrcSet, type Project } from "@/shared/portfolio/portfolioData";
 
 /** Absolute URL on the portfolio host for social cards (the default helper points at www.phoxta.com). */
@@ -32,6 +32,34 @@ const BACK = (
         <path d="M12.1716 8.77806L8.55964e-06 8.77806L1.47897e-06 6.77807L12.1716 6.77807L6.80761 1.41412L8.22183 -9.53337e-05L16 7.77806L8.22181 15.5562L6.80759 14.142L12.1716 8.77806Z" fill="currentColor" />
     </svg>
 );
+
+type HighlightBlock =
+    | { kind: "shot"; item: Highlight; flip: boolean }
+    | { kind: "wide"; item: Highlight }
+    | { kind: "notes"; items: Highlight[] };
+
+/**
+ * Image-led decisions alternate left/right; consecutive text-only ones are grouped
+ * into a two-up grid. Without this a cover-only study (Phoxta, Saveur) renders a
+ * column of half-empty rows, because the alternating layout reserves space for an
+ * image that is not there.
+ */
+function groupHighlights(highlights: Highlight[]): HighlightBlock[] {
+    const blocks: HighlightBlock[] = [];
+    let shots = 0;
+    for (const item of highlights) {
+        if (item.wide) {
+            blocks.push({ kind: "wide", item });
+        } else if (item.image) {
+            blocks.push({ kind: "shot", item, flip: shots++ % 2 === 1 });
+        } else {
+            const last = blocks[blocks.length - 1];
+            if (last && last.kind === "notes") last.items.push(item);
+            else blocks.push({ kind: "notes", items: [item] });
+        }
+    }
+    return blocks;
+}
 
 /** /work/:slug — a full case study when one exists, otherwise a brief built from the project data. */
 export default function ProjectPage() {
@@ -282,32 +310,41 @@ function CaseStudyPage({ cs }: { cs: CaseStudy }) {
                 <div className="container-2200 px-3 px-lg-4">
                     <span className="pf-cs__label d-block mb-40">Design decisions</span>
                     <div className="d-flex flex-column gap-5">
-                        {cs.highlights.map((h, i) =>
-                            h.wide ? (
-                                <div key={h.title} className="pf-cs__wide">
+                        {groupHighlights(cs.highlights).map((block, bi) =>
+                            block.kind === "wide" ? (
+                                <div key={block.item.title} className="pf-cs__wide">
                                     <div className="pf-cs__wide-copy">
-                                        <h3 className="pf-cs__h3 fz-font-2xl fw-500 mb-3">{h.title}</h3>
-                                        <p className="pf-cs__body fz-font-lg mb-0">{h.body}</p>
+                                        <h3 className="pf-cs__h3 fz-font-2xl fw-500 mb-3">{block.item.title}</h3>
+                                        <p className="pf-cs__body fz-font-lg mb-0">{block.item.body}</p>
                                     </div>
-                                    {h.image && (
+                                    {block.item.image && (
                                         <div className="pf-cs__shot pf-cs__shot--phone mt-40 mx-auto">
-                                            <img src={h.image} alt={h.imageAlt || h.title} width={480} height={860} loading="lazy" className="w-100" />
+                                            <img src={block.item.image} alt={block.item.imageAlt || block.item.title} width={480} height={860} loading="lazy" className="w-100" />
                                         </div>
                                     )}
                                 </div>
-                            ) : (
-                                <div key={h.title} className={`row g-4 g-lg-5 align-items-center ${i % 2 ? "flex-lg-row-reverse" : ""}`}>
-                                    <div className={h.image ? "col-lg-5" : "col-lg-8"}>
-                                        <h3 className="pf-cs__h3 fz-font-2xl fw-500 mb-3">{h.title}</h3>
-                                        <p className="pf-cs__body fz-font-lg mb-0">{h.body}</p>
+                            ) : block.kind === "shot" ? (
+                                <div key={block.item.title} className={`row g-4 g-lg-5 align-items-center ${block.flip ? "flex-lg-row-reverse" : ""}`}>
+                                    <div className="col-lg-5">
+                                        <h3 className="pf-cs__h3 fz-font-2xl fw-500 mb-3">{block.item.title}</h3>
+                                        <p className="pf-cs__body fz-font-lg mb-0">{block.item.body}</p>
                                     </div>
-                                    {h.image && (
-                                        <div className="col-lg-7">
-                                            <div className="pf-cs__shot">
-                                                <img src={h.image} srcSet={responsiveSrcSet(h.image)} sizes="(max-width: 991px) 100vw, 58vw" alt={h.imageAlt || h.title} width={1600} height={1120} loading="lazy" className="w-100" />
+                                    <div className="col-lg-7">
+                                        <div className="pf-cs__shot">
+                                            <img src={block.item.image} srcSet={responsiveSrcSet(block.item.image ?? "")} sizes="(max-width: 991px) 100vw, 58vw" alt={block.item.imageAlt || block.item.title} width={1600} height={1120} loading="lazy" className="w-100" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div key={`notes-${bi}`} className="row g-4">
+                                    {block.items.map((n) => (
+                                        <div key={n.title} className="col-md-6">
+                                            <div className="pf-cs__note h-100">
+                                                <h3 className="pf-cs__h3 fz-font-xl fw-500 mb-3">{n.title}</h3>
+                                                <p className="pf-cs__body mb-0">{n.body}</p>
                                             </div>
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
                             )
                         )}
