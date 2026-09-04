@@ -5,6 +5,7 @@ import ThemeRouteSync from "@/shared/effects/ThemeRouteSync";
 import BackToTop from "@/shared/elements/BackToTop";
 import PortfolioHeader from "@/shared/portfolio/PortfolioHeader";
 import PortfolioFooter from "@/shared/portfolio/PortfolioFooter";
+import { useHashScroll } from "@/shared/portfolio/nav";
 
 /**
  * Standalone chrome for femi.phoxta.com — the personal portfolio.
@@ -49,12 +50,18 @@ const PORTFOLIO_CSS = `
 .pf-nav__link::after{content:"";position:absolute;left:0;right:100%;bottom:-2px;height:2px;background:var(--pf-accent);transition:right .3s ease}
 .pf-nav__link:hover{opacity:1}
 .pf-nav__link:hover::after{right:0}
+.pf-nav__link[aria-current]{opacity:1;font-weight:600}
+.pf-nav__link[aria-current]::after{right:0}
+.pf-mobile__link[aria-current]{color:var(--pf-accent);font-weight:600}
+.pf-skip{position:fixed;left:12px;top:-60px;z-index:1100;background:var(--pf-ink);color:#fff;padding:12px 18px;border-radius:0 0 12px 12px;font-weight:600;font-size:14.5px;text-decoration:none;transition:top .2s ease}
+.pf-skip:focus{top:0;color:#fff}
 .pf-cta{align-items:center;padding:10px 18px;border-radius:999px;background:var(--pf-ink);color:#fff;font-weight:600;font-size:14px;text-decoration:none;transition:transform .2s ease,background .2s ease}
 .pf-cta:hover{color:#fff;background:var(--pf-accent);transform:translateY(-1px)}
 .pf-burger{width:42px;height:42px;border-radius:12px;border:1px solid var(--pf-line);background:var(--pf-paper);flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
 .pf-burger span{width:18px;height:2px;background:var(--pf-ink);border-radius:2px;transition:transform .2s}
-.pf-mobile{overflow:hidden;max-height:0;opacity:0;transition:max-height .35s ease,opacity .25s ease;display:flex;flex-direction:column}
-.pf-mobile.is-open{max-height:340px;opacity:1;margin-top:10px}
+.pf-mobile{overflow:hidden;max-height:0;opacity:0;visibility:hidden;transition:max-height .35s ease,opacity .25s ease,visibility 0s linear .35s;display:flex;flex-direction:column}
+.pf-mobile.is-open{max-height:340px;opacity:1;visibility:visible;margin-top:10px;transition:max-height .35s ease,opacity .25s ease,visibility 0s}
+@media (min-width:992px){.pf-mobile{display:none}}
 .pf-mobile__link{padding:12px 6px;border-bottom:1px solid var(--pf-line);color:var(--pf-ink);text-decoration:none;font-size:16px;font-weight:500}
 .pf-mobile__link--accent{color:var(--pf-accent);border-bottom:0}
 
@@ -232,6 +239,13 @@ const PORTFOLIO_CSS = `
 .pf-cs__step-title{font-size:19px;font-weight:600;color:var(--pf-ink)}
 
 .pf-cs__wide{background:#fff;border:1px solid var(--pf-line);border-radius:22px;padding:40px}
+.pf-cs__next-card{color:inherit;transition:transform .3s ease}
+.pf-cs__next-card:hover{transform:translateY(-4px)}
+.pf-cs__next-card .pf-cs__shot{transition:box-shadow .3s ease}
+.pf-cs__next-card:hover .pf-cs__shot{box-shadow:0 50px 110px -60px rgba(15,14,25,.75)}
+.pf-cs__next-title{color:var(--pf-ink);letter-spacing:-.02em;font-size:clamp(28px,3.6vw,46px)!important}
+.pf-cs__next-cta{color:var(--cs-accent);font-size:15px;transition:gap .2s ease}
+.pf-cs__next-card:hover .pf-cs__next-cta{gap:14px}
 .pf-cs__note{background:#fff;border:1px solid var(--pf-line);border-radius:18px;padding:26px 28px}
 .pf-cs__note .pf-cs__h3{letter-spacing:-.01em}
 .pf-cs__wide-copy{max-width:70ch}
@@ -369,8 +383,12 @@ const PORTFOLIO_CSS = `
 `;
 
 export default function PortfolioLayout() {
+    // A menu item chosen from a project page navigates to /#section; finish the jump on arrival.
+    useHashScroll();
+
     return (
         <div className="fx-portfolio">
+            <a href="#main" className="pf-skip">Skip to content</a>
             <style>{PORTFOLIO_CSS}</style>
             <SmoothScrollEffect />
             <GlobalEffects lean />
@@ -378,7 +396,7 @@ export default function PortfolioLayout() {
             <PortfolioHeader />
             <div id="smooth-wrapper">
                 <div id="smooth-content" className="z-index-3">
-                    <main className="bg-neutral-0">
+                    <main id="main" className="bg-neutral-0" tabIndex={-1}>
                         <Outlet />
                     </main>
                     <PortfolioFooter />

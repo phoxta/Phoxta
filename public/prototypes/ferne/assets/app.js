@@ -147,7 +147,7 @@
           <div><h5>Company</h5><ul><li><a href="about.html">Our story</a></li><li><a href="about.html#ingredients">Ingredients</a></li><li><a href="about.html#sustainability">Sustainability</a></li><li><a href="journal.html">Journal</a></li><li><a href="contact.html">Stockists</a></li></ul></div>
           <div><h5>Help</h5><ul><li><a href="contact.html#faq">Shipping</a></li><li><a href="contact.html#faq">Returns</a></li><li><a href="account.html#orders">Track order</a></li><li><a href="contact.html#faq">FAQ</a></li><li><a href="contact.html">Contact</a></li></ul></div>
         </div>
-        <div class="bottom"><div>© 2026 Ferne Botanicals Ltd · Registered in England · <a href="#">Privacy</a> · <a href="#">Terms</a></div>
+        <div class="bottom"><div>© 2026 Ferne Botanicals Ltd · Registered in England · <a href="about.html">Privacy</a> · <a href="about.html">Terms</a></div>
         <div class="soc"><a href="#" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg></a><a href="#" aria-label="TikTok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.5a3.5 3.5 0 1 1-3.5-3.5"/><path d="M14 4c.5 2.5 2.5 4 5 4"/></svg></a></div></div>
       </div></footer>`);
     if (!Store.get("cookie")) setTimeout(() => $(".cookie").classList.add("show"), 800);

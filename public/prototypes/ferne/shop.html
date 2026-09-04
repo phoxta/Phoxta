@@ -62,4 +62,14 @@ document.addEventListener("ferne:ready",()=>{const {D,UI,$,$$,qs,esc}=Ferne;
     if(k==="cat"||k==="concern"){state[k]=state[k].filter(x=>x!==v);$(`[data-f=${k}] input[value="${v}"]`).checked=false;}else if(k==="price"){state.price=100;$("[data-price]").value=100;}else if(k==="q"){state.q="";}else{state[k]=false;$(`[data-${k}]`).checked=false;}render();});
   render();
 });
-</script></body></html>
+</script><style data-pf-backchip>
+.pf-backchip{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:inline-flex;align-items:center;gap:8px;
+  padding:9px 14px;border-radius:999px;background:rgba(20,18,22,.88);color:#fff;font:500 12.5px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  text-decoration:none;border:1px solid rgba(255,255,255,.18);box-shadow:0 12px 30px -14px rgba(0,0,0,.6);backdrop-filter:blur(8px);
+  transition:transform .2s ease,background .2s ease}
+.pf-backchip:hover{transform:translateY(-2px);background:#F0460E;color:#fff}
+.pf-backchip:focus-visible{outline:2px solid #F0460E;outline-offset:3px}
+@media (max-width:768px){.pf-backchip{display:none}}
+</style>
+<a class="pf-backchip" href="https://femi.phoxta.com/work/ferne">← Ferne case study</a>
+</body></html>

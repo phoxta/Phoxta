@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 import { PROJECTS, responsiveSrcSet } from "@/shared/portfolio/portfolioData";
+import { workPath } from "@/shared/portfolio/nav";
 import { findCaseStudy } from "@/shared/portfolio/caseStudies";
 
 // Selected work in the "What we do" format from phoxta.com/marketing
@@ -61,7 +62,7 @@ export default function Work() {
                             <div className="wrapper">
                                 <div role="list" className="list">
                                     {PROJECTS.map((p) => {
-                                        const href = `/work/${p.slug}`;
+                                        const href = workPath(p.slug);
                                         const label = findCaseStudy(p.slug) ? "View case study" : "View project";
                                         return (
                                             <div key={p.slug} className="item" role="listitem">

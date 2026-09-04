@@ -2,6 +2,7 @@ import { Link, useParams, Navigate } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { findCaseStudy, type CaseStudy, type Highlight } from "@/shared/portfolio/caseStudies";
 import { PROFILE, PORTFOLIO_URL, PROJECTS, responsiveSrcSet, type Project } from "@/shared/portfolio/portfolioData";
+import { PORTFOLIO_HOME, workPath } from "@/shared/portfolio/nav";
 
 /** Absolute URL on the portfolio host for social cards (the default helper points at www.phoxta.com). */
 const absoluteOnPortfolio = (path: string) => `${PORTFOLIO_URL}${path.replace(/^\//, "")}`;
@@ -74,10 +75,49 @@ export default function ProjectPage() {
 function BackLink() {
     return (
         <div className="mb-40">
-            <Link to="/" className="pf-cs__back d-inline-flex align-items-center gap-2 fw-500 text-decoration-none">
+            <Link to={PORTFOLIO_HOME} className="pf-cs__back d-inline-flex align-items-center gap-2 fw-500 text-decoration-none">
                 {BACK} Back to work
             </Link>
         </div>
+    );
+}
+
+/** The next project in the running order, wrapping around — so a study ends in the work, not a dead end. */
+function NextProject({ slug }: { slug: string }) {
+    const i = PROJECTS.findIndex((p) => p.slug === slug);
+    if (i < 0 || PROJECTS.length < 2) return null;
+    const next = PROJECTS[(i + 1) % PROJECTS.length];
+    return (
+        <section className="pf-cs__sec pf-cs__next pt-60 pb-80">
+            <div className="container-2200 px-3 px-lg-4">
+                <span className="pf-cs__label d-block mb-25">Next project</span>
+                <Link to={workPath(next.slug)} className="pf-cs__next-card d-block text-decoration-none">
+                    <div className="row g-4 g-lg-5 align-items-center">
+                        <div className="col-lg-7">
+                            <div className="pf-cs__shot">
+                                <img
+                                    src={next.image}
+                                    srcSet={responsiveSrcSet(next.image)}
+                                    sizes="(max-width: 991px) 100vw, 58vw"
+                                    alt={`${next.name} — ${next.kicker}`}
+                                    width={1600}
+                                    height={1000}
+                                    loading="lazy"
+                                />
+                            </div>
+                        </div>
+                        <div className="col-lg-5">
+                            <span className="pf-badge">{next.badge}</span>
+                            <h2 className="pf-cs__next-title fz-60 fw-600 lh-1 mt-20 mb-2">{next.name}</h2>
+                            <p className="pf-cs__body fz-font-lg mb-20">{next.blurb}</p>
+                            <span className="pf-cs__next-cta d-inline-flex align-items-center gap-2 fw-600">
+                                View case study {ARROW}
+                            </span>
+                        </div>
+                    </div>
+                </Link>
+            </div>
+        </section>
     );
 }
 
@@ -96,7 +136,7 @@ function CtaBand() {
                     <a href={`mailto:${PROFILE.email}`} className="pf-cs__btn pf-cs__btn--light d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
                         Get in touch {ARROW}
                     </a>
-                    <Link to="/" className="pf-cs__btn pf-cs__btn--outline d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
+                    <Link to={PORTFOLIO_HOME} className="pf-cs__btn pf-cs__btn--outline d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
                         See all work
                     </Link>
                 </div>
@@ -186,6 +226,7 @@ function ProjectBrief({ p }: { p: Project }) {
                 </div>
             </section>
 
+            <NextProject slug={p.slug} />
             <CtaBand />
         </div>
     );
@@ -409,6 +450,7 @@ function CaseStudyPage({ cs }: { cs: CaseStudy }) {
                 </section>
             )}
 
+            <NextProject slug={cs.slug} />
             <CtaBand />
         </div>
     );
