@@ -215,8 +215,8 @@ export const PROJECTS: Project[] = [
         badge: "Phoxta blueprint",
     },
     {
-        slug: "wander",
-        name: "Wander",
+        slug: "wamwam",
+        name: "WamWam",
         kicker: "Experiences booking platform",
         role: "Lead Product Designer · Phoxta",
         period: "2026",
@@ -231,7 +231,7 @@ export const PROJECTS: Project[] = [
         tags: ["Travel", "Bookings", "Marketplace", "AI"],
         image: "/assets/imgs/portfolio/wander.webp",
         tone: "light",
-        link: "/work/wander",
+        link: "/work/wamwam",
         badge: "Phoxta blueprint",
     },
     {

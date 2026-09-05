@@ -61,7 +61,7 @@ const CASE_STUDIES = [
     },
     {
         classList: "col-lg-6",
-        link: "https://travel-demo.travel.phoxta.com/",
+        link: "https://demo.wamwam.phoxta.com/",
         linkCase: "/auth?mode=signup",
         img: "/assets/imgs/pages/FS2.webp",
         category: "Services",

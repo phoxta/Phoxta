@@ -164,7 +164,7 @@ const PORTFOLIO_CSS = `
 .pf-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--pf-muted);border:1px solid var(--pf-line);border-radius:999px;padding:3px 9px;line-height:1.3;white-space:nowrap}
 .pf-badge--light{color:rgba(255,255,255,.85);border-color:rgba(255,255,255,.32)}
 .fx-portfolio :focus-visible{outline:2px solid var(--pf-accent);outline-offset:3px;border-radius:4px}
-/* Accent numbers failed 4.5:1 on light accents (Wander sky, Aurelia powder blue): ink carries the number, the accent stays on the dot/glow. */
+/* Accent numbers failed 4.5:1 on light accents (WamWam sky, Aurelia powder blue): ink carries the number, the accent stays on the dot/glow. */
 .pf-cs .pf-cs__goal-no,.pf-cs .pf-cs__step-no{color:var(--pf-ink)}
 /* The ticker is decorative; overflow clip keeps it non-scrollable so it needs no keyboard focus. */
 .pf-clients .rfm-marquee-container{overflow:clip}
