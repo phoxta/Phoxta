@@ -294,12 +294,11 @@ export default function AIAssistant() {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="btn bg-dark text-white"
+                // Below lg the fixed quick-nav bar owns the bottom of the screen, and
+                // its Menu button is the only way into the site's navigation there —
+                // so the launcher has to clear it rather than sit on top of it.
+                className="btn bg-dark text-white fixed right-6 bottom-27 z-[1900] lg:bottom-6"
                 style={{
-                    position: "fixed",
-                    bottom: 24,
-                    right: 24,
-                    zIndex: 1900,
                     borderRadius: 999,
                     padding: "13px 22px",
                     fontWeight: 600,
@@ -317,16 +316,13 @@ export default function AIAssistant() {
             {open && (
                 <div
                     id="wamwam-assistant"
-                    className="d-flex flex-column"
+                    // Sits above the launcher, which itself clears the mobile quick-nav.
+                    className="d-flex flex-column fixed right-6 bottom-43 z-[1900] lg:bottom-23"
                     style={{
-                        position: "fixed",
-                        bottom: 92,
-                        right: 24,
-                        zIndex: 1900,
                         width: 370,
-                        maxWidth: "calc(100vw - 40px)",
+                        maxWidth: "calc(100vw - 48px)",
                         height: 520,
-                        maxHeight: "calc(100vh - 140px)",
+                        maxHeight: "calc(100dvh - 210px)",
                         borderRadius: 16,
                         overflow: "hidden",
                         background: "#fff",

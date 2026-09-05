@@ -42,7 +42,7 @@ export default function Logo({ className = "w-22 sm:w-24" }: LogoProps) {
                     fill="currentColor"
                     fontFamily="var(--brand-font-heading, var(--font-sans, Inter, system-ui, sans-serif))"
                     fontSize="22"
-                    fontWeight="700"
+                    fontWeight="800"
                     data-brand-name
                 >
                     {BRAND.name}
