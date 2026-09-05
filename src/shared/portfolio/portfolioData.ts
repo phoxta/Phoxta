@@ -229,7 +229,7 @@ export const PROJECTS: Project[] = [
             "Shipped the responsive system — a thumb-first mobile layout with a bottom tab bar — and the per-tenant branding that lets the same product run as any brand.",
         ],
         tags: ["Travel", "Bookings", "Marketplace", "AI"],
-        image: "/assets/imgs/portfolio/wander.webp",
+        image: "/assets/imgs/portfolio/wamwam.webp",
         tone: "light",
         link: "/work/wamwam",
         badge: "Phoxta blueprint",

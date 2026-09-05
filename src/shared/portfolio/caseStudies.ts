@@ -349,7 +349,7 @@ export const CASE_STUDIES: CaseStudy[] = [
         tagline: "Find, compare and book a guide-led experience — with a trip assistant a tap away.",
         summary:
             "WamWam is Phoxta's experiences blueprint: a marketplace of guide-led activities where travellers search by place, dates and guests, filter thousands of listings and book from the detail page. One deployment serves every buyer, each store rebranded through data rather than a fork. The engagement covered the search, listing and booking journey, the responsive system around it and the per-tenant branding layer.",
-        hero: "/assets/imgs/portfolio/wander.webp",
+        hero: "/assets/imgs/portfolio/wamwam.webp",
         heroAlt: "WamWam experiences homepage",
         accent: "#2F7BF5",
         meta: [
@@ -380,25 +380,25 @@ export const CASE_STUDIES: CaseStudy[] = [
             {
                 title: "Three inputs, then the world",
                 body: "The homepage is a search bar on a sky: location, a date range and guests, with social proof underneath and nothing competing. The headline pairs a bold sans with an italic serif for “experiences” — the one flourish in an otherwise plain system.",
-                image: "/assets/imgs/portfolio/wander.webp",
+                image: "/assets/imgs/portfolio/wamwam.webp",
                 imageAlt: "WamWam homepage search",
             },
             {
                 title: "Cards you can compare at a glance",
                 body: "Every experience card carries the same five facts in the same places — a badge, the title, the meeting point, chips for duration and group size, then price per guest and rating. Shelves such as “Experiences in Osaka” scroll sideways behind paired arrows, so a traveller skims eight thousand listings the way they would skim a shelf.",
-                image: "/assets/imgs/portfolio/wander-shelf.webp",
+                image: "/assets/imgs/portfolio/wamwam-shelf.webp",
                 imageAlt: "WamWam experience cards shelf",
             },
             {
                 title: "Proof first, then the ask",
                 body: "The host section leads with numbers a traveller can check — earnings paid out to hosts, guest arrivals, a 4.9 rating over tens of thousands of verified reviews — floated over one travel photograph, with “Become a host” and the community of hosts beneath. Trust is shown before anyone is asked to list.",
-                image: "/assets/imgs/portfolio/wander-why.webp",
+                image: "/assets/imgs/portfolio/wamwam-why.webp",
                 imageAlt: "WamWam — why customers rely on us",
             },
             {
                 title: "Inspiration as a front door",
                 body: "City cards — Mexico City, Ljubljana, Baceno, Wellington — carry a live count of available experiences and open straight into a category page that behaves exactly like search results. It gives the marketing team landing pages and gives travellers a way in when they do not yet know what to type.",
-                image: "/assets/imgs/portfolio/wander-inspiration.webp",
+                image: "/assets/imgs/portfolio/wamwam-inspiration.webp",
                 imageAlt: "WamWam destination inspiration cards",
             },
             {

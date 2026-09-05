@@ -6,7 +6,12 @@
   "rewrites": [
     {
       "source": "/((?!.*\\.).*)",
-      "has": [{ "type": "host", "value": "femi.phoxta.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "femi.phoxta.com"
+        }
+      ],
       "destination": "/portfolio/index.html"
     },
     {
@@ -29,15 +34,30 @@
   "headers": [
     {
       "source": "/assets/(.*)\\.(js|css|woff2|woff|ttf)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     },
     {
       "source": "/assets/imgs/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
     },
     {
       "source": "/prototypes/(.*)\\.(css|js|jpg|jpeg|png|webp|svg|woff2|pdf)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
     },
     {
       "source": "/(.*)",
@@ -135,6 +155,11 @@
     {
       "source": "/legal/privacy",
       "destination": "/privacy",
+      "permanent": true
+    },
+    {
+      "source": "/work/wander",
+      "destination": "/work/wamwam",
       "permanent": true
     }
   ]
