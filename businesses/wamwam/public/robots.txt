@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /account
+Disallow: /account-billing
+Disallow: /account-password
+Disallow: /account-savelists
+Disallow: /checkout
+Disallow: /pay-done
+Disallow: /manage-booking
+
+Sitemap: https://wamwam.phoxta.com/sitemap.xml
