@@ -11,7 +11,7 @@
  *   - APPROVED      a sanctioned visible change (V1–V7) or a contract §2/§5 removal
  * Anything else is a regression and exits non-zero.
  */
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, existsSync, writeFileSync } from "node:fs";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -77,6 +77,14 @@ const APPROVED_PATTERNS = [
         why: "§5: NavigationMenuViewport — radix emits data-state, never data-open/data-closed",
     },
     { match: "data-[state=hidden]:animate-out", why: "§5: NavigationMenuIndicator was never imported" },
+    {
+        match: "btn bg-dark text-white",
+        why: "assistant launcher: fixed positioning moved from an inline style to classes so it can clear the mobile quick-nav, whose Menu button it was covering",
+    },
+    {
+        match: "d-flex flex-column",
+        why: "assistant panel: same move, so it sits above the repositioned launcher",
+    },
 ];
 
 function walk(dir, out = []) {
@@ -146,7 +154,36 @@ function extract(root, skip = new Set()) {
     return { classes, texts };
 }
 
-const oldX = extract(OLD_ROOT, DELETED);
+/**
+ * The reference inventory.
+ *
+ * businesses/travel has been removed, so the class and copy strings it rendered
+ * live here as a committed fixture instead. Run this script with --snapshot
+ * while that tree exists to regenerate it; without the tree, the fixture is the
+ * only source and the gate still works.
+ */
+const FIXTURE = join(here, "baseline", "travel-inventory.json");
+
+function loadReference() {
+    if (existsSync(join(OLD_ROOT, "src"))) {
+        const x = extract(OLD_ROOT, DELETED);
+        if (process.argv.includes("--snapshot")) {
+            const toObj = (m) => Object.fromEntries([...m].map(([k, v]) => [k, [...v]]));
+            writeFileSync(FIXTURE, JSON.stringify({ classes: toObj(x.classes), texts: toObj(x.texts) }, null, 0));
+            console.log(`snapshot written: ${x.classes.size} classes, ${x.texts.size} copy strings -> ${FIXTURE}`);
+        }
+        return x;
+    }
+    if (!existsSync(FIXTURE)) {
+        console.error("No reference: businesses/travel is gone and no fixture exists at " + FIXTURE);
+        process.exit(2);
+    }
+    const raw = JSON.parse(readFileSync(FIXTURE, "utf8"));
+    const toMap = (o) => new Map(Object.entries(o).map(([k, v]) => [k, new Set(v)]));
+    return { classes: toMap(raw.classes), texts: toMap(raw.texts) };
+}
+
+const oldX = loadReference();
 const newX = extract(NEW_ROOT);
 
 const reasonFor = (x) => APPROVED.get(x) ?? APPROVED_PATTERNS.find((p) => x.includes(p.match))?.why;

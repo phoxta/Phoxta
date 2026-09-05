@@ -9,13 +9,13 @@ install and run each on its own.
 |---|---|---|---|---|
 | `carento/` | `carento` | Automotive | Vite + React + TypeScript | `npm install` → `npm run dev` |
 | `gearo/`   | `gearo`   | Furniture / eCommerce | Vite + React + TypeScript (Bootstrap) | `npm install` → `npm run dev` |
-| `travel/`  | `travel`  | Travel / Stays | Vite + React + TypeScript (Tailwind v4) | `npm install` → `npm run dev` |
+| `wamwam/`  | `wamwam`  | Experiences / Travel | Vite + React + TypeScript (Tailwind v4) | `npm install` → `npm run dev` |
 | `restaurant-orders/` | `restaurant-orders` | Restaurant + Orders | Vite + React + TypeScript (custom CSS) | `npm install` → `npm run dev` |
 | `niche-apparel/` | `niche-apparel` | Fashion / eCommerce | Vite + React + TypeScript (Phoxta `main.css`) | `npm install` → `npm run dev` |
 
 > **Uniform stack:** all businesses are **Vite + React + TypeScript** (Carento's
-> stack). Gearo was rebuilt from a static HTML template; Travel was rebuilt from a
-> Next.js app — both into the uniform stack. Build each with `npm run build`.
+> stack). Gearo was rebuilt from a static HTML template; WamWam was re-engineered from
+> an earlier Next.js port — both into the uniform stack. Build each with `npm run build`.
 
 > `node_modules`, `.next` and `dist` were not copied (they're regenerable). Run `npm install`
 > in each folder before `npm run dev` / `npm run build`.
@@ -28,7 +28,7 @@ under RLS. The platform provisions the tenant (`app_provision_business`) and man
 its domains; the app just consumes them.
 
 ## How they connect to the platform
-- They appear in the platform **Marketplace** as the listings with slugs `carento` and `travel`
+- They appear in the platform **Marketplace** as the listings with slugs `carento` and `wamwam`
   (seeded in `../supabase/migrations/0002_marketplace.sql`, `metadata.app` points back here).
 - The platform does **not** embed or build these apps — it links out to each business's own
   deployment. Set a blueprint's `demo_url` (and a business's site URL) to the deployed address
@@ -37,5 +37,5 @@ its domains; the app just consumes them.
   independent per-business storefronts/backends.
 
 ## Deploying
-Build and host each app independently (e.g. Carento → any static host; Travel → a Next.js host).
+Build and host each app independently — every one is a static Vite build.
 Then point the matching marketplace listing's `demo_url` at the live URL.
