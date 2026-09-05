@@ -106,7 +106,7 @@ export type Project = {
     /** A live URL for the project, when one exists publicly. */
     link?: string;
     /** Engagement type, shown on the card and the study hero. */
-    badge: "Live product" | "Phoxta blueprint" | "Product design" | "Design & build";
+    badge: "Live product" | "Phoxta blueprint" | "Product design" | "Design & build" | "Brand identity";
 };
 
 // Selected work, most recent first. Images are decorative texture from the
@@ -172,6 +172,27 @@ export const PROJECTS: Project[] = [
         tone: "light",
         link: "/work/ferne",
         badge: "Design & build",
+    },
+    {
+        slug: "technest",
+        name: "TechNest",
+        kicker: "Fintech brand identity",
+        role: "Brand Designer",
+        period: "2024",
+        summary:
+            "A complete visual identity for a payments company — a constructed logo mark and lockups, a colour system with tint ramps, a print-and-web type hierarchy, three geometric patterns, stationery and campaign templates, documented in a 34-page brand guideline.",
+        blurb: "A complete identity for a payments company — constructed mark, colour and type system, three patterns and a 34-page guideline.",
+        contributions: [
+            "Constructed the logo mark from four primitives on a strict grid and specified horizontal, stacked and standalone lockups in three colour treatments.",
+            "Defined the colour system (Deep Blue, Bright Turquoise, Charcoal with tint ramps) and a print/web type hierarchy across Corbel, Sora and DM Sans.",
+            "Derived three patterns, an icon set and a polygon library from the mark's geometry and applied them to stationery, social, display, merchandise and out-of-home.",
+            "Authored the 34-page brand guideline that lets the client's marketing team produce on-brand work independently.",
+        ],
+        tags: ["Brand Identity", "Logo Design", "Visual System", "Guidelines"],
+        image: "/assets/imgs/portfolio/technest.webp",
+        tone: "dark",
+        link: "/work/technest",
+        badge: "Brand identity",
     },
     {
         slug: "saveur",

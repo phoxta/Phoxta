@@ -32,6 +32,8 @@ export type CaseStudy = {
     typeNote: string;
     components: string[];
     designSystemUrl?: string;
+    /** Heading + button text for that block — defaults to "Design system" (a brand study calls it its guideline). */
+    designSystemLabel?: string;
     designSystemImage?: string;
     designSystemBlurb?: string;
     outcome?: string[];
@@ -494,6 +496,111 @@ export const CASE_STUDIES: CaseStudy[] = [
         typeNote:
             "Poppins gives headlines and product names a modern, geometric confidence; Inter handles everything transactional. The store is deliberately near-monochrome — near-white paper, soft stone panels, dark ink — with one powder-blue accent for actions and the stylist, so the photography is always the most vivid element on the page.",
         components: ["Campaign hero", "Category pills & sort", "Product card with badges", "Gallery grid", "Variant selector", "Cart & checkout", "Order tracking", "AI stylist launcher"],
+    },
+    {
+        slug: "technest",
+        name: "TechNest",
+        kicker: "Fintech brand identity · Brand Design",
+        tagline: "A brand system for a payments company — one mark, one geometry, every surface.",
+        summary:
+            "TechNest is a payments technology company positioned around one line: finance technology, explore the future. The engagement delivered its visual identity end to end — a constructed logo mark and wordmark with a full set of lockups, a two-colour palette with tint ramps, a three-typeface hierarchy for print and web, a family of three geometric patterns, an icon and polygon library, the stationery suite, campaign templates for social and digital display — and a 34-page brand guideline that governs how all of it is used.",
+        hero: "/assets/imgs/portfolio/technest.webp",
+        heroAlt: "TechNest brand guideline — cover",
+        accent: "#1D1D63",
+        meta: [
+            { label: "Role", value: "Brand Designer — identity & guidelines" },
+            { label: "Timeline", value: "August 2024" },
+            { label: "Sector", value: "Payments · fintech" },
+            { label: "Tools", value: "Adobe Illustrator" },
+        ],
+        tags: ["Brand Identity", "Logo Design", "Visual System", "Brand Guidelines", "Print & Digital"],
+        processTitle: "From a letterform to a system that scales.",
+        challenge:
+            "A payments brand has to look trustworthy before anyone reads a word, and it has to survive reproduction everywhere — an app splash screen, a favicon, a roadside billboard, a printed hoodie, a PDF letterhead. The brief asked for an identity that felt like technology and growth without the fintech clichés of gradient blobs and anonymous sans-serifs, and for guidance tight enough that an in-house marketing team could produce on-brand work without a designer in the room.",
+        goals: [
+            { title: "One mark, every size", body: "A symbol that holds at favicon size and on a billboard, with a specified fallback for where the wordmark cannot fit." },
+            { title: "Trust first", body: "A palette and type hierarchy that read as established and precise — the qualities a payments customer is actually buying." },
+            { title: "A system, not a logo", body: "Patterns, icons and shapes derived from the mark's own geometry, so every application is recognisably TechNest." },
+            { title: "Usable without a designer", body: "Rules clear enough to hand to a marketing team: formats, alignment, imagery and templates." },
+        ],
+        process: [
+            { phase: "Discovery & positioning", body: "The positioning was fixed first — finance technology, explore the future — along with the two ideas the identity had to carry: a nest (connection, security) and growth, which became the recurring line “Grow and Expand” across the pattern applications." },
+            { phase: "Mark construction", body: "The logo icon was built from four primitives — a dotted ring, a heavier dotted ring, a hexagon and a T — on a strict grid, then stress-tested at favicon, app-icon and print sizes. A standalone logo mark was specified for the places the full lockup cannot be portrayed." },
+            { phase: "Colour & typography", body: "Deep Blue was set as the primary with Bright Turquoise as the single accent and Charcoal for text, each with a ten-step tint ramp. Corbel was specified for print, with Sora and DM Sans as Google Fonts equivalents for the web, and a headline / sub-headline / body / numeric hierarchy was defined for each face." },
+            { phase: "Pattern, icon & application system", body: "Three patterns — Quand, Propel and Cuboid — were drawn from the hexagon and dot geometry, alongside a four-icon contact set in line and hex-badge styles and a polygon library. The system was then applied to stationery, an HTML email signature, social and display templates, merchandise and out-of-home." },
+            { phase: "Guideline & handoff", body: "Everything was documented in a 34-page brand guideline — usage, formats, alignment, imagery direction — with mockups showing the identity in situ, so the client team could produce on-brand work independently." },
+        ],
+        highlights: [
+            {
+                title: "A mark built from four primitives",
+                body: "A dotted ring, a heavier dotted ring, a hexagon and a T combine into the TechNest symbol: a nest of connected points around a stable core. The construction grid fixes every dot's position and spacing, so the mark can be redrawn at any size without drift, and the wordmark is set in a rounded geometric sans that echoes the dots.",
+                image: "/assets/imgs/portfolio/technest-mark.webp",
+                imageAlt: "TechNest logo construction grid and final lockups",
+            },
+            {
+                title: "Lockups for every ground",
+                body: "The primary logo is specified in two configurations — horizontal for headers and letterheads, stacked for splash screens and merchandise — and in three treatments: Deep Blue on white, white on Deep Blue and white on the brand gradient. Alignment guides accompany each, and the standalone mark is reserved for contexts where the wordmark cannot be shown.",
+                image: "/assets/imgs/portfolio/technest-logo.webp",
+                imageAlt: "TechNest primary logo and logo formats",
+            },
+            {
+                title: "Two colours and a discipline",
+                body: "Deep Blue #1D1D63 does most of the work: it is the ground for the logo, the stationery and the campaign layouts. Bright Turquoise #08F4ED is the single accent — a highlighted second line, the tail of a gradient — and Charcoal #333333 carries body text. Each colour ships with a ten-step tint ramp, so hierarchy can be built without introducing a fourth hue.",
+                image: "/assets/imgs/portfolio/technest-colour.webp",
+                imageAlt: "TechNest colour palette with tint ramps",
+            },
+            {
+                title: "Type for print and for the web",
+                body: "Corbel is the primary typeface for printed collateral, with Sora and DM Sans specified as Google Fonts equivalents for digital work, so the brand renders consistently on a letterhead, a landing page and a social post. Each face is documented with its available weights and a four-level hierarchy — headline in Bold, sub-headline in Medium, body in Regular — plus a numeric and symbol set for pricing and transaction data.",
+                image: "/assets/imgs/portfolio/technest-type.webp",
+                imageAlt: "TechNest typography specimen — Sora",
+            },
+            {
+                title: "Three patterns from one geometry",
+                body: "Quand tessellates the hexagon into a cube lattice; Propel scatters Deep Blue and Turquoise dots in a graded field that reads as data in motion; Cuboid draws the isometric wireframe of the same cube. Each pattern is derived from the mark's own primitives, so a background, a billboard edge or an envelope flap is recognisably TechNest before the logo appears.",
+                image: "/assets/imgs/portfolio/technest-pattern.webp",
+                imageAlt: "TechNest Propel pattern — Grow and Expand",
+            },
+            {
+                title: "Stationery that carries the system",
+                body: "Business card, ID card, letterhead and envelope share one construction: a Deep Blue face carrying the mark over the Quand pattern, and a white face for information, with contact details set against the hex-badge icon set. Dimensions and paper stock are specified for each, so print reproduction matches the digital brand.",
+                image: "/assets/imgs/portfolio/technest-stationery.webp",
+                imageAlt: "TechNest stationery — ID card, business cards and pen",
+            },
+            {
+                title: "Templates a marketing team can run",
+                body: "Social posts and digital banners follow a documented grid: primary logo top-right, a headline stack with Turquoise on the second line, a paragraph, a CTA and a photograph aligned to the right edge over the brand gradient. The layout is shown in landscape, portrait and square with the alignment rules annotated, so in-house marketers can produce on-brand work without a designer.",
+                image: "/assets/imgs/portfolio/technest-campaign.webp",
+                imageAlt: "TechNest digital banner templates",
+            },
+            {
+                title: "Icons and polygons",
+                body: "Four contact icons — location, phone, web, mail — in a line style and a hex-badge style, and a polygon library of shapes lifted from the mark. They give layouts a supporting vocabulary that stays inside the brand's geometry.",
+            },
+            {
+                title: "Imagery: focus on the user",
+                body: "Photography is directed toward the customer rather than the product — real people reacting to a moment on their phone, warm and candid — with the benefit to the user stated as the priority for every visual and written communication.",
+            },
+            {
+                title: "From screen to street",
+                body: "Merchandise, drinkware, a billboard and the email signature were mocked up to prove the system at both extremes of scale — a favicon-sized mark and a roadside board — before the guideline was signed off.",
+            },
+        ],
+        palette: [
+            { name: "Deep Blue", hex: "#1D1D63" },
+            { name: "Bright Turquoise", hex: "#08F4ED" },
+            { name: "Charcoal", hex: "#333333" },
+            { name: "Deep Blue 60%", hex: "#4D4DA1" },
+            { name: "Turquoise 30%", hex: "#B5FCFA" },
+        ],
+        typeNote:
+            "Corbel for print; Sora and DM Sans as Google Fonts equivalents for the web, each specified across its available weights. The hierarchy is fixed per face — Bold headline, Medium sub-headline, Regular body — with a dedicated numeric and symbol set, because a payments brand shows more figures than sentences.",
+        components: ["Logo mark & wordmark", "Horizontal & stacked lockups", "Three colour treatments", "Ten-step tint ramps", "Quand · Propel · Cuboid patterns", "Hex-badge icon set", "Polygon library", "Stationery suite", "HTML email signature", "Social & banner templates"],
+        designSystemUrl: "/prototypes/technest/brand-guideline.pdf",
+        designSystemLabel: "Brand guideline",
+        designSystemImage: "/assets/imgs/portfolio/technest-guideline.webp",
+        designSystemBlurb:
+            "The identity ships as a 34-page brand guideline: brand-mark construction and formats, the colour palette with tint ramps, three typeface specifications, the pattern, icon and polygon libraries, the stationery suite, design rules for email, social, banners and imagery, and mockups that show the system on merchandise, drinkware, print and out-of-home.",
     },
 ];
 

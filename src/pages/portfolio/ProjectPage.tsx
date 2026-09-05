@@ -265,7 +265,7 @@ function CaseStudyPage({ cs }: { cs: CaseStudy }) {
                         )}
                         {cs.designSystemUrl && (
                             <a href={cs.designSystemUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__btn pf-cs__btn--ghost d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
-                                Design system {ARROW}
+                                {cs.designSystemLabel ?? "Design system"} {ARROW}
                             </a>
                         )}
                         <a href={`mailto:${PROFILE.email}`} className="pf-cs__btn pf-cs__btn--ghost d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
@@ -425,14 +425,14 @@ function CaseStudyPage({ cs }: { cs: CaseStudy }) {
             {cs.designSystemUrl && (
                 <section className="pf-cs__sec pt-40 pb-80">
                     <div className="container-2200 px-3 px-lg-4">
-                        <span className="pf-cs__label d-block mb-25">Design system</span>
+                        <span className="pf-cs__label d-block mb-25">{cs.designSystemLabel ?? "Design system"}</span>
                         <div className="row g-3 g-lg-5 align-items-end mb-30">
                             <div className="col-lg-8">
                                 <h2 className="pf-cs__h2 fz-60 fw-600 lh-1 mb-0">One source of truth, fully documented.</h2>
                             </div>
                             <div className="col-lg-4 text-lg-end">
                                 <a href={cs.designSystemUrl} target="_blank" rel="noopener noreferrer" className="pf-cs__btn pf-cs__btn--dark d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
-                                    Explore the full system {ARROW}
+                                    {cs.designSystemLabel ? `Open the ${cs.designSystemLabel.toLowerCase()}` : "Explore the full system"} {ARROW}
                                 </a>
                             </div>
                         </div>

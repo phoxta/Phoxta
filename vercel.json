@@ -36,7 +36,7 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
     },
     {
-      "source": "/prototypes/(.*)\\.(css|js|jpg|jpeg|png|webp|svg|woff2)",
+      "source": "/prototypes/(.*)\\.(css|js|jpg|jpeg|png|webp|svg|woff2|pdf)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
     },
     {
