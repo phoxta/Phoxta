@@ -22,7 +22,10 @@ const check = process.argv.includes("--check");
 /** canonical source → the path it is vendored to inside each storefront */
 const FILES = [{ from: "packages/shared-chat/src/chatRich.tsx", to: "src/lib/chatRich.tsx" }];
 
-const APPS = ["carento", "gearo", "travel", "niche-apparel", "restaurant-orders"];
+// `travel` is deliberately absent: it was retired in favour of WamWam, which
+// carries its own hand-written renderer. Leaving it here made --check fail and a
+// sync recreate the deleted folder from nothing.
+const APPS = ["carento", "gearo", "niche-apparel", "restaurant-orders", "ferne"];
 
 /** Only the storefronts are vendored. They deploy from their own folder and
  *  cannot see the repo root, so the file has to travel with them. The platform

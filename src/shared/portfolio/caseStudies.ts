@@ -207,10 +207,11 @@ export const CASE_STUDIES: CaseStudy[] = [
             { label: "Role", value: "Product & Web Designer" },
             { label: "Timeline", value: "4 weeks" },
             { label: "Scope", value: "10 page types" },
-            { label: "Tools", value: "Figma · HTML/CSS/JS" },
+            { label: "Tools", value: "Figma · React · Supabase" },
         ],
         tags: ["E-commerce", "Web Design", "Design System", "Front-end", "Responsive"],
-        prototypeUrl: "/prototypes/ferne/index.html",
+        prototypeUrl: "https://demo.ferne.phoxta.com",
+        prototypeLabel: "Visit the live site",
         processTitle: "From brand promise to confirmed order.",
         challenge:
             "Premium skincare converts on trust and flow. Shoppers bounce when a store feels generic, hides the “why”, or turns purchasing into a chore. Ferne's brand rests on a single claim — traceable, farm-named ingredients — so the storefront had to make that credible on every screen and then step aside, converting browsing into a bag and a bag into a confirmed order without a single dead end.",
