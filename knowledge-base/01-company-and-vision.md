@@ -1,26 +1,19 @@
 # 01 — Company & Vision
 
 ## Executive summary
-Phoxta is an AI-native multi-business platform. It builds complete, ready-to-launch businesses — storefronts, service shops, content sites, native apps — on **one shared backend**, packages each finished business as a **cloneable blueprint**, and sells those blueprints in a marketplace to as many buyers as want them. Every buyer inherits a working, AI-powered business that goes live immediately - branded and running within minutes of purchase.
+Phoxta is an AI-native multi-business platform. It builds complete, ready-to-launch businesses — storefronts, service shops, content sites, native apps. Every buyer inherits a working, AI-powered business that goes live immediately - branded and running within minutes of purchase.
 
-Beyond the marketplace, Phoxta is a **meeting point**: founders seeking co-founders, operators seeking funded businesses to run, investors seeking proven blueprints to fund, and groups seeking to invest together. The same backend that builds and clones businesses is the layer that matches the people behind them.
+Beyond the marketplace, Phoxta is also a **meeting point**: founders seeking co-founders, operators seeking funded businesses to run, investors seeking proven blueprints to fund, and groups seeking to invest together.
 
-### Why it exists (three broken places)
+### Why it exists
 1. The best ideas die in the gap between concept and a real, working system.
 2. Existing systems (Shopify, WordPress, Salesforce) are **tools, not businesses** — the buyer still assembles everything and designs the AI layer themselves.
-3. The people who should work together — founders, operators, capital — find each other too late and by accident.
-
-Phoxta closes all three at once: packages proven business designs as live, AI-enabled tenants; sells each design to many buyers; matches the people who buy, fund or run them.
 
 ### Why Phoxta wins
 - **Compounding marginal cost** — every buyer joins the same shared backend.
 - **AI-native by design** — assistants, agents, RAG, automations from day one (vs retrofit).
 - **Real-business advantage** — sells live systems with proven workflows; buyers inherit traction.
-- **Matchmaking flywheel** — founders → blueprints → buyers → operators → investors → new founders.
 - **Headless multi-tenancy from day one** — isolation via row-level security in the database.
-
-### The ask
-Raising a **Seed of $3.5M** to complete the marketplace and matchmaking layers, launch the first 25 blueprint categories, and reach **$1M ARR within 18 months**. Follow-on **Series A of $12M** targeted for month 24 at >$3M ARR.
 
 ## Company profile (at a glance)
 | Attribute | Detail |
@@ -28,16 +21,16 @@ Raising a **Seed of $3.5M** to complete the marketplace and matchmaking layers, 
 | Legal name / brand | Phoxta Holdings Ltd. / Phoxta |
 | Incorporated | January 2026, England & Wales |
 | Headquarters | London, UK |
-| Footprint | Remote-first; satellites in Lisbon, Singapore, NYC |
+| Footprint | Remote-first; satellites in Nigeria, USA |
 | Sector / sub-sector | B2B SaaS · AI · Multi-tenant · Marketplaces / Business-as-a-Product (BaaP) |
 | Stage | Seed-ready · Pre-revenue → Pre-launch |
-| Team | Founding team of 5; hiring to 18 within 12 months |
+| Team | Founding team of 5 |
 | Currency | GBP (reporting), USD (pricing reference); FY Jan–Dec |
 | Jurisdictions | UK, EU, US (initial); APAC (Year 2) |
 | Regulatory | GDPR, UK DPA, CCPA, PCI-DSS (via Stripe), SOC 2 (Year 2) |
 
 ### Corporate purpose
-> "We exist to compress the path from idea to live, AI-enabled business — so that more people, in more places, can run a real company without having to assemble the modern internet from spare parts." — *Founding Charter, 2026*
+> "We exist to compress the path from idea to Revenue, AI-enabled business — so that more people, in more places, can run a real company without having to assemble the modern internet from spare parts." — *Founding Charter, 2026*
 
 ### The founding insight
 > If a business is mostly a configuration of one shared backend, then a business sale is a configuration change — and a configuration change is the cheapest, most repeatable thing software does.
