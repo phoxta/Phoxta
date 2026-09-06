@@ -14,13 +14,21 @@
  * take a screenshot and edit this file.
  */
 
-/** Curated screenshots of the real storefronts, keyed by blueprint slug. */
+/**
+ * Curated screenshots of the real storefronts, keyed by blueprint slug.
+ *
+ * Every one is 845×542. The card gives its image no fixed height, so the height
+ * comes from the image's own aspect ratio — a cover cut to any other shape
+ * stands taller or shorter than the rest of the row. Cut new ones to match.
+ */
 const SLUG_COVERS: Record<string, string> = {
   carento: "/assets/imgs/pages/FS1.webp",
   "niche-apparel": "/assets/imgs/pages/FS.webp",
   travel: "/assets/imgs/pages/FS2.webp",
   "restaurant-orders": "/assets/imgs/pages/FS3.webp",
   gearo: "/assets/imgs/pages/FS4.webp",
+  wamwam: "/assets/imgs/pages/FS6.webp",
+  ferne: "/assets/imgs/pages/FS7.webp",
 };
 
 /** Last resort, so no surface ever renders a broken image. */

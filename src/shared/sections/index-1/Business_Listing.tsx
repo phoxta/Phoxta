@@ -34,41 +34,22 @@ const ARROW_CIRCLE = (
     </svg>
 );
 
+// Mirrors the `blueprints` table (live rows, cheapest first) so the instant
+// paint matches what the fetch below replaces it with — no reshuffle, no price
+// that jumps. It HAD drifted: WamWam was still listed as the retired "Travel &
+// Tourism" at £4,000, Ferne was missing entirely, and three others were
+// hundreds out. Re-sync this whenever a blueprint's price or name changes.
 const CASE_STUDIES = [
-    {
-        classList: "col-lg-6",
-        link: "https://carento-demo.carento.phoxta.com/",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS1.webp",
-        category: "Ecommerce",
-        headline: "Car Marketplace",
-        description:
-            "A full car buying & selling marketplace with listings, financing tools and an AI assistant",
-        price: 4500,
-        featured: true,
-    },
     {
         classList: "col-lg-6",
         link: "https://aurelia-demo.aurelia.phoxta.com/",
         linkCase: "/auth?mode=signup",
         img: "/assets/imgs/pages/FS.webp",
-        category: "Ecommerce",
+        category: "E-commerce",
         headline: "Fashion Store",
         description:
             "A modern fashion store with product archive, online ordering, cart/checkout and an AI stylist",
-        price: 1500,
-        featured: false,
-    },
-    {
-        classList: "col-lg-6",
-        link: "https://demo.wamwam.phoxta.com/",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS2.webp",
-        category: "Services",
-        headline: "Travel & Tourism",
-        description:
-            "A travel and tourism platform with booking capabilities and AI-powered recommendations",
-        price: 4000,
+        price: 2500,
         featured: false,
     },
     {
@@ -76,11 +57,11 @@ const CASE_STUDIES = [
         link: "https://saveur-demo.dine.phoxta.com/",
         linkCase: "/auth?mode=signup",
         img: "/assets/imgs/pages/FS3.webp",
-        category: "Food",
-        headline: "Online Restaurant",
+        category: "Restaurant",
+        headline: "Restaurant + Orders",
         description:
-            "Food online ordering, order tracking and an AI concierge",
-        price: 2000,
+            "A digital-first kitchen: online ordering, order tracking, catering requests and an AI concierge",
+        price: 2500,
         featured: false,
     },
     {
@@ -88,17 +69,54 @@ const CASE_STUDIES = [
         link: "https://gearo-demo.gearo.phoxta.com/",
         linkCase: "/auth?mode=signup",
         img: "/assets/imgs/pages/FS4.webp",
-        category: "Ecommerce",
+        category: "Furniture / eCommerce",
         headline: "Furniture Store",
         description:
-            "A modern furniture store with product archive, online ordering, cart/checkout and an AI stylist",
+            "A modern furniture & workspace eCommerce store with cart, checkout and an AI shopping assistant",
         price: 2500,
         featured: false,
     },
     {
         classList: "col-lg-6",
-        // No cotton demo storefront is deployed yet — send visitors to the
-        // marketplace instead of a dead subdomain until one exists.
+        link: "https://demo.ferne.phoxta.com/",
+        linkCase: "/auth?mode=signup",
+        img: "/assets/imgs/pages/FS7.webp",
+        category: "E-commerce",
+        headline: "Ferne Botanical Skincare",
+        description:
+            "A direct-to-consumer skincare storefront — editorial home, faceted shop, refills and a skin advisor",
+        price: 3000,
+        featured: false,
+    },
+    {
+        classList: "col-lg-6",
+        link: "https://demo.wamwam.phoxta.com/",
+        linkCase: "/auth?mode=signup",
+        img: "/assets/imgs/pages/FS6.webp",
+        category: "Experiences",
+        headline: "WamWam Experiences",
+        description:
+            "A bookable experiences storefront — tours, workshops and days out — with an AI concierge",
+        price: 3600,
+        featured: false,
+    },
+    {
+        classList: "col-lg-6",
+        link: "https://carento-demo.carento.phoxta.com/",
+        linkCase: "/auth?mode=signup",
+        img: "/assets/imgs/pages/FS1.webp",
+        category: "Automotive",
+        headline: "Car Marketplace",
+        description:
+            "A full car buying & selling marketplace with listings, financing tools and an AI assistant",
+        price: 5000,
+        featured: true,
+    },
+    {
+        classList: "col-lg-6",
+        // No cotton blueprint exists yet — this one is aspirational, so it links
+        // to the marketplace rather than a dead subdomain, and it drops off as
+        // soon as the live rows load.
         link: "/marketplace",
         linkCase: "/auth?mode=signup",
         img: "/assets/imgs/pages/FS5.webp",
@@ -125,7 +143,7 @@ export default function BusinessListing() {
         let on = true;
         listBlueprints().then(({ data }) => {
             if (!on || !data?.length) return;
-            setCards(data.map((b, i) => ({
+            setCards(data.map((b) => ({
                 classList: "col-lg-6",
                 link: b.demo_url || "/marketplace",
                 linkCase: "/auth?mode=signup",
