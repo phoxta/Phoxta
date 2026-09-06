@@ -128,10 +128,11 @@ export const CASE_STUDIES: CaseStudy[] = [
             { label: "Role", value: "Product Designer — UX & UI" },
             { label: "Timeline", value: "3 weeks" },
             { label: "Platform", value: "Responsive web app" },
-            { label: "Tools", value: "Figma · HTML/CSS prototype" },
+            { label: "Tools", value: "Figma · React · Supabase" },
         ],
         tags: ["Product Design", "Design System", "Dashboard", "Data-viz", "Responsive"],
-        prototypeUrl: "/prototypes/coir-six/index.html",
+        prototypeUrl: "https://demo.coir-six.phoxta.com",
+        prototypeLabel: "Open the live app",
         processTitle: "From momentum problem to daily habit.",
         challenge:
             "Self-paced learners churn the moment a platform makes them work to find their place. The incumbent dashboard buried progress inside a profile, gave five content types equal visual weight and offered no reason to return tomorrow. The brief: turn the home screen into a daily habit — motivating, instantly legible and honest about how far along the learner actually is — without adding onboarding or instruction.",

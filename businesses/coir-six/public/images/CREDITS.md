@@ -1,0 +1,27 @@
+# Photo credits
+
+All photography from [Pexels](https://www.pexels.com), under the Pexels licence. Cropped for the app.
+
+- `cover-fe-beginner.jpg` - [Lukas Blazek](https://www.pexels.com/@goumbik) - [photo 574069](https://www.pexels.com/photo/laptop-computer-showing-c-application-574069/)
+- `cover-fe-css.jpg` - [picjumbo.com](https://www.pexels.com/@picjumbo-com-55570) - [photo 196645](https://www.pexels.com/photo/white-printer-paper-196645/)
+- `cover-fe-ts.jpg` - [Christina Morillo](https://www.pexels.com/@divinetechygirl) - [photo 1181675](https://www.pexels.com/photo/close-up-photo-of-person-typing-on-laptop-1181675/)
+- `cover-ux-optimize.jpg` - [Fabian Wiktor](https://www.pexels.com/@fabianwiktor) - [photo 3471423](https://www.pexels.com/photo/person-writing-on-white-paper-3471423/)
+- `cover-ux-systems.jpg` - [Vlada Karpovich](https://www.pexels.com/@vlada-karpovich) - [photo 8367791](https://www.pexels.com/photo/samples-on-a-desk-8367791/)
+- `cover-ux-research.jpg` - [Jakub Zerdzicki](https://www.pexels.com/@jakubzerdzicki) - [photo 29521529](https://www.pexels.com/photo/creative-brainstorming-session-with-sticky-notes-29521529/)
+- `cover-br-revive.jpg` - [Leeloo The First](https://www.pexels.com/@leeloothefirst) - [photo 7598009](https://www.pexels.com/photo/brand-strategy-on-papers-7598009/)
+- `cover-br-voice.jpg` - [Negative Space](https://www.pexels.com/@negativespace) - [photo 34601](https://www.pexels.com/photo/coffee-notebook-writing-computer-34601/)
+- `mentor-padhang.jpg` - [Duy's  House of Photo](https://www.pexels.com/@duy-s-house-of-photo-2150454349) - [photo 31268612](https://www.pexels.com/photo/professional-portrait-of-an-asian-man-in-studio-31268612/)
+- `mentor-zakir.jpg` - [Murat IŞIK](https://www.pexels.com/@bymuratisikofficial) - [photo 39317888](https://www.pexels.com/photo/portrait-of-man-in-gray-polo-shirt-with-beard-39317888/)
+- `mentor-leonardo.jpg` - [cottonbro studio](https://www.pexels.com/@cottonbro) - [photo 5483147](https://www.pexels.com/photo/a-man-in-black-jacket-wearing-his-identification-card-5483147/)
+- `mentor-bayu.jpg` - [Michele Raffoni](https://www.pexels.com/@michele-raffoni-88958531) - [photo 9067815](https://www.pexels.com/photo/portrait-of-a-handsome-man-posing-9067815/)
+- `mentor-amara.jpg` - [Speak Media Uganda](https://www.pexels.com/@speakmediauganda) - [photo 36819473](https://www.pexels.com/photo/confident-businesswoman-in-formal-attire-36819473/)
+- `mentor-mei.jpg` - [ANTONI SHKRABA production](https://www.pexels.com/@anthonyshkraba-production) - [photo 8278977](https://www.pexels.com/photo/woman-in-white-long-sleeve-shirt-wearing-eyeglasses-sitting-on-gray-chair-8278977/)
+- `learner-jason.jpg` - [Galib Rahman Nadim](https://www.pexels.com/@capturedbynadim) - [photo 39087408](https://www.pexels.com/photo/portrait-of-smiling-man-in-casual-shirt-39087408/)
+- `friend-bagas.jpg` - [Vinii.r](https://www.pexels.com/@vinii-r-2155368190) - [photo 33690305](https://www.pexels.com/photo/young-adult-with-backpack-in-urban-setting-33690305/)
+- `friend-dandy.jpg` - [Murat IŞIK](https://www.pexels.com/@bymuratisikofficial) - [photo 33323689](https://www.pexels.com/photo/portrait-of-a-smiling-middle-aged-man-outdoors-33323689/)
+- `friend-jhon.jpg` - [zeck 📸](https://www.pexels.com/@zeck) - [photo 37143693](https://www.pexels.com/photo/casual-outdoor-portrait-of-man-by-tree-37143693/)
+- `group-fe-study.jpg` - [Max Fischer](https://www.pexels.com/@max-fischer) - [photo 5212687](https://www.pexels.com/photo/a-children-looking-the-laptop-5212687/)
+- `group-css.jpg` - [Pixabay](https://www.pexels.com/@pixabay) - [photo 256502](https://www.pexels.com/photo/close-up-of-text-on-black-background-256502/)
+- `group-ux-crit.jpg` - [https://kaboompics.com/](https://www.pexels.com/@karola-g) - [photo 7680058](https://www.pexels.com/photo/a-person-pointing-at-a-sticky-note-on-the-wall-using-a-pen-7680058/)
+- `group-research.jpg` - [ThisIsEngineering](https://www.pexels.com/@thisisengineering) - [photo 3913021](https://www.pexels.com/photo/engineers-in-meeting-3913021/)
+- `group-brand.jpg` - [Leeloo The First](https://www.pexels.com/@leeloothefirst) - [photo 7598007](https://www.pexels.com/photo/mockup-of-brand-strategy-7598007/)

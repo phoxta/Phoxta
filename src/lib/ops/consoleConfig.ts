@@ -123,6 +123,16 @@ const PLATFORM: VerticalConsole = {
   modules: ["overview", "dossier", "platform", "ideas", "engage", "crm", "invoicing", "help-center", "designs", "operator", "settings"],
 };
 
+// An online school (Coir Six). Courses, lessons and learners live inside the
+// learning app itself, so there is no catalogue or booking surface here: the
+// console is the owner's inbox, CRM, marketing, invoicing and agent.
+const LEARNING: VerticalConsole = {
+  commerceLabel: "Courses",
+  itemNoun: "Course",
+  booking: "none",
+  modules: ["overview", "dossier", "engage", "crm", "invoicing", "help-center", "designs", "operator", "settings"],
+};
+
 const DEFAULT: VerticalConsole = {
   commerceLabel: "Commerce",
   itemNoun: "Product",
@@ -133,6 +143,7 @@ const DEFAULT: VerticalConsole = {
 // Map vertical synonyms → a console config.
 const BY_VERTICAL: Record<string, VerticalConsole> = {
   platform: PLATFORM, phoxta: PLATFORM,
+  education: LEARNING, learning: LEARNING, elearning: LEARNING, "e-learning": LEARNING, courses: LEARNING, school: LEARNING, academy: LEARNING, training: LEARNING,
   retail: RETAIL, fashion: RETAIL, apparel: RETAIL, ecommerce: RETAIL, shop: RETAIL,
   furniture: RETAIL, store: RETAIL, goods: RETAIL, homeware: RETAIL,
   // "automotive"/"car" on its own means selling cars far more often than renting

@@ -29,6 +29,7 @@ const SLUG_COVERS: Record<string, string> = {
   gearo: "/assets/imgs/pages/FS4.webp",
   wamwam: "/assets/imgs/pages/FS6.webp",
   ferne: "/assets/imgs/pages/FS7.webp",
+  "coir-six": "/assets/imgs/pages/FS8.webp",
 };
 
 /** Last resort, so no surface ever renders a broken image. */

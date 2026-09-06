@@ -13,6 +13,7 @@ install and run each on its own.
 | `restaurant-orders/` | `restaurant-orders` | Restaurant + Orders | Vite + React + TypeScript (custom CSS) | `npm install` → `npm run dev` |
 | `niche-apparel/` | `niche-apparel` | Fashion / eCommerce | Vite + React + TypeScript (Phoxta `main.css`) | `npm install` → `npm run dev` |
 | `ferne/`   | `ferne`   | Skincare / DTC eCommerce | Vite + React + TypeScript (own design system) | `npm install` → `npm run dev` |
+| `coir-six/` | `coir-six` | Education / online courses | Vite + React + TypeScript (Tailwind v4) | `npm install` → `npm run dev` |
 
 > **Uniform stack:** all businesses are **Vite + React + TypeScript** (Carento's
 > stack). Gearo was rebuilt from a static HTML template; WamWam was re-engineered from

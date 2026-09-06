@@ -78,6 +78,18 @@ const CASE_STUDIES = [
     },
     {
         classList: "col-lg-6",
+        link: "https://demo.coir-six.phoxta.com/",
+        linkCase: "/auth?mode=signup",
+        img: "/assets/imgs/pages/FS8.webp",
+        category: "Education",
+        headline: "Coir Six Learning",
+        description:
+            "An online-course platform — video lessons, quizzes, live sessions, groups, certificates and a learner dashboard",
+        price: 2500,
+        featured: false,
+    },
+    {
+        classList: "col-lg-6",
         link: "https://demo.ferne.phoxta.com/",
         linkCase: "/auth?mode=signup",
         img: "/assets/imgs/pages/FS7.webp",
