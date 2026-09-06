@@ -27,14 +27,26 @@ interface BoardViewProps {
   onDeleteApplication: (id: string) => void;
 }
 
-const COLUMNS: { status: ApplicationStatus; title: string }[] = [
-  { status: 'Wishlist', title: 'Wishlist' },
-  { status: 'Applied', title: 'Applied' },
-  { status: 'Screening', title: 'Screening' },
-  { status: 'Interviewing', title: 'Interviewing' },
-  { status: 'Offer', title: 'Offer' },
-  { status: 'Rejected', title: 'Rejected' },
-];
+// Every status in ApplicationStatus needs a column. 'Withdrawn' was missing —
+// it is offered in the New Application dropdown and set by the email sync, so
+// choosing it filed the application somewhere the board cannot show: saved,
+// present in the table, invisible here. The typed tuple below is deliberate;
+// if a status is ever added to the union without a column, this stops compiling.
+// A Record over the status union, so the columns cannot drift from the type:
+// add a status to ApplicationStatus and this stops compiling until it has a
+// column here. Column order follows key order.
+const COLUMN_TITLES: Record<ApplicationStatus, string> = {
+  Wishlist: 'Wishlist',
+  Applied: 'Applied',
+  Screening: 'Screening',
+  Interviewing: 'Interviewing',
+  Offer: 'Offer',
+  Rejected: 'Rejected',
+  Withdrawn: 'Withdrawn',
+};
+
+const COLUMNS: { status: ApplicationStatus; title: string }[] =
+  (Object.keys(COLUMN_TITLES) as ApplicationStatus[]).map((status) => ({ status, title: COLUMN_TITLES[status] }));
 
 export const BoardView: React.FC<BoardViewProps> = ({
   applications,

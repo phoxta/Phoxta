@@ -194,7 +194,11 @@ export const NewApplicationModal: React.FC<NewApplicationModalProps> = ({
     const chosenCv = baseCvs.find((c) => c.id === selectedBaseCvId);
 
     const newApp: JobApplication = {
-      id: `app-${Date.now()}`,
+      // Unique, not a timestamp: rows are upserted, so two applications created
+      // in the same millisecond used to share an id and overwrite each other.
+      id: `app-${typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`}`,
       company: company.trim(),
       role: role.trim(),
       status,
