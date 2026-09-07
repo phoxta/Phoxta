@@ -215,6 +215,25 @@ async function run() {
                 title.textContent = wanted;
             });
 
+            // Drop the inline styles ScrollSmoother writes at runtime.
+            //
+            // `dist/index.html` (the "/" snapshot) is also the SPA fallback
+            // Vercel serves for every route we deliberately do NOT prerender —
+            // /auth, /dashboard, /onboarding. React replaces #root on mount but
+            // never touches <body>, so a baked `style="height: 7853px"` (the
+            // home page's scroll extent) left the sign-in screen scrolling
+            // thousands of blank pixels below a full-height form.
+            //
+            // Nothing here carries an authored style attribute in index.html or
+            // MainLayout, so anything present is the smoother's own bookkeeping,
+            // and it writes it back when it initialises on boot.
+            await page.evaluate(() => {
+                document.documentElement.removeAttribute("style");
+                document.body.removeAttribute("style");
+                document.getElementById("smooth-wrapper")?.removeAttribute("style");
+                document.getElementById("smooth-content")?.removeAttribute("style");
+            });
+
             const html = await page.content();
             const file = routeToFile(route);
             mkdirSync(dirname(file), { recursive: true });
