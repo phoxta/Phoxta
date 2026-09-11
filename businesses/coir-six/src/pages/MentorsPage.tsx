@@ -13,7 +13,7 @@ export function MentorsPage() {
     return (
         <>
             <PageTitle title="Mentors" sub="The people behind the courses. Follow to hear when they teach live." />
-            <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {catalogue.mentors.map((m) => {
                     const on = user.follows.includes(m.id);
                     const courses = catalogue.courses.filter((c) => c.mentorId === m.id).length;

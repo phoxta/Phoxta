@@ -12,10 +12,15 @@ import { Toasts } from "@/components/ui/overlay";
 
 /**
  * The three-pane console. Sidebar (navigate) · main (do) · right rail (track &
- * connect) — each column has one job. Below 768px it becomes the native-app
- * mode the design specifies: sticky app bar, single column, bottom tab bar.
- * Pages that want the right rail render it through `<RightRail>`; the rest
- * get the main column full width.
+ * connect) — each column has one job.
+ *
+ * Two things never move on desktop: the sidebar is pinned to the viewport (the
+ * wordmark stays put, the nav under it scrolls on its own when the window is
+ * shorter than the list) and the toolbar — search, inbox, notifications, you —
+ * stays at the top while the page scrolls under it. Below 768px it becomes the
+ * native-app mode the design specifies: sticky app bar, single column, bottom
+ * tab bar. Pages that want the right rail render it through `<WithRail>`; the
+ * rest get the main column full width.
  */
 
 const NAV = [
@@ -36,6 +41,8 @@ const TABS = [
     { to: "/inbox", label: "Inbox", icon: Inbox },
 ];
 
+const NAV_ITEM = "flex items-center gap-3 py-3.5 text-[17px] font-medium";
+
 export function AppShell() {
     const { user, repo } = useData();
     const { name } = useTenant();
@@ -43,10 +50,19 @@ export function AppShell() {
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const [q, setQ] = useState("");
+    const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
         window.scrollTo({ top: 0 });
     }, [pathname]);
+
+    // The pinned toolbar grows a soft edge once content is moving under it.
+    useEffect(() => {
+        const on = () => setScrolled(window.scrollY > 8);
+        on();
+        window.addEventListener("scroll", on, { passive: true });
+        return () => window.removeEventListener("scroll", on);
+    }, []);
 
     const inboxCount = unreadMessages(user);
     const taskCount = openTasks(user);
@@ -77,55 +93,51 @@ export function AppShell() {
                 </Link>
             </header>
 
-            {/* Sidebar */}
-            <aside className="hidden min-h-dvh flex-col border-r border-line bg-card px-9 pb-11 pt-9 md:flex" aria-label="Primary">
-                <Link to="/" className="mb-12 flex items-center gap-3 text-[22px] font-semibold">
-                    <span className="grid size-8 place-items-center rounded-full bg-brand">
-                        <Sparkle className="w-4" />
-                    </span>
-                    {name}
-                </Link>
-                <div className="mb-2.5 text-[11px] font-medium tracking-[0.08em] text-caption">OVERVIEW</div>
-                <nav className="flex flex-col">
-                    {NAV.map((n) => (
-                        <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cn("flex items-center gap-3 py-3.5 text-[17px] font-medium", isActive ? "text-brand" : "text-ink hover:text-brand")}>
-                            <n.icon size={20} strokeWidth={1.8} aria-hidden="true" />
-                            {n.label}
-                            {n.badge === "inbox" && inboxCount > 0 && <Badge className="ml-auto">{inboxCount}</Badge>}
-                            {n.badge === "tasks" && taskCount > 0 && <span className="ml-auto text-[12px] text-muted">{taskCount}</span>}
-                        </NavLink>
-                    ))}
-                </nav>
-
-                <div className="mt-6">
-                    <div className="mb-2.5 text-[11px] font-medium tracking-[0.08em] text-caption">FRIENDS</div>
-                    {user.friends.map((f) => (
-                        <Link key={f.id} to={`/inbox/new/friend/${f.id}`} className="flex items-center gap-3.5 py-2.5">
-                            <Avatar name={f.name} hue={f.hue} src={f.photoUrl} size="sm" />
-                            <div>
-                                <div className="text-[14px] font-medium leading-tight">{f.name}</div>
-                                <div className="mt-[3px] text-[12px] text-muted">{f.label}</div>
-                            </div>
-                        </Link>
-                    ))}
+            {/* Sidebar: pinned to the viewport for the whole page. */}
+            <aside className="hidden border-r border-line bg-card md:sticky md:top-0 md:flex md:h-dvh md:flex-col" aria-label="Primary">
+                {/* The wordmark never scrolls. */}
+                <div className="shrink-0 px-9 pb-6 pt-9">
+                    <Link to="/" className="flex items-center gap-3 text-[22px] font-semibold">
+                        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand">
+                            <Sparkle className="w-4" />
+                        </span>
+                        <span className="truncate">{name}</span>
+                    </Link>
                 </div>
+                {/* Everything under it scrolls on its own when the window is short. */}
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-9 pb-11 pt-6">
+                    <div className="mb-2.5 text-[11px] font-medium tracking-[0.08em] text-caption">OVERVIEW</div>
+                    <nav className="flex flex-col">
+                        {NAV.map((n) => (
+                            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cn(NAV_ITEM, isActive ? "text-brand" : "text-ink hover:text-brand")}>
+                                <n.icon size={20} strokeWidth={1.8} aria-hidden="true" />
+                                {n.label}
+                                {n.badge === "inbox" && inboxCount > 0 && <Badge className="ml-auto">{inboxCount}</Badge>}
+                                {n.badge === "tasks" && taskCount > 0 && <span className="ml-auto text-[12px] text-muted">{taskCount}</span>}
+                            </NavLink>
+                        ))}
+                    </nav>
 
-                <div className="mt-auto pt-6">
-                    <div className="mb-2.5 text-[11px] font-medium tracking-[0.08em] text-caption">SETTINGS</div>
-                    <NavLink to="/settings" className={({ isActive }) => cn("flex items-center gap-3 py-3.5 text-[17px] font-medium", isActive ? "text-brand" : "text-ink hover:text-brand")}>
-                        <Settings size={20} strokeWidth={1.8} aria-hidden="true" />
-                        Setting
-                    </NavLink>
-                    <button type="button" onClick={() => void logout()} className="flex items-center gap-3 py-3.5 text-[17px] font-medium text-danger-ink">
-                        <LogOut size={20} strokeWidth={1.8} aria-hidden="true" />
-                        {demo ? "Exit demo" : "Logout"}
-                    </button>
+                    <div className="mt-auto pt-6">
+                        <div className="mb-2.5 text-[11px] font-medium tracking-[0.08em] text-caption">SETTINGS</div>
+                        <NavLink to="/settings" className={({ isActive }) => cn(NAV_ITEM, isActive ? "text-brand" : "text-ink hover:text-brand")}>
+                            <Settings size={20} strokeWidth={1.8} aria-hidden="true" />
+                            Setting
+                        </NavLink>
+                        <button type="button" onClick={() => void logout()} className={cn(NAV_ITEM, "text-danger-ink")}>
+                            <LogOut size={20} strokeWidth={1.8} aria-hidden="true" />
+                            {demo ? "Exit demo" : "Logout"}
+                        </button>
+                    </div>
                 </div>
             </aside>
 
             {/* Main + right rail */}
             <div className="min-w-0 pb-24 md:pb-10">
-                <div className="mb-7 hidden items-center gap-4 pt-[30px] md:flex">
+                {/* Toolbar: pinned, so search / inbox / notifications / you are one
+                    click away however far down the page you are. Its height is
+                    --cs-topbar-h in index.css; other sticky things sit below it. */}
+                <div className={cn("sticky top-0 z-20 mb-3 hidden items-center gap-4 bg-page pb-4 pt-[30px] transition-shadow md:flex", scrolled && "shadow-[0_10px_18px_-14px_rgba(27,27,35,0.35)]")}>
                     <SearchBox value={q} onChange={setQ} onSubmit={goSearch} className="max-w-[720px] flex-1" />
                     <div className="ml-auto flex items-center gap-4">
                         <Link to="/inbox" className="relative" aria-label={`Inbox${inboxCount ? `, ${inboxCount} unread` : ""}`}>
@@ -184,10 +196,12 @@ export function AppShell() {
     );
 }
 
-/** Two-column page body: main content + the 340px right rail (stacks on mobile). */
+/** Two-column page body: main content + the 340px right rail (stacks on mobile).
+ *  `grid-cols-1` matters: an implicit auto column sizes to its content's
+ *  min-content, and a nowrap row inside would push the page wider than a phone. */
 export function WithRail({ children, rail }: { children: ReactNode; rail: ReactNode }) {
     return (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="min-w-0">{children}</div>
             <aside className="min-w-0">{rail}</aside>
         </div>

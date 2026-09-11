@@ -33,7 +33,7 @@ export default function ProgressPage() {
     return (
         <>
             <PageTitle title="Progress" sub="Effort made visible. This is the momentum the dashboard hints at." />
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
                 <div className="flex flex-col gap-6">
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                         {tile(<Flame size={20} />, `${days}`, days === 1 ? "day streak" : "day streak", "bg-peach-soft text-peach")}

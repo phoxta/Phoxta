@@ -30,7 +30,10 @@ export interface Repo {
     /** Called when something changed outside the UI (realtime, another tab). */
     subscribe(onChange: () => void): () => void;
 
+    /** `photoUrl: ""` removes the photo. */
     updateProfile(patch: Partial<Profile>): Promise<void>;
+    /** Store a cropped, square profile photo and return the URL to save on the profile. */
+    uploadPhoto(blob: Blob): Promise<string>;
 
     enroll(courseId: string): Promise<void>;
     /** Save playback position; `completed` marks the lesson done. */

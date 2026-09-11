@@ -52,7 +52,7 @@ export default function CourseDetailPage() {
         <WithRail
             rail={
                 <div className="flex flex-col gap-4">
-                    <Card className="sticky top-6">
+                    <Card className="xl:sticky xl:top-(--cs-rail-top)">
                         {enrolled ? (
                             <>
                                 <div className="mb-2 flex items-baseline justify-between">
@@ -114,7 +114,7 @@ export default function CourseDetailPage() {
 
             <section className="mt-7" aria-labelledby="learn-h">
                 <h2 id="learn-h" className="mb-3 text-[18px] font-semibold">What you'll be able to do</h2>
-                <ul className="grid gap-2 sm:grid-cols-2">
+                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {course.outcomes.map((o) => (
                         <li key={o} className="flex items-start gap-2.5 rounded-md bg-card px-3.5 py-3 text-[14px]">
                             <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-mint-soft text-mint"><Check size={12} strokeWidth={3} /></span>

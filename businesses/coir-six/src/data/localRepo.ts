@@ -93,7 +93,21 @@ export class LocalRepo implements Repo {
     }
 
     async updateProfile(patch: Partial<Profile>): Promise<void> {
-        this.write((u) => Object.assign(u.profile, patch));
+        this.write((u) => {
+            Object.assign(u.profile, patch);
+            // "" means "remove the photo": the key goes away, as on a fresh learner.
+            if (patch.photoUrl === "") delete u.profile.photoUrl;
+        });
+    }
+
+    /** The demo keeps the photo in this browser as a data URL — nothing leaves the device. */
+    async uploadPhoto(blob: Blob): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(String(r.result));
+            r.onerror = () => reject(new Error("Couldn't read the image"));
+            r.readAsDataURL(blob);
+        });
     }
 
     async enroll(courseId: string): Promise<void> {

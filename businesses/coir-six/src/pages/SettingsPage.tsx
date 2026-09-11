@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Camera } from "lucide-react";
 import type { CategoryId } from "@/data/types";
 import { cn } from "@/lib/cn";
 import { type Hue } from "@/lib/format";
@@ -7,11 +8,13 @@ import { useAuth } from "@/state/auth";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { PageTitle } from "@/components/shell/AppShell";
+import { PhotoCropper } from "@/components/ui/PhotoCropper";
 import { Avatar, Button, Card, Field } from "@/components/ui/primitives";
 import { CATEGORY_LABEL } from "@/components/ui/icons";
 
 const HUES: Hue[] = ["lilac", "sky", "peach", "rose", "mint", "plum"];
 const GOALS = [60, 120, 180, 300, 420, 600];
+const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
 
 export default function SettingsPage() {
     const { user, mutate, repo } = useData();
@@ -26,8 +29,17 @@ export default function SettingsPage() {
     const [goal, setGoal] = useState(p.weeklyGoalMin);
     const [interests, setInterests] = useState<CategoryId[]>(p.interests);
     const [saving, setSaving] = useState(false);
+    const [pending, setPending] = useState<File | null>(null);
+    const [photoBusy, setPhotoBusy] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
 
+    // Re-sync the form when the SAVED values change (another tab, a save here) —
+    // but not when only the photo changed, so an unsaved edit isn't thrown away.
+    const synced = useRef("");
     useEffect(() => {
+        const sig = JSON.stringify([p.name, p.handle, p.headline, p.hue, p.weeklyGoalMin, p.interests]);
+        if (sig === synced.current) return;
+        synced.current = sig;
         setName(p.name);
         setHandle(p.handle);
         setHeadline(p.headline);
@@ -53,27 +65,83 @@ export default function SettingsPage() {
         setSaving(false);
     };
 
+    // ---- Profile photo: pick → crop → store, saved on its own, not with the form.
+    const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const f = e.target.files?.[0];
+        e.target.value = ""; // so picking the same file again still fires
+        if (!f) return;
+        if (!f.type.startsWith("image/")) return toast("Choose an image file", "danger");
+        if (f.size > MAX_PHOTO_BYTES) return toast("That photo is over 12 MB — try a smaller one", "danger");
+        setPending(f);
+    };
+    const savePhoto = async (blob: Blob) => {
+        setPhotoBusy(true);
+        try {
+            await mutate(async (r) => {
+                const url = await r.uploadPhoto(blob);
+                await r.updateProfile({ photoUrl: url });
+            });
+            setPending(null);
+            toast("Photo updated", "success");
+        } catch (err) {
+            toast(err instanceof Error ? err.message : "Couldn't save the photo", "danger");
+        }
+        setPhotoBusy(false);
+    };
+    const removePhoto = async () => {
+        setPhotoBusy(true);
+        try {
+            await mutate((r) => r.updateProfile({ photoUrl: "" }));
+            toast("Photo removed");
+        } catch (err) {
+            toast(err instanceof Error ? err.message : "Couldn't remove the photo", "danger");
+        }
+        setPhotoBusy(false);
+    };
+    const photoError = useCallback(
+        (message: string) => {
+            toast(message, "danger");
+            setPending(null);
+        },
+        [toast],
+    );
+
     return (
         <>
             <PageTitle title="Settings" sub="Who you are here, and what you're aiming for." />
-            <form onSubmit={(e) => void save(e)} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <form onSubmit={(e) => void save(e)} className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
                 <div className="flex flex-col gap-6">
                     <Card as="section" aria-labelledby="prof-h">
                         <h2 id="prof-h" className="mb-4 text-[16px] font-semibold">Profile</h2>
                         <div className="mb-5 flex items-center gap-4">
-                            <Avatar name={name || "?"} hue={hue} src={p.photoUrl} size="xl" className="!size-16 !text-[22px]" />
-                            <div>
-                                <div className="mb-1.5 text-[12px] font-medium uppercase tracking-[0.06em] text-muted">Avatar tint</div>
-                                <div className="flex gap-2" role="radiogroup" aria-label="Avatar tint">
-                                    {HUES.map((h) => (
-                                        <button key={h} type="button" role="radio" aria-checked={hue === h} aria-label={h} onClick={() => setHue(h)} className={cn("size-7 rounded-full ring-offset-2 ring-offset-card", hue === h && "ring-2 ring-ink")}>
-                                            <Avatar name="" hue={h} size="xs" className="!size-7" />
-                                        </button>
-                                    ))}
+                            <Avatar name={name || "?"} hue={hue} src={p.photoUrl} size="xl" className="!size-20 !text-[26px]" />
+                            <div className="min-w-0">
+                                <div className="mb-1.5 text-[12px] font-medium uppercase tracking-[0.06em] text-muted">Profile photo</div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Button variant="outline" size="md" onClick={() => fileRef.current?.click()} loading={photoBusy}>
+                                        <Camera size={14} /> {p.photoUrl ? "Change photo" : "Upload photo"}
+                                    </Button>
+                                    {p.photoUrl && (
+                                        <Button variant="ghost" size="md" onClick={() => void removePhoto()} disabled={photoBusy}>
+                                            Remove
+                                        </Button>
+                                    )}
+                                    <input ref={fileRef} type="file" accept="image/*" onChange={pick} className="sr-only" aria-label="Choose a photo" tabIndex={-1} />
                                 </div>
+                                <p className="mt-1.5 text-[12px] text-caption">JPG, PNG or WebP. You choose the part that shows.</p>
                             </div>
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="mb-5">
+                            <div className="mb-1.5 text-[12px] font-medium uppercase tracking-[0.06em] text-muted">Avatar tint {p.photoUrl && <span className="normal-case tracking-normal text-caption">· shown when there's no photo</span>}</div>
+                            <div className="flex gap-2" role="radiogroup" aria-label="Avatar tint">
+                                {HUES.map((h) => (
+                                    <button key={h} type="button" role="radio" aria-checked={hue === h} aria-label={h} onClick={() => setHue(h)} className={cn("size-7 rounded-full ring-offset-2 ring-offset-card", hue === h && "ring-2 ring-ink")}>
+                                        <Avatar name="" hue={h} size="xs" className="!size-7" />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <Field label="Name" value={name} onChange={(e) => setName(e.target.value)} />
                             <Field label="Handle" value={handle} onChange={(e) => setHandle(e.target.value)} leading={<span className="text-caption">@</span>} />
                             <Field label="Headline" value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="What you're learning towards" className="md:col-span-2" />
@@ -138,6 +206,8 @@ export default function SettingsPage() {
                     </Card>
                 </div>
             </form>
+
+            <PhotoCropper file={pending} onCancel={() => setPending(null)} onDone={savePhoto} onError={photoError} />
         </>
     );
 }

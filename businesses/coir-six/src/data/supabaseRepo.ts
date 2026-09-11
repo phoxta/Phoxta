@@ -195,9 +195,28 @@ export class SupabaseRepo implements Repo {
         if (patch.weeklyGoalMin !== undefined) row.weekly_goal_min = patch.weeklyGoalMin;
         if (patch.interests !== undefined) row.interests = patch.interests;
         if (patch.onboarded !== undefined) row.onboarded = patch.onboarded;
+        if (patch.photoUrl !== undefined) row.photo_url = patch.photoUrl || null;
         const { error } = await supabase.from("cs_profiles").update(row).eq("organization_id", this.org).eq("user_id", this.userId);
         fail("profile", error);
-        if (this.profileCache) this.profileCache = { ...this.profileCache, ...patch };
+        if (this.profileCache) this.profileCache = { ...this.profileCache, ...patch, photoUrl: patch.photoUrl === undefined ? this.profileCache.photoUrl : patch.photoUrl || undefined };
+    }
+
+    /**
+     * Photos live in the public `cs-avatars` bucket at <org>/<user>/…; the
+     * storage policies only let a learner write inside their own folder. Each
+     * upload gets a fresh name so no cache ever shows a stale face, and older
+     * files in the folder are cleared best-effort afterwards.
+     */
+    async uploadPhoto(blob: Blob): Promise<string> {
+        const folder = `${this.org}/${this.userId}`;
+        const path = `${folder}/avatar-${Date.now()}.jpg`;
+        const bucket = supabase.storage.from("cs-avatars");
+        const { error } = await bucket.upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
+        fail("photo", error);
+        const { data: old } = await bucket.list(folder);
+        const stale = (old ?? []).map((f) => `${folder}/${f.name}`).filter((p) => p !== path);
+        if (stale.length) await bucket.remove(stale);
+        return bucket.getPublicUrl(path).data.publicUrl;
     }
 
     async enroll(courseId: string): Promise<void> {

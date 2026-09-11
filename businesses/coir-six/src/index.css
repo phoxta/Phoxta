@@ -67,6 +67,12 @@
 }
 
 @layer base {
+    :root {
+        /* The pinned desktop toolbar: 30px inset + 46px controls + 16px under it.
+           Anything else that sticks (page rails) sits just below it. */
+        --cs-topbar-h: 92px;
+        --cs-rail-top: calc(var(--cs-topbar-h) + 16px);
+    }
     html {
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
@@ -75,6 +81,9 @@
         @apply bg-page text-ink font-sans;
         font-size: 15px;
         line-height: 21px;
+        /* A phone never scrolls sideways. `clip` (not `hidden`) keeps sticky
+           headers working, because it doesn't make body a scroll container. */
+        overflow-x: clip;
     }
     /* Focus is visible and consistent everywhere: brand ring, 2px offset. */
     :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {

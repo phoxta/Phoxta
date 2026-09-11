@@ -55,6 +55,11 @@ Vite inlines `VITE_*` at build time, so those must be set on the Vercel project
 - **Branding** — the tenant's saved brand (name, primary colour, font) is
   applied on boot (`src/lib/tenant.ts`): the wordmark, buttons, active nav and
   tints all follow it.
+- **Profile photos** — a learner uploads a photo in Settings, drags/zooms it
+  inside a round window (`components/ui/PhotoCropper.tsx`) and a 512px square
+  JPEG is stored in the public `cs-avatars` bucket at
+  `<org>/<user>/avatar-<ts>.jpg` (migration `0149`; policies let a learner
+  write only inside their own folder). The demo keeps it as a data URL.
 
 ## Layout
 
@@ -69,4 +74,10 @@ src/
 public/images/ Pexels-licensed photography (CREDITS.md)
 ```
 
-The Postgres side is `supabase/migrations/0147_coir_six.sql` at the repo root.
+The Postgres side is `supabase/migrations/0147_coir_six.sql` at the repo root,
+plus `0149_coir_six_avatars.sql` for the photo bucket.
+
+On desktop the shell pins two things: the sidebar (the wordmark never moves;
+the nav under it scrolls on its own in a short window) and the toolbar
+(search · inbox · notifications · you). Its height is `--cs-topbar-h` in
+`src/index.css`; anything else that sticks (page rails) uses `--cs-rail-top`.

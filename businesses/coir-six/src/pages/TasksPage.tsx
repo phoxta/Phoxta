@@ -55,7 +55,7 @@ export default function TasksPage() {
     return (
         <>
             <PageTitle title="Tasks" sub={counts.open ? `${counts.open} open${counts.overdue ? ` · ${counts.overdue} overdue` : ""}` : "All clear."} />
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
                 <div>
                     <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Filter tasks">
                         {(["open", "today", "overdue", "done"] as Filter[]).map((f) => (
@@ -76,7 +76,7 @@ export default function TasksPage() {
                         <EmptyState icon={<CheckSquare size={22} />} title={filter === "done" ? "Nothing finished yet" : filter === "overdue" ? "Nothing overdue" : "No tasks here"} body={filter === "open" ? "Add the next thing you need to do for a course." : undefined} />
                     )}
                 </div>
-                <Card as="section" aria-labelledby="add-h" className="self-start xl:sticky xl:top-6">
+                <Card as="section" aria-labelledby="add-h" className="self-start xl:sticky xl:top-(--cs-rail-top)">
                     <h2 id="add-h" className="mb-3 text-[16px] font-semibold">Add a task</h2>
                     <form onSubmit={(e) => void add(e)} className="flex flex-col gap-3">
                         <Field label="Task" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Rebuild the pricing table with Grid" error={err} />

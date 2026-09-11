@@ -23,7 +23,7 @@ function peerPhoto(cat: Catalogue, user: UserState, c: Conversation): string | u
 export default function InboxPage() {
     const { id } = useParams();
     return (
-        <div className="grid gap-6 md:h-[calc(100dvh-140px)] md:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-6 md:h-[calc(100dvh-140px)] md:grid-cols-[320px_minmax(0,1fr)]">
             <div className={cn("min-w-0", id && "max-md:hidden")}>
                 <ConversationList activeId={id} />
             </div>
@@ -38,7 +38,7 @@ function ConversationList({ activeId }: { activeId?: string }) {
         <>
             <PageTitle title="Inbox" sub={`${user.conversations.length} conversation${user.conversations.length === 1 ? "" : "s"}`} />
             {user.conversations.length === 0 ? (
-                <EmptyState icon={<Inbox size={22} />} title="No messages yet" body="Say hello to a mentor from their profile, or a friend from the sidebar." />
+                <EmptyState icon={<Inbox size={22} />} title="No messages yet" body="Say hello to a mentor from their profile." />
             ) : (
                 <ul className="overflow-hidden rounded-xl bg-card">
                     {user.conversations.map((c) => (

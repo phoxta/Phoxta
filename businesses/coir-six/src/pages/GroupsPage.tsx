@@ -46,12 +46,12 @@ export function GroupsPage() {
             {mine.length > 0 && (
                 <section className="mb-8" aria-labelledby="mine-h">
                     <h2 id="mine-h" className="mb-3 text-[18px] font-semibold">Your groups</h2>
-                    <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{mine.map((g) => <GroupCard key={g.id} g={g} />)}</ul>
+                    <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{mine.map((g) => <GroupCard key={g.id} g={g} />)}</ul>
                 </section>
             )}
             <section aria-labelledby="disc-h">
                 <h2 id="disc-h" className="mb-3 text-[18px] font-semibold">{mine.length ? "Discover" : "All groups"}</h2>
-                {others.length ? <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{others.map((g) => <GroupCard key={g.id} g={g} />)}</ul> : <EmptyState title="You're in every group" body="That's dedication." />}
+                {others.length ? <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{others.map((g) => <GroupCard key={g.id} g={g} />)}</ul> : <EmptyState title="You're in every group" body="That's dedication." />}
             </section>
         </>
     );
@@ -112,7 +112,7 @@ export function GroupDetailPage() {
                 </Button>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
                 <div className="flex flex-col gap-3">
                     {joined ? (
                         <Card as="section" aria-label="New post">

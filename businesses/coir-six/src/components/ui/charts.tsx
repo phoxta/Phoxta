@@ -38,8 +38,10 @@ export function BarChart({ data, unit = "min", className, height = 96 }: { data:
     const step = max <= 60 ? 20 : max <= 120 ? 40 : max <= 300 ? 100 : Math.ceil(max / 3 / 50) * 50;
     const top = step * 3;
     const ticks = [step * 3, step * 2, step];
+    // Bars and labels are flexible up to 40px: fourteen fixed 40px columns would be
+    // wider than a phone. Labels are one letter, so they still fit at 18px a column.
     return (
-        <figure className={cn("grid grid-cols-[22px_1fr] gap-x-3 rounded-lg bg-page px-4 pb-3 pt-3.5", className)}>
+        <figure className={cn("grid grid-cols-[22px_minmax(0,1fr)] gap-x-3 rounded-lg bg-page px-4 pb-3 pt-3.5", className)}>
             <div className="flex flex-col justify-between text-[11px] text-muted" style={{ height }} aria-hidden="true">
                 {ticks.map((t) => (
                     <span key={t}>{t}</span>
@@ -53,7 +55,7 @@ export function BarChart({ data, unit = "min", className, height = 96 }: { data:
                 </div>
                 <ul className="absolute inset-0 flex items-end justify-around px-1.5" aria-label="Study minutes">
                     {data.map((d, i) => (
-                        <li key={i} className="flex h-full w-10 items-end justify-center">
+                        <li key={i} className="flex h-full min-w-0 max-w-10 flex-1 items-end justify-center">
                             <span
                                 className={cn("w-full rounded-t-[6px] transition-[height] duration-500", d.hi ? "bg-brand" : "bg-track")}
                                 style={{ height: `${Math.max(d.value ? 6 : 0, (Math.min(d.value, top) / top) * 100)}%` }}
@@ -66,7 +68,7 @@ export function BarChart({ data, unit = "min", className, height = 96 }: { data:
             </div>
             <figcaption className="col-start-2 mt-3.5 flex justify-around px-1.5 text-[11px] text-muted">
                 {data.map((d, i) => (
-                    <span key={i} className="w-10 truncate text-center" title={d.label}>
+                    <span key={i} className="min-w-0 max-w-10 flex-1 truncate text-center" title={d.label}>
                         {d.label}
                     </span>
                 ))}
