@@ -10,7 +10,7 @@ import type {
     Module,
     QuizQuestion,
     UserState,
-} from "@/data/types";
+} from "./types";
 
 /**
  * The bundled catalogue and a demo learner.
@@ -412,8 +412,8 @@ export function demoMessages(conversationId: string): { fromMe: boolean; body: s
 }
 
 /** Seed posts for the study groups, dated relative to today. */
-export function demoGroupPosts(groupId: string): Omit<import("@/data/types").GroupPost, "id" | "mine">[] {
-    const P = (authorName: string, authorHue: import("@/lib/format").Hue, body: string, d: number, h = 14) => ({ groupId, authorName, authorHue, body, createdAt: daysAgo(d, h) });
+export function demoGroupPosts(groupId: string): Omit<import("./types").GroupPost, "id" | "mine">[] {
+    const P = (authorName: string, authorHue: import("./format").Hue, body: string, d: number, h = 14) => ({ groupId, authorName, authorHue, body, createdAt: daysAgo(d, h) });
     switch (groupId) {
         case "g-fe-study":
             return [

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import type { Note } from "@/data/types";
-import { clock, relative } from "@/lib/format";
+import type { Note } from "@coir-six/core";
+import { clock, relative } from "@coir-six/core";
 import { Button } from "@/components/ui/primitives";
 
 /**

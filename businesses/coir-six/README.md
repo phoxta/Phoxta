@@ -63,16 +63,27 @@ Vite inlines `VITE_*` at build time, so those must be set on the Vercel project
 
 ## Layout
 
+This folder is an npm workspace: the web app at the root, the shared data
+layer in `packages/core`, the Expo app in `apps/mobile`. `npm install` here
+installs all three.
+
 ```
-src/
-  lib/         supabase client, tenant resolution + branding, derive (all the numbers), format, icons
-  data/        types · Repo interface · LocalRepo (demo) · SupabaseRepo (live) · seed (the starter school)
-  state/       tenant · auth · data · toast providers
-  components/  ui primitives, cards, charts, overlays, shell, player (YouTube + file + quiz + notes)
-  pages/       dashboard · courses · course · lesson · live lessons · tasks · groups · inbox ·
-               mentors · progress · certificate · notifications · settings · auth
-public/images/ Pexels-licensed photography (CREDITS.md)
+packages/core/   @coir-six/core — types · Repo interface · LocalRepo (demo) · SupabaseRepo (live) ·
+                 derive (all the numbers) · format · seed (the starter school) · tenant resolution ·
+                 design tokens. No DOM, no React: both apps import it as source.
+apps/mobile/     the iOS/Android app (Expo SDK 57, Expo Router). See its README.
+src/             the web app:
+  lib/           supabase client, tenant branding (DOM), cn
+  data/          webStore (localStorage adapter for the shared LocalRepo)
+  state/         tenant · auth · data · toast providers
+  components/    ui primitives, cards, charts, overlays, shell, player (YouTube + file + quiz + notes)
+  pages/         dashboard · courses · course · lesson · live lessons · tasks · groups · inbox ·
+                 mentors · progress · certificate · notifications · settings · auth
+public/images/   Pexels-licensed photography (CREDITS.md) — the app loads these by URL too
 ```
+
+Vercel builds the web app from this folder as before (`npm run build`); the
+workspace install pulls the mobile dependencies too, which only costs build time.
 
 The Postgres side is `supabase/migrations/0147_coir_six.sql` at the repo root,
 plus `0149_coir_six_avatars.sql` for the photo bucket.

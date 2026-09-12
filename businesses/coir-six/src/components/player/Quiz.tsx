@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, X } from "lucide-react";
-import type { QuizQuestion } from "@/data/types";
+import type { QuizQuestion } from "@coir-six/core";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/primitives";
 

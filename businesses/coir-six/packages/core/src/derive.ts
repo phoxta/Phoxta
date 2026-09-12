@@ -1,5 +1,5 @@
-import type { Catalogue, CategoryId, Course, Lesson, LiveLesson, UserState } from "@/data/types";
-import { dayKey } from "@/lib/format";
+import type { Catalogue, CategoryId, Course, Lesson, LiveLesson, UserState } from "./types";
+import { dayKey } from "./format";
 
 /**
  * Everything the screens show that isn't stored: progress percentages,

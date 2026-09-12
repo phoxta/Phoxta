@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Captions, Maximize, Minimize, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { clamp, clock } from "@/lib/format";
+import { clamp, clock } from "@coir-six/core";
 
 /**
  * The course video player.

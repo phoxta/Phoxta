@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Compass } from "lucide-react";
-import type { CategoryId, Level } from "@/data/types";
+import type { CategoryId, Level } from "@coir-six/core";
 import { cn } from "@/lib/cn";
-import { searchCourses } from "@/lib/derive";
+import { searchCourses } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { CourseCard } from "@/components/cards";
 import { PageTitle } from "@/components/shell/AppShell";

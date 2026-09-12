@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import { Check, Heart, MoreVertical, Trash2, UserPlus, ArrowUpRight, Clock, FileText, HelpCircle, Play } from "lucide-react";
-import type { Course, Lesson, LiveLesson, Mentor, Task } from "@/data/types";
+import type { Course, Lesson, LiveLesson, Mentor, Task } from "@coir-six/core";
 import { cn } from "@/lib/cn";
-import { duration, dueLabel, longDate, time } from "@/lib/format";
-import { courseMinutes, courseProgress, mentorOf } from "@/lib/derive";
+import { duration, dueLabel, longDate, time } from "@coir-six/core";
+import { courseMinutes, courseProgress, mentorOf } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { Avatar, Button, Cover, IconButton, ProgressBar, Tag } from "@/components/ui/primitives";

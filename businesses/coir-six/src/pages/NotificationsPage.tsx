@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import { Award, Bell, BookOpen, CheckSquare, Flame, MessageSquare, Users, Video } from "lucide-react";
-import type { NotificationKind } from "@/data/types";
+import type { NotificationKind } from "@coir-six/core";
 import { cn } from "@/lib/cn";
-import { relative } from "@/lib/format";
-import { unreadNotifications } from "@/lib/derive";
+import { relative } from "@coir-six/core";
+import { unreadNotifications } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { PageTitle } from "@/components/shell/AppShell";
 import { Button, EmptyState } from "@/components/ui/primitives";

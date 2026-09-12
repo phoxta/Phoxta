@@ -1,4 +1,4 @@
-import type { Hue } from "@/lib/format";
+import type { Hue } from "./format";
 
 /**
  * The domain. Two halves: the CATALOGUE (courses, mentors, live lessons,

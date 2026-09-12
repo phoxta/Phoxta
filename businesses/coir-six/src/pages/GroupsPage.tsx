@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Send, Users } from "lucide-react";
-import type { GroupPost } from "@/data/types";
-import { relative } from "@/lib/format";
+import type { GroupPost } from "@coir-six/core";
+import { relative } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { PageTitle } from "@/components/shell/AppShell";

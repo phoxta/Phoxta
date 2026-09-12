@@ -1,9 +1,9 @@
 import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Search } from "lucide-react";
-import type { CategoryId, Theme } from "@/data/types";
+import type { CategoryId, Theme } from "@coir-six/core";
 import { cn } from "@/lib/cn";
-import { initials, type Hue } from "@/lib/format";
+import { initials, type Hue } from "@coir-six/core";
 
 /**
  * The Coir Six component library, straight from the design system: five button

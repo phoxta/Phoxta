@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Calendar, ExternalLink, Video } from "lucide-react";
-import type { LiveLesson } from "@/data/types";
+import type { LiveLesson } from "@coir-six/core";
 import { cn } from "@/lib/cn";
-import { longDate, time } from "@/lib/format";
-import { pastLive, upcomingLive } from "@/lib/derive";
+import { longDate, time } from "@coir-six/core";
+import { pastLive, upcomingLive } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { youtubeId } from "@/components/player/YouTubePlayer";

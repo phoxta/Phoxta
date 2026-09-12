@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { Award, Flame, Target, Timer, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { duration, longDate } from "@/lib/format";
-import { categoryWatched, courseProgress, dailyMinutes, goalPct, lessonsCompleted, minutesThisWeek, streak, studiedToday, totalMinutes } from "@/lib/derive";
+import { duration, longDate } from "@coir-six/core";
+import { categoryWatched, courseProgress, dailyMinutes, goalPct, lessonsCompleted, minutesThisWeek, streak, studiedToday, totalMinutes } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { PageTitle } from "@/components/shell/AppShell";
 import { ActivityStrip, BarChart, Ring } from "@/components/ui/charts";

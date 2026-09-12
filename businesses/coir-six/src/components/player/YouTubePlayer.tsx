@@ -58,11 +58,8 @@ function loadApi(): Promise<YTNamespace> {
 }
 
 /** "https://www.youtube.com/watch?v=ID", "youtu.be/ID" or a bare id → id. */
-export function youtubeId(url: string): string | null {
-    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/) ?? url.match(/^([A-Za-z0-9_-]{11})$/);
-    return m ? m[1] : null;
-}
-export const youtubeThumb = (id: string): string => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
+// The URL helpers are shared with the mobile app's player.
+export { youtubeId, youtubeThumb } from "@coir-six/core";
 
 export interface YouTubePlayerProps {
     videoId: string;

@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Code2, MoreVertical, PenTool, Plus, Tag as TagIcon } from "lucide-react";
-import { greeting } from "@/lib/format";
-import { categoryWatched, continueWatching, goalPct, recommended, streak, tenDayBuckets, upcomingLive } from "@/lib/derive";
+import { greeting } from "@coir-six/core";
+import { categoryWatched, continueWatching, goalPct, recommended, streak, tenDayBuckets, upcomingLive } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { CourseCard, LiveRow, MentorRow, StatCard } from "@/components/cards";
 import { WithRail } from "@/components/shell/AppShell";

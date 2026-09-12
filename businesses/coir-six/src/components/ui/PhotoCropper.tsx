@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { clamp } from "@/lib/format";
+import { clamp } from "@coir-six/core";
 import { Dialog } from "@/components/ui/overlay";
 import { Button, IconButton } from "@/components/ui/primitives";
 

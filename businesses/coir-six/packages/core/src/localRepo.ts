@@ -1,5 +1,6 @@
-import { CATALOGUE, MENTORS, demoGroupPosts, demoMessages, demoUserState } from "@/data/seed";
-import type { Repo } from "@/data/repo";
+import { base64Encode } from "./base64";
+import { CATALOGUE, MENTORS, demoGroupPosts, demoMessages, demoUserState } from "./seed";
+import type { Repo } from "./repo";
 import type {
     Catalogue,
     Certificate,
@@ -13,47 +14,64 @@ import type {
     QuizAttempt,
     Task,
     UserState,
-} from "@/data/types";
-import { hueFor, uid } from "@/lib/format";
+} from "./types";
+import { hueFor, uid } from "./format";
 
 /**
- * The demo learner, persisted in this browser.
+ * The demo learner, persisted on the device.
  *
- * Every write lands in localStorage so a visitor's exploration survives a
- * reload, and every read is synchronous underneath — the async surface is only
- * there so pages treat it exactly like the live backend. Nothing here leaves
- * the device.
+ * Every write lands in the key-value store the app hands in (localStorage on
+ * the web, AsyncStorage on a phone) so a visitor's exploration survives a
+ * restart, and every read is synchronous underneath once the stores have
+ * hydrated — the async surface is only there so screens treat it exactly like
+ * the live backend. Nothing here leaves the device.
  */
 
 const KEY = "coir-six:demo:v2";
 const MSG_KEY = "coir-six:demo:messages:v2";
 const POST_KEY = "coir-six:demo:posts:v2";
 
-type Store<T> = { get(): T; set(v: T): void };
+/** The persistence the demo needs: the shape of localStorage and AsyncStorage alike, always async. */
+export interface KeyValueStore {
+    getItem(key: string): Promise<string | null>;
+    setItem(key: string, value: string): Promise<void>;
+    removeItem(key: string): Promise<void>;
+}
 
-function store<T>(key: string, initial: () => T): Store<T> {
+type Store<T> = { ready(): Promise<void>; get(): T; set(v: T): void };
+
+function store<T>(kv: KeyValueStore, key: string, initial: () => T): Store<T> {
     let cache: T | null = null;
+    let hydrated: Promise<void> | null = null;
     return {
-        get() {
-            if (cache) return cache;
-            try {
-                const raw = localStorage.getItem(key);
-                cache = raw ? (JSON.parse(raw) as T) : initial();
-            } catch {
-                cache = initial();
+        ready() {
+            if (!hydrated) {
+                hydrated = kv
+                    .getItem(key)
+                    .then((raw) => {
+                        if (cache === null) cache = raw ? (JSON.parse(raw) as T) : initial();
+                    })
+                    .catch(() => {
+                        if (cache === null) cache = initial();
+                    });
             }
+            return hydrated;
+        },
+        get() {
+            if (cache === null) cache = initial();
             return cache;
         },
         set(v: T) {
             cache = v;
-            try {
-                localStorage.setItem(key, JSON.stringify(v));
-            } catch {
-                /* private mode: the session still works, it just won't persist */
-            }
+            kv.setItem(key, JSON.stringify(v)).catch(() => {
+                /* private mode / full disk: the session still works, it just won't persist */
+            });
         },
     };
 }
+
+/** Deep copy of JSON-shaped state (the demo's data is plain JSON; structuredClone isn't on every runtime). */
+const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 /** A mentor's reply in the demo — the inbox has to answer or it is a form. */
 function mentorReply(peerName: string, incoming: string): string {
@@ -67,13 +85,24 @@ function mentorReply(peerName: string, incoming: string): string {
 
 export class LocalRepo implements Repo {
     readonly kind = "demo" as const;
-    private user = store<UserState>(KEY, demoUserState);
-    private messages = store<Record<string, Message[]>>(MSG_KEY, () => ({}));
-    private posts = store<Record<string, GroupPost[]>>(POST_KEY, () => ({}));
+    private user: Store<UserState>;
+    private messages: Store<Record<string, Message[]>>;
+    private posts: Store<Record<string, GroupPost[]>>;
     private listeners = new Set<() => void>();
 
+    constructor(kv: KeyValueStore) {
+        this.user = store<UserState>(kv, KEY, demoUserState);
+        this.messages = store<Record<string, Message[]>>(kv, MSG_KEY, () => ({}));
+        this.posts = store<Record<string, GroupPost[]>>(kv, POST_KEY, () => ({}));
+    }
+
+    /** Every method waits for the stores to hydrate once, so a cold start never reads the defaults over saved data. */
+    private async ready(): Promise<void> {
+        await Promise.all([this.user.ready(), this.messages.ready(), this.posts.ready()]);
+    }
+
     private write(mutate: (u: UserState) => void): void {
-        const next = structuredClone(this.user.get());
+        const next = clone(this.user.get());
         mutate(next);
         this.user.set(next);
     }
@@ -85,7 +114,8 @@ export class LocalRepo implements Repo {
         return CATALOGUE;
     }
     async loadUser(): Promise<UserState> {
-        return structuredClone(this.user.get());
+        await this.ready();
+        return clone(this.user.get());
     }
     subscribe(onChange: () => void): () => void {
         this.listeners.add(onChange);
@@ -93,6 +123,7 @@ export class LocalRepo implements Repo {
     }
 
     async updateProfile(patch: Partial<Profile>): Promise<void> {
+        await this.ready();
         this.write((u) => {
             Object.assign(u.profile, patch);
             // "" means "remove the photo": the key goes away, as on a fresh learner.
@@ -101,16 +132,18 @@ export class LocalRepo implements Repo {
     }
 
     /** The demo keeps the photo in this browser as a data URL — nothing leaves the device. */
-    async uploadPhoto(blob: Blob): Promise<string> {
+    async uploadPhoto(data: Blob | ArrayBuffer): Promise<string> {
+        if (data instanceof ArrayBuffer) return `data:image/jpeg;base64,${base64Encode(new Uint8Array(data))}`;
         return new Promise((resolve, reject) => {
             const r = new FileReader();
             r.onload = () => resolve(String(r.result));
             r.onerror = () => reject(new Error("Couldn't read the image"));
-            r.readAsDataURL(blob);
+            r.readAsDataURL(data);
         });
     }
 
     async enroll(courseId: string): Promise<void> {
+        await this.ready();
         this.write((u) => {
             if (u.enrollments.some((e) => e.courseId === courseId)) return;
             u.enrollments.push({ courseId, enrolledAt: new Date().toISOString(), completedAt: null, lastLessonId: null });
@@ -122,6 +155,7 @@ export class LocalRepo implements Repo {
     }
 
     async saveProgress(lessonId: string, positionSec: number, completed = false): Promise<void> {
+        await this.ready();
         this.write((u) => {
             const now = new Date().toISOString();
             const lesson = CATALOGUE.lessons.find((l) => l.id === lessonId);
@@ -146,6 +180,7 @@ export class LocalRepo implements Repo {
     }
 
     async logStudy(lessonId: string | null, minutes: number): Promise<void> {
+        await this.ready();
         if (minutes <= 0) return;
         this.write((u) => {
             u.sessions.push({ id: uid("s"), lessonId, minutes, occurredAt: new Date().toISOString() });
@@ -153,6 +188,7 @@ export class LocalRepo implements Repo {
     }
 
     async toggleBookmark(courseId: string): Promise<boolean> {
+        await this.ready();
         let on = false;
         this.write((u) => {
             const i = u.bookmarks.indexOf(courseId);
@@ -163,6 +199,7 @@ export class LocalRepo implements Repo {
         return on;
     }
     async toggleFollow(mentorId: string): Promise<boolean> {
+        await this.ready();
         let on = false;
         this.write((u) => {
             const i = u.follows.indexOf(mentorId);
@@ -173,6 +210,7 @@ export class LocalRepo implements Repo {
         return on;
     }
     async toggleRsvp(liveLessonId: string): Promise<boolean> {
+        await this.ready();
         let on = false;
         this.write((u) => {
             const i = u.rsvps.indexOf(liveLessonId);
@@ -184,34 +222,40 @@ export class LocalRepo implements Repo {
     }
 
     async addTask(input: NewTask): Promise<Task> {
+        await this.ready();
         const task: Task = { id: uid("t"), ...input, doneAt: null, createdAt: new Date().toISOString() };
         this.write((u) => u.tasks.unshift(task));
         return task;
     }
     async toggleTask(id: string): Promise<void> {
+        await this.ready();
         this.write((u) => {
             const t = u.tasks.find((x) => x.id === id);
             if (t) t.doneAt = t.doneAt ? null : new Date().toISOString();
         });
     }
     async deleteTask(id: string): Promise<void> {
+        await this.ready();
         this.write((u) => {
             u.tasks = u.tasks.filter((t) => t.id !== id);
         });
     }
 
     async addNote(lessonId: string, body: string, atSec: number | null): Promise<Note> {
+        await this.ready();
         const note: Note = { id: uid("n"), lessonId, atSec, body, createdAt: new Date().toISOString() };
         this.write((u) => u.notes.unshift(note));
         return note;
     }
     async deleteNote(id: string): Promise<void> {
+        await this.ready();
         this.write((u) => {
             u.notes = u.notes.filter((n) => n.id !== id);
         });
     }
 
     async joinGroup(groupId: string): Promise<boolean> {
+        await this.ready();
         let joined = false;
         this.write((u) => {
             const i = u.groupIds.indexOf(groupId);
@@ -222,11 +266,13 @@ export class LocalRepo implements Repo {
         return joined;
     }
     async loadGroupPosts(groupId: string): Promise<GroupPost[]> {
+        await this.ready();
         const mine = this.posts.get()[groupId] ?? [];
         const seeded = demoGroupPosts(groupId).map((p, i) => ({ ...p, id: `seed-${groupId}-${i}`, mine: false }));
         return [...mine, ...seeded].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
     async postToGroup(groupId: string, body: string): Promise<GroupPost> {
+        await this.ready();
         const me = this.user.get().profile;
         const post: GroupPost = { id: uid("p"), groupId, authorName: me.name, authorHue: me.hue, body, createdAt: new Date().toISOString(), mine: true };
         const all = { ...this.posts.get() };
@@ -236,6 +282,7 @@ export class LocalRepo implements Repo {
     }
 
     async startConversation(peerKind: PeerKind, peerId: string): Promise<Conversation> {
+        await this.ready();
         const existing = this.user.get().conversations.find((c) => c.peerKind === peerKind && c.peerId === peerId);
         if (existing) return existing;
         const mentor = peerKind === "mentor" ? MENTORS.find((m) => m.id === peerId) : null;
@@ -249,11 +296,13 @@ export class LocalRepo implements Repo {
         return conv;
     }
     async loadMessages(conversationId: string): Promise<Message[]> {
+        await this.ready();
         const saved = this.messages.get()[conversationId];
         if (saved) return saved;
         return demoMessages(conversationId).map((m, i) => ({ ...m, id: `seed-${conversationId}-${i}`, conversationId }));
     }
     async sendMessage(conversationId: string, body: string): Promise<Message> {
+        await this.ready();
         const history = await this.loadMessages(conversationId);
         const msg: Message = { id: uid("m"), conversationId, fromMe: true, body, createdAt: new Date().toISOString() };
         const conv = this.user.get().conversations.find((c) => c.id === conversationId);
@@ -270,7 +319,7 @@ export class LocalRepo implements Repo {
         // A demo peer writes back after a moment, so the thread is a conversation.
         if (conv) {
             const reply = conv.peerKind === "mentor" ? mentorReply(conv.peerName, body) : "Ha — same. Let's go through it together tomorrow.";
-            window.setTimeout(() => {
+            setTimeout(() => {
                 const r: Message = { id: uid("m"), conversationId, fromMe: false, body: reply, createdAt: new Date().toISOString() };
                 this.messages.set({ ...this.messages.get(), [conversationId]: [...(this.messages.get()[conversationId] ?? next), r] });
                 this.write((u) => {
@@ -288,6 +337,7 @@ export class LocalRepo implements Repo {
         return msg;
     }
     async markRead(conversationId: string): Promise<void> {
+        await this.ready();
         this.write((u) => {
             const c = u.conversations.find((x) => x.id === conversationId);
             if (c) c.unread = 0;
@@ -295,6 +345,7 @@ export class LocalRepo implements Repo {
     }
 
     async markNotificationsRead(ids?: string[]): Promise<void> {
+        await this.ready();
         this.write((u) => {
             const now = new Date().toISOString();
             u.notifications.forEach((n) => {
@@ -304,6 +355,7 @@ export class LocalRepo implements Repo {
     }
 
     async submitQuiz(lessonId: string, score: number, total: number): Promise<QuizAttempt> {
+        await this.ready();
         const attempt: QuizAttempt = { id: uid("qa"), lessonId, score, total, createdAt: new Date().toISOString() };
         this.write((u) => u.attempts.unshift(attempt));
         // Passing (≥ 2/3) completes the lesson.
@@ -312,6 +364,7 @@ export class LocalRepo implements Repo {
     }
 
     async issueCertificate(courseId: string): Promise<Certificate> {
+        await this.ready();
         const existing = this.user.get().certificates.find((c) => c.courseId === courseId);
         if (existing) return existing;
         const cert: Certificate = { id: uid("cert"), courseId, code: `CS-${courseId.replace(/^c-/, "").toUpperCase()}-${Date.now().toString(36).toUpperCase().slice(-5)}`, issuedAt: new Date().toISOString() };
@@ -323,6 +376,7 @@ export class LocalRepo implements Repo {
     }
 
     async resetDemo(): Promise<void> {
+        await this.ready();
         this.user.set(demoUserState());
         this.messages.set({});
         this.posts.set({});

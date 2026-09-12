@@ -1,21 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { LocalRepo } from "@/data/localRepo";
-import type { Repo } from "@/data/repo";
-import { CATALOGUE, demoUserState } from "@/data/seed";
-import { SupabaseRepo } from "@/data/supabaseRepo";
-import type { Catalogue, UserState } from "@/data/types";
+import { CATALOGUE, LocalRepo, SupabaseRepo, demoUserState, type Catalogue, type Repo, type UserState } from "@coir-six/core";
+import { webStore } from "@/data/webStore";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/state/auth";
 import { useTenant } from "@/state/tenant";
 
 /**
  * The app's data, in one place.
  *
- * Picks the repo from the auth state (demo → browser, session → this tenant's
- * rows on Supabase), loads the catalogue and the learner once, and re-reads
- * the learner after every write. Re-reading is deliberate: it keeps the
- * derived numbers on every screen — streak, ring, watched counts — provably
- * consistent with what was stored, at a cost of one round trip that is
- * invisible in the demo and cheap in the live app.
+ * Picks the repo from the auth state (demo → this browser, session → this
+ * tenant's rows on Supabase), loads the catalogue and the learner once, and
+ * re-reads the learner after every write. Re-reading is deliberate: it keeps
+ * the derived numbers on every screen — streak, ring, watched counts —
+ * provably consistent with what was stored, at a cost of one round trip that
+ * is invisible in the demo and cheap in the live app. The repos themselves
+ * live in @coir-six/core and are shared with the mobile app.
  */
 
 type DataCtx = {
@@ -35,8 +34,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const { session } = useAuth();
     const { tenant } = useTenant();
     const repo = useMemo<Repo>(() => {
-        if (session?.user && tenant) return new SupabaseRepo(session.user.id, session.user.email ?? "", tenant.id);
-        return new LocalRepo();
+        if (session?.user && tenant) return new SupabaseRepo(supabase, session.user.id, session.user.email ?? "", tenant.id);
+        return new LocalRepo(webStore);
     }, [session, tenant]);
 
     const [catalogue, setCatalogue] = useState<Catalogue>(CATALOGUE);

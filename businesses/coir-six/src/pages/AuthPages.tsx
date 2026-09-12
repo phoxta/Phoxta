@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import type { CategoryId } from "@/data/types";
+import type { CategoryId } from "@coir-six/core";
 import { cn } from "@/lib/cn";
-import { isEmail } from "@/lib/format";
+import { isEmail } from "@coir-six/core";
 import { useAuth } from "@/state/auth";
 import { useTenant } from "@/state/tenant";
 import { useData } from "@/state/data";

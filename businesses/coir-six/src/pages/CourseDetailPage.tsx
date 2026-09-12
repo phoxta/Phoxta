@@ -1,8 +1,8 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Award, Check, Clock, Heart, Lock, Star, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { duration } from "@/lib/format";
-import { courseBySlug, courseMinutes, courseProgress, isDone, isEnrolled, lessonsOf, mentorOf, nextLesson } from "@/lib/derive";
+import { duration } from "@coir-six/core";
+import { courseBySlug, courseMinutes, courseProgress, isDone, isEnrolled, lessonsOf, mentorOf, nextLesson } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { LessonKindIcon } from "@/components/cards";

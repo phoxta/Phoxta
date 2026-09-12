@@ -1,5 +1,5 @@
 import { Code2, PenTool, Tag as TagIcon } from "lucide-react";
-import type { CategoryId } from "@/data/types";
+import type { CategoryId } from "@coir-six/core";
 
 /** Category glyphs — the same icon everywhere a category is named. */
 export function CategoryIcon({ id, size = 13, className }: { id: CategoryId; size?: number; className?: string }) {

@@ -1,5 +1,5 @@
-import { CATALOGUE, DEMO_FRIENDS } from "@/data/seed";
-import type { Repo } from "@/data/repo";
+import { CATALOGUE, DEMO_FRIENDS } from "./seed";
+import type { Repo } from "./repo";
 import type {
     Catalogue,
     Certificate,
@@ -18,9 +18,9 @@ import type {
     QuizQuestion,
     Task,
     UserState,
-} from "@/data/types";
-import { hueFor, uid, type Hue } from "@/lib/format";
-import { supabase } from "@/lib/supabase";
+} from "./types";
+import { hueFor, uid, type Hue } from "./format";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * A signed-in learner's data, under row-level security, inside one school.
@@ -31,7 +31,9 @@ import { supabase } from "@/lib/supabase";
  * its own rows, in this school; the anon key in the bundle grants nothing on
  * its own. Catalogue tables are public-read and filtered by tenant here.
  * Column names are snake_case in Postgres and camelCase in the app; the
- * mapping lives in this file and nowhere else.
+ * mapping lives in this file and nowhere else. The Supabase client is passed
+ * in, so the same class runs on the web (localStorage session) and on a phone
+ * (AsyncStorage session).
  */
 
 type Row = Record<string, unknown>;
@@ -73,7 +75,10 @@ export class SupabaseRepo implements Repo {
     private profileCache: Profile | null = null;
     private catalogueCache: Catalogue | null = null;
 
-    constructor(userId: string, email: string, orgId: string) {
+    private client: SupabaseClient;
+
+    constructor(client: SupabaseClient, userId: string, email: string, orgId: string) {
+        this.client = client;
         this.userId = userId;
         this.email = email;
         this.org = orgId;
@@ -81,7 +86,7 @@ export class SupabaseRepo implements Repo {
 
     /** This tenant's rows of a table. */
     private t(table: string) {
-        return supabase.from(table).select("*").eq("organization_id", this.org);
+        return this.client.from(table).select("*").eq("organization_id", this.org);
     }
 
     async loadCatalogue(): Promise<Catalogue> {
@@ -94,7 +99,7 @@ export class SupabaseRepo implements Repo {
             this.t("cs_lessons").order("sort"),
             this.t("cs_quiz_questions").order("sort"),
             this.t("cs_live_lessons").order("starts_at"),
-            supabase.from("cs_groups").select("*").eq("organization_id", o).order("members", { ascending: false }),
+            this.client.from("cs_groups").select("*").eq("organization_id", o).order("members", { ascending: false }),
         ]);
         // A school with an empty catalogue (or a read that failed) still shows
         // the bundled one rather than an empty shop.
@@ -116,12 +121,12 @@ export class SupabaseRepo implements Repo {
 
     private async ensureProfile(): Promise<Profile> {
         if (this.profileCache) return this.profileCache;
-        const { data } = await supabase.from("cs_profiles").select("*").eq("organization_id", this.org).eq("user_id", this.userId).maybeSingle();
+        const { data } = await this.client.from("cs_profiles").select("*").eq("organization_id", this.org).eq("user_id", this.userId).maybeSingle();
         let r = data as Row | null;
         if (!r) {
             const name = this.email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
             const fresh = { organization_id: this.org, user_id: this.userId, name, handle: this.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, ""), hue: hueFor(name), headline: "", weekly_goal_min: 180, interests: [], onboarded: false };
-            const ins = await supabase.from("cs_profiles").insert(fresh).select("*").single();
+            const ins = await this.client.from("cs_profiles").insert(fresh).select("*").single();
             fail("profile", ins.error);
             r = ins.data as Row;
         }
@@ -135,7 +140,7 @@ export class SupabaseRepo implements Repo {
     async loadUser(): Promise<UserState> {
         const profile = await this.ensureProfile();
         const u = this.userId;
-        const mine = (table: string, cols = "*") => supabase.from(table).select(cols).eq("organization_id", this.org).eq("user_id", u);
+        const mine = (table: string, cols = "*") => this.client.from(table).select(cols).eq("organization_id", this.org).eq("user_id", u);
         const [enr, prog, sess, bm, fol, tasks, notes, gm, convs, notifs, attempts, certs, rsvps] = await Promise.all([
             mine("cs_enrollments"),
             mine("cs_lesson_progress"),
@@ -176,13 +181,13 @@ export class SupabaseRepo implements Repo {
     subscribe(onChange: () => void): () => void {
         // Messages and notifications can arrive from elsewhere (a mentor's
         // console, another tab); the rest only changes through this client.
-        const ch = supabase
+        const ch = this.client
             .channel(`cs-user-${this.org}-${this.userId}`)
             .on("postgres_changes", { event: "*", schema: "public", table: "cs_messages", filter: `user_id=eq.${this.userId}` }, onChange)
             .on("postgres_changes", { event: "*", schema: "public", table: "cs_notifications", filter: `user_id=eq.${this.userId}` }, onChange)
             .subscribe();
         return () => {
-            void supabase.removeChannel(ch);
+            void this.client.removeChannel(ch);
         };
     }
 
@@ -196,7 +201,7 @@ export class SupabaseRepo implements Repo {
         if (patch.interests !== undefined) row.interests = patch.interests;
         if (patch.onboarded !== undefined) row.onboarded = patch.onboarded;
         if (patch.photoUrl !== undefined) row.photo_url = patch.photoUrl || null;
-        const { error } = await supabase.from("cs_profiles").update(row).eq("organization_id", this.org).eq("user_id", this.userId);
+        const { error } = await this.client.from("cs_profiles").update(row).eq("organization_id", this.org).eq("user_id", this.userId);
         fail("profile", error);
         if (this.profileCache) this.profileCache = { ...this.profileCache, ...patch, photoUrl: patch.photoUrl === undefined ? this.profileCache.photoUrl : patch.photoUrl || undefined };
     }
@@ -207,11 +212,11 @@ export class SupabaseRepo implements Repo {
      * upload gets a fresh name so no cache ever shows a stale face, and older
      * files in the folder are cleared best-effort afterwards.
      */
-    async uploadPhoto(blob: Blob): Promise<string> {
+    async uploadPhoto(data: Blob | ArrayBuffer): Promise<string> {
         const folder = `${this.org}/${this.userId}`;
         const path = `${folder}/avatar-${Date.now()}.jpg`;
-        const bucket = supabase.storage.from("cs-avatars");
-        const { error } = await bucket.upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
+        const bucket = this.client.storage.from("cs-avatars");
+        const { error } = await bucket.upload(path, data, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
         fail("photo", error);
         const { data: old } = await bucket.list(folder);
         const stale = (old ?? []).map((f) => `${folder}/${f.name}`).filter((p) => p !== path);
@@ -220,7 +225,7 @@ export class SupabaseRepo implements Repo {
     }
 
     async enroll(courseId: string): Promise<void> {
-        const { error } = await supabase.from("cs_enrollments").upsert({ organization_id: this.org, user_id: this.userId, course_id: courseId }, { onConflict: "organization_id,user_id,course_id", ignoreDuplicates: true });
+        const { error } = await this.client.from("cs_enrollments").upsert({ organization_id: this.org, user_id: this.userId, course_id: courseId }, { onConflict: "organization_id,user_id,course_id", ignoreDuplicates: true });
         fail("enroll", error);
     }
 
@@ -230,30 +235,30 @@ export class SupabaseRepo implements Repo {
         if (completed) row.completed_at = now;
         // Never un-complete: an upsert without completed_at would null it, so a
         // re-watch of a finished lesson keeps its tick.
-        const { data: cur } = await supabase.from("cs_lesson_progress").select("completed_at").eq("organization_id", this.org).eq("user_id", this.userId).eq("lesson_id", lessonId).maybeSingle();
+        const { data: cur } = await this.client.from("cs_lesson_progress").select("completed_at").eq("organization_id", this.org).eq("user_id", this.userId).eq("lesson_id", lessonId).maybeSingle();
         const prior = (cur as Row | null)?.completed_at;
         if (prior && !completed) row.completed_at = prior;
-        const { error } = await supabase.from("cs_lesson_progress").upsert(row, { onConflict: "organization_id,user_id,lesson_id" });
+        const { error } = await this.client.from("cs_lesson_progress").upsert(row, { onConflict: "organization_id,user_id,lesson_id" });
         fail("progress", error);
         // The enrollment remembers where to resume; completion is settled server-side.
-        const { error: e2 } = await supabase.rpc("cs_touch_enrollment", { p_org: this.org, p_lesson: lessonId });
+        const { error: e2 } = await this.client.rpc("cs_touch_enrollment", { p_org: this.org, p_lesson: lessonId });
         if (e2) console.warn("[coir-six] cs_touch_enrollment:", e2.message);
     }
 
     async logStudy(lessonId: string | null, minutes: number): Promise<void> {
         if (minutes <= 0) return;
-        const { error } = await supabase.from("cs_study_sessions").insert({ organization_id: this.org, user_id: this.userId, lesson_id: lessonId, minutes: Math.round(minutes) });
+        const { error } = await this.client.from("cs_study_sessions").insert({ organization_id: this.org, user_id: this.userId, lesson_id: lessonId, minutes: Math.round(minutes) });
         fail("study", error);
     }
 
     private async toggleRow(table: string, col: string, value: string): Promise<boolean> {
-        const { data } = await supabase.from(table).select(col).eq("organization_id", this.org).eq("user_id", this.userId).eq(col, value).maybeSingle();
+        const { data } = await this.client.from(table).select(col).eq("organization_id", this.org).eq("user_id", this.userId).eq(col, value).maybeSingle();
         if (data) {
-            const { error } = await supabase.from(table).delete().eq("organization_id", this.org).eq("user_id", this.userId).eq(col, value);
+            const { error } = await this.client.from(table).delete().eq("organization_id", this.org).eq("user_id", this.userId).eq(col, value);
             fail(table, error);
             return false;
         }
-        const { error } = await supabase.from(table).insert({ organization_id: this.org, user_id: this.userId, [col]: value });
+        const { error } = await this.client.from(table).insert({ organization_id: this.org, user_id: this.userId, [col]: value });
         fail(table, error);
         return true;
     }
@@ -268,30 +273,30 @@ export class SupabaseRepo implements Repo {
     }
 
     async addTask(input: NewTask): Promise<Task> {
-        const { data, error } = await supabase.from("cs_tasks").insert({ organization_id: this.org, user_id: this.userId, title: input.title, course_id: input.courseId, due_at: input.dueAt }).select("*").single();
+        const { data, error } = await this.client.from("cs_tasks").insert({ organization_id: this.org, user_id: this.userId, title: input.title, course_id: input.courseId, due_at: input.dueAt }).select("*").single();
         fail("task", error);
         const r = data as Row;
         return { id: s(r.id), title: s(r.title), courseId: s(r.course_id) || null, dueAt: iso(r.due_at), doneAt: null, createdAt: iso(r.created_at) };
     }
     async toggleTask(id: string): Promise<void> {
-        const { data } = await supabase.from("cs_tasks").select("done_at").eq("id", id).eq("user_id", this.userId).maybeSingle();
+        const { data } = await this.client.from("cs_tasks").select("done_at").eq("id", id).eq("user_id", this.userId).maybeSingle();
         const done = Boolean((data as Row | null)?.done_at);
-        const { error } = await supabase.from("cs_tasks").update({ done_at: done ? null : new Date().toISOString() }).eq("id", id).eq("user_id", this.userId);
+        const { error } = await this.client.from("cs_tasks").update({ done_at: done ? null : new Date().toISOString() }).eq("id", id).eq("user_id", this.userId);
         fail("task", error);
     }
     async deleteTask(id: string): Promise<void> {
-        const { error } = await supabase.from("cs_tasks").delete().eq("id", id).eq("user_id", this.userId);
+        const { error } = await this.client.from("cs_tasks").delete().eq("id", id).eq("user_id", this.userId);
         fail("task", error);
     }
 
     async addNote(lessonId: string, body: string, atSec: number | null): Promise<Note> {
-        const { data, error } = await supabase.from("cs_notes").insert({ organization_id: this.org, user_id: this.userId, lesson_id: lessonId, body, at_sec: atSec }).select("*").single();
+        const { data, error } = await this.client.from("cs_notes").insert({ organization_id: this.org, user_id: this.userId, lesson_id: lessonId, body, at_sec: atSec }).select("*").single();
         fail("note", error);
         const r = data as Row;
         return { id: s(r.id), lessonId, atSec, body, createdAt: iso(r.created_at) };
     }
     async deleteNote(id: string): Promise<void> {
-        const { error } = await supabase.from("cs_notes").delete().eq("id", id).eq("user_id", this.userId);
+        const { error } = await this.client.from("cs_notes").delete().eq("id", id).eq("user_id", this.userId);
         fail("note", error);
     }
 
@@ -299,27 +304,27 @@ export class SupabaseRepo implements Repo {
         return this.toggleRow("cs_group_members", "group_id", groupId);
     }
     async loadGroupPosts(groupId: string): Promise<GroupPost[]> {
-        const { data, error } = await supabase.from("cs_group_posts").select("*").eq("organization_id", this.org).eq("group_id", groupId).order("created_at", { ascending: false }).limit(100);
+        const { data, error } = await this.client.from("cs_group_posts").select("*").eq("organization_id", this.org).eq("group_id", groupId).order("created_at", { ascending: false }).limit(100);
         fail("posts", error);
         return ((data as Row[] | null) ?? []).map((r) => ({ id: s(r.id), groupId, authorName: s(r.author_name), authorHue: (s(r.author_hue) || "lilac") as Hue, authorPhotoUrl: s(r.author_photo_url) || undefined, body: s(r.body), createdAt: iso(r.created_at), mine: s(r.user_id) === this.userId }));
     }
     async postToGroup(groupId: string, body: string): Promise<GroupPost> {
         const me = await this.ensureProfile();
-        const { data, error } = await supabase.from("cs_group_posts").insert({ organization_id: this.org, group_id: groupId, user_id: this.userId, author_name: me.name, author_hue: me.hue, author_photo_url: me.photoUrl ?? null, body }).select("*").single();
+        const { data, error } = await this.client.from("cs_group_posts").insert({ organization_id: this.org, group_id: groupId, user_id: this.userId, author_name: me.name, author_hue: me.hue, author_photo_url: me.photoUrl ?? null, body }).select("*").single();
         fail("post", error);
         const r = data as Row;
         return { id: s(r.id), groupId, authorName: me.name, authorHue: me.hue, authorPhotoUrl: me.photoUrl, body, createdAt: iso(r.created_at), mine: true };
     }
 
     async startConversation(peerKind: PeerKind, peerId: string): Promise<Conversation> {
-        const { data: existing } = await supabase.from("cs_conversations").select("*").eq("organization_id", this.org).eq("user_id", this.userId).eq("peer_kind", peerKind).eq("peer_id", peerId).maybeSingle();
+        const { data: existing } = await this.client.from("cs_conversations").select("*").eq("organization_id", this.org).eq("user_id", this.userId).eq("peer_kind", peerKind).eq("peer_id", peerId).maybeSingle();
         const cat = this.catalogueCache ?? (await this.loadCatalogue());
         const mentor = peerKind === "mentor" ? cat.mentors.find((m) => m.id === peerId) : null;
         const friend = peerKind === "friend" ? DEMO_FRIENDS.find((f) => f.id === peerId) : null;
         const name = mentor?.name ?? friend?.name ?? "Someone";
         const map = (r: Row): Conversation => ({ id: s(r.id), peerKind, peerId, peerName: s(r.peer_name), peerRole: s(r.peer_role), peerHue: (s(r.peer_hue) || "lilac") as Hue, lastBody: s(r.last_body), updatedAt: iso(r.updated_at), unread: n(r.unread) });
         if (existing) return map(existing as Row);
-        const { data, error } = await supabase
+        const { data, error } = await this.client
             .from("cs_conversations")
             .insert({ organization_id: this.org, user_id: this.userId, peer_kind: peerKind, peer_id: peerId, peer_name: name, peer_role: mentor ? "Mentor" : (friend?.label ?? "Friend"), peer_hue: mentor?.hue ?? friend?.hue ?? hueFor(name) })
             .select("*")
@@ -328,30 +333,30 @@ export class SupabaseRepo implements Repo {
         return map(data as Row);
     }
     async loadMessages(conversationId: string): Promise<Message[]> {
-        const { data, error } = await supabase.from("cs_messages").select("*").eq("conversation_id", conversationId).eq("user_id", this.userId).order("created_at").limit(300);
+        const { data, error } = await this.client.from("cs_messages").select("*").eq("conversation_id", conversationId).eq("user_id", this.userId).order("created_at").limit(300);
         fail("messages", error);
         return ((data as Row[] | null) ?? []).map((r) => ({ id: s(r.id), conversationId, fromMe: Boolean(r.from_me), body: s(r.body), createdAt: iso(r.created_at) }));
     }
     async sendMessage(conversationId: string, body: string): Promise<Message> {
-        const { data, error } = await supabase.from("cs_messages").insert({ organization_id: this.org, conversation_id: conversationId, user_id: this.userId, from_me: true, body }).select("*").single();
+        const { data, error } = await this.client.from("cs_messages").insert({ organization_id: this.org, conversation_id: conversationId, user_id: this.userId, from_me: true, body }).select("*").single();
         fail("message", error);
         const r = data as Row;
-        await supabase.from("cs_conversations").update({ last_body: body, updated_at: iso(r.created_at) }).eq("id", conversationId).eq("user_id", this.userId);
+        await this.client.from("cs_conversations").update({ last_body: body, updated_at: iso(r.created_at) }).eq("id", conversationId).eq("user_id", this.userId);
         return { id: s(r.id), conversationId, fromMe: true, body, createdAt: iso(r.created_at) };
     }
     async markRead(conversationId: string): Promise<void> {
-        await supabase.from("cs_conversations").update({ unread: 0 }).eq("id", conversationId).eq("user_id", this.userId);
+        await this.client.from("cs_conversations").update({ unread: 0 }).eq("id", conversationId).eq("user_id", this.userId);
     }
 
     async markNotificationsRead(ids?: string[]): Promise<void> {
-        let q = supabase.from("cs_notifications").update({ read_at: new Date().toISOString() }).eq("organization_id", this.org).eq("user_id", this.userId).is("read_at", null);
+        let q = this.client.from("cs_notifications").update({ read_at: new Date().toISOString() }).eq("organization_id", this.org).eq("user_id", this.userId).is("read_at", null);
         if (ids?.length) q = q.in("id", ids);
         const { error } = await q;
         fail("notifications", error);
     }
 
     async submitQuiz(lessonId: string, score: number, total: number): Promise<QuizAttempt> {
-        const { data, error } = await supabase.from("cs_quiz_attempts").insert({ organization_id: this.org, user_id: this.userId, lesson_id: lessonId, score, total }).select("*").single();
+        const { data, error } = await this.client.from("cs_quiz_attempts").insert({ organization_id: this.org, user_id: this.userId, lesson_id: lessonId, score, total }).select("*").single();
         fail("quiz", error);
         const r = data as Row;
         if (score / Math.max(1, total) >= 0.66) await this.saveProgress(lessonId, 0, true);
@@ -359,13 +364,13 @@ export class SupabaseRepo implements Repo {
     }
 
     async issueCertificate(courseId: string): Promise<Certificate> {
-        const { data: existing } = await supabase.from("cs_certificates").select("*").eq("organization_id", this.org).eq("user_id", this.userId).eq("course_id", courseId).maybeSingle();
+        const { data: existing } = await this.client.from("cs_certificates").select("*").eq("organization_id", this.org).eq("user_id", this.userId).eq("course_id", courseId).maybeSingle();
         if (existing) {
             const r = existing as Row;
             return { id: s(r.id), courseId, code: s(r.code), issuedAt: iso(r.issued_at) };
         }
         // The server checks every lesson is complete before it will insert.
-        const { data, error } = await supabase.rpc("cs_issue_certificate", { p_org: this.org, p_course: courseId });
+        const { data, error } = await this.client.rpc("cs_issue_certificate", { p_org: this.org, p_course: courseId });
         fail("certificate", error);
         const r = (Array.isArray(data) ? data[0] : data) as Row | null;
         if (!r) throw new Error("Finish every lesson first.");

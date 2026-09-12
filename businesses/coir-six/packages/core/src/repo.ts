@@ -11,7 +11,7 @@ import type {
     QuizAttempt,
     Task,
     UserState,
-} from "@/data/types";
+} from "./types";
 
 /**
  * Everything the UI can read or change, behind one interface.
@@ -32,8 +32,8 @@ export interface Repo {
 
     /** `photoUrl: ""` removes the photo. */
     updateProfile(patch: Partial<Profile>): Promise<void>;
-    /** Store a cropped, square profile photo and return the URL to save on the profile. */
-    uploadPhoto(blob: Blob): Promise<string>;
+    /** Store a cropped, square JPEG profile photo (a Blob on the web, bytes on a phone) and return the URL to save on the profile. */
+    uploadPhoto(data: Blob | ArrayBuffer): Promise<string>;
 
     enroll(courseId: string): Promise<void>;
     /** Save playback position; `completed` marks the lesson done. */

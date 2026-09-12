@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Inbox, Send } from "lucide-react";
-import type { Message, PeerKind } from "@/data/types";
+import type { Message, PeerKind } from "@coir-six/core";
 import { cn } from "@/lib/cn";
-import { relative, time } from "@/lib/format";
+import { relative, time } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { PageTitle } from "@/components/shell/AppShell";
 import { Avatar, Button, EmptyState } from "@/components/ui/primitives";
-import type { Catalogue, Conversation, UserState } from "@/data/types";
+import type { Catalogue, Conversation, UserState } from "@coir-six/core";
 
 /** A conversation stores only the peer's id; the portrait lives on the mentor or friend record. */
 function peerPhoto(cat: Catalogue, user: UserState, c: Conversation): string | undefined {

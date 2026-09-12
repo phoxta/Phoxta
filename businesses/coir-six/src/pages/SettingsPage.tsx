@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera } from "lucide-react";
-import type { CategoryId } from "@/data/types";
+import type { CategoryId } from "@coir-six/core";
 import { cn } from "@/lib/cn";
-import { type Hue } from "@/lib/format";
+import { type Hue } from "@coir-six/core";
 import { useAuth } from "@/state/auth";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";

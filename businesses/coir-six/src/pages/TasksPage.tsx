@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckSquare, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { dayKey } from "@/lib/format";
+import { dayKey } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { TaskRow } from "@/components/cards";

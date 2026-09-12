@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Printer } from "lucide-react";
-import { longDate } from "@/lib/format";
-import { courseMinutes } from "@/lib/derive";
+import { longDate } from "@coir-six/core";
+import { courseMinutes } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { Button, EmptyState, Sparkle } from "@/components/ui/primitives";
 
