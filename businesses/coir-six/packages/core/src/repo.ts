@@ -1,4 +1,4 @@
-import type { CaptionSource, LiveRecap, LiveRoom, LocalMedia, VideoFilter } from "./live/room";
+import type { CaptionSource, LiveRecap, LiveRoom, LocalMedia, TranscriptLine, VideoFilter } from "./live/room";
 import type {
     Catalogue,
     Certificate,
@@ -76,6 +76,8 @@ export interface Repo {
     liveCaptionUrl(liveLessonId: string): Promise<string>;
     /** The class recap, written once and shared. Null while there isn't one. */
     liveRecap(liveLessonId: string, force?: boolean): Promise<LiveRecap | null>;
+    /** What was actually said, in order. Empty when the class wasn't captioned. */
+    liveTranscript(liveLessonId: string): Promise<TranscriptLine[]>;
 
     addTask(input: NewTask): Promise<Task>;
     toggleTask(id: string): Promise<void>;

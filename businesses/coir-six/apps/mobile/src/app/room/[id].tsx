@@ -16,7 +16,7 @@ import { useTheme } from "@/lib/theme";
 import { useData } from "@/state/data";
 import { Avatar, Button, Card } from "@/components/ui/primitives";
 import { Txt } from "@/components/ui/text";
-import { Controls, Filmstrip, Panel, Tile, useRoomSnapshot } from "@/components/live/Room";
+import { Captions, Controls, Filmstrip, Panel, QuizCard, Tile, useRoomSnapshot } from "@/components/live/Room";
 import { registerWebrtcGlobals } from "@/components/live/VideoTrack";
 
 /**
@@ -167,7 +167,10 @@ export default function RoomScreen() {
 
             <View style={{ marginTop: 12, gap: 10 }}>
                 {snap.media && stage ? (
-                    <Tile p={stage} room={room} big pinned={snap.pinned === stage.identity} canHost={canHost} />
+                    <View>
+                        <Tile p={stage} room={room} big pinned={snap.pinned === stage.identity} canHost={canHost} />
+                        <Captions snap={snap} />
+                    </View>
                 ) : (
                     <Card style={{ aspectRatio: 16 / 9, alignItems: "center", justifyContent: "center", borderRadius: r.xl }}>
                         <Txt role="h3" align="center">
@@ -179,6 +182,7 @@ export default function RoomScreen() {
                     </Card>
                 )}
                 {snap.media && strip.length > 0 && <Filmstrip people={strip} room={room} snap={snap} canHost={canHost} />}
+                <QuizCard snap={snap} room={room} canHost={canHost} />
             </View>
 
             <View style={{ flex: 1, marginTop: 12 }}>

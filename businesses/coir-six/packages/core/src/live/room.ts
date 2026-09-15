@@ -97,6 +97,14 @@ export interface LiveRecap {
     actions: string[];
 }
 
+/** A settled line of the transcript, read back after the class. */
+export interface TranscriptLine {
+    id: string;
+    speaker: string;
+    text: string;
+    at: string;
+}
+
 /** One line of speech, from whoever was talking. */
 export interface LiveCaption {
     id: string;

@@ -266,6 +266,11 @@ export class LocalRepo implements Repo {
         return null;
     }
 
+    /** Nothing was said out loud in a scripted class. */
+    async liveTranscript(): Promise<[]> {
+        return [];
+    }
+
     /** Nothing leaves the device in the demo — the recording stays a blob URL. */
     async saveRecording(_liveLessonId: string, data: Blob | ArrayBuffer, mimeType: string): Promise<string> {
         if (data instanceof ArrayBuffer) return `data:${mimeType};base64,${base64Encode(new Uint8Array(data))}`;

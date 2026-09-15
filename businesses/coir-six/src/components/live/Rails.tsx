@@ -4,7 +4,7 @@ import { groupChat, peopleLabel, type LiveParticipant, type LiveRoom, type RoomS
 import { cn } from "@/lib/cn";
 import { time } from "@coir-six/core";
 import { Avatar, Button, EmptyState } from "@/components/ui/primitives";
-import { Menu } from "@/components/ui/overlay";
+import { Dialog, Menu } from "@/components/ui/overlay";
 
 /**
  * The right-hand rails: who is here, and what they are saying.
@@ -158,6 +158,7 @@ function State({
 export function ChatRail({ snap, room }: { snap: RoomSnapshot; room: LiveRoom }) {
     const [draft, setDraft] = useState("");
     const [sending, setSending] = useState(false);
+    const [all, setAll] = useState(false);
     const feed = useRef<HTMLDivElement>(null);
     const groups = groupChat(snap.chat);
 
@@ -185,9 +186,18 @@ export function ChatRail({ snap, room }: { snap: RoomSnapshot; room: LiveRoom })
 
     return (
         <section aria-labelledby="live-chat" className="flex min-h-0 flex-1 flex-col">
-            <h2 id="live-chat" className="pb-2 text-[19px] font-semibold">
-                Chats
-            </h2>
+            <header className="flex items-baseline justify-between gap-3 pb-2">
+                <h2 id="live-chat" className="text-[19px] font-semibold">
+                    Chats
+                </h2>
+                {/* "View All" from the design. The rail keeps a readable window;
+                    this opens the whole conversation without leaving the class. */}
+                {snap.chat.length > 6 && (
+                    <button type="button" onClick={() => setAll(true)} className="text-[13px] font-semibold text-brand hover:underline">
+                        View all
+                    </button>
+                )}
+            </header>
 
             <div ref={feed} className="min-h-0 flex-1 overflow-y-auto pr-1" role="log" aria-live="polite" aria-relevant="additions">
                 {groups.length === 0 ? (
@@ -250,6 +260,29 @@ export function ChatRail({ snap, room }: { snap: RoomSnapshot; room: LiveRoom })
                     <Send size={16} />
                 </button>
             </form>
+
+            <Dialog open={all} onClose={() => setAll(false)} title="Chats" wide>
+                <ul className="flex max-h-[62vh] flex-col gap-3 overflow-y-auto">
+                    {groups.map((run) => (
+                        <li key={run[0].id} className="flex gap-2.5">
+                            <Avatar name={run[0].name} hue={run[0].hue} src={run[0].photoUrl} size="xs" className="mt-4" />
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-baseline gap-2">
+                                    <span className="truncate text-[11px] font-semibold text-caption">{run[0].mine ? "You" : run[0].name}</span>
+                                    <span className="shrink-0 text-[11px] text-muted">{time(run[0].createdAt)}</span>
+                                </div>
+                                <div className="mt-1 flex flex-col items-start gap-1">
+                                    {run.map((m) => (
+                                        <p key={m.id} className={cn("max-w-full break-words rounded-lg px-3 py-2 text-[13px] leading-5", m.mine ? "bg-brand text-white" : "bg-page text-ink")}>
+                                            {m.body}
+                                        </p>
+                                    ))}
+                                </div>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            </Dialog>
         </section>
     );
 }

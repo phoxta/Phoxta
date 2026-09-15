@@ -1,5 +1,5 @@
 import { CATALOGUE, DEMO_FRIENDS } from "./seed";
-import type { LiveContext, LiveRecap, LiveRoom } from "./live/room";
+import type { LiveContext, LiveRecap, LiveRoom, TranscriptLine } from "./live/room";
 import type { OpenRoomInput, Repo } from "./repo";
 import type {
     Catalogue,
@@ -385,6 +385,18 @@ export class SupabaseRepo implements Repo {
         });
         if (error) return null;
         return ((data as { recap?: LiveRecap } | null)?.recap) ?? null;
+    }
+
+    async liveTranscript(liveLessonId: string): Promise<TranscriptLine[]> {
+        const { data, error } = await this.client
+            .from("cs_live_transcript")
+            .select("id, speaker_name, text, said_at")
+            .eq("organization_id", this.org)
+            .eq("live_lesson_id", liveLessonId)
+            .order("said_at", { ascending: true })
+            .limit(2000);
+        if (error || !data) return [];
+        return (data as Row[]).map((r) => ({ id: s(r.id), speaker: s(r.speaker_name, "Someone"), text: s(r.text), at: iso(r.said_at) }));
     }
 
     async leaveLive(liveLessonId: string, seconds: number): Promise<void> {

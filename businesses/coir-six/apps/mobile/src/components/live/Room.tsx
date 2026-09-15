@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { FlatList, Pressable, ScrollView, TextInput, View } from "react-native";
 import {
+    CheckCircle2,
     Hand,
+    HelpCircle,
     Mic,
     MicOff,
     Pin,
@@ -330,6 +332,104 @@ export function Controls({ snap, room, onLeave }: { snap: RoomSnapshot; room: Li
                     {canHost ? "End class" : "Leave"}
                 </Button>
             </View>
+        </View>
+    );
+}
+
+/**
+ * The question on screen, on a phone.
+ *
+ * Same rules as the web: the correct answer is not in the payload while the
+ * question is open, and the tally is the host's until it closes — otherwise
+ * everyone just follows the bars.
+ */
+export function QuizCard({ snap, room, canHost }: { snap: RoomSnapshot; room: LiveRoom; canHost: boolean }) {
+    const { c, r } = useTheme();
+    const q = snap.question;
+    if (!q) return null;
+    const votes = snap.answers.reduce((n, v) => n + v, 0);
+    const showBars = canHost || q.closed;
+
+    return (
+        <Card style={{ gap: 10, backgroundColor: q.closed ? c.card : c.brandSoft, borderRadius: r.xl }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <HelpCircle size={14} color={c.brandInk} />
+                <Txt size={11} weight="semibold" color={c.brandInk} style={{ letterSpacing: 0.4 }}>
+                    {q.closed ? "ANSWER" : "QUESTION"}
+                </Txt>
+                {showBars && (
+                    <Txt role="caption" style={{ marginLeft: "auto" }}>
+                        {votes} {votes === 1 ? "answer" : "answers"}
+                    </Txt>
+                )}
+            </View>
+            <Txt size={15} weight="semibold" lineHeight={20}>
+                {q.prompt}
+            </Txt>
+            <View style={{ gap: 8 }}>
+                {q.options.map((opt, i) => {
+                    const mine = snap.myAnswer === i;
+                    const right = q.closed && q.answer === i;
+                    const pct = votes ? Math.round((snap.answers[i] / votes) * 100) : 0;
+                    const locked = q.closed || snap.myAnswer !== null;
+                    return (
+                        <Pressable
+                            key={opt}
+                            disabled={locked}
+                            onPress={() => void room.answer(i)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: mine, disabled: locked }}
+                            style={{
+                                borderRadius: r.lg,
+                                borderWidth: 1,
+                                borderColor: right ? c.mint : mine ? c.brand : c.lineStrong,
+                                backgroundColor: c.card,
+                                paddingHorizontal: 12,
+                                paddingVertical: 10,
+                                overflow: "hidden",
+                            }}
+                        >
+                            {showBars && (
+                                <View
+                                    style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, backgroundColor: right ? c.mintSoft : c.brandSoft }}
+                                />
+                            )}
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                {right && <CheckCircle2 size={14} color={c.mint} />}
+                                <Txt size={13} weight={right || mine ? "semibold" : "regular"} style={{ flex: 1 }}>
+                                    {opt}
+                                </Txt>
+                                {showBars && <Txt role="caption">{pct}%</Txt>}
+                            </View>
+                        </Pressable>
+                    );
+                })}
+            </View>
+            {canHost && !q.closed && (
+                <Button variant="outline" size="md" onPress={() => void room.closeQuestion()}>
+                    Reveal the answer
+                </Button>
+            )}
+            {!canHost && snap.myAnswer !== null && !q.closed && (
+                <Txt role="caption">Answer locked in — waiting for the mentor.</Txt>
+            )}
+        </Card>
+    );
+}
+
+/** Captions over the foot of the stage, as on the web. */
+export function Captions({ snap }: { snap: RoomSnapshot }) {
+    const { c, r } = useTheme();
+    if (!snap.captions.length) return null;
+    return (
+        <View
+            pointerEvents="none"
+            accessibilityLiveRegion="polite"
+            style={{ position: "absolute", left: 10, right: 10, bottom: 10, borderRadius: r.lg, backgroundColor: "rgba(27,27,35,0.85)", paddingHorizontal: 12, paddingVertical: 8 }}
+        >
+            <Txt size={13} lineHeight={19} color={c.white} align="center">
+                {snap.captions.map((x) => x.text).join(" ")}
+            </Txt>
         </View>
     );
 }

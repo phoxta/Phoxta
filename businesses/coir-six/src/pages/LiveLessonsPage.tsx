@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Calendar, CheckCircle2, Clock, Sparkles, Video } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { LiveLesson, LiveRecap } from "@coir-six/core";
+import type { LiveLesson, LiveRecap, TranscriptLine } from "@coir-six/core";
 import { cn } from "@/lib/cn";
 import { longDate, time } from "@coir-six/core";
 import { attendanceFor, duration, liveOpensAt, liveState, pastLive, upcomingLive } from "@coir-six/core";
@@ -25,13 +25,20 @@ export default function LiveLessonsPage() {
     const [recapOf, setRecapOf] = useState<LiveLesson | null>(null);
     const [recap, setRecap] = useState<LiveRecap | null>(null);
     const [recapBusy, setRecapBusy] = useState(false);
+    const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
+    const [tab, setTab] = useState<"recap" | "transcript">("recap");
 
     const openRecap = async (l: LiveLesson) => {
         setRecapOf(l);
         setRecap(null);
         setRecapBusy(true);
+        setTab("recap");
         try {
-            setRecap(await repo.liveRecap(l.id));
+            // Both at once: the recap is written from the transcript, so if one
+            // exists the other almost certainly does.
+            const [r, t] = await Promise.all([repo.liveRecap(l.id), repo.liveTranscript(l.id)]);
+            setRecap(r);
+            setTranscript(t);
         } finally {
             setRecapBusy(false);
         }
@@ -150,8 +157,40 @@ export default function LiveLessonsPage() {
                     <p className="flex items-center gap-2 py-6 text-[14px] text-muted">
                         <Spinner className="size-4" /> Reading the class back…
                     </p>
-                ) : recap ? (
+                ) : recap || transcript.length > 0 ? (
                     <div className="flex flex-col gap-5">
+                        {transcript.length > 0 && (
+                            <div className="flex gap-1 rounded-lg bg-page p-1" role="tablist">
+                                {(["recap", "transcript"] as const).map((t) => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={tab === t}
+                                        onClick={() => setTab(t)}
+                                        className={cn(
+                                            "flex-1 rounded-sm py-2 text-[13px] font-semibold capitalize",
+                                            tab === t ? "bg-card text-ink" : "text-muted",
+                                        )}
+                                    >
+                                        {t === "transcript" ? `Transcript (${transcript.length})` : "Recap"}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        {tab === "transcript" ? (
+                            <ul className="flex max-h-[52vh] flex-col gap-3 overflow-y-auto">
+                                {transcript.map((l) => (
+                                    <li key={l.id}>
+                                        <span className="block text-[11px] font-semibold text-caption">
+                                            {l.speaker} · {time(l.at)}
+                                        </span>
+                                        <span className="block text-[14px] leading-6">{l.text}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : recap ? (
+                        <>
                         <p className="text-[14px] leading-6">{recap.summary}</p>
                         {recap.keyPoints.length > 0 && (
                             <Block title="Key points" items={recap.keyPoints} />
@@ -163,6 +202,12 @@ export default function LiveLessonsPage() {
                         <p className="text-[12px] text-muted">
                             Written from the transcript and the chat. Turn captions on during a class to get one.
                         </p>
+                        </>
+                        ) : (
+                            <p className="text-[14px] text-muted">
+                                No recap yet — the transcript is here though.
+                            </p>
+                        )}
                     </div>
                 ) : (
                     <EmptyState
