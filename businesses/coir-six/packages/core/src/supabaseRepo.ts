@@ -142,7 +142,7 @@ export class SupabaseRepo implements Repo {
         const profile = await this.ensureProfile();
         const u = this.userId;
         const mine = (table: string, cols = "*") => this.client.from(table).select(cols).eq("organization_id", this.org).eq("user_id", u);
-        const [enr, prog, sess, bm, fol, tasks, notes, gm, convs, notifs, attempts, certs, rsvps] = await Promise.all([
+        const [enr, prog, sess, bm, fol, tasks, notes, gm, convs, notifs, attempts, certs, rsvps, attended] = await Promise.all([
             mine("cs_enrollments"),
             mine("cs_lesson_progress"),
             mine("cs_study_sessions").order("occurred_at", { ascending: false }).limit(400),
@@ -156,6 +156,7 @@ export class SupabaseRepo implements Repo {
             mine("cs_quiz_attempts").order("created_at", { ascending: false }),
             mine("cs_certificates").order("issued_at", { ascending: false }),
             mine("cs_live_rsvps", "live_lesson_id"),
+            mine("cs_live_participants", "live_lesson_id, joined_at, seconds"),
         ]);
         const rows = (q: { data: unknown }): Row[] => (q.data as Row[] | null) ?? [];
         return {
@@ -176,6 +177,7 @@ export class SupabaseRepo implements Repo {
             attempts: rows(attempts).map((r) => ({ id: s(r.id), lessonId: s(r.lesson_id), score: n(r.score), total: n(r.total), createdAt: iso(r.created_at) })),
             certificates: rows(certs).map((r) => ({ id: s(r.id), courseId: s(r.course_id), code: s(r.code), issuedAt: iso(r.issued_at) })),
             rsvps: rows(rsvps).map((r) => s(r.live_lesson_id)),
+            attendance: rows(attended).map((r) => ({ liveLessonId: s(r.live_lesson_id), joinedAt: iso(r.joined_at), seconds: n(r.seconds) })),
         };
     }
 

@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { Check, Heart, MoreVertical, Trash2, UserPlus, ArrowUpRight, Clock, FileText, HelpCircle, Play } from "lucide-react";
+import { Check, Heart, MoreVertical, Trash2, UserPlus, ArrowRight, ArrowUpRight, Clock, FileText, HelpCircle, Play } from "lucide-react";
 import type { Course, Lesson, LiveLesson, Mentor, Task } from "@coir-six/core";
 import { cn } from "@/lib/cn";
 import { duration, dueLabel, longDate, time } from "@coir-six/core";
-import { courseMinutes, courseProgress, mentorOf } from "@coir-six/core";
+import { courseMinutes, courseProgress, liveState, mentorOf } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { Avatar, Button, Cover, IconButton, ProgressBar, Tag } from "@/components/ui/primitives";
@@ -121,21 +121,32 @@ export function LessonKindIcon({ kind, size = 14 }: { kind: Lesson["kind"]; size
 export function LiveRow({ live, showDate = true }: { live: LiveLesson; showDate?: boolean }) {
     const { catalogue } = useData();
     const mentor = catalogue.mentors.find((m) => m.id === live.mentorId);
+    const on = liveState(live) === "live";
     if (!mentor) return null;
     return (
-        <div className="grid h-16 grid-cols-[56px_180px_180px_1fr_44px] items-center px-4 max-md:h-auto max-md:grid-cols-[44px_1fr_32px] max-md:grid-rows-[auto_auto] max-md:gap-y-1.5 max-md:py-3.5 max-md:[grid-template-areas:'av_name_act'_'av_desc_act']">
+        <div className={cn("grid h-16 grid-cols-[56px_180px_180px_1fr_44px] items-center px-4 max-md:h-auto max-md:grid-cols-[44px_1fr_32px] max-md:grid-rows-[auto_auto] max-md:gap-y-1.5 max-md:py-3.5 max-md:[grid-template-areas:'av_name_act'_'av_desc_act']", on && "bg-brand-soft/60")}>
             <Avatar name={mentor.name} hue={mentor.hue} src={mentor.photoUrl} size="sm" className="max-md:[grid-area:av] max-md:size-10" />
             <div className="max-md:[grid-area:name]">
                 <div className="text-[14px] font-medium">{mentor.name}</div>
-                <div className="mt-0.5 text-[12px] text-muted">{showDate ? `${longDate(live.startsAt)} · ${time(live.startsAt)}` : time(live.startsAt)}</div>
+                <div className={cn("mt-0.5 text-[12px]", on ? "font-semibold text-brand-ink" : "text-muted")}>
+                    {on ? "Live now" : showDate ? `${longDate(live.startsAt)} · ${time(live.startsAt)}` : time(live.startsAt)}
+                </div>
             </div>
             <Tag tone={live.categoryId} icon={<CategoryIcon id={live.categoryId} />} className="max-md:hidden">
                 {CATEGORY_LABEL[live.categoryId]}
             </Tag>
             <div className="truncate text-[15px] font-medium max-md:[grid-area:desc] max-md:whitespace-normal max-md:text-[14px] max-md:font-normal max-md:text-muted">{live.title}</div>
-            <Link to={`/lessons#${live.id}`} className="grid size-7 place-items-center justify-self-end rounded-full border border-brand text-brand max-md:[grid-area:act]" aria-label={`Open ${live.title}`}>
-                <ArrowUpRight size={12} strokeWidth={2} />
-            </Link>
+            {/* While the class is open this goes straight into the room; the rest
+                of the time it goes to the lesson, as before. */}
+            {on ? (
+                <Link to={`/room/${live.id}`} className="grid size-7 place-items-center justify-self-end rounded-full bg-brand text-white max-md:[grid-area:act]" aria-label={`Join ${live.title}, live now`}>
+                    <ArrowRight size={12} strokeWidth={2.4} />
+                </Link>
+            ) : (
+                <Link to={`/lessons#${live.id}`} className="grid size-7 place-items-center justify-self-end rounded-full border border-brand text-brand max-md:[grid-area:act]" aria-label={`Open ${live.title}`}>
+                    <ArrowUpRight size={12} strokeWidth={2} />
+                </Link>
+            )}
         </div>
     );
 }

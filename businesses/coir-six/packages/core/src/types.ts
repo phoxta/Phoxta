@@ -117,6 +117,14 @@ export interface GroupPost {
     mine: boolean;
 }
 
+/** A class the learner actually sat in — the register, from their side. */
+export interface LiveAttendance {
+    liveLessonId: string;
+    joinedAt: string;
+    /** Total time in the room across rejoins, so a dropped connection doesn't erase it. */
+    seconds: number;
+}
+
 export interface Catalogue {
     categories: Category[];
     mentors: Mentor[];
@@ -255,6 +263,7 @@ export interface UserState {
     attempts: QuizAttempt[];
     certificates: Certificate[];
     rsvps: string[];
+    attendance: LiveAttendance[];
 }
 
 export interface NewTask {

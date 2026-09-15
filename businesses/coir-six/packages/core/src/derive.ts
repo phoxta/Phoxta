@@ -1,4 +1,4 @@
-import type { Catalogue, CategoryId, Course, Lesson, LiveLesson, UserState } from "./types";
+import type { Catalogue, CategoryId, Course, Lesson, LiveAttendance, LiveLesson, UserState } from "./types";
 import { dayKey } from "./format";
 
 /**
@@ -142,6 +142,53 @@ export function upcomingLive(cat: Catalogue, now = new Date()): LiveLesson[] {
 export function pastLive(cat: Catalogue, now = new Date()): LiveLesson[] {
     return cat.liveLessons.filter((l) => new Date(l.startsAt).getTime() + l.durationMin * 60000 < now.getTime()).sort((a, b) => b.startsAt.localeCompare(a.startsAt));
 }
+
+/**
+ * How a live lesson relates to right now.
+ *
+ * ONE definition, deliberately matching what `coir-live` will actually issue a
+ * token for (15 minutes either side of the class). The UI used to open its
+ * "Join now" button 10 minutes before the hour while the server refused until
+ * 15 — a five-minute window where the button was a lie. Keep these in step.
+ */
+export const LIVE_EARLY_MIN = 15;
+export const LIVE_LATE_MIN = 15;
+/** How far ahead a class is worth flagging as "starting soon". */
+export const LIVE_SOON_MIN = 6 * 60;
+
+export type LiveState = "live" | "soon" | "upcoming" | "past";
+
+/** When the doors open — 15 minutes before the hour. */
+export const liveOpensAt = (l: LiveLesson): Date => new Date(new Date(l.startsAt).getTime() - LIVE_EARLY_MIN * 60000);
+export const liveClosesAt = (l: LiveLesson): Date =>
+    new Date(new Date(l.startsAt).getTime() + (l.durationMin + LIVE_LATE_MIN) * 60000);
+
+export function liveState(l: LiveLesson, now = new Date()): LiveState {
+    const t = now.getTime();
+    if (t >= liveOpensAt(l).getTime() && t <= liveClosesAt(l).getTime()) return "live";
+    if (t < liveOpensAt(l).getTime()) {
+        return liveOpensAt(l).getTime() - t <= LIVE_SOON_MIN * 60000 ? "soon" : "upcoming";
+    }
+    return "past";
+}
+
+/** The class happening right now, if there is one. The banner's whole input. */
+export function liveNow(cat: Catalogue, now = new Date()): LiveLesson | null {
+    return cat.liveLessons.find((l) => liveState(l, now) === "live") ?? null;
+}
+
+/** The next class close enough to be worth a countdown. */
+export function liveSoon(cat: Catalogue, now = new Date()): LiveLesson | null {
+    return (
+        cat.liveLessons
+            .filter((l) => liveState(l, now) === "soon")
+            .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null
+    );
+}
+
+/** What the learner's register says about one class. */
+export const attendanceFor = (user: UserState, liveLessonId: string): LiveAttendance | null =>
+    user.attendance.find((a) => a.liveLessonId === liveLessonId) ?? null;
 
 export const unreadMessages = (user: UserState): number => user.conversations.reduce((n, c) => n + c.unread, 0);
 export const unreadNotifications = (user: UserState): number => user.notifications.filter((n) => !n.readAt).length;

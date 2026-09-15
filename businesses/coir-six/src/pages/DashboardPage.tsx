@@ -5,6 +5,7 @@ import { greeting } from "@coir-six/core";
 import { categoryWatched, continueWatching, goalPct, recommended, streak, tenDayBuckets, upcomingLive } from "@coir-six/core";
 import { useData } from "@/state/data";
 import { CourseCard, LiveRow, MentorRow, StatCard } from "@/components/cards";
+import { LiveNowBanner } from "@/components/live/LiveNowBanner";
 import { WithRail } from "@/components/shell/AppShell";
 import { BarChart, Ring } from "@/components/ui/charts";
 import { Avatar, Badge, IconButton, SectionHead, SeeAll, Sparkle } from "@/components/ui/primitives";
@@ -74,6 +75,9 @@ export default function DashboardPage() {
                 </section>
             }
         >
+            {/* Above the hero: a class happening right now outranks an evergreen promo. */}
+            <LiveNowBanner className="mb-5" />
+
             <section className="relative isolate h-[220px] overflow-hidden rounded-xl bg-brand p-6 text-white max-md:h-auto max-md:px-5 max-md:pb-5 max-md:pt-[22px]" aria-labelledby="hero-h">
                 <span className="absolute -right-10 -top-[90px] -z-10 size-[340px] rounded-full bg-brand-glow opacity-70 blur-[90px]" aria-hidden="true" />
                 <Sparkle className="pointer-events-none absolute -top-[46px] right-10 w-[220px] opacity-80 max-md:-right-[52px] max-md:-top-14 max-md:w-[130px] max-md:opacity-50" />

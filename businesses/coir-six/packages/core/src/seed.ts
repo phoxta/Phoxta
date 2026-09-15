@@ -376,6 +376,7 @@ export function demoUserState(): UserState {
         attempts: [],
         certificates: [],
         rsvps: ["live-2"],
+        attendance: [],
     };
 }
 

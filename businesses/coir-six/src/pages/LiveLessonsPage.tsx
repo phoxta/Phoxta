@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Calendar, Video } from "lucide-react";
+import { ArrowRight, Calendar, CheckCircle2, Clock, Video } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { LiveLesson } from "@coir-six/core";
 import { cn } from "@/lib/cn";
 import { longDate, time } from "@coir-six/core";
-import { pastLive, upcomingLive } from "@coir-six/core";
+import { attendanceFor, duration, liveOpensAt, liveState, pastLive, upcomingLive } from "@coir-six/core";
+import { LiveNowBanner, until, useNow } from "@/components/live/LiveNowBanner";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { youtubeId } from "@/components/player/YouTubePlayer";
@@ -20,22 +21,21 @@ export default function LiveLessonsPage() {
     const upcoming = upcomingLive(catalogue);
     const past = pastLive(catalogue);
     const [watching, setWatching] = useState<LiveLesson | null>(null);
+    // Ticks so a row flips to "Join now" while the page is open, rather than
+    // only on a reload.
+    const now = useNow(30000);
 
     useEffect(() => {
         const id = location.hash.slice(1);
         if (id) document.getElementById(id)?.scrollIntoView({ block: "center" });
     }, []);
 
-    const isLive = (l: LiveLesson) => {
-        const s = new Date(l.startsAt).getTime();
-        const now = Date.now();
-        return now >= s - 10 * 60000 && now <= s + l.durationMin * 60000;
-    };
-
     const Row = ({ l, recorded }: { l: LiveLesson; recorded?: boolean }) => {
         const mentor = catalogue.mentors.find((m) => m.id === l.mentorId);
         const on = user.rsvps.includes(l.id);
-        const live = isLive(l);
+        const state = liveState(l, now);
+        const live = state === "live";
+        const attended = attendanceFor(user, l.id);
         return (
             <Card as="li" id={l.id} className={cn("flex flex-col gap-3 md:flex-row md:items-center md:gap-5", live && "ring-2 ring-brand")}>
                 <div className="flex items-center gap-3 md:w-56">
@@ -51,6 +51,12 @@ export default function LiveLessonsPage() {
                     <Tag tone={l.categoryId} icon={<CategoryIcon id={l.categoryId} />} className="mb-1.5">{CATEGORY_LABEL[l.categoryId]}</Tag>
                     <h3 className="text-[15px] font-semibold">{l.title}</h3>
                     <p className="mt-1 text-[13px] leading-5 text-muted">{l.description}</p>
+                    {attended && attended.seconds > 30 && (
+                        <p className="mt-1.5 flex items-center gap-1.5 text-[12px] font-medium text-mint">
+                            <CheckCircle2 size={13} aria-hidden="true" />
+                            You attended · {duration(attended.seconds)}
+                        </p>
+                    )}
                 </div>
                 <div className="flex shrink-0 gap-2 md:flex-col md:items-stretch">
                     {recorded ? (
@@ -69,9 +75,19 @@ export default function LiveLessonsPage() {
                             Join now <ArrowRight size={13} />
                         </Link>
                     ) : (
-                        <Button variant={on ? "tonal" : "brand"} size="md" aria-pressed={on} onClick={() => void mutate((r) => r.toggleRsvp(l.id)).then(() => toast(on ? "Seat released" : "Seat reserved — we'll remind you", "success"))}>
-                            {on ? "Reserved" : "Reserve a seat"}
-                        </Button>
+                        <>
+                            <Button variant={on ? "tonal" : "brand"} size="md" aria-pressed={on} onClick={() => void mutate((r) => r.toggleRsvp(l.id)).then(() => toast(on ? "Seat released" : "Seat reserved — we'll remind you", "success"))}>
+                                {on ? "Reserved" : "Reserve a seat"}
+                            </Button>
+                            {/* Before the doors open, say when — otherwise the room
+                                looks like a feature that isn't there. */}
+                            {state === "soon" && (
+                                <span className="flex items-center justify-center gap-1.5 text-[12px] font-medium text-brand-ink">
+                                    <Clock size={12} aria-hidden="true" />
+                                    Opens in {until(liveOpensAt(l), now)}
+                                </span>
+                            )}
+                        </>
                     )}
                 </div>
             </Card>
@@ -83,6 +99,7 @@ export default function LiveLessonsPage() {
     return (
         <>
             <PageTitle title="Lessons" sub="Live sessions with your mentors. Reserve a seat, then join from here when it starts." />
+            <LiveNowBanner className="mb-6" />
             <section aria-labelledby="up-h">
                 <h2 id="up-h" className="mb-3 flex items-center gap-2 text-[18px] font-semibold">
                     <Calendar size={18} /> Upcoming

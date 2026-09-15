@@ -235,10 +235,23 @@ export class LocalRepo implements Repo {
         });
     }
 
-    /** The demo logs the class as study time, the way finishing a lesson does. */
-    async leaveLive(_liveLessonId: string, seconds: number): Promise<void> {
+    /**
+     * The demo keeps its own register, so "You attended" appears on the lesson
+     * afterwards exactly as it would for a real learner — and the time counts
+     * as study, the way finishing a lesson does.
+     */
+    async leaveLive(liveLessonId: string, seconds: number): Promise<void> {
+        await this.ready();
+        this.write((u) => {
+            const row = u.attendance.find((a) => a.liveLessonId === liveLessonId);
+            // Add across rejoins rather than overwrite: a dropped connection
+            // should not erase the half hour before it.
+            if (row) row.seconds += Math.max(0, Math.round(seconds));
+            else u.attendance.push({ liveLessonId, joinedAt: new Date().toISOString(), seconds: Math.max(0, Math.round(seconds)) });
+        });
         const minutes = Math.round(seconds / 60);
         if (minutes >= 1) await this.logStudy(null, minutes);
+        this.emit();
     }
 
     /** Nothing leaves the device in the demo — the recording stays a blob URL. */
