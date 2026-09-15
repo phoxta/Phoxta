@@ -3,7 +3,8 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { Bell, BookOpen, CheckSquare, Compass, Inbox, LayoutGrid, LogOut, Mail, Settings, Users, Search as SearchIcon, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { greeting, initials } from "@coir-six/core";
-import { openTasks, unreadMessages, unreadNotifications } from "@coir-six/core";
+import { liveNow, openTasks, unreadMessages, unreadNotifications } from "@coir-six/core";
+import { useNow } from "@/lib/useNow";
 import { useAuth } from "@/state/auth";
 import { useData } from "@/state/data";
 import { useTenant } from "@/state/tenant";
@@ -26,7 +27,7 @@ import { Toasts } from "@/components/ui/overlay";
 const NAV = [
     { to: "/", label: "Dashboard", icon: LayoutGrid, end: true },
     { to: "/inbox", label: "Inbox", icon: Inbox, badge: "inbox" as const },
-    { to: "/lessons", label: "Lesson", icon: BookOpen },
+    { to: "/lessons", label: "Lesson", icon: BookOpen, badge: "live" as const },
     { to: "/tasks", label: "Task", icon: CheckSquare, badge: "tasks" as const },
     { to: "/groups", label: "Group", icon: Users },
     { to: "/courses", label: "Courses", icon: Compass },
@@ -44,7 +45,7 @@ const TABS = [
 const NAV_ITEM = "flex items-center gap-3 py-3.5 text-[17px] font-medium";
 
 export function AppShell() {
-    const { user, repo } = useData();
+    const { user, repo, catalogue } = useData();
     const { name } = useTenant();
     const { signOut, leaveDemo, demo } = useAuth();
     const navigate = useNavigate();
@@ -64,6 +65,9 @@ export function AppShell() {
         return () => window.removeEventListener("scroll", on);
     }, []);
 
+    // A class on right now is the one thing in the sidebar that is time-
+    // sensitive, so it gets its own tick rather than waiting for a navigation.
+    const onAir = Boolean(liveNow(catalogue, useNow(30000)));
     const inboxCount = unreadMessages(user);
     const taskCount = openTasks(user);
     const bellCount = unreadNotifications(user);
@@ -113,6 +117,12 @@ export function AppShell() {
                                 <n.icon size={20} strokeWidth={1.8} aria-hidden="true" />
                                 {n.label}
                                 {n.badge === "inbox" && inboxCount > 0 && <Badge className="ml-auto">{inboxCount}</Badge>}
+                                {n.badge === "live" && onAir && (
+                                    <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-danger-soft px-2 py-1 text-[11px] font-semibold text-danger-ink">
+                                        <span className="size-1.5 animate-pulse rounded-full bg-danger" aria-hidden="true" />
+                                        Live
+                                    </span>
+                                )}
                                 {n.badge === "tasks" && taskCount > 0 && <span className="ml-auto text-[12px] text-muted">{taskCount}</span>}
                             </NavLink>
                         ))}
@@ -183,6 +193,7 @@ export function AppShell() {
                                 <span className="relative">
                                     <t.icon size={22} strokeWidth={1.8} aria-hidden="true" />
                                     {t.to === "/inbox" && inboxCount > 0 && <span className="absolute -right-1 -top-1 size-2 rounded-full bg-danger" />}
+                                    {t.to === "/lessons" && onAir && <span className="absolute -right-1 -top-1 size-2 animate-pulse rounded-full bg-danger" />}
                                 </span>
                                 {t.label}
                                 <i className={cn("block size-1 rounded-full", isActive ? "bg-brand" : "bg-transparent")} aria-hidden="true" />

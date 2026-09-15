@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Radio } from "lucide-react";
-import { liveNow, liveOpensAt, liveSoon, time, type LiveLesson } from "@coir-six/core";
+import { liveNow, liveOpensAt, liveSoon, time } from "@coir-six/core";
 import { cn } from "@/lib/cn";
+import { useNow } from "@/lib/useNow";
 import { useData } from "@/state/data";
 import { Avatar } from "@/components/ui/primitives";
 
@@ -69,16 +69,6 @@ export function LiveNowBanner({ className }: { className?: string }) {
     );
 }
 
-/** A clock that ticks only as often as the thing it drives needs. */
-export function useNow(everyMs: number): Date {
-    const [now, setNow] = useState(() => new Date());
-    useEffect(() => {
-        const t = setInterval(() => setNow(new Date()), everyMs);
-        return () => clearInterval(t);
-    }, [everyMs]);
-    return now;
-}
-
 /** "in 2h 15m" / "in 14m" — coarse on purpose; a seconds countdown is noise. */
 export function until(when: Date, now: Date): string {
     const mins = Math.max(0, Math.round((when.getTime() - now.getTime()) / 60000));
@@ -86,10 +76,4 @@ export function until(when: Date, now: Date): string {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return m ? `${h}h ${m}m` : `${h}h`;
-}
-
-/** The status a lesson row shows when the class is not open yet. */
-export function opensLabel(lesson: LiveLesson, now: Date): string {
-    const opens = liveOpensAt(lesson);
-    return opens.getTime() - now.getTime() <= 6 * 60 * 60000 ? `Opens ${time(opens.toISOString())}` : "";
 }

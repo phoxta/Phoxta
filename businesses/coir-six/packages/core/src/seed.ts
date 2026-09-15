@@ -239,9 +239,24 @@ function at(daysFromNow: number, hour: number): string {
     return d.toISOString();
 }
 
+/**
+ * A class that is happening RIGHT NOW, whenever "now" is.
+ *
+ * The rest of the timetable is pinned to clock hours, which means a visitor
+ * arriving at the wrong time of day sees a schedule and no way in — the live
+ * classroom, the headline feature, reads as missing. One session always in
+ * progress is what makes it demonstrable at 3am on a Sunday.
+ *
+ * Deliberately started a few minutes ago rather than exactly now, so the room
+ * is already under way when you walk in.
+ */
+function inProgress(startedMinAgo = 5): string {
+    return new Date(Date.now() - startedMinAgo * 60000).toISOString();
+}
+
 export const LIVE_LESSONS: LiveLesson[] = [
     { id: "live-1", mentorId: "m-padhang", categoryId: "ux", title: "Understand of UI/UX design — live Q&A", description: "Bring a screen you are stuck on. We will pull three apart together and talk through hierarchy, spacing and the one change that fixes most of them.", startsAt: at(-18, 16), durationMin: 60, joinUrl: "https://meet.example.com/coir-six/live-1", recordingUrl: "https://www.youtube.com/watch?v=s91jO5UIfGY" },
-    { id: "live-2", mentorId: "m-leonardo", categoryId: "fe", title: "Office hours: your first deploy", description: "Deploying a static site end to end, then debugging the three things that always go wrong on the first attempt.", startsAt: at(1, 18), durationMin: 45, joinUrl: "https://meet.example.com/coir-six/live-2" },
+    { id: "live-2", mentorId: "m-leonardo", categoryId: "fe", title: "Office hours: your first deploy", description: "Deploying a static site end to end, then debugging the three things that always go wrong on the first attempt.", startsAt: inProgress(), durationMin: 45, joinUrl: "https://meet.example.com/coir-six/live-2" },
     { id: "live-3", mentorId: "m-bayu", categoryId: "ux", title: "Watch a usability test, live", description: "A real participant, a real prototype, and a running commentary on what to notice. The fastest way to learn to moderate.", startsAt: at(3, 13), durationMin: 60, joinUrl: "https://meet.example.com/coir-six/live-3" },
     { id: "live-4", mentorId: "m-zakir", categoryId: "br", title: "Brand voice clinic", description: "Send your homepage copy in advance; we rewrite the weakest paragraph on screen.", startsAt: at(6, 17), durationMin: 50, joinUrl: "https://meet.example.com/coir-six/live-4" },
     { id: "live-5", mentorId: "m-amara", categoryId: "fe", title: "Container queries in production", description: "Real components from a real codebase, refactored from media queries to container queries, with the gotchas.", startsAt: at(9, 12), durationMin: 60, joinUrl: "https://meet.example.com/coir-six/live-5" },
