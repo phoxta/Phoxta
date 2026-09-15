@@ -72,6 +72,42 @@ export interface LiveReaction {
     at: number;
 }
 
+/**
+ * A question the mentor has put on screen.
+ *
+ * `answer` is stripped for everyone but the host until the question closes —
+ * the correct index must not travel to a learner's browser while they are still
+ * answering, or the quiz is decorative.
+ */
+export interface LiveQuestion {
+    id: string;
+    prompt: string;
+    options: string[];
+    /** Host only while open; broadcast to everyone once closed. */
+    answer?: number;
+    closed: boolean;
+    askedAt: string;
+}
+
+/** What a class came to, written after the fact from the transcript and chat. */
+export interface LiveRecap {
+    summary: string;
+    keyPoints: string[];
+    questions: string[];
+    actions: string[];
+}
+
+/** One line of speech, from whoever was talking. */
+export interface LiveCaption {
+    id: string;
+    identity: string;
+    name: string;
+    text: string;
+    /** Deepgram sends partials before it commits; only final lines are kept. */
+    final: boolean;
+    at: number;
+}
+
 export interface RoomSnapshot {
     status: RoomStatus;
     /** Set when `status` is `"failed"`; a sentence to show the learner. */
@@ -99,6 +135,18 @@ export interface RoomSnapshot {
      * than offering buttons that do nothing.
      */
     media: boolean;
+    /** The question on screen, if the mentor has put one up. */
+    question: LiveQuestion | null;
+    /** Tally by option index. The host sees it live; learners see it once closed. */
+    answers: number[];
+    /** What you picked, so the UI can lock your choice. */
+    myAnswer: number | null;
+    /** The last few lines of speech. Rolling — this is a caption bar, not a log. */
+    captions: LiveCaption[];
+    /** Whether YOU are transcribing your own microphone. */
+    captionsOn: boolean;
+    /** Whether YOUR camera is going out blurred. */
+    blurOn: boolean;
 }
 
 export const EMPTY_SNAPSHOT: RoomSnapshot = {
@@ -114,6 +162,12 @@ export const EMPTY_SNAPSHOT: RoomSnapshot = {
     startedAt: null,
     embedUrl: null,
     media: false,
+    question: null,
+    answers: [],
+    myAnswer: null,
+    captions: [],
+    captionsOn: false,
+    blurOn: false,
 };
 
 export interface JoinOptions {
@@ -158,6 +212,29 @@ export interface LiveContext {
     isHost: boolean;
     media?: LocalMedia;
     hostOps?: LiveHostOps;
+    /**
+     * Speech-to-text for the local microphone, supplied by the app because it
+     * needs a browser WebSocket and a short-lived key. Absent = no captions.
+     */
+    captions?: CaptionSource;
+    filter?: VideoFilter;
+    /** Persist what was said, so a class leaves a transcript behind. */
+    onTranscript?: (line: { id: string; text: string; at: string }) => void;
+}
+
+/**
+ * Wraps the camera track in an effect (background blur) and hands back a
+ * replacement to publish. Injected, like `media` and `captions`, because the
+ * effect needs a canvas and core has no DOM.
+ */
+export interface VideoFilter {
+    apply(track: unknown): Promise<{ track: unknown; stop(): void }>;
+}
+
+/** Streams the local microphone to a transcriber and calls back with lines. */
+export interface CaptionSource {
+    start(onLine: (text: string, final: boolean) => void): Promise<void>;
+    stop(): void;
 }
 
 export interface MediaDeviceOption {
@@ -235,6 +312,25 @@ export interface LiveRoom {
     removeParticipant(identity: string): Promise<void>;
     setRecording(on: boolean): Promise<void>;
     endClass(): Promise<void>;
+    /** Put a question on everyone's screen. */
+    ask(prompt: string, options: string[], answer: number): Promise<void>;
+    /** Reveal the answer and stop taking responses. */
+    closeQuestion(): Promise<void>;
+
+    // ── anyone ───────────────────────────────────────────────────────────────
+    /** Answer the question on screen. One shot; ignored once you have answered. */
+    answer(optionIndex: number): Promise<void>;
+    /**
+     * Transcribe YOUR OWN microphone and broadcast the lines to the room.
+     *
+     * Deliberately per-speaker rather than a server-side bot listening to the
+     * mix: the browser already holds the microphone, so this needs no extra
+     * process in the room, and each line arrives already attributed to whoever
+     * said it instead of needing diarisation.
+     */
+    setCaptions(on: boolean): Promise<void>;
+    /** Blur what is behind you. No-op where no filter was supplied. */
+    setBlur(on: boolean): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------

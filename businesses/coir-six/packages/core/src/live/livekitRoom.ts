@@ -30,7 +30,12 @@ import {
 type Wire =
     | { t: "chat"; id: string; body: string; at: string }
     | { t: "reaction"; id: string; emoji: string }
-    | { t: "room"; spotlit: string | null; recording: boolean };
+    | { t: "room"; spotlit: string | null; recording: boolean }
+    // `answer` is omitted while the question is open — see LiveQuestion.
+    | { t: "quiz"; id: string; prompt: string; options: string[]; at: string }
+    | { t: "answer"; option: number }
+    | { t: "quizclose"; answer: number }
+    | { t: "caption"; id: string; text: string; final: boolean };
 
 type Meta = { name?: string; hue?: Hue; photoUrl?: string; role?: LiveRole };
 
@@ -51,6 +56,8 @@ export class LivekitRoom extends BaseRoom implements LiveRoom {
     private lk: typeof import("livekit-client") | null = null;
     /** Chat persistence, injected so this file never imports Supabase. */
     private persist: ((m: { id: string; body: string; at: string }) => void) | undefined;
+    /** The filtered camera currently standing in for the raw one. */
+    private filtered: { track: unknown; stop(): void } | null = null;
 
     constructor(ctx: LiveContext, url: string, token: string, persist?: (m: { id: string; body: string; at: string }) => void) {
         super();
@@ -101,6 +108,9 @@ export class LivekitRoom extends BaseRoom implements LiveRoom {
     }
 
     async disconnect(): Promise<void> {
+        this.ctx.captions?.stop();
+        this.filtered?.stop();
+        this.filtered = null;
         await this.room?.disconnect().catch(() => {});
         this.room = null;
         this.setStatus("ended");
@@ -190,6 +200,29 @@ export class LivekitRoom extends BaseRoom implements LiveRoom {
                 this.spotlit = msg.spotlit;
                 this.recording = msg.recording;
                 this.commit();
+                break;
+            case "quiz":
+                if (meta.role !== "host") return;
+                this.openQuestion({ id: msg.id, prompt: msg.prompt, options: msg.options, closed: false, askedAt: msg.at });
+                break;
+            case "answer":
+                // Everyone tallies locally off the same packets, so the bars
+                // agree without a server counting them.
+                this.recordAnswer(from.identity, msg.option);
+                break;
+            case "quizclose":
+                if (meta.role !== "host") return;
+                this.shutQuestion(msg.answer);
+                break;
+            case "caption":
+                this.pushCaption({
+                    id: msg.id,
+                    identity: from.identity,
+                    name: meta.name ?? from.name ?? "Someone",
+                    text: msg.text,
+                    final: msg.final,
+                    at: Date.now(),
+                });
                 break;
         }
     }
@@ -369,6 +402,101 @@ export class LivekitRoom extends BaseRoom implements LiveRoom {
         this.requireHost("end the class");
         await this.ctx.hostOps?.end();
         await this.disconnect();
+    }
+
+    // ── quiz ─────────────────────────────────────────────────────────────────
+
+    async ask(prompt: string, options: string[], answer: number): Promise<void> {
+        this.requireHost("ask a question");
+        const msg: Wire & { t: "quiz" } = { t: "quiz", id: liveId("q"), prompt, options, at: new Date().toISOString() };
+        const local = this.room?.localParticipant;
+        if (local) this.onWire(msg, local);
+        // The host keeps the correct answer to itself until the question closes.
+        this.question = this.question ? { ...this.question, answer } : this.question;
+        this.commit();
+        await this.publish(msg);
+    }
+
+    async closeQuestion(): Promise<void> {
+        this.requireHost("close the question");
+        const answer = this.question?.answer ?? -1;
+        this.shutQuestion(answer);
+        await this.publish({ t: "quizclose", answer });
+    }
+
+    async answer(optionIndex: number): Promise<void> {
+        if (!this.question || this.question.closed || this.myAnswer !== null) return;
+        this.recordAnswer(this.meId, optionIndex);
+        await this.publish({ t: "answer", option: optionIndex });
+    }
+
+    // ── captions ─────────────────────────────────────────────────────────────
+
+    async setCaptions(on: boolean): Promise<void> {
+        const src = this.ctx.captions;
+        if (!src) return;
+        if (!on) {
+            src.stop();
+            this.captionsOn = false;
+            this.commit();
+            return;
+        }
+        await src.start((text, final) => {
+            const msg: Wire & { t: "caption" } = { t: "caption", id: liveId("cap"), text, final };
+            const local = this.room?.localParticipant;
+            if (local) this.onWire(msg, local);
+            void this.publish(msg);
+            // Only settled lines go into the transcript; partials churn.
+            if (final) this.ctx.onTranscript?.({ id: msg.id, text, at: new Date().toISOString() });
+        });
+        this.captionsOn = true;
+        this.commit();
+    }
+
+    // ── background blur ──────────────────────────────────────────────────────
+
+    /**
+     * Swap the published camera for a filtered copy of it.
+     *
+     * The room is told nothing: the replacement is published on the same
+     * `Camera` source, so every tile, the stage rules and the recorder go on
+     * treating it as the camera — which it is, with a blurred background.
+     */
+    async setBlur(on: boolean): Promise<void> {
+        const lk = this.lk;
+        const room = this.room;
+        const filter = this.ctx.filter;
+        if (!lk || !room || !filter) return;
+        const lp = room.localParticipant;
+
+        if (!on) {
+            this.filtered?.stop();
+            this.filtered = null;
+            this.blurOn = false;
+            // Re-publishing the plain camera is what puts the raw feed back.
+            await lp.setCameraEnabled(false);
+            await lp.setCameraEnabled(true);
+            this.syncAll();
+            return;
+        }
+
+        const pub = lp.getTrackPublication(lk.Track.Source.Camera);
+        const cam = pub?.track?.mediaStreamTrack;
+        if (!cam) return; // camera is off; nothing to filter
+        try {
+            const made = await filter.apply(cam);
+            this.filtered = made;
+            if (pub?.track) await lp.unpublishTrack(pub.track);
+            await lp.publishTrack(made.track as MediaStreamTrack, { source: lk.Track.Source.Camera });
+            this.blurOn = true;
+            this.syncAll();
+        } catch (err) {
+            console.warn("[coir-six] blur unavailable:", (err as Error)?.message);
+            this.filtered?.stop();
+            this.filtered = null;
+            this.blurOn = false;
+            this.commit();
+        }
     }
 }
 

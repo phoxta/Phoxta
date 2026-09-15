@@ -1,8 +1,10 @@
 import {
     EMPTY_SNAPSHOT,
     LiveDenied,
+    type LiveCaption,
     type LiveChatMessage,
     type LiveParticipant,
+    type LiveQuestion,
     type LiveReaction,
     type RoomSnapshot,
     type RoomStatus,
@@ -13,6 +15,8 @@ import {
 const CHAT_CAP = 300;
 /** How long a thrown emoji stays on screen. */
 const REACTION_MS = 6000;
+/** How many caption lines stay on screen. A caption bar, not a transcript. */
+const CAPTION_LINES = 3;
 
 let seq = 0;
 export const liveId = (prefix: string): string => `${prefix}-${Date.now().toString(36)}-${(seq++).toString(36)}`;
@@ -42,6 +46,14 @@ export abstract class BaseRoom {
     protected media = true;
     /** The local participant's identity. */
     protected meId = "";
+    protected question: LiveQuestion | null = null;
+    protected answers: number[] = [];
+    protected myAnswer: number | null = null;
+    /** identity -> option, so a second answer from the same person replaces the first. */
+    protected answerBy = new Map<string, number>();
+    protected captions: LiveCaption[] = [];
+    protected captionsOn = false;
+    protected blurOn = false;
 
     private listeners = new Set<() => void>();
     private snap: RoomSnapshot = EMPTY_SNAPSHOT;
@@ -71,6 +83,12 @@ export abstract class BaseRoom {
                 startedAt: this.startedAt,
                 embedUrl: this.embedUrl,
                 media: this.media,
+                question: this.question,
+                answers: this.answers,
+                myAnswer: this.myAnswer,
+                captions: this.captions,
+                captionsOn: this.captionsOn,
+                blurOn: this.blurOn,
             };
             this.dirty = false;
         }
@@ -144,6 +162,47 @@ export abstract class BaseRoom {
         }, REACTION_MS / 2);
     }
 
+    // ── quiz ─────────────────────────────────────────────────────────────────
+
+    /** Put a question up (or replace the one that was there). */
+    protected openQuestion(q: LiveQuestion): void {
+        this.question = q;
+        this.answers = new Array(q.options.length).fill(0);
+        this.answerBy.clear();
+        this.myAnswer = null;
+        this.commit();
+    }
+
+    protected recordAnswer(identity: string, option: number): void {
+        const q = this.question;
+        if (!q || q.closed || option < 0 || option >= q.options.length) return;
+        // One vote each: undo the previous one rather than double-count.
+        const prev = this.answerBy.get(identity);
+        if (prev === option) return;
+        const next = [...this.answers];
+        if (prev !== undefined) next[prev] = Math.max(0, next[prev] - 1);
+        next[option] += 1;
+        this.answerBy.set(identity, option);
+        this.answers = next;
+        if (identity === this.meId) this.myAnswer = option;
+        this.commit();
+    }
+
+    protected shutQuestion(answer?: number): void {
+        if (!this.question) return;
+        this.question = { ...this.question, closed: true, answer: answer ?? this.question.answer };
+        this.commit();
+    }
+
+    // ── captions ─────────────────────────────────────────────────────────────
+
+    protected pushCaption(c: LiveCaption): void {
+        // A partial replaces the speaker's own in-flight line; a final one keeps it.
+        const rest = this.captions.filter((x) => !(x.identity === c.identity && !x.final));
+        this.captions = [...rest, c].slice(-CAPTION_LINES);
+        this.commit();
+    }
+
     protected get isHost(): boolean {
         return this.people.get(this.meId)?.role === "host";
     }
@@ -154,6 +213,9 @@ export abstract class BaseRoom {
     }
 
     protected teardown(): void {
+        this.question = null;
+        this.answerBy.clear();
+        this.captions = [];
         if (this.reactionTimer) clearTimeout(this.reactionTimer);
         this.reactionTimer = null;
         this.listeners.clear();

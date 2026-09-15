@@ -372,6 +372,13 @@ verify_jwt = true
 [functions.coir-live]
 verify_jwt = true
 
+# The post-class recap. Learners call it with their own session, so the gateway
+# checks the JWT; the function proves tenancy from cs_profiles, caches the recap
+# on the lesson so it is written once per class rather than once per viewer, and
+# meters every call against the school's monthly AI allowance.
+[functions.coir-live-recap]
+verify_jwt = true
+
 # Mints the short-lived token the in-browser voice widget hands the self-hosted
 # Pipecat server so /ice and /offer stop being open to anyone. Public on purpose
 # — an anonymous visitor must be able to start a voice session — so it defends

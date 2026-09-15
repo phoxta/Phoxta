@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { EMPTY_SNAPSHOT, type JoinOptions, type LiveRoom, type LiveLesson, type RoomSnapshot } from "@coir-six/core";
 import { browserMedia } from "@/lib/media";
+import { startBlur } from "@/lib/blur";
+import { deepgramCaptions } from "@/lib/captions";
 import { useData } from "@/state/data";
 
 /**
@@ -75,7 +77,17 @@ export function useLiveRoom(lesson: LiveLesson | null): LiveSession {
             setError(null);
             try {
                 const mentor = catalogue.mentors.find((m) => m.id === lesson.mentorId) ?? null;
-                const r = await repo.openLiveRoom({ lesson, mentor, media, asHost });
+                const r = await repo.openLiveRoom({
+                    lesson,
+                    mentor,
+                    media,
+                    asHost,
+                    // Both are the browser's half of a seam core cannot cross:
+                    // one needs a WebSocket and a short-lived key, the other a
+                    // canvas. The room only ever sees the interface.
+                    captions: deepgramCaptions(() => repo.liveCaptionKey(lesson.id)),
+                    filter: { apply: (t) => startBlur(t as MediaStreamTrack) },
+                });
                 current.current = r;
                 setRoom(r);
                 await r.connect(opts);

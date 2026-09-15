@@ -32,7 +32,7 @@ import { json, preflight } from "../_shared/cors.ts";
 import { requireUser } from "../_shared/auth.ts";
 import { adminClient, userClient } from "../_shared/supabaseAdmin.ts";
 
-type Op = "token" | "mute" | "stage" | "remove" | "end" | "recording";
+type Op = "token" | "mute" | "stage" | "remove" | "end" | "recording" | "caption";
 
 type Body = {
   op?: Op;
@@ -195,6 +195,42 @@ Deno.serve(async (req) => {
 
     if (op !== "token" && !isHost) {
       return json({ error: "Only the mentor running this class can do that." }, 403);
+    }
+
+    /**
+     * A short-lived Deepgram key so the host's browser can stream its own
+     * microphone straight to the transcriber.
+     *
+     * HOST ONLY, and that is a cost decision as much as a design one. Deepgram
+     * bills per minute of audio; one stream per speaker in a 24-person class is
+     * 24x the bill for the ~5% of talking the mentor is not doing. The lecture
+     * is what needs captioning.
+     *
+     * The long-lived key never leaves this function — the browser gets a child
+     * key scoped to usage:write that expires within the hour, so a leaked one
+     * cannot read the account or outlive the class.
+     */
+    if (op === "caption") {
+      const dgKey = env("DEEPGRAM_API_KEY");
+      const dgProject = env("DEEPGRAM_PROJECT_ID");
+      if (!dgKey || !dgProject) return json({ error: "Captions are not configured for this school." }, 501);
+
+      const res = await fetch(`https://api.deepgram.com/v1/projects/${dgProject}/keys`, {
+        method: "POST",
+        headers: { Authorization: `Token ${dgKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comment: `coir-six live class ${lessonId}`,
+          scopes: ["usage:write"],
+          time_to_live_in_seconds: 3600,
+        }),
+      });
+      if (!res.ok) {
+        console.error("coir-live caption key failed", res.status, await res.text());
+        return json({ error: "Captions could not be started." }, 502);
+      }
+      const k = (await res.json()) as { key?: string; expiration_date?: string };
+      if (!k.key) return json({ error: "Captions could not be started." }, 502);
+      return json({ key: k.key, expiresAt: k.expiration_date ?? null });
     }
 
     // Host-only, and app-level rather than media-server-level.

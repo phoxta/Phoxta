@@ -1,4 +1,4 @@
-import type { LiveRoom, LocalMedia } from "./live/room";
+import type { CaptionSource, LiveRecap, LiveRoom, LocalMedia, VideoFilter } from "./live/room";
 import type {
     Catalogue,
     Certificate,
@@ -23,6 +23,10 @@ export interface OpenRoomInput {
     media?: LocalMedia;
     /** Demo only — look at the room the way the mentor running it would. */
     asHost?: boolean;
+    /** Live captions for the local microphone; absent = the room offers none. */
+    captions?: CaptionSource;
+    /** Background blur for the published camera; absent = the room offers none. */
+    filter?: VideoFilter;
 }
 
 /**
@@ -65,6 +69,13 @@ export interface Repo {
     leaveLive(liveLessonId: string, seconds: number): Promise<void>;
     /** Host only: store a finished recording and attach it to the lesson. */
     saveRecording(liveLessonId: string, data: Blob | ArrayBuffer, mimeType: string): Promise<string>;
+    /**
+     * A short-lived transcription key for the local microphone. Host only, and
+     * minted server-side — the account key never reaches a browser.
+     */
+    liveCaptionKey(liveLessonId: string): Promise<string>;
+    /** The class recap, written once and shared. Null while there isn't one. */
+    liveRecap(liveLessonId: string, force?: boolean): Promise<LiveRecap | null>;
 
     addTask(input: NewTask): Promise<Task>;
     toggleTask(id: string): Promise<void>;

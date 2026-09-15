@@ -14,6 +14,7 @@
     },
     "dependencies": {
         "@coir-six/core": "*",
+        "@mediapipe/tasks-vision": "^1.0.1",
         "@supabase/supabase-js": "^2.108.2",
         "livekit-client": "^2.22.3",
         "lucide-react": "^0.546.0",

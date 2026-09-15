@@ -7,6 +7,9 @@ import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { youtubeId } from "@/components/player/YouTubePlayer";
 import { Controls, Reactions } from "@/components/live/Controls";
+import { AskQuestion, QuizCard } from "@/components/live/Quiz";
+import { canBlur } from "@/lib/blur";
+import { canCaption } from "@/lib/captions";
 import { Lobby } from "@/components/live/Lobby";
 import { ChatRail, ParticipantsRail } from "@/components/live/Rails";
 import { RoomHeader } from "@/components/live/RoomHeader";
@@ -45,6 +48,7 @@ export default function ClassroomPage() {
     const recorder = useRecorder(lesson, room, canHost);
 
     const [adding, setAdding] = useState(false);
+    const [asking, setAsking] = useState(false);
     const [sheet, setSheet] = useState<"people" | "chat" | null>(null);
 
     // Leaving for any reason returns you to where the class was listed.
@@ -90,6 +94,11 @@ export default function ClassroomPage() {
 
     const rail = (
         <>
+            {snap.question && (
+                <div className="mb-4 max-lg:hidden">
+                    <QuizCard snap={snap} room={room} canHost={canHost} />
+                </div>
+            )}
             <ParticipantsRail snap={snap} room={room} canHost={canHost} onAdd={() => setAdding(true)} />
             <span className="my-4 block h-px bg-line" aria-hidden="true" />
             <ChatRail snap={snap} room={room} />
@@ -131,6 +140,19 @@ export default function ClassroomPage() {
                             <ExternalStage embed={embed} url={snap.embedUrl} title={lesson.title} />
                         )}
                         <Reactions snap={snap} />
+                        {/* Captions sit over the foot of the stage, the way they do
+                            on television — readable without covering a face. */}
+                        {snap.captions.length > 0 && (
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-3" aria-live="polite">
+                                <p className="mx-auto max-w-[46rem] rounded-lg bg-ink/85 px-3 py-2 text-center text-[14px] leading-6 text-white">
+                                    {snap.captions.map((c) => (
+                                        <span key={c.id} className={cn(!c.final && "opacity-70")}>
+                                            {c.text}{" "}
+                                        </span>
+                                    ))}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* One row that scrolls, as in the design — a grid that wraps
@@ -145,8 +167,23 @@ export default function ClassroomPage() {
                         </ul>
                     )}
 
+                    {snap.question && (
+                        <div className="lg:hidden">
+                            <QuizCard snap={snap} room={room} canHost={canHost} />
+                        </div>
+                    )}
+
                     <div className="mt-auto pt-2">
-                        <Controls snap={snap} room={room} canHost={canHost} onLeave={() => void leave()} onEnd={() => void room.endClass()} />
+                        <Controls
+                            snap={snap}
+                            room={room}
+                            canHost={canHost}
+                            onAsk={() => setAsking(true)}
+                            blurAvailable={canBlur()}
+                            captionsAvailable={canCaption()}
+                            onLeave={() => void leave()}
+                            onEnd={() => void room.endClass()}
+                        />
                     </div>
                 </div>
 
@@ -171,6 +208,10 @@ export default function ClassroomPage() {
                 <div className="flex h-[60vh] flex-col">
                     <ChatRail snap={snap} room={room} />
                 </div>
+            </Dialog>
+
+            <Dialog open={asking} onClose={() => setAsking(false)} title="Ask the class">
+                <AskQuestion room={room} onDone={() => setAsking(false)} />
             </Dialog>
 
             <AddPeople open={adding} onClose={() => setAdding(false)} title={lesson.title} onCopied={() => toast("Invite link copied", "success")} />

@@ -1,5 +1,5 @@
 import { CATALOGUE, DEMO_FRIENDS } from "./seed";
-import type { LiveContext, LiveRoom } from "./live/room";
+import type { LiveContext, LiveRecap, LiveRoom } from "./live/room";
 import type { OpenRoomInput, Repo } from "./repo";
 import type {
     Catalogue,
@@ -299,6 +299,26 @@ export class SupabaseRepo implements Repo {
             me: { id: this.userId, name: profile.name, hue: profile.hue, photoUrl: profile.photoUrl },
             isHost,
             media: input.media,
+            captions: input.captions,
+            filter: input.filter,
+            // Captions are the transcript: keep every settled line, so the class
+            // is searchable and summarisable once it is over.
+            onTranscript: (line) => {
+                void this.client
+                    .from("cs_live_transcript")
+                    .insert({
+                        id: line.id.length === 36 ? line.id : undefined,
+                        organization_id: this.org,
+                        live_lesson_id: input.lesson.id,
+                        user_id: this.userId,
+                        speaker_name: profile.name,
+                        text: line.text,
+                        said_at: line.at,
+                    })
+                    .then(({ error }) => {
+                        if (error) console.warn("[coir-six] transcript line dropped:", error.message);
+                    });
+            },
             hostOps: {
                 mute: (identity, trackSid) => this.liveOp("mute", input.lesson.id, { identity, trackSid }),
                 setStage: (identity, onStage) => this.liveOp("stage", input.lesson.id, { identity, onStage }),
@@ -347,6 +367,24 @@ export class SupabaseRepo implements Repo {
             created_at: m.at,
         });
         if (error) console.warn("[coir-six] live chat not persisted:", error.message);
+    }
+
+    async liveCaptionKey(liveLessonId: string): Promise<string> {
+        const { data, error } = await this.client.functions.invoke("coir-live", {
+            body: { op: "caption", organizationId: this.org, lessonId: liveLessonId },
+        });
+        if (error) throw new Error("Captions couldn't be started for this class.");
+        const key = (data as { key?: string } | null)?.key;
+        if (!key) throw new Error("Captions couldn't be started for this class.");
+        return key;
+    }
+
+    async liveRecap(liveLessonId: string, force = false): Promise<LiveRecap | null> {
+        const { data, error } = await this.client.functions.invoke("coir-live-recap", {
+            body: { organizationId: this.org, lessonId: liveLessonId, force },
+        });
+        if (error) return null;
+        return ((data as { recap?: LiveRecap } | null)?.recap) ?? null;
     }
 
     async leaveLive(liveLessonId: string, seconds: number): Promise<void> {

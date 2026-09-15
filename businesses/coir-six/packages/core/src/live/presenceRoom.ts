@@ -44,7 +44,11 @@ type Wire =
     | { t: "spotlight"; target: string | null }
     | { t: "kick"; target: string }
     | { t: "recording"; on: boolean }
-    | { t: "end" };
+    | { t: "end" }
+    | { t: "quiz"; id: string; prompt: string; options: string[]; at: string }
+    | { t: "answer"; from: string; option: number }
+    | { t: "quizclose"; answer: number }
+    | { t: "caption"; id: string; from: string; name: string; text: string; final: boolean };
 
 export class PresenceRoom extends BaseRoom implements LiveRoom {
     readonly kind = "presence" as const;
@@ -188,6 +192,18 @@ export class PresenceRoom extends BaseRoom implements LiveRoom {
             case "end":
                 void this.disconnect();
                 break;
+            case "quiz":
+                this.openQuestion({ id: msg.id, prompt: msg.prompt, options: msg.options, closed: false, askedAt: msg.at });
+                break;
+            case "answer":
+                this.recordAnswer(msg.from, msg.option);
+                break;
+            case "quizclose":
+                this.shutQuestion(msg.answer);
+                break;
+            case "caption":
+                this.pushCaption({ id: msg.id, identity: msg.from, name: msg.name, text: msg.text, final: msg.final, at: Date.now() });
+                break;
         }
     }
 
@@ -220,6 +236,8 @@ export class PresenceRoom extends BaseRoom implements LiveRoom {
     hasTrack(): boolean {
         return false;
     }
+    /** No media at all here, so nothing to blur. */
+    async setBlur(): Promise<void> {}
     trackOf(): unknown | null {
         return null;
     }
@@ -309,4 +327,47 @@ export class PresenceRoom extends BaseRoom implements LiveRoom {
         await this.send({ t: "end" });
         await this.disconnect();
     }
+
+    async ask(prompt: string, options: string[], answer: number): Promise<void> {
+        this.requireHost("ask a question");
+        const msg: Wire = { t: "quiz", id: liveId("q"), prompt, options, at: new Date().toISOString() };
+        this.onWire(msg);
+        this.question = this.question ? { ...this.question, answer } : this.question;
+        this.commit();
+        await this.send(msg);
+    }
+
+    async closeQuestion(): Promise<void> {
+        this.requireHost("close the question");
+        const answer = this.question?.answer ?? -1;
+        this.shutQuestion(answer);
+        await this.send({ t: "quizclose", answer });
+    }
+
+    async answer(optionIndex: number): Promise<void> {
+        if (!this.question || this.question.closed || this.myAnswer !== null) return;
+        const msg: Wire = { t: "answer", from: this.meId, option: optionIndex };
+        this.onWire(msg);
+        await this.send(msg);
+    }
+
+    async setCaptions(on: boolean): Promise<void> {
+        const src = this.ctx.captions;
+        if (!src) return;
+        if (!on) {
+            src.stop();
+            this.captionsOn = false;
+            this.commit();
+            return;
+        }
+        await src.start((text, final) => {
+            const msg: Wire = { t: "caption", id: liveId("cap"), from: this.meId, name: this.ctx.me.name, text, final };
+            this.onWire(msg);
+            void this.send(msg);
+            if (final) this.ctx.onTranscript?.({ id: msg.id, text, at: new Date().toISOString() });
+        });
+        this.captionsOn = true;
+        this.commit();
+    }
+
 }

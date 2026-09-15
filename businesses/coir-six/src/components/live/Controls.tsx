@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import {
+    Captions,
+    CaptionsOff,
     Hand,
+    HelpCircle,
     LogOut,
     Mic,
     MicOff,
     MonitorUp,
     PhoneOff,
     Smile,
+    Sparkles,
     Video,
     VideoOff,
 } from "lucide-react";
@@ -30,12 +34,18 @@ export function Controls({
     onLeave,
     canHost,
     onEnd,
+    onAsk,
+    blurAvailable,
+    captionsAvailable,
 }: {
     snap: RoomSnapshot;
     room: LiveRoom;
     onLeave: () => void;
     canHost: boolean;
     onEnd: () => void;
+    onAsk: () => void;
+    blurAvailable: boolean;
+    captionsAvailable: boolean;
 }) {
     const me = snap.me;
     const [emoji, setEmoji] = useState(false);
@@ -92,7 +102,31 @@ export function Controls({
                             icon={<MonitorUp size={18} />}
                         />
                     )}
+                    {/* Blur only means anything while a camera is actually on. */}
+                    {onStage && blurAvailable && me?.camera && (
+                        <Control
+                            on={snap.blurOn}
+                            label={snap.blurOn ? "Show your background" : "Blur your background"}
+                            onClick={() => void room.setBlur(!snap.blurOn)}
+                            icon={<Sparkles size={18} />}
+                        />
+                    )}
                 </>
+            )}
+
+            {/* Captions are the host's: one transcription stream per class, not
+                one per person. See the caption op in coir-live for why. */}
+            {canHost && captionsAvailable && (
+                <Control
+                    on={snap.captionsOn}
+                    label={snap.captionsOn ? "Stop captions" : "Turn captions on for the class"}
+                    onClick={() => void room.setCaptions(!snap.captionsOn)}
+                    icon={snap.captionsOn ? <Captions size={18} /> : <CaptionsOff size={18} />}
+                />
+            )}
+
+            {canHost && (
+                <Control on={Boolean(snap.question) && !snap.question?.closed} label="Ask the class a question" onClick={onAsk} icon={<HelpCircle size={18} />} />
             )}
 
             <Control

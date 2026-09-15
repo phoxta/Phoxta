@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Calendar, CheckCircle2, Clock, Video } from "lucide-react";
+import { ArrowRight, Calendar, CheckCircle2, Clock, Sparkles, Video } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { LiveLesson } from "@coir-six/core";
+import type { LiveLesson, LiveRecap } from "@coir-six/core";
 import { cn } from "@/lib/cn";
 import { longDate, time } from "@coir-six/core";
 import { attendanceFor, duration, liveOpensAt, liveState, pastLive, upcomingLive } from "@coir-six/core";
@@ -12,16 +12,30 @@ import { useToast } from "@/state/toast";
 import { youtubeId } from "@/components/player/YouTubePlayer";
 import { PageTitle } from "@/components/shell/AppShell";
 import { Dialog } from "@/components/ui/overlay";
-import { Avatar, Button, Card, EmptyState, Tag } from "@/components/ui/primitives";
+import { Avatar, Button, Card, EmptyState, Spinner, Tag } from "@/components/ui/primitives";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/ui/icons";
 
 /** "Lesson": mentor-led live sessions — reserve a seat, join when it's on, watch it back after. */
 export default function LiveLessonsPage() {
-    const { catalogue, user, mutate } = useData();
+    const { catalogue, user, mutate, repo } = useData();
     const { toast } = useToast();
     const upcoming = upcomingLive(catalogue);
     const past = pastLive(catalogue);
     const [watching, setWatching] = useState<LiveLesson | null>(null);
+    const [recapOf, setRecapOf] = useState<LiveLesson | null>(null);
+    const [recap, setRecap] = useState<LiveRecap | null>(null);
+    const [recapBusy, setRecapBusy] = useState(false);
+
+    const openRecap = async (l: LiveLesson) => {
+        setRecapOf(l);
+        setRecap(null);
+        setRecapBusy(true);
+        try {
+            setRecap(await repo.liveRecap(l.id));
+        } finally {
+            setRecapBusy(false);
+        }
+    };
     // Ticks so a row flips to "Join now" while the page is open, rather than
     // only on a reload.
     const now = useNow(30000);
@@ -60,6 +74,11 @@ export default function LiveLessonsPage() {
                     )}
                 </div>
                 <div className="flex shrink-0 gap-2 md:flex-col md:items-stretch">
+                    {recorded && (
+                        <Button variant="outline" size="md" onClick={() => void openRecap(l)}>
+                            <Sparkles size={14} /> Recap
+                        </Button>
+                    )}
                     {recorded ? (
                         l.recordingUrl ? (
                             <Button variant="outline" size="md" onClick={() => setWatching(l)}>
@@ -126,6 +145,33 @@ export default function LiveLessonsPage() {
                 </section>
             )}
 
+            <Dialog open={Boolean(recapOf)} onClose={() => setRecapOf(null)} title={recapOf?.title ?? "Recap"}>
+                {recapBusy ? (
+                    <p className="flex items-center gap-2 py-6 text-[14px] text-muted">
+                        <Spinner className="size-4" /> Reading the class back…
+                    </p>
+                ) : recap ? (
+                    <div className="flex flex-col gap-5">
+                        <p className="text-[14px] leading-6">{recap.summary}</p>
+                        {recap.keyPoints.length > 0 && (
+                            <Block title="Key points" items={recap.keyPoints} />
+                        )}
+                        {recap.questions.length > 0 && (
+                            <Block title="Asked but not resolved" items={recap.questions} />
+                        )}
+                        {recap.actions.length > 0 && <Block title="What to do next" items={recap.actions} />}
+                        <p className="text-[12px] text-muted">
+                            Written from the transcript and the chat. Turn captions on during a class to get one.
+                        </p>
+                    </div>
+                ) : (
+                    <EmptyState
+                        title="No recap yet"
+                        body="A recap is written from what was said in the class. Turn captions on during the session and it will be here afterwards."
+                    />
+                )}
+            </Dialog>
+
             <Dialog open={Boolean(watching)} onClose={() => setWatching(null)} title={watching?.title ?? "Recording"} wide>
                 {recId ? (
                     <div className="aspect-video overflow-hidden rounded-md bg-black">
@@ -145,5 +191,22 @@ export default function LiveLessonsPage() {
                 {watching && <p className="mt-3 text-[13px] text-muted">{watching.description}</p>}
             </Dialog>
         </>
+    );
+}
+
+/** One titled list in the recap. */
+function Block({ title, items }: { title: string; items: string[] }) {
+    return (
+        <section>
+            <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-caption">{title}</h3>
+            <ul className="flex flex-col gap-1.5">
+                {items.map((t) => (
+                    <li key={t} className="flex gap-2 text-[14px] leading-6">
+                        <span className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+                        {t}
+                    </li>
+                ))}
+            </ul>
+        </section>
     );
 }

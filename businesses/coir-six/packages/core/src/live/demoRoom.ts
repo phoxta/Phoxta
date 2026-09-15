@@ -166,6 +166,20 @@ export class DemoRoom extends BaseRoom implements LiveRoom {
         this.at(26000, () => this.patch(this.cast[1]?.identity ?? "", { handUp: false, canPublish: true, role: "speaker", mic: true }));
         this.at(34000, () => this.patch(this.cast[4]?.identity ?? "", { handUp: true }));
 
+        // The mentor puts a question up part-way through, the way a real class
+        // checks whether anyone is still with them.
+        this.at(13000, () => {
+            this.openQuestion({
+                id: liveId("q"),
+                prompt: "Which of these ships a static site fastest?",
+                options: ["Upload over FTP", "A git push to a host that builds it", "Email the zip to yourself"],
+                answer: 1,
+                closed: false,
+                askedAt: new Date().toISOString(),
+            });
+            this.classAnswers();
+        });
+
         // The mentor's mouth keeps moving; the loudest tile is what the stage follows.
         this.loopSpeaking(host.identity);
     }
@@ -350,6 +364,46 @@ export class DemoRoom extends BaseRoom implements LiveRoom {
         this.requireHost("end the class");
         await this.disconnect();
     }
+
+    // ── quiz ─────────────────────────────────────────────────────────────────
+
+    async ask(prompt: string, options: string[], answer: number): Promise<void> {
+        this.requireHost("ask a question");
+        this.openQuestion({ id: liveId("q"), prompt, options, answer, closed: false, askedAt: new Date().toISOString() });
+        this.classAnswers();
+    }
+
+    async closeQuestion(): Promise<void> {
+        this.requireHost("close the question");
+        this.shutQuestion();
+    }
+
+    async answer(optionIndex: number): Promise<void> {
+        if (!this.question || this.question.closed || this.myAnswer !== null) return;
+        this.recordAnswer(this.meId, optionIndex);
+        // The room answers around you, so the bars actually move.
+        this.classAnswers();
+    }
+
+    /** Classmates trickling in their answers, mostly right, some not. */
+    private classAnswers(): void {
+        const q = this.question;
+        if (!q) return;
+        const correct = q.answer ?? 0;
+        this.cast.slice(0, 9).forEach((p, i) => {
+            this.at(900 + i * 700 + Math.random() * 600, () => {
+                if (!this.question || this.question.closed) return;
+                const pick = Math.random() < 0.7 ? correct : Math.floor(Math.random() * q.options.length);
+                this.recordAnswer(p.identity, pick);
+            });
+        });
+    }
+
+    /** No microphone to transcribe in a scripted room. */
+    async setCaptions(): Promise<void> {}
+
+    /** No published track to filter in a scripted room. */
+    async setBlur(): Promise<void> {}
 }
 
 /** The canned-reply trick from `LocalRepo.mentorReply`, kept short. */

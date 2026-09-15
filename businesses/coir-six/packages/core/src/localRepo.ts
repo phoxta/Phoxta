@@ -232,6 +232,8 @@ export class LocalRepo implements Repo {
             me: { id: p.id, name: p.name, hue: p.hue, photoUrl: p.photoUrl },
             isHost: input.asHost ?? false,
             media: input.media,
+            captions: input.captions,
+            filter: input.filter,
         });
     }
 
@@ -252,6 +254,16 @@ export class LocalRepo implements Repo {
         const minutes = Math.round(seconds / 60);
         if (minutes >= 1) await this.logStudy(null, minutes);
         this.emit();
+    }
+
+    /** No transcription in the demo: there is no real class to transcribe. */
+    async liveCaptionKey(): Promise<string> {
+        throw new Error("Captions aren't available in the demo.");
+    }
+
+    /** A recap needs a transcript, and the demo has none. */
+    async liveRecap(): Promise<null> {
+        return null;
     }
 
     /** Nothing leaves the device in the demo — the recording stays a blob URL. */
