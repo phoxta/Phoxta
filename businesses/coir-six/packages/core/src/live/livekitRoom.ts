@@ -495,7 +495,16 @@ export class LivekitRoom extends BaseRoom implements LiveRoom {
             this.filtered?.stop();
             this.filtered = null;
             this.blurOn = false;
-            this.commit();
+            // Put the plain camera back. Failing halfway used to leave the tile
+            // dead — no blur AND no picture — which is worse than never
+            // offering it.
+            try {
+                await lp.setCameraEnabled(false);
+                await lp.setCameraEnabled(true);
+            } catch {
+                /* the camera is gone too; the avatar fallback covers it */
+            }
+            this.syncAll();
         }
     }
 }

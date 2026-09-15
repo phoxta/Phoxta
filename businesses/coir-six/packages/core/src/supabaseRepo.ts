@@ -369,14 +369,14 @@ export class SupabaseRepo implements Repo {
         if (error) console.warn("[coir-six] live chat not persisted:", error.message);
     }
 
-    async liveCaptionKey(liveLessonId: string): Promise<string> {
+    async liveCaptionUrl(liveLessonId: string): Promise<string> {
         const { data, error } = await this.client.functions.invoke("coir-live", {
             body: { op: "caption", organizationId: this.org, lessonId: liveLessonId },
         });
         if (error) throw new Error("Captions couldn't be started for this class.");
-        const key = (data as { key?: string } | null)?.key;
-        if (!key) throw new Error("Captions couldn't be started for this class.");
-        return key;
+        const url = (data as { url?: string } | null)?.url;
+        if (!url) throw new Error("Captions couldn't be started for this class.");
+        return url;
     }
 
     async liveRecap(liveLessonId: string, force = false): Promise<LiveRecap | null> {

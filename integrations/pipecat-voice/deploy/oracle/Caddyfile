@@ -92,6 +92,17 @@
 	# MEDIA DOES NOT COME THROUGH HERE. Audio and video go straight to the box on
 	# UDP 7882 (or TCP 7881 where UDP is blocked) — this vhost only carries
 	# signalling, which is why proxying it costs nothing.
+	# The transcription relay is the one thing on this host that is NOT LiveKit.
+	# It is an ordinary container, so it is reachable by service name.
+	handle /stt* {
+		reverse_proxy stt:8791 {
+			transport http {
+				read_timeout 0
+				write_timeout 0
+			}
+		}
+	}
+
 	reverse_proxy host.docker.internal:7880 {
 		# A class is one long-lived connection that is often quiet while someone
 		# is listening. Any read timeout here would drop participants mid-lesson.

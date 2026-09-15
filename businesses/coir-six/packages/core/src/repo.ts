@@ -70,10 +70,10 @@ export interface Repo {
     /** Host only: store a finished recording and attach it to the lesson. */
     saveRecording(liveLessonId: string, data: Blob | ArrayBuffer, mimeType: string): Promise<string>;
     /**
-     * A short-lived transcription key for the local microphone. Host only, and
-     * minted server-side — the account key never reaches a browser.
+     * A ticketed URL for the transcription relay. Host only. The Deepgram key
+     * stays on the relay; this is an HMAC good for one class, for minutes.
      */
-    liveCaptionKey(liveLessonId: string): Promise<string>;
+    liveCaptionUrl(liveLessonId: string): Promise<string>;
     /** The class recap, written once and shared. Null while there isn't one. */
     liveRecap(liveLessonId: string, force?: boolean): Promise<LiveRecap | null>;
 

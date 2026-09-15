@@ -257,7 +257,7 @@ export class LocalRepo implements Repo {
     }
 
     /** No transcription in the demo: there is no real class to transcribe. */
-    async liveCaptionKey(): Promise<string> {
+    async liveCaptionUrl(): Promise<string> {
         throw new Error("Captions aren't available in the demo.");
     }
 

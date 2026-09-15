@@ -224,6 +224,39 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
+  # Transcription relay for live classes. Browser -> here -> Deepgram.
+  #
+  # It exists because our Deepgram key is scoped to usage:write only: it cannot
+  # mint child keys and cannot use /v1/auth/grant, so the only key we have is one
+  # that can spend money and it must never reach a browser. The browser gets an
+  # HMAC ticket instead, minted by coir-live for a verified class host and good
+  # for one lesson for a few minutes.
+  #
+  # Ordinary bridge networking, unlike livekit: this is a WebSocket behind Caddy,
+  # with no ICE and no need to see real source addresses.
+  stt:
+    profiles: ["live"]
+    build:
+      # Absolute, like render: this file is copied to the VM and built there,
+      # with the source rsynced to ~/live-stt.
+      context: /home/ubuntu/live-stt
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8791"
+    environment:
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      LIVE_STT_SECRET: ${LIVE_STT_SECRET:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8791/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped

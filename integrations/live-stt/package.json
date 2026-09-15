@@ -1,0 +1,8 @@
+{
+  "name": "phoxta-live-stt",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "server.mjs",
+  "dependencies": { "ws": "^8.18.0" }
+}

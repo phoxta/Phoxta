@@ -3,15 +3,18 @@ import type { CaptionSource } from "@coir-six/core";
 /**
  * The host's microphone, transcribed.
  *
- * Deepgram's live endpoint takes a WebSocket. A browser cannot set an
- * `Authorization` header on one, so the key travels as a subprotocol — which is
- * exactly why the key handed over here must be the short-lived child key minted
- * by `coir-live`, never the account key.
+ * Talks to Phoxta's own relay (`integrations/live-stt`), not to Deepgram — our
+ * Deepgram key is scoped to `usage:write` only, so it can neither mint child
+ * keys nor grant short-lived tokens, and a key that can spend money must not
+ * reach a browser. `getUrl` returns a ticketed relay URL, signed by
+ * `coir-live` for this class and good for minutes.
  *
  * Audio goes up as webm/opus straight from `MediaRecorder`: no resampling, no
- * AudioWorklet, and the same encoder the recorder already uses.
+ * AudioWorklet, and the same encoder the recorder already uses. The relay
+ * passes Deepgram's JSON back untouched, so the parsing below is Deepgram's
+ * shape either way.
  */
-export function deepgramCaptions(getKey: () => Promise<string>): CaptionSource {
+export function relayCaptions(getUrl: () => Promise<string>): CaptionSource {
     let socket: WebSocket | null = null;
     let recorder: MediaRecorder | null = null;
     let stream: MediaStream | null = null;
@@ -29,9 +32,7 @@ export function deepgramCaptions(getKey: () => Promise<string>): CaptionSource {
         stream?.getTracks().forEach((t) => t.stop());
         stream = null;
         try {
-            // Tell Deepgram we meant to finish, so it flushes the last line
-            // instead of treating the drop as a network failure.
-            if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "CloseStream" }));
+            // Closing the socket is the signal; the relay flushes Deepgram for us.
             socket?.close();
         } catch {
             /* already closed */
@@ -42,20 +43,14 @@ export function deepgramCaptions(getKey: () => Promise<string>): CaptionSource {
     return {
         async start(onLine) {
             stop();
-            const key = await getKey();
+            const url = await getUrl();
             stream = await navigator.mediaDevices.getUserMedia({
                 audio: { echoCancellation: true, noiseSuppression: true },
             });
 
-            const params = new URLSearchParams({
-                model: "nova-2",
-                language: "en",
-                smart_format: "true",
-                // Partials make the caption bar feel live; only finals are kept.
-                interim_results: "true",
-                punctuate: "true",
-            });
-            const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`, ["token", key]);
+            // The relay chooses the Deepgram parameters; the browser only
+            // supplies audio and a ticket.
+            const ws = new WebSocket(url);
             socket = ws;
 
             await new Promise<void>((resolve, reject) => {
@@ -93,10 +88,7 @@ export function deepgramCaptions(getKey: () => Promise<string>): CaptionSource {
             rec.start(250);
             recorder = rec;
 
-            // A silent room would otherwise have Deepgram close the socket on us.
-            keepAlive = setInterval(() => {
-                if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "KeepAlive" }));
-            }, 8000);
+            // The relay keeps Deepgram alive through a silent room; nothing to do here.
         },
         stop,
     };

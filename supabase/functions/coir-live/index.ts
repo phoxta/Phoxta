@@ -198,39 +198,36 @@ Deno.serve(async (req) => {
     }
 
     /**
-     * A short-lived Deepgram key so the host's browser can stream its own
-     * microphone straight to the transcriber.
+     * A ticket for the transcription relay.
      *
-     * HOST ONLY, and that is a cost decision as much as a design one. Deepgram
-     * bills per minute of audio; one stream per speaker in a 24-person class is
-     * 24x the bill for the ~5% of talking the mentor is not doing. The lecture
-     * is what needs captioning.
+     * NOT a Deepgram key: ours is scoped to `usage:write` only, so it cannot
+     * mint child keys (`keys:write` -> 403) and cannot use /v1/auth/grant
+     * (403 too). The only key we have is one that can spend money, so it stays
+     * on the relay and the browser gets an HMAC over `lessonId|exp` instead —
+     * good for one class, for minutes, and useless against another lesson.
      *
-     * The long-lived key never leaves this function — the browser gets a child
-     * key scoped to usage:write that expires within the hour, so a leaked one
-     * cannot read the account or outlive the class.
+     * HOST ONLY, which is a cost decision as much as a design one: Deepgram
+     * bills per minute, and one stream per speaker in a 24-person class is 24x
+     * the bill for the ~5% of talking the mentor is not doing. The lecture is
+     * what needs captioning.
      */
     if (op === "caption") {
-      const dgKey = env("DEEPGRAM_API_KEY");
-      const dgProject = env("DEEPGRAM_PROJECT_ID");
-      if (!dgKey || !dgProject) return json({ error: "Captions are not configured for this school." }, 501);
+      const sttHost = env("LIVE_STT_URL");
+      const secret = env("LIVE_STT_SECRET");
+      if (!sttHost || !secret) return json({ error: "Captions are not configured for this school." }, 501);
 
-      const res = await fetch(`https://api.deepgram.com/v1/projects/${dgProject}/keys`, {
-        method: "POST",
-        headers: { Authorization: `Token ${dgKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          comment: `coir-six live class ${lessonId}`,
-          scopes: ["usage:write"],
-          time_to_live_in_seconds: 3600,
-        }),
-      });
-      if (!res.ok) {
-        console.error("coir-live caption key failed", res.status, await res.text());
-        return json({ error: "Captions could not be started." }, 502);
-      }
-      const k = (await res.json()) as { key?: string; expiration_date?: string };
-      if (!k.key) return json({ error: "Captions could not be started." }, 502);
-      return json({ key: k.key, expiresAt: k.expiration_date ?? null });
+      const exp = Date.now() + 10 * 60_000; // long enough to connect, not to hoard
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${lessonId}|${exp}`));
+      const sig = b64url(new Uint8Array(mac));
+      const url = `${sttHost.replace(/\/+$/, "")}/stt?lesson=${encodeURIComponent(lessonId)}&exp=${exp}&sig=${encodeURIComponent(sig)}`;
+      return json({ url, expiresAt: new Date(exp).toISOString() });
     }
 
     // Host-only, and app-level rather than media-server-level.

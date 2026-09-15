@@ -32,12 +32,23 @@ export type BlurHandle = {
 export async function startBlur(input: MediaStreamTrack, radius = 12): Promise<BlurHandle> {
     const { FilesetResolver, ImageSegmenter } = await import("@mediapipe/tasks-vision");
     const fileset = await FilesetResolver.forVisionTasks(WASM);
-    const segmenter = await ImageSegmenter.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: MODEL, delegate: "GPU" },
-        runningMode: "VIDEO",
-        outputCategoryMask: true,
-        outputConfidenceMasks: false,
-    });
+
+    // GPU first, CPU if the machine has no usable one. Plenty of laptops — and
+    // every headless browser — fail the GPU delegate outright, and "blur is
+    // unavailable on this machine" is a much worse answer than a slower filter.
+    const make = (delegate: "GPU" | "CPU") =>
+        ImageSegmenter.createFromOptions(fileset, {
+            baseOptions: { modelAssetPath: MODEL, delegate },
+            runningMode: "VIDEO",
+            outputCategoryMask: true,
+            outputConfidenceMasks: false,
+        });
+    let segmenter: Awaited<ReturnType<typeof make>>;
+    try {
+        segmenter = await make("GPU");
+    } catch {
+        segmenter = await make("CPU");
+    }
 
     const settings = input.getSettings();
     const w = settings.width ?? 640;
