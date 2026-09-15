@@ -25,6 +25,8 @@ const GroupDetail = lazy(() => import("@/pages/GroupsPage").then((m) => ({ defau
 const Inbox = lazy(() => import("@/pages/InboxPage"));
 const NewConversation = lazy(() => import("@/pages/InboxPage").then((m) => ({ default: m.NewConversationPage })));
 const Mentors = lazy(() => import("@/pages/MentorsPage").then((m) => ({ default: m.MentorsPage })));
+// The classroom is the whole screen, so it loads — and routes — on its own.
+const ClassroomPage = lazy(() => import("@/pages/ClassroomPage"));
 const MentorDetail = lazy(() => import("@/pages/MentorsPage").then((m) => ({ default: m.MentorDetailPage })));
 
 function Splash() {
@@ -81,6 +83,15 @@ export default function App() {
                                 </Route>
                                 <Route element={<Gate />}>
                                     <Route path="/onboarding" element={<OnboardingPage />} />
+                                    {/* No sidebar, no toolbar: a class fills the screen. */}
+                                    <Route
+                                        path="/room/:id"
+                                        element={
+                                            <Suspense fallback={<Splash />}>
+                                                <ClassroomPage />
+                                            </Suspense>
+                                        }
+                                    />
                                     <Route element={<AppShell />}>
                                         <Route index element={<DashboardPage />} />
                                         <Route

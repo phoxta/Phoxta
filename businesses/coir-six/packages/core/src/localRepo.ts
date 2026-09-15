@@ -1,6 +1,8 @@
 import { base64Encode } from "./base64";
+import { DemoRoom } from "./live/demoRoom";
+import type { LiveRoom } from "./live/room";
 import { CATALOGUE, MENTORS, demoGroupPosts, demoMessages, demoUserState } from "./seed";
-import type { Repo } from "./repo";
+import type { OpenRoomInput, Repo } from "./repo";
 import type {
     Catalogue,
     Certificate,
@@ -219,6 +221,30 @@ export class LocalRepo implements Repo {
             on = i < 0;
         });
         return on;
+    }
+
+    async openLiveRoom(input: OpenRoomInput): Promise<LiveRoom> {
+        await this.ready();
+        const p = this.user.get().profile;
+        return new DemoRoom({
+            lesson: input.lesson,
+            mentor: input.mentor,
+            me: { id: p.id, name: p.name, hue: p.hue, photoUrl: p.photoUrl },
+            isHost: input.asHost ?? false,
+            media: input.media,
+        });
+    }
+
+    /** The demo logs the class as study time, the way finishing a lesson does. */
+    async leaveLive(_liveLessonId: string, seconds: number): Promise<void> {
+        const minutes = Math.round(seconds / 60);
+        if (minutes >= 1) await this.logStudy(null, minutes);
+    }
+
+    /** Nothing leaves the device in the demo — the recording stays a blob URL. */
+    async saveRecording(_liveLessonId: string, data: Blob | ArrayBuffer, mimeType: string): Promise<string> {
+        if (data instanceof ArrayBuffer) return `data:${mimeType};base64,${base64Encode(new Uint8Array(data))}`;
+        return URL.createObjectURL(data);
     }
 
     async addTask(input: NewTask): Promise<Task> {

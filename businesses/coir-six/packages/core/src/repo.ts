@@ -1,8 +1,11 @@
+import type { LiveRoom, LocalMedia } from "./live/room";
 import type {
     Catalogue,
     Certificate,
     Conversation,
     GroupPost,
+    LiveLesson,
+    Mentor,
     Message,
     NewTask,
     Note,
@@ -12,6 +15,15 @@ import type {
     Task,
     UserState,
 } from "./types";
+
+export interface OpenRoomInput {
+    lesson: LiveLesson;
+    mentor: Mentor | null;
+    /** The app's own camera and microphone; core cannot reach them itself. */
+    media?: LocalMedia;
+    /** Demo only — look at the room the way the mentor running it would. */
+    asHost?: boolean;
+}
 
 /**
  * Everything the UI can read or change, behind one interface.
@@ -43,6 +55,16 @@ export interface Repo {
     toggleBookmark(courseId: string): Promise<boolean>;
     toggleFollow(mentorId: string): Promise<boolean>;
     toggleRsvp(liveLessonId: string): Promise<boolean>;
+
+    /**
+     * Open the classroom for a live lesson — records attendance and returns
+     * whichever room this tenant can actually run (see `live/room.ts`).
+     */
+    openLiveRoom(input: OpenRoomInput): Promise<LiveRoom>;
+    /** Close the attendance row when the learner leaves. */
+    leaveLive(liveLessonId: string, seconds: number): Promise<void>;
+    /** Host only: store a finished recording and attach it to the lesson. */
+    saveRecording(liveLessonId: string, data: Blob | ArrayBuffer, mimeType: string): Promise<string>;
 
     addTask(input: NewTask): Promise<Task>;
     toggleTask(id: string): Promise<void>;

@@ -18,20 +18,31 @@ systemctl enable --now docker
 # Oracle's Ubuntu images ship an iptables INPUT policy that drops everything
 # except SSH. This is THE classic reason an OCI box looks dead on 80/443 even
 # after the VCN security list is opened — both layers must allow the traffic.
-say "Opening ports 80 and 443 on the host firewall"
+# 7881/tcp and 7882/udp carry live-class media straight to the box (they do
+# not pass through Caddy). Opened unconditionally: harmless with no media
+# server listening, and leaving them out is the failure that looks like
+# "video connects then freezes" rather than a clean error.
+say "Opening ports 80, 443 and the live-class media ports on the host firewall"
 if command -v netfilter-persistent >/dev/null 2>&1; then
-  for p in 80 443; do
+  for p in 80 443 7881; do
     iptables -C INPUT -p tcp --dport "$p" -j ACCEPT 2>/dev/null \
       || iptables -I INPUT 1 -p tcp --dport "$p" -j ACCEPT
   done
+  iptables -C INPUT -p udp --dport 7882 -j ACCEPT 2>/dev/null \
+    || iptables -I INPUT 1 -p udp --dport 7882 -j ACCEPT
   netfilter-persistent save
 elif command -v firewall-cmd >/dev/null 2>&1; then   # Oracle Linux images
   firewall-cmd --permanent --add-service=http
   firewall-cmd --permanent --add-service=https
+  firewall-cmd --permanent --add-port=7881/tcp
+  firewall-cmd --permanent --add-port=7882/udp
   firewall-cmd --reload
 else
-  echo "!! No known firewall tool found — open 80/443 manually."
+  echo "!! No known firewall tool found — open 80/443 + 7881/tcp + 7882/udp manually."
 fi
+
+echo "   Reminder: the OCI VCN security list needs the same rules. The host"
+echo "   firewall alone is not enough — that is the classic 'box looks dead' trap."
 
 say "Building and starting the stack (first ARM build takes a few minutes)"
 docker compose up -d --build

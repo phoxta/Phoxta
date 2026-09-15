@@ -49,6 +49,10 @@ Vite inlines `VITE_*` at build time, so those must be set on the Vercel project
   notes, tasks, messages, quiz attempts and certificates are theirs alone.
 - **Certificates are earned, not inserted** — `cs_issue_certificate` checks
   every lesson is complete server-side before it mints one.
+- **Live classes that happen *in* the product** — a real classroom at
+  `/room/:id` (spotlight + filmstrip, participants, chat, hands, reactions,
+  host controls, recorder), not a link out to someone else's meeting. See
+  below.
 - **The demo** — "Explore as Jason" runs the same UI on a bundled copy of the
   catalogue, kept in the browser, so a prospect can use every screen without
   an account. It is also the fallback when a host isn't linked to a school.
@@ -60,6 +64,69 @@ Vite inlines `VITE_*` at build time, so those must be set on the Vercel project
   JPEG is stored in the public `cs-avatars` bucket at
   `<org>/<user>/avatar-<ts>.jpg` (migration `0149`; policies let a learner
   write only inside their own folder). The demo keeps it as a data URL.
+
+## Live classes
+
+The headline feature of an online school. Before this, a "live lesson" was a row
+in a timetable with a `join_url` pointing somewhere else — so the moment a class
+started, Coir Six had nothing to do with it. Now the class, its roster, its chat,
+its attendance and its recording all belong to the school.
+
+**One screen, three transports.** The UI never imports a WebRTC SDK; it talks to
+the `LiveRoom` interface in `packages/core/src/live/`, the same way pages talk to
+`Repo` rather than to Supabase:
+
+| | when | what you get |
+|---|---|---|
+| `LivekitRoom` | the school runs a media server | real audio/video, screen share |
+| `PresenceRoom` | it doesn't | roster, chat, hands, attendance over Supabase Realtime, with the mentor's own stream on the stage |
+| `DemoRoom` | "Explore as Jason" | a scripted class — classmates arrive, talk, put hands up |
+
+`repo.openLiveRoom()` picks. A tenant that has not set up a media server gets a
+working class page, never an error; `snapshot().media` tells the UI whether to
+offer camera and microphone controls at all, so no button ever lies.
+
+**A class has a stage.** The mentor starts on it; everyone else is audio-only
+with `canPublish: false` *in the token grant*, so it is the media server that
+refuses, not the page. Raising a hand asks to come up. That is both the right
+classroom metaphor and the reason a 24-person class costs ~2 Mbps a learner
+instead of saturating everyone's connection.
+
+**Host actions are server-side.** Muting someone, changing their permissions,
+removing them and ending the class are all calls a browser is not allowed to
+make. They go through the `coir-live` edge function, which re-checks
+`cs_is_live_host` before it acts.
+
+```
+packages/core/src/live/   room.ts (the contract) · baseRoom.ts (snapshot + emitter)
+                          livekitRoom.ts · presenceRoom.ts · demoRoom.ts
+src/components/live/      Lobby · RoomHeader · Tile · Rails · Controls · useRoom · useRecorder
+src/pages/ClassroomPage   /room/:id — a sibling of AppShell, so the class is the whole screen
+apps/mobile/src/app/room/ the same room on a phone
+supabase/functions/coir-live/        token minting + the host actions
+supabase/migrations/0150_coir_six_live.sql
+```
+
+`livekit-client` is behind a dynamic `import()`, so it lands in its own 586 kB
+chunk and a learner who never opens a class never downloads a WebRTC SDK.
+
+**The recorder** captures the host's own screen and microphone in their browser
+(`MediaRecorder`) and uploads to the `cs-recordings` bucket, which fills in the
+`recordingUrl` the "Watch recording" button already used. Server-side compositing
+(LiveKit Egress) needs Redis and a headless Chrome per recording — more than the
+shared Oracle box should carry. It swaps in behind `LiveRoom.setRecording`.
+
+**To run it for real**, the school needs a media server. Ours is LiveKit
+(Apache-2.0) on the Oracle Always Free VM that already hosts the voice bridge —
+see `integrations/pipecat-voice/deploy/oracle/README.md`, "Live classes". Three
+Supabase secrets switch it on: `LIVEKIT_URL`, `LIVEKIT_API_KEY`,
+`LIVEKIT_API_SECRET`. Without them `coir-live` answers 501 and the app falls back
+to `PresenceRoom`.
+
+> **Expo Go no longer runs the mobile app.** WebRTC is a native module, so the
+> phone build needs `npx expo run:android` / `run:ios` (a local dev build — no
+> paid EAS subscription). The classroom degrades to avatars in Expo Go rather
+> than crashing, so the other screens still work there.
 
 ## Layout
 

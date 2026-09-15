@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Calendar, ExternalLink, Video } from "lucide-react";
+import { ArrowRight, Calendar, Video } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { LiveLesson } from "@coir-six/core";
 import { cn } from "@/lib/cn";
 import { longDate, time } from "@coir-six/core";
@@ -63,9 +64,10 @@ export default function LiveLessonsPage() {
                             </Button>
                         )
                     ) : live ? (
-                        <a href={l.joinUrl} target="_blank" rel="noreferrer noopener" className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-brand px-4 text-[13px] font-semibold text-white">
-                            Join now <ExternalLink size={13} />
-                        </a>
+                        // The class happens here now, not on someone else's meeting link.
+                        <Link to={`/room/${l.id}`} className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-brand px-4 text-[13px] font-semibold text-white hover:bg-brand-hover">
+                            Join now <ArrowRight size={13} />
+                        </Link>
                     ) : (
                         <Button variant={on ? "tonal" : "brand"} size="md" aria-pressed={on} onClick={() => void mutate((r) => r.toggleRsvp(l.id)).then(() => toast(on ? "Seat released" : "Seat reserved — we'll remind you", "success"))}>
                             {on ? "Reserved" : "Reserve a seat"}

@@ -70,6 +70,8 @@ function Gate({ fontsLoaded }: { fontsLoaded: boolean }) {
                     <Stack.Screen name="notifications" />
                     <Stack.Screen name="settings" />
                     <Stack.Screen name="certificates/[id]" />
+                    {/* The classroom fills the screen and brings its own chrome. */}
+                    <Stack.Screen name="room/[id]" options={{ animation: "fade" }} />
                 </Stack.Protected>
                 <Stack.Protected guard={needsOnboarding}>
                     <Stack.Screen name="onboarding" />

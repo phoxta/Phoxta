@@ -1,5 +1,6 @@
 import { CATALOGUE, DEMO_FRIENDS } from "./seed";
-import type { Repo } from "./repo";
+import type { LiveContext, LiveRoom } from "./live/room";
+import type { OpenRoomInput, Repo } from "./repo";
 import type {
     Catalogue,
     Certificate,
@@ -270,6 +271,100 @@ export class SupabaseRepo implements Repo {
     }
     toggleRsvp(liveLessonId: string): Promise<boolean> {
         return this.toggleRow("cs_live_rsvps", "live_lesson_id", liveLessonId);
+    }
+
+    /**
+     * Open the classroom.
+     *
+     * `cs_join_live` records the attendance row and answers the only question
+     * the client must not decide for itself — whether this learner is the host.
+     * Then `coir-live` mints a media-server token. If the school has no media
+     * server configured, that call fails and we fall back to `PresenceRoom`:
+     * the class still has a roster, a chat and a host, on the mentor's own
+     * stream. A tenant is never left staring at an error because its owner
+     * hasn't finished setting up an SFU.
+     */
+    async openLiveRoom(input: OpenRoomInput): Promise<LiveRoom> {
+        const profile = await this.ensureProfile();
+        const { data, error } = await this.client.rpc("cs_join_live", { p_org: this.org, p_lesson: input.lesson.id });
+        fail("join the class", error);
+        const seat = (Array.isArray(data) ? data[0] : data) as Row | null;
+        const isHost = Boolean(seat?.is_host);
+
+        const ctx: LiveContext = {
+            lesson: input.lesson,
+            mentor: input.mentor,
+            me: { id: this.userId, name: profile.name, hue: profile.hue, photoUrl: profile.photoUrl },
+            isHost,
+            media: input.media,
+            hostOps: {
+                mute: (identity, trackSid) => this.liveOp("mute", input.lesson.id, { identity, trackSid }),
+                setStage: (identity, onStage) => this.liveOp("stage", input.lesson.id, { identity, onStage }),
+                remove: (identity) => this.liveOp("remove", input.lesson.id, { identity }),
+                end: () => this.liveOp("end", input.lesson.id, {}),
+            },
+        };
+
+        let t: { url?: string; token?: string } | null = null;
+        try {
+            const res = await this.client.functions.invoke("coir-live", {
+                body: { op: "token", organizationId: this.org, lessonId: input.lesson.id },
+            });
+            if (!res.error) t = res.data as { url?: string; token?: string } | null;
+        } catch {
+            /* no media server configured, or unreachable — fall through */
+        }
+
+        if (t?.url && t?.token) {
+            const { LivekitRoom } = await import("./live/livekitRoom");
+            return new LivekitRoom(ctx, t.url, t.token, (m) => void this.persistLiveChat(input.lesson.id, profile, m));
+        }
+        const { PresenceRoom } = await import("./live/presenceRoom");
+        return new PresenceRoom(this.client, this.org, ctx);
+    }
+
+    /** The host half of the room: server-API calls the browser may not make. */
+    private async liveOp(op: string, lessonId: string, extra: Record<string, unknown>): Promise<void> {
+        const { error } = await this.client.functions.invoke("coir-live", {
+            body: { op, organizationId: this.org, lessonId, ...extra },
+        });
+        if (error) throw new Error(`That didn't go through: ${error.message}`);
+    }
+
+    /** Chat is live over the data channel; this is only so it survives the class. */
+    private async persistLiveChat(lessonId: string, p: Profile, m: { id: string; body: string; at: string }): Promise<void> {
+        const { error } = await this.client.from("cs_live_chat").insert({
+            id: m.id,
+            organization_id: this.org,
+            live_lesson_id: lessonId,
+            user_id: this.userId,
+            author_name: p.name,
+            author_hue: p.hue,
+            author_photo_url: p.photoUrl ?? null,
+            body: m.body,
+            created_at: m.at,
+        });
+        if (error) console.warn("[coir-six] live chat not persisted:", error.message);
+    }
+
+    async leaveLive(liveLessonId: string, seconds: number): Promise<void> {
+        const { error } = await this.client.rpc("cs_leave_live", {
+            p_org: this.org,
+            p_lesson: liveLessonId,
+            p_seconds: Math.max(0, Math.round(seconds)),
+        });
+        if (error) console.warn("[coir-six] cs_leave_live:", error.message);
+    }
+
+    async saveRecording(liveLessonId: string, data: Blob | ArrayBuffer, mimeType: string): Promise<string> {
+        const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+        const path = `${this.org}/${liveLessonId}/${Date.now()}.${ext}`;
+        const bucket = this.client.storage.from("cs-recordings");
+        const { error } = await bucket.upload(path, data, { contentType: mimeType, cacheControl: "31536000", upsert: false });
+        fail("recording", error);
+        const url = bucket.getPublicUrl(path).data.publicUrl;
+        await this.liveOp("recording", liveLessonId, { url });
+        return url;
     }
 
     async addTask(input: NewTask): Promise<Task> {

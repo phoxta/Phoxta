@@ -166,6 +166,38 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
+  # ── Live classes ───────────────────────────────────────────────────────────
+  #
+  # The media server behind Coir Six's classroom. An SFU forwards streams and
+  # never transcodes, so this is bandwidth work, not CPU work, and it sits
+  # beside the voice bridge without competing for the cores llama.cpp is
+  # already capped away from.
+  #
+  # network_mode: host for the same reason coturn uses it — ICE needs to see
+  # real source addresses, and a muxed UDP port through Docker's userland proxy
+  # adds a hop to every media packet.
+  #
+  # OPT-IN via `--profile live`, exactly like the llm profile: a plain
+  # `docker compose up -d` must still bring up the voice stack and nothing else.
+  livekit:
+    profiles: ["live"]
+    image: livekit/livekit-server:v1
+    restart: unless-stopped
+    network_mode: host
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      # The documented way to give livekit-server its API key pair: `key: secret`.
+      # It is NOT interpolated into livekit.yaml — that file is read literally.
+      # `:-` and not `:?` on purpose: compose interpolates the WHOLE file
+      # regardless of profile, so an unset key must not break `up -d` for
+      # someone who only runs the voice stack.
+      LIVEKIT_KEYS: "${LIVEKIT_KEY:-}: ${LIVEKIT_SECRET:-}"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -180,6 +212,10 @@ services:
       # asks Let's Encrypt for them, so an unset domain costs nothing and
       # answers 502 on a name nobody resolves, instead of failing the stack.
       LLM_DOMAIN: ${LLM_DOMAIN:-llm.localhost}
+      # Optional, same fail-soft default as LLM_DOMAIN: a box that does not
+      # run live classes should not have Caddy asking Let's Encrypt for a
+      # certificate it can never validate.
+      LIVE_DOMAIN: ${LIVE_DOMAIN:-live.localhost}
       ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env — Let's Encrypt expiry notices}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -187,6 +223,10 @@ services:
       - caddy_config:/config
     depends_on:
       - voice
+    # livekit runs on the host network, so Caddy reaches it at the gateway
+    # address rather than by service name.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }

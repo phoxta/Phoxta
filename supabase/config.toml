@@ -365,6 +365,13 @@ verify_jwt = true
 [functions.recording-url]
 verify_jwt = true
 
+# The server half of a Coir Six live class: mints the media-server room token
+# and runs the host actions (mute, stage, remove, end) that a browser may not.
+# Learners call it with their own session, so the gateway checks the JWT and the
+# function proves tenancy from cs_profiles rather than org membership.
+[functions.coir-live]
+verify_jwt = true
+
 # Mints the short-lived token the in-browser voice widget hands the self-hosted
 # Pipecat server so /ice and /offer stop being open to anyone. Public on purpose
 # — an anonymous visitor must be able to start a voice session — so it defends

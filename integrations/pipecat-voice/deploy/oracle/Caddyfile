@@ -71,3 +71,24 @@
 		}
 	}
 }
+
+{$LIVE_DOMAIN} {
+	# LiveKit's signalling: an HTTPS API (the Twirp RoomService the edge function
+	# calls) and a WebSocket (/rtc, which every participant holds open for the
+	# whole class). Caddy upgrades WebSockets natively, so one reverse_proxy
+	# serves both.
+	#
+	# MEDIA DOES NOT COME THROUGH HERE. Audio and video go straight to the box on
+	# UDP 7882 (or TCP 7881 where UDP is blocked) — this vhost only carries
+	# signalling, which is why proxying it costs nothing.
+	reverse_proxy host.docker.internal:7880 {
+		# A class is one long-lived connection that is often quiet while someone
+		# is listening. Any read timeout here would drop participants mid-lesson.
+		transport http {
+			read_timeout 0
+			write_timeout 0
+		}
+		# A redeploy should not hang up on a class in progress.
+		stream_close_delay 5m
+	}
+}

@@ -259,6 +259,100 @@ Verify it:
 docker compose logs coturn | tail
 ```
 
+## Live classes (LiveKit)
+
+The media server behind Coir Six's in-app classroom
+(`businesses/coir-six`). It is **opt-in** — `docker compose up -d` with no
+profile still brings up the voice stack and nothing else.
+
+An SFU forwards streams and never transcodes, so this is bandwidth work rather
+than CPU work and it coexists with the voice bridge. Budget roughly **20 GB of
+egress per hour** for a 24-learner class, against Always Free's 10 TB a month.
+
+### 1. Open two more ports — **both layers, again**
+
+| Layer | Rules to add |
+|---|---|
+| OCI VCN security list | ingress `0.0.0.0/0` **TCP 7881** and **UDP 7882** |
+| Host firewall | `bootstrap.sh` does it; on an already-provisioned box re-run it |
+
+Media goes **straight to the VM** on those ports — it does not pass through
+Caddy. Miss them and the symptom is the worst kind: signalling succeeds, the
+class loads, and then nobody can see or hear anyone.
+
+> LiveKit's default is a 50000-60000 port range. `livekit.yaml` uses a single
+> muxed UDP port instead, which is why this is two rules and not ten thousand.
+
+### 2. DNS
+
+```bash
+vercel dns add phoxta.com live A <VM_PUBLIC_IP>
+```
+
+### 3. Keys, then start it
+
+```bash
+# On the VM, in ~/pipecat-voice/deploy/oracle
+printf 'LIVE_DOMAIN=live.phoxta.com
+LIVEKIT_KEY=%s
+LIVEKIT_SECRET=%s
+'   "APIphoxta" "$(openssl rand -hex 32)" >> .env
+
+docker compose --profile live up -d
+docker compose logs -f livekit          # expect "starting LiveKit server"
+```
+
+`LIVEKIT_KEYS` is built from those two in `docker-compose.yml`. Do **not** put a
+`keys:` block in `livekit.yaml` — that file is read literally, `${...}` is not
+interpolated, and the failure mode is every token being rejected as invalid.
+
+### 4. Point Phoxta at it
+
+`coir-live` is already deployed and its key pair is already set, so this is one
+command — and it is deliberately **last**:
+
+```bash
+supabase secrets set LIVEKIT_URL=wss://live.phoxta.com
+```
+
+**Order matters.** `coir-live` mints a token only when all three of
+`LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` are set; with the URL
+missing it answers 501 and the app falls back to its presence-only classroom.
+Setting the URL before the server answers replaces a working fallback with a
+token every learner fails to connect with. Verify the two `curl`s below first.
+
+The `LIVEKIT_KEY` / `LIVEKIT_SECRET` you put in the VM's `.env` in step 3 must be
+the **same pair** already held in Supabase as `LIVEKIT_API_KEY` /
+`LIVEKIT_API_SECRET`. Supabase cannot show a secret's value back, so if that pair
+has been lost, set both sides again from a freshly generated pair rather than
+guessing.
+
+Until those are set, `coir-live` answers **501** and the app falls back to its
+presence-only classroom — real roster, chat, hands and attendance, with the
+mentor's own stream on the stage. That is deliberate: a school should never see
+a broken class page because its media server isn't up yet.
+
+### Verify
+
+```bash
+curl -fsS https://live.phoxta.com/            # LiveKit answers "OK"
+curl -fsS https://live.phoxta.com/rtc/validate  # 401 without a token = auth is on
+```
+
+Then open a class on two devices **on different networks** — one on wifi, one on
+mobile data. That is the only test that proves both the UDP mux and the TCP
+fallback work; two tabs on one laptop will pass even when the box is unreachable
+from the internet.
+
+### Recording
+
+The Recorder toggle records in the **host's browser** (`MediaRecorder` over their
+screen share plus microphone) and uploads to Supabase Storage. LiveKit's own
+Egress service would composite the whole room server-side, but it needs Redis and
+a headless Chrome per recording — on four Ampere cores that would fight the live
+calls this box already carries. If that ever moves to its own VM, the app side is
+one swap behind `LiveRoom.setRecording`.
+
 ## Operating
 
 ```bash

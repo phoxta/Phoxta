@@ -190,3 +190,39 @@ input[type="range"].cs-range::-moz-range-thumb {
         transform: rotate(360deg);
     }
 }
+
+/* Live classes: a thrown reaction drifting up the stage, and the same emoji
+   popping in beside the title. Both are decorative, so both stand still for
+   anyone who has asked for less motion. */
+@keyframes cs-float {
+    0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.6);
+    }
+    12% {
+        opacity: 1;
+        transform: translateY(-14px) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-190px) scale(1.15);
+    }
+}
+
+@keyframes cs-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-\[cs-float_6s_ease-out_forwards\],
+    .animate-\[cs-pop_400ms_ease-out\] {
+        animation: none;
+    }
+}

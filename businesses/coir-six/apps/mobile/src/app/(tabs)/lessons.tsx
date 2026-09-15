@@ -1,6 +1,6 @@
 import { Linking, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import { Calendar, ExternalLink, Video } from "lucide-react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { ArrowRight, Calendar, Video } from "lucide-react-native";
 import { longDate, pastLive, time, upcomingLive, type LiveLesson } from "@coir-six/core";
 import { useTheme } from "@/lib/theme";
 import { useData } from "@/state/data";
@@ -16,6 +16,7 @@ export default function LessonsScreen() {
     const { toast } = useToast();
     const { c } = useTheme();
     const { focus } = useLocalSearchParams<{ focus?: string }>();
+    const router = useRouter();
     const upcoming = upcomingLive(catalogue);
     const past = pastLive(catalogue);
 
@@ -59,7 +60,8 @@ export default function LessonsScreen() {
                         </Button>
                     )
                 ) : live ? (
-                    <Button size="md" icon={<ExternalLink size={13} color={c.white} />} onPress={() => void Linking.openURL(l.joinUrl)}>
+                    // The class happens in the app now, not on someone else's meeting link.
+                    <Button size="md" icon={<ArrowRight size={13} color={c.white} />} onPress={() => router.push(`/room/${l.id}`)}>
                         Join now
                     </Button>
                 ) : (

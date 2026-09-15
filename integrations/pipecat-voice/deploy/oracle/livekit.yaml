@@ -1,0 +1,47 @@
+# LiveKit — the media server behind Coir Six live classes.
+#
+# An SFU forwards packets, it does not transcode, so this is a network job
+# rather than a CPU one and it coexists with the voice bridge on the same
+# four Ampere cores. A 24-learner class costs roughly 20 GB of egress an hour,
+# against Oracle Always Free's 10 TB a month.
+
+port: 7880 # HTTP + WebSocket. Never published: Caddy terminates TLS in front.
+
+rtc:
+  # ONE UDP PORT, NOT A RANGE.
+  #
+  # LiveKit's default is 50000-60000, which means ten thousand ingress rules to
+  # reason about in the OCI security list and ten thousand published ports if
+  # this ever stops using host networking. The documented alternative is a
+  # single muxed UDP port, which costs a little multiplexing and turns the
+  # firewall question into two lines. Take it.
+  udp_port: 7882
+  # The fallback for networks that block UDP outright — corporate wifi, some
+  # mobile carriers. Without it those learners simply never connect, and the
+  # symptom is "it works for everyone except me".
+  tcp_port: 7881
+  # The VM only ever sees its private address; candidates must advertise the
+  # public one or no remote peer can reach it.
+  use_external_ip: true
+
+# NO `keys:` BLOCK HERE, DELIBERATELY.
+#
+# livekit-server does not interpolate ${...} in its config file, so a `keys:`
+# written that way would be read literally and every token would be rejected
+# with a confusing "invalid API key". The documented path is the LIVEKIT_KEYS
+# environment variable, in `key: secret` form — docker-compose sets it from
+# .env. That also keeps the secret out of a file that is committed.
+
+room:
+  # A class that nobody rejoins should not hold resources all night.
+  empty_timeout: 300
+  departure_timeout: 20
+  # The stage cap in the app is 9 publishers; this is the server-side backstop.
+  max_participants: 100
+
+logging:
+  level: info
+  json: false
+
+# Prometheus endpoint, for Uptime Kuma on this same box.
+prometheus_port: 6789

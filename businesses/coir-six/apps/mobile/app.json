@@ -45,6 +45,15 @@
           "photosPermission": "Coir Six uses your photo library so you can choose a profile picture.",
           "cameraPermission": "Coir Six uses the camera so you can take a profile picture."
         }
+      ],
+      "@config-plugins/react-native-webrtc",
+      [
+        "@livekit/react-native-expo-plugin",
+        {
+          "android": {
+            "audioType": "communication"
+          }
+        }
       ]
     ],
     "experiments": {
