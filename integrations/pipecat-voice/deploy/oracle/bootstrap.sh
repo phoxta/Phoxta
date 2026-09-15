@@ -30,6 +30,12 @@ if command -v netfilter-persistent >/dev/null 2>&1; then
   done
   iptables -C INPUT -p udp --dport 7882 -j ACCEPT 2>/dev/null \
     || iptables -I INPUT 1 -p udp --dport 7882 -j ACCEPT
+  # Caddy reaches livekit (host networking) via the bridge gateway, which
+  # lands in INPUT and hits the trailing REJECT. Without this the class
+  # page answers 502 "no route to host" even though livekit is healthy.
+  # RFC1918 source only — 7880 is never open to the internet.
+  iptables -C INPUT -s 172.16.0.0/12 -p tcp --dport 7880 -j ACCEPT 2>/dev/null \
+    || iptables -I INPUT 1 -s 172.16.0.0/12 -p tcp --dport 7880 -j ACCEPT
   netfilter-persistent save
 elif command -v firewall-cmd >/dev/null 2>&1; then   # Oracle Linux images
   firewall-cmd --permanent --add-service=http

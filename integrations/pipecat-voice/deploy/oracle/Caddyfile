@@ -3,6 +3,17 @@
 }
 
 {$VOICE_DOMAIN} {
+	# The design renderer, on a path rather than a host of its own: a second
+	# subdomain would need a DNS record and its own certificate for a service
+	# that only Supabase edge functions ever call. handle_path strips the
+	# prefix, so the service still sees /render and /health.
+	handle_path /render/* {
+		reverse_proxy render:8790
+	}
+	handle /render {
+		reverse_proxy render:8790
+	}
+
 	# Caddy v2 proxies WebSocket upgrades transparently — no special directive
 	# is needed for Twilio's /ws Media Stream. What matters is that the upgrade
 	# answers 101; anything else surfaces as Twilio error 31920 mid-call.

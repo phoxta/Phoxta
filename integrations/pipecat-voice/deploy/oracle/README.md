@@ -339,6 +339,28 @@ curl -fsS https://live.phoxta.com/            # LiveKit answers "OK"
 curl -fsS https://live.phoxta.com/rtc/validate  # 401 without a token = auth is on
 ```
 
+Three things that bit on the first deploy, all now handled by `bootstrap.sh`
+and the config here:
+
+- **`no route to host` on 7880.** Caddy sits in a bridge network and reaches
+  livekit (host networking) through the gateway address, which lands in the
+  host INPUT chain and hits the trailing REJECT. The class page answers 502
+  while livekit itself is perfectly healthy. Fixed by an RFC1918-scoped ACCEPT
+  on 7880 — never a public rule.
+- **`could not validate external IP`.** livekit STUNs itself to confirm its
+  public address is reachable. It fails while the VCN still blocks UDP 7882,
+  and is the clearest signal that the security-list rules are missing. It falls
+  back to the right address either way, so the class loads and the media does
+  not.
+- **`livekit/livekit-server:v1` does not exist.** Pin an exact patch.
+
+### Live state (15 Sep 2026)
+
+Deployed and verified end to end: `live.phoxta.com` A → the VM, Let's Encrypt
+certificate issued, Twirp RoomService reachable over the public host, and a real
+learner's token minted by `coir-live` accepted by LiveKit's `/rtc/validate`
+with `canPublish: false` — the stage rule enforced by the server, not the page.
+
 Then open a class on two devices **on different networks** — one on wifi, one on
 mobile data. That is the only test that proves both the UDP mux and the TCP
 fallback work; two tabs on one laptop will pass even when the box is unreachable

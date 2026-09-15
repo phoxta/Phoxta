@@ -44,4 +44,7 @@ logging:
   json: false
 
 # Prometheus endpoint, for Uptime Kuma on this same box.
-prometheus_port: 6789
+# `prometheus.port`, not the older top-level `prometheus_port` — v1.13 logs a
+# deprecation warning for that one on every boot.
+prometheus:
+  port: 6789

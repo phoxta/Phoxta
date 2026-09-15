@@ -38,6 +38,28 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
+  # The design renderer (integrations/design-render): headless Chrome turning a
+  # design document into a PNG/PDF for the ops console.
+  #
+  # NOT IN GIT UNTIL NOW. It was added straight on the VM, so this file and the
+  # box disagreed, and anyone who deployed the repo's copy would have deleted
+  # the service. Committed here so the repo is the deploy artifact again.
+  #
+  # The build context is an ABSOLUTE PATH ON THE VM on purpose: this file is
+  # copied to ~/pipecat-voice/deploy/oracle and built there, and the renderer is
+  # rsynced separately to ~/design-render. A repo-relative path would resolve to
+  # nothing on the box.
+  render:
+    build:
+      context: /home/ubuntu/design-render
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ./render.env
+    # Chrome writes a lot of small files and needs more than the 64MB default.
+    shm_size: "512mb"
+    expose:
+      - "8790"
+
   # Self-hosted TURN relay for the browser voice widget.
   # network_mode: host because a TURN relay needs a wide UDP port range, and
   # publishing ~400 ports through Docker's userland proxy would spawn a process
@@ -181,7 +203,11 @@ services:
   # `docker compose up -d` must still bring up the voice stack and nothing else.
   livekit:
     profiles: ["live"]
-    image: livekit/livekit-server:v1
+    # Pinned to an exact patch, not `v1` (which does not exist as a tag) and not
+    # `latest`: the same reasoning as the llama.cpp pin below — a media server
+    # that rebuilds itself onto whatever shipped this morning is not something
+    # you want holding a live class.
+    image: livekit/livekit-server:v1.13.7
     restart: unless-stopped
     network_mode: host
     command: ["--config", "/etc/livekit.yaml"]
