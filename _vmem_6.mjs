@@ -1,0 +1,13 @@
+import { boot, go, shot } from "./_vmem_lib.mjs";
+const { browser, page, errors } = await boot({ width: 390, height: 844 });
+await go(page, "/create/memories", 1200);
+await go(page, "/create/memories/reels/reel-seven-years/play", 300);
+await page.waitForSelector('button[aria-label="Playback details"]', {timeout: 15000});
+await new Promise(r=>setTimeout(r, 4000));
+await page.evaluate(()=>{ const b=document.querySelector('button[aria-label="Playback details"]'); b.click(); });
+await new Promise(r=>setTimeout(r, 3000));
+console.log("pressed:", await page.$eval('button[aria-label="Playback details"]', b=>b.getAttribute("aria-pressed")));
+const body = await page.evaluate(()=>document.body.innerText);
+console.log(body.slice(0,1500));
+await shot(page,"04-details");
+await browser.close();

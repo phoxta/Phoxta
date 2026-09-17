@@ -1,0 +1,16 @@
+import puppeteer from "puppeteer";
+const BASE = "http://localhost:3015";
+const browser = await puppeteer.launch({ headless: "new", args: ["--no-sandbox"] });
+const page = await browser.newPage();
+page.on("pageerror", e => console.log("PAGEERROR", String(e)));
+page.on("console", m => { if (m.type()==="error") console.log("CONSOLE", m.text().slice(0,300)); });
+await page.setViewport({ width: 1280, height: 1000 });
+await page.goto(BASE + "/", { waitUntil: "networkidle0" });
+await new Promise(r=>setTimeout(r,1500));
+console.log("HOME URL:", page.url());
+console.log((await page.evaluate(()=>document.body.innerText)).slice(0,800));
+await page.goto(BASE + "/execute/goals/goal-2", { waitUntil: "networkidle0" });
+await new Promise(r=>setTimeout(r,1500));
+console.log("---- GOAL PAGE", page.url());
+console.log((await page.evaluate(()=>document.body.innerText)).slice(0,1500));
+await browser.close();

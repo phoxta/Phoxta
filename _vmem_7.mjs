@@ -1,0 +1,18 @@
+import { boot, BASE } from "./_vmem_lib.mjs";
+const { browser, page, errors } = await boot({ width: 390, height: 844 });
+const cdp = await page.target().createCDPSession();
+await page.goto(BASE + "/create/memories", { waitUntil: "domcontentloaded" });
+await new Promise(r=>setTimeout(r, 4000));
+await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+await cdp.send("Network.enable");
+await cdp.send("Network.emulateNetworkConditions", { offline:false, latency: 70, downloadThroughput: 4*1024*1024/8, uploadThroughput: 1024*1024/8 });
+await page.goto(BASE + "/create/memories/reels/reel-seven-years/play", { waitUntil: "domcontentloaded" });
+await page.waitForSelector('button[aria-label="Playback details"]', {timeout: 60000});
+await new Promise(r=>setTimeout(r, 12000));
+await page.evaluate(()=>document.querySelector('button[aria-label="Playback details"]').click());
+await new Promise(r=>setTimeout(r, 4000));
+const b = await page.evaluate(()=>document.body.innerText);
+const i = b.indexOf("PLAYBACK");
+console.log("THROTTLED 4x CPU / 4G:"); console.log(b.slice(i, i+260));
+console.log("errors:", errors.slice(0,8).join(" | ")||"none");
+await browser.close();

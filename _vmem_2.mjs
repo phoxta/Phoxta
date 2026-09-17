@@ -1,0 +1,11 @@
+import { boot, go, imgs } from "./_vmem_lib.mjs";
+const { browser, page, errors } = await boot({});
+await go(page, "/create/memories", 2500);
+const im = await imgs(page);
+const bad = im.filter(i=>!i.ok);
+console.log("BROKEN:", bad.length, "of", im.length);
+console.log([...new Set(bad.map(i=>i.src))].join("\n"));
+console.log("--- missing dims ---");
+console.log([...new Set(im.filter(i=>!i.hasDims).map(i=>i.src))].slice(0,20).join("\n"));
+console.log("--- ERRORS ---"); console.log(errors.slice(0,25).join("\n") || "none");
+await browser.close();

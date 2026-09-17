@@ -1,0 +1,16 @@
+import puppeteer from "puppeteer";
+const BASE="http://localhost:3015";
+const browser = await puppeteer.launch({headless:"new",args:["--no-sandbox"]});
+const page = await browser.newPage(); await page.setViewport({width:390,height:844});
+await page.goto(BASE+"/",{waitUntil:"domcontentloaded"});
+await page.evaluate(()=>{localStorage.setItem("wafe:mode","demo");localStorage.setItem("wafe:demo:view-as","mem-ife");});
+await page.goto(BASE+"/create/memories/reels/reel-summer",{waitUntil:"domcontentloaded"});
+await new Promise(x=>setTimeout(x,4000));
+console.log("scrollHeight:", await page.evaluate(()=>document.body.scrollHeight));
+console.log("img sample:", JSON.stringify(await page.evaluate(()=>Array.from(document.images).slice(0,3).map(i=>({src:i.src.split("/").pop(),ok:i.naturalWidth>0,rect:i.getBoundingClientRect().top+"/"+i.getBoundingClientRect().height, disp:getComputedStyle(i).display, vis:getComputedStyle(i).visibility})))));
+await page.evaluate(async ()=>{ for(let y=0;y<document.documentElement.scrollHeight;y+=400){window.scrollTo(0,y);await new Promise(r=>setTimeout(r,200));} window.scrollTo(0,0); });
+await new Promise(x=>setTimeout(x,4000));
+const st = await page.evaluate(()=>{ const a=Array.from(document.images); return {total:a.length, ok:a.filter(i=>i.naturalWidth>0).length, complete:a.filter(i=>i.complete).length}; });
+console.log("after scroll:", JSON.stringify(st));
+console.log("failed requests sample:", JSON.stringify(await page.evaluate(()=>Array.from(document.images).filter(i=>i.naturalWidth===0).slice(0,3).map(i=>i.currentSrc||i.src))));
+await browser.close();

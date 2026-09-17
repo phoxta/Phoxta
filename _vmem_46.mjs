@@ -1,0 +1,13 @@
+import puppeteer from "puppeteer";
+const BASE="http://localhost:3015";
+const browser = await puppeteer.launch({headless:"new",args:["--no-sandbox"]});
+const page = await browser.newPage(); await page.setViewport({width:390,height:844});
+await page.goto(BASE+"/",{waitUntil:"domcontentloaded"});
+await page.evaluate(()=>{localStorage.setItem("wafe:mode","demo");localStorage.setItem("wafe:demo:view-as","mem-ife");});
+await page.goto(BASE+"/create/memories/reels/reel-summer",{waitUntil:"domcontentloaded"});
+await new Promise(x=>setTimeout(x,3000));
+await page.evaluate(async ()=>{ for(let y=0;y<document.documentElement.scrollHeight;y+=400){window.scrollTo(0,y);await new Promise(r=>setTimeout(r,180));} });
+await new Promise(x=>setTimeout(x,3000));
+const r = await page.evaluate(()=>{ const a=Array.from(document.images).filter(i=>i.naturalWidth===0); return { total:a.length, inClosedDialog: a.filter(i=>{const d=i.closest("dialog"); return d && !d.open;}).length, other: a.filter(i=>{const d=i.closest("dialog"); return !(d&&!d.open);}).map(i=>i.src.split("/").pop()).slice(0,8) }; });
+console.log(JSON.stringify(r,null,1));
+await browser.close();

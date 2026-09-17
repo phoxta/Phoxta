@@ -1,0 +1,22 @@
+import { boot, go, shot } from "./_vmem_lib.mjs";
+const target = process.argv[2] || "2026-12-01T09:00:00";
+const { browser, page, errors } = await boot({});
+await page.evaluateOnNewDocument((t)=>{
+  const OFFSET = new Date(t).getTime() - Date.now();
+  const RD = Date;
+  const D = function(...a){ if(a.length===0) return new RD(RD.now()+OFFSET); return new RD(...a); };
+  D.prototype = RD.prototype; D.now = ()=>RD.now()+OFFSET; D.parse=RD.parse; D.UTC=RD.UTC;
+  Object.setPrototypeOf(D, RD);
+  window.Date = D;
+}, target);
+await go(page, "/create/memories", 3500);
+console.log("faked date:", target);
+console.log("app today:", await page.evaluate(()=>new Date().toISOString().slice(0,10)));
+const reels = await page.evaluate(()=>{ const v=JSON.parse(localStorage.getItem("wafe:demo:memories:v1")); return v.reels.map(r=>({title:r.title,auto:r.autoKind,status:r.status,frames:v.frames.filter(f=>f.reelId===r.id).length, cover:!!r.coverPhotoId})); });
+console.log("REELS:", JSON.stringify(reels,null,1));
+const t = await page.evaluate(()=>document.querySelector("main")?.innerText||"");
+const i = t.indexOf("Memory reels");
+console.log("UI:", t.slice(i, i+400));
+console.log("errors:", errors.filter(e=>e.startsWith("pageerror")).slice(0,3).join(" ~ ")||"none");
+await shot(page,"14-december");
+await browser.close();

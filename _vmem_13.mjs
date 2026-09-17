@@ -1,0 +1,22 @@
+import { boot, go, shot } from "./_vmem_lib.mjs";
+import { clickExact, dialogText } from "./_vmem_lib2.mjs";
+const { browser, page, errors } = await boot({});
+await go(page, "/create/memories/reels/reel-seven-years", 1800);
+await clickExact(page, "Share"); await new Promise(r=>setTimeout(r,800));
+const selInfo = await page.evaluate(()=>{
+  const ds=Array.from(document.querySelectorAll('[role="dialog"],dialog')).filter(d=>d.offsetParent!==null);
+  const sel = ds.map(d=>d.querySelector("select")).find(Boolean);
+  if(!sel) return "no select";
+  const proto = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype,"value").set;
+  proto.call(sel,"1");
+  sel.dispatchEvent(new Event("change",{bubbles:true}));
+  return sel.value;
+});
+console.log("select set to:", selInfo);
+await new Promise(r=>setTimeout(r,400));
+await clickExact(page, "Make a link"); await new Promise(r=>setTimeout(r,1500));
+const d = await dialogText(page);
+console.log(d.split("A LINK THAT LASTS")[1]||d);
+const links = await page.evaluate(()=>{ const v=JSON.parse(localStorage.getItem("wafe:demo:memories:v1")); return v.links.map(l=>({token:l.token,obj:l.objectId,exp:l.expiresAt,rev:l.revokedAt,views:l.views})); });
+console.log("LINKS:", JSON.stringify(links,null,1));
+await browser.close();

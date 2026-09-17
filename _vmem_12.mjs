@@ -1,0 +1,22 @@
+import { boot, go, shot } from "./_vmem_lib.mjs";
+import { clickExact, dialogText } from "./_vmem_lib2.mjs";
+const { browser, page, errors } = await boot({});
+const ctx = browser.defaultBrowserContext();
+await ctx.overridePermissions("http://localhost:3015", ["clipboard-read","clipboard-write"]);
+await page.evaluateOnNewDocument(()=>{ window.__dl=[]; const OMR=window.MediaRecorder; if(OMR){window.MediaRecorder=function(...a){window.__dl.push("MediaRecorder");return new OMR(...a);};} const oc=HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click=function(){ if(this.download||String(this.href).startsWith("blob:")) window.__dl.push({href:String(this.href).slice(0,80),download:this.download}); return oc.call(this); }; const ocu=URL.createObjectURL; URL.createObjectURL=function(b){ window.__dl.push({objectUrl:b&&b.type}); return ocu.call(URL,b); }; });
+await go(page, "/create/memories/reels/reel-seven-years", 1800);
+console.log("share clicked:", await clickExact(page, "Share"));
+await new Promise(r=>setTimeout(r,900));
+console.log("--- SHARE DIALOG ---\n"+(await dialogText(page)));
+// choose 1 day
+await page.evaluate(()=>{ const ds=Array.from(document.querySelectorAll('[role="dialog"],dialog')).filter(d=>d.offsetParent!==null); const sel = ds.map(d=>d.querySelector("select")).find(Boolean); if(sel){ sel.value="1"; sel.dispatchEvent(new Event("change",{bubbles:true})); } });
+await new Promise(r=>setTimeout(r,400));
+console.log("make link:", await clickExact(page, "Make a link"));
+await new Promise(r=>setTimeout(r,1500));
+console.log("--- AFTER MAKE ---\n"+(await dialogText(page)));
+const clip = await page.evaluate(()=>navigator.clipboard.readText().catch(e=>"ERR "+e.message));
+console.log("CLIPBOARD:", clip);
+console.log("DOWNLOAD/ENCODE ACTIVITY:", JSON.stringify(await page.evaluate(()=>window.__dl)));
+await shot(page,"07-share-made");
+console.log("errors:", errors.slice(0,8).join(" | ")||"none");
+await browser.close();

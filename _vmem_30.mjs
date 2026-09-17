@@ -1,0 +1,15 @@
+import { boot, go } from "./_vmem_lib.mjs";
+const { browser, page, errors } = await boot({});
+await go(page, "/live/travel", 2500);
+await page.evaluate(()=>{ const k="wafe:demo:travel:v1"; const v=JSON.parse(localStorage.getItem(k)); const t=v.trips.find(t=>t.id==="trip-kent"); t.status="done"; t.endDate="2026-08-19"; t.startDate="2026-08-14"; localStorage.setItem(k, JSON.stringify(v)); });
+await go(page, "/create/memories", 4000);
+const t = await page.evaluate(()=>document.querySelector("main")?.innerText||"");
+console.log("NOTE line:", (t.match(/[^\n]*album[^\n]*made[^\n]*/i)||["(none)"])[0]);
+const alb = await page.evaluate(()=>{ const v=JSON.parse(localStorage.getItem("wafe:demo:memories:v1")); return v.albums.filter(a=>a.tripId).map(a=>({title:a.title,tripId:a.tripId,auto:a.auto})); });
+console.log("TRIP ALBUMS:", JSON.stringify(alb));
+const tl = await page.evaluate(()=>{ const v=JSON.parse(localStorage.getItem("wafe:demo:memories:v1")); return v.timeline.filter(e=>e.title.includes("Kent")).map(e=>({t:e.title,href:e.href,date:e.date})); });
+console.log("TIMELINE EVENT:", JSON.stringify(tl));
+await go(page, "/create/memories", 3000);
+console.log("idempotent count:", await page.evaluate(()=>JSON.parse(localStorage.getItem("wafe:demo:memories:v1")).albums.filter(a=>a.tripId).length));
+console.log("errors:", errors.filter(e=>e.startsWith("pageerror")).slice(0,3).join(" ~ ")||"none");
+await browser.close();

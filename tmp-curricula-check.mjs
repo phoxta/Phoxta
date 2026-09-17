@@ -1,0 +1,26 @@
+import puppeteer from "puppeteer";
+const B = "http://localhost:3015";
+const browser = await puppeteer.launch({ headless: "new", args: ["--no-sandbox"] });
+const page = await browser.newPage();
+await page.setViewport({ width: 1200, height: 900 });
+const errs = [];
+page.on("pageerror", (e) => errs.push("pageerror: " + e));
+page.on("console", (m) => { if (m.type() === "error") errs.push("console: " + m.text()); });
+await page.goto(B, { waitUntil: "domcontentloaded" });
+await page.evaluate(() => { localStorage.setItem("wafe:mode", "demo"); localStorage.setItem("wafe:demo:view-as", "mem-ife"); });
+await page.goto(B + "/grow/curricula/mem-tobi", { waitUntil: "networkidle0" });
+await new Promise((r) => setTimeout(r, 1500));
+const t = await page.evaluate(() => (document.querySelector("main") ?? document.body).innerText);
+console.log("BADGES SECTION:", t.slice(t.indexOf("Badges")).replace(/\n+/g, " · ").slice(0, 700));
+console.log("buttons named:", await page.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.textContent.trim()).filter((x) => x.includes("Take")).length));
+// click first
+const ok = await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "Take it back"); if (!b) return "none"; b.click(); return "clicked"; });
+console.log("click:", ok);
+await new Promise((r) => setTimeout(r, 600));
+console.log("dialog text:", (await page.evaluate(() => document.body.innerText)).split("\n").filter((l) => l.includes("Take back") || l.includes("leaves")).join(" | "));
+const ok2 = await page.evaluate(() => { const bs = [...document.querySelectorAll("button")].filter((x) => x.textContent.trim() === "Take it back"); const b = bs[bs.length - 1]; if (!b) return "none"; b.click(); return "confirmed"; });
+console.log("confirm:", ok2);
+await new Promise((r) => setTimeout(r, 1500));
+console.log("awards left:", await page.evaluate(() => [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Take it back").length));
+console.log("errors:", errs);
+await browser.close();

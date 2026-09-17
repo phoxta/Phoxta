@@ -1,0 +1,13 @@
+import { boot, go, txt, shot, imgs, hscroll } from "./_vmem_lib.mjs";
+const { browser, page, errors } = await boot({});
+await go(page, "/create/memories", 2000);
+console.log("URL:", page.url());
+console.log("--- TEXT ---");
+console.log((await txt(page)).slice(0, 4000));
+console.log("--- IMAGES ---");
+const im = await imgs(page);
+console.log("count", im.length, "broken", im.filter(i=>!i.ok).length);
+console.log(JSON.stringify(im.filter(i=>!i.ok || !i.hasDims || i.lazy!=="lazy").slice(0,10), null, 1));
+await shot(page, "01-parent-home");
+console.log("--- ERRORS ---"); console.log(errors.join("\n") || "none");
+await browser.close();
