@@ -287,9 +287,18 @@ export default function App() {
       </Route>
       {/* The Founder Toolkit. FounderLayout supplies the venture record (localStorage)
           to every page beneath it, so answers follow the visitor without an account. */}
-      <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
+      {/* The hub renders HeaderNav itself, inside its hero, so the nav floats over
+          the artwork — the same arrangement the homepage uses, hence noHeader.
+          Stage and tool pages are reading surfaces and keep the standard header.
+          The venture record is localStorage-backed, so splitting the group does
+          not lose answers when moving between the hub and a tool. */}
+      <Route element={<MainLayout footerStyle={1} noHeader />}>
         <Route element={<FounderLayout />}>
           <Route path="/founder" element={<FounderHubPage />} />
+        </Route>
+      </Route>
+      <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
+        <Route element={<FounderLayout />}>
           <Route path="/founder/tool/:tool" element={<FounderToolPage />} />
           <Route path="/founder/:stage" element={<FounderStagePage />} />
         </Route>

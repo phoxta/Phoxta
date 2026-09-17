@@ -69,6 +69,9 @@ export const WEBSITE_JSONLD = {
 export const SITEMAP_ROUTES: { path: string; priority: number; changefreq: string }[] = [
     { path: "/", priority: 1.0, changefreq: "weekly" },
     { path: "/marketplace", priority: 0.9, changefreq: "weekly" },
+    // The free toolkit is the main way a first-time founder meets Phoxta, so it
+    // ranks alongside the marketplace rather than with the footer pages.
+    { path: "/founder", priority: 0.9, changefreq: "monthly" },
     { path: "/pricing", priority: 0.8, changefreq: "monthly" },
     { path: "/about", priority: 0.8, changefreq: "monthly" },
     { path: "/marketing", priority: 0.7, changefreq: "monthly" },

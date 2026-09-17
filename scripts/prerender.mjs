@@ -70,8 +70,26 @@ function articleSlugs() {
     }
 }
 
+// The Founder Toolkit hub and its ten stage pages. Without these, /founder fell
+// back to dist/index.html — the prerendered homepage — so the first paint on the
+// toolkit was the homepage hero, and crawlers were served homepage markup.
+const FOUNDER_ROUTES = [
+    "/founder",
+    "/founder/founder-fit",
+    "/founder/opportunity",
+    "/founder/business-model",
+    "/founder/legal-structure",
+    "/founder/plan-and-pitch",
+    "/founder/startup-capital",
+    "/founder/launch-and-operate",
+    "/founder/growth-funding",
+    "/founder/scale",
+    "/founder/exit",
+];
+
 const ROUTES = [
     "/",
+    ...FOUNDER_ROUTES,
     "/portfolio",
     "/portfolio/work/coir-six",
     "/portfolio/work/ferne",

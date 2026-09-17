@@ -1,16 +1,15 @@
 import { Link } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
-import { STAGES, COUNTRIES, MODELS } from "@/lib/founder/journey";
-import { ALL_TOOLS, toolsForStage } from "@/lib/founder/tools";
+import RevealText from "@/shared/effects/RevealText";
+import { COUNTRIES, MODELS } from "@/lib/founder/journey";
+import { ALL_TOOLS } from "@/lib/founder/tools";
 import { useVenture } from "@/lib/founder/ventureContext";
 import AdvisorPanel from "@/shared/founder/AdvisorPanel";
+import FounderHero from "@/shared/sections/founder/Hero";
+import FounderStory from "@/shared/sections/founder/Story";
+import FounderStagesScroll from "@/shared/sections/founder/StagesScroll";
+import { STAGE_IMAGE } from "@/lib/founder/media";
 import "./founder.css";
-
-const ARROW = (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-);
 
 /**
  * The Founder Toolkit hub. Free, no account, works in any country.
@@ -33,30 +32,12 @@ export default function FounderHubPage() {
                 path="/founder"
             />
 
-            <section className="fd-hero">
-                <div className="container">
-                    <span className="fd-hero__eyebrow">[ FREE FOUNDER TOOLKIT ]</span>
-                    <h1 className="fd-hero__title">
-                        Everything you need to launch and grow a business
-                    </h1>
-                    <p className="fd-hero__lead">
-                        {totalTools} tools across the ten stages of building a company, from deciding whether to start to
-                        working out what it is worth. Every benchmark shows its source and its year. No account, no cost.
-                    </p>
-                    <div className="fd-hero__actions">
-                        <Link to={`/founder/${STAGES[0].slug}`} className="fd-btn">
-                            Start at the beginning {ARROW}
-                        </Link>
-                        <a href="#stages" className="fd-btn fd-btn--ghost">
-                            Jump to a stage
-                        </a>
-                    </div>
-                </div>
-            </section>
+            <FounderHero />
+            <FounderStory />
 
             <section className="fd-profile">
                 <div className="container">
-                    <div className="fd-profile__inner">
+                    <div className="fd-profile__inner at_fade_anim" data-fade-from="bottom" data-delay=".1">
                         <div className="fd-profile__intro">
                             <h2 className="fd-h2">Set this up once</h2>
                             <p>
@@ -123,46 +104,34 @@ export default function FounderHubPage() {
                 </div>
             </section>
 
-            <section className="fd-stages" id="stages">
-                <div className="container">
-                    <h2 className="fd-h2">The ten stages</h2>
-                    <p className="fd-sub">
-                        The order is the book's, and it is deliberately linear. Real businesses loop back constantly, so
-                        work in whatever order your week demands.
-                    </p>
-
-                    <div className="fd-stages__grid">
-                        {STAGES.map((s) => {
-                            const tools = toolsForStage(s.id);
-                            const done = tools.filter((t) => venture.tools[t.id]?.completedAt).length;
-                            return (
-                                <Link key={s.id} to={`/founder/${s.slug}`} className="fd-stage">
-                                    <span className="fd-stage__n">{String(s.number).padStart(2, "0")}</span>
-                                    <h3 className="fd-stage__title">{s.title}</h3>
-                                    <p className="fd-stage__q">{s.question}</p>
-                                    <p className="fd-stage__sum">{s.summary}</p>
-                                    <span className="fd-stage__foot">
-                                        <span>
-                                            {tools.length} {tools.length === 1 ? "tool" : "tools"}
-                                            {done > 0 ? ` · ${done} done` : ""}
-                                        </span>
-                                        {ARROW}
-                                    </span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </div>
-            </section>
+            <FounderStagesScroll />
 
             {featured.length ? (
                 <section className="fd-featured">
                     <div className="container">
-                        <h2 className="fd-h2">If you only use a few</h2>
+                        <h2 className="fd-h2 reveal-text"><RevealText>If you only use a few</RevealText></h2>
                         <p className="fd-sub">The tools that change the most decisions.</p>
+                        {/* Each featured tool carries its stage's image, so the row reads
+                            as a set of things rather than a list of links. at_fade_anim is
+                            picked up by FadeAnimEffect; the stagger comes from data-delay. */}
                         <div className="fd-featured__grid">
-                            {featured.map((t) => (
-                                <Link key={t.id} to={`/founder/tool/${t.slug}`} className="fd-card">
+                            {featured.map((t, i) => (
+                                <Link
+                                    key={t.id}
+                                    to={`/founder/tool/${t.slug}`}
+                                    className="fd-card fd-card--visual at_fade_anim"
+                                    data-fade-from="bottom"
+                                    data-delay={(0.1 + i * 0.08).toFixed(2)}
+                                >
+                                    <span className="fd-card__shot">
+                                        <img
+                                            src={STAGE_IMAGE[t.stage]}
+                                            alt=""
+                                            width={640}
+                                            height={400}
+                                            loading="lazy"
+                                        />
+                                    </span>
                                     <span className="fd-card__kind">{t.kind}</span>
                                     <h3 className="fd-card__title">{t.title}</h3>
                                     <p className="fd-card__blurb">{t.blurb}</p>
@@ -176,8 +145,8 @@ export default function FounderHubPage() {
             <section className="fd-prov">
                 <div className="container">
                     <div className="fd-prov__inner">
-                        <h2 className="fd-h2">Where this comes from</h2>
-                        <div className="fd-prov__cols">
+                        <h2 className="fd-h2 reveal-text"><RevealText>Where this comes from</RevealText></h2>
+                        <div className="fd-prov__cols at_fade_anim" data-fade-from="bottom" data-delay=".15">
                             <div>
                                 <h3>The method</h3>
                                 <p>

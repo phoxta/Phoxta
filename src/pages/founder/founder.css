@@ -1305,3 +1305,261 @@
     line-height: 1.45;
     color: var(--at-neutral-500, #737373);
 }
+
+/* =====================================================================
+   Stage rail — the portfolio's "selected work" treatment, on Phoxta tokens
+   ---------------------------------------------------------------------
+   Structure and behaviour come from ScrollSectionEffects via .section-fix;
+   this is only the skin. Modelled on .pf-work__* in PortfolioLayout, but
+   that skin is written against --pf-* variables scoped to the portfolio
+   layout, so the values are restated here against the site's own tokens
+   rather than importing a palette that does not exist on this page.
+   ===================================================================== */
+.fd-stages-scroll__nav .item { padding: 7px 0; }
+.fd-stages-scroll__nav .item .content span {
+  flex: 0 0 38px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.fd-stages-scroll__nav .item .content h6 {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--at-common-black);
+}
+.fd-stages-scroll__nav .item .content svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.fd-stages-scroll__nav .item.active .content { margin: 0 10px; }
+.fd-stages-scroll__nav .item.active .content svg { opacity: 1; }
+
+.fd-stages-scroll__card { padding: 14px 14px 10px; }
+.fd-stages-scroll__shot {
+  position: relative;
+  display: block;
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  background: var(--at-neutral-0);
+  border: 1px solid rgba(var(--at-neutral-900-rgb, 15, 15, 15), 0.08);
+  cursor: pointer;
+}
+.fd-stages-scroll__shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.fd-stages-scroll__shot:hover img,
+.fd-stages-scroll__shot:focus-visible img { transform: scale(1.025); }
+
+.fd-stages-scroll__peek {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--at-common-black);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 9px 14px;
+  border-radius: 999px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+  box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.35);
+}
+.fd-stages-scroll__shot:hover .fd-stages-scroll__peek,
+.fd-stages-scroll__shot:focus-visible .fd-stages-scroll__peek {
+  opacity: 1;
+  transform: none;
+}
+
+.fd-stages-scroll__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 8px 8px;
+}
+.fd-stages-scroll__copy { min-width: 0; }
+.fd-stages-scroll__kicker {
+  font-size: 12.5px;
+  color: var(--at-neutral-500);
+  letter-spacing: 0.02em;
+  margin-bottom: 3px;
+}
+.fd-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--at-common-black);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.fd-stages-scroll__name {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--at-common-black);
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+  line-height: 1.2;
+}
+.fd-stages-scroll__name-link {
+  color: inherit;
+  text-decoration: none;
+  display: inline-block;
+  padding: 6px 0;
+  margin: -6px 0;
+  transition: opacity 0.2s ease;
+}
+.fd-stages-scroll__name-link:hover { opacity: 0.7; }
+.fd-stages-scroll__blurb {
+  font-size: 14.5px;
+  color: var(--at-neutral-500);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 64ch;
+}
+.fd-stages-scroll__cta {
+  font-size: 15px;
+  width: max-content;
+  flex: none;
+  min-height: 44px;
+  padding: 8px 0;
+  color: var(--at-common-black);
+  transition: gap 0.2s ease, opacity 0.2s ease;
+}
+.fd-stages-scroll__cta svg { transition: transform 0.2s ease; }
+.fd-stages-scroll__cta:hover { opacity: 0.75; }
+.fd-stages-scroll__cta:hover svg { transform: translateX(3px); }
+
+/* The pinned rail is desktop-only; below that the cards simply stack. */
+@media (max-width: 991px) {
+  .fd-stages-scroll__nav { display: none; }
+}
+@media (max-width: 767px) {
+  .fd-stages-scroll__foot { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .fd-stages-scroll__card { padding: 10px 10px 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fd-stages-scroll__shot img { transition: none !important; }
+}
+
+/* Featured tools become image cards rather than text blocks, so the row below
+   the stage rail keeps the page visual all the way down. */
+.fd-card--visual { display: flex; flex-direction: column; overflow: hidden; }
+.fd-card__shot {
+  display: block;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  margin-bottom: 14px;
+  background: var(--at-neutral-50, #f4f4f4);
+}
+.fd-card__shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.fd-card--visual:hover .fd-card__shot img,
+.fd-card--visual:focus-visible .fd-card__shot img { transform: scale(1.04); }
+@media (prefers-reduced-motion: reduce) {
+  .fd-card__shot img { transition: none !important; }
+}
+
+/* =====================================================================
+   Story band — the narrative breath between hero and stage rail
+   ===================================================================== */
+.fd-story__ticker {
+  border-block: 1px solid rgba(15, 15, 15, 0.1);
+  padding: 18px 0;
+}
+.fd-story__ticker-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 28px;
+  font-size: clamp(20px, 3vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--at-common-black);
+  padding-right: 28px;
+  white-space: nowrap;
+}
+.fd-story__ticker-dot { color: var(--at-neutral-500); font-size: 0.5em; }
+
+.fd-story__head {
+  font-size: clamp(28px, 4.2vw, 56px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* Three frames, deliberately uneven: the middle one drops so the row reads as
+   a hand-placed composition rather than a grid of thumbnails. */
+.fd-story__frames {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(16px, 3vw, 48px);
+  align-items: start;
+}
+.fd-story__frame { margin: 0; }
+.fd-story__frame--2 { margin-top: clamp(32px, 7vw, 110px); }
+.fd-story__frame--3 { margin-top: clamp(12px, 3vw, 46px); }
+
+.fd-story__media {
+  display: block;
+  border-radius: 16px;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  background: var(--at-neutral-50, #f4f4f4);
+  will-change: transform;
+}
+.fd-story__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.fd-story__cap { padding-top: 18px; }
+.fd-story__kicker {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--at-neutral-500);
+  margin-bottom: 6px;
+}
+.fd-story__line {
+  margin: 0;
+  font-size: clamp(15px, 1.25vw, 18px);
+  line-height: 1.45;
+  color: var(--at-common-black);
+  max-width: 34ch;
+}
+
+@media (max-width: 767px) {
+  .fd-story__frames { grid-template-columns: 1fr; }
+  .fd-story__frame--2,
+  .fd-story__frame--3 { margin-top: 0; }
+}
