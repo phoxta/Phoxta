@@ -1,0 +1,126 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Per-product brand expression.
+
+   `brandVars()` sets --brand, --font-display, --display-weight, the tracking and
+   the radius scale on the product root. Everything here consumes those, so the
+   same markup produces a different-looking company for each product.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Display face applies to headlines only; body copy stays Inter for legibility. */
+.u-hero-title,
+.mk-title,
+.mk-cta h2,
+.mk-quote blockquote,
+.u-display-xl, .u-display-lg, .u-display-md, .u-display-sm, .u-display-xs,
+.ax-page__head h1 {
+  font-family: var(--font-display, var(--font-sans));
+  font-weight: var(--display-weight, 600);
+  letter-spacing: var(--display-tracking, -0.028em);
+}
+
+/* A serif display face needs more line height and less negative tracking. */
+[data-serif='true'] .u-hero-title { line-height: 1.14; letter-spacing: -0.014em; }
+[data-serif='true'] .mk-title { line-height: 1.18; }
+
+/* Kickers: some brands set them in caps, others in sentence case. */
+[data-kicker='caps'] .mk-kicker { text-transform: uppercase; letter-spacing: .09em; font-size: var(--text-xs-size); }
+
+/* ── Background patterns ────────────────────────────────────────────────── */
+.ba-pattern { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+
+.ba-pattern--grid {
+  background-image:
+    linear-gradient(to right, var(--border-secondary) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-secondary) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 76%);
+  mask-image: linear-gradient(to bottom, #000, transparent 76%);
+}
+.ba-pattern--dots {
+  background-image: radial-gradient(var(--border-primary) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+  opacity: .5;
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 30%, #000, transparent 78%);
+  mask-image: radial-gradient(70% 60% at 50% 30%, #000, transparent 78%);
+}
+.ba-pattern--rings {
+  background-image: repeating-radial-gradient(circle at 78% 18%, transparent 0 58px, color-mix(in srgb, var(--brand) 16%, transparent) 58px 59px);
+  -webkit-mask-image: radial-gradient(70% 70% at 78% 18%, #000, transparent 76%);
+  mask-image: radial-gradient(70% 70% at 78% 18%, #000, transparent 76%);
+}
+.ba-pattern--waves {
+  background-image: repeating-linear-gradient(120deg, color-mix(in srgb, var(--brand) 9%, transparent) 0 2px, transparent 2px 22px);
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 72%);
+  mask-image: linear-gradient(to bottom, #000, transparent 72%);
+}
+.ba-pattern--topo {
+  background-image:
+    repeating-linear-gradient(45deg, color-mix(in srgb, var(--brand) 7%, transparent) 0 1px, transparent 1px 16px),
+    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--brand) 7%, transparent) 0 1px, transparent 1px 16px);
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 70%);
+  mask-image: linear-gradient(to bottom, #000, transparent 70%);
+}
+
+/* ── Hero variants ─────────────────────────────────────────────────────── */
+
+/* Mirrored split. */
+.mk-hero--split-left .mk-hero__grid { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+.mk-hero--split-left .mk-hero__copy { order: 2; }
+.mk-hero--split-left .mk-stage { order: 1; }
+.mk-hero--split-left .mk-stage__card { left: auto; right: calc(var(--space-8) * -1); }
+@media (max-width: 1023px) {
+  .mk-hero--split-left .mk-hero__grid { grid-template-columns: 1fr; }
+  .mk-hero--split-left .mk-hero__copy { order: 1; }
+  .mk-hero--split-left .mk-stage { order: 2; }
+}
+
+/* Centred: copy over a wide product panel. */
+.mk-hero--centred .mk-hero__grid { grid-template-columns: 1fr; gap: var(--space-16); }
+.mk-hero--centred .mk-hero__copy { max-width: 40rem; margin-inline: auto; text-align: center; justify-items: center; }
+.mk-hero--centred .u-hero-lede { max-width: 34rem; margin-inline: auto; }
+.mk-hero--centred .mk-hero__proof { justify-content: center; }
+.mk-hero--centred .mk-stage__photo { aspect-ratio: 21 / 9; }
+.mk-hero--centred .mk-stage__card { left: 50%; transform: translateX(-50%); bottom: calc(var(--space-10) * -1); width: min(460px, 88%); }
+
+/* Editorial: oversized headline, photograph bleeding right. */
+.mk-hero--editorial { padding-top: var(--space-16); }
+.mk-hero--editorial .mk-hero__grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-16); align-items: center; }
+.mk-hero--editorial .mk-hero__copy { max-width: 36rem; }
+.mk-hero--editorial .u-hero-title { font-size: clamp(2.375rem, 1.5rem + 3.1vw, 3.875rem); line-height: 1.06; }
+.mk-hero--editorial .mk-hero__copy > .u-hero-title { margin-bottom: var(--space-6); }
+.mk-hero--editorial .u-hero-lede { max-width: 30rem; font-size: var(--text-lg-size); }
+.mk-hero--editorial .mk-stage__photo { aspect-ratio: 3 / 4; border-radius: var(--radius-4xl); }
+.mk-hero--editorial .mk-stage__card { left: calc(var(--space-16) * -1); bottom: var(--space-10); width: min(330px, 82%); }
+@media (max-width: 1023px) {
+  .mk-hero--editorial .mk-hero__grid { grid-template-columns: 1fr; }
+  .mk-hero--editorial .mk-hero__copy { max-width: 34rem; }
+  .mk-hero--editorial .mk-stage__card { left: 0; }
+}
+
+/* Panel: dark full-bleed surface with the product floating on it. */
+.mk-hero--panel { background: var(--brand-deep); color: #fff; padding-bottom: var(--space-24); }
+.mk-hero--panel .u-hero-title { color: #fff; }
+.mk-hero--panel .u-hero-lede { color: rgb(255 255 255 / .74); }
+.mk-hero--panel .mk-hero__proof { color: rgb(255 255 255 / .55); }
+.mk-hero--panel .mk-hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-14); }
+.mk-hero--panel .mk-hero__copy { max-width: 36rem; }
+.mk-hero--panel .u-hero-lede { max-width: 33rem; }
+.mk-hero--panel .ba-pattern { opacity: .22; }
+.mk-hero--panel .ba-pattern--grid { background-image: linear-gradient(to right, rgb(255 255 255 / .16) 1px, transparent 1px), linear-gradient(to bottom, rgb(255 255 255 / .16) 1px, transparent 1px); }
+.mk-hero--panel .mk-stage__photo { display: none; }
+.mk-hero--panel .mk-stage__card { position: static; width: 100%; }
+.mk-hero--panel .u-btn--gray { --btn-bg: rgb(255 255 255 / .10); --btn-fg: #fff; --btn-bd: rgb(255 255 255 / .26); }
+
+/* Stacked: copy, then a mosaic of the field. */
+.mk-hero--stacked .mk-hero__grid { grid-template-columns: 1fr; gap: var(--space-16); }
+.mk-hero--stacked .mk-hero__copy { max-width: 38rem; }
+.mk-hero--stacked .u-hero-title { font-size: clamp(2rem, 1.4rem + 2.3vw, 3.125rem); }
+.mk-hero--stacked .u-hero-lede { max-width: 34rem; }
+
+/* ── Shape language reaches the small parts too ─────────────────────────── */
+[data-shape='sharp'] .u-badge, [data-shape='sharp'] .mk-hero__eyebrow { border-radius: 3px; }
+[data-shape='sharp'] .u-feat { border-radius: 4px; }
+[data-shape='sharp'] .mk-step__n, [data-shape='sharp'] .u-avatar { border-radius: 4px; }
+[data-shape='pill'] .u-btn { border-radius: 999px; }
+[data-shape='pill'] .u-input, [data-shape='pill'] .u-select { border-radius: 999px; }
+[data-shape='pill'] .u-feat { border-radius: 999px; }

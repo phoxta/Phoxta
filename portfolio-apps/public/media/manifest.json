@@ -1,0 +1,427 @@
+{
+  "brand": {
+    "shots": [
+      {
+        "file": "00_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_sentiment_trend.webp",
+        "w": 1312,
+        "h": 567
+      },
+      {
+        "file": "02_aspect_analysis.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_aspect_sentiment.webp",
+        "w": 1271,
+        "h": 567
+      },
+      {
+        "file": "03_crisis_detection.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "03_topic_distribution.webp",
+        "w": 1362,
+        "h": 598
+      },
+      {
+        "file": "04_competitive_intel.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "05_topic_explorer.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "06_review_search.webp",
+        "w": 1440,
+        "h": 900
+      }
+    ],
+    "video": true
+  },
+  "clv": {
+    "shots": [
+      {
+        "file": "00_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_clv_distribution.webp",
+        "w": 1161,
+        "h": 598
+      },
+      {
+        "file": "01_user_intelligence.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_cohort_analysis.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_segment_analysis.webp",
+        "w": 1785,
+        "h": 696
+      },
+      {
+        "file": "03_campaign_planner.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "04_retention_messages.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "05_revenue_protection.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "06_model_insights.webp",
+        "w": 1440,
+        "h": 900
+      }
+    ],
+    "video": true
+  },
+  "reviews": {
+    "shots": [
+      {
+        "file": "00_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_category_distribution.webp",
+        "w": 1420,
+        "h": 648
+      },
+      {
+        "file": "01_live_classifier.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_sentiment_distribution.webp",
+        "w": 887,
+        "h": 648
+      },
+      {
+        "file": "02_voc_analytics.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "03_category_sentiment_heatmap.webp",
+        "w": 1209,
+        "h": 682
+      },
+      {
+        "file": "03_rag_explorer.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "04_executive_report.webp",
+        "w": 1440,
+        "h": 900
+      }
+    ],
+    "video": true
+  },
+  "mortgage": {
+    "shots": [
+      {
+        "file": "00_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_approval_rates.webp",
+        "w": 1284,
+        "h": 567
+      },
+      {
+        "file": "01_race.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_sex.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_shap_explanation.webp",
+        "w": 1293,
+        "h": 656
+      },
+      {
+        "file": "03_ethnicity.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "03_fairness_metrics.webp",
+        "w": 1065,
+        "h": 590
+      },
+      {
+        "file": "04_age_group.webp",
+        "w": 1440,
+        "h": 900
+      }
+    ],
+    "video": true
+  },
+  "marketing": {
+    "shots": [
+      {
+        "file": "00_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_rfm_segments.webp",
+        "w": 1304,
+        "h": 626
+      },
+      {
+        "file": "01_segment_explorer.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_channel_response.webp",
+        "w": 1148,
+        "h": 590
+      },
+      {
+        "file": "02_rfm_analysis.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "03_attribution.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "03_roc_curve.webp",
+        "w": 972,
+        "h": 714
+      },
+      {
+        "file": "04_market_basket.webp",
+        "w": 1440,
+        "h": 900
+      }
+    ],
+    "video": true
+  },
+  "people": {
+    "shots": [
+      {
+        "file": "00_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_attrition_by_group.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_attrition_dashboard.webp",
+        "w": 1785,
+        "h": 696
+      },
+      {
+        "file": "02_feature_importance.webp",
+        "w": 1334,
+        "h": 714
+      },
+      {
+        "file": "02_pay_equity.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "03_promotion_velocity.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "04_full_scorecard.webp",
+        "w": 1440,
+        "h": 900
+      }
+    ],
+    "video": true
+  },
+  "fraud": {
+    "shots": [
+      {
+        "file": "00_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_roc_curve.webp",
+        "w": 922,
+        "h": 714
+      },
+      {
+        "file": "02_confusion_matrix.webp",
+        "w": 810,
+        "h": 682
+      },
+      {
+        "file": "02_transaction_analysis.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "03_feature_importance.webp",
+        "w": 1172,
+        "h": 714
+      },
+      {
+        "file": "03_model_performance.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "04_fairness_monitor.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "05_drift_monitor.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "06_alert_queue.webp",
+        "w": 1440,
+        "h": 900
+      }
+    ],
+    "video": true
+  },
+  "retail": {
+    "shots": [
+      {
+        "file": "00_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_dashboard.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_model_performance.webp",
+        "w": 1155,
+        "h": 625
+      },
+      {
+        "file": "02_live_detection.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_training_loss.webp",
+        "w": 1155,
+        "h": 598
+      },
+      {
+        "file": "03_analytics.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "03_oos_reduction.webp",
+        "w": 1264,
+        "h": 567
+      },
+      {
+        "file": "04_reports.webp",
+        "w": 1440,
+        "h": 900
+      }
+    ],
+    "video": true
+  },
+  "supply-chain": {
+    "shots": [
+      {
+        "file": "00_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "01_distress_distribution.webp",
+        "w": 1148,
+        "h": 598
+      },
+      {
+        "file": "01_portfolio_overview.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_company_deep_dive.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "02_sector_risk_heatmap.webp",
+        "w": 1155,
+        "h": 682
+      },
+      {
+        "file": "03_altman_vs_ml.webp",
+        "w": 1039,
+        "h": 714
+      },
+      {
+        "file": "03_network_analysis.webp",
+        "w": 1440,
+        "h": 900
+      },
+      {
+        "file": "04_altman_z-score.webp",
+        "w": 1440,
+        "h": 900
+      }
+    ],
+    "video": true
+  }
+}

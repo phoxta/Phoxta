@@ -1,0 +1,259 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Motion.
+
+   Three jobs: bring the hero in on load, settle sections in as they are
+   reached, and reward the pointer. Timings and easings come from IBM Carbon's
+   motion tokens, so nothing here is arbitrary. Every rule collapses to nothing
+   under `prefers-reduced-motion`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── On-entry reveal ────────────────────────────────────────────────────── */
+.u-reveal {
+  opacity: 0;
+  transform: translateY(22px) scale(.985);
+  transition:
+    opacity var(--duration-slow-01) var(--ease-entrance),
+    transform var(--duration-slow-01) var(--ease-entrance);
+  will-change: opacity, transform;
+}
+.u-reveal[data-shown='true'] { opacity: 1; transform: none; will-change: auto; }
+
+/* ── Hero entrance ──────────────────────────────────────────────────────────
+   The whole choreography lives inside `@media (prefers-reduced-motion:
+   no-preference)`, and the hidden state lives inside the keyframes with
+   `animation-fill-mode: both`. That ordering is the accessibility contract:
+   if the query does not match, or this file never loads, the hero is simply a
+   hero — nothing is left invisible waiting for an animation that will not run.
+
+   Nothing starts at `opacity: 0` either. Chrome does not treat a fully
+   transparent element as a candidate for Largest Contentful Paint, so a
+   headline faded up from zero reports its repaint time instead of its render
+   time. 0.06 is indistinguishable at the start of a 700ms move and keeps the
+   measurement honest.
+   ─────────────────────────────────────────────────────────────────────────── */
+@keyframes u-rise {
+  from { opacity: .06; transform: translate3d(0, 12px, 0); }
+  to   { opacity: 1;   transform: none; }
+}
+@keyframes u-pop {
+  from { opacity: .06; transform: translate3d(0, 10px, 0) scale(.97); }
+  to   { opacity: 1;   transform: none; }
+}
+@keyframes u-arrive {
+  from { opacity: .06; transform: translate3d(0, 24px, 0) scale(.965); }
+  to   { opacity: 1;   transform: none; }
+}
+@keyframes u-settle {
+  from { opacity: .04; transform: translate3d(0, 18px, 0) scale(.94); }
+  to   { opacity: 1;   transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The headline leads and everything else is timed off it. The lede waits for
+     the last line to be moving, the buttons follow as a tight pair, and the
+     visual starts early but lands last so the two halves finish together. */
+  .mk-hero__copy > .u-hero-lede,
+  .mk-hero__in   > .u-hero-lede { animation: u-rise 700ms var(--ease-out-strong) 380ms both; }
+
+  .mk-hero__copy > .u-row > *,
+  .mk-hero__in   > .u-row > *   { animation: u-pop 560ms var(--ease-out-strong) 480ms both; }
+  .mk-hero__copy > .u-row > *:nth-child(2),
+  .mk-hero__in   > .u-row > *:nth-child(2) { animation-delay: 530ms; }
+
+  .mk-hero__proof { animation: u-rise 620ms var(--ease-out-strong) 620ms both; }
+
+  .mk-stage       { animation: u-arrive 1100ms var(--ease-out-soft) 150ms both; }
+  .mk-stage__card { animation: u-settle 900ms var(--ease-out-strong) 720ms both; }
+  .mk-stage__chip { animation: u-pop 620ms var(--ease-out-strong) 900ms both; }
+}
+
+/* ── Ambient drift on the brand mesh ────────────────────────────────────── */
+@keyframes u-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-2%, 1.5%, 0) scale(1.06); }
+}
+.ba-mesh { animation: u-drift 26s var(--ease-expressive) infinite; }
+
+/* ── Logo marquee ───────────────────────────────────────────────────────── */
+.mk-marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.mk-marquee__track { display: flex; gap: var(--space-12); width: max-content; animation: u-marquee 38s linear infinite; }
+.mk-marquee:hover .mk-marquee__track { animation-play-state: paused; }
+@keyframes u-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ── Bars and meters grow when revealed ─────────────────────────────────── */
+.u-reveal .vg__pos, .u-reveal .vg__neg, .u-reveal .pv__bar i, .u-reveal .pv__spark i {
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform var(--duration-slow-02, 700ms) var(--ease-entrance);
+}
+.u-reveal .vg__neg { transform-origin: right center; }
+.u-reveal[data-shown='true'] .vg__pos,
+.u-reveal[data-shown='true'] .vg__neg,
+.u-reveal[data-shown='true'] .pv__bar i,
+.u-reveal[data-shown='true'] .pv__spark i { transform: scaleX(1); }
+
+/* ── Pointer rewards ────────────────────────────────────────────────────── */
+.u-btn { transition: background var(--duration-fast-02) var(--ease-productive), border-color var(--duration-fast-02) var(--ease-productive), color var(--duration-fast-02) var(--ease-productive), box-shadow var(--duration-fast-02) var(--ease-productive), transform var(--duration-fast-02) var(--ease-productive); }
+.u-btn:hover { transform: translateY(-1px); }
+.u-btn:active { transform: translateY(0); }
+.u-btn svg:last-child { transition: transform var(--duration-fast-02) var(--ease-productive); }
+.u-btn:hover svg:last-child { transform: translateX(2px); }
+
+.mk-photo-card { overflow: hidden; }
+.mk-photo-card img { transition: transform var(--duration-slow-01) var(--ease-expressive); }
+.mk-photo-card:hover img { transform: scale(1.04); }
+
+.mk-logo { transition: color var(--duration-fast-02) var(--ease-productive); }
+.mk-logo img { transition: filter var(--duration-fast-02) var(--ease-productive), opacity var(--duration-fast-02) var(--ease-productive); }
+.mk-logo:hover { color: var(--text-secondary); }
+.mk-logo:hover img { filter: none; opacity: 1; }
+
+.vg, .pv { transition: box-shadow var(--duration-moderate-02) var(--ease-productive), transform var(--duration-moderate-02) var(--ease-productive); }
+.mk-row:hover .vg { box-shadow: var(--shadow-xl); transform: translateY(-3px); }
+
+/* ── Number count-up ────────────────────────────────────────────────────── */
+.u-count { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .u-reveal, .mk-hero__copy > *, .mk-stage, .mk-stage__card, .sl__i {
+    opacity: 1 !important; transform: none !important; animation: none !important; transition: none !important;
+  }
+  .ba-mesh, .mk-marquee__track { animation: none !important; }
+  .u-btn:hover, .mk-row:hover .vg { transform: none; }
+  .u-reveal .vg__pos, .u-reveal .vg__neg, .u-reveal .pv__bar i, .u-reveal .pv__spark i { transform: none; transition: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Headline line reveal.
+
+   Each word sits in a clipping box and starts below it. The stagger is by
+   *line* (the index is measured after layout and written to `--l`), so the
+   words on a line rise together and the headline reads as it arrives.
+
+   The curve is a long expo-out: fast off the mark, a long settle, no bounce.
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* A strong ease-out is what makes a reveal read as expensive rather than
+   sluggish; the browser's own `ease-out` is far too weak at this size. The soft
+   variant is for the large, slow objects, which should not snap. */
+:root {
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-soft:   cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-reveal:     cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sl { display: block; }
+.sl__w {
+  display: inline-block; overflow: hidden; vertical-align: bottom;
+  /* Descenders would otherwise be sliced off by the clip. */
+  padding-bottom: 0.14em; margin-bottom: -0.14em;
+}
+.sl__i {
+  display: inline-block;
+  /* 110%, not 100%: at exactly 100% a hairline of the antialiased ascenders
+     stays visible above the clip in both Chrome and Safari. */
+  transform: translateY(110%);
+  transition: transform 820ms var(--ease-out-strong);
+  transition-delay: calc(var(--sl-delay, 0ms) + var(--l, 0) * var(--sl-step, 80ms));
+}
+.sl[data-shown='true'] .sl__i { transform: none; }
+@media (prefers-reduced-motion: reduce) { .sl__i { transform: none; transition: none; } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Keeping the hero alive after it lands.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Ambient float ──────────────────────────────────────────────────────────
+   Three constraints separate this from the template version: the amplitude
+   stays under 12px, the period is slower than a breath, and the negative
+   delays put the pieces out of phase. Synchronised bobbing is the giveaway. */
+@keyframes u-float {
+  from, to { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -9px, 0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Listed after the entrance so it takes over the transform once it starts. */
+  .mk-stage__card {
+    animation:
+      u-settle 900ms var(--ease-out-strong) 720ms both,
+      u-float 7.2s ease-in-out 1.7s infinite;
+  }
+  .mk-stage__chip {
+    animation:
+      u-pop 620ms var(--ease-out-strong) 900ms both,
+      u-float 5.6s ease-in-out -2.3s infinite;
+    animation-delay: 900ms, 1.6s;
+  }
+}
+
+/* ── Film grain ─────────────────────────────────────────────────────────────
+   The noise is rasterised once from a data URI and then tiled, rather than run
+   as a live SVG filter — a filter recomputes per pixel per frame and is brutal
+   on a high-density phone. `steps()` gives the grain its jump; a smooth
+   translate looks like drifting sand and gives the trick away. */
+.ba-grain {
+  position: absolute; inset: -60%; z-index: 0; pointer-events: none;
+  opacity: .05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ba-grain { animation: u-grain 6s steps(10) infinite; }
+}
+@keyframes u-grain {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  10% { transform: translate3d(-2%, -3%, 0); }  20% { transform: translate3d(-4%,  2%, 0); }
+  30% { transform: translate3d( 2%, -4%, 0); }  40% { transform: translate3d(-2%,  5%, 0); }
+  50% { transform: translate3d(-4%,  2%, 0); }  60% { transform: translate3d( 3%,  0,  0); }
+  70% { transform: translate3d( 0,   3%, 0); }  80% { transform: translate3d(-3%,  1%, 0); }
+  90% { transform: translate3d( 2%,  4%, 0); }
+}
+
+/* ── Cursor parallax ────────────────────────────────────────────────────────
+   `--px` / `--py` are written by useCursorParallax as damped values in −1..1.
+   The depths are deliberately small: past about 14px on the far layer people
+   start watching the effect instead of the page. The near layer moves against
+   the cursor, which is what actually reads as depth. There is no transition
+   here on purpose — the damping in the loop is the smoothing, and adding a
+   transition on top double-damps it into syrup. */
+.mk-hero { --px: 0; --py: 0; }
+@media (hover: hover) and (pointer: fine) {
+  @media (prefers-reduced-motion: no-preference) {
+    .ba-mesh    { transform: translate3d(calc(var(--px) * 14px), calc(var(--py) * 10px), 0); }
+    .ba-pattern { transform: translate3d(calc(var(--px) * 7px),  calc(var(--py) * 5px),  0); }
+    .mk-stage__photo {
+      transform:
+        perspective(1200px)
+        rotateY(calc(var(--px) * 2.4deg))
+        rotateX(calc(var(--py) * -2.4deg));
+    }
+  }
+}
+
+/* ── Handing off to the page ────────────────────────────────────────────────
+   The hero recedes under the next section rather than simply scrolling away,
+   with the copy leaving faster than the visual. Scroll-driven animations run
+   off the main thread, so React work cannot jank them. Where the browser has
+   no support the hero just scrolls, which is a perfectly good design. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .mk-hero__grid {
+      animation: u-recede linear both;
+      animation-timeline: view();
+      animation-range: exit;
+    }
+    .mk-hero__copy {
+      animation: u-depart linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 72%;
+    }
+  }
+}
+@keyframes u-recede {
+  to { transform: translate3d(0, -5vh, 0) scale(.95); opacity: .3; }
+}
+@keyframes u-depart {
+  to { transform: translate3d(0, -9vh, 0); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ba-grain, .mk-stage__card, .mk-stage__chip { animation: none !important; }
+}

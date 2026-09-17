@@ -1,0 +1,35 @@
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import '@fontsource-variable/inter'
+import '@fontsource-variable/space-grotesk'
+import '@fontsource-variable/plus-jakarta-sans'
+import '@fontsource-variable/sora'
+import '@fontsource-variable/outfit'
+import '@fontsource-variable/fraunces'
+import '@fontsource-variable/manrope'
+import '@fontsource-variable/newsreader'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
+import '@primer/primitives/dist/css/functional/themes/light.css'
+import '@primer/primitives/dist/css/functional/themes/dark.css'
+import '@primer/primitives/dist/css/functional/size/size.css'
+import '@primer/primitives/dist/css/functional/size/border.css'
+import '@primer/primitives/dist/css/functional/size/radius.css'
+import '@primer/primitives/dist/css/functional/typography/typography.css'
+import './styles/tokens.css'
+import './styles/legacy.css'
+import './styles/ui.css'
+import './styles/marketing.css'
+import './styles/vignette.css'
+import './styles/media.css'
+import './styles/motion.css'
+import './styles/illustration.css'
+import './styles/brand.css'
+import './styles/app.css'
+import { Root } from './app/Root'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <Root />
+  </StrictMode>,
+)

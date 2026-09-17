@@ -157,7 +157,9 @@ const PORTFOLIO_CSS = `
 
 /* ── Audit fixes (3 Sep 2026): tap targets, focus, contrast, mobile ── */
 .pf-nav .pf-nav__link{display:inline-block;padding:12px 6px}
-.pf-foot-link{display:inline-block;padding:8px 0}
+.pf-foot-link{display:inline-flex;align-items:center;min-height:44px;padding:8px 0}
+/* The back-to-top control floated over body copy with no ground of its own. */
+.fx-portfolio .back-to-top-btn{background:var(--pf-paper);border:1px solid var(--pf-line);box-shadow:0 8px 24px -12px rgba(15,14,25,.5)}
 .pf-work__name-link{display:inline-block;padding:6px 0;margin:-6px 0}
 .pf-contact__item{display:inline-flex;align-items:center;min-height:44px}
 .pf-contact__item+.pf-contact__item::before{content:"·";color:rgba(255,255,255,.4);margin:0 16px}
@@ -177,23 +179,58 @@ const PORTFOLIO_CSS = `
 @media (max-width:767px){.pf-work__foot{flex-direction:column;align-items:flex-start;gap:12px}.pf-work__card{padding:10px 10px 8px}}
 
 /* ── Project case study (/work/:slug) ──────────────────────── */
-.pf-cs{--cs-accent:#6C5DD3;background:var(--pf-paper);color:var(--pf-ink)}
+.pf-cs{
+  --cs-accent:#6C5DD3;
+  /* ONE spacing scale. Every vertical gap on a study is a step on it, so a
+     boundary between two sections is always larger than a gap inside one. */
+  --pf-s2:8px;--pf-s3:16px;--pf-s4:24px;--pf-s5:32px;--pf-s6:48px;--pf-s7:64px;
+  background:var(--pf-paper);color:var(--pf-ink)
+}
 .pf-cs__dot{width:8px;height:8px;border-radius:50%;background:var(--cs-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--cs-accent) 22%,transparent);flex:none}
-.pf-cs__eyebrow{font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--pf-muted)}
-.pf-cs__label{font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--pf-muted)}
-.pf-cs__body{color:var(--pf-muted);line-height:1.65}
-.pf-cs__h2{color:var(--pf-ink);letter-spacing:-.02em;font-size:clamp(26px,3.4vw,44px)!important}
-.pf-cs__h3{color:var(--pf-ink);letter-spacing:-.01em}
+
+/* Section rhythm. Every section pays the same padding, so a section change is
+   a constant, and the visible section title (below) is what actually announces it. */
+.pf-cs__sec{padding-block:clamp(34px,4vw,56px)}
+.pf-cs__band{padding-block:clamp(40px,4.6vw,64px)}
+.pf-cs__next{padding-block:clamp(40px,4.6vw,64px) clamp(48px,5vw,72px)}
+.pf-cs__cta{padding-block:clamp(56px,6vw,88px)}
+@media (min-width:992px){.pf-cs__rail{position:sticky;top:104px}}
+
+/* Three micro-type roles, never interchangeable. Before this split one style
+   did five jobs, which is why "AT A GLANCE" and "THE PROBLEM" read as peers.
+   label   = a field/column name ("Instead of", "Role")
+   eyebrow = the moment marker, and the only one carrying the accent dot
+   attrib  = who is speaking, in sentence case */
+.pf-cs__label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--pf-muted)}
+.pf-cs__eyebrow{display:inline-flex;align-items:flex-start;gap:9px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--pf-ink);line-height:1.4}
+.pf-cs__eyebrow .pf-cs__dot{margin-top:5px}
+.pf-cs__attrib{font-size:14px;font-style:italic;letter-spacing:0;text-transform:none;color:var(--pf-muted);line-height:1.5}
+
+/* The page skeleton: one section-title size, used by every section. */
+.pf-cs__sec-title{font-size:clamp(21px,2.1vw,28px);font-weight:600;line-height:1.2;letter-spacing:-.02em;color:var(--pf-ink);text-transform:none;margin:0 0 var(--pf-s4);text-wrap:balance}
+.pf-cs__sub-title{font-size:18px;font-weight:600;line-height:1.3;letter-spacing:-.01em;color:var(--pf-ink);margin:0 0 var(--pf-s3);text-wrap:balance}
+
+/* Measure is capped in the element's OWN em, so a 20px lede and a 13px note
+   both land near 68 characters (ch under-constrains by ~a third in DM Sans). */
+.pf-cs__body{color:var(--pf-muted);line-height:1.65;max-width:33em;text-wrap:pretty}
+.pf-cs__h2{color:var(--pf-ink);letter-spacing:-.015em;font-size:clamp(19px,1.9vw,23px)!important;font-weight:500!important;line-height:1.35!important;max-width:26em;text-wrap:balance;margin-top:var(--pf-s2)}
+/* A decision title is a child of "Design decisions": it must never out-size the
+   section title above it, which is what a 32px h3 under a 12.5px h2 was doing. */
+.pf-cs__h3{color:var(--pf-ink);letter-spacing:-.01em;text-wrap:balance;font-size:clamp(19px,1.8vw,23px)!important;line-height:1.25}
+.pf-cs__h3--sm{font-size:18px!important}
 
 /* Hero — dark band so the header + the light UI shot both read well */
-.pf-cs__hero{position:relative;background:var(--pf-dark);color:#fff;overflow:hidden}
+/* The cover leads. There is no title block above it (removed deliberately), so
+   the band opens on the work rather than on 100px of empty ground. */
+.pf-cs__hero{position:relative;background:var(--pf-dark);color:#fff;overflow:hidden;padding:92px 0 48px}
 .pf-cs__hero::before{content:"";position:absolute;width:620px;height:620px;right:-120px;top:-260px;border-radius:50%;background:var(--cs-accent);filter:blur(160px);opacity:.4;pointer-events:none}
 .pf-cs__hero>.container-2200{position:relative;z-index:1}
 .pf-cs__hero .pf-cs__eyebrow{color:rgba(255,255,255,.72)}
-.pf-cs__back{color:rgba(255,255,255,.7)}
+/* The only escape route on a long page: a 44px target, clear of the fixed header. */
+.pf-cs__back{color:rgba(255,255,255,.7);min-height:44px;padding:11px 6px;margin-left:-6px;align-items:center}
 .pf-cs__back:hover{color:#fff}
-.pf-cs__title{color:#fff;letter-spacing:-.03em}
-.pf-cs__tagline{color:rgba(255,255,255,.82);max-width:44ch;line-height:1.4}
+.pf-cs__title{color:#fff;letter-spacing:-.03em;font-size:clamp(36px,5.6vw,68px)!important}
+.pf-cs__tagline{color:rgba(255,255,255,.82);max-width:33em;line-height:1.4}
 .pf-cs__meta{gap:0;border-top:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14)}
 .pf-cs__meta-item{padding:18px 34px 18px 0;margin-right:34px;border-right:1px solid rgba(255,255,255,.14);display:flex;flex-direction:column;gap:6px}
 .pf-cs__meta-item:last-child{border-right:0;margin-right:0}
@@ -201,7 +238,7 @@ const PORTFOLIO_CSS = `
 .pf-cs__meta-value{font-size:15px;font-weight:600;color:#fff}
 @media (max-width:575px){.pf-cs__meta-item{border-right:0;padding:12px 0;margin-right:0;flex:0 0 50%}}
 
-.pf-cs__btn{padding:13px 22px;border-radius:999px;font-size:14.5px;transition:transform .2s ease,background .2s ease,color .2s ease,border-color .2s ease}
+.pf-cs__btn{min-height:46px;padding:12px 22px;justify-content:center;border-radius:999px;font-size:14.5px;transition:transform .2s ease,background .2s ease,color .2s ease,border-color .2s ease}
 .pf-cs__btn:hover{transform:translateY(-2px)}
 .pf-cs__btn--solid{background:#fff;color:var(--pf-ink)}
 .pf-cs__btn--solid:hover{background:var(--cs-accent);color:#fff}
@@ -223,48 +260,183 @@ const PORTFOLIO_CSS = `
 .pf-cs__shot--hero{border-color:rgba(255,255,255,.12)}
 .pf-cs__shot img{display:block}
 .pf-cs__shot--phone{max-width:340px;border-radius:26px}
+/* On a phone a 1600px desktop board shrunk 4.5x is texture, not evidence:
+   show a legible top-left crop at closer to native scale instead. */
+@media (max-width:575px){
+  .pf-cs__shot--hero{aspect-ratio:4/3}
+  .pf-cs__shot--hero img,.pf-cs__decisions .pf-cs__shot:not(.pf-cs__shot--phone) img{height:100%;aspect-ratio:4/3;object-fit:cover;object-position:top left}
+  .pf-cs__decisions .pf-cs__shot:not(.pf-cs__shot--phone){aspect-ratio:4/3}
+}
 
 /* Body sections */
 .pf-cs__divider{border-top:1px solid var(--pf-line)}
-.pf-cs__lead{color:var(--pf-ink);letter-spacing:-.01em;line-height:1.35!important}
+.pf-cs__lead{color:var(--pf-ink);letter-spacing:-.01em;line-height:1.35!important;text-wrap:pretty}
+.pf-cs__overview-lead{max-width:26em}
 .pf-cs__goal{background:#fff;border:1px solid var(--pf-line);border-radius:18px;padding:26px}
 .pf-cs__goal-no{font-size:14px;font-weight:700;color:var(--cs-accent);letter-spacing:.04em}
 .pf-cs__goal-title{font-size:18px;font-weight:600;color:var(--pf-ink)}
-.pf-cs__goal-body{color:var(--pf-muted);font-size:14.5px;line-height:1.55}
+.pf-cs__goal-body{color:var(--pf-muted);font-size:14px;line-height:1.55;max-width:33em;text-wrap:pretty}
 
 .pf-cs__process{counter-reset:step}
 .pf-cs__step{display:flex;gap:24px;padding:26px 0;border-top:1px solid var(--pf-line)}
 .pf-cs__step:first-child{border-top:0;padding-top:0}
 .pf-cs__step-no{font-size:14px;font-weight:700;color:var(--cs-accent);flex:none;padding-top:4px;min-width:28px}
-.pf-cs__step-title{font-size:19px;font-weight:600;color:var(--pf-ink)}
+.pf-cs__step-title{font-size:18px;font-weight:600;color:var(--pf-ink);text-wrap:balance}
 
-.pf-cs__wide{background:#fff;border:1px solid var(--pf-line);border-radius:22px;padding:40px}
+/* The copy no longer runs the full card width with the phone centred underneath
+   in 900px of white: the two sit side by side and share one baseline. */
+.pf-cs__wide{background:#fff;border:1px solid var(--pf-line);border-radius:22px;padding:32px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:var(--pf-s6);align-items:start}
+.pf-cs__wide:not(:has(.pf-cs__shot)){grid-template-columns:minmax(0,1fr)}
+@media (max-width:991px){.pf-cs__wide{grid-template-columns:minmax(0,1fr);gap:var(--pf-s5);padding:24px 20px}}
 .pf-cs__next-card{color:inherit;transition:transform .3s ease}
 .pf-cs__next-card:hover{transform:translateY(-4px)}
 .pf-cs__next-card .pf-cs__shot{transition:box-shadow .3s ease}
 .pf-cs__next-card:hover .pf-cs__shot{box-shadow:0 50px 110px -60px rgba(15,14,25,.75)}
-.pf-cs__next-title{color:var(--pf-ink);letter-spacing:-.02em;font-size:clamp(28px,3.6vw,46px)!important}
-.pf-cs__next-cta{color:var(--cs-accent);font-size:15px;transition:gap .2s ease}
+.pf-cs__next-title{color:var(--pf-ink);letter-spacing:-.02em;font-size:clamp(22px,2.2vw,27px)!important}
+/* The accent failed 4.5:1 on the light accents (Aurelia, WamWam, Phoxta):
+   the word carries ink, the arrow keeps the accent. */
+.pf-cs__next-cta{color:var(--pf-ink);font-size:15px;transition:gap .2s ease}
+.pf-cs__next-cta svg{color:var(--cs-accent)}
 .pf-cs__next-card:hover .pf-cs__next-cta{gap:14px}
-.pf-cs__note{background:#fff;border:1px solid var(--pf-line);border-radius:18px;padding:26px 28px}
+/* A grid so the "Judges it by" rule lands on one baseline across the row
+   instead of at three near-miss heights. */
+.pf-cs__note{background:#fff;border:1px solid var(--pf-line);border-radius:18px;padding:24px 26px;display:flex;flex-direction:column;height:100%}
 .pf-cs__note .pf-cs__h3{letter-spacing:-.01em}
-.pf-cs__wide-copy{max-width:70ch}
+.pf-cs__note .pf-cs__divider{margin-top:auto}
+.pf-cs__wide-copy{min-width:0}
 
 .pf-cs__palette{gap:14px}
 .pf-cs__swatch{display:flex;flex-direction:column;gap:8px}
 .pf-cs__swatch-chip{display:flex;align-items:flex-end;justify-content:flex-start;width:120px;height:76px;border-radius:12px;padding:8px 10px;font-size:11px;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--pf-line)}
 .pf-cs__swatch-name{font-size:12.5px;font-weight:600;color:var(--pf-ink)}
-.pf-cs__chips{gap:9px}
-.pf-cs__chip{font-size:13px;font-weight:500;color:var(--pf-ink);background:#fff;border:1px solid var(--pf-line);border-radius:999px;padding:8px 15px}
+/* Chips are a taxonomy, not controls: a white bordered pill on a white card
+   reads as a row of buttons. A soft fill and a rounded rect reads as data —
+   and a rounded rect is allowed to wrap, where a lozenge looks broken. */
+.pf-cs__chips{gap:8px}
+.pf-cs__chip{font-size:12.5px;font-weight:500;color:var(--pf-muted);background:rgba(20,18,22,.05);border:0;border-radius:9px;padding:6px 12px;line-height:1.45;max-width:100%}
+.pf-cs__touchline{font-size:14px}
 
 .pf-cs__outcome-item{padding:16px 0;border-top:1px solid var(--pf-line)}
 .pf-cs__outcome-item:first-child{border-top:0}
 .pf-cs__outcome-dot{width:9px;height:9px;border-radius:50%;background:var(--cs-accent);flex:none;margin-top:10px}
 
+/* ── Decision record (3 Sep 2026 rework) ───────────────────── */
+/* At-a-glance: the ninety-second read, authored rather than hoped for. */
+/* One bordered object with column rules: unequal column content then reads as
+   a ragged column, not as a hole punched in the page. */
+.pf-cs__glance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#fff;border:1px solid var(--pf-line);border-radius:18px;padding:28px 30px}
+.pf-cs__glance-col{min-width:0}
+.pf-cs__glance-col+.pf-cs__glance-col{border-left:1px solid var(--pf-line);padding-left:30px;margin-left:30px}
+.pf-cs__glance-body{color:var(--pf-ink);font-size:15.5px;line-height:1.6;margin:10px 0 0;max-width:33em;text-wrap:pretty}
+@media (min-width:768px) and (max-width:991px){.pf-cs__glance{padding:24px}.pf-cs__glance-col+.pf-cs__glance-col{padding-left:22px;margin-left:22px}}
+@media (max-width:767px){
+  .pf-cs__glance{grid-template-columns:1fr;padding:22px 20px}
+  .pf-cs__glance-col+.pf-cs__glance-col{border-left:0;border-top:1px solid var(--pf-line);padding-left:0;margin-left:0;padding-top:var(--pf-s4);margin-top:var(--pf-s4)}
+}
+
+/* Provenance — the BORDER STYLE carries the meaning, not the colour, so it
+   survives greyscale, a squint and a phone. Dashed = a target the design was
+   held to; solid ink = something counted in the artefact. The word is always
+   inside the pill, never implied by the outline alone. */
+.pf-cs__prov{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;letter-spacing:.055em;text-transform:uppercase;border-radius:999px;padding:3px 10px;line-height:1.45;max-width:100%}
+/* The dashed hairline was drawn in the accent, which is only 2.35:1 on Aurelia —
+   below the 3:1 non-text minimum, so the target pill read as a ghosted chip.
+   The signal moves to ink; the accent stays decorative elsewhere. */
+.pf-cs__prov--target{border:1.5px dashed color-mix(in srgb,var(--pf-ink) 58%,transparent);color:var(--pf-ink);background:transparent}
+.pf-cs__prov--fact{border:1.5px solid var(--pf-ink);color:#fff;background:var(--pf-ink)}
+/* A definition list, so each chip keeps its own gloss on its own row instead of
+   four wrapped fragments floating unattached. */
+.pf-cs__legend{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;font-size:13.5px;color:var(--pf-muted);line-height:1.5;margin:0;max-width:32em}
+.pf-cs__legend .pf-cs__prov{justify-self:start}
+.pf-cs__legend .pf-cs__prov~.pf-cs__prov{margin-top:14px}
+
+/* Measure rows — reuse the .pf-cs__outcome-item hairline rhythm. */
+.pf-cs__measure{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:flex-start;padding:18px 0;border-top:1px solid var(--pf-line)}
+.pf-cs__measure:first-child{border-top:0;padding-top:0}
+.pf-cs__measure-main{flex:1 1 320px;min-width:0}
+.pf-cs__measure-side{flex:0 1 300px;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+@media (max-width:767px){.pf-cs__measure-side{flex:1 1 100%}}
+.pf-cs__metric{font-size:15px;font-weight:600;color:var(--pf-ink);margin:0 0 4px;letter-spacing:-.005em;text-wrap:balance}
+.pf-cs__measure-def{font-size:14px;color:var(--pf-muted);line-height:1.6;margin:0;max-width:33em;text-wrap:pretty}
+/* Two data types, one system: a sentence sets as a sentence, a numeral leads. */
+.pf-cs__measure-value{font-size:16px;font-weight:500;color:var(--pf-ink);line-height:1.4;letter-spacing:-.01em;margin:0;max-width:26em;text-wrap:balance}
+.pf-cs__measure-value--num{font-size:28px;font-weight:600;line-height:1.15;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+/* The verification path is the payload of the honesty mechanism; it was the
+   smallest text on the page. Mono stays — it says "a path you can paste". */
+.pf-cs__check{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:color-mix(in srgb,var(--pf-ink) 78%,transparent);line-height:1.5;margin:0;overflow-wrap:anywhere;text-wrap:pretty}
+.pf-cs__check b{font-weight:700;color:var(--pf-ink);font-family:inherit}
+
+/* Compact measure pills at the foot of a decision. The value leads its label. */
+.pf-cs__pills{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.pf-cs__pill{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.pf-cs__pill-metric{font-size:14px;font-weight:500;color:var(--pf-muted)}
+.pf-cs__pill-value{font-size:16px;font-weight:600;color:var(--pf-ink)}
+@media (max-width:767px){
+  .pf-cs__pill{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;row-gap:6px}
+  .pf-cs__pill .pf-cs__prov{grid-column:1/-1;justify-self:start}
+}
+
+/* The moment triple. The question is the scan path of the whole section. */
+.pf-cs__phase{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--pf-ink);border:1px solid color-mix(in srgb,var(--pf-ink) 30%,transparent);background:color-mix(in srgb,var(--cs-accent) 13%,transparent);border-radius:999px;padding:3px 10px;line-height:1.45}
+.pf-cs__quote{margin:0;padding-left:18px;border-left:4px solid var(--cs-accent);color:var(--pf-ink);font-weight:500;letter-spacing:-.01em;line-height:1.35}
+/* The question is the scan path, but it sat at 24px beside a 23px title — a
+   near-miss reads as an accident. It goes one clear step below the title. */
+.pf-cs__quote .pf-cs__lead{font-size:20px!important;max-width:30em}
+.pf-cs__decision{background:#fff;border:1px solid var(--pf-line);border-radius:20px;padding:30px 32px}
+/* The claim that no research was run is the study's most important sentence.
+   It was set as 13.5px muted fine print, which reads as hedging, not candour. */
+.pf-cs__evidence{font-size:15px;font-weight:500;color:color-mix(in srgb,var(--pf-ink) 88%,transparent);line-height:1.6;max-width:33em;margin:0;text-wrap:pretty}
+.pf-cs__evidence--note{font-size:14px;font-weight:400;color:var(--pf-muted)}
+@media (max-width:575px){.pf-cs__decision{padding:22px 18px}.pf-cs__quote{padding-left:14px}}
+
+/* The decisions list. Previously these were Bootstrap .rows inside a flex
+   gap-5; the .row -48px gutter margin cancelled the 48px gap exactly, so two
+   whole decisions could sit 0px apart. Own the spacing here and neutralise it. */
+.pf-cs__decisions{display:flex;flex-direction:column;gap:0}
+.pf-cs__decisions>*{margin-top:0!important}
+.pf-cs__decisions>.pf-cs__dblock+.pf-cs__dblock{margin-top:56px!important}
+.pf-cs__decisions>.pf-cs__dblock+.pf-cs__dblock--bare{border-top:1px solid var(--pf-line);padding-top:56px}
+
+/* Decisions 5..n stay in the document (indexable, printable, findable) but are
+   folded, so the ninety-second reader meets four and the deep reader gets all. */
+.pf-cs__more{margin-top:var(--pf-s7)}
+.pf-cs__more>summary{display:inline-flex;align-items:center;gap:10px;min-height:46px;padding:12px 22px;border:1px solid var(--pf-line);border-radius:999px;background:#fff;color:var(--pf-ink);font-size:14.5px;font-weight:600;cursor:pointer;list-style:none}
+.pf-cs__more>summary::-webkit-details-marker{display:none}
+.pf-cs__more>summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg)}
+.pf-cs__more[open]>summary::after{transform:translateY(2px) rotate(225deg)}
+.pf-cs__more[open]>summary{margin-bottom:var(--pf-s7)}
+
+/* The fork — the rejected alternative and what the choice cost. */
+.pf-cs__fork{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--pf-line);border-radius:16px;overflow:hidden;background:rgba(20,18,22,.035)}
+.pf-cs__fork--one{grid-template-columns:1fr}
+/* Inside a col-lg-5 the two cells were 250px wide — 23 characters a line.
+   A fork that narrow stacks instead of shrinking. */
+.pf-cs__fork--stack{grid-template-columns:1fr}
+.pf-cs__fork--stack .pf-cs__fork-cell+.pf-cs__fork-cell{border-left:0;border-top:1px solid var(--pf-line)}
+.pf-cs__fork-cell{padding:18px 20px;min-width:0}
+.pf-cs__fork-cell+.pf-cs__fork-cell{border-left:1px solid var(--pf-line)}
+.pf-cs__fork-cell .pf-cs__body{font-size:15px}
+@media (max-width:767px){.pf-cs__fork{grid-template-columns:1fr}.pf-cs__fork-cell+.pf-cs__fork-cell{border-left:0;border-top:1px solid var(--pf-line)}}
+
+/* Tinted band for "deliberately not designed", so it reads as a position. */
+.pf-cs__band{background:rgba(20,18,22,.035);border-top:1px solid var(--pf-line);border-bottom:1px solid var(--pf-line)}
+.pf-cs__changed{font-size:14px;color:var(--pf-muted);line-height:1.6;margin:10px 0 0;max-width:33em;text-wrap:pretty}
+.pf-cs__changed em{font-style:italic}
+
 /* CTA band */
 .pf-cs__cta .pf-cs__eyebrow--light{color:rgba(255,255,255,.7)}
-.pf-cs__cta-title{color:#fff;letter-spacing:-.02em}
-.pf-cs__cta-lede{color:rgba(255,255,255,.72);max-width:52ch}
+.pf-cs__cta .pf-cs__eyebrow{color:rgba(255,255,255,.7)}
+/* Was 90px on a phone — five times every section title on the page. The sales
+   line stays the loudest thing here, but not by an order of magnitude. */
+.pf-cs__cta-title{color:#fff;letter-spacing:-.02em;font-size:clamp(32px,5vw,60px)!important;text-wrap:balance}
+.pf-cs__cta-lede{color:rgba(255,255,255,.72);max-width:34em}
+
+/* Swatches were a hard 120px: two per row at 390 with 104px of dead space. */
+@media (max-width:575px){
+  .pf-cs__palette{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .pf-cs__swatch{width:auto}
+  .pf-cs__swatch-chip{width:100%;height:58px;font-size:10px;padding:6px 8px}
+}
 
 /* ── Clients marquee ───────────────────────────────────────── */
 .pf-clients{background:var(--pf-dark)!important}
@@ -375,10 +547,29 @@ const PORTFOLIO_CSS = `
 @media (max-width:991px){
   .pf-hero{padding-top:120px}
   .pf-now{margin-top:8px}
+  /* The back link's top 11px sat under the fixed header. Clear it. */
+  .pf-cs__hero{padding-top:104px}
+}
+/* Mobile density: the same rhythm, one step down the scale. */
+@media (max-width:767px){
+  .pf-cs__sec{padding-block:32px}
+  .pf-cs__band{padding-block:36px}
+  .pf-cs__decisions>*+*{margin-top:var(--pf-s6)}
+  .pf-cs__decisions>.row+.row{padding-top:var(--pf-s6)}
+  .pf-cs__more{margin-top:var(--pf-s6)}
+  .pf-cs__more[open]>summary{margin-bottom:var(--pf-s6)}
+  .pf-cs__goal{padding:20px}
+  .pf-cs__note{padding:20px}
+  .pf-cs__measure{padding:16px 0}
+  .pf-cs__step{padding:22px 0;gap:16px}
 }
 @media (prefers-reduced-motion:reduce){
-  .pf-now__pulse{animation:none}
-  .pf-btn,.pf-case__visual img,.pf-principle,.pf-cap{transition:none}
+  .pf-now__pulse,.pf-hero__badge-dot,.pf-about__badge::before{animation:none}
+  .pf-btn,.pf-case__visual img,.pf-principle,.pf-cap,
+  .pf-cs__btn,.pf-cs__next-card,.pf-cs__next-card .pf-cs__shot,.pf-cs__next-cta,
+  .pf-cs__ds-shot,.pf-cs__ds-shot .pf-cs__shot,.pf-cs__shot img,.pf-cert,.pf-work__shot img{transition:none!important}
+  .pf-cs__btn:hover,.pf-cs__next-card:hover,.pf-cs__ds-shot:hover,.pf-btn:hover{transform:none!important}
+  html{scroll-behavior:auto}
 }
 `;
 

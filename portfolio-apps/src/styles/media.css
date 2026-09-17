@@ -1,0 +1,99 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Photography as content: mosaics, portraits, framed shots inside sections.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mk-stage__photo--plain::after { display: none; }
+
+/* ── Mosaic: three shots at staggered heights ───────────────────────────── */
+.mk-mosaic {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); align-items: start;
+}
+@media (max-width: 899px) { .mk-mosaic { grid-template-columns: 1fr 1fr; } .mk-mosaic__item--3 { grid-column: span 2; } }
+@media (max-width: 599px) { .mk-mosaic { grid-template-columns: 1fr; } .mk-mosaic__item--3 { grid-column: auto; } }
+.mk-mosaic__item {
+  position: relative; margin: 0; border-radius: var(--radius-2xl); overflow: hidden;
+  border: 1px solid var(--border-secondary); box-shadow: var(--shadow-md); background: var(--gray-900);
+}
+.mk-mosaic__item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mk-mosaic__item--1 { aspect-ratio: 3 / 4; }
+.mk-mosaic__item--2 { aspect-ratio: 3 / 4; margin-top: var(--space-10); }
+.mk-mosaic__item--3 { aspect-ratio: 3 / 4; }
+@media (max-width: 899px) { .mk-mosaic__item--2 { margin-top: 0; } .mk-mosaic__item--3 { aspect-ratio: 16 / 9; } }
+.mk-mosaic__item figcaption {
+  position: absolute; right: var(--space-3); bottom: var(--space-2);
+  font-size: 10.5px; color: rgb(255 255 255 / .62);
+}
+.mk-mosaic__item figcaption a { color: inherit; }
+
+/* ── Portrait ───────────────────────────────────────────────────────────── */
+.mk-portrait {
+  border-radius: var(--radius-full); object-fit: cover; flex: none;
+  border: 2px solid var(--bg-primary); box-shadow: var(--shadow-sm);
+}
+
+/* ── A step with a picture above it ─────────────────────────────────────── */
+.mk-step__media {
+  border-radius: var(--radius-xl); overflow: hidden; border: 1px solid var(--border-secondary);
+  aspect-ratio: 16 / 10; background: var(--gray-900); margin-bottom: var(--space-2);
+}
+.mk-step__media img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ── A quote pulled beside a portrait ───────────────────────────────────── */
+.mk-quote {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-5); align-items: start;
+  padding: var(--space-8); border-radius: var(--radius-3xl);
+  border: 1px solid var(--border-secondary); background: var(--bg-primary);
+}
+@media (max-width: 599px) { .mk-quote { grid-template-columns: 1fr; } }
+.mk-quote blockquote { margin: 0; font-size: var(--text-xl-size); line-height: 1.45; letter-spacing: -0.012em; color: var(--text-primary); text-wrap: pretty; }
+.mk-quote cite { display: block; margin-top: var(--space-4); font-style: normal; font-size: var(--text-sm-size); color: var(--text-quaternary); }
+
+/* ── Steps carry a visual, so the sequence is shown as well as described ──
+   All three visuals share one height so the numbers and titles sit on a line. */
+.mk-steps { align-items: start; }
+.mk-step { text-align: left; grid-template-rows: auto auto auto 1fr; }
+.mk-head--center + .mk-steps .mk-step { text-align: left; }
+.mk-step__visual {
+  height: 260px; overflow: hidden; margin-bottom: var(--space-5);
+  border-radius: var(--radius-2xl); position: relative;
+}
+@media (max-width: 899px) { .mk-step__visual { height: 220px; } }
+.mk-step__visual > * { height: 100%; }
+.mk-step__visual .vg { box-shadow: var(--shadow-md); display: grid; grid-template-rows: auto 1fr; }
+.mk-step__visual .vg__body { overflow: hidden; }
+.mk-step__visual .mk-stage { height: 100%; }
+.mk-step__visual .mk-stage__photo { height: 100%; aspect-ratio: auto; box-shadow: var(--shadow-md); }
+
+/* ── Intelligence: cards beside a live drift panel ──────────────────────── */
+.mk-split-ai { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-10); align-items: center; }
+@media (max-width: 899px) { .mk-split-ai { grid-template-columns: 1fr; gap: var(--space-8); } }
+
+/* ── FAQ beside a way to reach a person ─────────────────────────────────── */
+.mk-faq-split { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--space-12); align-items: start; }
+@media (max-width: 899px) { .mk-faq-split { grid-template-columns: 1fr; gap: var(--space-8); } }
+.mk-ask { position: sticky; top: calc(var(--header-h) + var(--space-6)); gap: var(--space-4); }
+.mk-ask .mk-portrait { margin-bottom: var(--space-1); }
+
+/* ── Problem: the pains beside a photograph of the world they happen in ─── */
+.mk-problem { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: var(--space-10); align-items: center; }
+@media (max-width: 899px) { .mk-problem { grid-template-columns: 1fr; gap: var(--space-8); } }
+.mk-problem__row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-5); align-items: center; }
+@media (max-width: 479px) { .mk-problem__row { grid-template-columns: 1fr; gap: var(--space-2); } }
+.mk-problem__fig {
+  font-size: 1.75rem; font-weight: 600; letter-spacing: -0.03em; line-height: 1;
+  color: var(--error-400); font-variant-numeric: tabular-nums; min-width: 4.5ch;
+}
+
+/* ── A drawing where a screenshot used to be ─────────────────────────────────
+   Illustrations need air around them and no frame: a border would make them
+   read as another panel, which is exactly what they are here to replace. */
+.mk-step__visual--art {
+  display: grid; place-items: center; padding: var(--space-2) var(--space-6);
+  background: var(--bg-secondary); border-radius: var(--radius-3xl);
+}
+.mk-step__visual--art .il { max-height: 100%; width: 100%; }
+.mk-row__art {
+  display: grid; place-items: center; padding: var(--space-8);
+  background: var(--bg-primary); border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-3xl); box-shadow: var(--shadow-sm);
+}

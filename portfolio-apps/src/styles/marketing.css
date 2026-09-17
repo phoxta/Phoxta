@@ -1,0 +1,298 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Marketing surface: brand art, section rhythm, hero, pricing, footer.
+   Built on tokens.css; every colour is a token so both themes stay deliberate.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Brand art ──────────────────────────────────────────────────────────── */
+.ba-mesh {
+  position: absolute; inset: -30% -10% auto; height: 130%; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(42% 38% at 14% 16%, color-mix(in srgb, var(--brand) calc(30% * var(--ba-i, 1)), transparent), transparent 68%),
+    radial-gradient(36% 34% at 78% 6%, color-mix(in srgb, var(--brand) calc(16% * var(--ba-i, 1)), transparent), transparent 66%),
+    radial-gradient(30% 30% at 52% 44%, color-mix(in srgb, var(--brand) calc(9% * var(--ba-i, 1)), transparent), transparent 70%);
+}
+.ba-grid {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: .55;
+  background-image:
+    linear-gradient(to right, var(--border-secondary) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-secondary) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+.ba-grid--bottom { -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 78%); mask-image: linear-gradient(to bottom, #000 0%, transparent 78%); }
+.ba-grid--radial { -webkit-mask-image: radial-gradient(60% 60% at 50% 40%, #000, transparent 78%); mask-image: radial-gradient(60% 60% at 50% 40%, #000, transparent 78%); }
+.ba-trace { display: block; width: 100%; }
+.ba-mark {
+  display: grid; place-items: center; flex: none; color: #fff;
+  background: linear-gradient(140deg, var(--brand), color-mix(in srgb, var(--brand) 52%, var(--gray-900)));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), var(--shadow-sm);
+}
+
+/* ── Sections ───────────────────────────────────────────────────────────── */
+.mk-sec { padding: var(--space-24) 0; position: relative; }
+.mk-sec--sm { padding: var(--space-16) 0; }
+.mk-sec--lg { padding: var(--space-32) 0; }
+@media (max-width: 767px) { .mk-sec { padding: var(--space-16) 0; } .mk-sec--lg { padding: var(--space-20) 0; } }
+.mk-sec--tint { background: var(--bg-secondary); border-block: 1px solid var(--border-tertiary); }
+.mk-sec--dark { background: var(--gray-950); color: var(--gray-300); }
+.mk-sec--dark .mk-title, .mk-sec--dark .u-strong { color: #fff; }
+.mk-sec--dark .mk-sub { color: var(--gray-400); }
+.mk-sec--dark .mk-kicker { color: color-mix(in srgb, var(--brand) 55%, #fff); }
+.mk-sec--dark .u-card { background: rgb(255 255 255 / .04); border-color: rgb(255 255 255 / .09); }
+.mk-sec--dark .u-card__title { color: #fff; }
+.mk-sec--dark .u-card__body, .mk-sec--dark .u-card__note { color: var(--gray-400); border-color: rgb(255 255 255 / .09); }
+.mk-sec--dark .u-feat { background: color-mix(in srgb, var(--brand) 22%, transparent); color: color-mix(in srgb, var(--brand) 55%, #fff); border-color: color-mix(in srgb, var(--brand) 30%, transparent); }
+.mk-sec--dark .mk-faq summary { color: #fff; }
+.mk-sec--dark .mk-faq details { border-color: rgb(255 255 255 / .10); }
+.mk-sec--dark .mk-faq p { color: var(--gray-400); }
+
+.mk-head { display: grid; gap: var(--space-4); max-width: 46ch; margin-bottom: var(--space-12); position: relative; }
+.mk-head--center { margin-inline: auto; text-align: center; justify-items: center; }
+.mk-kicker { color: var(--text-brand); font-size: var(--text-sm-size); font-weight: 600; margin: 0; }
+.mk-title { font-size: clamp(1.75rem, 1.2rem + 1.9vw, 2.5rem); line-height: 1.12; letter-spacing: -0.028em; font-weight: 600; margin: 0; color: var(--text-primary); text-wrap: balance; }
+.mk-sub { font-size: var(--text-lg-size); line-height: 1.55; color: var(--text-tertiary); margin: 0; max-width: 48ch; text-wrap: pretty; }
+.mk-head--center .mk-sub { margin-inline: auto; }
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.mk-hero { position: relative; overflow: clip; padding: var(--space-24) 0 var(--space-20); }
+@media (max-width: 767px) { .mk-hero { padding: var(--space-16) 0 var(--space-12); } }
+.mk-hero__in { position: relative; z-index: 1; display: grid; gap: 0; max-width: 34rem; justify-items: start; }
+.mk-hero__in--center { max-width: 38rem; margin-inline: auto; text-align: center; justify-items: center; }
+.mk-hero__eyebrow {
+  display: inline-flex; align-items: center; gap: var(--space-2); padding: 4px 12px; border-radius: var(--radius-full);
+  border: 1px solid var(--border-secondary); background: var(--bg-primary); box-shadow: var(--shadow-xs);
+  font-size: var(--text-sm-size); font-weight: 500; color: var(--text-tertiary);
+}
+/* Vertical rhythm in the hero is written out rather than left to one uniform
+   gap. The eyebrow leads, the headline and its line belong together, the
+   buttons need air around them, and the reassurances sit quietly further off. */
+.mk-hero__copy > *, .mk-hero__in > * { margin: 0; }
+.mk-hero__copy > .mk-hero__eyebrow, .mk-hero__in > .mk-hero__eyebrow { margin-bottom: var(--space-7); }
+.mk-hero__copy > .u-hero-title,  .mk-hero__in > .u-hero-title  { margin-bottom: var(--space-5); }
+.mk-hero__copy > .u-hero-lede,   .mk-hero__in > .u-hero-lede   { margin-bottom: var(--space-8); max-width: 32rem; }
+.mk-hero__copy > .u-row,         .mk-hero__in > .u-row         { margin-bottom: var(--space-8); row-gap: var(--space-3); }
+@media (max-width: 767px) {
+  .mk-hero__copy > .mk-hero__eyebrow, .mk-hero__in > .mk-hero__eyebrow { margin-bottom: var(--space-5); }
+  .mk-hero__copy > .u-hero-title, .mk-hero__in > .u-hero-title { margin-bottom: var(--space-4); }
+  .mk-hero__copy > .u-hero-lede,  .mk-hero__in > .u-hero-lede  { margin-bottom: var(--space-6); }
+  .mk-hero__copy > .u-row,        .mk-hero__in > .u-row        { margin-bottom: var(--space-6); }
+}
+.mk-hero__proof {
+  display: flex; gap: var(--space-3) var(--space-6); flex-wrap: wrap;
+  color: var(--text-quaternary); font-size: var(--text-sm-size); line-height: 1.4;
+}
+.mk-hero__proof span { display: inline-flex; align-items: center; gap: 6px; }
+.mk-hero__stage { position: relative; z-index: 1; margin-top: var(--space-16); }
+
+/* ── Logo strip ─────────────────────────────────────────────────────────── */
+.mk-logos { display: flex; gap: var(--space-10); flex-wrap: wrap; align-items: center; justify-content: center; }
+.mk-logo { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; font-size: var(--text-sm-size); color: var(--text-quaternary); }
+.mk-logo img { width: 20px; height: 20px; border-radius: 4px; filter: grayscale(1); opacity: .78; }
+
+/* ── Stats ──────────────────────────────────────────────────────────────── */
+.mk-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-8); }
+@media (max-width: 767px) { .mk-stats { grid-template-columns: repeat(2, 1fr); gap: var(--space-6); } }
+.mk-stat { display: grid; gap: 2px; }
+.mk-stat__v { font-size: clamp(1.75rem, 1.2rem + 1.6vw, 2.5rem); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; color: var(--text-primary); }
+.mk-sec--dark .mk-stat__v { color: #fff; }
+.mk-stat__l { font-size: var(--text-sm-size); color: var(--text-tertiary); font-weight: 500; }
+.mk-stat__c { font-size: var(--text-xs-size); color: var(--text-quaternary); }
+
+/* ── Feature rows ───────────────────────────────────────────────────────── */
+.mk-rows { display: grid; gap: var(--space-24); }
+@media (max-width: 767px) { .mk-rows { gap: var(--space-16); } }
+.mk-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--space-16); align-items: center; }
+.mk-row--flip > :first-child { order: 2; }
+@media (max-width: 899px) { .mk-row { grid-template-columns: 1fr; gap: var(--space-8); } .mk-row--flip > :first-child { order: 0; } }
+.mk-row__copy { display: grid; gap: var(--space-4); align-content: start; max-width: 42ch; }
+
+/* ── Steps ──────────────────────────────────────────────────────────────── */
+.mk-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-8); }
+@media (max-width: 899px) { .mk-steps { grid-template-columns: 1fr; gap: var(--space-6); } }
+.mk-step { display: grid; gap: var(--space-3); align-content: start; }
+.mk-step__n {
+  width: 28px; height: 28px; border-radius: var(--radius-full); display: grid; place-items: center;
+  background: var(--brand); color: var(--brand-contrast); font-size: var(--text-xs-size); font-weight: 700;
+}
+
+/* ── Pricing ────────────────────────────────────────────────────────────── */
+.mk-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); align-items: start; }
+@media (max-width: 899px) { .mk-plans { grid-template-columns: 1fr; } }
+.mk-plan { position: relative; display: grid; gap: var(--space-5); align-content: start; padding: var(--space-8); border: 1px solid var(--border-secondary); border-radius: var(--radius-3xl); background: var(--bg-primary); }
+/* The chosen plan sits a little proud of the others and carries its badge on
+   the top edge, which is why it alone needs the extra headroom. */
+.mk-plan--hi { border-color: var(--brand); box-shadow: var(--shadow-lg); padding-top: var(--space-10); }
+.mk-plan__badge { position: absolute; top: -13px; left: var(--space-8); z-index: 1; }
+.mk-plan__price { font-size: 2.75rem; font-weight: 600; letter-spacing: -0.035em; line-height: 1; color: var(--text-primary); }
+.mk-plan__price small { font-size: var(--text-sm-size); font-weight: 400; color: var(--text-quaternary); letter-spacing: 0; }
+.mk-plan__meter { font-size: var(--text-sm-size); color: var(--text-tertiary); }
+
+/* ── FAQ ────────────────────────────────────────────────────────────────── */
+.mk-faq { display: grid; gap: 0; max-width: 76ch; }
+.mk-faq details { border-bottom: 1px solid var(--border-secondary); }
+.mk-faq summary { padding: var(--space-5) 0; cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: var(--space-6); align-items: center; color: var(--text-primary); }
+.mk-faq summary::-webkit-details-marker { display: none; }
+.mk-faq summary::after { content: "+"; color: var(--text-quaternary); font-size: 22px; font-weight: 300; line-height: 1; }
+.mk-faq details[open] summary::after { content: "\2212"; }
+.mk-faq p { padding: 0 0 var(--space-5); color: var(--text-tertiary); line-height: 1.6; max-width: 68ch; }
+
+/* ── CTA band ───────────────────────────────────────────────────────────── */
+.mk-cta { position: relative; overflow: hidden; border-radius: var(--radius-4xl); padding: var(--space-20) var(--space-8); background: var(--gray-950); }
+.mk-cta__glow { position: absolute; inset: -40% -10% auto; height: 160%; background: radial-gradient(46% 44% at 50% 22%, color-mix(in srgb, var(--brand) 46%, transparent), transparent 70%); }
+.mk-cta__body { position: relative; display: grid; gap: var(--space-4); justify-items: center; text-align: center; }
+.mk-cta h2 { font-size: clamp(1.75rem, 1.2rem + 1.9vw, 2.5rem); letter-spacing: -0.03em; font-weight: 600; color: #fff; margin: 0; text-wrap: balance; max-width: 22ch; }
+.mk-cta p { color: var(--gray-400); margin: 0; max-width: 48ch; font-size: var(--text-lg-size); }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.mk-header { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg-primary) 82%, transparent); backdrop-filter: saturate(1.8) blur(14px); border-bottom: 1px solid var(--border-tertiary); }
+.mk-header__row { display: flex; align-items: center; gap: var(--space-6); height: var(--header-h); }
+.mk-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -0.015em; color: var(--text-primary); font-size: var(--text-md-size); }
+.mk-brand:hover { text-decoration: none; }
+.mk-nav { display: flex; gap: 2px; margin-left: var(--space-4); }
+.mk-nav a { padding: 8px 12px; border-radius: var(--radius-md); color: var(--text-tertiary); font-size: var(--text-sm-size); font-weight: 500; }
+.mk-nav a:hover { background: var(--bg-secondary); color: var(--text-primary); text-decoration: none; }
+.mk-nav a[aria-current="page"] { color: var(--text-primary); background: var(--bg-secondary); }
+@media (max-width: 1023px) { .mk-nav { display: none; } .mk-hide-sm { display: none !important; } }
+.mk-burger { display: none !important; }
+@media (max-width: 1023px) { .mk-burger { display: inline-flex !important; } }
+.mk-mobile { display: none; border-bottom: 1px solid var(--border-secondary); background: var(--bg-primary); }
+.mk-mobile[data-open="true"] { display: block; }
+.mk-mobile nav { display: grid; padding: var(--space-2) 0 var(--space-6); }
+.mk-mobile nav a { padding: var(--space-3) 0; color: var(--text-primary); font-weight: 500; border-bottom: 1px solid var(--border-tertiary); }
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.mk-footer { border-top: 1px solid var(--border-secondary); padding: var(--space-16) 0 var(--space-8); }
+.mk-footer__grid { display: grid; grid-template-columns: 1.8fr repeat(4, 1fr); gap: var(--space-8); }
+@media (max-width: 899px) { .mk-footer__grid { grid-template-columns: 1fr 1fr; } }
+.mk-footer h4 { font-size: var(--text-sm-size); color: var(--text-quaternary); margin: 0 0 var(--space-4); font-weight: 600; }
+.mk-footer ul { list-style: none; display: grid; gap: var(--space-3); }
+.mk-footer a { color: var(--text-tertiary); font-size: var(--text-sm-size); }
+.mk-footer a:hover { color: var(--text-primary); }
+.mk-footer__legal { border-top: 1px solid var(--border-tertiary); margin-top: var(--space-12); padding-top: var(--space-6); display: flex; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; color: var(--text-quaternary); font-size: var(--text-sm-size); }
+
+/* ── Photography: industry context behind a scrim, never a decorative stock shot ── */
+
+/* The badge sat on the card edge and pushed the first row out; float it clear. */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Added for the rebuilt inner pages (product, solutions, pricing, security,
+   docs, company, legal). Everything below is tokens-only and theme-safe.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page hero: the home hero without the product stage. ─────────────────── */
+.mk-hero--page { padding: var(--space-20) 0 var(--space-16); }
+@media (max-width: 767px) { .mk-hero--page { padding: var(--space-12) 0 var(--space-10); } }
+.mk-hero--page .mk-hero__in { max-width: 34rem; }
+
+/* An inner page that carries a drawing puts it beside the copy rather than
+   leaving half the hero empty, which is what the single-column version did. */
+.mk-hero--page .mk-hero__split {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: var(--space-16); align-items: center;
+}
+@media (max-width: 899px) {
+  .mk-hero--page .mk-hero__split { grid-template-columns: 1fr; gap: var(--space-8); }
+  .mk-hero--page .mk-hero__art { max-width: 24rem; }
+}
+.mk-hero__art { justify-self: end; width: 100%; max-width: 30rem; }
+
+/* ── Back link above a page title. ───────────────────────────────────────── */
+.mk-crumb { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-sm-size); font-weight: 600; color: var(--text-tertiary); }
+.mk-crumb:hover { color: var(--text-primary); text-decoration: none; }
+
+/* ── Tiles: integrations, endpoints, anything with a mark and two lines. ─── */
+.mk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3); }
+.mk-tile {
+  display: flex; align-items: center; gap: var(--space-3); min-width: 0;
+  padding: var(--space-3) var(--space-4); border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-xl); background: var(--bg-primary);
+}
+.mk-tile img { width: 22px; height: 22px; border-radius: 5px; flex: none; }
+.mk-tile > span { min-width: 0; display: grid; gap: 1px; }
+.mk-tile b { font-size: var(--text-sm-size); font-weight: 600; color: var(--text-primary); }
+.mk-tile small { font-size: var(--text-xs-size); color: var(--text-quaternary); }
+
+/* ── Document layout: sticky nav beside a readable measure. ──────────────── */
+.mk-doc { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: var(--space-16); align-items: start; }
+@media (max-width: 899px) { .mk-doc { grid-template-columns: 1fr; gap: var(--space-8); } }
+.mk-doc__nav { position: sticky; top: calc(var(--header-h) + var(--space-4)); display: grid; gap: 2px; align-content: start; }
+@media (max-width: 899px) { .mk-doc__nav { position: static; } }
+.mk-doc__nav a { padding: 7px 10px; border-radius: var(--radius-md); font-size: var(--text-sm-size); font-weight: 500; color: var(--text-tertiary); }
+.mk-doc__nav a:hover { background: var(--bg-secondary); color: var(--text-primary); text-decoration: none; }
+.mk-doc__nav a[aria-current] { background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; }
+.mk-doc__body { min-width: 0; display: grid; gap: var(--space-16); }
+.mk-doc__sec { display: grid; gap: var(--space-4); min-width: 0; scroll-margin-top: calc(var(--header-h) + var(--space-8)); }
+.mk-doc__sec > h2 { font-size: var(--display-xs-size); line-height: var(--display-xs-line); letter-spacing: -0.02em; font-weight: 600; color: var(--text-primary); }
+.mk-doc__sec > h3 { font-size: var(--text-lg-size); line-height: var(--text-lg-line); font-weight: 600; color: var(--text-primary); }
+
+/* ── A short labelled list inside a feature row. ─────────────────────────── */
+.mk-list { display: grid; gap: var(--space-5); }
+.mk-list__i { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.mk-list__i h4 { font-size: var(--text-md-size); font-weight: 600; color: var(--text-primary); margin: 0 0 2px; }
+.mk-list__i p { font-size: var(--text-sm-size); line-height: 1.55; color: var(--text-tertiary); margin: 0; }
+
+/* ── A headline number set in copy rather than in a stat band. ───────────── */
+.mk-figure { font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2rem); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; color: var(--text-primary); }
+
+/* ── Dark sections: the remaining shared classes need their own palette. ─── */
+.mk-sec--dark .u-muted, .mk-sec--dark .u-checks li { color: var(--gray-400); }
+.mk-sec--dark .u-quiet { color: var(--gray-500); }
+.mk-sec--dark .u-checks b, .mk-sec--dark .mk-list__i h4, .mk-sec--dark .mk-figure { color: #fff; }
+.mk-sec--dark .mk-list__i p { color: var(--gray-400); }
+.mk-sec--dark .u-checks li > span:first-child { background: color-mix(in srgb, var(--success-500) 20%, transparent); color: var(--success-400); }
+.mk-sec--dark .mk-tile { background: rgb(255 255 255 / .04); border-color: rgb(255 255 255 / .09); }
+.mk-sec--dark .mk-tile b { color: #fff; }
+
+/* ── Row headers in a comparison table read as content, not as a column head. ── */
+.mk-cmp__name, .mk-cmp__self {
+  text-transform: none; letter-spacing: 0; font-size: var(--text-sm-size); font-weight: 600;
+  color: var(--text-primary); background: var(--bg-primary); position: static; vertical-align: top;
+}
+.mk-cmp__self { background: var(--bg-brand-subtle); }
+.u-table tbody tr:hover .mk-cmp__name { background: var(--bg-secondary); }
+
+/* ── Split hero: copy on one side, a real composed visual on the other ──── */
+.mk-hero--split { padding: var(--space-20) 0 var(--space-24); }
+@media (max-width: 767px) { .mk-hero--split { padding: var(--space-12) 0 var(--space-16); } }
+.mk-hero__grid {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr);
+  gap: var(--space-20); align-items: center;
+}
+@media (max-width: 1279px) { .mk-hero__grid { gap: var(--space-14); } }
+@media (max-width: 1023px) { .mk-hero__grid { grid-template-columns: 1fr; gap: var(--space-12); } }
+/* The copy column is given real width: a 56px headline inside a 410px measure
+   is what made the old hero read as choked. */
+.mk-hero__copy { display: grid; gap: 0; justify-items: start; max-width: 34rem; }
+
+.mk-stage { position: relative; }
+.mk-stage__photo {
+  position: relative; border-radius: var(--radius-3xl); overflow: hidden;
+  border: 1px solid var(--border-secondary); box-shadow: var(--shadow-xl); background: var(--gray-900);
+  aspect-ratio: 4 / 3;
+}
+.mk-stage__photo img { width: 100%; height: 100%; object-fit: cover; }
+.mk-stage__photo::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(200deg, transparent 30%, color-mix(in srgb, var(--brand) 34%, transparent) 100%);
+  mix-blend-mode: multiply;
+}
+.mk-stage__card {
+  position: absolute; left: calc(var(--space-8) * -1); bottom: calc(var(--space-8) * -1);
+  width: min(360px, 74%); z-index: 2;
+}
+.mk-stage__chip {
+  position: absolute; right: var(--space-5); top: var(--space-5); z-index: 2;
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 6px 12px; border-radius: var(--radius-full);
+  background: rgb(255 255 255 / .92); backdrop-filter: blur(8px);
+  font-size: var(--text-xs-size); font-weight: 650; color: var(--gray-900);
+  box-shadow: var(--shadow-md);
+}
+@media (max-width: 599px) {
+  .mk-stage__card { position: static; width: 100%; margin-top: var(--space-4); }
+  .mk-stage__photo { aspect-ratio: 16 / 10; }
+}
+.mk-credit--stage { position: absolute; right: var(--space-3); bottom: var(--space-2); z-index: 3; font-size: 10.5px; color: rgb(255 255 255 / .6); }
+.mk-credit--stage a { color: inherit; }

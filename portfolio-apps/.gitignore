@@ -1,0 +1,12 @@
+node_modules
+dist
+.vercel
+*.log
+
+# The ONNX runtime is copied from node_modules at build time (scripts/copy-ort.mjs)
+public/ort
+
+# Verification output: screenshots and the page-sweep report (scripts/sweep.mjs)
+shots
+sweep.json
+sweep.txt

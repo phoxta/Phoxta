@@ -1,0 +1,130 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Line illustrations.
+
+   The drawings live in `src/saas/marketing/Illustration.tsx`; all of their
+   motion lives here, so a drawing is only geometry and a page can never end up
+   with a bespoke animation stuck to one section.
+
+   Each drawing carries one looping idea and nothing more: a current travelling
+   along a path, one element floating, one accent breathing. Loops run long
+   (4–9s) and start out of phase with each other, because two things moving in
+   step read as a spinner — as *loading* — rather than as a drawing that is
+   quietly alive.
+
+   Only `transform`, `opacity` and `stroke-dashoffset` are animated, so nothing
+   here can cost a layout or a paint.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.il {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Carbon's curves are all entrance curves — asymmetric on purpose, so a thing
+   arrives and settles. A loop has no arrival, so it wants a symmetric curve;
+   this is the only easing in the set. */
+.il {
+  --il-loop-ease: ease-in-out;
+}
+
+/* ── The looping ideas ──────────────────────────────────────────────────────
+   Every dashed path carries `pathLength="1"`, so the dash lengths below are
+   fractions of the path and identical at any size or aspect. The dash period
+   divides 1 exactly, so the loop closes without a jump.
+
+   One class per element: each of these sets the `animation` shorthand, so two of
+   them on the same node silently leaves only the last-declared one running. A
+   card that both floats and breathes wraps the breathing shape in a floating
+   `<g>` instead. */
+
+@keyframes il-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -1; } }
+@keyframes il-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes il-pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@keyframes il-ping { 0% { transform: scale(.9); opacity: .08; } 40% { opacity: .42; } 100% { transform: scale(1.26); opacity: 0; } }
+@keyframes il-sweep { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(9deg); } }
+
+/* Records in transit. */
+.il-flow {
+  stroke-dasharray: .08 .12;
+  animation: il-flow var(--il-dur, 6s) var(--il-loop-ease) var(--il-delay, 0s) infinite;
+  will-change: stroke-dashoffset;
+}
+/* A finer grain, for a boundary being walked rather than a stream arriving. */
+.il-flow--fine { stroke-dasharray: .035 .065; }
+
+/* The one element in the frame that has just moved, or is about to. */
+.il-float {
+  animation: il-float var(--il-dur, 5.5s) var(--il-loop-ease) var(--il-delay, 0s) infinite;
+  will-change: transform;
+}
+
+/* The accent, breathing. */
+.il-pulse {
+  animation: il-pulse var(--il-dur, 4.6s) var(--il-loop-ease) var(--il-delay, 0s) infinite;
+  will-change: opacity;
+}
+
+/* A ring leaving its centre — used where something is broadcast or detected. */
+.il-ping {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: il-ping var(--il-dur, 5s) var(--il-loop-ease) var(--il-delay, 0s) infinite;
+  will-change: transform, opacity;
+}
+
+.il-sweep {
+  animation: il-sweep var(--il-dur, 7s) var(--il-loop-ease) var(--il-delay, 0s) infinite;
+  will-change: transform;
+}
+
+/* ── Per-drawing pivots ─────────────────────────────────────────────────────
+   `fill-box` puts the origin at the element's own centre, which is right for a
+   full circle and wrong for an arc or a needle. Those two need the origin in
+   the drawing's coordinates instead. */
+.il--score .il-sweep { transform-box: view-box; transform-origin: 388px 232px; }
+.il--alert .il-ping { transform-box: view-box; transform-origin: 110px 110px; }
+
+/* ── Stagger ────────────────────────────────────────────────────────────────
+   Negative delays, so an element starts mid-loop instead of sitting still and
+   then twitching. Set as custom properties rather than `animation-delay`, so
+   the order these rules land in the sheet cannot change the result. */
+.il-d1 { --il-delay: -1.3s; }
+.il-d2 { --il-delay: -2.6s; }
+.il-d3 { --il-delay: -3.9s; }
+.il-s3 { --il-dur: 9s; }
+
+/* ── Entrance ───────────────────────────────────────────────────────────────
+   The subject draws itself in when its `Reveal` wrapper is shown. The resting
+   state is *fully drawn*, so a drawing whose observer never fires looks
+   finished rather than broken; the dash only exists for the length of the
+   animation. */
+@keyframes il-draw-in { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+[data-shown='true'] .il-draw,
+.il[data-shown='true'] .il-draw {
+  stroke-dasharray: 1;
+  animation: il-draw-in 1200ms var(--ease-entrance) both;
+  will-change: stroke-dashoffset;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────
+   Every loop stops on its finished frame: paths fully drawn, accents at full
+   strength, nothing displaced. */
+@media (prefers-reduced-motion: reduce) {
+  .il-flow,
+  .il-float,
+  .il-pulse,
+  .il-ping,
+  .il-sweep,
+  [data-shown='true'] .il-draw,
+  .il[data-shown='true'] .il-draw {
+    animation: none !important;
+    transform: none !important;
+    stroke-dashoffset: 0 !important;
+    will-change: auto;
+  }
+  [data-shown='true'] .il-draw,
+  .il[data-shown='true'] .il-draw { stroke-dasharray: none; }
+  .il-pulse { opacity: 1; }
+}
