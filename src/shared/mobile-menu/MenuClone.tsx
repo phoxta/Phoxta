@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMobileMenuCloneRefs } from "@/shared/mobile-menu/MobileMenuCloneContext";
 
 /**
@@ -7,6 +8,7 @@ import { useMobileMenuCloneRefs } from "@/shared/mobile-menu/MobileMenuCloneCont
  */
 export default function MenuClone() {
   const { menuSourceRef, offcanvasRootRef } = useMobileMenuCloneRefs();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const sourceUl = menuSourceRef.current;
@@ -120,6 +122,27 @@ export default function MenuClone() {
       return () => targets.forEach((el) => el.removeEventListener("click", handleToggle));
     };
 
+    // The clone is detached DOM, so its links are plain anchors that react-router
+    // never sees: every tap in the offcanvas menu did a full document reload,
+    // discarding the SPA and re-downloading the bundle. Route them by hand.
+    // Left alone: modified clicks, new-tab targets, and anything off-origin.
+    const routeInternalLinks = (clone: HTMLElement) => {
+      const onClick = (e: Event) => {
+        const me = e as MouseEvent;
+        if (me.defaultPrevented || me.button !== 0 || me.metaKey || me.ctrlKey || me.shiftKey || me.altKey) return;
+        const a = (me.target as HTMLElement | null)?.closest("a");
+        if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+        const href = a.getAttribute("href");
+        if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin) return;
+        me.preventDefault();
+        navigate(url.pathname + url.search + url.hash);
+      };
+      clone.addEventListener("click", onClick);
+      return () => clone.removeEventListener("click", onClick);
+    };
+
     const cleanups: Array<() => void> = [];
 
     targetNavs.forEach((targetNav) => {
@@ -128,6 +151,7 @@ export default function MenuClone() {
       targetNav.appendChild(clone);
       const cleanup = setupClone(clone);
       if (cleanup) cleanups.push(cleanup);
+      cleanups.push(routeInternalLinks(clone));
     });
 
     return () => {

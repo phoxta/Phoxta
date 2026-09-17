@@ -254,7 +254,10 @@ export default function App() {
       </Route>
 
       {/* ── Marketing site (public, curated) ───────────────────────────── */}
-      <Route element={<MainLayout headerStyle={4} footerStyle={1} noHeader />}>
+      {/* noHeader: the homepage hero (index-1/Section1) renders HeaderNav itself
+          so the nav overlays the dark hero. No headerStyle here — with noHeader
+          set it selects nothing, and naming a variant only implied otherwise. */}
+      <Route element={<MainLayout footerStyle={1} noHeader />}>
         <Route path="/" element={<Home1Page />} />
       </Route>
       {/* Personal portfolio (femi.phoxta.com). Reachable at /portfolio on any

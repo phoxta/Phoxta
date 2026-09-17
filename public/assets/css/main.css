@@ -37402,3 +37402,73 @@ body.at-magic-cursor #magic-cursor {
 @media (max-width: 991.98px) {
   .phoxta-dash-sidebar { position: fixed !important; top: 0; left: 0; height: 100vh !important; z-index: 1045; }
 }
+
+/* =====================================================================
+   Site nav: current-page state + keyboard access
+   ---------------------------------------------------------------------
+   MainMenu renders react-router NavLinks, which set .active (and
+   aria-current="page") on the link for the current route — but nothing
+   in this stylesheet ever styled it, so the primary nav gave no sense of
+   place on any page. The underline is painted with a background gradient
+   rather than a pseudo-element because ::after is already the dropdown
+   caret and ::before is the link's hit-area spacer.
+   ===================================================================== */
+.at-main-menu > nav > ul > li > a.active,
+.at-main-menu > nav > ul > li > a[aria-current="page"] {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-size: calc(100% - 48px) 2px; /* inset by the link's 24px side padding */
+  background-position: 24px 100%;
+}
+
+.at-main-menu nav ul li .submenu li a.active,
+.at-main-menu nav ul li .submenu li a[aria-current="page"] {
+  color: var(--at-common-black);
+  font-weight: 600;
+}
+
+/* The dropdown opened on :hover only, so it could not be reached from the
+   keyboard at all. :focus-within mirrors the existing hover rules. */
+.at-main-menu nav ul li:focus-within > .submenu,
+.at-main-menu.menu-light nav ul li:focus-within > .submenu {
+  visibility: visible;
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* A visible focus ring — the nav had none, so keyboard focus was invisible. */
+.at-main-menu nav ul li a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* HeaderNav reveals the desktop menu at xxl (1400px). Even there the 24px link
+   gutters overflowed the column and put the last item on top of the search icon
+   (measured -8px), because the Bootstrap container caps at 1320px so the squeeze
+   never resolves however wide the screen gets. 16px gutters clear it. */
+@media (min-width: 1400px) {
+  .at-main-menu > nav > ul > li > a {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .at-main-menu > nav > ul > li > a.active,
+  .at-main-menu > nav > ul > li > a[aria-current="page"] {
+    background-size: calc(100% - 32px) 2px;
+    background-position: 16px 100%;
+  }
+}
+
+/* .at-btn-border-dark was referenced by HeaderNav's Login button but never
+   existed in this stylesheet, so the button kept .at-btn's dark fill while
+   .text-dark set dark text on top of it: 1.14:1 contrast, effectively
+   invisible. This is the light-background twin of .at-btn-border-white. */
+.at-btn-border-dark {
+  border: 1px solid rgba(15, 15, 15, 0.25);
+  background: transparent;
+  color: #0F0F0F;
+}
+.at-btn-border-dark:hover {
+  color: #0F0F0F;
+  background: rgba(15, 15, 15, 0.06);
+}

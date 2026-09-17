@@ -39,22 +39,30 @@ export default function HeaderNav({ light = false }: HeaderNavProps) {
     <header className={`header-transparent at-header-spacing pt-30 pt-md-40 ${textClass}`}>
       <div className="container">
         <div className="row align-items-center">
-          <div className="col-6 col-xl-2">
+          {/* xxl, not xl: the menu is revealed at 1400px rather than 1200px.
+              The Bootstrap container caps at 1320px, so between 1200 and 1400
+              the six items overflowed their column by ~100px and sat on top of
+              the search icon. Below 1400 the offcanvas menu takes over. */}
+          <div className="col-6 col-xxl-2">
             <div className="at-header-logo">
               <Link to="/" className="d-inline-flex align-items-center gap-2 text-decoration-none">
-                <img width={30} height={30} src={`/assets/imgs/template/logo/${logo}`} alt="Phoxta" loading="lazy" />
-                <h6 className={`fw-700 fz-24 mb-0 ${textClass}`}>Phoxta</h6>
+                {/* alt="" — the wordmark beside it already names the link, so a
+                    described image would make screen readers say "Phoxta Phoxta".
+                    A span, not a heading: the logo is not a section title, and an
+                    <h6> here put a stray level-6 heading in every page outline. */}
+                <img width={30} height={30} src={`/assets/imgs/template/logo/${logo}`} alt="" loading="lazy" />
+                <span className={`fw-700 fz-24 ${textClass}`}>Phoxta</span>
               </Link>
             </div>
           </div>
-          <div className="col-xl-8 mx-auto d-none d-xl-flex justify-content-center">
+          <div className="col-xxl-8 mx-auto d-none d-xxl-flex justify-content-center">
             <div className={`at-main-menu ${light ? "menu-light" : ""} d-inline-flex justify-content-center`}>
               <nav className="at-mobile-menu-active">
                 <MainMenu />
               </nav>
             </div>
           </div>
-          <div className="col-6 col-xl-2">
+          <div className="col-6 col-xxl-2">
             <div className={`at-header-right gap-3 d-flex justify-content-end align-items-center ${textClass}`}>
               <button type="button" className="at-header-search-btn at-search-click" aria-label="Search">
                 {SEARCH_SVG}
