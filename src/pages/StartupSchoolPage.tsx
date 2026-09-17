@@ -9,6 +9,7 @@ import Section14 from "@/shared/sections/index-7/Section14"; // Testimonials —
 import Section15 from "@/shared/sections/index-7/Section15"; // FAQ — objection handling
 import Section7 from "@/shared/sections/index-7/Section7"; // CTA — the ask
 import Section11 from "@/shared/sections/index-7/Section11"; // Enroll form — capture
+import EnterSchool from "@/shared/sections/startup-school/EnterSchool"; // Way into the live school
 
 // "Startup School" solution page (Solutions dropdown) — Phoxta's founder
 // education program. Composed from the best-fit studio section templates and
@@ -21,6 +22,9 @@ export default function StartupSchoolPage() {
     <>
       <PageMeta title="Startup School — Phoxta" path="/startup-school" />
       <Section1 />
+      {/* Straight after the hero: someone who has already joined should not have
+          to read a sales funnel to find the front door. */}
+      <EnterSchool />
       <Section16 />
       <Section12 />
       <Section6 />

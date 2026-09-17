@@ -25,6 +25,11 @@ const MarketingSolutionPage = lazy(() => import("@/pages/MarketingSolutionPage")
 const AiTechPage = lazy(() => import("@/pages/AiTechPage")); // /ai-tech
 const StartupSchoolPage = lazy(() => import("@/pages/StartupSchoolPage")); // /startup-school
 const BrandDesignPage = lazy(() => import("@/pages/BrandDesignPage")); // /brand-design
+// Founder Toolkit (/founder) — free, public, no account. Journey + tools + adviser.
+const FounderLayout = lazy(() => import("@/pages/founder/FounderLayout"));
+const FounderHubPage = lazy(() => import("@/pages/founder/FounderHubPage")); // /founder
+const FounderStagePage = lazy(() => import("@/pages/founder/FounderStagePage")); // /founder/:stage
+const FounderToolPage = lazy(() => import("@/pages/founder/FounderToolPage")); // /founder/tool/:tool
 const About2Page = lazy(() => import("@/pages/About2Page"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
 const ProductArchivePage = lazy(() => import("@/pages/ProductArchivePage")); // /marketplace
@@ -276,6 +281,15 @@ export default function App() {
       </Route>
       <Route element={<MainLayout headerStyle={16} footerStyle={1} headerProps={{ light: true }} />}>
         <Route path="/brand-design" element={<BrandDesignPage />} />
+      </Route>
+      {/* The Founder Toolkit. FounderLayout supplies the venture record (localStorage)
+          to every page beneath it, so answers follow the visitor without an account. */}
+      <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
+        <Route element={<FounderLayout />}>
+          <Route path="/founder" element={<FounderHubPage />} />
+          <Route path="/founder/tool/:tool" element={<FounderToolPage />} />
+          <Route path="/founder/:stage" element={<FounderStagePage />} />
+        </Route>
       </Route>
       <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
         <Route path="/about" element={<About2Page />} />

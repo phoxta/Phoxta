@@ -407,3 +407,29 @@ verify_jwt = false
 # platform GEMINI_API_KEY and guards itself with CORS.
 [functions.jobtra-ai]
 verify_jwt = false
+
+# Wàfè's one AI surface (businesses/wafe): the family companion — briefings,
+# summaries, plans, songs, storyboards, images. The app calls it with the
+# signed-in member's token, and the showcase demo calls it with the anon key,
+# so `true` is right: the gateway is satisfied either way, and the function
+# itself decides which of the two it is (a real member row, or the metered
+# demo allowance) before it spends a token.
+[functions.wafe-ai]
+verify_jwt = true
+
+# The Founder Toolkit adviser (/founder). Anonymous on purpose: the toolkit is
+# free and needs no account, so visitors reach it with the anon key and `true`
+# is satisfied by that alone. The function does its own defending, with a
+# per-IP daily ledger plus a whole-endpoint ceiling, and books its spend
+# against the platform org. Grounded only on a bundled corpus, so it cannot
+# read any tenant's data.
+[functions.founder-advice]
+verify_jwt = true
+
+# The founder school's three AI surfaces (businesses/startup-school): the
+# mentor's pre-session brief, the post-session write-up, and the grounded
+# adviser. Every one of them reads a founder's venture record or a 1:1
+# transcript, so a signed-in caller is the whole point — no anonymous path,
+# and the function re-proves enrolment against cs_profiles before it reads.
+[functions.startup-school-ai]
+verify_jwt = true

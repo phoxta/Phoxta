@@ -10,6 +10,11 @@ const SOLUTIONS_LINKS: Item[] = [
   { to: "/brand-design", label: "Brand Design" },
 ];
 
+// The free Founder Toolkit gets its own top-level entry rather than a slot in
+// Solutions: it is a product people use, not a service we sell, and it is the
+// main way a first-time founder meets Phoxta.
+const FOUNDER_LINK: Item = { to: "/founder", label: "Founder Toolkit" };
+
 function MenuLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <NavLink to={to} className={({ isActive }) => (isActive ? "active" : undefined)}>
@@ -47,6 +52,12 @@ export default function MainMenu() {
             </li>
           ))}
         </ul>
+      </li>
+
+      <li>
+        <MenuLink to={FOUNDER_LINK.to}>
+          <LinkSwap label={FOUNDER_LINK.label} />
+        </MenuLink>
       </li>
 
       <li>

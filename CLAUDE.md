@@ -30,5 +30,7 @@ Phoxta is a multi-demo **creative-agency React template**: one SPA with 15 home 
 ## Building new pages/sections/apps
 Use the **`phoxta-builder` skill** (`.claude/skills/phoxta-builder/`). It has the full workflow, a catalog of all sections, the CSS class reference, templates, and the clone/scaffold guide. Invoke it for any "add a page / section / menu item / build in the Phoxta style" task.
 
+For **founder-advice content or "launch & grow your business" product features** (idea evaluation, product-market fit, business model, legal form, plan/pitch, financing, unit economics, sales, marketing, hiring, operations, AI-native building, scaling, exit), use the **`entrepreneur-handbook` skill** (`.claude/skills/entrepreneur-handbook/`) — a distilled HBR Entrepreneur's Handbook **plus a researched 2026 layer** (`reference/modern/`, 13 sourced supplements) with a journey map, per-chapter frameworks, and an app module spec.
+
 ## Known cruft
 `src/shared/sections/index-1/Section7 home-4.tsx` is an unused stray file (space in name, imported nowhere) — safe to ignore/delete.

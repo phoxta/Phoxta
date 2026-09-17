@@ -14,6 +14,8 @@ install and run each on its own.
 | `niche-apparel/` | `niche-apparel` | Fashion / eCommerce | Vite + React + TypeScript (Phoxta `main.css`) | `npm install` → `npm run dev` |
 | `ferne/`   | `ferne`   | Skincare / DTC eCommerce | Vite + React + TypeScript (own design system) | `npm install` → `npm run dev` |
 | `coir-six/` | `coir-six` | Education / online courses | Vite + React + TypeScript (Tailwind v4) | `npm install` → `npm run dev` |
+| `wafe/`    | `wafe`    | Family / life management | Vite + React + TypeScript (Tailwind v4) | `npm install` → `npm run dev` |
+| `startup-school/` | `startup-school` | Founder education / cohort programme | Vite + React + TypeScript (Tailwind v4) | `npm install` → `npm run dev` |
 
 > **Uniform stack:** all businesses are **Vite + React + TypeScript** (Carento's
 > stack). Gearo was rebuilt from a static HTML template; WamWam was re-engineered from

@@ -1,0 +1,254 @@
+@import "tailwindcss";
+
+/*
+ * Phoxta Startup School design tokens → Tailwind theme.
+ *
+ * The palette comes from the school's own marketing hero
+ * (src/shared/sections/index-7/Section1.tsx): a split field of vermilion
+ * #C7260A and maroon #800B01, a #F0460E CTA pill, a #FFF5F3 warm tint and the
+ * page's warm greys. The app used to wear Coir Six's lilac, which made two
+ * different products look like one.
+ *
+ * Two decisions worth stating, because the obvious version of each is wrong:
+ *
+ * 1. The BRAND is #C7260A, not the brighter #F0460E. White on #F0460E is
+ *    3.76:1 — it cannot legally carry button text, and `text-brand` on the page
+ *    would fail too. #C7260A is the hero's actual dominant field and clears 5.6:1
+ *    both ways. #F0460E survives as `brand-glow`, doing exactly what it does on
+ *    the marketing page: a decorative accent, never a text surface.
+ *
+ * 2. The three tracks run vermilion → maroon → gold, and `peach` (warn) is the
+ *    SAME gold as Grow rather than a near-miss of it. Three colours a hair
+ *    apart read as a mistake; one colour used deliberately in two component
+ *    families that never encode the same thing does not.
+ *
+ * Every pair here is contrast-checked — text on its tint, white on every fill,
+ * and the perceptual distance between tones that share a screen.
+ * A rebrand touches this block and packages/core/src/tokens.ts together.
+ */
+@theme {
+    --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    /* brand — the hero's split field */
+    --color-brand: #c7260a;
+    --color-brand-hover: #a01f08;
+    --color-brand-soft: #fdeae5;
+    /* The hero's CTA orange. Decoration only: 3.76:1 on white. */
+    --color-brand-glow: #f0460e;
+    /* AA-passing ink for brand text on the soft tint (6.8:1) */
+    --color-brand-ink: #9e1e06;
+
+    /* the three tracks: vermilion → maroon → gold */
+    --color-start: #c7260a;
+    --color-start-soft: #fdeae5;
+    --color-start-ink: #9e1e06;
+    --color-fund: #800b01;
+    --color-fund-soft: #e9cac1;
+    --color-fund-ink: #800b01;
+    --color-grow: #8f5e00;
+    --color-grow-soft: #fbf1da;
+    --color-grow-ink: #6d4700;
+
+    /* semantics. Green and crimson sit outside the brand family on purpose —
+       a warning the same colour as the brand is not a warning. */
+    --color-mint: #2b7a55;
+    --color-mint-soft: #e3f2ea;
+    /* Deliberately the same gold as Grow; see the note above. */
+    --color-peach: #8f5e00;
+    --color-peach-soft: #fbf1da;
+    --color-danger: #c41d3f;
+    --color-danger-soft: #fce8ec;
+    --color-danger-ink: #9e1230;
+    /* Only ever an avatar tint. One cool chip is what lets six initials be
+       told apart when the other five are warm. */
+    --color-plum: #3f5e6b;
+    --color-plum-soft: #e6eef1;
+
+    /* surfaces — the hero page's warm greys, not Coir Six's lilac-cast ones */
+    --color-page: #f8f5f3;
+    --color-card: #ffffff;
+    --color-subtle: #f1edeb;
+    --color-line: #e9e4e1;
+    --color-line-strong: #dbd4d0;
+    --color-track: #e6dfdb;
+    --color-backdrop: #ddd7d3;
+
+    /* text — #1D1D1D and #585959 are the marketing page's own */
+    --color-ink: #1d1d1d;
+    --color-muted: #585959;
+    --color-caption: #6e6a68;
+
+    /* radius — "radius scales with the size of the thing" */
+    --radius-xs: 6px;
+    --radius-sm: 12px;
+    --radius-md: 14px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
+
+    /* Warm-cast shadows. A blue-grey shadow over a warm ground reads as dirt. */
+    --shadow-app: 0 30px 80px rgba(58, 22, 12, 0.12);
+    --shadow-hover: 0 8px 24px rgba(58, 22, 12, 0.09);
+    --shadow-sheet: 0 -12px 40px rgba(58, 22, 12, 0.13);
+}
+
+@layer base {
+    :root {
+        /* The pinned desktop toolbar: 30px inset + 46px controls + 16px under it.
+           Anything else that sticks (page rails) sits just below it. */
+        --cs-topbar-h: 92px;
+        --cs-rail-top: calc(var(--cs-topbar-h) + 16px);
+    }
+    html {
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+    body {
+        @apply bg-page text-ink font-sans;
+        font-size: 15px;
+        line-height: 21px;
+        /* A phone never scrolls sideways. `clip` (not `hidden`) keeps sticky
+           headers working, because it doesn't make body a scroll container. */
+        overflow-x: clip;
+    }
+    /* Focus is visible and consistent everywhere: brand ring, 2px offset. */
+    :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+        outline: 2px solid var(--color-brand);
+        outline-offset: 2px;
+        border-radius: 6px;
+    }
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: rgba(27, 27, 35, 0.14);
+        border-radius: 999px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+@utility no-scrollbar {
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* Two-line clamp for card titles (design system: "clamp titles to two lines"). */
+@utility clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Edge-to-edge horizontal rail on mobile: bleeds by the gutter and snaps so the
+   first card lands on the grid (design system: "Rule."). */
+@utility rail {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding: 0 20px;
+    padding: 0 20px 6px;
+    margin: 0 -20px;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    & > * {
+        scroll-snap-align: start;
+        flex: none;
+    }
+}
+
+/* Native <dialog> as a centred modal / bottom sheet. */
+dialog.cs-dialog {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    max-width: none;
+    max-height: none;
+    width: 100%;
+    height: 100%;
+    inset: 0;
+}
+dialog.cs-dialog::backdrop {
+    background: rgba(27, 27, 35, 0.45);
+}
+
+/* Video player range inputs. */
+input[type="range"].cs-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+}
+input[type="range"].cs-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 0;
+}
+input[type="range"].cs-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 0;
+}
+
+/* The sparkle motif used by the promo hero. */
+@keyframes cs-spin-slow {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Live classes: a thrown reaction drifting up the stage, and the same emoji
+   popping in beside the title. Both are decorative, so both stand still for
+   anyone who has asked for less motion. */
+@keyframes cs-float {
+    0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.6);
+    }
+    12% {
+        opacity: 1;
+        transform: translateY(-14px) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-190px) scale(1.15);
+    }
+}
+
+@keyframes cs-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-\[cs-float_6s_ease-out_forwards\],
+    .animate-\[cs-pop_400ms_ease-out\] {
+        animation: none;
+    }
+}

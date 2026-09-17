@@ -24,7 +24,8 @@
     "demo:tiktok": "node scripts/tiktok-demo/record.mjs",
     "test:voice-guards": "deno run --check scripts/voice-guards-test/run.ts",
     "test:caption-for": "deno run --check scripts/caption-for-test/run.ts",
-    "test:replica": "deno run --check scripts/replica-test/run.ts"
+    "test:replica": "deno run --check scripts/replica-test/run.ts",
+    "founder:corpus": "node ./scripts/build-founder-corpus.mjs"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",

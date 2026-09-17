@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Phoxta Startup School",
+    "slug": "startup-school",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "coirsix",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F6F6FA",
+    "ios": {
+      "bundleIdentifier": "com.phoxta.coirsix",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.phoxta.coirsix",
+      "adaptiveIcon": {
+        "backgroundColor": "#6C5DD3",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "bundler": "metro",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#6C5DD3",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Phoxta Startup School uses your photo library so you can choose a profile picture.",
+          "cameraPermission": "Phoxta Startup School uses the camera so you can take a profile picture."
+        }
+      ],
+      "@config-plugins/react-native-webrtc",
+      [
+        "@livekit/react-native-expo-plugin",
+        {
+          "android": {
+            "audioType": "communication"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false,
+      "reactCompiler": true
+    }
+  }
+}
