@@ -1,0 +1,152 @@
+[
+ {
+  "where": "FINAL SPEC (JSON) — end of file, `memories` module and `auth` module",
+  "what": "The spec as delivered is truncated mid-way through the `memories` entities (`reels` fields end at `\"t`). The memories features/acceptance/permissions/aiHooks/demoData and the ENTIRE `auth` module (sign up/in, reset, create space, accept invitation, first-run, child PIN, parent-launched session, re-auth) are absent from the machine-readable spec even though `auth` is a mandated module id. Either the spec is incomplete or the export was cut; either way it cannot be verified or built from as-is.",
+  "severity": "high"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.20 `auth`",
+  "what": "`auth` is the only module with no **Demo.** section. Every other module carries demo-data notes; the definition of done (§14) requires 'demo data renders every screen', so the first-run wizard, invitation-acceptance, PIN login, family picker, parent-launched Little session and re-auth prompt have no demo states (no demo invitation, no demo guest/child credentials, no demo PIN).",
+  "severity": "high"
+ },
+ {
+  "where": "FINAL MARKDOWN §8 table + §5.9 tasks, §5.14 travel, §5.7 bible, §5.18 moodboards, §5.6 books, §5.12 calendar vs SOURCE §10 matrix and RBAC 'Extended Guest — Scoped Read-Only'",
+  "what": "Several guest cells contradict the source matrix and the source's explicit 'read-only' guest tier: Tasks guest = 'View' in source but final grants 'assigned tasks; can complete'; Travel guest = 'View' but final lets guests tick their own packing list; Learning guest = '—' but final grants 'a course explicitly shared (mentor-led)'; Bible/Prayer guest is 'Limited' + read-only 'Prayer Requests' but final lets guests post to the wall (and demo has Mama Fọláké adding a request); Moodboards let the Okonkwos pin; Calendar lets guests RSVP. These may be deliberate extensions, but the document never states that the source default is read-only, never says the default `object_shares.level` is `view`, and never records the deviation as a decision.",
+  "severity": "high"
+ },
+ {
+  "where": "FINAL MARKDOWN §8 table row 'Goals' and §5.10 vs SOURCE §10 'Goals: Child = View'",
+  "what": "Source gives children View on Goals; final grants children 'full on own Me goals' (create/edit). Arguably justified by Tab 4's Me scope, but the deviation is not called out and there is no per-band restriction (a Little/Junior child creating goals is not excluded).",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.1 Home 'Needs attention' list vs §11 'Needs attention = rules 3, 4, 7, 11, 12, 13, 14, 15, 23, 24' vs §5.4 people AC",
+  "what": "Internal contradiction: §5.1 says Needs attention includes 'unanswered invitations, deadlines ≤ 48 h, unreviewed memory verses, budget breaches'; §5.4 AC says 'Overdue cadence appears in Needs attention'; but §11 defines Needs attention as rules 3,4,7,11,12,13,14,15,23,24 only — rule 18 (cadence overdue) and rule 9 (verse review) are excluded, and 'deadlines ≤ 48 h' is not a rule at all. The panel cannot be built or tested against two different definitions.",
+  "severity": "high"
+ },
+ {
+  "where": "FINAL MARKDOWN §11 rule table vs SOURCE §11 Notifications 'Learning activities'",
+  "what": "Source requires notifications for learning activities. The 25 rules cover curricula assignments (rule 8) but no rule fires for Learning Hub plan items due, a newly assigned playlist/course/reading-plan day, or a Book-to-Course week opening. Also no rule for a reward redemption request awaiting parent approval (rule 22 is post-hoc celebration only).",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.14 travel + §12 Security CSP vs SOURCE 3.1 'interactive maps'",
+  "what": "Source asks for interactive maps; final downgrades to 'map links' without saying why. Given the CSP allow-list (YouTube IFrame, AI gateway, image API only) an embedded map is impossible, so the downgrade is correct but must be recorded as a decision with the reason, and the AC must define what a 'map link' is (deep-link to Google/Apple Maps by lat/long or address).",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §4 morning briefing 'weather (if location set)' and §5.1 vs §12 CSP allow-list and §10 data model",
+  "what": "Source 4.1 requires weather in the briefing; final includes it but no weather data source, table, cache or third-party origin is specified, and the CSP allow-list excludes any weather API. Needs a server-side weather fetch (edge function) + `spaces.location` field + failure path (briefing omits weather line) to be buildable and testable.",
+  "severity": "medium"
+ },
+ {
+  "where": "MODULE LIST `moodboards` ('pins from web images/uploads/search') vs FINAL §5.18 and spec pins.source(url|upload|library)",
+  "what": "The engineering module list specifies pins from 'search'; final drops image search entirely (URL, upload, library only). Either an in-space media search or an explicit, reasoned exclusion (no third-party image-search origin allowed by CSP) is required.",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §3 age-band table + §5.0 demo family vs §14 Definition of done ('RLS tests for each band', 'demo data renders every screen')",
+  "what": "The Teen (11–14) band has no demo member ('—'), so the Teen child Home, Teen companion free-text with classifier, Teen private prayer list and moodboards cannot be demonstrated or walked through from demo data as the DoD requires.",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.20 auth first-run flow vs SOURCE Flow 1 'Sign up → Create family → Add members → Assign roles → Set family goals → Land on dashboard' and §13 activation metric",
+  "what": "Final first-run is values → mission → members → demo/empty → Home; it omits the 'Set family goals' step (and assigning roles is folded into 'members'). The activation metric requires 'one goal with milestones' in the first session, yet the wizard never asks for one unless the demo is loaded; the AI hook 'first three goals from values' exists but is not a wizard step.",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §9 Type / SPEC designSystem.type 'Fraunces (Google Fonts)' vs §12 CSP allow-list",
+  "what": "Fraunces is specified as loaded from Google Fonts, but the CSP allows only YouTube IFrame, AI gateway and image API as third-party origins. DM Sans is marked self-hosted; Fraunces must be too (or the CSP must list fonts.googleapis/gstatic).",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.19 memories AC 'Share links expire' and 'plays at 30 fps on a mid-range phone'",
+  "what": "Two untestable ACs: no expiry duration for share links (and no revoke path) and no reference device/definition for 'mid-range phone'. Needs e.g. 'links expire after 30 days, revocable' and a named reference device or Lighthouse/frame-timing threshold.",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.1 Home AC '≤ 1.5 s on cached data', §5.5 learning '≤ 3 s import', §5.6 books '≤ 20 s'",
+  "what": "Timing ACs have no measurement conditions (device class, network profile, cold vs warm cache, p50 vs p95). As written a tester cannot pass/fail them consistently.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.3 family, §5.17 studio, §5.19 memories, spec `spaces.ai_plan` — 'AI plan', 'where the plan allows', 'quota by plan'",
+  "what": "Plans/tiers are referenced repeatedly (AI usage cap, image generation availability, reel/media quota) but never defined anywhere: no tier names, caps, quotas or what each gates. Unbuildable as-is and reads like a deferred decision.",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.16 wellness vs SOURCE 3.4 'cardio/strength routine templates' and 'activity schedules'",
+  "what": "Final says 'workout plans from templates' generically; no cardio/strength routine template catalogue is named and workouts do not appear as calendar overlays or a schedule (calendar overlays list tasks, milestones, assignments, bills, trips, birthdays only).",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §6 Child Home vs SOURCE 1.4 Children's Dashboard 'daily reading goals'",
+  "what": "Child dashboard tiles have no 'reading today' tile; reading plans exist in Books (Tobi 10 pages/day) but nothing surfaces the daily reading goal on the child feed or dashboard.",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.11 projects vs SOURCE 2.1 'household, business, and personal projects' and 'web clipper'",
+  "what": "Projects never mention business projects (Ifeoluwa's consultancy is in the persona) and 'web clipper' is implemented only as paste-a-URL server snapshot — no browser extension/bookmarklet/PWA share-target, which is what 'clipper' implies. A share-target or bookmarklet should be specified or the exclusion stated.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.17 studio vs SOURCE 4.2 'AI Song Recorder … using AI audio generation APIs'",
+  "what": "Engineering reality limits AI to lyrics + chord charts, which the final honours, but the document never explains the audio omission to the reader, and does not offer the cheap in-browser path that would honour 'Recorder' (MediaRecorder capture of the family singing the lead sheet, saved to the song and usable as a reel track — no third-party origin needed). 'Licensed or family-song track' in memories implies such an audio asset exists but no capture path is specified.",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §2/§5 vs SOURCE PRD §5 'Live — … household management' and 2.1 'maintenance'",
+  "what": "'Household management' (home maintenance schedules, appliance/warranty records, home documents) has no home; it is implicitly spread across recurring tasks, Finance bills and Travel docs. Either name it as covered by those (with a maintenance task template set) or add it.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §13 vs SOURCE §14 metrics",
+  "what": "Missing source metrics: 'Weekly active families' (final has per-parent dashboard days only) and 'AI summaries saved/completed'. Also no instrument is specified for the outcome survey ('We can see what we're building ≥ 80 %') given analytics are 'event-name-only'.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.7 bible vs SPEC bible features/AC 'Prayer streaks that rest on grace days'",
+  "what": "Spec introduces prayer streaks and an AC for them; the markdown never mentions prayer streaks. Spec and document disagree on scope.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §9 palette vs SPEC designSystem.palette",
+  "what": "Markdown palette omits the `--sage-20 #E5E8E2` token it relies on for card borders (present only in the spec) and does not tokenise dark-theme names (`--paper-dark`, `--ink-dark`, `--olive-dark`) consistently with the spec. No spacing scale, radius scale, focus-ring, motion/duration or child-mode (+12 % lightness) tokens are defined in either.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §9 vs BRAND poster copy",
+  "what": "The four area straplines from the poster (GROW 'Nurture our faith, minds and relationships', EXECUTE 'Plan, focus and get the important things done', LIVE 'Manage our home, finances, health and lifestyle', CREATE 'Imagine, express and enjoy the beauty of life') are not carried into the nav/area headers or empty states; the poster's illustration style (joyful Black couple, earth-tone illustration) is not part of the visual language spec.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.14 travel and §5.13 finance — currency",
+  "what": "The demo trip is to Lagos and a relative lives in Lagos, `ledger_entries.currency` exists, but multi-currency handling (NGN trip expenses, conversion rate, reporting currency) is unspecified; the giving % and budget ACs assume single currency.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §3 age bands / §5.3 family",
+  "what": "Band transitions on birthdays (Junior → Teen at 11, Teen → Young adult at 15) are unspecified: no rule, notification or parent prompt, even though age bands drive permissions and the family stores birthdays.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §5.7 bible vs SOURCE 1.3 'prayer tags (e.g., Health, Mission, Provision)'",
+  "what": "Tags are free-form (`tags[]`); no default tag set (Health, Mission, Provision, Family, Work…) and no mapping of which tags count as child-safe, which the child wall filter AC depends on.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL SPEC top level",
+  "what": "The 25 follow-up rules exist only as a markdown table; the spec JSON does not carry them as data (`follow_up_rules` seed), nor does it carry the sensitivity/visibility enum definitions, the CI RLS matrix, non-functional budgets or the data-model key edges, so the machine-readable artefact is not self-sufficient for the notifications squad or the RLS test harness.",
+  "severity": "medium"
+ },
+ {
+  "where": "FINAL MARKDOWN §4 'quarterly review', 'annual blueprint refresh', December 'Our year' reel",
+  "what": "Named rituals with no owning AC: goals AC does not test the quarterly review screen output, no AC covers the annual blueprint refresh, and memories AC does not test the auto-drafted 'Our year' reel or the 'On this day' widget beyond Home.",
+  "severity": "low"
+ },
+ {
+  "where": "FINAL MARKDOWN §1/§3 vs SOURCE Tab 4 'for individuals, couples and families'",
+  "what": "Single individuals (a space with one member and Me scope only) are not addressed as an audience; couples and single parents are. Rituals like the family strip, check-in aggregation and Sunday planning have no single-member behaviour specified.",
+  "severity": "low"
+ }
+]

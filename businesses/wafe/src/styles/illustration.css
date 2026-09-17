@@ -1,0 +1,217 @@
+/*
+ * Motion for the Wàfè line illustrations (`components/ui/Illustration.tsx`).
+ *
+ * The drawings are meant to be looked at, not watched. Each one carries a
+ * single looping idea — a wisp that rises, a flame that breathes, a dash that
+ * travels — long enough (3–9s) that a passing glance reads it as still and a
+ * settled glance finds it alive. Every delay is negative so that a screenful
+ * of illustrations is already mid-thought when it appears, rather than ten
+ * things starting to move in unison.
+ *
+ * Two rules keep this honest:
+ *
+ *  1. Only `transform`, `opacity` and `stroke-dashoffset` are animated, so the
+ *     browser never re-lays-out or re-rasterises a path mid-loop.
+ *  2. **One class per element sets the `animation` shorthand.** Two shorthand
+ *     declarations on the same element silently discard all but the last, so
+ *     an element that needs to both drift and breathe gets a wrapping <g> —
+ *     see `.wf-ill__photo` around the rotated card in `remember`.
+ *
+ * Travel paths carry `pathLength="1"`, so every dash value below is a fraction
+ * of the path rather than a pixel count: the same pattern reads identically at
+ * 220px and 480px. Each dash period divides 1 exactly (0.5, 0.25, 0.125), so
+ * travelling a whole path length lands the pattern back on itself and the loop
+ * has no seam.
+ */
+
+.wf-ill {
+    display: block;
+    width: 100%;
+    /* The <svg> deliberately carries no height attribute — "auto" is not a
+       valid SVG length — so the aspect ratio is honoured here instead. */
+    height: auto;
+}
+
+/* ---- Keyframes ----------------------------------------------------------- */
+
+/* The entrance. A full-length dash retracts to nothing, so the path appears to
+   be drawn by a hand. Nothing sets a dash array at rest, which is why an
+   illustration whose observer never fires simply looks finished. */
+@keyframes wf-ill-draw {
+    from {
+        stroke-dasharray: 1;
+        stroke-dashoffset: 1;
+    }
+    to {
+        stroke-dasharray: 1;
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes wf-ill-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+/* Dashes creep forward along the path. Offset 1 → 0 moves the pattern towards
+   the path's end, so the direction of travel is the direction it was drawn. */
+@keyframes wf-ill-travel {
+    from {
+        stroke-dashoffset: 1;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes wf-ill-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+@keyframes wf-ill-pulse {
+    0%,
+    100% {
+        opacity: 0.72;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+}
+
+/* ---- The ten loops ------------------------------------------------------- */
+
+/* Scaling in SVG is measured from the viewBox origin unless the box is the
+   element's own geometry, which would swing these shapes across the canvas. */
+.wf-ill__dish,
+.wf-ill__today,
+.wf-ill__flame {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+}
+
+/* gather — the shared dish at the centre of the table keeps a slow warmth. */
+.wf-ill__dish {
+    animation: wf-ill-pulse 6s ease-in-out -2.1s infinite;
+    will-change: transform, opacity;
+}
+
+/* plan — today, and only today, is marked. */
+.wf-ill__today {
+    animation: wf-ill-pulse 4.5s ease-in-out -1.4s infinite;
+    will-change: transform, opacity;
+}
+
+/* pray — a candle flame breathes from its base, never from its middle. */
+.wf-ill__flame {
+    animation: wf-ill-pulse 3.6s ease-in-out -0.9s infinite;
+    transform-origin: 50% 100%;
+    will-change: transform, opacity;
+}
+
+/* home — smoke off the chimney. */
+.wf-ill__smoke {
+    animation: wf-ill-float 7s ease-in-out -3.2s infinite;
+    will-change: transform;
+}
+
+/* provide — a coin held over the jar's mouth, not yet let go. */
+.wf-ill__coin {
+    animation: wf-ill-float 5.4s ease-in-out -1.9s infinite;
+    will-change: transform;
+}
+
+/* remember — the top photograph sits a little proud of the others, as though
+   it has just been picked up. It is a wrapper: the card underneath keeps its
+   own static rotate, which a CSS transform on the same element would replace. */
+.wf-ill__photo {
+    animation: wf-ill-float 8s ease-in-out -4.6s infinite;
+    will-change: transform;
+}
+
+/* learn — a line of reading travels under the words. Period 0.5. */
+.wf-ill__read {
+    stroke-dasharray: 0.28 0.22;
+    animation: wf-ill-travel 6s ease-in-out -2.4s infinite;
+    will-change: stroke-dashoffset;
+}
+
+/* grow — the gradations on the measuring rule climb. Period 0.125. */
+.wf-ill__rule {
+    stroke-dasharray: 0.05 0.075;
+    animation: wf-ill-travel 9s ease-in-out -5.1s infinite;
+    will-change: stroke-dashoffset;
+}
+
+/* journey — the route runs towards the marker, never away from it. Period 0.25. */
+.wf-ill__route {
+    stroke-dasharray: 0.06 0.19;
+    animation: wf-ill-travel 7.5s ease-in-out -3.7s infinite;
+    will-change: stroke-dashoffset;
+}
+
+/* create — the stroke lays itself down again and again. Period 0.5. */
+.wf-ill__stroke {
+    stroke-dasharray: 0.34 0.16;
+    animation: wf-ill-travel 8.5s ease-in-out -2.8s infinite;
+    will-change: stroke-dashoffset;
+}
+
+/* ---- Entrance ------------------------------------------------------------
+   Owned by an ancestor, so a card, a section or a step in an onboarding flow
+   can decide when its illustration has arrived: set data-shown="true" on it.
+   Ground first, then the structure, then the subject drawing itself in. */
+
+[data-shown="true"] .wf-ill__ground {
+    animation: wf-ill-fade 900ms ease-out both;
+}
+
+[data-shown="true"] .wf-ill__frame {
+    animation: wf-ill-fade 900ms ease-out 90ms both;
+}
+
+[data-shown="true"] .wf-ill__draw {
+    animation: wf-ill-draw 1200ms ease-out 180ms both;
+    will-change: stroke-dashoffset;
+}
+
+/* ---- Reduced motion ------------------------------------------------------
+   Every loop stops on its finished frame: dashes resolved, nothing mid-travel,
+   and no compositor layers left pinned open. */
+
+@media (prefers-reduced-motion: reduce) {
+    .wf-ill,
+    .wf-ill *,
+    [data-shown="true"] .wf-ill__ground,
+    [data-shown="true"] .wf-ill__frame,
+    [data-shown="true"] .wf-ill__draw {
+        animation: none !important;
+        will-change: auto;
+    }
+    .wf-ill__read,
+    .wf-ill__rule,
+    .wf-ill__route,
+    .wf-ill__stroke,
+    .wf-ill__draw {
+        stroke-dasharray: none;
+        stroke-dashoffset: 0;
+    }
+}
+
+/* ── The accent, warmed ─────────────────────────────────────────────────────
+   Wàfè's olive is only a few steps from the ink, so at drawing scale the one
+   brand element read as another grey stroke and the accent did no work. Inside
+   an illustration — and nowhere else — the brand resolves to the ochre the app
+   already uses for warmth. A lit window, a candle, a coin, today's marker: the
+   things these drawings single out are warm things anyway. */
+.wf-ill {
+    --color-brand: var(--color-ochre);
+}

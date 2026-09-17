@@ -1,0 +1,725 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Home — the reference layout, in Wàfè's design system.
+
+   Two things are kept apart here, on purpose.
+
+   GEOMETRY is the reference's. It is a 1885px export of a 1440 design, so every
+   position, width and gap below is that design at 1×, written as
+   `calc(N * var(--u))` where `--u` is one design pixel (`--s`, set by
+   HomeReplica from the width it actually has, times 1px). The page keeps the
+   reference's proportions at any width — 1:1 from ~1590px, 0.89 beside the
+   sidebar at 1440 — and a number here is a number you can read off the design.
+
+   FINISH is the system's, and nothing here restates it: type comes from the
+   `--text-*` scale (so it does not shrink with the layout, and child mode can
+   raise it), corners from `--radius-*`, elevation from the `.bg-card` rule and
+   `--shadow-*`, motion from the Carbon tokens and `.wf-lift`, and every
+   surface is a Tailwind utility on the element (`bg-card rounded-lg`) rather
+   than a rule in this file — unlayered CSS out-ranks the utilities, so a
+   `background` written here would silently defeat `paper` or `bg-card`.
+
+   Colours are the tokens, role for role: the reference's grey-blue ground is
+   the page, its deeper card grey is the olive wash, its blue is the brand.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hr {
+    --u: calc(var(--s, 1) * 1px);
+    --hr-tint: var(--color-home-wash);
+
+    /* The type scale, by role in this layout. Child bands lift every step
+       (index.css: "child mode reads at 18px") and widen every target to 44px. */
+    --hr-t-xs: var(--text-xs);
+    --hr-t-sm: var(--text-sm);
+    --hr-t-md: var(--text-md);
+    --hr-t-base: var(--text-base);
+    --hr-t-lg: var(--text-lg);
+    --hr-t-xl: var(--text-xl);
+    --hr-t-2xl: var(--text-2xl);
+    --hr-t-7xl: var(--text-7xl);
+    --hr-t-8xl: var(--text-8xl);
+    --hr-target: 40px;
+
+    position: relative;
+    display: grid;
+    grid-template-columns: calc(535 * var(--u)) minmax(0, 1fr);
+    min-height: calc(100dvh - var(--wf-header, 76px));
+}
+.hr[data-band="little"],
+.hr[data-band="junior"] {
+    --hr-t-xs: 14px;
+    --hr-t-sm: 16px;
+    --hr-t-md: 17px;
+    --hr-t-base: 18px;
+    --hr-t-lg: 20px;
+    --hr-t-xl: 21px;
+    --hr-t-2xl: 22px;
+    --hr-target: 44px;
+}
+
+/* ── Left column: greeting and the two cards ─────────────────────────────── */
+.hr__left {
+    min-width: 0;
+    padding: calc(62 * var(--u)) 0 calc(27 * var(--u)) calc(25 * var(--u));
+}
+.hr__greeting {
+    display: flex;
+    align-items: center;
+    gap: calc(16 * var(--u));
+    min-height: calc(41 * var(--u));
+}
+/* The page's h1: the system's display face and weight, at the top of the scale. */
+.hr__greeting-text {
+    font-size: var(--hr-t-8xl);
+    line-height: 1.2;
+}
+.hr__notice {
+    margin: calc(16 * var(--u)) calc(25 * var(--u)) 0 calc(46 * var(--u));
+    display: flex;
+    flex-direction: column;
+    gap: calc(12 * var(--u));
+}
+.hr__notice:empty {
+    display: none;
+}
+.hr__cards {
+    margin-left: calc(6 * var(--u));
+    margin-top: calc(56 * var(--u));
+    width: calc(437 * var(--u));
+    display: flex;
+    flex-direction: column;
+    gap: calc(38 * var(--u));
+}
+
+/* ── A card: the app's tinted hero panel (`paper rounded-xl`), sized ──────── */
+.hr-card {
+    position: relative;
+    background-color: var(--hr-tint);
+    padding: calc(22 * var(--u)) calc(23 * var(--u)) calc(23 * var(--u));
+}
+.hr-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(12 * var(--u));
+    height: calc(43 * var(--u));
+}
+/* An h2 under the h1: one step down the scale, the same weight. */
+.hr-card__title {
+    font-size: var(--hr-t-7xl);
+    line-height: 1.15;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.hr-card__title-link {
+    color: inherit;
+    text-decoration: none;
+}
+.hr-card__title-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+/* The round white control: `bg-card rounded-full wf-lift`, sized here. */
+.hr-iconbtn {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: max(var(--hr-target), calc(43 * var(--u)));
+    height: max(var(--hr-target), calc(43 * var(--u)));
+    color: var(--color-ink);
+}
+.hr-iconbtn svg {
+    width: calc(18 * var(--u));
+    height: calc(18 * var(--u));
+}
+
+/* ── Up next ─────────────────────────────────────────────────────────────── */
+/* Composed the way every card in the app is composed — in flow. The words
+   on the left wrap; the art on the right is the app's `Cover` (an event's
+   photograph under its area colour) or the person's avatar; the three
+   numbers are white tiles underneath, each a door. Nothing is pinned to a
+   coordinate, so a long title, a child's larger type or a narrow screen
+   simply makes the card taller. */
+.hr-up__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: calc(18 * var(--u));
+    align-items: start;
+    margin-top: calc(20 * var(--u));
+}
+.hr-up__text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.hr-up__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(6 * var(--u));
+}
+/* The card's subject: an h3 in the display face, two lines at most. */
+.hr-up__name {
+    margin-top: calc(12 * var(--u));
+    font-size: var(--hr-t-xl);
+    line-height: 1.3;
+    color: var(--color-ink);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+.hr-up__sub {
+    margin-top: calc(4 * var(--u));
+    font-size: var(--hr-t-sm);
+    line-height: 1.4;
+    color: var(--color-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.hr-up__actions {
+    margin-top: calc(16 * var(--u));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: calc(8 * var(--u));
+}
+/* The pill verbs: the app's button anatomy (`rounded-full` + a fill class),
+   at a height that meets the band's target. */
+.hr-up__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: max(36px, calc(var(--hr-target) - 4px));
+    padding: 0 16px;
+    font-size: var(--hr-t-sm);
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color var(--duration-moderate-01) var(--ease-productive);
+}
+.hr-up__cta svg {
+    width: 16px;
+    height: 16px;
+}
+/* The art column. A `Cover` fills the box; an avatar sits centred in it. */
+.hr-up__art {
+    width: calc(156 * var(--u));
+    height: calc(188 * var(--u));
+}
+.hr-up__art--member {
+    width: calc(156 * var(--u));
+    min-height: calc(156 * var(--u));
+    display: grid;
+    place-items: center;
+}
+/* Three numbers, each a white tile (`bg-card rounded-lg`) and, when it is a
+   cap, a door to the rest — the cap rule, in the card's own language. */
+.hr-up__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: calc(10 * var(--u));
+    margin-top: calc(18 * var(--u));
+}
+.hr-stat {
+    display: block;
+    min-width: 0;
+    padding: calc(12 * var(--u)) calc(14 * var(--u));
+    color: inherit;
+    text-decoration: none;
+}
+.hr-stat--link:hover .hr-stat__l {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+/* A number that matters, in the display face — as `Stat` does it. */
+.hr-stat__v {
+    display: block;
+    font-family: var(--font-display);
+    font-size: var(--hr-t-2xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.hr-stat__l {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--hr-t-xs);
+    line-height: 1.4;
+    color: var(--color-caption);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* What a Home with no numbers puts there instead (the little band's big button). */
+.hr-up__extra {
+    margin-top: calc(18 * var(--u));
+    padding: calc(14 * var(--u)) calc(16 * var(--u));
+    display: flex;
+    align-items: center;
+}
+
+/* ── The list card ───────────────────────────────────────────────────────── */
+.hr-list {
+    min-height: calc(473 * var(--u));
+    display: flex;
+    flex-direction: column;
+    padding-bottom: calc(3 * var(--u));
+}
+.hr-list__rows {
+    list-style: none;
+    margin: calc(25 * var(--u)) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: calc(11 * var(--u));
+}
+/* A row: `bg-card rounded-lg` — the hairline and shadow-xs come with it. */
+.hr-row {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    min-height: calc(99 * var(--u));
+}
+.hr-row__main {
+    display: grid;
+    grid-template-columns: calc(40 * var(--u)) minmax(0, 1fr);
+    flex: 1;
+    min-width: 0;
+    padding: calc(15 * var(--u)) calc(52 * var(--u)) calc(12 * var(--u)) calc(20 * var(--u));
+    border-radius: inherit;
+    color: inherit;
+    text-decoration: none;
+    text-align: left;
+    background: none;
+    border: 0;
+    font: inherit;
+    cursor: pointer;
+}
+.hr-row__main:hover .hr-row__title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+/* The row's mark: a sprig, an emoji, a lucide icon — coloured by the caller
+   when the colour says something (an urgent row's sprig is terracotta). */
+.hr-row__icon {
+    width: calc(24 * var(--u));
+    height: calc(24 * var(--u));
+    margin-top: calc(2 * var(--u));
+    color: var(--color-ink);
+    font-size: calc(20 * var(--u));
+    line-height: calc(24 * var(--u));
+}
+.hr-row__icon svg {
+    width: 100%;
+    height: 100%;
+}
+.hr-row__body {
+    min-width: 0;
+}
+.hr-row__title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: var(--hr-t-md);
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--color-ink);
+}
+.hr-row__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: calc(6 * var(--u));
+    margin-top: calc(10 * var(--u));
+    font-size: var(--hr-t-xs);
+    line-height: 1.4;
+    color: var(--color-caption);
+}
+.hr-row__meta svg {
+    width: calc(14 * var(--u));
+    height: calc(14 * var(--u));
+}
+.hr-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.7;
+}
+/* The row's one verb (Done, I'm praying): a target, never smaller than 36px. */
+.hr-row__action {
+    position: absolute;
+    right: calc(8 * var(--u));
+    bottom: calc(6 * var(--u));
+    display: grid;
+    place-items: center;
+    width: max(36px, calc(var(--hr-target) - 4px));
+    height: max(36px, calc(var(--hr-target) - 4px));
+    border-radius: 999px;
+    color: var(--color-caption);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: background-color var(--duration-fast-02) var(--ease-productive);
+}
+.hr-row__action:hover {
+    background-color: var(--color-page);
+    color: var(--color-ink);
+}
+.hr-row__action:disabled {
+    cursor: default;
+    color: var(--color-brand);
+}
+.hr-row__action svg {
+    width: 16px;
+    height: 16px;
+}
+.hr-list__empty {
+    margin-top: calc(25 * var(--u));
+}
+.hr-list__foot {
+    margin-top: auto;
+    padding-top: calc(13 * var(--u));
+}
+/* The honest line's button: translucent on the tint, brand ink. */
+.hr-showall {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: max(var(--hr-target), calc(46 * var(--u)));
+    color: var(--color-brand);
+    font-size: var(--hr-t-sm);
+    font-weight: 600;
+    text-decoration: none;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color var(--duration-fast-02) var(--ease-productive);
+}
+
+/* ── The chat sheet ──────────────────────────────────────────────────────── */
+.hr-sheet {
+    position: sticky;
+    top: var(--wf-header, 76px);
+    height: calc(100dvh - var(--wf-header, 76px));
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0 calc(23 * var(--u)) calc(20 * var(--u));
+}
+.hr-sheet__head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(95 * var(--u));
+    margin: 0 calc(-8 * var(--u));
+    border-bottom: 1px solid var(--color-line);
+    flex: none;
+}
+.hr-sheet__title {
+    font-size: var(--hr-t-2xl);
+    line-height: 1;
+    margin-top: calc(-3 * var(--u));
+}
+/* The thread takes everything between the title and the tiles. */
+.hr-thread {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    margin-top: calc(24 * var(--u));
+    padding: calc(2 * var(--u)) 0;
+    scrollbar-width: thin;
+}
+/* One quiet line while there is nothing to read yet. */
+.hr-thread__empty {
+    margin: calc(8 * var(--u)) calc(15 * var(--u)) 0;
+    font-size: var(--hr-t-sm);
+    line-height: 1.5;
+    color: var(--color-caption);
+}
+.hr-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: calc(20 * var(--u));
+    margin-bottom: calc(27 * var(--u));
+}
+.hr-msg--me {
+    justify-content: flex-end;
+    margin-right: calc(-4 * var(--u));
+}
+.hr-msg--wafe {
+    gap: calc(18 * var(--u));
+    margin-left: calc(15 * var(--u));
+}
+/* A bubble: the app's body size at its 1.5 leading. Surface by class —
+   `bg-card rounded-xl` for Wàfè, `bg-brand text-white rounded-xl` for me,
+   as in the drawer. */
+.hr-bubble {
+    padding: calc(18 * var(--u)) calc(23 * var(--u));
+    font-size: var(--hr-t-base);
+    line-height: 1.5;
+    max-width: calc(447 * var(--u));
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.hr-msg--me .hr-bubble {
+    max-width: calc(332 * var(--u));
+    white-space: pre-wrap;
+}
+.hr-bubble .hr-lite {
+    font-size: inherit;
+    line-height: inherit;
+}
+.hr-avatar {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: calc(49 * var(--u));
+    height: calc(49 * var(--u));
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: calc(24 * var(--u));
+    font-size: var(--hr-t-md);
+    font-weight: 600;
+}
+.hr-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.hr-avatar--wafe {
+    margin-top: calc(31 * var(--u));
+}
+.hr-avatar--wafe svg {
+    width: calc(24 * var(--u));
+    height: calc(24 * var(--u));
+}
+.hr-thinking {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+    height: calc(var(--hr-t-base) * 1.5);
+}
+.hr-thinking span {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-brand);
+}
+.hr-sheet__notices {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: calc(8 * var(--u));
+    margin-top: calc(12 * var(--u));
+}
+.hr-sheet__notices:empty {
+    display: none;
+}
+.hr-tiles {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: calc(11 * var(--u));
+    margin-top: calc(30 * var(--u));
+    list-style: none;
+    padding: 0;
+}
+/* A tile: the picture and its word, on the sheet itself — no card, no
+   hairline. The picture leans in on hover, as every cover in the app does. */
+.hr-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(8 * var(--u));
+    width: calc(103 * var(--u));
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+.hr-tile:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+.hr-tile__img {
+    display: block;
+    width: 100%;
+    height: calc(76 * var(--u));
+}
+.hr-tile__img img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.hr-tile__label {
+    max-width: 100%;
+    font-size: var(--hr-t-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-caption);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color var(--duration-fast-02) var(--ease-productive);
+}
+.hr-tile:hover .hr-tile__label {
+    color: var(--color-ink);
+}
+/* The composer: a page-tinted pill. Focus is shown on the pill with the
+   system's ring token, because the textarea inside hides its own outline. */
+.hr-composer {
+    position: relative;
+    flex: none;
+    display: flex;
+    align-items: center;
+    margin-top: calc(16 * var(--u));
+    min-height: calc(95 * var(--u));
+    padding: 0 calc(95 * var(--u)) 0 calc(40 * var(--u));
+    transition: box-shadow var(--duration-fast-02) var(--ease-productive);
+}
+.hr-composer:focus-within {
+    box-shadow: var(--shadow-ring);
+}
+.hr-composer textarea {
+    flex: 1;
+    min-width: 0;
+    max-height: calc(66 * var(--u));
+    padding: calc(8 * var(--u)) 0;
+    background: transparent;
+    border: 0;
+    outline: none;
+    resize: none;
+    font: inherit;
+    font-size: var(--hr-t-base);
+    line-height: 1.5;
+    color: var(--color-ink);
+}
+.hr-composer textarea::placeholder {
+    color: var(--color-muted);
+}
+/* Send: `bg-card rounded-full wf-lift`, sized here. */
+.hr-send {
+    position: absolute;
+    right: calc(15 * var(--u));
+    top: 50%;
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    width: calc(64 * var(--u));
+    height: calc(64 * var(--u));
+    color: var(--color-brand);
+    border: 0;
+    cursor: pointer;
+}
+.hr-send:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+.hr-send svg {
+    width: calc(20 * var(--u));
+    height: calc(20 * var(--u));
+}
+/* `wf-lift` moves the control 2px; the centring transform must survive it. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .hr-send.wf-lift:hover {
+        transform: translateY(calc(-50% - 2px));
+    }
+}
+
+/* ── Big-tap pieces for the little band ──────────────────────────────────── */
+.hr-speak {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(10 * var(--u));
+    height: var(--hr-target);
+    padding: 0 calc(18 * var(--u));
+    border-radius: 999px;
+    background-color: var(--color-brand);
+    color: #fff;
+    font-size: var(--hr-t-base);
+    font-weight: 600;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color var(--duration-moderate-01) var(--ease-productive);
+}
+.hr-speak:hover {
+    background-color: var(--color-brand-hover);
+}
+.hr-speak svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* ── Narrow: the columns stack; the sheet becomes a tall panel ─────────── */
+@media (max-width: 1023px) {
+    .hr {
+        grid-template-columns: minmax(0, 1fr);
+        min-height: 0;
+    }
+    .hr__left {
+        padding: 20px 20px 0;
+    }
+    .hr__notice {
+        margin: 12px 0 0;
+    }
+    .hr__cards {
+        margin-left: 0;
+        margin-top: 20px;
+        width: 100%;
+    }
+    .hr-up__art {
+        width: 120px;
+        height: 144px;
+    }
+    .hr-up__art--member {
+        width: 120px;
+        min-height: 120px;
+    }
+    .hr-sheet {
+        position: static;
+        height: auto;
+        min-height: 640px;
+        margin-top: 24px;
+        border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+        padding-bottom: 24px;
+    }
+    .hr-thread {
+        min-height: 160px;
+        max-height: 48dvh;
+    }
+}
+
+/* ── Reduced motion: nothing here moves on its own ──────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .hr-up__cta,
+    .hr-row__action,
+    .hr-showall,
+    .hr-tile__label,
+    .hr-composer,
+    .hr-speak {
+        transition: none;
+    }
+    .hr-thinking span {
+        animation: none !important;
+    }
+}

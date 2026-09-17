@@ -1,0 +1,24 @@
+{
+    "name": "Wàfè — Family, growth & life",
+    "short_name": "Wàfè",
+    "description": "The operating system for intentional family life: the morning briefing, today, what needs you, and the evening check-in.",
+    "id": "/",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#F4EFE6",
+    "theme_color": "#F4EFE6",
+    "lang": "en-GB",
+    "dir": "ltr",
+    "categories": ["lifestyle", "productivity", "education"],
+    "icons": [
+        { "src": "/wafe-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+        { "src": "/wafe-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+        { "name": "Today", "url": "/", "description": "The briefing, today's list and what needs you" },
+        { "name": "Tasks", "url": "/execute/tasks", "description": "Everything the family has to do" },
+        { "name": "Sunday planning", "url": "/planning", "description": "Three priorities for the week" }
+    ]
+}

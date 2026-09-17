@@ -1,0 +1,2892 @@
+{
+ "northStar": "Wàfè helps families turn the life they imagine into the life they live — a private family operating system that connects values, vision and goals to what the household actually does every day, through a morning briefing, an evening check-in and Sunday planning.",
+ "principles": [
+  "Values first, features second: every task, lesson, prayer, purchase and trip can link to a family value and goal.",
+  "Private by default, shared on purpose: every record carries visibility and a sensitivity class; guests are granted named objects, never modules.",
+  "The loop is the product: morning briefing → do → evening check-in → Sunday planning.",
+  "AI is a companion, not a chatbot: grounded in the asking member's own data, proposes rather than acts, always shows sources.",
+  "The companion never asks for context the app already holds; it says 'I used…' and 'I can't see that' rather than inventing.",
+  "Children get a real product: age-band child mode with feed, My Garden and rewards.",
+  "Rituals over streaks: grace days, no sibling leaderboard by default, no loss-aversion mechanics, celebrations on the family timeline.",
+  "Calm, not noisy: three reminders then Needs attention; quiet hours defer, never drop; digest above five nudges a day.",
+  "Faith is woven, not bolted on: scripture, prayer and giving live in the daily rhythm and the ledger.",
+  "Lived-in from the first minute: start from the demo family; value before configuration."
+ ],
+ "roles": [
+  {
+   "id": "parent",
+   "name": "Parent / Head of Household",
+   "summary": "Owner or co-admin. Full access to every module including Financial, Health, Documents and Settings sensitivity classes; approves purchases, invitations and children's permissions; sees children's notifications and AI conversations."
+  },
+  {
+   "id": "child",
+   "name": "Child (Little 4–6 · Junior 7–10 · Teen 11–14 · Young adult 15–17)",
+   "summary": "Child mode with band-driven layout and capabilities. Sees only family + child_safe + general-sensitivity records, items shared with them, or their own. Never sees finances (beyond a granted envelope), health notes, documents, settings or others' private prayers. Family goals appear as child-safe summaries."
+  },
+  {
+   "id": "guest",
+   "name": "Guest (relative, friend, mentor)",
+   "summary": "Granted named objects via object_shares (a trip, a board, a course, the prayer wall, calendar events, albums, mentor sessions). The guest dashboard is that list; nothing else is rendered or fetchable."
+  }
+ ],
+ "designSystem": {
+  "palette": [
+   {
+    "token": "--paper",
+    "hex": "#F4EFE6",
+    "use": "Page background, cards on dark sections"
+   },
+   {
+    "token": "--ink",
+    "hex": "#1F2320",
+    "use": "Primary text"
+   },
+   {
+    "token": "--olive",
+    "hex": "#3E4A3A",
+    "use": "Brand, nav, primary buttons, logo circle"
+   },
+   {
+    "token": "--olive-light",
+    "hex": "#5E6E52",
+    "use": "Grow area accent"
+   },
+   {
+    "token": "--terracotta",
+    "hex": "#B5563D",
+    "use": "Emphasis, Execute area, danger"
+   },
+   {
+    "token": "--ochre",
+    "hex": "#C09040",
+    "use": "Live area, warning"
+   },
+   {
+    "token": "--plum",
+    "hex": "#8A5A6B",
+    "use": "Create area"
+   },
+   {
+    "token": "--sage",
+    "hex": "#7E8A74",
+    "use": "Muted text, borders, dividers"
+   },
+   {
+    "token": "--sage-20",
+    "hex": "#E5E8E2",
+    "use": "Card borders, table rules"
+   },
+   {
+    "token": "--success",
+    "hex": "#4F7A4A",
+    "use": "Completed, answered, on-track"
+   },
+   {
+    "token": "--sun",
+    "hex": "#E4B94A",
+    "use": "Sprouts, badges, child-mode accent"
+   },
+   {
+    "token": "--paper-dark",
+    "hex": "#1B1E1A",
+    "use": "Dark theme background"
+   },
+   {
+    "token": "--ink-dark",
+    "hex": "#EDE7DA",
+    "use": "Dark theme text"
+   },
+   {
+    "token": "--olive-dark",
+    "hex": "#8FA084",
+    "use": "Dark theme brand / primary"
+   }
+  ],
+  "type": {
+   "heading": "Fraunces (Google Fonts), 700 for wordmark and display, 600 for headings; used for greetings, progress numbers and titles",
+   "body": "DM Sans (Google Fonts, self-hosted), 400/500/600 for UI and body; 16 px base, 18 px in child mode; line-height 1.5",
+   "scale": [
+    "12px caption",
+    "14px small",
+    "16px body",
+    "18px child body / lead",
+    "20px h4",
+    "25px h3",
+    "31px h2",
+    "39px h1",
+    "49px display",
+    "61px greeting"
+   ]
+  },
+  "principles": [
+   "Warmth with structure: cream paper, olive ink, serif headlines, generous whitespace — a well-kept family journal, not a SaaS console.",
+   "Cards 16 px radius, 1 px sage-20 border, no heavy shadows.",
+   "Area colour is a signal, not a theme: Grow olive-light, Execute terracotta, Live ochre, Create plum.",
+   "Child mode lifts hues +12 % lightness, 18 px type, 44 px targets, sun-yellow for Sprouts.",
+   "Photography of Black families in cream, earth-toned rooms, used sparingly on Home, onboarding and empty states.",
+   "Micro-copy celebrates and never shames; first person plural.",
+   "WCAG 2.1 AA contrast; focus-visible everywhere; reduced motion respected."
+  ]
+ },
+ "dashboards": {
+  "parent": [
+   "Greeting by time of day + date",
+   "Family strip: avatars, today's completion %, presence",
+   "Morning briefing card (AI, read-aloud, regenerate, template fallback, sources)",
+   "Week focus card: three priorities from Sunday planning",
+   "Today: tasks by member + events",
+   "Learning today",
+   "Our goals: progress rings per life area + 'Our Future 68 %'",
+   "Prayer & reflection: daily scripture, wall highlights, check-in status",
+   "Budget alerts",
+   "Needs attention",
+   "This week mini-calendar",
+   "On this day (across past years)",
+   "Quick-add (task, event, prayer, expense, pin)",
+   "Evening check-in card after 18:00",
+   "Sunday planning entry on the planning day"
+  ],
+  "child": [
+   "Lessons today",
+   "Chores (Sprouts, photo proof)",
+   "Memory verse (read-aloud, practise)",
+   "Habits (one-tap log)",
+   "My Garden (Sprouts grow a sprig: seed → sprout → leaf → bloom → tree per 50 Sprouts)",
+   "Badges & rewards (catalogue, redeem)",
+   "My wishes (own purchase requests + status)",
+   "Create (studio presets, my boards)",
+   "Show (share today's progress with a parent)",
+   "Encouragement from the companion",
+   "Teen/Young adult add: calendar, goal summaries, projects"
+  ],
+  "guest": [
+   "Welcome from the family",
+   "How to pray for us this week",
+   "Shared calendar items (RSVP)",
+   "Prayer wall (if granted)",
+   "Granted trips: itinerary + my packing list",
+   "Granted albums and boards",
+   "Mentor sessions (if mentor)"
+  ]
+ },
+ "modules": [
+  {
+   "id": "home",
+   "area": "Home",
+   "name": "Home",
+   "route": "/home",
+   "purpose": "The family's command centre: role-specific dashboards, AI morning briefing, three-tap evening check-in with task triage, Week focus, Needs attention and On this day — answering the seven parent questions and the child's three with no navigation.",
+   "entities": [
+    {
+     "name": "check_ins",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "date",
+      "mood_1_5",
+      "gratitude_text",
+      "prayer_text",
+      "unfinished_decisions_json",
+      "created_at"
+     ]
+    },
+    {
+     "name": "weekly_reviews",
+     "fields": [
+      "id",
+      "space_id",
+      "week_start",
+      "host_member_id",
+      "goal_progress_json",
+      "tasks_planned",
+      "tasks_done",
+      "spend_vs_budget_json",
+      "prayers_answered",
+      "priorities[3]",
+      "notes",
+      "completed_at"
+     ]
+    },
+    {
+     "name": "briefings",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "date",
+      "content_md",
+      "sources_json",
+      "source_kind(ai|template)",
+      "generated_at"
+     ]
+    },
+    {
+     "name": "attention_items",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "rule_id",
+      "record_type",
+      "record_id",
+      "reason",
+      "created_at",
+      "resolved_at"
+     ]
+    }
+   ],
+   "features": [
+    "Parent, child and guest dashboards composed from module widgets",
+    "AI briefing with read-aloud, regenerate, cached per day, template fallback",
+    "Three-tap evening check-in: mood, gratitude/prayer, what's unfinished (reschedule / delegate / drop inline)",
+    "Needs attention panel with deep links",
+    "Week focus card from the last Sunday planning",
+    "Family strip with presence and completion %",
+    "On this day across past years",
+    "Quick-add (Q) for task, event, prayer, expense, pin",
+    "Sunday planning entry and quarterly review entry"
+   ],
+   "acceptance": [
+    "Parent Home renders every listed widget in ≤ 1.5 s on cached data and ≤ 3 s cold.",
+    "A parent can answer all seven Home questions without navigating away.",
+    "Briefing is generated once per member per day, cached, and lists its data sources as chips.",
+    "When the AI gateway is unavailable or capped, the briefing renders from the template with the same data and is labelled as such.",
+    "Check-in stores exactly one row per member per day; a second submission updates the row.",
+    "Rescheduling a task from the check-in updates the task's due date; delegating reassigns it; dropping archives it with reason 'dropped at check-in'.",
+    "Parents see the family's aggregated check-in; children see only their own.",
+    "Every Needs attention item deep-links to its record and disappears when resolved.",
+    "Nothing on a child's Home originates from a record the child cannot read (RLS test).",
+    "Week focus card shows the three priorities from the latest weekly_reviews row and is empty-state friendly.",
+    "On this day shows items from prior years on the same date and links to the album or timeline event.",
+    "Empty widgets show a demo-load or a single next action, never a blank card.",
+    "Home, today's tasks and the current packing list are readable offline (PWA)."
+   ],
+   "permissions": {
+    "parent": "Full parent dashboard; sees aggregate check-ins and all attention items",
+    "child": "Child dashboard only (band-specific tiles); own check-in",
+    "guest": "Guest dashboard listing granted objects only"
+   },
+   "aiHooks": [
+    "Morning briefing composer with sources",
+    "'What needs me today?'",
+    "'Prepare me for tomorrow'",
+    "Check-in summariser writing to reflections",
+    "Attention ranker (heuristic first, AI phrasing second)"
+   ],
+   "demoData": [
+    "Wednesday 9 September 2026: 3 tasks due (buy Tobi's PE kit, submit Dami's options form, pay energy bill)",
+    "2 events: Croydon Home-Ed Co-op 09:30, family Bible study 19:30",
+    "Lesson: Habits of the Household — week 2; verse Proverbs 22:6",
+    "Groceries at 82 % of budget; laptop for Dami awaiting second approval",
+    "Week focus: Settle the school rhythm · Book Lagos flights · Finish kitchen quotes",
+    "On this day: Tobi's first swim, 2022",
+    "Check-in from last night: Ifeoluwa 4 hearts, gratitude 'Ayo read a whole page'"
+   ]
+  },
+  {
+   "id": "notifications",
+   "area": "Home",
+   "name": "Notification centre & follow-up engine",
+   "route": "/home/notifications",
+   "purpose": "One calm inbox for everything that needs a person, and the data-driven rules engine that produces gentle, capped, quiet-hours-aware nudges.",
+   "entities": [
+    {
+     "name": "notifications",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "rule_id",
+      "record_type",
+      "record_id",
+      "title",
+      "body",
+      "channel",
+      "idempotency_key",
+      "read_at",
+      "snoozed_until",
+      "acted_at",
+      "created_at"
+     ]
+    },
+    {
+     "name": "notification_prefs",
+     "fields": [
+      "member_id",
+      "channel_in_app",
+      "channel_email",
+      "channel_push",
+      "quiet_start",
+      "quiet_end",
+      "digest_mode",
+      "muted_categories[]",
+      "timezone"
+     ]
+    },
+    {
+     "name": "follow_up_rules",
+     "fields": [
+      "id",
+      "space_id",
+      "rule_key",
+      "trigger",
+      "recipient_role",
+      "timing_json",
+      "max_reminders",
+      "escalate_to",
+      "enabled"
+     ]
+    },
+    {
+     "name": "nudge_history",
+     "fields": [
+      "id",
+      "notification_rule_id",
+      "record_id",
+      "member_id",
+      "reminder_number",
+      "sent_at"
+     ]
+    }
+   ],
+   "features": [
+    "Unified inbox grouped Today / Earlier with module and member filters",
+    "Mark read, snooze (1 h, tonight, tomorrow, next week), act inline (complete, approve, RSVP)",
+    "Per-member channels, quiet hours and per-category mute",
+    "Digest mode (single 18:00 email) that auto-engages above five nudges per day",
+    "Parent view of a child's notifications",
+    "Rules editable by parents as data, with the 25 default rules registered",
+    "Real-time unread count"
+   ],
+   "acceptance": [
+    "Every rule has a scheduled job and an idempotency key (rule, record, member, window); no duplicate within a window.",
+    "Overdue nudges stop after three reminders and the item moves to Needs attention.",
+    "Quiet hours defer delivery to the next open window; nothing is dropped.",
+    "When a member would receive more than five nudges in a day, the remainder are collapsed into a digest.",
+    "No notification is delivered for a record the recipient cannot read (RLS test).",
+    "Children receive in-app only regardless of preferences.",
+    "Snoozed items re-surface at the chosen time.",
+    "Inline actions complete the underlying record and mark the notification acted.",
+    "Unread count in the nav updates within 2 s via Realtime.",
+    "Per-category mute suppresses that category for that member only.",
+    "A parent can open a child's inbox and act on their behalf."
+   ],
+   "permissions": {
+    "parent": "Own inbox plus children's; edits rules and defaults",
+    "child": "Own inbox, in-app only; cannot edit rules",
+    "guest": "Own inbox, only from granted objects"
+   },
+   "aiHooks": [
+    "'Summarise what I missed'",
+    "AI warm rewrite of digest copy in the family's tone (morning digest only)"
+   ],
+   "demoData": [
+    "7 unread: 'Return library books' parked in Needs attention after three reminders",
+    "Packing lists ready for Christmas in Lagos",
+    "Mama Fọláké added a prayer request",
+    "Dami earned 'Verse Master'",
+    "Groceries 82 %",
+    "Laptop purchase awaiting Oluwafemi's approval",
+    "Mentor session with Pastor Dayo Friday 19:00"
+   ]
+  },
+  {
+   "id": "family",
+   "area": "Family",
+   "name": "Family space, members & permissions",
+   "route": "/family",
+   "purpose": "The tenant and the trust boundary: who is in the family, their roles and age bands, per-member permissions, object shares for guests, child mode, family values and mission, rhythms and settings.",
+   "entities": [
+    {
+     "name": "spaces",
+     "fields": [
+      "id",
+      "slug",
+      "name",
+      "photo_media_id",
+      "motto",
+      "locale",
+      "currency",
+      "timezone",
+      "week_start",
+      "briefing_hour",
+      "checkin_hour",
+      "planning_day",
+      "grace_days[]",
+      "purchase_approval_threshold",
+      "ai_plan",
+      "created_at"
+     ]
+    },
+    {
+     "name": "members",
+     "fields": [
+      "id",
+      "space_id",
+      "user_id",
+      "role(parent|child|guest)",
+      "age_band(little|junior|teen|young_adult)",
+      "display_name",
+      "avatar_media_id",
+      "colour",
+      "birthday",
+      "child_mode",
+      "pin_hash",
+      "guest_tag(relative|friend|mentor)",
+      "last_active_at"
+     ]
+    },
+    {
+     "name": "member_permissions",
+     "fields": [
+      "member_id",
+      "module",
+      "level(none|view|assigned|full)",
+      "granted_by",
+      "granted_at"
+     ]
+    },
+    {
+     "name": "object_shares",
+     "fields": [
+      "id",
+      "space_id",
+      "object_type",
+      "object_id",
+      "member_id",
+      "level(view|contribute)",
+      "granted_by",
+      "expires_at"
+     ]
+    },
+    {
+     "name": "values",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "meaning",
+      "order"
+     ]
+    },
+    {
+     "name": "mission_versions",
+     "fields": [
+      "id",
+      "space_id",
+      "mission",
+      "vision",
+      "legacy_statement",
+      "author_id",
+      "created_at"
+     ]
+    },
+    {
+     "name": "audit_log",
+     "fields": [
+      "id",
+      "space_id",
+      "actor_id",
+      "action",
+      "target_type",
+      "target_id",
+      "before_json",
+      "after_json",
+      "at"
+     ]
+    }
+   ],
+   "features": [
+    "Space profile and rhythms (briefing hour, check-in hour, planning day, grace days, approval threshold)",
+    "Members with role, age band, avatar, colour, birthday",
+    "Invitations by email or link with role preset and 7-day expiry",
+    "Per-member module permission overrides on a module × level matrix",
+    "Object shares for guests (trip, board, course, wall, album, event, session)",
+    "Child mode toggle with parent-PIN exit",
+    "Family values (max 7 with meanings) and mission editor, mirrored in Goals and used as tags",
+    "Settings: notification defaults, AI plan and usage meter, export, delete space",
+    "Audit log of role, permission and share changes"
+   ],
+   "acceptance": [
+    "Only parents can change roles, permissions or shares; the last parent cannot be demoted or removed.",
+    "Changing a child's age band updates default permissions without overwriting explicit per-member overrides.",
+    "Permission and share changes take effect on the next request and are written to the audit log.",
+    "Exiting child mode requires a parent PIN.",
+    "Invitation acceptance joins with the preset role and cannot elevate.",
+    "Removing a member revokes access within one request, reassigns their open tasks to the owner and preserves authored history.",
+    "Values appear as filter chips in Goals, Tasks and Bible; a value cannot be deleted while records reference it (archive instead).",
+    "Data export produces a ZIP of JSON plus media for the whole space within 24 hours.",
+    "Delete space removes all rows and media within 24 hours and is confirmed by re-authentication.",
+    "A new child receives the minimum default grants for their band.",
+    "The AI usage meter shows current month usage against the plan cap."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Own profile card: avatar and colour only",
+    "guest": "Own profile only"
+   },
+   "aiHooks": [
+    "'Draft our family mission from these values'",
+    "Recommended permission profile when adding a child by band"
+   ],
+   "demoData": [
+    "Space: The Adeyemis, Croydon; GBP; Europe/London; week starts Monday; planning day Sunday; grace day Sunday; approval threshold £250",
+    "Members: Ifeoluwa (owner), Oluwafemi (parent), Dami 15 Young adult, Tobi 9 Junior, Ayo 5 Little, Mama Fọláké guest (relative), Pastor Dayo guest (mentor), the Okonkwos guest (friend)",
+    "Values: Faith · Love · Diligence · Generosity · Joy with one-line meanings",
+    "Mission: To raise a family that loves God, loves people and builds things that last",
+    "Object shares: Mama Fọláké → Christmas in Lagos trip, prayer wall, 2 albums; Okonkwos → Tobi's 10th board"
+   ]
+  },
+  {
+   "id": "people",
+   "area": "Family",
+   "name": "People: relatives, friends, communities & mentors",
+   "route": "/family/people",
+   "purpose": "The family's relational world: a directory of relatives and friends, the communities the family belongs to, and mentors with sessions, notes and follow-ups.",
+   "entities": [
+    {
+     "name": "people",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "relationship",
+      "kind(relative|friend|neighbour|other)",
+      "photo_media_id",
+      "birthday",
+      "anniversary",
+      "address",
+      "phone",
+      "email",
+      "notes",
+      "prayer_needs",
+      "gift_ideas_json",
+      "cadence(weekly|monthly|quarterly|none)",
+      "last_contacted_at",
+      "linked_member_id",
+      "visibility"
+     ]
+    },
+    {
+     "name": "communities",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "type(church|coop|club|school|other)",
+      "meeting_rhythm",
+      "roles_held",
+      "contacts_json",
+      "giving_commitment",
+      "linked_event_ids[]",
+      "shared_with_guests"
+     ]
+    },
+    {
+     "name": "mentors",
+     "fields": [
+      "id",
+      "space_id",
+      "person_id",
+      "member_id",
+      "area(faith|career|marriage|music|other)",
+      "mentee_member_ids[]"
+     ]
+    },
+    {
+     "name": "mentor_sessions",
+     "fields": [
+      "id",
+      "mentor_id",
+      "date",
+      "participants[]",
+      "agenda",
+      "notes",
+      "notes_visibility",
+      "questions_before_next",
+      "follow_up_task_ids[]",
+      "next_session_at"
+     ]
+    }
+   ],
+   "features": [
+    "Directory with photos, dates, contact details, notes, prayer needs, gift ideas and last-contacted",
+    "Stay-in-touch cadence generating follow-ups",
+    "Communities with rhythm, roles, contacts and giving commitments",
+    "Mentors with sessions, agendas, notes and 'ask before next session'",
+    "Convert a contact into a scoped guest invitation",
+    "Gift ideas pushed to the purchase pipeline"
+   ],
+   "acceptance": [
+    "Birthdays and anniversaries create calendar entries and reminders at 7 days and 1 day with a drafted message.",
+    "An overdue cadence appears in Needs attention weekly.",
+    "Mentor session notes default to Private for the parent who wrote them.",
+    "A mentor guest sees only sessions they are on and notes explicitly shared with them.",
+    "Children see relatives' names, photos and birthdays only — never contact details or notes (RLS test).",
+    "A gift idea can be pushed to the Finance purchase pipeline as a wish with the person as recipient.",
+    "Follow-up tasks created from a session are the same rows as Tasks and link back to the session.",
+    "Community giving commitments appear in the Giving record when paid.",
+    "Converting a contact to a guest creates an invitation with the chosen object shares."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Names, photos, birthdays of relatives and friends; own mentors' sessions",
+    "guest": "Own record and communities marked shared"
+   },
+   "aiHooks": [
+    "'Who haven't we called this month?'",
+    "'Prepare me for my session with Pastor Dayo'",
+    "Birthday message drafts",
+    "Session notes → follow-up tasks"
+   ],
+   "demoData": [
+    "14 people incl. Mama Fọláké (Ibadan, birthday 14 Nov), Uncle Seun (Manchester), Aunty Bisi (Lagos), the Okonkwos (Bromley)",
+    "Communities: Grace Chapel Thornton Heath (Sundays 10:00), Croydon Home-Ed Co-op (Tue/Thu), Addiscombe Cycling Club",
+    "Mentor Pastor Dayo: sessions 'Leading family devotions' and 'Budgeting with generosity'; next Friday 19:00",
+    "Cadence overdue: Aunty Bisi (monthly, last call 6 weeks ago)"
+   ]
+  },
+  {
+   "id": "learning",
+   "area": "Grow",
+   "name": "Learning Hub",
+   "route": "/grow/learning",
+   "purpose": "Transform passive YouTube watching into structured, shared learning with playlists, AI summaries, timestamped notes, plans and completion tracking.",
+   "entities": [
+    {
+     "name": "videos",
+     "fields": [
+      "id",
+      "space_id",
+      "youtube_id",
+      "url",
+      "title",
+      "channel",
+      "thumbnail_url",
+      "duration_s",
+      "description",
+      "captions_available",
+      "child_safe",
+      "value_id",
+      "added_by"
+     ]
+    },
+    {
+     "name": "playlists",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "owner_member_id",
+      "visibility",
+      "child_safe",
+      "cover_media_id"
+     ]
+    },
+    {
+     "name": "playlist_items",
+     "fields": [
+      "playlist_id",
+      "video_id",
+      "order"
+     ]
+    },
+    {
+     "name": "video_notes",
+     "fields": [
+      "id",
+      "video_id",
+      "member_id",
+      "timestamp_s",
+      "text",
+      "created_at"
+     ]
+    },
+    {
+     "name": "video_summaries",
+     "fields": [
+      "id",
+      "video_id",
+      "source(captions|ai_from_description)",
+      "summary",
+      "takeaways_json",
+      "action_items_json",
+      "discussion_prompts_json",
+      "suggested_band",
+      "model",
+      "cost"
+     ]
+    },
+    {
+     "name": "learning_plans",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "cadence",
+      "assignee_member_ids[]",
+      "goal_id",
+      "value_id",
+      "start_date",
+      "end_date"
+     ]
+    },
+    {
+     "name": "plan_items",
+     "fields": [
+      "plan_id",
+      "item_type",
+      "item_id",
+      "week",
+      "order",
+      "due_date"
+     ]
+    },
+    {
+     "name": "completions",
+     "fields": [
+      "id",
+      "member_id",
+      "item_type",
+      "item_id",
+      "progress_pct",
+      "completed_at",
+      "marked_by"
+     ]
+    }
+   ],
+   "features": [
+    "Importer from any public YouTube URL via oEmbed",
+    "Personal and family playlists with visibility",
+    "YouTube IFrame player with progress tracking",
+    "Transcript from public captions else AI from title + description + notes (labelled)",
+    "AI summary: takeaways, action items → Tasks, discussion prompts, suggested band",
+    "Timestamped notes: press N to capture current time; click seeks ± 1 s",
+    "Learning plans with cadence, assignees and goal/value link",
+    "Completion tracking per member; Sprouts on completion",
+    "Child-safe flag gate; next-video suggestions from saved items only"
+   ],
+   "acceptance": [
+    "Importing a public YouTube URL populates title, channel, thumbnail and duration in ≤ 3 s.",
+    "Transcript source is labelled 'captions' or 'AI from description'.",
+    "Pressing N while playing creates a note at the current timestamp; clicking a note seeks within ± 1 s.",
+    "Completion is recorded only at ≥ 80 % watched or on a parent mark.",
+    "Completing an item updates plan progress and credits Sprouts for children.",
+    "A video appears in a child feed only when child_safe is true.",
+    "The companion's next-video suggestions come only from the space's saved videos.",
+    "Children have no search or browse of open YouTube anywhere in the UI or API.",
+    "Action items create Tasks linked to the video.",
+    "Playlists respect visibility; private playlists are excluded from other members' context packs."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Assigned playlists and child-safe videos only",
+    "guest": "None"
+   },
+   "aiHooks": [
+    "Summarise this video",
+    "'Turn this playlist into a 3-week plan'",
+    "'Discussion prompts for a 9-year-old'",
+    "Suggest next from saved items"
+   ],
+   "demoData": [
+    "Family playlist 'Money & Generosity' (5 videos, captions)",
+    "Dami's 'GCSE Physics' (8 videos, 3 complete)",
+    "Oluwafemi's 'Cycling training' (private, 6)",
+    "Plans in progress: 'Money & Generosity — 3 weeks' (family), 'Physics revision' (Dami)",
+    "Note on video 2 at 12:34: 'Ask the children how they'd split £10'"
+   ]
+  },
+  {
+   "id": "books",
+   "area": "Grow",
+   "name": "Library & Book-to-Course",
+   "route": "/grow/books",
+   "purpose": "Track reading and turn books into 4-week courses the family actually finishes.",
+   "entities": [
+    {
+     "name": "books",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "author",
+      "format(ebook|physical|audio)",
+      "owner_member_id",
+      "status(want|reading|done)",
+      "pages",
+      "rating",
+      "notes",
+      "visibility",
+      "value_id"
+     ]
+    },
+    {
+     "name": "reading_progress",
+     "fields": [
+      "book_id",
+      "member_id",
+      "page_or_pct",
+      "updated_at"
+     ]
+    },
+    {
+     "name": "reading_plans",
+     "fields": [
+      "id",
+      "book_id",
+      "pace_json",
+      "assignee_member_ids[]",
+      "end_date",
+      "goal_id"
+     ]
+    },
+    {
+     "name": "courses",
+     "fields": [
+      "id",
+      "space_id",
+      "book_id",
+      "title",
+      "weeks",
+      "status(draft|published)",
+      "generated_by",
+      "model",
+      "cost",
+      "shared_with_guest_ids[]"
+     ]
+    },
+    {
+     "name": "course_weeks",
+     "fields": [
+      "course_id",
+      "week",
+      "chapters",
+      "discussion_questions_json",
+      "family_activity",
+      "quiz_json"
+     ]
+    },
+    {
+     "name": "course_items",
+     "fields": [
+      "id",
+      "course_week_id",
+      "type",
+      "title",
+      "order"
+     ]
+    },
+    {
+     "name": "quiz_attempts",
+     "fields": [
+      "id",
+      "course_week_id",
+      "member_id",
+      "answers_json",
+      "score",
+      "attempted_at"
+     ]
+    }
+   ],
+   "features": [
+    "Reading list with formats, status, progress, rating, notes",
+    "Reading plans with pace and assignees",
+    "AI Book-to-Course: 4-week curriculum with chapter assignments, discussion questions, 5-question quiz with key, family activity",
+    "Course editing before publishing; enrolment and progress per member",
+    "Quiz attempts with score",
+    "Export a course to Curricula as a unit",
+    "Progress reflected on linked goals"
+   ],
+   "acceptance": [
+    "A course generates in ≤ 20 s and opens in an editor before publishing.",
+    "If AI is unavailable or capped, the generate button shows the plan/usage message and manual course authoring remains fully functional.",
+    "Each week is a unit with checkable items; completing all items marks the week done.",
+    "Quiz attempts store answers and score; the best score is shown.",
+    "Reading progress on a book linked to a goal updates that goal's progress.",
+    "Enrolling a child requires the course to be child_safe.",
+    "A course shared with a mentor guest is visible to that guest and nothing else in the module.",
+    "Exporting to Curricula creates a unit with assignments linked back to the course."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Assigned books and courses",
+    "guest": "A course explicitly shared (mentor-led) only"
+   },
+   "aiHooks": [
+    "Course generation from title or TOC",
+    "'Summarise chapter 3 for the children'",
+    "'What did we say we'd change after week 1?'"
+   ],
+   "demoData": [
+    "12 books; family course Habits of the Household week 2 of 4 (Dami and Tobi enrolled; Dami quiz week 1 4/5)",
+    "Ifeoluwa reading Atomic Habits (private, 62 %)",
+    "Oluwafemi reading The Ruthless Elimination of Hurry (audio)",
+    "Reading plan: Tobi 'Charlotte's Web' 10 pages/day"
+   ]
+  },
+  {
+   "id": "bible",
+   "area": "Grow",
+   "name": "Bible, prayer & discipleship",
+   "route": "/grow/bible",
+   "purpose": "Anchor daily family life in spiritual discipline: studies and courses, reading plans, daily scripture, memory verses with spaced repetition, a shared prayer wall, private prayer lists and an answered-prayers archive.",
+   "entities": [
+    {
+     "name": "bible_studies",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "type(preloaded|custom|topical)",
+      "description",
+      "child_safe",
+      "assignee_member_ids[]",
+      "value_id"
+     ]
+    },
+    {
+     "name": "study_sessions",
+     "fields": [
+      "id",
+      "study_id",
+      "order",
+      "passage",
+      "text_or_audio_url",
+      "questions_json",
+      "prayer_focus"
+     ]
+    },
+    {
+     "name": "bible_plans",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "start_date",
+      "translation",
+      "assignee_member_ids[]"
+     ]
+    },
+    {
+     "name": "plan_days",
+     "fields": [
+      "plan_id",
+      "day",
+      "passage",
+      "passage_text"
+     ]
+    },
+    {
+     "name": "memory_verses",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "reference",
+      "text",
+      "added_at"
+     ]
+    },
+    {
+     "name": "verse_reviews",
+     "fields": [
+      "verse_id",
+      "member_id",
+      "due_at",
+      "interval_days",
+      "result",
+      "reviewed_at"
+     ]
+    },
+    {
+     "name": "prayers",
+     "fields": [
+      "id",
+      "space_id",
+      "author_member_id",
+      "text",
+      "tags[]",
+      "visibility(private|shared|family)",
+      "sensitivity",
+      "status(open|answered)",
+      "answered_at",
+      "testimony",
+      "child_safe"
+     ]
+    },
+    {
+     "name": "prayer_reactions",
+     "fields": [
+      "prayer_id",
+      "member_id",
+      "type",
+      "at"
+     ]
+    }
+   ],
+   "features": [
+    "Pre-loaded and custom studies with sessions; topical studies",
+    "Reading plans with daily passages (public-domain text stored locally, links to preferred translation)",
+    "Daily scripture feeding the briefing",
+    "Memory verse cards with 1-3-7-14-30 spaced repetition and hide-words practice",
+    "Shared prayer wall with tags, 'I prayed' reactions, answered archive with testimony",
+    "Private prayer lists",
+    "Guest-only 'How to pray for us this week' card",
+    "Prayer streaks that rest on grace days"
+   ],
+   "acceptance": [
+    "Due memory-verse cards appear on the member's dashboard at 07:00 following the 1-3-7-14-30 schedule.",
+    "Private prayers never appear on any wall, briefing or AI answer for anyone but the owner (RLS and context-builder tests).",
+    "Moving a prayer to Answered records the date, keeps the thread, and writes a timeline event.",
+    "Guests can post to the wall only when granted the wall object; guest posts are tagged as guest.",
+    "Daily scripture comes from the active plan, else the rolling family verse list.",
+    "Completing a study session counts toward Curricula and credits Sprouts for children.",
+    "Children see wall prayers only with child-safe tags.",
+    "The 'How to pray for us this week' card shows only wall prayers marked shared with guests.",
+    "Prayer streaks are not broken on the family's grace days."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Assigned studies, wall with child-safe tags, own memory verses and own private list",
+    "guest": "Prayer wall if granted; own prayer requests"
+   },
+   "aiHooks": [
+    "'Explain this passage for a 9-year-old'",
+    "Generate a study from a passage",
+    "Weekly prayer wall summary for Sunday planning"
+   ],
+   "demoData": [
+    "Family plan 'Proverbs in September' day 9 (Proverbs 22:6 today)",
+    "Memory verses: Dami 6 (2 due), Tobi 3, Ayo 1 (read-aloud)",
+    "Wall: 11 open / 27 answered; latest answered 'Uncle Seun's new job — 2 Sept'",
+    "Mama Fọláké's request: 'Safe travels for the December visit'",
+    "Study in progress: Fruit of the Spirit for children (Tobi, Ayo)"
+   ]
+  },
+  {
+   "id": "curricula",
+   "area": "Grow",
+   "name": "Children's curricula",
+   "route": "/grow/curricula",
+   "purpose": "Manage home-education subjects and school support, assignments, grades, skill badges, developmental milestones and monthly character tracks; produce the child dashboard feed.",
+   "entities": [
+    {
+     "name": "subjects",
+     "fields": [
+      "id",
+      "space_id",
+      "child_member_id",
+      "name",
+      "colour",
+      "term",
+      "target_hours_week"
+     ]
+    },
+    {
+     "name": "units",
+     "fields": [
+      "id",
+      "subject_id",
+      "title",
+      "order",
+      "source_course_id"
+     ]
+    },
+    {
+     "name": "assignments",
+     "fields": [
+      "id",
+      "unit_id",
+      "title",
+      "instructions",
+      "due_date",
+      "attachments[]",
+      "linked_item_type",
+      "linked_item_id",
+      "sprouts",
+      "status(assigned|submitted|graded)"
+     ]
+    },
+    {
+     "name": "submissions",
+     "fields": [
+      "id",
+      "assignment_id",
+      "member_id",
+      "text",
+      "media_ids[]",
+      "submitted_at"
+     ]
+    },
+    {
+     "name": "grades",
+     "fields": [
+      "assignment_id",
+      "score",
+      "letter",
+      "rubric_json",
+      "comment",
+      "graded_by",
+      "graded_at",
+      "visible_to_child"
+     ]
+    },
+    {
+     "name": "badges",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "virtue_or_skill",
+      "subject_id",
+      "threshold_rule",
+      "icon"
+     ]
+    },
+    {
+     "name": "badge_awards",
+     "fields": [
+      "badge_id",
+      "member_id",
+      "awarded_at",
+      "awarded_by",
+      "note"
+     ]
+    },
+    {
+     "name": "milestones_dev",
+     "fields": [
+      "id",
+      "member_id",
+      "band",
+      "title",
+      "achieved_at",
+      "photo_media_id",
+      "progress_pct"
+     ]
+    },
+    {
+     "name": "character_tracks",
+     "fields": [
+      "id",
+      "space_id",
+      "month",
+      "virtue",
+      "value_id",
+      "challenges_json"
+     ]
+    },
+    {
+     "name": "character_logs",
+     "fields": [
+      "track_id",
+      "member_id",
+      "date",
+      "challenge_index",
+      "reflection"
+     ]
+    }
+   ],
+   "features": [
+    "Subjects per child with units and assignments linking videos, books and study sessions",
+    "Assignment lifecycle assigned → submitted → graded with rubric and comment",
+    "Term reports with averages, exportable to PDF",
+    "Skill and virtue badges awarded manually or on threshold",
+    "Developmental milestones by band with photos",
+    "Monthly character tracks tied to a family value with daily micro-challenges",
+    "Child feed ordering today's assignments, chores, verse, habits, lesson and creative activity"
+   ],
+   "acceptance": [
+    "Assignments due today are in the child's feed by 06:00 local.",
+    "Grading updates the term average and report instantly.",
+    "A badge award animates in child mode, appears on the child profile and writes a timeline event.",
+    "Term report exports to PDF with subjects, averages and comments.",
+    "Completing a character challenge credits Sprouts and stores a reflection entry.",
+    "Grades are visible to the child only when the parent sets visible_to_child.",
+    "The Little band feed contains no text input and reads every tile aloud.",
+    "Units exported from Books keep a link back to the course.",
+    "A milestone reaching 100 % prompts a celebration card."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Own feed, submit assignments, own grades if visible",
+    "guest": "None"
+   },
+   "aiHooks": [
+    "Generate a unit from a topic and band",
+    "Rubric suggestion",
+    "Monthly character track from a chosen value",
+    "'How is Tobi doing in Maths this term?'"
+   ],
+   "demoData": [
+    "Dami: 8 GCSE subjects, 4 assignments this week, average 78 %, 7 badges",
+    "Tobi: Maths, English, Science, Yoruba, Bible; 'Reading fluency' milestone 70 %",
+    "Ayo: Letters, Numbers, Bible stories (picture-only)",
+    "September character track: Diligence (value: Diligence), challenge 9 'Finish before you rest'"
+   ]
+  },
+  {
+   "id": "tasks",
+   "area": "Execute",
+   "name": "Tasks & chores",
+   "route": "/execute/tasks",
+   "purpose": "Everything the family must do — list, Kanban and calendar views, recurrence, chores with Sprouts, rota and rewards — always linkable to a goal and a value.",
+   "entities": [
+    {
+     "name": "tasks",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "notes",
+      "assignee_member_ids[]",
+      "due_at",
+      "priority",
+      "scope(me|us|family)",
+      "goal_id",
+      "milestone_id",
+      "project_id",
+      "value_id",
+      "status",
+      "kanban_order",
+      "rrule",
+      "is_chore",
+      "sprouts",
+      "proof_media_id",
+      "proof_approved_by",
+      "source_type",
+      "source_id",
+      "dropped_reason"
+     ]
+    },
+    {
+     "name": "task_checklist",
+     "fields": [
+      "task_id",
+      "item",
+      "done",
+      "order"
+     ]
+    },
+    {
+     "name": "chore_rotas",
+     "fields": [
+      "id",
+      "space_id",
+      "chore_template_id",
+      "member_ids[]",
+      "rotation(weekly)",
+      "current_index",
+      "next_rotate_at"
+     ]
+    },
+    {
+     "name": "sprouts_ledger",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "delta",
+      "source_type",
+      "source_id",
+      "note",
+      "at"
+     ]
+    },
+    {
+     "name": "rewards",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "cost_sprouts",
+      "kind",
+      "active"
+     ]
+    },
+    {
+     "name": "redemptions",
+     "fields": [
+      "id",
+      "reward_id",
+      "member_id",
+      "status(requested|approved|declined|fulfilled)",
+      "decided_by",
+      "at"
+     ]
+    }
+   ],
+   "features": [
+    "List, Kanban (To do / Doing / Done / Waiting) and calendar views",
+    "Recurring rules (RRULE) with instance generation on completion",
+    "Chores with Sprouts and optional photo proof",
+    "Weekly chore rota among children",
+    "Rewards catalogue redeemable with Sprouts, parent-approved",
+    "Goal and value filter chips; 'link to a goal' affordance on orphaned tasks",
+    "Quick-add (Q), bulk assign, overdue view",
+    "'Buy X' tasks created from approved purchases; donate tasks from wardrobe"
+   ],
+   "acceptance": [
+    "Completing a recurring task generates the next instance from its RRULE.",
+    "Rota chores reassign to the next child on the planning day.",
+    "Completing a chore credits Sprouts immediately and shows a celebration in child mode.",
+    "Photo proof chores await parent approval before Sprouts are credited.",
+    "The Sprouts ledger is auditable: every delta has a source record.",
+    "Kanban drag order persists per column.",
+    "Completing a task linked to a milestone updates the milestone's progress.",
+    "Overdue tasks trigger rule 3 and park in Needs attention after three reminders.",
+    "Value and goal chips filter all three views.",
+    "A reward redemption requires parent approval and deducts Sprouts on approval.",
+    "Children in Me scope can create their own tasks; they cannot assign to others."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Assigned tasks and family chores board; create own Me tasks",
+    "guest": "Tasks assigned to them (e.g. trip prep); can complete"
+   },
+   "aiHooks": [
+    "'Suggest tasks for this goal'",
+    "'Balance this week's chores fairly'",
+    "Convert briefing or planning notes into tasks"
+   ],
+   "demoData": [
+    "38 open tasks; 5 overdue",
+    "Rota: 'Empty dishwasher' Dami ↔ Tobi weekly",
+    "Chores: Tobi 'Feed Bella' daily (10 Sprouts), Ayo 'Tidy shoes' (5), Dami 'Bins Thursday' (15)",
+    "Rewards: Saturday cinema (150), extra 30 min screen time (40)",
+    "'Buy laptop for Dami' task auto-created on approval"
+   ]
+  },
+  {
+   "id": "goals",
+   "area": "Execute",
+   "name": "Vision blueprint, goals & OKR roadmap",
+   "route": "/execute/goals",
+   "purpose": "Align personal and family actions with long-term vision: the Family Vision Blueprint, goals with milestones and linked tasks, quarterly OKRs on a roadmap timeline, computed progress and celebrations.",
+   "entities": [
+    {
+     "name": "blueprints",
+     "fields": [
+      "id",
+      "space_id",
+      "version",
+      "values_snapshot_json",
+      "mission",
+      "vision",
+      "goals_1y_json",
+      "goals_3y_json",
+      "goals_5y_json",
+      "author_id",
+      "created_at"
+     ]
+    },
+    {
+     "name": "goals",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "child_safe_summary",
+      "scope(me|us|family)",
+      "owner_member_id",
+      "life_area",
+      "value_id",
+      "target_date",
+      "progress_mode(milestones|manual|metric)",
+      "metric_ref",
+      "progress_pct",
+      "status",
+      "visibility"
+     ]
+    },
+    {
+     "name": "milestones",
+     "fields": [
+      "id",
+      "goal_id",
+      "title",
+      "due_date",
+      "order",
+      "done_at"
+     ]
+    },
+    {
+     "name": "okrs",
+     "fields": [
+      "id",
+      "space_id",
+      "quarter",
+      "objective",
+      "goal_ids[]"
+     ]
+    },
+    {
+     "name": "key_results",
+     "fields": [
+      "okr_id",
+      "text",
+      "target",
+      "current",
+      "unit"
+     ]
+    },
+    {
+     "name": "celebrations",
+     "fields": [
+      "id",
+      "goal_id",
+      "date",
+      "photo_media_id",
+      "reflection",
+      "shareable_card_media_id"
+     ]
+    }
+   ],
+   "features": [
+    "Family Vision Blueprint with versions: values, mission, vision, 1/3/5-year goals by life area",
+    "Goals with scope, area, value, progress mode and milestones",
+    "Child-safe summary shown to children instead of the title",
+    "Quarterly OKRs with key results linked to goals",
+    "Roadmap timeline (quarters × life areas) with today line",
+    "'Our Future' roll-up by area",
+    "Celebrate archive with shareable card",
+    "Sunday planning review panel and quarterly review",
+    "Connection metrics computed nightly"
+   ],
+   "acceptance": [
+    "Progress is computed, not typed, when milestones or a metric are linked.",
+    "Any goal is reachable in ≤ 2 clicks from the roadmap timeline.",
+    "Completing the last milestone prompts a celebration entry that writes to the family timeline.",
+    "Children see Family goals only through child_safe_summary; titles and amounts are never returned (RLS test).",
+    "Me-scope goals are private unless shared.",
+    "The blueprint keeps version history with diff.",
+    "A goal in metric mode linked to a savings goal updates as the ledger changes.",
+    "Connection metrics (% tasks with goal_id, % goals with ≥ 1 milestone) are stored nightly and shown to parents.",
+    "Stalled goals (no progress 21 days) trigger rule 7 once a week."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Family goals as child-safe summaries; full on own Me goals",
+    "guest": "None"
+   },
+   "aiHooks": [
+    "'Break this goal into milestones and tasks'",
+    "Quarterly review draft",
+    "'Which goals are stalling?'",
+    "First three goals from chosen values (onboarding)"
+   ],
+   "demoData": [
+    "Family: Prepare children for the new school year (research ✓, applications ✓, supplies 60 %, medical forms)",
+    "Family: Save a home deposit — 54 %, metric linked to Finance; child summary 'We're saving for our own home'",
+    "Family: Read 4 books together this year (2/4)",
+    "Me: Oluwafemi 'Ride 100 km' (private); Dami 'Grade 7 in Maths'",
+    "Q3 OKR: Settle the new school rhythm (3 KRs)"
+   ]
+  },
+  {
+   "id": "projects",
+   "area": "Execute",
+   "name": "Projects & research vault",
+   "route": "/execute/projects",
+   "purpose": "Bigger pieces of work with their boards, timelines, budgets, research clips, notes, weighted comparisons and decision records together.",
+   "entities": [
+    {
+     "name": "projects",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "status",
+      "owner_member_id",
+      "start_date",
+      "end_date",
+      "finance_category_id",
+      "budget",
+      "goal_id",
+      "value_id",
+      "visibility",
+      "child_safe"
+     ]
+    },
+    {
+     "name": "project_members",
+     "fields": [
+      "project_id",
+      "member_id",
+      "role"
+     ]
+    },
+    {
+     "name": "clips",
+     "fields": [
+      "id",
+      "space_id",
+      "project_id",
+      "folder",
+      "url",
+      "title",
+      "excerpt",
+      "image_url",
+      "snapshot_text",
+      "tags[]",
+      "saved_by"
+     ]
+    },
+    {
+     "name": "notes",
+     "fields": [
+      "id",
+      "space_id",
+      "project_id",
+      "folder",
+      "title",
+      "body_json",
+      "tags[]",
+      "sensitivity",
+      "visibility"
+     ]
+    },
+    {
+     "name": "comparisons",
+     "fields": [
+      "id",
+      "project_id",
+      "title",
+      "criteria_json",
+      "options_json"
+     ]
+    },
+    {
+     "name": "comparison_scores",
+     "fields": [
+      "comparison_id",
+      "option_key",
+      "criterion_key",
+      "score"
+     ]
+    },
+    {
+     "name": "decisions",
+     "fields": [
+      "id",
+      "project_id",
+      "comparison_id",
+      "decision",
+      "because",
+      "decided_by",
+      "decided_at"
+     ]
+    }
+   ],
+   "features": [
+    "Projects with status, members, board (Kanban of Tasks), timeline, budget line and documents",
+    "Research vault: web clips with readable snapshot, rich-text notes canvas, tags, folders",
+    "Weighted comparison tables with live ranking",
+    "Decision record ('we chose X because…') shown on the project header",
+    "Links to goals and purchases",
+    "Archive as read-only"
+   ],
+   "acceptance": [
+    "Clipping a URL stores a readable text snapshot and image server-side.",
+    "Comparison scores recompute the ranking live.",
+    "A project board's tasks are the same rows as Tasks.",
+    "A decision record can be created from a comparison and is shown on the project header.",
+    "Archived projects are read-only for everyone.",
+    "A child member sees only child-safe items in the project; notes with sensitivity other than general are hidden.",
+    "A Young adult can own a project and add tasks within it.",
+    "A project's budget line shows spent vs budget from the linked Finance category."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Projects they are members of (child-safe); Young adult may own projects",
+    "guest": "Explicitly shared projects (view)"
+   },
+   "aiHooks": [
+    "'Summarise this research folder'",
+    "'Build a comparison table of these three sixth forms'",
+    "Project plan draft"
+   ],
+   "demoData": [
+    "Kitchen refresh: budget £6,500, 14 tasks, decision 'Chose the local joiner because of lead time and reviews'",
+    "Sixth-form search 2027: 3 options compared on 6 criteria, 9 clips",
+    "Tobi's science fair: Tobi member, 6 tasks"
+   ]
+  },
+  {
+   "id": "calendar",
+   "area": "Execute",
+   "name": "Family calendar",
+   "route": "/execute/calendar",
+   "purpose": "What is happening, for whom, when: events with live overlays of deadlines, bills, trips and birthdays, member filters, RSVP and ICS export.",
+   "entities": [
+    {
+     "name": "events",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "start_at",
+      "end_at",
+      "all_day",
+      "location",
+      "colour_member_id",
+      "rrule",
+      "reminder_minutes",
+      "community_id",
+      "trip_id",
+      "visibility",
+      "child_safe",
+      "created_by"
+     ]
+    },
+    {
+     "name": "event_members",
+     "fields": [
+      "event_id",
+      "member_id",
+      "required"
+     ]
+    },
+    {
+     "name": "rsvps",
+     "fields": [
+      "event_id",
+      "member_id",
+      "response",
+      "at"
+     ]
+    },
+    {
+     "name": "ics_tokens",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "token",
+      "scope",
+      "created_at",
+      "revoked_at"
+     ]
+    }
+   ],
+   "features": [
+    "Day, week, month and agenda views",
+    "Events with members, location, colour, recurrence, reminders",
+    "Live overlays: task deadlines, milestones, assignments, bills, trips, birthdays",
+    "Member filters and conflict warnings",
+    "RSVP for guests",
+    "ICS export per member and per space",
+    "'This week' widget and Sunday planning confirmation panel"
+   ],
+   "acceptance": [
+    "Overlays are live references: deleting a task removes its deadline from the calendar.",
+    "ICS feeds reflect changes within 5 minutes.",
+    "A child sees only events they are on or marked family and child_safe.",
+    "A Young adult can edit events they created.",
+    "Guests see only events they are invited to and can RSVP.",
+    "Overlapping events for the same member show a conflict warning.",
+    "Revoking an ICS token stops the feed immediately.",
+    "People birthdays and anniversaries render from the People module without duplication."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "View own + family; create own; Young adult edits own events",
+    "guest": "View invited events; RSVP"
+   },
+   "aiHooks": [
+    "'What do we have planned this weekend?'",
+    "'Find an evening this week for all five of us'",
+    "Propose an event from a message or note"
+   ],
+   "demoData": [
+    "Co-op Tue/Thu 09:30; Bible study Wed 19:30; Grace Chapel Sun 10:00",
+    "Tobi's swimming Sat 09:00; Dami's mock exams 5–9 Oct",
+    "Mama Fọláké's birthday 14 Nov (overlay)",
+    "Christmas in Lagos 19 Dec–3 Jan (trip overlay)"
+   ]
+  },
+  {
+   "id": "finance",
+   "area": "Live",
+   "name": "Household finances, budget, purchases & giving",
+   "route": "/live/finance",
+   "purpose": "Know what we earn, spend, give and save; budgets and bills with alerts; a purchase pipeline with parent approval; a giving record; personal envelopes for young adults.",
+   "entities": [
+    {
+     "name": "accounts",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "type(cash|bank|mobile_money)",
+      "currency",
+      "opening_balance"
+     ]
+    },
+    {
+     "name": "categories",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "monthly_budget",
+      "is_giving",
+      "is_food",
+      "is_savings",
+      "colour"
+     ]
+    },
+    {
+     "name": "ledger_entries",
+     "fields": [
+      "id",
+      "space_id",
+      "date",
+      "amount",
+      "currency",
+      "type(income|expense)",
+      "category_id",
+      "account_id",
+      "member_id",
+      "value_id",
+      "note",
+      "receipt_media_id",
+      "recipient_person_id",
+      "recipient_community_id",
+      "envelope_id"
+     ]
+    },
+    {
+     "name": "bills",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "amount",
+      "category_id",
+      "due_day",
+      "rrule",
+      "active"
+     ]
+    },
+    {
+     "name": "bill_payments",
+     "fields": [
+      "bill_id",
+      "month",
+      "paid_at",
+      "ledger_entry_id"
+     ]
+    },
+    {
+     "name": "budget_alerts",
+     "fields": [
+      "category_id",
+      "month",
+      "threshold",
+      "fired_at"
+     ]
+    },
+    {
+     "name": "wishlist_items",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "link",
+      "price",
+      "requested_by",
+      "reason",
+      "category_id",
+      "status(requested|approved|deferred|declined|planned|bought)",
+      "planned_month",
+      "decision_comment",
+      "buy_task_id",
+      "ledger_entry_id",
+      "source_type",
+      "source_id"
+     ]
+    },
+    {
+     "name": "wish_approvals",
+     "fields": [
+      "wish_id",
+      "parent_member_id",
+      "decision",
+      "at"
+     ]
+    },
+    {
+     "name": "envelopes",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "monthly_amount",
+      "balance",
+      "granted_by"
+     ]
+    },
+    {
+     "name": "savings_goals",
+     "fields": [
+      "id",
+      "space_id",
+      "goal_id",
+      "target",
+      "current",
+      "account_id"
+     ]
+    }
+   ],
+   "features": [
+    "Ledger with receipts, value tags and recipients",
+    "Categories with monthly budgets incl. Tithe & Giving, Groceries, Savings",
+    "Recurring bills with paid state",
+    "Alerts at 80 % and 100 %",
+    "Purchase pipeline with approve / defer / decline; both parents above threshold",
+    "'Buy X' task on approval; 'bought' writes the ledger entry",
+    "Simplified child wish form with status on the child's dashboard",
+    "Giving record with recipients and annual % of income",
+    "Personal budget envelopes for Young adults",
+    "Food budget exposed to Wellness; CSV import/export"
+   ],
+   "acceptance": [
+    "Budget alerts fire once per category per threshold per month.",
+    "A wish above the space's threshold requires two distinct parent approvals before status becomes approved.",
+    "Approving a wish creates a 'Buy X' task for the chosen member.",
+    "Moving a wish to bought writes the ledger entry and closes the wish.",
+    "Giving summary equals the sum of entries in is_giving categories.",
+    "Finance tables return nothing to child and guest roles at the API, except a Young adult's own envelope rows (RLS test).",
+    "A child can create a wish and sees only their own wishes and statuses on their dashboard.",
+    "Finance writes require re-authentication after 15 minutes idle.",
+    "Bills unpaid on the due day trigger rule 12 and park in Needs attention after three reminders.",
+    "A savings goal linked to a Goal updates that goal's metric progress.",
+    "CSV import maps columns and de-duplicates on date + amount + note."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Submit wishes; Young adult sees and spends own envelope",
+    "guest": "None"
+   },
+   "aiHooks": [
+    "'Where are we against budget this month?'",
+    "'What can we cut to reach the deposit by June?'",
+    "Classify an uploaded receipt",
+    "Propose a budget change (confirmed by a parent)"
+   ],
+   "demoData": [
+    "September budget £4,200; tithe 10 % auto-line",
+    "Groceries £620 budget, £508 spent (82 %)",
+    "Bills: mortgage 1st, energy 12th (due), broadband 20th, council tax 1st",
+    "Pipeline: laptop for Dami £520 (Ifeoluwa approved, Oluwafemi pending), fridge £650 deferred to November",
+    "Giving YTD 11.4 % of income; recipients Grace Chapel, Aunty Bisi",
+    "Dami's envelope £25/month, £11 remaining"
+   ]
+  },
+  {
+   "id": "travel",
+   "area": "Live",
+   "name": "Travel & holiday planner",
+   "route": "/live/travel",
+   "purpose": "Plan trips well and arrive prepared: itineraries, bookings and documents, packing lists per member, pre-trip checklists and trip expenses.",
+   "entities": [
+    {
+     "name": "trips",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "destination",
+      "start_date",
+      "end_date",
+      "status",
+      "finance_category_id",
+      "budget",
+      "value_id",
+      "visibility",
+      "album_id"
+     ]
+    },
+    {
+     "name": "travellers",
+     "fields": [
+      "trip_id",
+      "member_id",
+      "passport_expiry",
+      "notes"
+     ]
+    },
+    {
+     "name": "itinerary_days",
+     "fields": [
+      "id",
+      "trip_id",
+      "date",
+      "title"
+     ]
+    },
+    {
+     "name": "itinerary_items",
+     "fields": [
+      "id",
+      "day_id",
+      "time",
+      "title",
+      "location",
+      "map_url",
+      "notes",
+      "cost",
+      "order"
+     ]
+    },
+    {
+     "name": "bookings",
+     "fields": [
+      "id",
+      "trip_id",
+      "type(flight|stay|transport|insurance)",
+      "provider",
+      "confirmation",
+      "start_at",
+      "end_at",
+      "cost",
+      "sensitivity"
+     ]
+    },
+    {
+     "name": "travel_docs",
+     "fields": [
+      "id",
+      "trip_id",
+      "member_id",
+      "type",
+      "media_id",
+      "expires_at",
+      "sensitivity(documents)"
+     ]
+    },
+    {
+     "name": "packing_lists",
+     "fields": [
+      "id",
+      "trip_id",
+      "member_id",
+      "template",
+      "generated_at"
+     ]
+    },
+    {
+     "name": "packing_items",
+     "fields": [
+      "list_id",
+      "item",
+      "wardrobe_item_id",
+      "checked",
+      "order"
+     ]
+    },
+    {
+     "name": "trip_checklist",
+     "fields": [
+      "trip_id",
+      "item",
+      "due_offset_days",
+      "done_at"
+     ]
+    }
+   ],
+   "features": [
+    "Trips with travellers (including guests), budget and status",
+    "Day-by-day itinerary with map links and costs",
+    "Bookings and documents with passport and document expiry checks",
+    "Packing lists per member from templates, pulling wardrobe capsules",
+    "Pre-trip checklist T-14 / T-7 / T-3 / T-1",
+    "Trip expenses to the ledger; album created on return",
+    "PDF export of the itinerary"
+   ],
+   "acceptance": [
+    "Packing lists generate per traveller at T-14 from the trip's template.",
+    "A guest traveller sees the itinerary and only their own packing list.",
+    "Passport expiry within 6 months of travel raises a Needs attention item immediately.",
+    "Documents (sensitivity documents) never reach a child or guest at the API.",
+    "Document expiry reminders fire at 90 and 30 days.",
+    "The itinerary exports to PDF.",
+    "Trip expenses post to the ledger under the trip's category.",
+    "The current trip's packing list is readable and tickable offline with queued sync.",
+    "Wardrobe capsule items appear as packing items linked to the wardrobe record."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "View trips they are on; tick own packing list",
+    "guest": "Granted trips: itinerary and own packing list"
+   },
+   "aiHooks": [
+    "'Remind me what we need to do before our trip'",
+    "Itinerary draft from destination, days and interests",
+    "Packing suggestions by climate and duration"
+   ],
+   "demoData": [
+    "Christmas in Lagos 19 Dec–3 Jan: 5 travellers + Mama Fọláké hosting; flights booked (BA075)",
+    "3 itinerary days drafted incl. Lekki Conservation Centre",
+    "Packing lists 4/5 generated; checklist 2/9 done",
+    "Tobi's passport expires March 2027 → attention item"
+   ]
+  },
+  {
+   "id": "wardrobe",
+   "area": "Live",
+   "name": "Wardrobe & closet manager",
+   "route": "/live/wardrobe",
+   "purpose": "A digital closet by owner, season and colour with an outfit builder, weekly attire schedule, trip capsules, hand-me-downs and an outgrown list that feeds purchases and giving.",
+   "entities": [
+    {
+     "name": "wardrobe_items",
+     "fields": [
+      "id",
+      "space_id",
+      "owner_member_id",
+      "photo_media_id",
+      "category",
+      "colour",
+      "season",
+      "size",
+      "occasion",
+      "brand",
+      "status(in_use|outgrown|donate|handed_down)",
+      "notes"
+     ]
+    },
+    {
+     "name": "outfits",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "name",
+      "occasion",
+      "photo_media_id"
+     ]
+    },
+    {
+     "name": "outfit_items",
+     "fields": [
+      "outfit_id",
+      "item_id",
+      "position_json"
+     ]
+    },
+    {
+     "name": "attire_schedule",
+     "fields": [
+      "member_id",
+      "date",
+      "outfit_id",
+      "event_id"
+     ]
+    },
+    {
+     "name": "handdowns",
+     "fields": [
+      "id",
+      "item_id",
+      "from_member_id",
+      "to_member_id",
+      "at"
+     ]
+    }
+   ],
+   "features": [
+    "Items with photos and filters by owner, season, colour, occasion",
+    "Outfit builder canvas",
+    "Weekly attire schedule and event outfits",
+    "Trip capsules pulled into packing lists",
+    "Hand-me-down flow (outgrown → next child's closet)",
+    "Outgrown list → purchase pipeline (replacement) and donate task → Giving entry"
+   ],
+   "acceptance": [
+    "A scheduled outfit appears on the member's dashboard on its day.",
+    "Items attach to packing lists and stay linked.",
+    "Hand-me-down transfers ownership and keeps history.",
+    "Marking an item outgrown offers a replacement wish and a donate task in one step.",
+    "Photo uploads compress to ≤ 300 KB.",
+    "Children see and edit only their own closet and schedule.",
+    "A completed donate task can create a Giving ledger entry."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Own closet and own schedule",
+    "guest": "None"
+   },
+   "aiHooks": [
+    "'Build a Sunday outfit for Ayo from his closet'",
+    "Capsule suggestion for Lagos"
+   ],
+   "demoData": [
+    "118 items across 5 members; 14 outfits",
+    "Tobi's winter coat handed down to Ayo",
+    "Outgrown: Tobi's school shoes → wish 'Shoes size 3' + donate task",
+    "Children's week scheduled: church, co-op, PE, swimming"
+   ]
+  },
+  {
+   "id": "wellness",
+   "area": "Live",
+   "name": "Health, habits, fitness & food",
+   "route": "/live/wellness",
+   "purpose": "Habits with streaks that rest on grace days, workout plans and logs, parent-only health notes, meal plans and a grocery list priced against the food budget.",
+   "entities": [
+    {
+     "name": "habits",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "name",
+      "kind(water|exercise|sleep|nutrition|reading|screens|custom)",
+      "target",
+      "unit",
+      "checkin_time",
+      "value_id"
+     ]
+    },
+    {
+     "name": "habit_logs",
+     "fields": [
+      "habit_id",
+      "date",
+      "value",
+      "logged_at"
+     ]
+    },
+    {
+     "name": "streak_freezes",
+     "fields": [
+      "habit_id",
+      "week_start",
+      "used_on"
+     ]
+    },
+    {
+     "name": "workout_plans",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "template",
+      "goal_id",
+      "weeks",
+      "sessions_json"
+     ]
+    },
+    {
+     "name": "workouts",
+     "fields": [
+      "id",
+      "plan_id",
+      "date",
+      "title"
+     ]
+    },
+    {
+     "name": "workout_logs",
+     "fields": [
+      "workout_id",
+      "duration_min",
+      "sets_json",
+      "notes",
+      "logged_at"
+     ]
+    },
+    {
+     "name": "health_notes",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "allergies",
+      "medications",
+      "appointments_json",
+      "vaccinations_json",
+      "measurements_json",
+      "sensitivity(health)"
+     ]
+    },
+    {
+     "name": "recipes",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "ingredients_json",
+      "steps",
+      "servings",
+      "cost_estimate",
+      "child_safe"
+     ]
+    },
+    {
+     "name": "meal_plans",
+     "fields": [
+      "id",
+      "space_id",
+      "week_start"
+     ]
+    },
+    {
+     "name": "meal_slots",
+     "fields": [
+      "plan_id",
+      "date",
+      "slot",
+      "recipe_id",
+      "cook_member_id"
+     ]
+    },
+    {
+     "name": "grocery_lists",
+     "fields": [
+      "id",
+      "plan_id",
+      "total_estimate",
+      "food_budget_remaining"
+     ]
+    },
+    {
+     "name": "grocery_items",
+     "fields": [
+      "list_id",
+      "item",
+      "qty",
+      "price_estimate",
+      "checked"
+     ]
+    },
+    {
+     "name": "challenges",
+     "fields": [
+      "id",
+      "space_id",
+      "name",
+      "metric",
+      "target",
+      "start",
+      "end",
+      "sprouts"
+     ]
+    }
+   ],
+   "features": [
+    "Habits with targets, logs, streaks, heatmaps, grace days and one freeze per week",
+    "Workout plans from templates with logs",
+    "Health notes per member (parent-only; Young adult may be granted own)",
+    "Meal plans with recipes and assigned cook",
+    "Grocery list generated from the plan and priced against the food budget",
+    "Family challenges with Sprouts",
+    "Sunday planning meal + grocery panel"
+   ],
+   "acceptance": [
+    "A habit not logged by its check-in time triggers one nudge; none on grace days.",
+    "Grace days and a weekly freeze never break a streak.",
+    "The grocery list shows the remaining food budget live and warns when exceeded.",
+    "Health notes are returned only to parents (and the member if granted) at the API.",
+    "A child can log a workout or habit from their dashboard in one tap.",
+    "Meal plan and grocery list are editable inside the Sunday planning screen.",
+    "Challenge completion credits Sprouts through the shared ledger.",
+    "Habit coaching in the briefing references the member's own logs only."
+   ],
+   "permissions": {
+    "parent": "Full, including health notes",
+    "child": "Own habits and workouts; view meal plan",
+    "guest": "None"
+   },
+   "aiHooks": [
+    "'What meals can we make with this week's grocery budget?'",
+    "Workout plan from a goal and time available",
+    "Habit coaching in the briefing"
+   ],
+   "demoData": [
+    "Ifeoluwa: water 12-day streak (Sunday rested); Oluwafemi: cycling plan week 3",
+    "Dami: sleep by 22:00 (4/7); Tobi: reading 20 min (6/7)",
+    "Meal plan Mon–Sun with jollof Sunday, cook rota",
+    "Grocery list £142 vs £112 remaining → warning",
+    "Challenge: '10k steps week' (family, 30 Sprouts)"
+   ]
+  },
+  {
+   "id": "studio",
+   "area": "Create",
+   "name": "AI companion & generative studio",
+   "route": "/create/studio",
+   "purpose": "The Family Concierge — one module-aware companion grounded in the family's own data with proposals and sources — plus a creative studio for songs, images (where available) and storyboards.",
+   "entities": [
+    {
+     "name": "ai_conversations",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "module_context",
+      "title",
+      "created_at",
+      "visible_to_parents"
+     ]
+    },
+    {
+     "name": "ai_messages",
+     "fields": [
+      "id",
+      "conversation_id",
+      "role",
+      "content",
+      "sources_json",
+      "proposal_json",
+      "proposal_status",
+      "model",
+      "tokens",
+      "cost"
+     ]
+    },
+    {
+     "name": "ai_usage",
+     "fields": [
+      "space_id",
+      "month",
+      "tokens",
+      "cost",
+      "cap",
+      "warned_at"
+     ]
+    },
+    {
+     "name": "songs",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "title",
+      "lyrics",
+      "chords_json",
+      "structure_json",
+      "key",
+      "tempo",
+      "prompt",
+      "model",
+      "cost",
+      "project_id"
+     ]
+    },
+    {
+     "name": "images",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "prompt",
+      "media_id",
+      "status(generated|unavailable_typographic)",
+      "model",
+      "cost",
+      "project_id"
+     ]
+    },
+    {
+     "name": "storyboards",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "title",
+      "project_id",
+      "reel_id"
+     ]
+    },
+    {
+     "name": "storyboard_scenes",
+     "fields": [
+      "storyboard_id",
+      "order",
+      "text",
+      "image_id",
+      "media_id"
+     ]
+    },
+    {
+     "name": "creative_projects",
+     "fields": [
+      "id",
+      "space_id",
+      "member_id",
+      "name",
+      "child_safe"
+     ]
+    }
+   ],
+   "features": [
+    "Companion launcher (⌘K) on every page with module-aware context",
+    "Grounded Q&A with sources chips; read-only tools and propose tools",
+    "Proposal cards (tasks, plan, event, budget change) confirmed by the member",
+    "Private conversation history; children's visible to parents",
+    "Songs: lyrics + chord chart + structure + key/tempo as a printable lead sheet",
+    "Images via Gemini where the plan allows; styled typographic card fallback",
+    "Storyboards with AI or family-photo slots, played through the reel player",
+    "Usage meter and cap"
+   ],
+   "acceptance": [
+    "Every companion answer lists its sources as chips.",
+    "When data is missing or out of scope the companion says 'I can't see that' rather than inventing.",
+    "Nothing writes without the member confirming a proposal card.",
+    "Little and Junior bands use a prompt-picker and cannot free-type.",
+    "Teen and Young adult free text passes a child-safety classifier with a 'talk to a parent' redirect.",
+    "Financial, Health, Documents and Private sensitivity records never enter a child's or guest's context pack (context-builder test).",
+    "Song output always includes chords and structure and renders as a lead sheet.",
+    "Image unavailability shows an explicit message and produces a styled typographic card with the saved prompt.",
+    "Storyboards play and share through the Memories reel player, not a second renderer.",
+    "Usage cap is enforced by the gateway with an 80 % warning and a plain hard-stop message.",
+    "Children's conversations are visible to parents by default."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Companion in child mode; studio with child-safe presets",
+    "guest": "View shared outputs only"
+   },
+   "aiHooks": [
+    "Contextual Q&A over family data",
+    "Summaries, plans, task suggestions, briefings",
+    "Song lyrics and chord charts",
+    "Storyboards",
+    "Image generation where the plan allows"
+   ],
+   "demoData": [
+    "Song 'Adeyemi Evening Blessing' (lyrics, chords in G, verse/chorus/bridge, 72 bpm)",
+    "Storyboard 'Ayo and the Brave Ant' (6 scenes, 2 AI images, 4 family photos)",
+    "24 saved conversations; latest 'What do we need before Lagos?' with sources: trip, checklist, 2 tasks",
+    "Usage 61 % of monthly cap"
+   ]
+  },
+  {
+   "id": "moodboards",
+   "area": "Create",
+   "name": "Moodboards & inspiration",
+   "route": "/create/moodboards",
+   "purpose": "Pinterest-style visual collaboration for parties, interiors, style and ideas, with pins, sections, tags, comments and links to projects and trips.",
+   "entities": [
+    {
+     "name": "boards",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "cover_media_id",
+      "owner_member_id",
+      "visibility",
+      "child_safe",
+      "template",
+      "project_id",
+      "trip_id"
+     ]
+    },
+    {
+     "name": "board_sections",
+     "fields": [
+      "id",
+      "board_id",
+      "title",
+      "order"
+     ]
+    },
+    {
+     "name": "pins",
+     "fields": [
+      "id",
+      "board_id",
+      "section_id",
+      "source(url|upload|library)",
+      "source_url",
+      "media_id",
+      "cached_media_id",
+      "note",
+      "tags[]",
+      "price",
+      "order",
+      "added_by"
+     ]
+    },
+    {
+     "name": "pin_comments",
+     "fields": [
+      "id",
+      "pin_id",
+      "member_id",
+      "text",
+      "reaction",
+      "at"
+     ]
+    }
+   ],
+   "features": [
+    "Boards with covers, visibility and collaborators (including granted guests)",
+    "Pins from web URL, upload or the family media library",
+    "Notes, tags, source links and prices",
+    "Sections and drag ordering",
+    "Comments and reactions",
+    "Templates: party, interior, wardrobe, wedding, garden",
+    "Link to a project or trip; PDF export",
+    "Party checklist → Tasks"
+   ],
+   "acceptance": [
+    "Web-image pins store a cached copy.",
+    "Granted collaborators can pin and comment; others only view.",
+    "Tag filter works across all boards the member can see.",
+    "Boards owned by a child are child_safe by construction and reviewable by parents.",
+    "Board PDF export includes all pins with notes.",
+    "A party board can generate a checklist that creates Tasks linked to the board.",
+    "A guest sees only boards granted via object_shares."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "Own boards plus child-safe family boards",
+    "guest": "Boards granted to them (view or pin)"
+   },
+   "aiHooks": [
+    "'Suggest a colour palette from this board'",
+    "Party checklist from a party board → Tasks"
+   ],
+   "demoData": [
+    "Kitchen refresh (31 pins, linked to project)",
+    "Tobi's 10th birthday — dinosaurs (18 pins; Okonkwos can pin)",
+    "Sunday best (Ifeoluwa, private)",
+    "Lagos trip ideas (shared with Mama Fọláké, linked to trip)"
+   ]
+  },
+  {
+   "id": "memories",
+   "area": "Create",
+   "name": "Albums, timeline & reels",
+   "route": "/create/memories",
+   "purpose": "Keep and celebrate the story the family is living: albums, a family timeline merging every celebration, and in-app Ken Burns memory reels shared by link.",
+   "entities": [
+    {
+     "name": "albums",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "date_from",
+      "date_to",
+      "cover_media_id",
+      "visibility",
+      "contributor_member_ids[]",
+      "trip_id"
+     ]
+    },
+    {
+     "name": "album_media",
+     "fields": [
+      "album_id",
+      "media_id",
+      "caption",
+      "taken_at",
+      "location",
+      "order"
+     ]
+    },
+    {
+     "name": "media_tags",
+     "fields": [
+      "media_id",
+      "member_id",
+      "person_id"
+     ]
+    },
+    {
+     "name": "timeline_events",
+     "fields": [
+      "id",
+      "space_id",
+      "date",
+      "type(album|celebration|answered_prayer|badge|milestone|trip)",
+      "source_id",
+      "title",
+      "media_id"
+     ]
+    },
+    {
+     "name": "reels",
+     "fields": [
+      "id",
+      "space_id",
+      "title",
+      "frames_count",
+      "track_media_id",
+      "transition",
+      "status(draft|ready)",
+      "auto_kind(our_year|trip|custom)"
+     ]
+    },
+    {
+     "name": "reel_frames",
+     "fields": [
+      "reel_id",
+      "media_id",
+      "caption",
+      "duration_ms",
+      "order"
+     ]
+    },
+    {
+     "name": "share_links",
+     "fields": [
+      "id",
+      "object_type",
+      "object_id",
+      "token",
+      "expires_at",
+      "created_by"
+     ]
+    }
+   ],
+   "features": [
+    "Albums with uploads, captions, people tags and locations",
+    "Family timeline (year → month) merging albums, celebrations, answered prayers, badges, milestones, trips",
+    "Reels: in-app Ken Burns slideshow with captions, transitions and a licensed or family-song track, shared by link; no video file",
+    "Storyboards play through the same player",
+    "On this day across years; December 'Our year' reel auto-drafted",
+    "Storage quota by plan"
+   ],
+   "acceptance": [
+    "A 60-photo reel plays at 30 fps on a mid-range phone and starts within 3 s.",
+    "Reels are shared by link to members and guests; no video file is generated or downloaded.",
+    "Reduced-motion preference pauses Ken Burns motion and uses cross-fades.",
+    "Timeline events link to their source records.",
+    "Guests see only albums and reels granted via object_shares or a valid share link.",
+    "Uploads accept HEIC, JPEG, PNG and MP4 with automatic resizing.",
+    "Share links expire and can be revoked.",
+    "The 'Our year' reel is auto-drafted on 1 December from the year's timeline events.",
+    "Trip albums are created automatically when a trip ends."
+   ],
+   "permissions": {
+    "parent": "Full",
+    "child": "View family albums; contribute to albums they are contributors of",
+    "guest": "Granted albums and reels"
+   },
+   "aiHooks": [
+    "Caption suggestions",
+    "'Make a reel of the school-year prep'",
+    "Year-in-review narrative"
+   ],
+   "demoData": [
+    "9 albums, 412 photos; timeline back to 2019",
+    "Reel 'Summer 2026' ready (48 frames, family song track)",
+    "'On this day: Tobi's first swim, 2022'",
+    "'Our year 2026' draft placeholder scheduled"
+   ]
+  },
+  {
+   "id": "auth",
+   "area": "Onboarding",
+   "name": "Onboarding & access",
+   "route": "/auth",
+   "purpose": "Get a family to value in under five minutes: sign up, create a space, invite members, child accounts by band, and a first-run that can start from the demo family.",
+   "entities": [
+    {
+     "name": "users",
+     "fields": [
+      "id",
+      "email",
+      "auth_provider",
+      "created_at"
+     ]
+    },
+    {
+     "name": "invitations",
+     "fields": [
+      "id",
+      "space_id",
+      "email",
+      "token",
+      "role_preset",
+      "age_band",
+      "object_shares_json",
+      "expires_at",
+      "accepted_at",
+      "invited_by"
+     ]
+    },
+    {
+     "name": "child_credentials",
+     "fields": [
+      "member_id",
+      "username",
+      "pin_hash",
+      "session_mode(pin|parent_launched|own_credentials)",
+      "failed_attempts",
+      "locked_until"
+     ]
+    },
+    {
+     "name": "sessions",
+     "fields": [
+      "id",
+      "user_id",
+      "member_id",
+      "device",
+      "last_seen_at",
+      "reauth_at"
+     ]
+    },
+    {
+     "name": "demo_loads",
+     "fields": [
+      "space_id",
+      "loaded_at",
+      "removed_at"
+     ]
+    }
+   ],
+   "features": [
+    "Email/password, magic link, Google sign-in; reset; verification",
+    "Create space with country, currency, time zone",
+    "Invitations with locked role and optional object shares",
+    "Child accounts: username + PIN (Junior+), parent-launched session (Little), own credentials (Young adult)",
+    "Family picker on shared devices",
+    "First-run: values chips → mission (AI draft) → members → start empty or from the Adeyemi demo → Home",
+    "Session and device management; re-auth for sensitive actions; multi-space membership"
+   ],
+   "acceptance": [
+    "Sign-up to a populated dashboard takes ≤ 5 minutes without demo and ≤ 90 seconds with demo.",
+    "Child PIN login works from the family picker and is rate-limited with lockout.",
+    "A Little band child is launched into a session by a parent with no PIN and no text input.",
+    "Invitation links are single-use and expire in 7 days; the role cannot be elevated on acceptance.",
+    "Password reset emails arrive in under 60 seconds.",
+    "Demo data is badged and removable in one click, leaving the space clean.",
+    "Finance and permission changes require re-authentication after 15 minutes idle.",
+    "A user can belong to multiple spaces with different roles and switch between them.",
+    "Exiting child mode on a shared device requires a parent PIN."
+   ],
+   "permissions": {
+    "parent": "Creates spaces, invites, creates child accounts, manages sessions",
+    "child": "Signs in by PIN, parent launch or own credentials per band",
+    "guest": "Accepts invitations; signs in to granted objects"
+   },
+   "aiHooks": [
+    "Mission draft from chosen values",
+    "Suggested first three goals from values"
+   ],
+   "demoData": [
+    "Demo space loadable as 'The Adeyemis' with all modules populated",
+    "Invitation pending: Uncle Seun (relative guest → Lagos trip)",
+    "Child credentials: Tobi username 'tobi' + PIN; Ayo parent-launched; Dami own email"
+   ]
+  }
+ ],
+ "aiCompanion": {
+  "capabilities": [
+   "Morning briefing (template fallback)",
+   "Evening check-in and Sunday planning summaries",
+   "Content summarisation: video, book, research folder",
+   "Learning-plan and 4-week course generation",
+   "Task and milestone suggestions as proposals",
+   "Contextual queries over the family's own data with sources",
+   "Song lyrics with chord charts and structure",
+   "Storyboards",
+   "Image generation where the plan allows, typographic fallback otherwise"
+  ],
+  "contextSources": [
+   "Space profile, values, mission",
+   "Today's tasks and events",
+   "Active goals, milestones, OKRs",
+   "Current learning, reading and Bible plans",
+   "Prayer wall (never private prayers)",
+   "Recent check-ins and weekly reviews",
+   "Budget position and purchase pipeline (parents only)",
+   "Saved videos, book notes and research (pgvector, RLS-filtered)"
+  ],
+  "guardrails": [
+   "Context pack built server-side as the asking member under RLS",
+   "Financial, Health, Documents, Private and Settings sensitivity classes excluded from child and guest packs",
+   "Proposals only; nothing writes without confirmation",
+   "Every answer carries sources; 'I used…' and 'I can't see that' rather than inventing",
+   "Little/Junior prompt-picker; Teen/Young adult classifier with 'talk to a parent' redirect",
+   "No external browsing; next-video suggestions from saved items only",
+   "Refuse medical, legal or financial advice beyond the family's own numbers",
+   "Per-space monthly cap with 80 % warning and plain hard stop",
+   "Children's conversations visible to parents"
+  ]
+ },
+ "demoFamily": {
+  "name": "The Adeyemi family — Croydon, South London",
+  "members": [
+   {
+    "name": "Ifeoluwa Adeyemi",
+    "role": "parent",
+    "age": "41",
+    "note": "Space owner; runs a small brand consultancy from home; home-educates Tobi and Ayo three mornings a week; keeps finances and the vision"
+   },
+   {
+    "name": "Oluwafemi Adeyemi",
+    "role": "parent",
+    "age": "44",
+    "note": "Co-admin; product manager at a Canary Wharf fintech; leads Bible study; Addiscombe Cycling Club; organising Christmas in Lagos"
+   },
+   {
+    "name": "Dami Adeyemi",
+    "role": "child",
+    "age": "15",
+    "note": "Young adult band; Year 11 GCSEs; own credentials; £25/month envelope; laptop wish pending; 7 badges"
+   },
+   {
+    "name": "Tobi Adeyemi",
+    "role": "child",
+    "age": "9",
+    "note": "Junior band; home-educated Year 5; PIN login; prompt-picker AI; feeds Bella the dog; science fair project"
+   },
+   {
+    "name": "Ayo Adeyemi",
+    "role": "child",
+    "age": "5",
+    "note": "Little band; Reception; parent-launched sessions; read-aloud memory verse; 'Ayo and the Brave Ant' storyboard"
+   },
+   {
+    "name": "Mama Fọláké",
+    "role": "guest",
+    "age": "68",
+    "note": "Grandmother in Ibadan; relative guest granted the prayer wall, the Christmas in Lagos trip, two albums and tagged events"
+   },
+   {
+    "name": "Pastor Dayo",
+    "role": "guest",
+    "age": "52",
+    "note": "Mentor guest from Grace Chapel, Thornton Heath; sees his sessions and explicitly shared notes"
+   },
+   {
+    "name": "The Okonkwos",
+    "role": "guest",
+    "age": "—",
+    "note": "Friend guests from Bromley; view + pin on Tobi's 10th birthday board only"
+   }
+  ],
+  "values": [
+   "Faith",
+   "Love",
+   "Diligence",
+   "Generosity",
+   "Joy"
+  ],
+  "mission": "To raise a family that loves God, loves people and builds things that last."
+ },
+ "metrics": [
+  "Activation: ≥ 70 % of new spaces reach set-up (space + ≥ 2 members with roles + written values + one goal with milestones + one task each due today) in the first session",
+  "Median time to first briefing ≤ 5 minutes (≤ 90 s with demo)",
+  "Parent dashboard visits ≥ 5 days/week; tasks completed ≥ 15/week per family",
+  "≥ 3 learning or Bible activities completed per week; ≥ 1 goal updated per week",
+  "Evening check-in on ≥ 4 days/week; Sunday planning completed ≥ 3 of 4 weeks",
+  "Child feed completion ≥ 60 % of assigned items",
+  "Connection: ≥ 40 % of tasks linked to a goal; ≥ 80 % of goals with a milestone; ≥ 50 % of ledger entries categorised",
+  "Retention: Day-7 ≥ 55 %, Day-30 ≥ 40 %; child Day-30 ≥ 35 %",
+  "AI: ≥ 10 companion queries per active family per week; ≥ 50 % of AI plans used; ≥ 40 % of proposals confirmed; briefing opened ≥ 4 days/week",
+  "Outcomes: ≥ 80 % of families agree 'we can see what we're building'; goals completed per quarter; giving recorded; answered prayers logged"
+ ]
+}

@@ -1,0 +1,135 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Motion.
+
+   Three jobs: settle sections in as they are reached, bring a headline in a
+   line at a time, and reward the pointer. Durations and easings are the Carbon
+   tokens declared in `index.css`, so nothing here is arbitrary.
+
+   The accessibility contract is structural rather than a sweep-up at the end:
+   the hidden state lives *inside* the rules that animate it, every one of them
+   sits behind `prefers-reduced-motion: no-preference`, and the resting state of
+   every element is visible. If this file never loads, the app looks finished.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Section reveal ─────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+    .wf-reveal {
+        opacity: 0;
+        transform: translate3d(0, 16px, 0);
+        transition:
+            opacity var(--duration-slow-01) var(--ease-entrance),
+            transform var(--duration-slow-01) var(--ease-entrance);
+    }
+    .wf-reveal[data-shown="true"] {
+        opacity: 1;
+        transform: none;
+    }
+
+    /* Bars and meters grow when their card is reached, so progress reads as
+       progress rather than as a static fill. */
+    .wf-reveal .wf-grow {
+        transform: scaleX(0);
+        transform-origin: left center;
+        transition: transform var(--duration-slow-02) var(--ease-entrance);
+    }
+    .wf-reveal[data-shown="true"] .wf-grow {
+        transform: scaleX(1);
+    }
+}
+
+/* ── Headline, a line at a time ─────────────────────────────────────────────
+   The word boxes clip; the words inside them start below and rise. The stagger
+   is by line index, written onto each word by `SplitLines` after layout. */
+.wf-sl {
+    display: block;
+}
+.wf-sl__w {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+    /* Descenders would otherwise be sliced off by the clip. */
+    padding-bottom: 0.14em;
+    margin-bottom: -0.14em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .wf-sl__i {
+        display: inline-block;
+        /* 110%, not 100%: at exactly 100% a hairline of the antialiased
+           ascenders stays visible above the clip in Chrome and Safari. */
+        transform: translateY(110%);
+        transition: transform 780ms var(--ease-reveal);
+        transition-delay: calc(var(--sl-delay, 0ms) + var(--l, 0) * var(--sl-step, 80ms));
+    }
+    .wf-sl[data-shown="true"] .wf-sl__i {
+        transform: none;
+    }
+}
+
+/* ── Ambient float ──────────────────────────────────────────────────────────
+   Under 12px, slower than a breath, and out of phase with anything beside it.
+   Synchronised bobbing is the giveaway of a template. */
+@keyframes wf-float {
+    from,
+    to {
+        transform: translate3d(0, 0, 0);
+    }
+    50% {
+        transform: translate3d(0, -8px, 0);
+    }
+}
+@media (prefers-reduced-motion: no-preference) {
+    .wf-float {
+        animation: wf-float 7.2s ease-in-out infinite;
+    }
+    .wf-float--slow {
+        animation: wf-float 9s ease-in-out -3.4s infinite;
+    }
+}
+
+/* ── Pointer rewards ────────────────────────────────────────────────────── */
+.wf-lift {
+    transition:
+        transform var(--duration-moderate-01) var(--ease-productive),
+        box-shadow var(--duration-moderate-01) var(--ease-productive);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .wf-lift:hover {
+        transform: translate3d(0, -2px, 0);
+        box-shadow: var(--shadow-hover);
+    }
+}
+
+/* A cover image leans in slightly when its card is hovered. */
+.wf-zoom {
+    overflow: hidden;
+}
+.wf-zoom img {
+    transition: transform var(--duration-slow-01) var(--ease-expressive);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .wf-zoom:hover img {
+        transform: scale(1.04);
+    }
+}
+
+/* ── The whole lot, off ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .wf-reveal,
+    .wf-sl__i,
+    .wf-float,
+    .wf-float--slow {
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* ── A scrolling column that admits it is scrolling ─────────────────────────
+   Without this a long sidebar is simply sliced where the viewport ends, which
+   reads as a rendering bug rather than as more content below. */
+.wf-fade-y {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 28px), transparent 100%);
+}

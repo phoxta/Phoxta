@@ -1,0 +1,363 @@
+@import "tailwindcss";
+
+/*
+ * Wàfè design tokens → Tailwind theme.
+ *
+ * Three systems, each doing the job it is best at:
+ *
+ *  · **Coir Six** gives the shape and the finish — the tinted ground under
+ *    white cards, a radius scale that runs to 24px so a card reads as a card,
+ *    pill controls, Plus Jakarta Sans, soft category tints, the 3px progress
+ *    bar and the edge-to-edge rail. This is the sister product's language and
+ *    the reason the two feel like one family of software.
+ *  · **Untitled UI** gives the colour ramps — every tint ships with an ink dark
+ *    enough to sit on it and pass AA — plus the elevation ramp and the 4px
+ *    focus ring.
+ *  · **IBM Carbon** gives motion: durations and easings as tokens, and the
+ *    productive/expressive split, so nothing in this app animates by feel.
+ *
+ * Wàfè's olive stays the brand: the primary action, the active nav, the focus
+ * ring and the wordmark. The five areas keep their meaning — Grow reads green,
+ * Execute orange, Live amber, Create purple — restated on Untitled UI's ramps.
+ *
+ * The ground is warm rather than the sister product's cool lilac-grey: this is
+ * a home, not a classroom.
+ *
+ * A rebrand touches this block (or `applyBranding`) and nothing else.
+ */
+@theme {
+    /* ---- Type ------------------------------------------------------------
+       One face, as Coir Six does it. A family product does not need a second
+       voice in the headlines; weight and size carry the hierarchy. */
+    --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-display: "Plus Jakarta Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    /* ---- Type scale ------------------------------------------------------
+       Every size in the app used to be an arbitrary value — `text-[13px]` and
+       friends, 2,785 of them — so typography was the one thing a theme could
+       not change.
+
+       `--text-*: initial` clears Tailwind's own scale first, and that matters:
+       its defaults pair a line-height with each size, and inheriting one would
+       have imposed leading where an arbitrary value set none, shifting every
+       dense row in the app. Cleared, each utility emits `font-size` alone —
+       exactly what it replaced — so adopting the scale moved no pixels.
+
+       The tail (17, 19, 32, 36–48px and one stray 9.5px) is still arbitrary
+       on purpose: rounding those to the nearest step would have changed the
+       rendering, and a 9.5px label is a decision someone should make rather
+       than a codemod. */
+    --text-*: initial;
+    --text-2xs: 11px;
+    --text-xs: 12px;
+    --text-sm: 13px;
+    --text-md: 14px;
+    --text-base: 15px;
+    --text-lg: 16px;
+    --text-xl: 18px;
+    --text-2xl: 20px;
+    --text-3xl: 22px;
+    --text-4xl: 24px;
+    --text-5xl: 26px;
+    --text-6xl: 28px;
+    --text-7xl: 30px;
+    --text-8xl: 34px;
+
+    /* brand — Wàfè olive */
+    --color-brand: #3e4a3a;
+    --color-brand-hover: #2f392d;
+    --color-brand-soft: #edf0ea;
+    --color-brand-glow: rgba(62, 74, 58, 0.16);
+    --color-brand-ink: #35402f;
+
+    /* areas: Home/Family = olive · Grow = green · Execute = orange · Live = amber · Create = purple */
+    --color-home: #3e4a3a;
+    --color-home-soft: #edf0ea;
+    /* Olive is the least saturated of the six, so its soft tint all but
+       disappears on the warm ground. The hero panel takes one step deeper. */
+    --color-home-wash: #e6eae0;
+    --color-home-ink: #35402f;
+    --color-family: #3e4a3a;
+    --color-family-soft: #edf0ea;
+    --color-family-ink: #35402f;
+    --color-grow: #079455;
+    --color-grow-soft: #ecfdf3;
+    --color-grow-ink: #067647;
+    --color-execute: #e04f16;
+    --color-execute-soft: #fef6ee;
+    --color-execute-ink: #b93815;
+    --color-live: #ca8504;
+    --color-live-soft: #fefbe8;
+    --color-live-ink: #a15c07;
+    --color-create: #7f56d9;
+    --color-create-soft: #f9f5ff;
+    --color-create-ink: #6941c6;
+
+    /* accents used on covers, tags and states */
+    --color-terra: #e04f16;
+    --color-terra-soft: #fef6ee;
+    --color-ochre: #ca8504;
+    --color-ochre-soft: #fefbe8;
+    --color-plum: #7f56d9;
+    --color-plum-soft: #f9f5ff;
+    --color-sage: #4e5ba6;
+    --color-sage-soft: #f8f9fc;
+    --color-mint: #079455;
+    --color-mint-soft: #ecfdf3;
+    --color-peach: #dc6803;
+    --color-peach-soft: #fffaeb;
+    --color-danger: #d92d20;
+    --color-danger-soft: #fef3f2;
+    --color-danger-ink: #b42318;
+
+    /* avatar hues */
+    --color-lilac: #7839ee;
+    --color-lilac-soft: #f5f3ff;
+    --color-sky: #0086c9;
+    --color-sky-soft: #f0f9ff;
+    --color-rose: #dd2590;
+    --color-rose-soft: #fdf2fa;
+
+    /* named neutrals and states */
+    --color-olive-light: #5a6b53;
+    --color-sage-20: #eaecf5;
+    --color-success: #079455;
+    --color-success-soft: #ecfdf3;
+    --color-sun: #eaaa08;
+    --color-sun-soft: #fefbe8;
+    --color-accent: #1570ef;
+    --color-accent-soft: #eff8ff;
+    --color-accent-ink: #175cd3;
+
+    /* ---- Surfaces --------------------------------------------------------
+       Coir Six's arrangement — a tinted ground, white cards on top of it —
+       warmed towards paper, because this is a household rather than a course
+       catalogue. */
+    --color-page: #f7f6f3;
+    --color-card: #ffffff;
+    --color-subtle: #f0efea;
+    --color-line: #e9e7e0;
+    --color-line-strong: #d8d5cb;
+    --color-track: #e9e7e0;
+    --color-backdrop: #221f1a;
+
+    /* text */
+    --color-ink: #1c1d19;
+    --color-muted: #5c5f57;
+    --color-caption: #6f7268;
+
+    /* ---- Radius ----------------------------------------------------------
+       Coir Six's rule: the radius scales with the size of the thing. A tag is
+       6px, a card is 20px, a hero panel is 24px. The old scale topped out at
+       16px, which is why every surface read as a data table. */
+    --radius-xs: 6px;
+    --radius-sm: 12px;
+    --radius-md: 14px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
+
+    /* ---- Elevation -------------------------------------------------------
+       Untitled UI's ramp in the neutral's own hue, plus Coir Six's three
+       composite shadows for the app frame, hover and bottom sheet. */
+    --shadow-xs: 0 1px 2px 0 rgba(28, 29, 25, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(28, 29, 25, 0.09), 0 1px 2px -1px rgba(28, 29, 25, 0.06);
+    --shadow-hover: 0 8px 24px rgba(28, 29, 25, 0.08);
+    --shadow-app: 0 30px 80px rgba(28, 29, 25, 0.1);
+    --shadow-sheet: 0 -12px 40px rgba(28, 29, 25, 0.12);
+    --shadow-ring: 0 0 0 4px var(--color-brand-glow);
+
+    /* ---- Motion ----------------------------------------------------------
+       IBM Carbon's tokens. Productive easing is for anything the user is
+       waiting on; expressive is for anything that is there to be noticed.
+       `reveal` is the long settle used by entrances. */
+    --ease-productive: cubic-bezier(0.2, 0, 0.38, 0.9);
+    --ease-expressive: cubic-bezier(0.4, 0.14, 0.3, 1);
+    --ease-entrance: cubic-bezier(0, 0, 0.3, 1);
+    --ease-exit: cubic-bezier(0.4, 0.14, 1, 1);
+    --ease-reveal: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+    --duration-fast-01: 70ms;
+    --duration-fast-02: 110ms;
+    --duration-moderate-01: 150ms;
+    --duration-moderate-02: 240ms;
+    --duration-slow-01: 400ms;
+    --duration-slow-02: 700ms;
+}
+
+@layer base {
+    html {
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+    body {
+        @apply bg-page text-ink font-sans;
+        /* Coir Six's reading size. The old 14/20 was product density borrowed
+           from a developer tool; a family reads this on a phone at 06:30. */
+        font-size: 15px;
+        line-height: 21px;
+    }
+    h1,
+    h2,
+    .font-display {
+        font-family: var(--font-display);
+        font-weight: 600;
+        letter-spacing: -0.02em;
+    }
+    /* Child mode reads at 18px, per the brief's age-band rules. */
+    [data-band="little"] body,
+    [data-band="junior"] body {
+        font-size: 18px;
+        line-height: 28px;
+    }
+    /* Focus is visible and consistent everywhere: a brand ring at 2px offset,
+       following each control's own radius. */
+    :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+        outline: 2px solid var(--color-brand);
+        outline-offset: 2px;
+        border-radius: 6px;
+    }
+    ::selection {
+        background: var(--color-brand-soft);
+    }
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: var(--color-line-strong);
+        border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #b9b5a8;
+    }
+}
+
+@layer components {
+    /*
+     * Every white surface in the app is written `bg-card`. Coir Six's card is
+     * white on a tinted ground with no border at all; the hairline is kept
+     * here only at the card-sized radii, at the ground's own hue, so panels
+     * still separate on a busy screen without the app reading as a grid of
+     * boxes. Any explicit `shadow-*`, `border-*` or `rounded-*` utility still
+     * wins: utilities out-rank this layer.
+     */
+    .bg-card {
+        box-shadow: var(--shadow-xs);
+    }
+    .bg-card[class~="rounded-lg"],
+    .bg-card[class~="rounded-xl"],
+    .bg-card[class~="rounded-2xl"] {
+        border: 1px solid var(--color-line);
+    }
+}
+
+@utility no-scrollbar {
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* Two-line clamp for card titles (design system: "clamp titles to two lines"). */
+@utility clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+@utility clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Edge-to-edge horizontal rail on mobile: bleeds by the gutter and snaps so
+   the first card lands on the grid. */
+@utility rail {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding: 0 20px;
+    padding: 0 20px 6px;
+    margin: 0 -20px;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    & > * {
+        scroll-snap-align: start;
+        flex: none;
+    }
+}
+
+/* Hero panels: a warm wash with a breath of brand, never a photograph. A
+   photograph behind text is the one thing this design system will not do. */
+@utility paper {
+    background-image:
+        radial-gradient(120% 90% at 0% 0%, rgba(62, 74, 58, 0.06), transparent 55%),
+        radial-gradient(90% 70% at 100% 100%, rgba(202, 133, 4, 0.05), transparent 60%);
+}
+
+/* Native <dialog> as a centred modal / bottom sheet. */
+dialog.cs-dialog {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    max-width: none;
+    max-height: none;
+    width: 100%;
+    height: 100%;
+    inset: 0;
+}
+dialog.cs-dialog::backdrop {
+    background: rgba(34, 31, 26, 0.55);
+    backdrop-filter: blur(4px);
+}
+
+/* Range inputs (player, sliders). */
+input[type="range"].cs-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+}
+input[type="range"].cs-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 0;
+    box-shadow: 0 1px 3px rgba(28, 29, 25, 0.3);
+}
+input[type="range"].cs-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 0;
+}
+
+@keyframes cs-spin-slow {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Memory reels: a slow Ken Burns drift per slide. */
+@keyframes wf-kenburns {
+    from {
+        transform: scale(1) translate3d(0, 0, 0);
+    }
+    to {
+        transform: scale(1.12) translate3d(-2%, -2%, 0);
+    }
+}

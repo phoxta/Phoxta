@@ -1,0 +1,11 @@
+node_modules
+dist
+*.local
+.vite
+.DS_Store
+
+.vercel
+.env*
+
+# Design-review screenshots and their helper scripts
+_shots
