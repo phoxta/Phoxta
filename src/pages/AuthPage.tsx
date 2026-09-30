@@ -2,12 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
+import { supabase } from "@/lib/supabaseClient";
+import type { Provider } from "@supabase/supabase-js";
 import { trackEvent } from "@/lib/analytics";
 
 type Mode = "login" | "signup" | "forgot" | "reset";
 const MODES: Mode[] = ["login", "signup", "forgot", "reset"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
+const OAUTH_ALLOWLIST = new Set<Provider>(["google", "azure", "github", "apple"]);
+const OAUTH_PROVIDERS = String(import.meta.env.VITE_SUPABASE_OAUTH_PROVIDERS ?? "").split(",").map((item) => item.trim() as Provider).filter((item) => OAUTH_ALLOWLIST.has(item));
 
 const ARROW = (
   <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -20,15 +24,19 @@ const ARROW = (
 
 const HEADINGS: Record<Mode, { title: string; sub: string }> = {
   login: { title: "Welcome back", sub: "Sign in to your Phoxta dashboard." },
-  signup: { title: "Create your account", sub: "Start running a business that already works." },
+  signup: { title: "Create your account", sub: "Discover what is worth building. No business idea required." },
   forgot: { title: "Reset your password", sub: "We'll email you a secure reset link." },
   reset: { title: "Set a new password", sub: "Choose a strong password to finish up." },
 };
 
 export default function AuthPage() {
-  const { session, loading: authLoading, recovery, configured, signIn, signUp, sendPasswordReset, updatePassword } = useAuth();
+  const { session, loading: authLoading, recovery, configured, signIn, signInOAuth, signUp, sendPasswordReset, updatePassword } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const selectedBusiness = params.get("business");
+  const selectedLabel = selectedBusiness
+    ? selectedBusiness.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : null;
 
   // Only allow internal, same-origin redirects.
   //
@@ -41,7 +49,7 @@ export default function AuthPage() {
   // character variants (`/\thost`, `/\nhost`) browsers strip before parsing.
   const redirectTo = useMemo(() => {
     const raw = params.get("redirect");
-    if (!raw) return "/dashboard";
+    if (!raw) return "/app";
     // Drop the C0 control characters and DEL that browsers ignore when parsing
     // a URL authority (a tab/CR/LF is what smuggles a host past prefix checks).
     // Done by char code rather than a regex so no control characters or unicode
@@ -50,15 +58,15 @@ export default function AuthPage() {
       .filter((ch) => { const c = ch.charCodeAt(0); return c > 0x20 && c !== 0x7f; })
       .join("");
     if (!cleaned.startsWith("/") || cleaned.startsWith("//") || cleaned.startsWith("/\\")) {
-      return "/dashboard";
+      return "/app";
     }
     try {
       const probe = "https://phoxta.invalid";
       const url = new URL(cleaned, probe);
-      if (url.origin !== probe) return "/dashboard";
+      if (url.origin !== probe) return "/app";
       return `${url.pathname}${url.search}${url.hash}`;
     } catch {
-      return "/dashboard";
+      return "/app";
     }
   }, [params]);
 
@@ -71,10 +79,13 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [marketing, setMarketing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [oauthFinalizing, setOauthFinalizing] = useState(false);
 
   // A recovery link processed by Supabase forces the "set a new password" form,
   // even if the URL's ?mode= was dropped.
@@ -97,8 +108,14 @@ export default function AuthPage() {
   // Once a session exists (sign-in, or recovery link), leave the auth screen —
   // except in reset mode, where the user still needs to set a new password.
   useEffect(() => {
-    if (session && mode !== "reset") navigate(redirectTo, { replace: true });
-  }, [session, mode, redirectTo, navigate]);
+    if (!session || mode === "reset") return;
+    const termsVersion = params.get("oauth_terms");
+    if (!termsVersion) { navigate(redirectTo, { replace: true }); return; }
+    let active = true; setOauthFinalizing(true);
+    supabase.auth.updateUser({ data: { terms_version: termsVersion, terms_accepted_at: new Date().toISOString(), marketing_consent: params.get("oauth_marketing") === "true" } })
+      .then(({ error }) => { if (!active) return; if (error) { setError("Your consent choices could not be saved. Please try again."); setOauthFinalizing(false); } else navigate(redirectTo, { replace: true }); });
+    return () => { active = false; };
+  }, [session, mode, redirectTo, navigate, params]);
 
   const heading = HEADINGS[mode];
   const showEmail = mode !== "reset";
@@ -118,6 +135,7 @@ export default function AuthPage() {
   // Explicit client-side validation (the form is noValidate so we control the
   // messaging). Mirrors the server rules — the server stays the source of truth.
   function validate(): string | null {
+    if (mode === 'signup' && !acceptedTerms) return 'Accept the Terms and Privacy Policy to create your account.';
     if (showEmail && !EMAIL_RE.test(email.trim())) return "Please enter a valid email address.";
     if (showPasswordField) {
       if (password.length < MIN_PASSWORD) return `Password must be at least ${MIN_PASSWORD} characters.`;
@@ -147,7 +165,7 @@ export default function AuthPage() {
         if (error) setError(error);
       } else if (mode === "signup") {
         trackEvent("signup_submitted");
-        const { error, needsConfirmation } = await signUp(email.trim(), password);
+        const { error, needsConfirmation } = await signUp(email.trim(), password, { marketing, termsVersion: 'phoxta-2.0-2026-09', redirect: redirectTo });
         if (error) setError(error);
         else if (needsConfirmation) setNotice("Check your inbox to confirm your email, then sign in.");
       } else if (mode === "forgot") {
@@ -169,7 +187,7 @@ export default function AuthPage() {
 
   // Avoid flashing the form while we resolve the session, or while a redirect
   // for an already-signed-in user is in flight.
-  if (authLoading || (session && mode !== "reset")) {
+  if (authLoading || oauthFinalizing || (session && mode !== "reset" && !error)) {
     return (
       <div className="d-flex align-items-center justify-content-center bg-neutral-0" style={{ minHeight: "100vh" }}>
         <div className="spinner-border text-dark" role="status" aria-label="Loading">
@@ -193,9 +211,9 @@ export default function AuthPage() {
             <h6 className="fw-700 fz-24 text-white mb-0">Phoxta</h6>
           </Link>
           <div className="pe-xl-5">
-            <h2 className="text-white fw-600 lh-1 mb-3">Own a business that already works.</h2>
+            <h2 className="text-white fw-600 lh-1 mb-3">Start with a business system. Make it work in your market.</h2>
             <p className="text-white" style={{ opacity: 0.75, maxWidth: 460 }}>
-              Pick a validated, AI-powered business, make it your own, and go live in minutes — not days.
+              Choose a business, tailor the offer, then run the repeatable work with practical AI support and your own judgement.
             </p>
           </div>
           <span className="fz-font-label text-white" style={{ opacity: 0.5 }}>
@@ -213,6 +231,12 @@ export default function AuthPage() {
 
             <h3 className="fw-600 mb-1">{heading.title}</h3>
             <p className="neutral-500 mb-4">{heading.sub}</p>
+            {(mode === "login" || mode === "signup") && OAUTH_PROVIDERS.length > 0 && <div className="d-grid gap-2 mb-4">{OAUTH_PROVIDERS.map(provider => <button key={provider} type="button" className="btn btn-outline-dark py-3 rounded-3" onClick={async () => { if (mode === "signup" && !acceptedTerms) { setError("Accept the Terms and Privacy Policy to create your account."); return; } setLoading(true); const result = await signInOAuth(provider, redirectTo, mode === "signup" ? { marketing, termsVersion: "phoxta-2.0-2026-09" } : undefined); if (result.error) { setError(result.error); setLoading(false); } }}>Continue with {provider === "azure" ? "Microsoft" : provider.charAt(0).toUpperCase() + provider.slice(1)}</button>)}</div>}
+            {selectedLabel && (
+              <div className="rounded-3 border-100 bg-neutral-50 px-3 py-2 mb-4 fz-font-md">
+                <strong>Your launch path:</strong> {selectedLabel}. We&apos;ll keep this choice with you through setup.
+              </div>
+            )}
 
             {error && (
               <div className="alert alert-danger py-2 px-3 fz-font-md" role="alert">
@@ -307,6 +331,10 @@ export default function AuthPage() {
                 </div>
               )}
 
+              {mode === 'signup' && <div className="mt-4 d-grid gap-3">
+                <label className="d-flex align-items-start gap-2"><input type="checkbox" checked={acceptedTerms} onChange={event => setAcceptedTerms(event.target.checked)} required style={{ marginTop: 5 }} /><span>I agree to the <Link to="/terms" target="_blank">Terms</Link> and <Link to="/privacy" target="_blank">Privacy Policy</Link>.</span></label>
+                <label className="d-flex align-items-start gap-2"><input type="checkbox" checked={marketing} onChange={event => setMarketing(event.target.checked)} style={{ marginTop: 5 }} /><span>Email me product news and learning updates. Optional; you can unsubscribe.</span></label>
+              </div>}
               <button
                 type="submit"
                 className="btn w-100 py-3 rounded-3 fw-600 text-white border-0 mt-3 d-inline-flex align-items-center justify-content-center gap-2"

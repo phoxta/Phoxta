@@ -46,14 +46,6 @@ const money = (cents: number) => {
   } catch { return `£${Math.round(cents / 100)}`; }
 };
 
-function greeting(d = new Date()): string {
-  const h = d.getHours();
-  if (h < 12) return "Morning";
-  if (h < 18) return "Afternoon";
-  return "Evening";
-}
-
-
 /**
  * Which marketplace listing a business came from.
  *
@@ -264,10 +256,10 @@ export default function DashboardHomePage() {
   // The comp's "My Requests", ticked off by what the account has actually done.
   const tasks = [
     { icon: I_USER, a: "Complete your profile", b: `${pct}% complete`, done: pct >= 100, to: "/dashboard/settings" },
-    { icon: I_BAG, a: "Own a business", b: orgs.length > 0 ? `${orgs.length} owned` : "Browse the marketplace", done: orgs.length > 0, to: "/dashboard/marketplace" },
-    { icon: I_ZAP, a: "Go live", b: live > 0 ? `${live} live` : "Launch your storefront", done: live > 0, to: "/dashboard/businesses" },
-    { icon: I_CHAT, a: "Meet your Operator", b: orgs.length > 0 ? "Ready in your console" : "Needs a business first", done: aiTokens > 0, to: "/dashboard/console" },
-    { icon: I_PEN, a: "Build with Studio", b: "Design pages visually", done: false, to: "/dashboard/studio" },
+    { icon: I_BAG, a: "Choose a business", b: orgs.length > 0 ? `${orgs.length} owned` : "Browse business packages", done: orgs.length > 0, to: "/dashboard/marketplace" },
+    { icon: I_ZAP, a: "Set the first offer", b: live > 0 ? `${live} live` : "Prepare your customer-facing essentials", done: live > 0, to: "/dashboard/businesses" },
+    { icon: I_CHAT, a: "Set AI boundaries", b: orgs.length > 0 ? "Ready in your run view" : "Choose a business first", done: aiTokens > 0, to: "/dashboard/console" },
+    { icon: I_PEN, a: "Prove one assumption", b: "Use a real customer signal before scaling", done: false, to: "/dashboard/console" },
   ];
 
   // Once the account is genuinely set up, the checklist has done its job — the
@@ -290,14 +282,14 @@ export default function DashboardHomePage() {
       {/* ── Header band ─────────────────────────────────────────────────── */}
       <header className="hrx-header">
         <div>
-          <p className="hrx-crumb">Portal&nbsp; <span>/&nbsp; Dashboard</span></p>
-          <h1 className="hrx-greet">Good {greeting()} {firstName}!</h1>
+          <p className="hrx-crumb">PHOXTA OPERATING APP</p>
+          <h1 className="hrx-greet">Welcome back, {firstName}.</h1>
         </div>
         <div className="hrx-header-right">
           <div className="hrx-actions">
-            <Link className="hrx-pill" to="/dashboard/marketplace">{I_PLUS} New Business</Link>
+            <Link className="hrx-pill" to="/dashboard/marketplace">{I_PLUS} Choose business</Link>
             <span className="hrx-pill d-none d-md-inline-flex">{I_CAL} {monthSpan}</span>
-            <Link className="hrx-pill primary" to="/dashboard/console">{I_DOC} Open Console</Link>
+            <Link className="hrx-pill primary" to="/dashboard/console">{I_DOC} Run business</Link>
           </div>
         </div>
       </header>
@@ -328,7 +320,7 @@ export default function DashboardHomePage() {
           ) : (
             <div className="hrx-card d-flex flex-column align-items-center justify-content-center text-center p-4" style={{ minHeight: 352 }}>
               <p className="neutral-500 mb-3" style={{ fontSize: 14 }}>
-                {loading ? "Loading…" : "You haven't launched a business yet."}
+                {loading ? "Loading…" : "Choose a business package when you are ready to set up your first offer."}
               </p>
               {!loading && <Link className="hrx-pill dark" to="/dashboard/marketplace">Browse the marketplace</Link>}
             </div>
@@ -392,7 +384,7 @@ export default function DashboardHomePage() {
               </div>
             ) : (
               <p className="neutral-500 mb-0 mt-3" style={{ fontSize: 14 }}>
-                Launch a business and your operator appears here — ask it to change a price, chase an order or draft a campaign.
+                Choose a business and your operator appears here to help with approved routine work, owner decisions and the next customer-facing task.
               </p>
             )}
           </section>

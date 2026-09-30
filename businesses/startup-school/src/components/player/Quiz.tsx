@@ -29,11 +29,11 @@ export function Quiz({ questions, onSubmit, lastScore }: { questions: QuizQuesti
                 </p>
             )}
             {questions.map((q, i) => (
-                <fieldset key={q.id} className="rounded-xl bg-card p-4">
-                    <legend className="mb-3 text-[15px] font-semibold">
+                <div key={q.id} role="group" aria-labelledby={`question-${q.id}`} className="rounded-xl border border-line bg-card p-5 max-md:p-4">
+                    <h2 id={`question-${q.id}`} className="mb-4 text-[16px] font-semibold leading-6">
                         <span className="mr-2 text-caption">{i + 1}.</span>
                         {q.prompt}
-                    </legend>
+                    </h2>
                     <div className="flex flex-col gap-2">
                         {q.options.map((opt, j) => {
                             const chosen = picked[q.id] === j;
@@ -54,13 +54,13 @@ export function Quiz({ questions, onSubmit, lastScore }: { questions: QuizQuesti
                                     <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border", chosen || state === "right" ? "border-current" : "border-line-strong")} aria-hidden="true">
                                         {state === "right" ? <Check size={12} strokeWidth={3} /> : state === "wrong" ? <X size={12} strokeWidth={3} /> : chosen ? <span className="size-2.5 rounded-full bg-brand" /> : null}
                                     </span>
-                                    <code className="font-sans">{opt}</code>
+                                    <span className="min-w-0 flex-1 text-[15px] leading-6">{opt}</span>
                                 </label>
                             );
                         })}
                     </div>
                     {submitted && <p className="mt-3 text-[13px] text-muted">{q.explanation}</p>}
-                </fieldset>
+                </div>
             ))}
             {submitted ? (
                 <div className={cn("flex flex-wrap items-center gap-3 rounded-xl p-4", passed ? "bg-mint-soft text-mint" : "bg-peach-soft text-peach")}>

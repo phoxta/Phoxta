@@ -1,13 +1,15 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Bell, BookOpen, CalendarClock, CheckSquare, Compass, GraduationCap, Inbox, LayoutGrid, Lightbulb, LogOut, Mail, Rocket, Settings, Users, Search as SearchIcon, TrendingUp } from "lucide-react";
+import { Bell, BookOpen, Compass, LayoutGrid, LogOut, Mail, Menu, Rocket, Settings, Users, Search as SearchIcon, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { greeting, initials } from "@startup-school/core";
 import { liveNow, openTasks, unreadMessages, unreadNotifications } from "@startup-school/core";
 import { useNow } from "@/lib/useNow";
 import { useAuth } from "@/state/auth";
+import { useAccess } from "@/state/access";
 import { useData } from "@/state/data";
 import { useTenant } from "@/state/tenant";
+import { useStaff } from "@/state/staff";
 import { Avatar, Badge, IconButton, SearchBox, Sparkle } from "@/components/ui/primitives";
 import { Toasts } from "@/components/ui/overlay";
 
@@ -24,55 +26,75 @@ import { Toasts } from "@/components/ui/overlay";
  * rest get the main column full width.
  */
 
-const NAV = [
-    { to: "/", label: "Dashboard", icon: LayoutGrid, end: true },
-    // Second, and not by accident: the venture record is the object every other
-    // screen in this school is about.
-    { to: "/venture", label: "Venture", icon: Rocket, badge: "venture" as const },
-    { to: "/inbox", label: "Inbox", icon: Inbox, badge: "inbox" as const },
-    { to: "/lessons", label: "Lesson", icon: BookOpen, badge: "live" as const },
-    { to: "/sessions", label: "Sessions", icon: CalendarClock, badge: "sessions" as const },
-    { to: "/adviser", label: "Adviser", icon: Lightbulb },
-    { to: "/tasks", label: "Task", icon: CheckSquare, badge: "tasks" as const },
-    { to: "/groups", label: "Group", icon: Users },
-    { to: "/courses", label: "Courses", icon: Compass },
-    { to: "/progress", label: "Progress", icon: TrendingUp },
-    // Shown to everyone; the page itself says "this is for mentors" when the
-    // account is not linked to one. Hiding it on a client-side role guess
-    // would be a worse lie than an honest empty state.
-    { to: "/mentoring", label: "Mentoring", icon: GraduationCap },
-];
+/** Five founder jobs, instead of a flat list of every feature in the product. */
+const WORKFLOWS = [
+    { id: "home", to: "/", label: "Home", icon: LayoutGrid },
+    { id: "learn", to: "/learn", label: "Learn", icon: BookOpen },
+    { id: "build", to: "/build", label: "Build", icon: Rocket },
+    { id: "connect", to: "/connect", label: "Connect", icon: Users },
+    { id: "progress", to: "/progress", label: "Progress", icon: TrendingUp },
+] as const;
 
-const TABS = [
-    { to: "/", label: "Home", icon: LayoutGrid, end: true },
-    { to: "/lessons", label: "Lesson", icon: BookOpen },
-    { to: "/tasks", label: "Task", icon: CheckSquare },
-    { to: "/groups", label: "Group", icon: Users },
-    { to: "/inbox", label: "Inbox", icon: Inbox },
-];
+const MOBILE_TABS = [
+    ...WORKFLOWS.slice(0, 4),
+    { id: "more", to: "/more", label: "More", icon: Menu },
+] as const;
+
+type WorkflowId = (typeof WORKFLOWS)[number]["id"] | "more";
+
+function activeWorkflow(pathname: string): WorkflowId {
+    if (pathname === "/") return "home";
+    if (pathname.startsWith("/learn") || pathname.startsWith("/courses") || pathname.startsWith("/lessons") || pathname.startsWith("/room")) return "learn";
+    if (pathname.startsWith("/build") || pathname.startsWith("/venture") || pathname.startsWith("/tasks") || pathname.startsWith("/adviser")) return "build";
+    if (pathname.startsWith("/connect") || pathname.startsWith("/groups") || pathname.startsWith("/mentors") || pathname.startsWith("/sessions") || pathname.startsWith("/inbox")) return "connect";
+    if (pathname.startsWith("/progress") || pathname.startsWith("/certificates")) return "progress";
+    return "more";
+}
 
 const NAV_ITEM = "flex items-center gap-3 py-3.5 text-[17px] font-medium";
 
 export function AppShell() {
     const { user, repo, catalogue } = useData();
     const { name } = useTenant();
-    const { signOut, leaveDemo, demo } = useAuth();
+    const { signOut } = useAuth();
+    const { can } = useAccess();
+    const { isStaff } = useStaff();
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const [q, setQ] = useState("");
     const [scrolled, setScrolled] = useState(false);
+    const [isMentor, setIsMentor] = useState(false);
+    const workspaceRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        workspaceRef.current?.scrollTo({ top: 0 });
         window.scrollTo({ top: 0 });
     }, [pathname]);
 
-    // The pinned toolbar grows a soft edge once content is moving under it.
+    // The desktop workspace, not the document, owns scrolling. Watch that
+    // surface so the toolbar edge follows the content moving beneath it.
     useEffect(() => {
-        const on = () => setScrolled(window.scrollY > 8);
+        const workspace = workspaceRef.current;
+        if (!workspace) return;
+        const on = () => setScrolled(workspace.scrollTop > 8);
         on();
-        window.addEventListener("scroll", on, { passive: true });
-        return () => window.removeEventListener("scroll", on);
+        workspace.addEventListener("scroll", on, { passive: true });
+        return () => workspace.removeEventListener("scroll", on);
     }, []);
+
+    // The mentor console is an operator surface, not learner navigation. Ask
+    // the repository rather than guessing from profile copy or a client role.
+    useEffect(() => {
+        let alive = true;
+        void repo.myMentor().then((mentor) => {
+            if (alive) setIsMentor(Boolean(mentor));
+        }).catch(() => {
+            if (alive) setIsMentor(false);
+        });
+        return () => {
+            alive = false;
+        };
+    }, [repo]);
 
     // A class on right now is the one thing in the sidebar that is time-
     // sensitive, so it gets its own tick rather than waiting for a navigation.
@@ -87,17 +109,19 @@ export function AppShell() {
         .flatMap((sec) => sec?.claims ?? [])
         .filter((c) => c.confidence !== "proven" && !c.test.trim()).length;
     const bellCount = unreadNotifications(user);
+    const currentWorkflow = activeWorkflow(pathname);
     const goSearch = () => {
         if (q.trim()) navigate(`/courses?q=${encodeURIComponent(q.trim())}`);
     };
     const logout = async () => {
-        if (demo) leaveDemo();
-        else await signOut();
+        await signOut();
         navigate("/login", { replace: true });
     };
+    const workflows = WORKFLOWS.filter((item) => item.id !== "connect" || can("cohort"));
+    const mobileTabs = MOBILE_TABS.filter((item) => item.id !== "connect" || can("cohort"));
 
     return (
-        <div className="min-h-dvh bg-page md:grid md:grid-cols-[216px_minmax(0,1fr)] md:gap-x-6 xl:pr-8">
+        <div className="min-h-dvh bg-page md:grid md:h-dvh md:grid-cols-[216px_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)] md:gap-x-6 md:overflow-hidden xl:pr-8">
             {/* Mobile app bar */}
             <header className="sticky top-0 z-20 flex items-center gap-3 bg-page px-5 pb-2 pt-3.5 md:hidden">
                 <Link to="/settings" aria-label="Your profile">
@@ -113,8 +137,8 @@ export function AppShell() {
                 </Link>
             </header>
 
-            {/* Sidebar: pinned to the viewport for the whole page. */}
-            <aside className="hidden border-r border-line bg-card md:sticky md:top-0 md:flex md:h-dvh md:flex-col" aria-label="Primary">
+            {/* Sidebar has its own internal overflow when its navigation is taller than the viewport. */}
+            <aside className="hidden border-r border-line bg-card md:flex md:h-dvh md:flex-col" aria-label="Primary">
                 {/* The wordmark never scrolls. */}
                 <div className="shrink-0 px-9 pb-6 pt-9">
                     <Link to="/" className="flex items-center gap-3 text-[17px] font-semibold">
@@ -126,23 +150,23 @@ export function AppShell() {
                 </div>
                 {/* Everything under it scrolls on its own when the window is short. */}
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-9 pb-11 pt-6">
-                    <div className="mb-2.5 text-[11px] font-medium tracking-[0.08em] text-caption">OVERVIEW</div>
+                    <div className="mb-2.5 text-[11px] font-medium tracking-[0.08em] text-caption">YOUR WORKSPACE</div>
                     <nav className="flex flex-col">
-                        {NAV.map((n) => (
-                            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cn(NAV_ITEM, isActive ? "text-brand" : "text-ink hover:text-brand")}>
+                        {isStaff && <Link to="/staff" className={cn(NAV_ITEM,"text-brand")}><Users size={20} />Staff workspace</Link>}
+                        <Link to="/programme" className={cn(NAV_ITEM,"text-ink")}><BookOpen size={20} />My programme</Link>
+                        {workflows.map((n) => (
+                            <Link key={n.id} to={n.to} aria-current={currentWorkflow === n.id ? "page" : undefined} className={cn(NAV_ITEM, currentWorkflow === n.id ? "text-brand" : "text-ink hover:text-brand")}>
                                 <n.icon size={20} strokeWidth={1.8} aria-hidden="true" />
                                 {n.label}
-                                {n.badge === "inbox" && inboxCount > 0 && <Badge className="ml-auto">{inboxCount}</Badge>}
-                                {n.badge === "live" && onAir && (
+                                {n.id === "learn" && onAir && (
                                     <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-danger-soft px-2 py-1 text-[11px] font-semibold text-danger-ink">
                                         <span className="size-1.5 animate-pulse rounded-full bg-danger" aria-hidden="true" />
                                         Live
                                     </span>
                                 )}
-                                {n.badge === "tasks" && taskCount > 0 && <span className="ml-auto text-[12px] text-muted">{taskCount}</span>}
-                                {n.badge === "sessions" && sessionCount > 0 && <span className="ml-auto text-[12px] text-muted">{sessionCount}</span>}
-                                {n.badge === "venture" && ventureTodo > 0 && <span className="ml-auto text-[12px] text-muted">{ventureTodo}</span>}
-                            </NavLink>
+                                {n.id === "build" && (taskCount + ventureTodo) > 0 && <span className="ml-auto text-[12px] text-muted">{taskCount + ventureTodo}</span>}
+                                {n.id === "connect" && (inboxCount + sessionCount) > 0 && <Badge className="ml-auto">{inboxCount + sessionCount}</Badge>}
+                            </Link>
                         ))}
                     </nav>
 
@@ -150,23 +174,29 @@ export function AppShell() {
                         <div className="mb-2.5 text-[11px] font-medium tracking-[0.08em] text-caption">SETTINGS</div>
                         <NavLink to="/settings" className={({ isActive }) => cn(NAV_ITEM, isActive ? "text-brand" : "text-ink hover:text-brand")}>
                             <Settings size={20} strokeWidth={1.8} aria-hidden="true" />
-                            Setting
+                            Settings
                         </NavLink>
+                        {isMentor && can("cohort") && (
+                            <NavLink to="/mentoring" className={({ isActive }) => cn(NAV_ITEM, isActive ? "text-brand" : "text-ink hover:text-brand")}>
+                                <Compass size={20} strokeWidth={1.8} aria-hidden="true" />
+                                Mentor desk
+                            </NavLink>
+                        )}
                         <button type="button" onClick={() => void logout()} className={cn(NAV_ITEM, "text-danger-ink")}>
                             <LogOut size={20} strokeWidth={1.8} aria-hidden="true" />
-                            {demo ? "Exit demo" : "Logout"}
+                            Logout
                         </button>
                     </div>
                 </div>
             </aside>
 
             {/* Main + right rail */}
-            <div className="min-w-0 pb-24 md:pb-10">
+            <div ref={workspaceRef} className="min-w-0 pb-24 md:min-h-0 md:overflow-y-auto md:overscroll-contain md:pb-10">
                 {/* Toolbar: pinned, so search / inbox / notifications / you are one
                     click away however far down the page you are. Its height is
                     --cs-topbar-h in index.css; other sticky things sit below it. */}
                 <div className={cn("sticky top-0 z-20 mb-3 hidden items-center gap-4 bg-page pb-4 pt-[30px] transition-shadow md:flex", scrolled && "shadow-[0_10px_18px_-14px_rgba(27,27,35,0.35)]")}>
-                    <SearchBox value={q} onChange={setQ} onSubmit={goSearch} className="max-w-[720px] flex-1" />
+                    <SearchBox value={q} onChange={setQ} onSubmit={goSearch} placeholder="Search courses" className="max-w-[720px] flex-1" />
                     <div className="ml-auto flex items-center gap-4">
                         <Link to="/inbox" className="relative" aria-label={`Inbox${inboxCount ? `, ${inboxCount} unread` : ""}`}>
                             <IconButton label="Inbox" dot={inboxCount > 0} tabIndex={-1}>
@@ -185,18 +215,9 @@ export function AppShell() {
                         </Link>
                     </div>
                 </div>
-                {demo && repo.kind === "demo" && (
-                    <div className="mb-4 hidden items-center gap-3 rounded-lg bg-brand-soft px-4 py-2.5 text-[13px] text-brand-ink md:flex">
-                        <span className="font-semibold">Demo</span>
-                        You're exploring as Tobi. Everything works and is kept in this browser.
-                        <Link to="/signup" className="ml-auto font-semibold underline underline-offset-4">
-                            Create your own account
-                        </Link>
-                    </div>
-                )}
                 <div className="px-5 md:px-0">
                     <div className="mb-4 md:hidden">
-                        <SearchBox value={q} onChange={setQ} onSubmit={goSearch} />
+                        <SearchBox value={q} onChange={setQ} onSubmit={goSearch} placeholder="Search courses" />
                     </div>
                     <Outlet />
                 </div>
@@ -204,20 +225,23 @@ export function AppShell() {
 
             {/* Mobile tab bar */}
             <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-line bg-card px-2 pb-[calc(10px+env(safe-area-inset-bottom))] pt-2.5 md:hidden" aria-label="Primary">
-                {TABS.map((t) => (
-                    <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => cn("flex min-w-14 flex-col items-center gap-1 text-[11px] font-medium", isActive ? "text-brand" : "text-muted")}>
-                        {({ isActive }) => (
+                {mobileTabs.map((t) => (
+                    <Link key={t.id} to={t.to} aria-current={currentWorkflow === t.id ? "page" : undefined} className={cn("flex min-w-14 flex-col items-center gap-1 text-[11px] font-medium", currentWorkflow === t.id ? "text-brand" : "text-muted")}>
+                        {(() => {
+                            const isActive = currentWorkflow === t.id;
+                            return (
                             <>
                                 <span className="relative">
                                     <t.icon size={22} strokeWidth={1.8} aria-hidden="true" />
-                                    {t.to === "/inbox" && inboxCount > 0 && <span className="absolute -right-1 -top-1 size-2 rounded-full bg-danger" />}
-                                    {t.to === "/lessons" && onAir && <span className="absolute -right-1 -top-1 size-2 animate-pulse rounded-full bg-danger" />}
+                                    {t.id === "connect" && inboxCount > 0 && <span className="absolute -right-1 -top-1 size-2 rounded-full bg-danger" />}
+                                    {t.id === "learn" && onAir && <span className="absolute -right-1 -top-1 size-2 animate-pulse rounded-full bg-danger" />}
                                 </span>
                                 {t.label}
                                 <i className={cn("block size-1 rounded-full", isActive ? "bg-brand" : "bg-transparent")} aria-hidden="true" />
                             </>
-                        )}
-                    </NavLink>
+                            );
+                        })()}
+                    </Link>
                 ))}
             </nav>
             <Toasts />

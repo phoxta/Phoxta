@@ -194,6 +194,11 @@ export default function MainLayout({
   const HeaderComponent = HEADER_COMPONENTS[headerStyle] ?? Header1;
   const FooterComponent = FOOTER_COMPONENTS[footerStyle] ?? Footer1;
   const isFooterFloating = footerStyle === 2;
+  // The programme hero contains its own clear next-step controls. Fixed
+  // conversation launchers sit on top of its compact mobile cards, so keep
+  // this focused learning landing page free of floating chrome.
+  const isStartupSchoolLanding = pathname === "/startup-school";
+  const showFloatingAssistants = !isStartupSchoolLanding && pathname !== "/";
 
   return (
     <MobileMenuCloneProvider>
@@ -226,11 +231,9 @@ export default function MainLayout({
         {!noFooter && isFooterFloating ? <Footer2 ref={footerRef} /> : null}
       </div>
 
-      <BackToTop />
-      <FloatingVoiceWidget />
-      {/* Text alongside voice: every storefront Phoxta sells had a text
-          assistant while phoxta.com itself had only the mic. */}
-      <FloatingChatWidget />
+      {!isStartupSchoolLanding && <BackToTop />}
+      {showFloatingAssistants && <FloatingVoiceWidget />}
+      {showFloatingAssistants && <FloatingChatWidget />}
     </MobileMenuCloneProvider>
   );
 }

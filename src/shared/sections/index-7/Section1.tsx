@@ -1,20 +1,12 @@
-import { onAnchorClick } from "@/shared/effects/scrollToId";
-import { STARTUP_SCHOOL } from "@/lib/db/platformLead";
 {/* Home 7 Section 1 (Hero - Advancing Startup Innovation) */}
 
-const BRACKET_ITEMS = [
-    { text: "[ LEARN ]", delay: "0.1" },
-    { text: "[ BUILD ]", delay: "0.2" },
-    { text: "[ LAUNCH ]", delay: "0.3" },
-    { text: "[ GROW ]", delay: "0.4" },
-];
+const SCHOOL_URL = "https://learn.phoxta.com";
 
-const AVATARS = [
-    { src: "/assets/imgs/pages/home-7/avatar-1.webp", alt: "Client 1", delay: "0.1" },
-    { src: "/assets/imgs/pages/home-7/avatar-2.webp", alt: "Client 2", delay: "0.2" },
-    { src: "/assets/imgs/pages/home-7/avatar-3.webp", alt: "Client 3", delay: "0.3" },
-    { src: "/assets/imgs/pages/home-7/avatar-4.webp", alt: "Client 4", delay: "0.4" },
-    { src: "/assets/imgs/pages/home-7/avatar-5.webp", alt: "Client 5", delay: "0.5" },
+const BRACKET_ITEMS = [
+    { text: "[ START ]", delay: "0.1" },
+    { text: "[ TEST ]", delay: "0.2" },
+    { text: "[ LAUNCH ]", delay: "0.3" },
+    { text: "[ IMPROVE ]", delay: "0.4" },
 ];
 
 const HEADLINE_ARROW_SVG = (
@@ -64,26 +56,10 @@ export default function Section1() {
                     style={{ height: "45%", background: "linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0))", pointerEvents: "none", zIndex: 1 }}
                     aria-hidden="true"
                 />
-                {/* Social proof: avatar stack + copy — overlaid bottom-left on the hero image */}
+                {/* A concise descriptor keeps the image useful without making an unsupported social-proof claim. */}
                 <div className="sec-1-home-7__proof position-absolute bottom-0 start-0 d-flex align-items-center flex-wrap gap-3 p-4" style={{ zIndex: 2 }}>
-                    <div className="sec-1-home-7__avatars">
-                        {AVATARS.map((avatar, i) => (
-                            <span
-                                key={i}
-                                className="sec-1-home-7__avatar at_fade_anim"
-                                data-start="100%"
-                                data-delay={avatar.delay}
-                            >
-                                <img
-                                    src={avatar.src}
-                                    alt={avatar.alt}
-                                    width={48}
-                                    height={48} loading="lazy" />
-                            </span>
-                        ))}
-                    </div>
                     <p className="sec-1-home-7__proof-text text-white fw-700 mb-0 at_fade_anim" data-start="100%" data-delay="0.6">
-                        Founders from around the <br className="d-none d-xl-inline" />world start here
+                        Practical business education <br className="d-none d-xl-inline" />for the work in front of you
                     </p>
                 </div>
             </div>
@@ -96,7 +72,6 @@ export default function Section1() {
                     {/* RIGHT: Copy + CTA */}
                     <div className="col-lg-6 sec-1-home-7__right">
                         <div className="sec-1-home-7__content">
-                            {/* [BUILD] [GROW] [SCALE] [BOOST] */}
                             <ul className="sec-1-home-7__brackets list-unstyled d-flex flex-wrap gap-4 mb-30">
                                 {BRACKET_ITEMS.map((item, i) => (
                                     <li
@@ -110,10 +85,9 @@ export default function Section1() {
                                 ))}
                             </ul>
 
-                            {/* Headline with diagonal arrow */}
                             <div className="sec-1-home-7__headline-wrap p-relative">
                                 <h1 className="sec-1-home-7__headline text-white text-uppercase fw-700 mb-30 at_fade_anim" data-start="100%" data-delay="0.3">
-                                    Practical business education for the AI era
+                                    Turn a business idea into a business you can run
                                 </h1>
                                 <span className="sec-1-home-7__headline-arrow-cover d-none d-md-inline-block">
                                     <span className="sec-1-home-7__headline-arrow at_fade_anim" data-start="100%" data-delay="0.6">
@@ -122,27 +96,19 @@ export default function Section1() {
                                 </span>
                             </div>
 
-                            {/* Description */}
                             <p className="sec-1-home-7__desc text-white mb-30 at_fade_anim" data-start="100%" data-delay="0.5">
-                                Learn strategy, finance, marketing and the AI tools reshaping business — then apply it all by building and running a real company, with expert mentors beside you.
+                                Learn how to find customers, shape an offer, launch well and build the day-to-day system behind it. Bring an idea, an existing business or a Phoxta turnkey business you want to make your own.
                             </p>
 
-                            {/* Primary CTA + icon bubble */}
-                            {/* The price belongs beside the ask. A CTA that
-                                hides what it costs until nine sections later
-                                gets clicked by people who then leave. */}
                             <p className="sec-1-home-7__price text-white mb-20 at_fade_anim" data-start="100%" data-delay="0.55">
-                                <strong>{STARTUP_SCHOOL.price}</strong> for {STARTUP_SCHOOL.duration} &middot; next cohort forming now
+                                Short, applied courses. Useful business work from the first lesson.
                             </p>
 
-                            {/* Goes to the signup on this page rather than to
-                                the generic contact form — the page has already
-                                done the selling by the time anyone presses it. */}
                             <div className="sec-1-home-7__cta d-flex align-items-center flex-wrap gap-2 mb-10">
-                                <a href="#enroll" onClick={onAnchorClick("enroll", 80)} className="sec-1-home-7__cta-btn at_fade_anim" data-start="100%" data-delay="0.3">
-                                    <span>Reserve my place</span>
+                                <a href={SCHOOL_URL} target="_blank" rel="noopener noreferrer" className="sec-1-home-7__cta-btn at_fade_anim" data-start="100%" data-delay="0.3">
+                                    <span>Start in Startup School</span>
                                 </a>
-                                <a href="#enroll" onClick={onAnchorClick("enroll", 80)} className="sec-1-home-7__cta-arrow" aria-label="Reserve my place">
+                                <a href={SCHOOL_URL} target="_blank" rel="noopener noreferrer" className="sec-1-home-7__cta-arrow" aria-label="Start in Startup School">
                                     {CTA_ARROW_SVG}
                                 </a>
                             </div>

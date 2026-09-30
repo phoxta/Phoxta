@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { Check, ChevronDown, FlaskConical, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Check, ChevronRight, CircleAlert, CircleCheck, FlaskConical, Pencil, Plus, Trash2 } from "lucide-react";
 import {
     STAGE_LABEL,
     STAGE_ORDER,
@@ -8,7 +9,9 @@ import {
     type VentureClaim,
     type VentureConfidence,
     type VentureSection,
+    type VentureSectionId,
     type VentureStage,
+    type VenturePath,
 } from "@startup-school/core";
 import { PageTitle } from "@/components/shell/AppShell";
 import { Button, Card, Field, Overline, ProgressBar, Spinner, Tag } from "@/components/ui/primitives";
@@ -16,275 +19,60 @@ import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { cn } from "@/lib/cn";
 
-/**
- * The venture record.
- *
- * One object, eight sections, read by every AI surface in the school. That is
- * the argument for the page existing at all: a model is useful here because it
- * knows about THIS business, and without a record each feature starts from
- * nothing and produces advice that would fit anybody.
- *
- * The part that earns its keep is the claims list. A statement without a
- * confidence reads as a fact; a guess without a test is just an admission.
- * Together they are the most useful thing a mentor can read before a session —
- * they say exactly where to push.
- */
+const GROUPS: { title: string; ids: VentureSectionId[] }[] = [
+    { title: "Start with the problem", ids: ["founder", "opportunity"] },
+    { title: "Shape the business", ids: ["model", "ai", "legal", "plan", "money"] },
+    { title: "Prove and ask", ids: ["traction", "asks"] },
+];
 
-const CONF: Record<VentureConfidence, { label: string; tone: "warn" | "fund" | "ok"; blurb: string }> = {
-    guess: { label: "Guess", tone: "warn", blurb: "Believed, not checked." },
-    evidence: { label: "Evidence", tone: "fund", blurb: "Something real points this way." },
-    proven: { label: "Proven", tone: "ok", blurb: "It has actually happened." },
+const PATH_LABEL: Record<VenturePath, string> = {
+    build: "Building from scratch",
+    phoxta_turnkey: "Launching a Phoxta AI business",
+    hybrid: "Adapting a Phoxta AI business",
 };
 
-const CONF_ORDER: VentureConfidence[] = ["guess", "evidence", "proven"];
+const CONFIDENCE: Record<VentureConfidence, { label: string; description: string; tone: "warn" | "fund" | "ok" }> = {
+    guess: { label: "Assumption", description: "You believe it, but have not checked it yet.", tone: "warn" },
+    evidence: { label: "Evidence", description: "Something real points this way.", tone: "fund" },
+    proven: { label: "Proven", description: "It has happened repeatedly.", tone: "ok" },
+};
 
-const uid = (): string => `vc-${Math.random().toString(36).slice(2, 9)}`;
+const uid = (): string => `venture-${Math.random().toString(36).slice(2, 10)}`;
 
-// ---------------------------------------------------------------------------
+const sectionWritten = (section?: VentureSection): boolean => Boolean(section?.body.trim() || section?.claims.length);
 
-function ClaimRow({
-    claim,
-    onChange,
-    onRemove,
-}: {
-    claim: VentureClaim;
-    onChange: (next: VentureClaim) => void;
-    onRemove: () => void;
-}) {
-    const conf = CONF[claim.confidence];
-    return (
-        <li className="rounded-xl border border-line p-3">
-            <div className="flex items-start gap-2">
-                <textarea
-                    value={claim.text}
-                    onChange={(e) => onChange({ ...claim, text: e.target.value })}
-                    rows={2}
-                    placeholder="What you believe to be true…"
-                    className="min-w-0 flex-1 resize-y rounded-lg border border-line bg-card px-3 py-2 text-[14px] leading-6 outline-none focus:border-brand"
-                />
-                <button
-                    type="button"
-                    onClick={onRemove}
-                    aria-label="Remove this claim"
-                    className="mt-1 rounded-lg p-1.5 text-caption hover:bg-page hover:text-danger-ink"
-                >
-                    <Trash2 size={15} />
-                </button>
-            </div>
-
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                <div role="group" aria-label="How sure are you?" className="flex rounded-lg border border-line p-0.5">
-                    {CONF_ORDER.map((c) => (
-                        <button
-                            key={c}
-                            type="button"
-                            aria-pressed={claim.confidence === c}
-                            onClick={() => onChange({ ...claim, confidence: c })}
-                            title={CONF[c].blurb}
-                            className={cn(
-                                "rounded-md px-2.5 py-1 text-[12px] font-semibold",
-                                claim.confidence === c ? "bg-brand text-white" : "text-muted hover:text-ink",
-                            )}
-                        >
-                            {CONF[c].label}
-                        </button>
-                    ))}
-                </div>
-                <span className="text-[12px] text-caption">{conf.blurb}</span>
-            </div>
-
-            {claim.confidence !== "proven" && (
-                <label className="mt-2.5 flex items-start gap-2">
-                    <FlaskConical size={14} className="mt-2.5 shrink-0 text-caption" />
-                    <span className="sr-only">What would settle it</span>
-                    <input
-                        value={claim.test}
-                        onChange={(e) => onChange({ ...claim, test: e.target.value })}
-                        placeholder="What would settle it?"
-                        className="min-w-0 flex-1 rounded-lg border border-line bg-card px-3 py-2 text-[13px] outline-none focus:border-brand"
-                    />
-                </label>
-            )}
-        </li>
-    );
+function nextSection(sections: Partial<Record<VentureSectionId, VentureSection>>): SectionSpec {
+    return VENTURE_SECTIONS.find((section) => !sectionWritten(sections[section.id])) ?? VENTURE_SECTIONS[0];
 }
 
-function SectionCard({ spec, section }: { spec: SectionSpec; section?: VentureSection }) {
-    const { mutate } = useData();
-    const { toast } = useToast();
-    const [open, setOpen] = useState(false);
-    const [editing, setEditing] = useState(false);
-    const [body, setBody] = useState(section?.body ?? "");
-    const [claims, setClaims] = useState<VentureClaim[]>(section?.claims ?? []);
-    const [busy, setBusy] = useState(false);
-
-    const filled = Boolean(section?.body?.trim() || section?.claims?.length);
-    const guesses = (section?.claims ?? []).filter((c) => c.confidence === "guess").length;
-
-    const start = () => {
-        setBody(section?.body ?? "");
-        setClaims(section?.claims ?? []);
-        setEditing(true);
-        setOpen(true);
-    };
-
-    const save = async () => {
-        setBusy(true);
-        try {
-            await mutate((r) =>
-                r.saveVenture({
-                    sections: {
-                        [spec.id]: {
-                            body: body.trim(),
-                            // An empty claim is a half-typed thought, not data.
-                            claims: claims.filter((c) => c.text.trim()),
-                            updatedAt: new Date().toISOString(),
-                        },
-                    },
-                }),
-            );
-            setEditing(false);
-            toast(`${spec.title} saved`);
-        } catch (e) {
-            toast(e instanceof Error ? e.message : "Could not save that");
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    return (
-        <Card as="li" className="flex flex-col">
-            <div className="flex flex-wrap items-start gap-3">
-                <button
-                    type="button"
-                    onClick={() => setOpen((v) => !v)}
-                    aria-expanded={open}
-                    className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
-                >
-                    <ChevronDown size={16} className={cn("mt-1 shrink-0 text-caption transition-transform", open && "rotate-180")} />
-                    <span className="min-w-0">
-                        <span className="flex flex-wrap items-center gap-2">
-                            <span className="text-[16px] font-semibold">{spec.title}</span>
-                            {!filled && <Tag tone="neutral">Empty</Tag>}
-                            {guesses > 0 && (
-                                <Tag tone="warn">
-                                    {guesses} {guesses === 1 ? "guess" : "guesses"}
-                                </Tag>
-                            )}
-                        </span>
-                        <span className="mt-0.5 block text-[13px] leading-5 text-muted">{spec.blurb}</span>
-                    </span>
-                </button>
-                {!editing && (
-                    <Button variant="outline" onClick={start}>
-                        <Pencil size={14} /> {filled ? "Edit" : "Write it"}
-                    </Button>
-                )}
-            </div>
-
-            {open && !editing && (
-                <div className="mt-4 border-t border-line pt-4">
-                    {section?.body ? (
-                        <p className="whitespace-pre-wrap text-[14px] leading-6">{section.body}</p>
-                    ) : (
-                        <p className="text-[14px] text-caption">Nothing written here yet. {spec.prompt}</p>
-                    )}
-
-                    {!!section?.claims?.length && (
-                        <ul className="mt-4 flex flex-col gap-2">
-                            {section.claims.map((c) => (
-                                <li key={c.id} className="rounded-xl bg-page p-3">
-                                    <div className="flex flex-wrap items-start gap-2">
-                                        <Tag tone={CONF[c.confidence].tone}>{CONF[c.confidence].label}</Tag>
-                                        <p className="min-w-0 flex-1 text-[14px] leading-6">{c.text}</p>
-                                    </div>
-                                    {c.confidence !== "proven" && c.test && (
-                                        <p className="mt-1.5 flex items-start gap-1.5 text-[13px] text-muted">
-                                            <FlaskConical size={13} className="mt-1 shrink-0" /> {c.test}
-                                        </p>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
-            )}
-
-            {editing && (
-                <div className="mt-4 border-t border-line pt-4">
-                    <label className="mb-1.5 block text-[13px] font-semibold" htmlFor={`body-${spec.id}`}>
-                        {spec.prompt}
-                    </label>
-                    <textarea
-                        id={`body-${spec.id}`}
-                        value={body}
-                        onChange={(e) => setBody(e.target.value)}
-                        rows={5}
-                        className="w-full resize-y rounded-xl border border-line bg-card px-3.5 py-3 text-[14px] leading-6 outline-none focus:border-brand"
-                    />
-
-                    <div className="mb-2 mt-4 flex flex-wrap items-center gap-2">
-                        <Overline>Claims</Overline>
-                        <span className="text-[12px] text-caption">{spec.claimHint}</span>
-                    </div>
-                    <ul className="flex flex-col gap-2">
-                        {claims.map((c, i) => (
-                            <ClaimRow
-                                key={c.id}
-                                claim={c}
-                                onChange={(next) => setClaims((list) => list.map((x, j) => (j === i ? next : x)))}
-                                onRemove={() => setClaims((list) => list.filter((_, j) => j !== i))}
-                            />
-                        ))}
-                    </ul>
-                    <Button
-                        variant="ghost"
-                        className="mt-2"
-                        onClick={() => setClaims((l) => [...l, { id: uid(), text: "", confidence: "guess", test: "" }])}
-                    >
-                        <Plus size={14} /> Add a claim
-                    </Button>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        <Button onClick={() => void save()} disabled={busy}>
-                            {busy ? <Spinner /> : <Check size={14} />} Save
-                        </Button>
-                        <Button variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
-                            <X size={14} /> Cancel
-                        </Button>
-                    </div>
-                </div>
-            )}
-        </Card>
-    );
-}
-
-// ---------------------------------------------------------------------------
-
-function Header() {
+function IdentityCard() {
     const { user, mutate } = useData();
     const { toast } = useToast();
-    const v = user.venture;
+    const venture = user.venture;
     const [editing, setEditing] = useState(false);
-    const [name, setName] = useState(v.name);
-    const [oneLiner, setOneLiner] = useState(v.oneLiner);
-    const [country, setCountry] = useState(v.country);
-    const [stage, setStage] = useState<VentureStage>(v.stage);
+    const [name, setName] = useState(venture.name);
+    const [oneLiner, setOneLiner] = useState(venture.oneLiner);
+    const [country, setCountry] = useState(venture.country);
+    const [stage, setStage] = useState<VentureStage>(venture.stage);
+    const [path, setPath] = useState<VenturePath>(venture.path);
     const [busy, setBusy] = useState(false);
 
-    const start = () => {
-        setName(v.name); setOneLiner(v.oneLiner); setCountry(v.country); setStage(v.stage);
-        setEditing(true);
-    };
+    useEffect(() => {
+        setName(venture.name);
+        setOneLiner(venture.oneLiner);
+        setCountry(venture.country);
+        setStage(venture.stage);
+        setPath(venture.path);
+    }, [venture]);
 
     const save = async () => {
         setBusy(true);
         try {
-            await mutate((r) => r.saveVenture({ name: name.trim(), oneLiner: oneLiner.trim(), country: country.trim(), stage }));
+            await mutate((repository) => repository.saveVenture({ name: name.trim(), oneLiner: oneLiner.trim(), country: country.trim(), stage, path }));
             setEditing(false);
-            toast("Saved");
-        } catch (e) {
-            toast(e instanceof Error ? e.message : "Could not save that");
+            toast("Venture details saved", "success");
+        } catch (error) {
+            toast(error instanceof Error ? error.message : "Could not save your venture", "danger");
         } finally {
             setBusy(false);
         }
@@ -292,132 +80,236 @@ function Header() {
 
     if (editing) {
         return (
-            <Card className="mb-6">
+            <Card className="border border-line">
                 <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="What is it called?" value={name} onChange={(e) => setName(e.target.value)} placeholder="Working name is fine" />
-                    <Field
-                        label="Where will it be registered?"
-                        value={country}
-                        onChange={(e) => setCountry(e.target.value)}
-                        placeholder="Nigeria, UK, Kenya…"
-                        hint="This changes the legal form, the funding sources and the payment rails. It is asked once."
-                    />
+                    <Field label="Venture name" value={name} onChange={(event) => setName(event.target.value)} placeholder="A working name is enough" />
+                    <Field label="Country or primary market" value={country} onChange={(event) => setCountry(event.target.value)} placeholder="Nigeria, Kenya, UK..." />
                 </div>
                 <label className="mt-3 block">
-                    <span className="mb-1.5 block text-[13px] font-semibold">In one sentence</span>
-                    <input
-                        value={oneLiner}
-                        onChange={(e) => setOneLiner(e.target.value)}
-                        placeholder="What it does, for whom. If it takes two sentences the model is not settled."
-                        className="w-full rounded-xl border border-line bg-card px-3.5 py-3 text-[14px] outline-none focus:border-brand"
-                    />
+                    <span className="mb-1.5 block text-[12px] font-medium uppercase tracking-[0.06em] text-muted">What are you building?</span>
+                    <textarea value={oneLiner} onChange={(event) => setOneLiner(event.target.value)} rows={3} placeholder="For a specific customer, we help them achieve a specific outcome." className="w-full resize-y rounded-lg border border-line-strong bg-page px-3.5 py-3 text-[14px] leading-6 outline-none placeholder:text-caption focus:border-brand focus:shadow-[0_0_0_3px_var(--color-brand-soft)]" />
                 </label>
                 <label className="mt-3 block">
-                    <span className="mb-1.5 block text-[13px] font-semibold">Where are you?</span>
-                    <select
-                        value={stage}
-                        onChange={(e) => setStage(e.target.value as VentureStage)}
-                        className="w-full rounded-xl border border-line bg-card px-3.5 py-3 text-[14px] outline-none focus:border-brand"
-                    >
-                        {STAGE_ORDER.map((sg) => (
-                            <option key={sg} value={sg}>{STAGE_LABEL[sg]}</option>
-                        ))}
+                    <span className="mb-1.5 block text-[12px] font-medium uppercase tracking-[0.06em] text-muted">Current stage</span>
+                    <select value={stage} onChange={(event) => setStage(event.target.value as VentureStage)} className="w-full rounded-lg border border-line-strong bg-page px-3.5 py-3 text-[14px] outline-none focus:border-brand focus:shadow-[0_0_0_3px_var(--color-brand-soft)]">
+                        {STAGE_ORDER.map((item) => <option key={item} value={item}>{STAGE_LABEL[item]}</option>)}
                     </select>
                 </label>
+                <label className="mt-3 block">
+                    <span className="mb-1.5 block text-[12px] font-medium uppercase tracking-[0.06em] text-muted">How are you getting started?</span>
+                    <select value={path} onChange={(event) => setPath(event.target.value as VenturePath)} className="w-full rounded-lg border border-line-strong bg-page px-3.5 py-3 text-[14px] outline-none focus:border-brand focus:shadow-[0_0_0_3px_var(--color-brand-soft)]">
+                        {(Object.keys(PATH_LABEL) as VenturePath[]).map((value) => <option key={value} value={value}>{PATH_LABEL[value]}</option>)}
+                    </select>
+                    <span className="mt-1.5 block text-[12px] leading-5 text-muted">A Phoxta turnkey business gives you a proven starting system; you still prove the customer, local offer, and operating economics.</span>
+                </label>
                 <div className="mt-4 flex flex-wrap gap-2">
-                    <Button onClick={() => void save()} disabled={busy}>
-                        {busy ? <Spinner /> : <Check size={14} />} Save
-                    </Button>
-                    <Button variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
-                        <X size={14} /> Cancel
-                    </Button>
+                    <Button onClick={() => void save()} disabled={busy}>{busy ? <Spinner /> : <Check size={15} />} Save details</Button>
+                    <Button variant="ghost" onClick={() => setEditing(false)} disabled={busy}>Cancel</Button>
                 </div>
             </Card>
         );
     }
 
     return (
-        <Card className="mb-6">
+        <Card className="border border-line">
             <div className="flex flex-wrap items-start gap-4">
                 <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <h2 className="text-[20px] font-semibold">{v.name || "Your venture"}</h2>
-                        <Tag tone="fund">{STAGE_LABEL[v.stage]}</Tag>
-                        {v.country ? <Tag tone="neutral">{v.country}</Tag> : <Tag tone="warn">No country set</Tag>}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-[20px] font-semibold leading-7">{venture.name || "Name your venture"}</h2>
+                        <Tag tone="fund">{STAGE_LABEL[venture.stage]}</Tag>
+                        <Tag tone="neutral">{PATH_LABEL[venture.path]}</Tag>
+                        {venture.country ? <Tag tone="neutral">{venture.country}</Tag> : <Tag tone="warn">Market missing</Tag>}
                     </div>
-                    <p className="text-[15px] leading-6 text-muted">
-                        {v.oneLiner || "No one-sentence version yet. It is the hardest paragraph you will write and the most useful."}
-                    </p>
+                    <p className="mt-2 max-w-3xl text-[14px] leading-6 text-muted">{venture.oneLiner || "Add a one-line description so the adviser, your mentors, and your own decisions all start from the same context."}</p>
                 </div>
-                <Button variant="outline" onClick={start}>
-                    <Pencil size={14} /> Edit
-                </Button>
+                <div className="flex flex-wrap gap-2"><Link to="/experiments" className="inline-flex h-10 items-center rounded-full border border-line-strong bg-card px-3.5 text-[13px] font-semibold hover:bg-page">Proof loop</Link><Button variant="outline" size="md" onClick={() => setEditing(true)}><Pencil size={14} /> Edit details</Button></div>
             </div>
         </Card>
     );
 }
 
-// ---------------------------------------------------------------------------
+function CanvasNav({
+    selectedId,
+    sections,
+    onSelect,
+}: {
+    selectedId: VentureSectionId;
+    sections: Partial<Record<VentureSectionId, VentureSection>>;
+    onSelect: (id: VentureSectionId) => void;
+}) {
+    return (
+        <nav aria-label="Venture canvas sections" className="rounded-xl border border-line bg-card p-3">
+            {GROUPS.map((group) => (
+                <div key={group.title} className="mb-4 last:mb-0">
+                    <Overline className="mb-1 px-2">{group.title}</Overline>
+                    <div className="flex flex-col gap-1">
+                        {group.ids.map((id) => {
+                            const spec = VENTURE_SECTIONS.find((item) => item.id === id)!;
+                            const section = sections[id];
+                            const active = id === selectedId;
+                            const openAssumptions = (section?.claims ?? []).filter((claim) => claim.confidence !== "proven" && !claim.test.trim()).length;
+                            return (
+                                <button key={id} type="button" onClick={() => onSelect(id)} className={cn("flex min-w-0 items-center gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors", active ? "bg-brand-soft text-brand-ink" : "text-ink hover:bg-page")}>
+                                    {sectionWritten(section) ? <CircleCheck size={15} className="shrink-0 text-mint" aria-hidden="true" /> : <span className="size-[15px] shrink-0 rounded-full border border-line-strong" aria-hidden="true" />}
+                                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{spec.title}</span>
+                                    {openAssumptions > 0 && <span className="text-[11px] text-peach">{openAssumptions}</span>}
+                                    {active && <ChevronRight size={14} className="shrink-0" aria-hidden="true" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+        </nav>
+    );
+}
 
-export default function VenturePage() {
-    const { user } = useData();
-    const v = user.venture;
+function ClaimEditor({ claim, sectionId, onChange, onRemove }: { claim: VentureClaim; sectionId: VentureSectionId; onChange: (claim: VentureClaim) => void; onRemove: () => void }) {
+    const confidence = CONFIDENCE[claim.confidence];
+    return (
+        <li className="rounded-lg border border-line bg-page p-3">
+            <div className="flex items-start gap-2">
+                <textarea value={claim.text} onChange={(event) => onChange({ ...claim, text: event.target.value })} rows={2} placeholder="A belief you need to prove, such as: Customers will pay for reliable pickup." className="min-w-0 flex-1 resize-y rounded-md border border-line-strong bg-card px-3 py-2 text-[14px] leading-6 outline-none placeholder:text-caption focus:border-brand" />
+                <button type="button" onClick={onRemove} className="rounded-md p-2 text-caption hover:bg-danger-soft hover:text-danger-ink" aria-label="Remove assumption"><Trash2 size={15} /></button>
+            </div>
+            <div className="mt-2.5 grid gap-2 sm:grid-cols-[170px_minmax(0,1fr)]">
+                <label>
+                    <span className="sr-only">Confidence</span>
+                    <select value={claim.confidence} onChange={(event) => onChange({ ...claim, confidence: event.target.value as VentureConfidence })} className="w-full rounded-md border border-line-strong bg-card px-2.5 py-2 text-[13px] outline-none focus:border-brand">
+                        {(Object.keys(CONFIDENCE) as VentureConfidence[]).map((value) => <option key={value} value={value}>{CONFIDENCE[value].label}</option>)}
+                    </select>
+                </label>
+                <p className="self-center text-[12px] leading-5 text-muted">{confidence.description}</p>
+            </div>
+            {claim.confidence !== "proven" && (
+                <div className="mt-2.5 flex flex-wrap items-center gap-2"><label className="flex min-w-0 flex-1 items-center gap-2"><FlaskConical size={14} className="shrink-0 text-caption" aria-hidden="true" /><span className="sr-only">Test that would settle this belief</span><input value={claim.test} onChange={(event) => onChange({ ...claim, test: event.target.value })} placeholder="What will you do this week to test it?" className="min-w-0 flex-1 rounded-md border border-line-strong bg-card px-3 py-2 text-[13px] outline-none placeholder:text-caption focus:border-brand" /></label><Link to={`/experiments?claim=${encodeURIComponent(claim.id)}&section=${encodeURIComponent(sectionId)}&hypothesis=${encodeURIComponent(claim.text)}`} className="shrink-0 text-[12px] font-semibold text-brand underline underline-offset-4">Run test</Link></div>
+            )}
+        </li>
+    );
+}
 
-    const { done, guesses, untested } = useMemo(() => {
-        const secs = Object.values(v.sections);
-        const claims = secs.flatMap((s) => s?.claims ?? []);
-        return {
-            done: secs.filter((s) => s?.body?.trim()).length,
-            guesses: claims.filter((c) => c.confidence === "guess").length,
-            untested: claims.filter((c) => c.confidence !== "proven" && !c.test.trim()).length,
-        };
-    }, [v.sections]);
+function SectionEditor({ spec, section }: { spec: SectionSpec; section?: VentureSection }) {
+    const { mutate } = useData();
+    const { toast } = useToast();
+    const [body, setBody] = useState(section?.body ?? "");
+    const [claims, setClaims] = useState<VentureClaim[]>(section?.claims ?? []);
+    const [busy, setBusy] = useState(false);
+    const openAssumptions = claims.filter((claim) => claim.confidence !== "proven" && !claim.test.trim()).length;
+
+    const save = async () => {
+        setBusy(true);
+        try {
+            await mutate((repository) => repository.saveVenture({
+                sections: {
+                    [spec.id]: {
+                        body: body.trim(),
+                        claims: claims.filter((claim) => claim.text.trim()),
+                        updatedAt: new Date().toISOString(),
+                    },
+                },
+            }));
+            toast(`${spec.title} saved`, "success");
+        } catch (error) {
+            toast(error instanceof Error ? error.message : "Could not save that section", "danger");
+        } finally {
+            setBusy(false);
+        }
+    };
 
     return (
-        <>
-            <PageTitle
-                title="Your venture"
-                sub="One record, read by everything else here — your mentors before a session, the adviser when you ask it something, and you when you have forgotten what you believed three months ago."
-            />
-
-            <Header />
-
-            <div className="mb-6 grid gap-4 sm:grid-cols-3">
-                <Card>
-                    <Overline>Sections written</Overline>
-                    <p className="mb-2 mt-1 text-[24px] font-semibold tabular-nums">
-                        {done}<span className="text-[15px] text-caption"> / {VENTURE_SECTIONS.length}</span>
-                    </p>
-                    <ProgressBar value={Math.round((done / VENTURE_SECTIONS.length) * 100)} />
-                </Card>
-                <Card>
-                    <Overline>Open guesses</Overline>
-                    <p className="mt-1 text-[24px] font-semibold tabular-nums">{guesses}</p>
-                    <p className="text-[13px] leading-5 text-muted">
-                        Things you believe and have not checked. Not a problem — an unmarked one is.
-                    </p>
-                </Card>
-                <Card>
-                    <Overline>Without a test</Overline>
-                    <p className="mt-1 text-[24px] font-semibold tabular-nums">{untested}</p>
-                    <p className="text-[13px] leading-5 text-muted">
-                        {untested ? "A guess with no way to settle it will still be a guess next quarter." : "Every open claim has something that would settle it."}
-                    </p>
-                </Card>
+        <section aria-labelledby={`section-${spec.id}`} className="rounded-xl border border-line bg-card p-5 max-md:p-4">
+            <div className="flex flex-wrap items-start gap-3">
+                <div className="min-w-0 flex-1">
+                    <Overline>Venture canvas</Overline>
+                    <h2 id={`section-${spec.id}`} className="mt-1 text-[21px] font-semibold leading-7">{spec.title}</h2>
+                    <p className="mt-1 text-[14px] leading-6 text-muted">{spec.blurb}</p>
+                </div>
+                {openAssumptions > 0 && <Tag tone="warn">{openAssumptions} test{openAssumptions === 1 ? "" : "s"} missing</Tag>}
             </div>
 
-            <div className="mb-3 flex items-center gap-2">
-                <Sparkles size={15} className="text-brand" />
-                <p className="text-[13px] text-muted">
-                    Sections a mentor reads first: <strong className="font-semibold text-ink">What you need</strong>, then your open guesses.
-                </p>
+            <label className="mt-5 block" htmlFor={`venture-body-${spec.id}`}>
+                <span className="mb-1.5 block text-[13px] font-semibold">Write what you know</span>
+                <span className="mb-2 block text-[13px] leading-5 text-muted">{spec.prompt}</span>
+                <textarea id={`venture-body-${spec.id}`} value={body} onChange={(event) => setBody(event.target.value)} rows={6} placeholder="Write in plain language. You can improve it later." className="w-full resize-y rounded-lg border border-line-strong bg-page px-3.5 py-3 text-[14px] leading-6 outline-none placeholder:text-caption focus:border-brand focus:shadow-[0_0_0_3px_var(--color-brand-soft)]" />
+            </label>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+                <div className="min-w-0 flex-1">
+                    <h3 className="text-[15px] font-semibold">Assumptions and evidence</h3>
+                    <p className="mt-0.5 text-[12px] leading-5 text-muted">{spec.claimHint}</p>
+                </div>
+                <Button variant="outline" size="md" onClick={() => setClaims((current) => [...current, { id: uid(), text: "", confidence: "guess", test: "" }])}><Plus size={14} /> Add one</Button>
+            </div>
+            {claims.length ? (
+                <ul className="mt-3 flex flex-col gap-2">
+                    {claims.map((claim, index) => <ClaimEditor key={claim.id} claim={claim} sectionId={spec.id} onChange={(next) => setClaims((current) => current.map((item, itemIndex) => itemIndex === index ? next : item))} onRemove={() => setClaims((current) => current.filter((_, itemIndex) => itemIndex !== index))} />)}
+                </ul>
+            ) : (
+                <p className="mt-3 rounded-lg bg-page px-3.5 py-3 text-[13px] leading-5 text-muted">No assumptions recorded yet. Add only the beliefs that would change your next decision if they were wrong.</p>
+            )}
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+                <Button onClick={() => void save()} disabled={busy}>{busy ? <Spinner /> : <Check size={15} />} Save section</Button>
+                <Link to={`/adviser?draft=${encodeURIComponent(`Help me decide what to test next for ${spec.title.toLowerCase()}.`)}`} className="inline-flex h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold text-brand hover:bg-brand-soft">
+                    Ask adviser <ArrowRight size={14} />
+                </Link>
+            </div>
+        </section>
+    );
+}
+
+/** The venture canvas is a single, navigable source of truth for every AI and mentor surface. */
+export default function VenturePage() {
+    const { user } = useData();
+    const venture = user.venture;
+    const defaultSection = useMemo(() => nextSection(venture.sections), [venture.sections]);
+    const [selectedId, setSelectedId] = useState<VentureSectionId>(defaultSection.id);
+    const selected = VENTURE_SECTIONS.find((section) => section.id === selectedId) ?? defaultSection;
+
+    const summary = useMemo(() => {
+        const sections = Object.values(venture.sections);
+        const claims = sections.flatMap((section) => section?.claims ?? []);
+        return {
+            written: sections.filter((section) => sectionWritten(section)).length,
+            openTests: claims.filter((claim) => claim.confidence !== "proven" && !claim.test.trim()).length,
+            evidence: claims.filter((claim) => claim.confidence === "evidence" || claim.confidence === "proven").length,
+        };
+    }, [venture.sections]);
+
+    return (
+        <div className="mx-auto max-w-6xl">
+            <PageTitle title="Venture canvas" sub="Capture the decisions, evidence, and tests that move your business forward." />
+            <IdentityCard />
+
+            <section className="mt-5 grid gap-3 sm:grid-cols-3" aria-label="Venture summary">
+                <Card className="border border-line py-3.5">
+                    <Overline>Canvas progress</Overline>
+                    <p className="mt-1 text-[22px] font-semibold tabular-nums">{summary.written}<span className="text-[14px] font-normal text-caption"> / {VENTURE_SECTIONS.length}</span></p>
+                    <ProgressBar value={(summary.written / VENTURE_SECTIONS.length) * 100} className="mt-2" />
+                </Card>
+                <Card className="border border-line py-3.5">
+                    <Overline>Next focus</Overline>
+                    <p className="mt-1 text-[16px] font-semibold leading-6">{defaultSection.title}</p>
+                    <button type="button" onClick={() => setSelectedId(defaultSection.id)} className="mt-1 text-[12px] font-semibold text-brand underline underline-offset-4">Open this section</button>
+                </Card>
+                <Card className={cn("border py-3.5", summary.openTests ? "border-peach-soft bg-peach-soft/35" : "border-line")}>
+                    <Overline>Evidence to collect</Overline>
+                    <p className="mt-1 text-[22px] font-semibold tabular-nums">{summary.openTests}</p>
+                    <p className="mt-0.5 text-[12px] leading-5 text-muted">{summary.openTests ? "Assumptions still need a test." : `${summary.evidence} evidence point${summary.evidence === 1 ? "" : "s"} recorded.`}</p>
+                </Card>
+            </section>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]">
+                <CanvasNav selectedId={selected.id} sections={venture.sections} onSelect={setSelectedId} />
+                <SectionEditor key={selected.id} spec={selected} section={venture.sections[selected.id]} />
             </div>
 
-            <ul className="flex flex-col gap-4">
-                {VENTURE_SECTIONS.map((spec) => (
-                    <SectionCard key={spec.id} spec={spec} section={v.sections[spec.id]} />
-                ))}
-            </ul>
-        </>
+            {summary.openTests > 0 && (
+                <div className="mt-5 flex items-start gap-3 rounded-xl border border-peach-soft bg-peach-soft/45 p-4">
+                    <CircleAlert size={18} className="mt-0.5 shrink-0 text-peach" aria-hidden="true" />
+                    <p className="text-[14px] leading-6 text-ink">Your open assumptions are visible in the canvas. Give each one a smallest next test before you treat it as a fact.</p>
+                </div>
+            )}
+        </div>
     );
 }

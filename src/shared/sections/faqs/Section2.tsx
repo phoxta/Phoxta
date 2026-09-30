@@ -8,10 +8,10 @@ export type FaqTopicsProps = { heading?: string; topics?: FaqTopic[] };
 export const FAQ_TOPICS_DEFAULTS = {
     heading: "Browse by topic",
     topics: [
-        { number: "01", title: "Overview", href: "#", description: "Essential questions to understand who we are, what we do, and who we work with.", image: "/assets/imgs/pages/img-161.webp" },
-        { number: "02", title: "Services", href: "#", description: "Details about our solutions, consulting offerings, and system capabilities.", image: "/assets/imgs/pages/img-162.webp" },
-        { number: "03", title: "Process", href: "#", description: "How we approach problems, execute projects, and collaborate with clients.", image: "/assets/imgs/pages/img-163.webp" },
-        { number: "04", title: "Support", href: "#", description: "Post-launch support, maintenance, updates, and system optimization.", image: "/assets/imgs/pages/img-164.webp" },
+        { number: "01", title: "Choose a system", href: "#accordionFaq1", description: "What Phoxta is, what a package includes and what activation involves.", image: "/assets/imgs/pages/img-161.webp" },
+        { number: "02", title: "Use AI well", href: "#accordionFaq2", description: "Where AI can assist and where the business owner must remain in control.", image: "/assets/imgs/pages/img-162.webp" },
+        { number: "03", title: "Run the business", href: "#accordionFaq3", description: "The customer, cash and operating work to review as the business grows.", image: "/assets/imgs/pages/img-163.webp" },
+        { number: "04", title: "Check the details", href: "#accordionFaq4", description: "Pricing, package scope, access and responsible data handling.", image: "/assets/imgs/pages/img-164.webp" },
     ] as FaqTopic[],
 } satisfies Required<FaqTopicsProps>;
 

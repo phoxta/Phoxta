@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Award, Flame, Target, Timer, TrendingUp } from "lucide-react";
+import { Award, Flame, FlaskConical, Target, Timer, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { duration, longDate } from "@startup-school/core";
 import { categoryWatched, courseProgress, dailyMinutes, goalPct, lessonsCompleted, minutesThisWeek, streak, studiedToday, totalMinutes } from "@startup-school/core";
@@ -19,6 +19,9 @@ export default function ProgressPage() {
     const last7 = dailyMinutes(user, 7).map((d, i, a) => ({ ...d, today: i === a.length - 1 }));
     const watched = categoryWatched(catalogue, user);
     const enrolled = user.enrollments.map((e) => ({ e, c: catalogue.courses.find((c) => c.id === e.courseId)! })).filter((x) => x.c);
+    const activeExperiments = user.experiments.filter((experiment) => experiment.status === "planned" || experiment.status === "running");
+    const decisions = user.experiments.filter((experiment) => experiment.decision.trim());
+    const validated = user.experiments.filter((experiment) => experiment.status === "validated").length;
 
     const tile = (icon: React.ReactNode, value: string, label: string, tone: string) => (
         <Card className="flex items-center gap-3.5">
@@ -32,7 +35,7 @@ export default function ProgressPage() {
 
     return (
         <>
-            <PageTitle title="Progress" sub="Effort made visible. This is the momentum the dashboard hints at." />
+            <PageTitle title="Progress" sub="Learning momentum and the proof that changed real venture decisions." />
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
                 <div className="flex flex-col gap-6">
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -115,6 +118,9 @@ export default function ProgressPage() {
                     <Card>
                         <h2 className="mb-3 text-[15px] font-semibold">This week</h2>
                         <ActivityStrip days={last7} />
+                    </Card>
+                    <Card className="border border-brand/20 bg-brand-soft/25">
+                        <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-full bg-card text-brand"><FlaskConical size={17} /></span><div className="min-w-0 flex-1"><h2 className="text-[15px] font-semibold">Venture proof</h2><p className="mt-1 text-[13px] leading-5 text-muted">{activeExperiments.length} test{activeExperiments.length === 1 ? "" : "s"} in motion · {decisions.length} decision{decisions.length === 1 ? "" : "s"} recorded · {validated} validated.</p><Link to="/experiments" className="mt-2 inline-flex text-[13px] font-semibold text-brand underline underline-offset-4">Review proof loop</Link></div></div>
                     </Card>
                     <Card>
                         <h2 className="mb-2 text-[15px] font-semibold">Certificates</h2>

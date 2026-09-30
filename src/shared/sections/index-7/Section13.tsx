@@ -17,10 +17,10 @@ const STAR_SVG = (
 );
 
 const AUDIENCE = [
-    { title: "Aspiring founders", desc: "You want to start a company and need the business skills — and the practice — to do it well." },
-    { title: "Operators & professionals", desc: "Level up your business acumen — strategy, finance, growth and AI — without pausing your career." },
-    { title: "Students & career changers", desc: "Get a practical business education and real experience, faster and cheaper than an MBA." },
-    { title: "Small-business owners", desc: "Modernize how you run and grow, with the fundamentals and the latest AI tools." },
+    { title: "You have an idea", desc: "You want to test whether a customer problem is real before committing to a business plan." },
+    { title: "You already run a business", desc: "You need clearer offers, better customer learning or stronger day-to-day operating routines." },
+    { title: "You are launching with Phoxta", desc: "You want to tailor a turnkey business to a local customer, market and operating reality." },
+    { title: "You want applied business skills", desc: "You learn best by working through real business decisions, not by collecting theory alone." },
 ];
 
 export default function Section13() {
@@ -31,8 +31,8 @@ export default function Section13() {
                     <div className="col-lg-7">
                         <span className="at-btn common-black text-uppercase bg-transparent mb-10 rounded-0 p-0">
                             <span className="text-uppercase">
-                                <span className="text-1">Who it's for</span>
-                                <span className="text-2">Who it's for</span>
+                                <span className="text-1">Who it is for</span>
+                                <span className="text-2">Who it is for</span>
                             </span>
                             <i>
                                 {ARROW_SVG}
@@ -40,13 +40,12 @@ export default function Section13() {
                             </i>
                         </span>
                         <h2 className="reveal-text mb-0">
-                            <RevealText>Built for ambitious people who want to build</RevealText>
+                            <RevealText>For people ready to work on a real business</RevealText>
                         </h2>
                     </div>
                     <div className="col-lg-5">
                         <p className="fz-font-lg neutral-700 mb-0">
-                            No business background required — just the drive to build. We meet you wherever
-                            you are.
+                            You do not need a business degree or a polished pitch. You need a question worth working through and the willingness to test what you believe.
                         </p>
                     </div>
                 </div>

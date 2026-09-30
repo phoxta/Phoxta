@@ -1,5 +1,4 @@
 import RevealText from "@/shared/effects/RevealText";
-import OdometerCounter from "@/shared/elements/OdometerCounter";
 import TeamCard2 from "@/shared/cards/TeamCard2";
 
 // About 2 Section 2 - Our Team
@@ -16,27 +15,27 @@ const ARROW_SVG = (
 const TEAM_MEMBERS = [
     {
         classList: "col-xxl-4 col-lg-6 col-12",
-        link: "/team-details",
+        link: "/marketplace",
         img: "/assets/imgs/pages/img-123.webp",
-        name: "Alex Morgan",
+        name: "Choose deliberately",
         delay: ".2",
-        position: "Creative Director",
+        position: "Start with one customer, offer and business system.",
     },
     {
         classList: "col-xxl-4 col-lg-6 col-12",
-        link: "/team-details",
+        link: "/founder",
         img: "/assets/imgs/pages/img-124.webp",
-        name: "Lena Park",
+        name: "Build evidence",
         delay: ".5",
-        position: "Data & Analytics Lead",
+        position: "Test the market, message and economics with real customers.",
     },
     {
         classList: "col-xxl-4 col-lg-6 col-12",
-        link: "/team-details",
+        link: "/contact",
         img: "/assets/imgs/pages/img-125.webp",
-        name: "Daniel Park",
+        name: "Run with care",
         delay: ".8",
-        position: "Technology Architect",
+        position: "Use practical AI support while retaining business judgement.",
     },
 ];
 
@@ -48,8 +47,8 @@ export default function Section2() {
                     <div className="col-xxl-1 col-lg-2">
                         <span className="at-btn common-black bg-transparent mb-10 rounded-0 p-0 mt-10">
                             <span className="text-uppercase">
-                                <span className="text-1">Our Team</span>
-                                <span className="text-2">Our Team</span>
+                                <span className="text-1">How we work</span>
+                                <span className="text-2">How we work</span>
                             </span>
                             <i>
                                 {ARROW_SVG}
@@ -60,16 +59,14 @@ export default function Section2() {
                     <div className="col-lg-7 col-md-7">
                         <h3 className="reveal-text">
                             <RevealText>
-                                Meet our dedicated <br /> and skilled team
+                                A clear system for the work <br /> that matters most
                             </RevealText>
                         </h3>
                     </div>
                     <div className="col-lg-3 col-md-5 ms-auto text-center">
-                        <h1 className="fz-ds-1 fw-500 mb-0 lh-1">
-                            <OdometerCounter count={190} suffix="+" />
-                        </h1>
+                        <h1 className="fz-ds-1 fw-500 mb-0 lh-1">1</h1>
                         <h6 className="fw-500 mb-0">
-                            Projects have been <br /> completed.
+                            business at a time, <br /> run with focus.
                         </h6>
                     </div>
                 </div>

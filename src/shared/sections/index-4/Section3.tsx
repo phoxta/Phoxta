@@ -26,31 +26,31 @@ const PROCESS_CARDS = [
         cardClass: "card-1",
         pillClass: "card__process-pill--1",
         num: "01",
-        title: "Discover",
+        title: "Map the work",
         description:
-            "We map your goals, data and workflows to find where AI delivers the highest return.",
+            "Choose one repeatable workflow, understand its current cost and name the person accountable for it.",
     },
     {
         cardClass: "card-2",
         pillClass: "card__process-pill--2",
         num: "02",
-        title: "Design",
+        title: "Set the boundaries",
         description:
-            "We architect the models, agents and integrations — and define guardrails and success metrics.",
+            "Agree the knowledge sources, access, approval points, hand-offs and the signal that will show progress.",
     },
     {
         cardClass: "card-3",
         pillClass: "card__process-pill--3",
         num: "03",
-        title: "Build",
-        description: "We develop, fine-tune and integrate your solution, then test it against real-world cases.",
+        title: "Pilot with real cases",
+        description: "Build the smallest useful version, test it on representative work and review failures before expanding it.",
     },
     {
         cardClass: "card-4",
         pillClass: "card__process-pill--4",
         num: "04",
-        title: "Deploy & optimize",
-        description: "We ship to production with monitoring and observability, then keep improving on live data.",
+        title: "Operate and improve",
+        description: "Give the team a simple review routine so knowledge, exceptions and quality keep improving after launch.",
     },
 ];
 
@@ -103,7 +103,7 @@ export default function Section3() {
                             </span>
                             <h3 className="reveal-text mb-0">
                                 <RevealText>
-                                    How we deliver your AI solution
+                                    How we make AI useful in real work
                                 </RevealText>
                             </h3>
                         </div>

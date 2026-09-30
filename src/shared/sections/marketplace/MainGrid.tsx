@@ -25,25 +25,24 @@ const ArrowIcon = () => (
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 function Card({ b }: { b: Blueprint }) {
-  const href = b.demo_url || "/auth";
+  const href = b.demo_url || "/marketplace";
   const external = Boolean(b.demo_url);
-  // Demo sites open in the in-page preview popup; keep href so middle-click /
-  // "open in new tab" still work.
   const [preview, setPreview] = useState(false);
   const linkProps = external
     ? {
         href,
         onClick: (e: React.MouseEvent) => {
-          if (e.metaKey || e.ctrlKey || e.shiftKey) return; // let the browser open a real tab
+          if (e.metaKey || e.ctrlKey || e.shiftKey) return;
           e.preventDefault();
           setPreview(true);
         },
       }
     : { href };
+  const choose = `/auth?mode=signup&business=${encodeURIComponent(b.slug)}&redirect=${encodeURIComponent(`/onboarding?business=${encodeURIComponent(b.slug)}`)}`;
   return (
     <article className="sec-4-home-9__card" data-category={slugify(b.vertical || "other")}>
       <div className="sec-4-home-9__visual">
-        <a {...linkProps} className="sec-4-home-9__visual-link cursor-hide">
+        <a {...linkProps} className="sec-4-home-9__visual-link cursor-hide" aria-label={`Preview ${b.name}`}>
           <div className="fix anim-zoomin">
             <img src={blueprintCover(b.slug, b.cover_url)} alt={b.name} width={600} height={450} loading="lazy" />
           </div>
@@ -69,14 +68,12 @@ function Card({ b }: { b: Blueprint }) {
       </div>
       <div className="sec-4-home-9__bar">
         <h3 className="sec-4-home-9__project">{b.name}</h3>
-        <a {...linkProps} className="sec-4-home-9__case">
-          <span>{external ? "View demo" : "View business"}</span>
+        <Link to={choose} className="sec-4-home-9__case">
+          <span>Choose this business</span>
           <CaseArrow />
-        </a>
+        </Link>
       </div>
-      {external && (
-        <SitePreviewModal url={href} title={b.name} open={preview} onClose={() => setPreview(false)} />
-      )}
+      {external && <SitePreviewModal url={href} title={b.name} open={preview} onClose={() => setPreview(false)} />}
     </article>
   );
 }
@@ -113,14 +110,9 @@ export default function MarketplaceMainGrid() {
     ? byVertical.filter((b) =>
         `${b.name} ${b.tagline ?? ""} ${b.description ?? ""} ${b.vertical ?? ""}`.toLowerCase().includes(q))
     : byVertical;
-  const col1 = visible.filter((_, i) => i % 2 === 0);
-  const col2 = visible.filter((_, i) => i % 2 === 1);
-
   return (
     <section className="sec-4-home-9 overflow-hidden bg-neutral-50">
       <div className="sec-4-home-9__container">
-        <h2 className="sec-4-home-9__title">The marketplace</h2>
-
         {q && (
           <p className="text-center neutral-500 mb-4" role="status">
             {visible.length} result{visible.length === 1 ? "" : "s"} for “{searchParams.get("q")}”
@@ -189,23 +181,18 @@ export default function MarketplaceMainGrid() {
           </script>
         )}
 
-        <div className="sec-4-home-9__grid">
-          <div className="sec-4-home-9__col">
-            {col1.map((b) => <Card key={b.id} b={b} />)}
-          </div>
-          <div className="sec-4-home-9__col sec-4-home-9__col--offset">
-            {col2.map((b) => <Card key={b.id} b={b} />)}
-          </div>
+        <div className="sec-4-home-9__grid sec-4-home-9__grid--catalogue">
+          {visible.map((b) => <Card key={b.id} b={b} />)}
         </div>
 
         <div className="sec-4-home-9__cta">
           <p className="sec-4-home-9__cta-text">
-            Validated, AI-powered businesses you can own and run from day one. Pick one, make it your own, and launch in minutes.
+            Preview a business, then choose the one you want to tailor and launch with a practical operating plan.
           </p>
           <Link className="at-btn" to="/auth?mode=signup">
             <span>
-              <span className="text-1">GET STARTED</span>
-              <span className="text-2">GET STARTED</span>
+              <span className="text-1">START YOUR PLAN</span>
+              <span className="text-2">START YOUR PLAN</span>
             </span>
             <i>
               <ArrowIcon />

@@ -24,9 +24,6 @@ export function Lobby({
     joining,
     error,
     onJoin,
-    demo,
-    asHost,
-    onAsHost,
 }: {
     lesson: LiveLesson;
     mentor: Mentor | null;
@@ -34,9 +31,6 @@ export function Lobby({
     joining: boolean;
     error: string | null;
     onJoin: (opts: JoinOptions) => void;
-    demo: boolean;
-    asHost: boolean;
-    onAsHost: (on: boolean) => void;
 }) {
     const [cam, setCam] = useState(false);
     const [mic, setMic] = useState(true);
@@ -161,14 +155,14 @@ export function Lobby({
                     {joining ? "Joining…" : "Join the class"}
                 </Button>
 
-                {demo && (
+                {false && (
                     <div className="mt-4 rounded-lg bg-page p-3">
                         <label htmlFor="join-as-host" className="flex cursor-pointer items-center gap-2.5 text-[13px] font-semibold">
                             <input
                                 id="join-as-host"
                                 type="checkbox"
-                                checked={asHost}
-                                onChange={(e) => onAsHost(e.target.checked)}
+                                checked={false}
+                                onChange={() => undefined}
                                 aria-describedby="join-as-host-hint"
                                 className="size-4 accent-[var(--color-brand)]"
                             />

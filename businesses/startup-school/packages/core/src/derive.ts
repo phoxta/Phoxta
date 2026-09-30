@@ -194,13 +194,13 @@ export const unreadMessages = (user: UserState): number => user.conversations.re
 export const unreadNotifications = (user: UserState): number => user.notifications.filter((n) => !n.readAt).length;
 export const openTasks = (user: UserState): number => user.tasks.filter((t) => !t.doneAt).length;
 
-/** Courses the learner hasn't started, ranked by their interests then rating. */
+/** Courses the learner has not started, ranked by their interests then course title. */
 export function recommended(cat: Catalogue, user: UserState, limit = 4): Course[] {
     const enrolled = new Set(user.enrollments.map((e) => e.courseId));
     const interests = new Set(user.profile.interests);
     return cat.courses
         .filter((c) => !enrolled.has(c.id))
-        .sort((a, b) => Number(interests.has(b.categoryId)) - Number(interests.has(a.categoryId)) || b.rating - a.rating)
+        .sort((a, b) => Number(interests.has(b.categoryId)) - Number(interests.has(a.categoryId)) || a.title.localeCompare(b.title))
         .slice(0, limit);
 }
 

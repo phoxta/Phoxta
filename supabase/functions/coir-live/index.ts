@@ -47,7 +47,7 @@ type Body = {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** How long a room token lives. Longer than any class, shorter than a session. */
-const TTL_SECONDS = 4 * 60 * 60;
+const TTL_SECONDS = 60;
 /** How early a learner may walk in, and how long after the end they may return. */
 const EARLY_MIN = 15;
 const LATE_MIN = 15;
@@ -163,6 +163,8 @@ Deno.serve(async (req) => {
     // refuse, so those two run as the caller — which also re-proves host-ness
     // inside the database rather than trusting this process to have checked.
     const asUser = userClient((req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, ""));
+    const { data: allowed, error: accessError } = await asUser.rpc("cs_live_access", { p_org: orgId, p_lesson: lessonId });
+    if (accessError || allowed !== true) return json({ error: "This class is not included in your active learner or teaching assignment." }, 403);
 
     // Enrolled at this school? A cs_profiles row is what that means here.
     const { data: profile } = await admin
@@ -233,7 +235,7 @@ Deno.serve(async (req) => {
     // Host-only, and app-level rather than media-server-level.
     if (op === "recording") {
       const url = String(body.url ?? "");
-      if (!/^https?:\/\//i.test(url) || url.length > 2000) return json({ error: "Missing recording." }, 400);
+      if (!url.startsWith(`school-recording:${orgId}/${lessonId}/`) || url.length > 2000) return json({ error: "Upload a private recording for this class first." }, 400);
       const { error } = await asUser.rpc("cs_set_recording", { p_org: orgId, p_lesson: lessonId, p_url: url });
       if (error) return json({ error: "The recording could not be published." }, 502);
       return json({ ok: true });
@@ -281,7 +283,9 @@ Deno.serve(async (req) => {
         // The whole point: only the host starts on stage. Everyone else is
         // promoted by the host, through `stage` below.
         canPublish: isHost,
-        admin: isHost,
+        // Moderation goes through this endpoint and rechecks the assignment.
+        // Never give a browser a long-lived media-server admin capability.
+        admin: false,
       });
 
       return json({ url: env("LIVEKIT_URL"), token, role: isHost ? "host" : "learner", canPublish: isHost, room });

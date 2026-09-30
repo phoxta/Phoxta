@@ -26,13 +26,13 @@ const PLANS = [
         key: "starter" as const,
         title: "Starter",
         priceClass: "text-price-starter",
-        desc: "Launch your first AI-powered business and start serving customers.",
-        btnText: "Get started",
+        desc: "For one business while you establish the offer, customer workflow and first operating rhythm.",
+        btnText: "Choose Starter",
         features: [
             "1 business",
-            "AI agent on every channel",
-            "Full operating console",
-            "Storefront on a free Phoxta subdomain",
+            "AI support for approved routine work",
+            "Operating Console for customer work",
+            "Start on a Phoxta subdomain",
             "200K AI tokens / month",
         ],
         popular: false,
@@ -41,13 +41,13 @@ const PLANS = [
         key: "growth" as const,
         title: "Growth",
         priceClass: "text-price-growth",
-        desc: "Grow an established business on your own brand and domain.",
-        btnText: "Get started",
+        desc: "For an operating business ready to use its own brand, domain and more deliberate follow-up.",
+        btnText: "Choose Growth",
         features: [
             "Up to 3 businesses",
             "Connect your own custom domain",
             "1M AI tokens / month",
-            "Proactive automations & briefings",
+            "Reviewable automations and owner briefings",
             "Priority support",
         ],
         popular: true,
@@ -56,12 +56,12 @@ const PLANS = [
         key: "scale" as const,
         title: "Scale",
         priceClass: "text-price-scale",
-        desc: "Run multiple businesses with a team and advanced AI.",
-        btnText: "Get started",
+        desc: "For a team operating multiple businesses with higher usage and more complex customer work.",
+        btnText: "Choose Scale",
         features: [
             "Up to 10 businesses",
             "5M AI tokens / month",
-            "Outbound & call-center agent",
+            "Outbound and call support workflows",
             "Team seats",
             "Priority support",
         ],
@@ -69,12 +69,24 @@ const PLANS = [
     },
 ];
 
+export type PricingPlan = {
+    key: string;
+    title: string;
+    priceClass: string;
+    desc: string;
+    btnText: string;
+    features: string[];
+    popular: boolean;
+    monthlyPrice?: string;
+    href?: string;
+};
 type Section12PricingProps = {
     titleSlot?: ReactNode;
     footerSlot?: ReactNode;
+    plans?: PricingPlan[];
 };
 
-export default function Section12Pricing({ titleSlot, footerSlot }: Section12PricingProps) {
+export default function Section12Pricing({ titleSlot, footerSlot, plans }: Section12PricingProps) {
     const [isAnnual, setIsAnnual] = useState(false);
     const prices = isAnnual ? ANNUAL_PRICES : MONTHLY_PRICES;
 
@@ -82,7 +94,7 @@ export default function Section12Pricing({ titleSlot, footerSlot }: Section12Pri
         <>
             <div className="row align-items-end mb-60 g-4">
                 <div className="col-lg-9">{titleSlot}</div>
-                <div className="col-lg-3 ms-lg-auto">
+                {!plans && <div className="col-lg-3 ms-lg-auto">
                     <div className="change-price-plan jus mt-6 wow img-custom-anim-top">
                         <span
                             className="price-plan-toggle-label"
@@ -117,12 +129,12 @@ export default function Section12Pricing({ titleSlot, footerSlot }: Section12Pri
                             Annual <span className="neutral-500">(save 20%)</span>
                         </span>
                     </div>
-                </div>
+                </div>}
             </div>
 
             <div className="row justify-content-center g-4">
-                {PLANS.map((plan) => (
-                    <div key={plan.key} className="col-lg-4">
+                {(plans ?? PLANS as PricingPlan[]).map((plan) => (
+                    <div key={plan.key} className={plans ? 'col-xl-3 col-md-6' : 'col-lg-4'}>
                         <div
                             className={`home-2-pricing-card ${plan.popular ? "home-2-pricing-card--popular" : ""}`.trim()}
                         >
@@ -135,14 +147,14 @@ export default function Section12Pricing({ titleSlot, footerSlot }: Section12Pri
                                     <span
                                         className={`home-2-pricing-card__price-value ${plan.priceClass}`}
                                     >
-                                        {prices[plan.key]}
+                                        {plan.monthlyPrice ?? prices[plan.key as keyof typeof prices]}
                                     </span>
                                     <span className="home-2-pricing-card__price-period">
-                                        {isAnnual ? "/mo, billed yearly" : "/monthly"}
+                                        {plan.monthlyPrice === 'Free' ? '' : isAnnual && !plans ? "/mo, billed yearly" : "/monthly"}
                                     </span>
                                 </div>
                                 <p className="home-2-pricing-card__desc">{plan.desc}</p>
-                                <Link className="at-btn px-5" to="/auth?mode=signup&redirect=/dashboard/billing">
+                                <Link className="at-btn px-5" to={plan.href ?? '/auth?mode=signup&redirect=/dashboard/billing'}>
                                     <span>
                                         <span className="text-1 text-capitalize">{plan.btnText}</span>
                                         <span className="text-2 text-capitalize">{plan.btnText}</span>

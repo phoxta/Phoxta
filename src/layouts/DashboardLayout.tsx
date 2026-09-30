@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { isPlatformAdmin } from "@/lib/db/platform";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import NoIndex from "@/seo/NoIndex";
@@ -8,6 +8,8 @@ import CommandBar from "@/components/dash/CommandBar";
 import { preloadRoute } from "@/pages/dashboard/preload";
 import { warmDashboard } from "@/lib/cache/warmDashboard";
 import "@/styles/dashboard-theme.css";
+import "@/styles/opportunity-console.css";
+import { BookOpen, Compass, FolderOpen, Home } from 'lucide-react';
 import {
   listNotifications,
   markNotificationRead,
@@ -18,6 +20,7 @@ import {
 type NavItem = {
   to: string;
   label: string;
+  icon: ReactNode;
   end?: boolean;
   platformOnly?: boolean;
   /** Overrides prefix matching where a page lives under someone else's path. */
@@ -45,23 +48,31 @@ const CUBE_LOGO = (
   <img width={36} height={36} src="/assets/imgs/template/logo/favicon.svg" alt="Phoxta" loading="lazy" />
 );
 
+const TODAY_ICON = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></svg>;
+const RUN_ICON = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 4c3.1.5 5.5 2.9 6 6l-5.1 5.1-5.9-5.9L14 4Z" /><path d="m9 9-3.8.8L3 14l3.5 1.5L8 19l4.2-2.2M14.5 9.5h.01" /></svg>;
+const BUSINESS_ICON = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9.5h16v10H4z" /><path d="M8 9.5V7a4 4 0 0 1 8 0v2.5M10 14h4" /></svg>;
+const ACCOUNT_ICON = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c.8-3.3 3.1-5 7-5s6.2 1.7 7 5" /></svg>;
+const PLATFORM_ICON = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3 4 7.5l8 4.5 8-4.5L12 3Z" /><path d="m4 12 8 4.5 8-4.5M4 16.5 12 21l8-4.5" /></svg>;
+
 const NAV: NavItem[] = [
-  { to: "/dashboard", end: true, label: "Home" },
+  { to: '/app', end: true, label: 'Home', icon: <Home size={18} /> },
+  { to: '/app/discover', label: 'Discover', icon: <Compass size={18} /> },
+  { to: '/app/opportunities', label: 'Opportunities', icon: <FolderOpen size={18} /> },
+  { to: '/app/school', label: 'School', icon: <BookOpen size={18} /> },
+  { to: "/dashboard", end: true, label: "Operations", icon: TODAY_ICON },
   {
-    to: "/dashboard/console", label: "Console",
+    to: "/dashboard/console", label: "Run", icon: RUN_ICON,
     activeWhen: (p) => p === "/dashboard/console" || isOpsConsole(p),
   },
-  { to: "/dashboard/studio", label: "Studio" },
-  { to: "/dashboard/marketplace", label: "Marketplace" },
   {
-    to: "/dashboard/businesses", label: "Businesses",
+    to: "/dashboard/businesses", label: "Businesses", icon: BUSINESS_ICON,
     activeWhen: (p) => p.startsWith("/dashboard/businesses") && !isOpsConsole(p),
   },
-  { to: "/dashboard/billing", label: "Billing" },
+  { to: "/dashboard/settings", label: "Account", icon: ACCOUNT_ICON },
   // Phoxta's own operating console. Hidden unless the signed-in user is on the
   // platform_admins roster — the RPCs behind it enforce that server-side too, so
   // hiding the link is presentation, not the control.
-  { to: "/dashboard/platform", label: "Platform", platformOnly: true },
+  { to: "/dashboard/platform", label: "Platform", icon: PLATFORM_ICON, platformOnly: true },
 ];
 
 const SETTINGS_PATH = "/dashboard/settings";
@@ -216,11 +227,45 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="hrx">
+    <div className="hrx hrx-workspace p2-console">
       <NoIndex />
 
+      <aside className="hrx-sidebar d-none d-lg-flex" aria-label="Primary navigation">
+        <Link to="/app" className="hrx-sidebar-brand">
+          <span className="hrx-sidebar-logo">{CUBE_LOGO}</span>
+          <span>
+            <b>Phoxta</b>
+            <small>OPERATING APP</small>
+          </span>
+        </Link>
+        <span className="hrx-sidebar-label">WORKSPACE</span>
+        <nav className="hrx-tabs" aria-label="Dashboard">
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              onMouseEnter={() => preloadRoute(item.to)}
+              aria-current={navActive(item, pathname) ? "page" : undefined}
+              className={`hrx-tab${navActive(item, pathname) ? " active" : ""}`}
+            >
+              <span className="hrx-nav-icon">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="hrx-sidebar-grow">
+          <Link to="/dashboard/marketplace" className="hrx-sidebar-action">
+            <span aria-hidden="true">+</span>
+            Add a business
+          </Link>
+        </div>
+        <div className="hrx-sidebar-bottom">
+          <Link to="/" className="hrx-sidebar-site">View Phoxta site <span aria-hidden="true">↗</span></Link>
+        </div>
+      </aside>
+
       <header className="hrx-nav position-relative">
-        <div className="hrx-nav-left">
+        <div className="hrx-nav-left d-lg-none">
           <button type="button" className="btn btn-link p-0 d-lg-none" style={{ color: "#272727" }} aria-label="Open menu" onClick={() => setOpen((v) => !v)}>
             {MENU_ICON}
           </button>
@@ -228,23 +273,10 @@ export default function DashboardLayout() {
             {CUBE_LOGO}
             <b className="d-none d-sm-inline">Phoxta</b>
           </Link>
-          <nav className="hrx-tabs d-none d-lg-flex" aria-label="Dashboard">
-            {navItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                onMouseEnter={() => preloadRoute(item.to)}
-                aria-current={navActive(item, pathname) ? "page" : undefined}
-                className={`hrx-tab${navActive(item, pathname) ? " active" : ""}`}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
         </div>
 
         <div className="hrx-nav-right">
-          <form className="hrx-search d-none d-xl-flex" role="search" onSubmit={submitSearch}>
+          <form className="hrx-search d-none d-lg-flex" role="search" onSubmit={submitSearch}>
             {SEARCH_ICON}
             <label className="visually-hidden" htmlFor="hrx-q">Search the marketplace</label>
             <input id="hrx-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search everything..." />
@@ -270,6 +302,11 @@ export default function DashboardLayout() {
               {IS_MAC ? "⌘K" : "Ctrl K"}
             </button>
           </form>
+
+          <Link to="/dashboard/marketplace" className="hrx-top-action d-none d-lg-inline-flex">
+            <span aria-hidden="true">+</span>
+            Add business
+          </Link>
 
           <div className="position-relative">
             <button type="button" className="hrx-notif" aria-label="Notifications" onClick={() => setBellOpen((v) => !v)}>
@@ -368,7 +405,7 @@ export default function DashboardLayout() {
               onClick={() => setOpen(false)}
             />
             <nav className="hrx-menu-panel d-lg-none" aria-label="Dashboard">
-              {[...navItems, { to: SETTINGS_PATH, label: "Settings" } as NavItem].map((item) => (
+              {[...navItems, { to: SETTINGS_PATH, label: "Settings", icon: ACCOUNT_ICON } as NavItem].map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}

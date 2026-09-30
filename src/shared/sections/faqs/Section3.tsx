@@ -30,9 +30,9 @@ type FaqSection = {
 export const FAQ_SECTIONS: FaqSection[] = [
     {
         number: "01",
-        title: "Acquisition & Launch",
+        title: "Choose & Activate",
         description:
-            "How to acquire a business, deploy your infrastructure, and go live.",
+            "What you choose, what you tailor and how the work begins.",
         accordionId: "accordionFaq1",
         items: [
             {
@@ -40,7 +40,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
                 num: "1",
                 question: "What is Phoxta?",
                 answer:
-                    "Phoxta is an M&A platform for high-margin, agentic businesses. We provide validated business blueprints that include autonomous infrastructure, unified commerce operations, and specialized AI models, allowing you to acquire and launch a revenue-ready business in minutes.",
+                    "Phoxta lets you start with an existing business system instead of a blank brief. You can preview the system, choose the package that fits your market, tailor the offer and begin operating it with practical support.",
                 open: true,
             },
             {
@@ -48,23 +48,23 @@ export const FAQ_SECTIONS: FaqSection[] = [
                 num: "2",
                 question: "Do I need technical expertise to operate these businesses?",
                 answer:
-                    "No. Phoxta businesses are engineered for autonomous operation. Your agentic console handles the technical complexity of CRM, commerce, and multi-channel communication, while you focus on high-level strategic growth.",
+                    "You do not need a software team to assess a package or begin setup. You still need to make the business decisions: who you serve, what you offer, how you price it and how you will learn from customers.",
                 open: false,
             },
             {
                 id: "collapseFaq1-3",
                 num: "3",
-                question: "What exactly is included in an acquisition?",
+                question: "What is included in a business package?",
                 answer:
-                    "Each acquisition includes a production-ready storefront, a comprehensive Agentic Operating Console, a specialized AI Agent (Email, Voice, SMS, WhatsApp), and a vertical-specific industry dossier for strategic intelligence.",
+                    "Every package page lists its scope before you choose it. Depending on the package, this can include a storefront, customer and operating workflows, content, templates and configured AI support. Read the package scope as the source of truth.",
                 open: false,
             },
             {
                 id: "collapseFaq1-4",
                 num: "4",
-                question: "How quickly can I deploy and scale?",
+                question: "What happens after I choose a business?",
                 answer:
-                    "Deployment is near-instant. Once you select a blueprint and finalize your brand configuration, your entire autonomous infrastructure is provisioned and ready for traffic immediately.",
+                    "You create an account, select the business and work through the activation steps. The first priorities are your market, offer, brand details, customer journey and operating checks — then you test with real customers before expanding.",
                 open: false,
             },
         ],
@@ -73,53 +73,53 @@ export const FAQ_SECTIONS: FaqSection[] = [
         number: "02",
         title: (
             <>
-                Agentic Operations <br />
-                &amp; Governance
+                AI Support <br />
+                &amp; Control
             </>
         ),
         description:
-            "How your autonomous agents manage workflows and business logic.",
+            "Where AI can help and where human judgement must remain.",
         accordionId: "accordionFaq2",
         items: [
             {
                 id: "collapseFaq2-1",
                 num: "1",
-                question: "What capabilities does the AI Operator have?",
+                question: "What can AI help with?",
                 answer:
-                    "The AI Operator is a production-grade agent that handles lead acquisition, appointment orchestration, order fulfillment, and omnichannel support. It uses Context-Aware RAG and long-term memory to maintain deep customer relationships.",
+                    "AI can help draft and organise work, summarise customer information, prepare replies and support repeatable workflows. The useful question is not whether AI can do a task, but whether the task has clear inputs, rules, review and a measurable result.",
                 open: true,
             },
                         {
                 id: "collapseFaq2-2",
                 num: "2",
-                question: "How is AI governance handled?",
+                question: "Who remains accountable for decisions?",
                 answer:
-                    "We use an Enterprise AI Governance model. You control every action via 'Human-in-the-Loop' (HITL) approvals. You can set granular policies for your agent—choosing which tasks are autonomous, which require your sign-off, and which are restricted.",
+                    "You do. AI can support a decision, but the business owner remains responsible for pricing, customer promises, sensitive information and the rules under which any automated action runs.",
                 open: false,
             },
             {
                 id: "collapseFaq2-3",
                 num: "3",
-                question: "Can the agent manage complex commerce tasks?",
+                question: "Can AI act automatically?",
                 answer:
-                    "Yes. The agent is integrated into your business logic, allowing it to issue refunds, update inventory, manage reservations, and schedule social content—all while maintaining a full audit trail.",
+                    "Use automation only for stable, repeated work with clear boundaries. Start by reviewing outputs, define what the system may and may not do, and keep human approval for high-impact customer, financial or legal decisions.",
                 open: false,
             },
             {
                 id: "collapseFaq2-4",
                 num: "4",
-                question: "Is the intelligence truly omnichannel?",
+                question: "How should I use AI across customer channels?",
                 answer:
-                    "Absolutely. Your business uses 'One Brain' across Email, SMS, WhatsApp, and Voice. Memory and context are shared across all touchpoints, ensuring a seamless experience for your customers regardless of the channel.",
+                    "Connect only the channels your customers actually use. Keep the offer and service standards consistent, make handoffs visible and review customer conversations regularly so automation improves the experience instead of hiding problems.",
                 open: false,
             },
         ],
     },
     {
         number: "03",
-        title: "Scale & Strategic Growth",
+        title: "Run & Grow",
         description:
-            "Managing portfolios, custom domains, and industry-specific tools.",
+            "How to operate one business well, then expand deliberately.",
         accordionId: "accordionFaq3",
         items: [
             {
@@ -127,31 +127,31 @@ export const FAQ_SECTIONS: FaqSection[] = [
                 num: "1",
                 question: "Can I manage multiple businesses from one console?",
                 answer:
-                    "Yes. Phoxta is designed for portfolio operators. You can acquire multiple high-margin businesses and manage them through a single unified console, sharing operations while maintaining distinct brand identities and domains.",
+                    "You can add businesses as your operation grows. Start with one clear customer, offer and operating rhythm; a second business should add a deliberate opportunity, not just another source of work.",
                 open: true,
             },
             {
                 id: "collapseFaq3-2",
                 num: "2",
-                question: "How do custom domains and SEO work?",
+                question: "When should I set up a custom domain?",
                 answer:
-                    "Every storefront is optimized for both human and AI search (LLM-ready). You can link your own custom domains with automated TLS/SSL provisioning via our Vercel-backed infrastructure.",
+                    "Set up a domain once the business name and initial offer are settled. It should point to a clear customer promise, useful pages and a reliable way for interested customers to contact or buy from you.",
                 open: false,
             },
             {
                 id: "collapseFaq3-3",
                 num: "3",
-                question: "What is the 'Business Dossier'?",
+                question: "What is a business system?",
                 answer:
-                    "The Dossier is an industry-specific intelligence report included with every blueprint. It covers market strategy, competitive analysis, and operational procedures, providing the strategic roadmap you need to scale.",
+                    "A business system is the connected starting point for an offer: the customer journey, operating workflow, content, tools and decisions needed to deliver value. It shortens setup; it does not replace customer validation or sound management.",
                 open: false,
             },
             {
                 id: "collapseFaq3-4",
                 num: "4",
-                question: "Is the platform LLM-optimized?",
+                question: "What should I review every week?",
                 answer:
-                    "Yes. Our frontend and content structures are designed for 'AI Search Optimization' (ASO), ensuring your business is correctly interpreted and recommended by AI-driven search engines and answer bots.",
+                    "Review customer demand, delivery quality, cash, recurring issues and the experiments you ran. Then choose one next action that improves the offer, customer experience or operating process.",
                 open: false,
             },
         ],
@@ -160,36 +160,36 @@ export const FAQ_SECTIONS: FaqSection[] = [
         number: "04",
         title: (
             <>
-                Investment, Billing <br />
-                &amp; Data Privacy
+                Pricing, Access <br />
+                &amp; Data
             </>
         ),
         description:
-            "Pricing models, asset ownership, and security standards.",
+            "The practical details to understand before you begin.",
         accordionId: "accordionFaq4",
         items: [
             {
                 id: "collapseFaq4-1",
                 num: "1",
-                question: "What is the investment model?",
+                question: "How does pricing work?",
                 answer:
-                    "Acquisition involves a one-time asset price for the business blueprint and a monthly subscription—Starter, Growth, or Scale—for the ongoing autonomous infrastructure and agent operations.",
+                    "The business package price and any ongoing Console plan are shown separately. Review the package scope, one-time cost and recurring costs before checkout so you understand what supports the initial setup and ongoing operation.",
                 open: true,
             },
             {
                 id: "collapseFaq4-2",
                 num: "2",
-                question: "Who owns the data and the customer records?",
+                question: "What should I check before I pay?",
                 answer:
-                    "You do. You have full ownership of your CRM, order history, and content. Data is isolated per tenant using enterprise-grade RLS (Row-Level Security) on our Supabase-backed infrastructure.",
+                    "Check the customer and market you intend to serve, the exact package scope, the work still required from you, the recurring cost and the customer or operating evidence you will use to judge progress.",
                 open: false,
             },
             {
                 id: "collapseFaq4-3",
                 num: "3",
-                question: "What happens to the business if I pause my subscription?",
+                question: "How should I handle business and customer data?",
                 answer:
-                    "Your business data remains yours. The autonomous infrastructure pauses, but all records are preserved. You can re-activate or export your business assets at any time.",
+                    "Collect only the data your business needs, give access deliberately and keep customer information accurate. Use your account, package terms and applicable privacy obligations as the guide for access, retention and export.",
                 open: false,
             },
             {
@@ -197,7 +197,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
                 num: "4",
                 question: "What level of security is provided?",
                 answer:
-                    "We employ production-grade security, including encrypted OAuth for Google Workspace, isolated database tenancy, and comprehensive audit logs for all AI and human actions.",
+                    "Security also depends on how you operate: use strong account access, limit permissions, protect customer information and review automated workflows. Do not give an AI system more access than the task requires.",
                 open: false,
             },
         ],

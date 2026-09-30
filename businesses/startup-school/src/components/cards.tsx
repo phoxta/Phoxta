@@ -18,11 +18,19 @@ export function CourseCard({ course, className, compact, surface = true }: { cou
     const p = courseProgress(catalogue, user, course.id);
     const saved = user.bookmarks.includes(course.id);
     const enrolled = user.enrollments.some((e) => e.courseId === course.id);
+    const courseNumber = String(Math.max(0, catalogue.courses.findIndex((item) => item.id === course.id)) + 1).padStart(2, "0");
     return (
         <article className={cn("flex w-[254px] flex-none flex-col gap-3 max-md:w-[240px] max-md:rounded-[18px] max-md:bg-card max-md:p-3", surface && "rounded-[18px] bg-card p-3 transition-shadow hover:shadow-hover", className)}>
             <div className="relative">
                 <Link to={`/courses/${course.slug}`} className="block rounded-md" aria-label={course.title}>
-                    <Cover theme={course.theme} src={course.coverUrl} className="h-[130px] max-md:h-[124px]" />
+                    <Cover
+                        theme={course.theme}
+                        src={course.coverUrl}
+                        className="h-[170px] max-md:h-[162px]"
+                        overline={`COURSE ${courseNumber}`}
+                        title={course.title}
+                        footer={CATEGORY_LABEL[course.categoryId].toUpperCase()}
+                    />
                 </Link>
                 <IconButton
                     label={saved ? "Remove from saved" : "Save course"}
@@ -34,10 +42,7 @@ export function CourseCard({ course, className, compact, surface = true }: { cou
                     <Heart size={16} strokeWidth={1.8} fill={saved ? "currentColor" : "none"} />
                 </IconButton>
             </div>
-            <Tag tone={course.categoryId} icon={<CategoryIcon id={course.categoryId} />}>
-                {CATEGORY_LABEL[course.categoryId]}
-            </Tag>
-            <h3 className="clamp-2 h-[42px] shrink-0 text-[15px] font-semibold leading-[21px]">
+            <h3 className="sr-only">
                 <Link to={`/courses/${course.slug}`}>{course.title}</Link>
             </h3>
             {enrolled ? <ProgressBar value={p.pct} label={`${course.title}: ${p.pct}% complete`} /> : !compact && <div className="text-[12px] text-muted">{duration(courseMinutes(catalogue, course.id) * 60)} · {course.level}</div>}

@@ -38,7 +38,7 @@ export default function GroupScreen() {
 
     if (!group) {
         return (
-            <Screen header={<Header />}>
+            <Screen header={<Header />} keyboardAware>
                 <EmptyState title="Group not found" action={<Button size="md" variant="outline" onPress={() => router.replace("/groups")}>All groups</Button>} />
             </Screen>
         );
@@ -60,7 +60,7 @@ export default function GroupScreen() {
     const uri = mediaUrl(group.imageUrl, MEDIA_BASE);
 
     return (
-        <Screen header={<Header title="Group" />}>
+        <Screen header={<Header title="Group" />} keyboardAware>
             {uri && <Image source={{ uri }} style={{ height: 140, width: "100%", borderRadius: 20, marginBottom: 18 }} contentFit="cover" transition={200} />}
             <Tag tone={group.categoryId} icon>
                 {CATEGORY_LABEL[group.categoryId]}

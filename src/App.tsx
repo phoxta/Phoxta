@@ -20,11 +20,9 @@ const TelegramMiniApp = lazy(() => import("@/pages/telegram/MiniApp"));
 const PortfolioLayout = lazy(() => import("@/layouts/PortfolioLayout"));
 const PortfolioPage = lazy(() => import("@/pages/portfolio/PortfolioPage"));
 const ProjectPage = lazy(() => import("@/pages/portfolio/ProjectPage"));
-// Solutions pages (linked from the nav's Solutions dropdown)
-const MarketingSolutionPage = lazy(() => import("@/pages/MarketingSolutionPage")); // /marketing
+// Public pages
 const AiTechPage = lazy(() => import("@/pages/AiTechPage")); // /ai-tech
 const StartupSchoolPage = lazy(() => import("@/pages/StartupSchoolPage")); // /startup-school
-const BrandDesignPage = lazy(() => import("@/pages/BrandDesignPage")); // /brand-design
 // Founder Toolkit (/founder) — free, public, no account. Journey + tools + adviser.
 const FounderLayout = lazy(() => import("@/pages/founder/FounderLayout"));
 const FounderHubPage = lazy(() => import("@/pages/founder/FounderHubPage")); // /founder
@@ -48,7 +46,7 @@ const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
 // Auth + app
 const AuthPage = lazy(() => import("@/pages/AuthPage"));
-const OnboardingPage = lazy(() => import("@/pages/OnboardingPage"));
+const OnboardingPage = lazy(() => import("@/pages/OnboardingEntryPage"));
 const DashboardHomePage = lazy(() => import("@/pages/dashboard/DashboardHomePage"));
 const IdeasPage = lazy(() => import("@/pages/dashboard/IdeasPage"));
 const IdeaDetailPage = lazy(() => import("@/pages/dashboard/IdeaDetailPage"));
@@ -92,6 +90,23 @@ const AgentOperatorPage = lazy(() => import("@/pages/dashboard/ops/agent/Operato
 const AgentConfigurePage = lazy(() => import("@/pages/dashboard/ops/agent/ConfigurePage"));
 const AgentKnowledgePage = lazy(() => import("@/pages/dashboard/ops/agent/KnowledgePage"));
 const GoogleWorkspacePage = lazy(() => import("@/pages/dashboard/ops/google/GoogleWorkspacePage"));
+const OwnerHubPage = lazy(() => import("@/pages/dashboard/ops/OwnerHubPage"));
+
+const OpportunityLayout = lazy(() => import("@/layouts/OpportunityLayout"));
+const DiscoveryPage = lazy(() => import("@/pages/opportunities/DiscoveryPage"));
+const OpportunityHome = lazy(() => import("@/pages/opportunities/HomePage"));
+const Opportunities = lazy(() => import("@/pages/opportunities/WorkspacePage").then(m => ({ default: m.OpportunitiesPage })));
+const OpportunityWorkspace = lazy(() => import("@/pages/opportunities/WorkspacePage"));
+const OpportunitySchool = lazy(() => import("@/pages/opportunities/SchoolPage"));
+const OpportunitySettings = lazy(() => import("@/pages/opportunities/SupportingPages").then(m => ({ default: m.OpportunitySettingsPage })));
+const OpportunityBusinesses = lazy(() => import("@/pages/opportunities/SupportingPages").then(m => ({ default: m.BusinessesCataloguePage })));
+const VentureWorkspaceHub = lazy(() => import("@/pages/opportunities/SupportingPages").then(m => ({ default: m.VentureWorkspaceHub })));
+const OpportunityAdmin = lazy(() => import("@/pages/opportunities/AdminPage"));
+function AuthAlias({ mode }: { mode: string }) {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search); params.set("mode", mode);
+  return <Navigate to={`/auth?${params}`} replace />;
+}
 
 // 301-style redirects from the original template URLs to the clean Phoxta paths,
 // so old links / bookmarks / indexed URLs never 404.
@@ -102,7 +117,7 @@ const LEGACY_REDIRECTS: [string, string][] = [
   ["/blog-details", "/blog"], ["/archive-1", "/blog"],
   ["/team", "/about"], ["/team-details", "/about"],
   ["/services-1", "/about"], ["/services-2", "/about"], ["/services-3", "/about"], ["/services-details", "/about"],
-  ["/index-3", "/marketing"], ["/index-4", "/ai-tech"], ["/index-7", "/startup-school"], ["/index-9", "/brand-design"],
+  ["/index-3", "/ai-tech"], ["/index-4", "/ai-tech"], ["/index-7", "/startup-school"], ["/index-9", "/ai-tech"],
   ["/startup-accelerator", "/startup-school"],
 ];
 
@@ -145,6 +160,8 @@ export default function App() {
     <Routes>
       {/* Auth (standalone, no marketing chrome) */}
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/login" element={<AuthAlias mode="login" />} />
+      <Route path="/signup" element={<AuthAlias mode="signup" />} />
 
       {/* Public storefront for a published Studio page (anon, renders own chrome) */}
       <Route path="/site/:orgId/:slug" element={<PublishedPage />} />
@@ -156,6 +173,21 @@ export default function App() {
       {/* Dashboard (protected app shell, Supabase-backed) */}
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/onboarding/:step" element={<OnboardingPage />} />
+        <Route element={<OpportunityLayout />}>
+          <Route path="/app" element={<OpportunityHome />} />
+          <Route path="/app/discover/*" element={<DiscoveryPage />} />
+          <Route path="/app/opportunities" element={<Opportunities />} />
+          <Route path="/app/opportunities/:id" element={<OpportunityWorkspace />} />
+          <Route path="/app/opportunities/:id/:tab/*" element={<OpportunityWorkspace />} />
+          <Route path="/app/school" element={<OpportunitySchool />} />
+          <Route path="/app/school/:course/:lesson" element={<OpportunitySchool />} />
+          <Route path="/app/settings/*" element={<OpportunitySettings />} />
+          <Route path="/app/businesses" element={<OpportunityBusinesses />} />
+          <Route path="/app/businesses/:slug" element={<OpportunityBusinesses />} />
+          <Route path="/app/workspace" element={<VentureWorkspaceHub />} />
+          <Route path="/admin/*" element={<OpportunityAdmin />} />
+        </Route>
         {/* Studio editor + preview run full-screen (no dashboard chrome / zoom). */}
         <Route path="/studio/:orgId/site" element={<StudioSiteEditorPage />} />
         <Route path="/studio/:orgId/:pageId" element={<StudioEditorPage />} />
@@ -172,6 +204,9 @@ export default function App() {
           <Route path="/dashboard/businesses/:id" element={<BusinessDetailPage />} />
           <Route path="/dashboard/businesses/:id/ops" element={<OperatingLayout />}>
             <Route index element={<OverviewPage />} />
+            <Route path="run" element={<OwnerHubPage hub="run" />} />
+            <Route path="grow" element={<OwnerHubPage hub="grow" />} />
+            <Route path="setup" element={<OwnerHubPage hub="setup" />} />
             {/* ── Engage: one tab, eight areas, over the tables we trust. ── */}
             <Route path="engage" element={<EngageLayout />}>
               <Route index element={<Navigate to="inbox" replace />} />
@@ -254,11 +289,18 @@ export default function App() {
       </Route>
 
       {/* ── Marketing site (public, curated) ───────────────────────────── */}
-      {/* noHeader: the homepage hero (index-1/Section1) renders HeaderNav itself
-          so the nav overlays the dark hero. No headerStyle here — with noHeader
-          set it selects nothing, and naming a variant only implied otherwise. */}
+      {/* The homepage section renders the Figma navigation in normal flow,
+          followed by the inset hero, so the layout must not add a second header. */}
       <Route element={<MainLayout footerStyle={1} noHeader />}>
         <Route path="/" element={<Home1Page />} />
+      </Route>
+      <Route path="/discover" element={<Navigate to="/marketplace" replace />} />
+      <Route path="/discover/:slug" element={<Navigate to="/marketplace" replace />} />
+      <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
+      <Route path="/businesses" element={<Navigate to="/marketplace" replace />} />
+      <Route path="/businesses/:slug" element={<Navigate to="/marketplace" replace />} />
+      <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
+        <Route path="/pricing" element={<PricingPage />} />
       </Route>
       {/* Personal portfolio (femi.phoxta.com). Reachable at /portfolio on any
           host too, which is what gets prerendered and what the femi.phoxta.com
@@ -272,19 +314,17 @@ export default function App() {
           it — a regulatory liability while indexed. Redirect until a real,
           papered offering exists. */}
       <Route path="/invest" element={<Navigate to="/contact" replace />} />
-      {/* Solutions pages (nav → Solutions dropdown) */}
-      <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
-        <Route path="/marketing" element={<MarketingSolutionPage />} />
-      </Route>
+      {/* The focused public journey has one offer for existing teams. Legacy
+          marketing and design URLs stay valid but lead to that offer. */}
+      <Route path="/marketing" element={<Navigate to="/ai-tech" replace />} />
       <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
         <Route path="/ai-tech" element={<AiTechPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={16} footerStyle={1} headerProps={{ light: true }} />}>
+      <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
         <Route path="/startup-school" element={<StartupSchoolPage />} />
+        <Route path="/school" element={<StartupSchoolPage />} />
       </Route>
-      <Route element={<MainLayout headerStyle={16} footerStyle={1} headerProps={{ light: true }} />}>
-        <Route path="/brand-design" element={<BrandDesignPage />} />
-      </Route>
+      <Route path="/brand-design" element={<Navigate to="/ai-tech" replace />} />
       {/* The Founder Toolkit. FounderLayout supplies the venture record (localStorage)
           to every page beneath it, so answers follow the visitor without an account. */}
       {/* The hub renders HeaderNav itself, inside its hero, so the nav floats over
@@ -306,7 +346,7 @@ export default function App() {
       <Route element={<MainLayout headerStyle={16} footerStyle={1} />}>
         <Route path="/about" element={<About2Page />} />
         <Route path="/marketplace" element={<ProductArchivePage />} />
-        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/resources" element={<BlogPage />} />
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/blog/:slug" element={<ArticlePage />} />
         {/* Per-tenant public Help Centers (dynamic — deliberately NOT prerendered). */}

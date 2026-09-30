@@ -125,7 +125,7 @@ export default function LiveLessonsPage() {
 
     return (
         <>
-            <PageTitle title="Lessons" sub="Live sessions with your mentors. Reserve a seat, then join from here when it starts." />
+            <PageTitle title="Live classes" sub="Reserve a seat, join a mentor-led class here, then return for the recording and recap." />
             <LiveNowBanner className="mb-6" />
             <section aria-labelledby="up-h">
                 <h2 id="up-h" className="mb-3 flex items-center gap-2 text-[18px] font-semibold">

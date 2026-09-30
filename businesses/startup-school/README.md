@@ -1,64 +1,32 @@
 # Phoxta Startup School
 
-A cohort programme for founders, built on the Coir Six school platform. Thirteen courses
-from founder fit to the day you sell, a live classroom every week, and mentors attached to
-each track.
+An applied programme for founders, built on the Coir Six school platform. The curriculum takes a founder through one connected journey: IDEA -> PROBLEM -> MARKET -> CUSTOMER -> BUSINESS MODEL -> BRAND -> MVP -> MARKETING -> LAUNCH -> GROWTH.
 
-It is a **duplicate of `businesses/coir-six`**, not a fork of its data: the two schools share
-the `cs_*` tables and are separated by `organization_id`. Every one of those tables is
-org-scoped, `cs_categories` is per-org, and `cs_courses.category_id` is plain `text` with no
-check constraint — so a second school needed content and branding, not schema.
+It is a duplicate of `businesses/coir-six`, not a fork of its data: the schools share `cs_*` tables but are separated by `organization_id`.
 
 ## The three tracks
 
-The ten stages of the handbook journey map onto three tracks, because the UI is built around
-exactly three categories (a three-card dashboard row, a three-column progress panel, three
-colour tokens).
+| Track | Focus | Courses |
+|---|---|---|
+| **Validate** | opportunity, market research, business model | 3 |
+| **Build** | brand, MVP, startup finance | 3 |
+| **Launch & Grow** | marketing, sales, launch, growth | 4 |
 
-| Track | Colour | Stages | Courses |
-|---|---|---|---|
-| **Start** | blue | founder fit, opportunity, model & strategy, legal form, plan & pitch | 5 |
-| **Fund** | purple | opening capital, growth capital, angels & venture | 3 |
-| **Grow** | pink | selling, operating, measuring, scaling, harvest | 5 |
-
-Thirteen courses · 27 modules · 58 lessons · 39 quiz questions · 6 live sessions · 5 groups.
+10 outcome-led courses / 106 applied topic lessons / 10 final assessments / 646 structured learning blocks / 50 checkpoint questions.
 
 ## Where the curriculum comes from
 
-`.claude/skills/entrepreneur-handbook` — HBR's *Entrepreneur's Handbook* distilled into
-fourteen chapters and four appendices, plus thirteen researched 2026 supplements
-(~146,000 words). The lesson bodies are written from its named frameworks: the three
-must-haves, the ten market questions with a confidence and a test, Magretta's narrative and
-numbers tests, the banker's three questions, the five lender ratios, the matching principle,
-the four leadership modes.
-
-**Lessons are written, not filmed, on purpose.** A founder school's video is its own recorded
-cohort sessions — the classroom already records to storage and attaches the recording to the
-session — so the catalogue carries the durable written method and the live timetable carries
-the teaching. `Lesson.kind` still supports `video`, so a tenant can add one at any time.
+The programme is written for Phoxta Startup School as an applied founder journey. Every topic includes a learning objective, an explanation, a practical activity, an AI reflection prompt and a reusable template. Each course ends in a business asset: an Opportunity Brief, Market Validation Report, Business Model Canvas, Brand Strategy Document, MVP Blueprint, 90-Day Marketing Plan, Customer Acquisition System, 12-Month Financial Model, Launch Plan or Growth Strategy.
 
 ## Editing the curriculum
 
-`packages/core/src/seed.ts` is the single source. It is **both** the bundled demo catalogue
-(what a visitor explores with no backend) **and** the seed for a live tenant, which is why
-the two can never disagree.
+`packages/core/src/curriculum.ts` is the single source for the 10-course catalogue. It derives the demo rows, structured lesson blocks and final assessments. `packages/core/src/seed.ts` supplies the surrounding school demo data and re-exports the curriculum for migration generation.
 
 ```bash
 npm run gen:migration     # regenerates supabase/migrations/0155_startup_school_seed.sql
 ```
 
-Never hand-edit the SQL. It is generated from the TypeScript by `scripts/gen-migration.mjs`
-so fifty-eight lesson bodies are not transcribed twice.
-
-To populate a real school:
-
-```sql
-select ss_seed_org('<organization uuid>');
-```
-
-Idempotent — re-running refreshes the catalogue and leaves learner rows untouched. Wire it
-into provisioning for the startup-school blueprint the way `cs_seed_org` is wired for
-coir-six (see `0152_coir_six_live_schedule.sql`).
+The checked-in `0158_startup_school_final_curriculum.sql` applies the replacement curriculum to already provisioned Startup School tenants. Both migrations are idempotent: re-running `ss_seed_org` refreshes the catalogue while preserving learner records.
 
 ## Commands
 

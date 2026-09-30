@@ -1,13 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
-import { useAuth } from "@/auth/AuthProvider";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { marketplaceBlueprintsQuery } from "@/lib/cache/dashboardQueries";
-import { formatPrice, type Blueprint } from "@/lib/db/marketplace";
+import { formatPrice } from "@/lib/db/marketplace";
 import { PROMO, promoPriceCents } from "@/lib/promo";
 import { blueprintCover } from "@/lib/blueprintCover";
-import { startBlueprintCheckout } from "@/lib/db/payments";
 import { PageHeader, Card, Chip, Empty } from "@/components/dash/Ui";
 
 // Page-local styles only — everything else comes from the .hrx kit.
@@ -21,16 +19,13 @@ const CSS = `
 `;
 
 export default function MarketplacePage() {
-  const { user } = useAuth();
   const { data, loading, error: loadError } = useCachedData(
     marketplaceBlueprintsQuery.key,
     marketplaceBlueprintsQuery.fetch,
   );
   const items = data ?? [];
-  const [actionError, setActionError] = useState<string | null>(null);
-  const error = loadError || actionError;
+  const error = loadError;
   const [vertical, setVertical] = useState<string>("All");
-  const [buyingId, setBuyingId] = useState<string | null>(null);
 
   // ?q= comes from the shell's top-bar search.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,19 +39,6 @@ export default function MarketplacePage() {
 
   // Buying goes through Paystack — the webhook provisions the business after
   // the charge succeeds, so this only starts the hosted checkout.
-  async function onBuy(bp: Blueprint) {
-    if (!user) return;
-    setActionError(null);
-    setBuyingId(bp.id);
-    const { url, error } = await startBlueprintCheckout(bp.id);
-    if (error || !url) {
-      setBuyingId(null);
-      setActionError(error ?? "Could not start the checkout.");
-      return;
-    }
-    window.location.assign(url);
-  }
-
   return (
     <div className="d-flex flex-column gap-2">
       <PageMeta title="Phoxta - Marketplace" />
@@ -64,8 +46,8 @@ export default function MarketplacePage() {
 
       <PageHeader
         crumb="Portal"
-        title="Marketplace"
-        note="Validated, AI-powered businesses — make one your own and launch in minutes."
+        title="Choose a business"
+        note="Compare the starting system, the owner work and the first launch steps before you commit."
         tabs={
           !loading && items.length > 0 ? (
             <div className="hrx-tabbar" role="tablist" aria-label="Filter by vertical">
@@ -156,14 +138,7 @@ export default function MarketplacePage() {
                       )}
                       <div className="mpx-tier text-capitalize">{bp.tier} · one-time</div>
                     </div>
-                    <button
-                      type="button"
-                      className="hrx-pill primary mpx-buy"
-                      disabled={buyingId === bp.id}
-                      onClick={() => onBuy(bp)}
-                    >
-                      {buyingId === bp.id ? "Setting up…" : "Make it yours"}
-                    </button>
+                    <Link to={`/dashboard/marketplace/${bp.slug}`} className="hrx-pill primary mpx-buy">Review package</Link>
                   </div>
                 </div>
               </div>

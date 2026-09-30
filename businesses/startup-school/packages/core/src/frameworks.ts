@@ -88,6 +88,14 @@ export const VENTURE_SECTIONS: SectionSpec[] = [
         claimHint: "e.g. “Churn is seasonal, not a product problem.”",
     },
     {
+        id: "ai",
+        title: "AI system",
+        blurb: "The workflow AI changes, the human who remains accountable, the data it may use, and the checks that make it safe to run.",
+        prompt: "What customer or internal workflow does AI improve or power? Describe the before-state, the human owner, the fallback, the data boundary, and the one quality measure that must not fall.",
+        from: "model",
+        claimHint: "e.g. The assistant can resolve 70% of routine requests without lowering customer satisfaction.",
+    },
+    {
         id: "asks",
         title: "What you need",
         blurb: "What you want help with. Your mentors read this before a session.",
@@ -120,6 +128,7 @@ export const emptyVenture = (): Venture => ({
     name: "",
     oneLiner: "",
     stage: "fit",
+    path: "build",
     country: "",
     sections: {},
     updatedAt: new Date().toISOString(),
@@ -357,6 +366,9 @@ export function localAdvice(question: string, venture?: Venture): Advice {
     }
 
     const country = venture?.country?.trim();
+    const turnkey = venture?.path === "phoxta_turnkey" || venture?.path === "hybrid"
+        ? " A turnkey system is a faster starting point, not local validation: test the buyer, workflow quality and unit economics before you scale it."
+        : "";
     const jurisdiction =
         best.stage === "legal" || best.stage === "capital"
             ? country
@@ -365,7 +377,7 @@ export function localAdvice(question: string, venture?: Venture): Advice {
             : "";
 
     return {
-        answer: `${best.summary}${best.revision ? ` ${best.revision}` : ""}${jurisdiction} The question it puts back to you: ${best.question}`,
+        answer: `${best.summary}${best.revision ? ` ${best.revision}` : ""}${jurisdiction}${turnkey} The question it puts back to you: ${best.question}`,
         framework: best.name,
         source: best.source,
         nextStep: best.nextStep,

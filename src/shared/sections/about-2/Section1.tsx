@@ -98,7 +98,7 @@ export default function Section1() {
                     <div className="col-xxl-9 col-lg-8">
                         <h1 className="section-title d-flex fw-600 lh-1 fz-200 reveal-text mb-0">
                             <RevealText>
-                                Phoxta Studio<sup>®</sup>
+                                Phoxta
                             </RevealText>
                         </h1>
                     </div>

@@ -15,8 +15,10 @@ import type {
     Catalogue,
     Certificate,
     Conversation,
+    Experiment,
     GroupPost,
     Message,
+    NewExperiment,
     NewTask,
     Note,
     PeerKind,
@@ -116,6 +118,15 @@ export class LocalRepo implements Repo {
     /** Every method waits for the stores to hydrate once, so a cold start never reads the defaults over saved data. */
     private async ready(): Promise<void> {
         await Promise.all([this.user.ready(), this.messages.ready(), this.posts.ready(), this.actions.ready()]);
+        // Older saved demos pre-date the proof loop. Add the new collection
+        // without discarding any of the founder's existing work.
+        if (!Array.isArray(this.user.get().experiments) || !this.user.get().venture.path) {
+            this.user.set({
+                ...this.user.get(),
+                experiments: Array.isArray(this.user.get().experiments) ? this.user.get().experiments : [],
+                venture: { ...this.user.get().venture, path: this.user.get().venture.path ?? "build" },
+            });
+        }
     }
 
     private write(mutate: (u: UserState) => void): void {
@@ -172,6 +183,7 @@ export class LocalRepo implements Repo {
     }
 
     async saveProgress(lessonId: string, positionSec: number, completed = false): Promise<void> {
+        if (completed && lessonId.startsWith("v2-")) throw new Error("Complete this practical lesson through a live opportunity artifact.");
         await this.ready();
         this.write((u) => {
             const now = new Date().toISOString();
@@ -596,6 +608,43 @@ export class LocalRepo implements Repo {
         });
         this.emit();
         return this.user.get().venture;
+    }
+
+    async addExperiment(input: NewExperiment): Promise<Experiment> {
+        await this.ready();
+        const now = new Date().toISOString();
+        const experiment: Experiment = {
+            id: uid("exp"), claimId: input.claimId ?? null, sectionId: input.sectionId ?? null,
+            title: input.title.trim(), hypothesis: input.hypothesis.trim(), method: input.method.trim(), threshold: input.threshold.trim(),
+            status: input.status ?? "planned", evidenceType: input.evidenceType ?? null,
+            evidence: input.evidence?.trim() ?? "", sourceUrl: input.sourceUrl?.trim() ?? "", result: input.result?.trim() ?? "",
+            decision: input.decision?.trim() ?? "", nextStep: input.nextStep?.trim() ?? "", dueAt: input.dueAt ?? null,
+            createdAt: now, updatedAt: now,
+        };
+        this.write((u) => u.experiments.unshift(experiment));
+        this.emit();
+        return experiment;
+    }
+
+    async updateExperiment(id: string, patch: Partial<Experiment>): Promise<Experiment> {
+        await this.ready();
+        let saved: Experiment | null = null;
+        this.write((u) => {
+            u.experiments = u.experiments.map((item) => {
+                if (item.id !== id) return item;
+                saved = { ...item, ...patch, id: item.id, createdAt: item.createdAt, updatedAt: new Date().toISOString() };
+                return saved;
+            });
+        });
+        if (!saved) throw new Error("That experiment no longer exists.");
+        this.emit();
+        return saved;
+    }
+
+    async deleteExperiment(id: string): Promise<void> {
+        await this.ready();
+        this.write((u) => { u.experiments = u.experiments.filter((item) => item.id !== id); });
+        this.emit();
     }
 
     /**

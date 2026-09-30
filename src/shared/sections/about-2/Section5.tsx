@@ -15,27 +15,27 @@ const ARROW_SVG = (
 const STATS_ITEMS = [
     {
         delay: ".1",
-        count: 120,
+        count: 1,
         prefix: undefined as string | undefined,
-        suffix: "%",
-        label: "ROI increase",
-        desc: "Delivered exceptional ROI growth through data-driven optimization.",
+        suffix: undefined,
+        label: "Clear starting point",
+        desc: "Choose one defined business system and make its customer, offer and operating scope explicit.",
     },
     {
         delay: ".2",
-        count: 25,
-        prefix: "$",
-        suffix: "M+",
-        label: "Ad spend managed",
-        desc: "Managed large-scale advertising budgets with measurable performance impact.",
+        count: 2,
+        prefix: undefined,
+        suffix: undefined,
+        label: "Evidence before scale",
+        desc: "Test the customer problem and demand before you increase product scope, marketing spend or operating capacity.",
     },
     {
         delay: ".3",
-        count: 300,
+        count: 3,
         prefix: undefined as string | undefined,
-        suffix: "+",
-        label: "Campaigns launched",
-        desc: "Executed hundreds of high-impact marketing initiatives across platforms.",
+        suffix: undefined,
+        label: "A repeatable review",
+        desc: "Use customer feedback, cash and delivery quality to decide what to keep, improve or stop next.",
     },
 ];
 
@@ -47,8 +47,8 @@ export default function Section5() {
                     <div className="col-lg-4">
                         <span className="at-btn common-black text-uppercase bg-transparent mb-10 rounded-0 p-0">
                             <span className="text-uppercase">
-                                <span className="text-1">Interesting Stats</span>
-                                <span className="text-2">Interesting Stats</span>
+                                <span className="text-1">Practical principles</span>
+                                <span className="text-2">Practical principles</span>
                             </span>
                             <i>
                                 {ARROW_SVG}
@@ -56,7 +56,7 @@ export default function Section5() {
                             </i>
                         </span>
                         <h2 className="reveal-text mb-0">
-                            <RevealText>Figures That <br />Tell a Story</RevealText>
+                            <RevealText>What keeps a <br /> business useful</RevealText>
                         </h2>
                     </div>
                     <div className="col-lg-7 ms-lg-auto pt-160">

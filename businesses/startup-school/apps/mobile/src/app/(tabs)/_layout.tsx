@@ -1,17 +1,13 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BookOpen, CheckSquare, Inbox, LayoutGrid, Users } from "lucide-react-native";
-import { unreadMessages } from "@startup-school/core";
+import { BookOpen, LayoutGrid, Menu, Rocket, Users } from "lucide-react-native";
 import { font, useTheme } from "@/lib/theme";
-import { useData } from "@/state/data";
 import { TAB_BAR_H } from "@/components/shell/Screen";
 
-/** The five tabs the mobile design specifies: Home · Lesson · Task · Group · Inbox. */
+/** Five founder workflows. Lower-frequency destinations open as pushed screens. */
 export default function TabsLayout() {
     const { c } = useTheme();
-    const { user } = useData();
     const insets = useSafeAreaInsets();
-    const inboxCount = unreadMessages(user);
     return (
         <Tabs
             screenOptions={{
@@ -25,10 +21,10 @@ export default function TabsLayout() {
             }}
         >
             <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: ({ color }) => <LayoutGrid size={22} color={color} strokeWidth={1.8} /> }} />
-            <Tabs.Screen name="lessons" options={{ title: "Lesson", tabBarIcon: ({ color }) => <BookOpen size={22} color={color} strokeWidth={1.8} /> }} />
-            <Tabs.Screen name="tasks" options={{ title: "Task", tabBarIcon: ({ color }) => <CheckSquare size={22} color={color} strokeWidth={1.8} /> }} />
-            <Tabs.Screen name="groups" options={{ title: "Group", tabBarIcon: ({ color }) => <Users size={22} color={color} strokeWidth={1.8} /> }} />
-            <Tabs.Screen name="inbox" options={{ title: "Inbox", tabBarBadge: inboxCount > 0 ? inboxCount : undefined, tabBarIcon: ({ color }) => <Inbox size={22} color={color} strokeWidth={1.8} /> }} />
+            <Tabs.Screen name="learn" options={{ title: "Learn", tabBarIcon: ({ color }) => <BookOpen size={22} color={color} strokeWidth={1.8} /> }} />
+            <Tabs.Screen name="build" options={{ title: "Build", tabBarIcon: ({ color }) => <Rocket size={22} color={color} strokeWidth={1.8} /> }} />
+            <Tabs.Screen name="connect" options={{ title: "Connect", tabBarIcon: ({ color }) => <Users size={22} color={color} strokeWidth={1.8} /> }} />
+            <Tabs.Screen name="more" options={{ title: "More", tabBarIcon: ({ color }) => <Menu size={22} color={color} strokeWidth={1.8} /> }} />
         </Tabs>
     );
 }

@@ -32,32 +32,32 @@ const CARD_ICON_SVG = (
 
 const AWARD_CARDS = [
     {
-        year: "2021 — Expanding Capabilities",
-        title: "From Design Studio to Digital Agency",
-        desc: "We evolved from a design-focused studio into a full-service digital agency, combining creative excellence with strategic development and ongoing support.",
+        year: "Step 01 — Choose",
+        title: "Start with a business system",
+        desc: "Preview the business, its customer journey and what the package includes. Choose the system that gives you a useful starting point for the market you understand.",
         img: "/assets/imgs/pages/img-126.webp",
-        alt: "2021 Expanding Capabilities",
+        alt: "Choose a business system",
     },
     {
-        year: "2022 — Trusted by Growing Brands",
-        title: "Building Long-Term Partnerships",
-        desc: "We focused on deepening client relationships and delivering measurable results that drive growth and brand recognition across industries.",
+        year: "Step 02 — Tailor",
+        title: "Make the offer specific",
+        desc: "Set the customer, market, message, price and service standard. A system becomes your business only when those choices are clear enough for a customer to understand.",
         img: "/assets/imgs/pages/img-127.webp",
-        alt: "2022 Trusted by Growing Brands",
+        alt: "Tailor the offer",
     },
     {
-        year: "2023 — Innovation & Scale",
-        title: "Pushing Boundaries in Digital",
-        desc: "We invested in new technologies and methodologies to scale our impact while maintaining the craft and attention to detail that define our work.",
+        year: "Step 03 — Test",
+        title: "Learn from real customers",
+        desc: "Use customer conversations, demand tests and delivery evidence to find what works. Keep assumptions visible and let the result change the next decision.",
         img: "/assets/imgs/pages/img-128.webp",
-        alt: "2023 Innovation & Scale",
+        alt: "Test with customers",
     },
     {
-        year: "2024 — Leading the Way",
-        title: "Award-Winning Excellence",
-        desc: "Our work has been recognized by industry leaders and we continue to set the standard for creativity, strategy, and delivery in digital experiences.",
+        year: "Step 04 — Run",
+        title: "Improve the operating rhythm",
+        desc: "Review customer value, delivery quality, cash and capacity each week. Use AI for clear, repeatable work while people remain responsible for important decisions.",
         img: "/assets/imgs/pages/img-129.webp",
-        alt: "2024 Leading the Way",
+        alt: "Run and improve the business",
     },
 ];
 
@@ -69,8 +69,8 @@ export default function Section3() {
                     <div className="col-lg-5 col-md-8">
                         <span className="at-btn common-black text-uppercase bg-transparent mb-10 rounded-0 p-0">
                             <span className="text-uppercase">
-                                <span className="text-1">Who We Are</span>
-                                <span className="text-2">Who We Are</span>
+                                <span className="text-1">How Phoxta works</span>
+                                <span className="text-2">How Phoxta works</span>
                             </span>
                             <i>
                                 {ARROW_SVG}
@@ -78,7 +78,7 @@ export default function Section3() {
                             </i>
                         </span>
                         <h3 className="reveal-text mb-0">
-                            <RevealText>Our Journey</RevealText>
+                            <RevealText>From starting point to practical progress</RevealText>
                         </h3>
                     </div>
                     <div className="col-lg-3 col-md-4 ms-auto d-flex justify-content-lg-end">
@@ -88,13 +88,13 @@ export default function Section3() {
                             data-fade-from="bottom"
                             data-ease="bounce"
                         >
-                            <Link className="at-btn-circle" to="#">
+                            <Link className="at-btn-circle" to="/marketplace">
                                 {ARROW_CIRCLE_SVG}
                             </Link>
-                            <Link className="at-btn z-index-1" to="/portfolio-3">
-                                View All Awards
+                            <Link className="at-btn z-index-1" to="/marketplace">
+                                Explore businesses
                             </Link>
-                            <Link className="at-btn-circle" to="#">
+                            <Link className="at-btn-circle" to="/marketplace">
                                 {ARROW_CIRCLE_SVG}
                             </Link>
                         </div>

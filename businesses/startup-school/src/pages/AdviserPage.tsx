@@ -1,216 +1,272 @@
-import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowUp, BookMarked, CornerDownRight, Hand, Lightbulb } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowRight, ArrowUp, BookOpen, CheckCircle2, FlaskConical, Lightbulb, Trash2 } from "lucide-react";
 import { FRAMEWORKS, STAGE_LABEL, frameworksForStage, type Advice } from "@startup-school/core";
 import { PageTitle } from "@/components/shell/AppShell";
-import { Button, Card, EmptyState, Overline, Spinner, Tag } from "@/components/ui/primitives";
+import { Button, Card, Overline, Spinner, Tag } from "@/components/ui/primitives";
 import { useData } from "@/state/data";
-import { cn } from "@/lib/cn";
-
-/**
- * The adviser.
- *
- * Deliberately not a chatbot, because the evidence does not support one. A
- * randomised trial of about a thousand students found an ungoverned GPT tutor
- * left them measurably worse on an unassisted exam; a carefully-built one
- * showed no gain because students engaged it in roughly one in six of the
- * moments they got something wrong. What worked in both literatures had a
- * teacher in the loop and a refusal to do the work.
- *
- * So this one has three rules, and they are visible on the page rather than
- * hidden in a prompt: it reasons only from the handbook's frameworks, it names
- * the chapter every time so you can go and read the real thing, and it will
- * not write your plan for you.
- */
+import { useToast } from "@/state/toast";
 
 type Turn = { question: string; advice: Advice | null; error?: string };
 
-function AdviceCard({ turn }: { turn: Turn }) {
-    return (
-        <li className="flex flex-col gap-2">
-            <p className="flex items-start gap-2 text-[15px] font-semibold leading-6">
-                <CornerDownRight size={15} className="mt-1 shrink-0 text-caption" aria-hidden="true" />
-                {turn.question}
-            </p>
+function storedTurns(profileId: string): Turn[] {
+    try {
+        const raw = localStorage.getItem(`startup-school:adviser:${profileId}`);
+        const parsed: unknown = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter(
+            (turn): turn is Turn =>
+                Boolean(turn) &&
+                typeof turn.question === "string" &&
+                (turn.advice === null || typeof turn.advice === "object"),
+        );
+    } catch {
+        return [];
+    }
+}
 
-            {turn.error && (
-                <Card className="border-danger-soft">
-                    <p className="text-[14px] text-danger-ink">{turn.error}</p>
-                </Card>
-            )}
+function AdviceResult({
+    turn,
+    taskSaved,
+    onMakeTask,
+}: {
+    turn: Turn;
+    taskSaved: boolean;
+    onMakeTask: () => void;
+}) {
+    return (
+        <article className="rounded-xl border border-line bg-card p-5 max-md:p-4">
+            <div className="flex items-start gap-3">
+                <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft text-brand" aria-hidden="true">
+                    <Lightbulb size={15} />
+                </span>
+                <p className="min-w-0 flex-1 text-[15px] font-semibold leading-6">{turn.question}</p>
+            </div>
 
             {!turn.advice && !turn.error && (
-                <Card className="flex items-center gap-2.5">
-                    <Spinner /> <span className="text-[14px] text-muted">Reading the frameworks…</span>
-                </Card>
+                <div className="mt-4 flex items-center gap-2.5 rounded-lg bg-page px-3.5 py-3 text-[14px] text-muted">
+                    <Spinner /> Finding the right framework...
+                </div>
             )}
+
+            {turn.error && <p className="mt-4 rounded-lg bg-danger-soft px-3.5 py-3 text-[14px] leading-6 text-danger-ink">{turn.error}</p>}
 
             {turn.advice && (
-                <Card>
-                    {turn.advice.refused && (
-                        <Tag tone="warn" icon={<Hand size={12} />} className="mb-2.5">
-                            Not doing this one for you
-                        </Tag>
-                    )}
-                    <p className="whitespace-pre-wrap text-[15px] leading-7">{turn.advice.answer}</p>
-
-                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
-                        <BookMarked size={14} className="text-caption" aria-hidden="true" />
-                        <span className="text-[13px] font-semibold">{turn.advice.framework}</span>
-                        {turn.advice.source !== "—" && (
-                            <span className="text-[13px] text-caption">{turn.advice.source}</span>
-                        )}
+                <div className="mt-4 border-t border-line pt-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Tag tone={turn.advice.refused ? "warn" : "fund"}>{turn.advice.framework}</Tag>
+                        {turn.advice.source !== "-" && <span className="text-[12px] text-caption">{turn.advice.source}</span>}
                     </div>
+                    <p className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-ink">{turn.advice.answer}</p>
 
                     {turn.advice.nextStep && (
-                        <div className="mt-3 rounded-xl bg-page p-3.5">
-                            <Overline>This week</Overline>
-                            <p className="mt-1 text-[14px] leading-6">{turn.advice.nextStep}</p>
+                        <div className="mt-4 rounded-lg border border-brand-soft bg-brand-soft/45 p-4">
+                            <Overline className="text-brand-ink">Your next step</Overline>
+                            <p className="mt-1 text-[14px] leading-6 text-ink">{turn.advice.nextStep}</p>
                         </div>
                     )}
-                </Card>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <Button variant="outline" size="md" onClick={onMakeTask} disabled={taskSaved || !turn.advice.nextStep}>
+                            {taskSaved ? <CheckCircle2 size={14} /> : <ArrowRight size={14} />}
+                            {taskSaved ? "Added to next actions" : "Make it a task"}
+                        </Button>
+                        {turn.advice.nextStep && <Link to={`/experiments?title=${encodeURIComponent(turn.advice.nextStep)}&hypothesis=${encodeURIComponent(turn.question)}`} className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-brand hover:bg-brand-soft"><FlaskConical size={14} /> Turn into a field test</Link>}
+                        <Link to="/venture" className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-brand hover:bg-brand-soft">
+                            Update venture <ArrowRight size={14} />
+                        </Link>
+                    </div>
+                </div>
             )}
-        </li>
+        </article>
     );
 }
 
+/** A short, decision-first AI workspace. Advice is grounded in the same frameworks as the course. */
 export default function AdviserPage() {
-    const { repo, user } = useData();
-    const [q, setQ] = useState("");
+    const { repo, user, mutate } = useData();
+    const { toast } = useToast();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [question, setQuestion] = useState("");
     const [turns, setTurns] = useState<Turn[]>([]);
     const [busy, setBusy] = useState(false);
-    const box = useRef<HTMLTextAreaElement>(null);
+    const [historyReady, setHistoryReady] = useState(false);
+    const [taskTurns, setTaskTurns] = useState<number[]>([]);
+    const input = useRef<HTMLTextAreaElement>(null);
 
-    const v = user.venture;
-    const stageFrameworks = useMemo(() => frameworksForStage(v.stage), [v.stage]);
-    // Something to ask when you have no idea what to ask. Drawn from where the
-    // founder actually is, so it is never a generic prompt-starter.
+    const venture = user.venture;
+    const stageFrameworks = useMemo(() => frameworksForStage(venture.stage), [venture.stage]);
     const suggestions = useMemo(
-        () => (stageFrameworks.length ? stageFrameworks : FRAMEWORKS).slice(0, 3).map((f) => f.question),
+        () => (stageFrameworks.length ? stageFrameworks : FRAMEWORKS).slice(0, 3).map((framework) => framework.question),
         [stageFrameworks],
     );
+    const ventureReady = Boolean(venture.name || venture.oneLiner || venture.country);
 
-    const ask = async (question: string) => {
-        const text = question.trim();
+    useEffect(() => {
+        setHistoryReady(false);
+        setTurns(storedTurns(user.profile.id));
+        setTaskTurns([]);
+        setHistoryReady(true);
+    }, [user.profile.id]);
+
+    useEffect(() => {
+        if (!historyReady) return;
+        try {
+            localStorage.setItem(`startup-school:adviser:${user.profile.id}`, JSON.stringify(turns.slice(-12)));
+        } catch {
+            // Advice still works when private browsing prevents persistence.
+        }
+    }, [historyReady, turns, user.profile.id]);
+
+    useEffect(() => {
+        const draft = searchParams.get("draft");
+        if (!draft) return;
+        setQuestion(draft);
+        const next = new URLSearchParams(searchParams);
+        next.delete("draft");
+        setSearchParams(next, { replace: true });
+        window.setTimeout(() => input.current?.focus(), 0);
+    }, [searchParams, setSearchParams]);
+
+    const ask = async (value: string) => {
+        const text = value.trim();
         if (!text || busy) return;
-        setQ("");
+        setQuestion("");
         setBusy(true);
         const at = turns.length;
-        setTurns((t) => [...t, { question: text, advice: null }]);
+        setTurns((current) => [...current, { question: text, advice: null }]);
         try {
             const advice = await repo.advise(text);
-            setTurns((t) => t.map((x, i) => (i === at ? { ...x, advice } : x)));
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : "The adviser is not reachable right now.";
-            setTurns((t) => t.map((x, i) => (i === at ? { ...x, error: msg } : x)));
+            setTurns((current) => current.map((turn, index) => (index === at ? { ...turn, advice } : turn)));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "The adviser is not reachable right now.";
+            setTurns((current) => current.map((turn, index) => (index === at ? { ...turn, error: message } : turn)));
         } finally {
             setBusy(false);
-            box.current?.focus();
+            input.current?.focus();
+        }
+    };
+
+    const makeTask = async (turn: Turn, index: number) => {
+        if (!turn.advice?.nextStep || taskTurns.includes(index)) return;
+        const due = new Date();
+        due.setDate(due.getDate() + 3);
+        due.setHours(18, 0, 0, 0);
+        try {
+            await mutate((repository) => repository.addTask({ title: turn.advice!.nextStep, courseId: null, dueAt: due.toISOString() }));
+            setTaskTurns((saved) => [...saved, index]);
+            toast("Added to your next actions", "success");
+        } catch (error) {
+            toast(error instanceof Error ? error.message : "Could not add that task", "danger");
+        }
+    };
+
+    const clearHistory = () => {
+        setTurns([]);
+        setTaskTurns([]);
+        try {
+            localStorage.removeItem(`startup-school:adviser:${user.profile.id}`);
+        } catch {
+            // The next state write is safely ignored when storage is unavailable.
         }
     };
 
     return (
-        <>
-            <PageTitle
-                title="Adviser"
-                sub="Grounded on the handbook's frameworks and your own venture record. It names the chapter every time, and it will not write your plan for you."
-            />
+        <div className="mx-auto max-w-3xl">
+            <PageTitle title="Founder adviser" sub="Turn one real decision into a clear next step." />
 
-            {!v.name && (
-                <Card className="mb-6">
-                    <p className="text-[14px] leading-6">
-                        It answers better once it knows what you are building.{" "}
-                        <Link to="/venture" className="font-semibold text-brand underline">
-                            Fill in your venture record
-                        </Link>{" "}
-                        — the one-sentence version and the country are enough to start.
+            {!ventureReady ? (
+                <Card className="mb-6 border border-peach-soft bg-peach-soft/45">
+                    <p className="text-[14px] leading-6 text-ink">
+                        Add a working name, one-line description, and market first. The adviser will then use your actual venture context.
                     </p>
+                    <Link to="/venture" className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand underline underline-offset-4">
+                        Set up your venture <ArrowRight size={14} />
+                    </Link>
+                </Card>
+            ) : (
+                <Card className="mb-6 flex flex-wrap items-center gap-3 border border-line bg-card py-3.5">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-soft text-brand" aria-hidden="true"><SparkleMark /></span>
+                    <p className="min-w-0 flex-1 text-[14px] leading-6 text-muted">
+                        Advising <strong className="font-semibold text-ink">{venture.name || "your venture"}</strong> at the {STAGE_LABEL[venture.stage].toLowerCase()} stage.
+                    </p>
+                    <Link to="/venture" className="text-[13px] font-semibold text-brand underline underline-offset-4">Edit context</Link>
                 </Card>
             )}
 
-            {turns.length === 0 ? (
-                <EmptyState
-                    icon={<Lightbulb size={22} />}
-                    title={`Where you are: ${STAGE_LABEL[v.stage]}`}
-                    body="Ask about something you are actually stuck on. Vague questions get the framework and the question back, which is fair but less useful."
+            <Card className="border border-line p-5 max-md:p-4">
+                <Overline>Start with the decision</Overline>
+                <h2 className="mt-1 text-[20px] font-semibold leading-7">What do you need to decide or test?</h2>
+                <p className="mt-1 text-[14px] leading-6 text-muted">Be specific about the customer, choice, evidence, or trade-off. You will get a framework and an action, not a generic business plan.</p>
+                <label className="sr-only" htmlFor="adviser-question">Your question for the adviser</label>
+                <textarea
+                    id="adviser-question"
+                    ref={input}
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                            event.preventDefault();
+                            void ask(question);
+                        }
+                    }}
+                    rows={4}
+                    placeholder="For example: We have spoken to eight households. How do I decide whether the problem is painful enough to test?"
+                    className="mt-4 w-full resize-y rounded-lg border border-line-strong bg-page px-3.5 py-3 text-[15px] leading-6 outline-none placeholder:text-caption focus:border-brand focus:shadow-[0_0_0_3px_var(--color-brand-soft)]"
                 />
-            ) : (
-                <ul className="mb-6 flex flex-col gap-6">
-                    {turns.map((t, i) => (
-                        <AdviceCard key={i} turn={t} />
-                    ))}
-                </ul>
-            )}
-
-            {turns.length === 0 && (
-                <div className="mb-6 flex flex-col gap-2">
-                    <Overline>Questions your stage puts to you</Overline>
-                    {suggestions.map((sug) => (
-                        <button
-                            key={sug}
-                            type="button"
-                            onClick={() => void ask(sug)}
-                            className="rounded-xl border border-line bg-card px-3.5 py-3 text-left text-[14px] leading-6 hover:border-brand"
-                        >
-                            {sug}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            <div className="sticky bottom-4 rounded-2xl border border-line bg-card p-2 shadow-app">
-                <div className="flex items-end gap-2">
-                    <label className="sr-only" htmlFor="ask">Ask the adviser</label>
-                    <textarea
-                        id="ask"
-                        ref={box}
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                void ask(q);
-                            }
-                        }}
-                        rows={2}
-                        placeholder="What are you stuck on?"
-                        className="min-h-[52px] w-full resize-none bg-transparent px-2.5 py-2 text-[15px] leading-6 outline-none"
-                    />
-                    <Button
-                        onClick={() => void ask(q)}
-                        disabled={!q.trim() || busy}
-                        aria-label="Ask"
-                        className={cn("size-11 shrink-0 p-0", busy && "opacity-60")}
-                    >
-                        {busy ? <Spinner /> : <ArrowUp size={17} />}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-[12px] text-caption">Press Ctrl/Cmd + Enter to ask.</span>
+                    <Button onClick={() => void ask(question)} disabled={!question.trim() || busy}>
+                        {busy ? <Spinner /> : <ArrowUp size={16} />} Get a next step
                     </Button>
                 </div>
-            </div>
+            </Card>
 
-            <div className="mt-8">
-                <Overline>What it reasons from</Overline>
-                <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {FRAMEWORKS.map((f) => (
-                        <li
-                            key={f.id}
-                            className={cn(
-                                "rounded-xl border border-line p-3",
-                                f.stage === v.stage && "border-brand",
-                            )}
-                        >
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-[14px] font-semibold">{f.name}</span>
-                                <span className="text-[12px] text-caption">{f.source}</span>
-                            </div>
-                            {f.revision && (
-                                <p className="mt-1.5 text-[12px] leading-5 text-muted">
-                                    <strong className="font-semibold text-ink">Revised since 2018.</strong> {f.revision}
-                                </p>
-                            )}
-                        </li>
-                    ))}
-                </ul>
-            </div>
-        </>
+            {turns.length === 0 && (
+                <section className="mt-6" aria-labelledby="starter-questions">
+                    <Overline>Useful starting points</Overline>
+                    <div className="mt-2 grid gap-2">
+                        {suggestions.map((suggestion) => (
+                            <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => void ask(suggestion)}
+                                className="flex items-start gap-3 rounded-xl border border-line bg-card px-4 py-3.5 text-left text-[14px] leading-6 transition-colors hover:border-brand hover:bg-brand-soft/25"
+                            >
+                                <ArrowRight size={15} className="mt-1 shrink-0 text-brand" aria-hidden="true" />
+                                <span>{suggestion}</span>
+                            </button>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {turns.length > 0 && (
+                <section className="mt-6" aria-labelledby="advice-history">
+                    <div className="mb-3 flex items-center gap-3">
+                        <h2 id="advice-history" className="flex-1 text-[18px] font-semibold">Your decisions</h2>
+                        <Button variant="ghost" size="sm" onClick={clearHistory}><Trash2 size={13} /> Clear</Button>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                        {turns.map((turn, index) => (
+                            <AdviceResult key={`${turn.question}-${index}`} turn={turn} taskSaved={taskTurns.includes(index)} onMakeTask={() => void makeTask(turn, index)} />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            <details className="mt-6 rounded-xl border border-line bg-card p-4">
+                <summary className="cursor-pointer list-none text-[14px] font-semibold">
+                    <span className="inline-flex items-center gap-2"><BookOpen size={16} className="text-brand" /> How the adviser works</span>
+                </summary>
+                <p className="mt-3 text-[14px] leading-6 text-muted">
+                    It uses your venture record and the course frameworks. Every response names the framework it used and leaves the judgement, evidence, and final decision with you.
+                </p>
+            </details>
+        </div>
     );
+}
+
+function SparkleMark() {
+    return <span className="text-[18px] leading-none" aria-hidden="true">*</span>;
 }

@@ -24,45 +24,45 @@ const AWARDS = [
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-89-sm.webp",
         imgAward: "/assets/imgs/pages/img-89.webp",
-        title: "Production-grade engineering",
-        org: "Reliable systems built for scale and uptime",
-        date: "Engineering",
+        title: "Clear scope",
+        org: "A named workflow, owner and success measure before delivery begins",
+        date: "01",
         url: "phoxta.com",
     },
     {
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-90-sm.webp",
         imgAward: "/assets/imgs/pages/img-90.webp",
-        title: "Full observability",
-        org: "Monitoring, evals and audit on every model",
-        date: "AgentOps",
+        title: "Useful evaluation",
+        org: "Representative cases and regular quality checks that match the work",
+        date: "02",
         url: "phoxta.com",
     },
     {
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-91-sm.webp",
         imgAward: "/assets/imgs/pages/img-91.webp",
-        title: "Security & data privacy",
-        org: "Your data stays yours, isolated and protected",
-        date: "Security",
+        title: "Data boundaries",
+        org: "Approved information, access choices and handling expectations agreed up front",
+        date: "03",
         url: "phoxta.com",
     },
     {
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-92-sm.webp",
         imgAward: "/assets/imgs/pages/img-92.webp",
-        title: "Always-on reliability",
-        org: "24/7 systems that don't drop the ball",
-        date: "Uptime",
+        title: "Human fallback",
+        org: "Clear escalation when confidence is low or the consequence is high",
+        date: "04",
         url: "phoxta.com",
     },
     {
         href: "https://www.phoxta.com",
         imgSm: "/assets/imgs/pages/img-93-sm.webp",
         imgAward: "/assets/imgs/pages/img-93.webp",
-        title: "Human + AI governance",
-        org: "Guardrails and approvals keep AI in your control",
-        date: "Governance",
+        title: "Operational ownership",
+        org: "People and routines that keep the knowledge and workflow current",
+        date: "05",
         url: "phoxta.com",
         isLast: true,
     },
@@ -79,9 +79,9 @@ export default function Section5() {
                     <div className="container">
                         <div className="row g-4 align-items-end">
                             <div className="col-lg-8 col-md-8">
-                                <h2 className="text-white mb-2 lh-1">Built to standards you can trust</h2>
+                                <h2 className="text-white mb-2 lh-1">A disciplined way to build AI</h2>
                                 <h6 className="text-white mb-0">
-                                    Enterprise-grade AI engineering you can rely on
+                                    The practical checks that make an AI workflow understandable, reviewable and useful.
                                 </h6>
                             </div>
                             <div className="col-lg-3 col-md-4 ms-auto d-flex justify-content-lg-end">
@@ -95,7 +95,7 @@ export default function Section5() {
                                         {ARROW_RIGHT}
                                     </Link>
                                     <Link className="at-btn z-index-1" to="/contact">
-                                        Get a free quote
+                                        Discuss a workflow
                                     </Link>
                                     <Link className="at-btn-circle" to="/contact">
                                         {ARROW_RIGHT}

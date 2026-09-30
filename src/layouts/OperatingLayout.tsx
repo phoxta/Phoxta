@@ -3,8 +3,8 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from "reac
 import PageMeta from "@/seo/PageMeta";
 import { Chip, Empty, stageTone } from "@/components/dash/Ui";
 import { getBusiness, type Organization } from "@/lib/db/organizations";
-import { resolveConsole, consoleTabs, type VerticalConsole } from "@/lib/ops/consoleConfig";
-import { preloadOpsConsole, preloadOpsTab } from "@/pages/dashboard/preload";
+import { resolveConsole, type VerticalConsole } from "@/lib/ops/consoleConfig";
+import { preloadOpsConsole } from "@/pages/dashboard/preload";
 import { useCachedData } from "@/lib/hooks/useCachedData";
 import { DASHBOARD_TTL, domainsQuery, organizationsQuery, primaryLiveDomain } from "@/lib/cache/dashboardQueries";
 import { LAST_ORG_KEY } from "@/pages/dashboard/ConsolePage";
@@ -20,6 +20,13 @@ export type OpsContext = { orgId: string; org: Organization; console: VerticalCo
  * insights). Everything deeper than that is a record id.
  */
 const AREA_MODULES = new Set(["engage"]);
+const OWNER_TABS = [
+  { seg: "", label: "Today", end: true },
+  { seg: "run", label: "Run" },
+  { seg: "grow", label: "Grow" },
+  { seg: "setup", label: "Set up" },
+];
+const OWNER_HUBS = new Set(["run", "grow", "setup"]);
 
 /**
  * The part of a console path that is safe to carry to ANOTHER business: the
@@ -141,7 +148,7 @@ export default function OperatingLayout() {
   const badgeFor = useCallback(
     // Engage carries the Inbox now, so it wears the unread count; the approval
     // queue belongs to the Operator's own tab.
-    (seg: string): number => (seg === "engage" ? badges.unread : seg === "operator" ? badges.approvals : 0),
+    (seg: string): number => (seg === "run" ? badges.unread : seg === "" ? badges.approvals : 0),
     [badges],
   );
 
@@ -189,7 +196,7 @@ export default function OperatingLayout() {
 
   const base = `/dashboard/businesses/${id}/ops`;
   const cfg = resolveConsole(org.vertical);
-  const tabs = consoleTabs(cfg);
+  const tabs = OWNER_TABS;
   // Prefer the resolved primary live domain; fall back to the manual override.
   const liveDomain = primaryLiveDomain(domains);
   const liveUrl = liveDomain ? `https://${liveDomain.hostname}` : org.site_url || null;
@@ -230,7 +237,7 @@ export default function OperatingLayout() {
                 const nextCfg = resolveConsole(nextOrg?.vertical);
                 const rel = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1) : "";
                 const keep = portablePath(rel);
-                const hasTab = keep === "" || nextCfg.modules.includes(keep.split("/")[0]);
+                const hasTab = keep === "" || OWNER_HUBS.has(keep.split("/")[0]) || nextCfg.modules.includes(keep.split("/")[0]);
                 navigate(hasTab && keep ? `${nextBase}/${keep}` : nextBase);
               }}
             >
@@ -247,7 +254,6 @@ export default function OperatingLayout() {
                 key={t.seg}
                 to={t.seg ? `${base}/${t.seg}` : base}
                 end={t.end}
-                onMouseEnter={() => preloadOpsTab(t.seg)}
                 className={({ isActive }) => `hrx-tab${isActive ? " active" : ""}`}
               >
                 {t.label}

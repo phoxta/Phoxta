@@ -9,25 +9,26 @@
 import puppeteer from "puppeteer";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(__dirname, "../public/assets/imgs/template/og-image.jpg");
 
+const FONT = readFileSync(resolve(__dirname, "../public/assets/fonts/dm-sans/DMSans.ttf")).toString("base64");
+const LOGO = readFileSync(resolve(__dirname, "../public/assets/imgs/template/logo/favicon.svg")).toString("base64");
 const HTML = `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..800&display=swap" rel="stylesheet" />
+
     <style>
+      @font-face {font-family:"DM Sans";src:url(data:font/ttf;base64,${FONT}) format("truetype");font-weight:100 1000;}
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { width: 1200px; height: 630px; }
       body {
         font-family: "DM Sans", sans-serif;
-        background: #0a0a0c;
-        color: #fff;
+        background: #f7f7f4;
+        color: #1d1d1d;
         position: relative;
         overflow: hidden;
       }
@@ -61,29 +62,29 @@ const HTML = `<!doctype html>
       }
       .wordmark { font-weight: 800; font-size: 40px; letter-spacing: -1.5px; }
       h1 {
-        font-weight: 800;
+        font-weight: 550;
         font-size: 78px;
         line-height: 1.04;
         letter-spacing: -2.5px;
         max-width: 980px;
       }
-      h1 .accent { color: #a5b4fc; }
+      h1 .accent { color: #1d1d1d; }
+      h1::after {content:"";display:block;width:74px;height:5px;background:#f0460e;margin-top:22px;}
       .foot { display: flex; align-items: center; justify-content: space-between; }
-      .tagline { font-size: 27px; color: rgba(255,255,255,.7); font-weight: 500; max-width: 760px; }
-      .url { font-size: 24px; color: rgba(255,255,255,.55); font-weight: 600; letter-spacing: .5px; }
+      .tagline { font-size: 27px; color: #595c58; font-weight: 500; max-width: 760px; }
+      .url { font-size: 24px; color: #6a6c68; font-weight: 600; letter-spacing: .5px; }
     </style>
   </head>
   <body>
-    <div class="glow"></div>
-    <div class="glow2"></div>
+
     <div class="frame">
       <div class="brand">
-        <div class="mark">P</div>
+        <img src="data:image/svg+xml;base64,${LOGO}" width="52" height="52" alt="" />
         <div class="wordmark">Phoxta</div>
       </div>
-      <h1>Own a validated, <span class="accent">AI&#8209;powered</span> business.</h1>
+      <h1>Discover Business<br /><span class="accent">Opportunities</span></h1>
       <div class="foot">
-        <div class="tagline">Pick a business, make it yours, and go from launch to revenue in days.</div>
+        <div class="tagline">Discover what’s worth building.</div>
         <div class="url">phoxta.com</div>
       </div>
     </div>

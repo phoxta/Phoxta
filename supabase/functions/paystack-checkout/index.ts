@@ -51,6 +51,15 @@ Deno.serve(async (req) => {
     }
     const admin = adminClient();
 
+    if (body.kind === "subscription" || body.kind === "change_plan") {
+      const auth = await authorize(req, body?.orgId);
+      if (auth.error) return auth.error;
+      const { data: included } = await admin.from("subscriptions").select("school_included_until").eq("organization_id", auth.ok.org.id).maybeSingle();
+      if (included?.school_included_until && Date.parse(included.school_included_until) > Date.now()) {
+        return json({ error: "Your Launch admission currently includes Operating Console access. No console payment is needed until that included period ends." }, 409);
+      }
+    }
+
     // ── verify (callback page) ──────────────────────────────────────────────
     if (body.kind === "verify") {
       const who = await requireUser(req);

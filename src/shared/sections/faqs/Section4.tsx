@@ -49,10 +49,10 @@ export default function Section4() {
                                 </svg>
                             </div>
                         </div>
-                        <h4>Still have questions?</h4>
+                        <h4>Need help with a specific decision?</h4>
                         <p className="fz-font-lg neutral-900">
-                            If you can&apos;t find your answer here, get in touch. <br />
-                            We&apos;ll reply within one business day.
+                            Share the business, market or activation question you are working through. <br />
+                            We will help you find the right next step.
                         </p>
                         <h5 className="mt-40">
                             <a href="mailto:hello@phoxta.com">

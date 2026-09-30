@@ -30,7 +30,26 @@ Deno.serve(async (req) => {
     return new Response(`Webhook signature error: ${(e as Error).message}`, { status: 400 });
   }
 
-  if (event.type === "checkout.session.completed") {
+  if(event.type === "checkout.session.expired") {
+    const session=event.data.object as Stripe.Checkout.Session;
+    if(session.metadata?.kind === "startup_school" && session.metadata.order_id){
+      const admin=adminClient();
+      const {error}=await admin.from("cs_seat_holds").update({status:"released"}).eq("order_id",session.metadata.order_id).eq("status","held");
+      if(error)return json({error:"Could not release intake reservation"},500);
+      await admin.from("cs_plan_orders").update({status:"failed"}).eq("id",session.metadata.order_id).eq("status","pending");
+      return json({received:true});
+    }
+  }
+  if(event.type === "charge.refunded") {
+    const charge=event.data.object as Stripe.Charge;
+    const intent=typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+    if(intent){
+      const {error}=await adminClient().rpc("cs_refund_school_order",{p_intent:intent,p_refunded:charge.amount_refunded});
+      if(error){console.error("School refund reconciliation failed",error.message);return json({error:"Refund reconciliation failed"},500);}
+    }
+  }
+
+  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     // deno-lint-ignore no-explicit-any
     const s = event.data.object as any;
     const m = s.metadata || {};
@@ -130,6 +149,22 @@ Deno.serve(async (req) => {
           webhook_seen_at: new Date().toISOString(),
         })
         .eq("id", m.test_id);
+    }
+
+    // -- A founder paid for Startup School ----------------------------------
+    // The browser's success page is only a progress screen. This signed event
+    // is the sole authority that turns a payment into access, so a forged
+    // redirect or a client-side state change cannot unlock the curriculum.
+    if (m.kind === "startup_school" && m.order_id) {
+      if (s.payment_status !== "paid") return json({ received: true, pending: true });
+      const admin = adminClient();
+      const {error}=await admin.rpc("cs_settle_school_order",{
+        p_order:String(m.order_id),p_session:s.id,p_amount:Number(s.amount_total??0),p_currency:String(s.currency??""),
+        p_customer:typeof s.customer === "string"?s.customer:s.customer?.id??null,
+        p_intent:typeof s.payment_intent === "string"?s.payment_intent:s.payment_intent?.id??null,
+      });
+      if(error){console.error("School admission settlement failed",error.message);return json({error:"Could not record Startup School admission"},500);}
+      return json({ received: true });
     }
 
     // ── A business bought from the marketplace ──────────────────────────────

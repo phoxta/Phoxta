@@ -171,7 +171,7 @@ export function BookingPanel({ mentor }: { mentor: Mentor }) {
                                 onChange={(e) => setAgenda(e.target.value)}
                                 rows={3}
                                 maxLength={400}
-                                placeholder="The Lagos clinic group want it for four sites and I have no idea what to charge."
+                                placeholder="Five nearby shops want to join my essentials pilot and I have no idea what to charge."
                                 className="mb-3 w-full resize-y rounded-lg border border-line bg-card px-3 py-2 text-[14px] outline-none focus:border-brand"
                             />
                             <div className="flex flex-wrap items-center gap-3">

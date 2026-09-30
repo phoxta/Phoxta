@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { Pressable, ScrollView, View, type RefreshControlProps, type StyleProp, type ViewStyle } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View, type RefreshControlProps, type StyleProp, type ViewStyle } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, Bell } from "lucide-react-native";
@@ -19,18 +19,18 @@ import { Txt } from "@/components/ui/text";
 export const GUTTER = 20;
 export const TAB_BAR_H = 64;
 
-export function Screen({ children, header, tabbed, padded = true, style, scroll = true, refreshControl }: { children: ReactNode; header?: ReactNode; tabbed?: boolean; padded?: boolean; style?: StyleProp<ViewStyle>; scroll?: boolean; refreshControl?: ReactElement<RefreshControlProps> }) {
+export function Screen({ children, header, tabbed, padded = true, style, scroll = true, refreshControl, keyboardAware = false }: { children: ReactNode; header?: ReactNode; tabbed?: boolean; padded?: boolean; style?: StyleProp<ViewStyle>; scroll?: boolean; refreshControl?: ReactElement<RefreshControlProps>; keyboardAware?: boolean }) {
     const { c } = useTheme();
     const insets = useSafeAreaInsets();
     const bottom = (tabbed ? TAB_BAR_H : 0) + insets.bottom + 24;
     const body = (
         <View style={[{ paddingHorizontal: padded ? GUTTER : 0, paddingBottom: bottom }, style]}>{children}</View>
     );
-    return (
+    const screen = (
         <View style={{ flex: 1, backgroundColor: c.page }}>
             {header}
             {scroll ? (
-                <ScrollView keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="never" refreshControl={refreshControl}>
+                <ScrollView keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="never" automaticallyAdjustKeyboardInsets={keyboardAware} refreshControl={refreshControl}>
                     {body}
                 </ScrollView>
             ) : (
@@ -38,6 +38,11 @@ export function Screen({ children, header, tabbed, padded = true, style, scroll 
             )}
         </View>
     );
+    return keyboardAware ? (
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: c.page }}>
+            {screen}
+        </KeyboardAvoidingView>
+    ) : screen;
 }
 
 /** The home app bar: avatar → settings, greeting + name, bell → notifications. */

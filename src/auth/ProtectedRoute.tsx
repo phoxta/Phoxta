@@ -30,8 +30,11 @@ export default function ProtectedRoute() {
   }
 
   // New users finish onboarding first (but never bounce /onboarding to itself).
-  if (onboarded === false && location.pathname !== "/onboarding") {
-    return <Navigate to="/onboarding" replace />;
+  if (onboarded === false && !location.pathname.startsWith("/onboarding")) {
+    const params = new URLSearchParams({ redirect: location.pathname + location.search });
+    const business = new URLSearchParams(location.search).get('business');
+    if (business) params.set('business', business);
+    return <Navigate to={`/onboarding?${params}`} replace />;
   }
 
   return <Outlet />;

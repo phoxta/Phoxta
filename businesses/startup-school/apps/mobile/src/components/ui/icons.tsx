@@ -9,4 +9,4 @@ export function CategoryIcon({ id, size = 13, color }: { id: CategoryId; size?: 
     return <TrendingUp {...props} />;
 }
 
-export const CATEGORY_LABEL: Record<CategoryId, string> = { start: "Start", fund: "Fund", grow: "Grow" };
+export const CATEGORY_LABEL: Record<CategoryId, string> = { start: "Validate", fund: "Build", grow: "Launch & Grow" };

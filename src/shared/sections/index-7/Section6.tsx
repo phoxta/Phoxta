@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
 
 {/* Home 7 Section 6 (The Process — Growth Engine) */}
@@ -10,43 +9,43 @@ const EYEBROW_ARROW_SVG = (
 );
 
 const CHIPS = [
-    { text: "Enroll free", className: "sec-6-home-7__chip--1", delay: "0.1" },
-    { text: "Learn the fundamentals", className: "sec-6-home-7__chip--2", delay: "0.2" },
-    { text: "Run a real business", className: "sec-6-home-7__chip--3", delay: "0.3" },
-    { text: "Launch & grow", className: "sec-6-home-7__chip--4", delay: "0.4" },
+    { text: "Name the decision", className: "sec-6-home-7__chip--1", delay: "0.1" },
+    { text: "State the assumption", className: "sec-6-home-7__chip--2", delay: "0.2" },
+    { text: "Gather evidence", className: "sec-6-home-7__chip--3", delay: "0.3" },
+    { text: "Decide and improve", className: "sec-6-home-7__chip--4", delay: "0.4" },
 ];
 
 const CARDS = [
     {
         num: "[01]",
-        title: "Enroll free",
-        desc: "Sign up in minutes, join the next cohort, and get instant access to the curriculum and community.",
+        title: "Name the decision",
+        desc: "Choose one decision that matters now: who to serve, what problem to solve, what to charge or how to deliver.",
         img: "/assets/imgs/pages/home-7/step-1.webp",
-        alt: "Enroll free",
+        alt: "Naming a business decision",
         delay: "0.1",
     },
     {
         num: "[02]",
-        title: "Learn the fundamentals",
-        desc: "Work through expert-led modules on strategy, finance, marketing, operations and AI.",
+        title: "State what must be true",
+        desc: "Write the assumption, your confidence in it and the evidence that would confirm it or prove it wrong.",
         img: "/assets/imgs/pages/home-7/step-2.webp",
-        alt: "Learn the fundamentals",
+        alt: "Stating a business assumption",
         delay: "0.3",
     },
     {
         num: "[03]",
-        title: "Run a real business",
-        desc: "Apply every lesson to your own idea as you launch and operate a real business — with mentors beside you.",
+        title: "Gather useful evidence",
+        desc: "Use customer conversations, observation, a landing page, a manual service or a small offer to learn quickly.",
         img: "/assets/imgs/pages/home-7/step-3.webp",
-        alt: "Run a real business",
+        alt: "Gathering customer evidence",
         delay: "0.5",
     },
     {
         num: "[04]",
-        title: "Launch & grow",
-        desc: "Go to market, get traction, and graduate with a running business and a network.",
+        title: "Decide what to do next",
+        desc: "Record what happened, update the venture record and make the next decision with better evidence.",
         img: "/assets/imgs/pages/home-7/step-4.webp",
-        alt: "Launch & grow",
+        alt: "Making the next business decision",
         delay: "0.7",
     },
 ];
@@ -58,15 +57,15 @@ export default function Section6() {
                 {/* Header row: eyebrow + big title + description */}
                 <div className="sec-6-home-7__header row g-0 pt-100 pb-50">
                     <div className="col-lg-7 col-12">
-                        <Link to="/contact" className="sec-6-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-3 text-uppercase">
-                            <span className="text-scramble" data-scramble-text="How it works">How it works</span>
+                        <span className="sec-6-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-3 text-uppercase">
+                            <span className="text-scramble" data-scramble-text="How you learn">How you learn</span>
                             {EYEBROW_ARROW_SVG}
-                        </Link>
-                        <h2 className="sec-6-home-7__title mb-0 reveal-text"><RevealText>The Process</RevealText></h2>
+                        </span>
+                        <h2 className="sec-6-home-7__title mb-0 reveal-text"><RevealText>The practical learning loop</RevealText></h2>
                     </div>
                     <div className="col-lg-5 col-12 mt-4 mt-lg-0 d-flex align-items-end justify-content-lg-end">
                         <p className="sec-6-home-7__desc text-lg-end mb-0 at_fade_anim">
-                            A clear path from idea to launch — learn the fundamentals and apply them as you go.
+                            Move from an uncertain business question to evidence you can use, without treating a plan as proof.
                         </p>
                     </div>
                 </div>

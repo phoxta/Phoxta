@@ -55,6 +55,9 @@ export interface Course {
     rating: number;
     learners: number;
     outcomes: string[];
+    /** The business asset a founder completes by applying the course. */
+    finalProjectTitle?: string;
+    finalProjectDescription?: string;
     publishedAt: string;
 }
 
@@ -90,6 +93,21 @@ export interface Lesson {
      * agrees with itself and cites a book that no longer says that.
      */
     revision?: string;
+    sort: number;
+}
+
+/** A lesson is a learning flow, not an undifferentiated article. */
+export type LessonBlockType = "objective" | "learn" | "example" | "activity" | "ai_activity" | "template" | "resource";
+
+export interface LessonBlock {
+    id: string;
+    lessonId: string;
+    type: LessonBlockType;
+    title: string;
+    content: string;
+    /** A route in this school, when a block should take the founder somewhere. */
+    actionHref?: string;
+    actionLabel?: string;
     sort: number;
 }
 
@@ -236,7 +254,12 @@ export type VentureStage =
 
 export type VentureSectionId =
     | "founder" | "opportunity" | "model" | "legal"
-    | "plan" | "money" | "traction" | "asks";
+    | "plan" | "money" | "traction" | "ai" | "asks";
+
+/** How the founder is arriving at this venture. A turnkey Phoxta business is
+ * still a real venture: the work shifts from idea selection to local proof,
+ * launch and operation. */
+export type VenturePath = "build" | "phoxta_turnkey" | "hybrid";
 
 /**
  * How sure the founder is, and what would settle it.
@@ -266,10 +289,53 @@ export interface Venture {
     name: string;
     oneLiner: string;
     stage: VentureStage;
+    path: VenturePath;
     /** Jurisdiction. It changes the legal form, the funding sources and the rails. */
     country: string;
     sections: Partial<Record<VentureSectionId, VentureSection>>;
     updatedAt: string;
+}
+
+/** A falsifiable piece of founder work. Unlike a task, an experiment records
+ * what was believed, what happened, and the decision that followed. */
+export type ExperimentStatus = "planned" | "running" | "validated" | "invalidated" | "inconclusive";
+export type EvidenceType = "conversation" | "payment" | "metric" | "prototype" | "observation" | "research";
+
+export interface Experiment {
+    id: string;
+    claimId: string | null;
+    sectionId: VentureSectionId | null;
+    title: string;
+    hypothesis: string;
+    method: string;
+    threshold: string;
+    status: ExperimentStatus;
+    evidenceType: EvidenceType | null;
+    evidence: string;
+    sourceUrl: string;
+    result: string;
+    decision: string;
+    nextStep: string;
+    dueAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface NewExperiment {
+    claimId?: string | null;
+    sectionId?: VentureSectionId | null;
+    title: string;
+    hypothesis: string;
+    method: string;
+    threshold: string;
+    status?: ExperimentStatus;
+    evidenceType?: EvidenceType | null;
+    evidence?: string;
+    sourceUrl?: string;
+    result?: string;
+    decision?: string;
+    nextStep?: string;
+    dueAt?: string | null;
 }
 
 /** Mentor-facing preparation for a 1:1. Never shown to the founder. */
@@ -315,6 +381,7 @@ export interface Catalogue {
     modules: Module[];
     lessons: Lesson[];
     quiz: QuizQuestion[];
+    lessonBlocks: LessonBlock[];
     liveLessons: LiveLesson[];
     groups: Group[];
     availability: AvailabilityRule[];
@@ -450,6 +517,7 @@ export interface UserState {
     attendance: LiveAttendance[];
     bookings: Booking[];
     venture: Venture;
+    experiments: Experiment[];
 }
 
 export interface NewTask {

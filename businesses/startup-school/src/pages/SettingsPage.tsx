@@ -5,6 +5,7 @@ import type { CategoryId } from "@startup-school/core";
 import { cn } from "@/lib/cn";
 import { type Hue } from "@startup-school/core";
 import { useAuth } from "@/state/auth";
+import { useAccess } from "@/state/access";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
 import { PageTitle } from "@/components/shell/AppShell";
@@ -17,8 +18,9 @@ const GOALS = [60, 120, 180, 300, 420, 600];
 const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
 
 export default function SettingsPage() {
-    const { user, mutate, repo } = useData();
-    const { demo, signOut, leaveDemo, session } = useAuth();
+    const { user, mutate } = useData();
+    const { signOut, session } = useAuth();
+    const { plan } = useAccess();
     const { toast } = useToast();
     const navigate = useNavigate();
     const p = user.profile;
@@ -184,25 +186,13 @@ export default function SettingsPage() {
                 <div className="flex flex-col gap-4">
                     <Card as="section" aria-labelledby="acct-h">
                         <h2 id="acct-h" className="mb-2 text-[16px] font-semibold">Account</h2>
-                        {demo ? (
-                            <>
-                                <p className="text-[13px] leading-5 text-muted">You're exploring the demo as Tobi. Everything you've done is kept in this browser only.</p>
-                                <div className="mt-3 flex flex-col gap-2">
-                                    <Button variant="brand" size="md" block onClick={() => navigate("/signup")}>Create a real account</Button>
-                                    <Button variant="outline" size="md" block onClick={() => void repo.resetDemo?.().then(() => toast("Demo reset"))}>Reset the demo</Button>
-                                    <Button variant="ghost" size="md" block onClick={() => { leaveDemo(); navigate("/login"); }}>Exit demo</Button>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <p className="text-[13px] text-muted">Signed in as <span className="font-medium text-ink">{session?.user?.email}</span></p>
-                                <Button variant="outline" size="md" block className="mt-3" onClick={() => void signOut().then(() => navigate("/login"))}>Sign out</Button>
-                            </>
-                        )}
+                        <p className="text-[13px] text-muted">Signed in as <span className="font-medium text-ink">{session?.user?.email}</span></p>
+                        <p className="mt-1.5 text-[13px] text-muted">Programme access: <span className="font-medium text-ink">{plan === "launch" ? "Launch" : plan === "cohort" ? "Cohort" : "Self-study"}</span></p>
+                        <Button variant="outline" size="md" block className="mt-3" onClick={() => void signOut().then(() => navigate("/login"))}>Sign out</Button>
                     </Card>
                     <Card as="section" aria-labelledby="priv-h">
                         <h2 id="priv-h" className="mb-2 text-[16px] font-semibold">Your data</h2>
-                        <p className="text-[13px] leading-5 text-muted">{demo ? "Nothing leaves this device in demo mode." : "Your progress, notes and messages are stored under your account and readable only by you."}</p>
+                        <p className="text-[13px] leading-5 text-muted">Your progress, notes, messages, venture canvas and proof loop are stored under your account. The adviser receives only your venture canvas and proof loop. A mentor receives relevant context only for a 1:1 you have booked; AI session notes remain a mentor-reviewed draft before they are shared.</p>
                     </Card>
                 </div>
             </form>

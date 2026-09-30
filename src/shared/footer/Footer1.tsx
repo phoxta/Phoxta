@@ -56,20 +56,22 @@ export default function Footer1() {
           <div className="at-about pt-40 pb-60 p-relative">
             <div className="row g-5">
               <div className="col-6 col-md-3">
-                <h6 className="text-white fw-600 mb-3">Platform</h6>
+                <h6 className="text-white fw-600 mb-3">Start here</h6>
                 <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
-                  <li><Link to="/marketplace" className="text-white text-decoration-none opacity-75">Marketplace</Link></li>
-                  <li><Link to="/pricing" className="text-white text-decoration-none opacity-75">Pricing</Link></li>
+                  <li><Link to="/discover" className="text-white text-decoration-none opacity-75">Discover opportunities</Link></li>
+                  <li><Link to="/businesses" className="text-white text-decoration-none opacity-75">Explore businesses</Link></li>
+                  <li><Link to="/how-it-works" className="text-white text-decoration-none opacity-75">How Phoxta works</Link></li>
+                  <li><Link to="/pricing" className="text-white text-decoration-none opacity-75">Plans &amp; pricing</Link></li>
                   <li><Link to="/faqs" className="text-white text-decoration-none opacity-75">FAQs</Link></li>
                 </ul>
               </div>
               <div className="col-6 col-md-3">
-                <h6 className="text-white fw-600 mb-3">Solutions</h6>
+                <h6 className="text-white fw-600 mb-3">Support for owners</h6>
                 <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
-                  <li><Link to="/ai-tech" className="text-white text-decoration-none opacity-75">AI &amp; Tech</Link></li>
-                  <li><Link to="/marketing" className="text-white text-decoration-none opacity-75">Marketing</Link></li>
-                  <li><Link to="/brand-design" className="text-white text-decoration-none opacity-75">Brand Design</Link></li>
+                  <li><Link to="/ai-tech" className="text-white text-decoration-none opacity-75">AI for existing teams</Link></li>
                   <li><Link to="/startup-school" className="text-white text-decoration-none opacity-75">Startup School</Link></li>
+                  <li><Link to="/founder" className="text-white text-decoration-none opacity-75">Founder Toolkit</Link></li>
+                  <li><Link to="/contact" className="text-white text-decoration-none opacity-75">Talk to Phoxta</Link></li>
                 </ul>
               </div>
               <div className="col-6 col-md-3">

@@ -1,0 +1,1822 @@
+--- PAGE 1 ---
+                                 PHOXTA 2.0
+     Brand & Product
+       Architecture
+
+      Discover business opportunities. Build the ones worth pursuing.
+
+STRATEGIC NORTH STAR
+
+Phoxta becomes an opportunity discovery and venture creation platform: a system that
+helps people discover, investigate, validate, shape, build and launch businesses - whether
+they arrive with an idea, a problem, a market interest, or simply the ambition to build
+something.
+
+
+
+                             Version 2.0 Strategic Blueprint • September 2026
+
+
+
+
+
+                                     Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 2 ---
+Executive Summary
+
+
+Phoxta 2.0 reframes the company around one simple job: helping people
+find business opportunities worth pursuing and giving them the
+intelligence, education, tools and ready-made infrastructure to act on
+those opportunities.
+
+The key strategic move is to stop treating the user's starting point as a business idea. Many potential
+founders do not have a fully formed idea; they have ambition, skills, capital, industry knowledge,
+curiosity, or a desire for additional income. Phoxta should meet users before the idea exists.
+
+ CORE POSITIONING
+
+ Phoxta helps people discover business opportunities, understand why they may exist, test
+ whether they are worth pursuing, and turn the strongest opportunities into launchable
+  businesses.
+
+
+The Phoxta 2.0 system
+
+ Layer                          Purpose                        Primary user outcome
+
+ Discover                              Surface opportunities from problems,    I can see what may be worth
+                                   market shifts, technology, regulation    exploring.
+                                 and unmet demand.
+
+ Intelligence                           Explain customers, markets,                 I understand why this opportunity
+                                         competitors, economics, evidence,     may exist.
+                                            risks and timing.
+
+ Validate                           Turn assumptions into tests and            I know what must be true and how to
+                                              collect evidence.                            test it.
+
+ Shape                                Define value proposition, positioning,     I have a coherent business concept.
+                                            offer and business model.
+
+ Build                                 Create brand, product/service plan,        I can turn the concept into an
+                                      workflows, automation and launch      operating business.
+                                              assets.
+
+ Launch                              Prepare acquisition, sales, operations     I can enter the market deliberately.
+                                 and measurement.
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 3 ---
+ School                             Teach opportunity thinking and            I learn while doing.
+                                        venture-building skills.
+
+ Ready-to-Launch                        Offer selected, already-developed          I can skip much of the build stage and
+                                          businesses.                          launch faster.
+
+
+What changes
+
+ The homepage begins with discovery, not a feature list.
+ The core product object becomes an Opportunity, not an Idea.
+ The central reusable artifact becomes the Opportunity Brief.
+ Validation is framed as investigation rather than as a one-time score.
+ Startup School becomes the education layer for opportunity discovery and venture creation.
+ Phoxta's pre-built agentic businesses become Ready-to-Launch Businesses - a premium path for
+   users who want to move faster.
+ Content becomes a discovery engine: opportunity breakdowns, problem signals, industry maps,
+   'why now' analysis and business-model intelligence.
+ Monetisation spans free discovery, paid intelligence/building tools, education, premium
+   business packages and optional services.
+
+
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 4 ---
+Document Map
+
+
+
+1.  1. Strategic foundation and category definition
+2.  2. Brand positioning, promise and messaging hierarchy
+3.  3. Audience architecture and jobs-to-be-done
+4.  4. Product architecture and naming system
+5.  5. Opportunity Engine: detailed UX and data model
+6.  6. Opportunity Brief and opportunity assessment framework
+7.  7. Validation, shaping, building and launch workflows
+8.  8. Ready-to-Launch Businesses offer
+9.  9. Phoxta Startup School repositioning
+10. 10. Homepage, website information architecture and complete copy
+11. 11. Navigation and logged-in application architecture
+12. 12. Content strategy and editorial pillars
+13. 13. Social-media copy system and repeatable formats
+14. 14. Monetisation, packaging and pricing architecture
+15. 15. Trust, evidence, AI transparency and quality controls
+16. 16. Lifecycle, CRM, retention and growth loops
+17. 17. Metrics and analytics framework
+18. 18. Visual and verbal brand direction
+19. 19. Launch and migration roadmap
+20. 20. 90-day implementation plan
+21. 21. Copy bank, CTA library and terminology rules
+22. 22. Final operating principles and decision filters
+
+1. Strategic Foundation and Category Definition
+
+
+Phoxta should own the space between inspiration and venture creation.
+The category is not simply 'startup education', 'business idea generator', 'AI
+business builder', or 'market research'. It is the integrated workflow
+connecting all four.
+
+1.1 The problem Phoxta exists to solve
+
+Starting a business is often presented as a building problem: create a website, write a plan, make a
+logo, launch ads. In practice, the earlier problem is deciding what deserves to be built. People can
+spend months executing an idea whose customer, timing, economics or differentiation were never
+understood.
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 5 ---
+ Aspiring founders struggle to identify credible opportunities rather than generic startup ideas.
+ Market research is fragmented across search engines, reports, social platforms, spreadsheets
+  and AI chats.
+ Validation is frequently reduced to superficial scoring rather than explicit assumptions and
+   evidence.
+ Education is detached from execution: people learn concepts but still have to assemble a
+   separate operating stack.
+ Pre-built business offers often hide the underlying opportunity thesis, making them feel like
+   templates rather than ventures.
+
+1.2 Category statement
+
+ CATEGORY
+
+ Opportunity Discovery & Venture Creation Platform
+
+
+This category gives Phoxta permission to serve users before they have an idea, during research and
+validation, while building, and after launch. It also accommodates Ready-to-Launch Businesses
+without making the company sound like a marketplace of generic turnkey websites.
+
+1.3 Strategic thesis
+
+ THESIS
+
+ The world is not short of ideas. The scarce resource is clarity about which problems, shifts
+ and unmet needs can become valuable businesses - and a practical system for acting on that
+  clarity.
+
+
+1.4 Brand north star
+
+ Element                                   Recommended direction
+
+ Master proposition                                       Discover business opportunities.
+
+ Brand promise                                           Discover what's worth building.
+
+ Expanded promise                                      Find opportunities. Understand the evidence. Build the
+                                                      ones worth pursuing.
+
+ Product philosophy                                     Evidence before execution; learning through action;
+                                                                 iteration over rigid steps.
+
+ Emotional outcome                               Move from uncertainty to informed momentum.
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 6 ---
+ Functional outcome                              Move from ambition or signal to a validated, launchable
+                                                              business.
+
+
+2. Brand Positioning, Promise and Messaging
+Hierarchy
+
+
+2.1 Positioning statement
+
+ INTERNAL POSITIONING STATEMENT
+
+ For aspiring founders, operators and entrepreneurial professionals who want to build a
+  business but need clarity about what is worth pursuing, Phoxta is an opportunity discovery
+ and venture creation platform that helps them uncover opportunities, investigate markets,
+  validate critical assumptions and turn promising opportunities into launchable businesses.
+ Unlike standalone idea generators, courses or business-planning tools, Phoxta connects
+  discovery, evidence, learning and execution in one system.
+
+
+2.2 External value proposition
+
+Primary: Discover business opportunities. Build the ones worth pursuing.
+
+Supporting: Phoxta helps you uncover opportunities, understand the market, test what must be
+true, and turn the strongest opportunities into real businesses.
+
+2.3 Messaging hierarchy
+
+ Level                          Message                        Purpose
+
+ 1 - Category                           Discover business opportunities.       Immediately communicates the entry
+                                                                                       point.
+
+ 2 - Promise                            Discover what's worth building.        Communicates discernment, not idea
+                                                                         volume.
+
+ 3 - Method                              Discover. Investigate. Validate. Shape.   Explains the operating system.
+                                            Build. Launch.
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 7 ---
+ 4 - Proof                             Opportunity briefs, evidence,         Makes the promise tangible.
+                                       assumptions, experiments, market
+                                            intelligence and build tools.
+
+ 5 - Choice                              Build your own opportunity or choose  Shows two paths to action.
+                                    a Ready-to-Launch Business.
+
+
+2.4 What Phoxta should never sound like
+
+ A hype-driven 'get rich quick' platform.
+ An AI idea vending machine producing endless generic lists.
+ A rigid seven-step methodology that implies entrepreneurship is linear.
+ A course library disconnected from action.
+ A marketplace promising that pre-built businesses are guaranteed to succeed.
+ A consultancy disguised as software.
+
+2.5 Core narrative
+
+ BRAND STORY
+
+ You do not need to arrive with the perfect idea. Start with what you know, what you care
+  about, the problems you notice, the market you understand, or simply the ambition to
+  build. Phoxta helps you discover where opportunity may exist, investigate the evidence, test
+  the assumptions and build around what survives scrutiny.
+
+
+3. Audience Architecture and Jobs-to-be-Done
+
+
+
+ Segment                   Starting state            Primary job               Best entry point
+
+ Aspiring founder           Wants to start but has no     Help me find something      Opportunity Explorer
+                                  idea.                          credible to explore.
+
+ Idea holder                 Already has a concept.       Help me determine whether   Investigate My Idea
+                                                                    this is an opportunity.
+
+ Industry insider           Knows a sector and its pain   Help me turn domain         Industry Opportunity Map
+                                 points.                    knowledge into
+                                                               opportunities.
+
+ AI builder / technical        Can build but needs a       Show me valuable           AI Opportunity Watch
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 8 ---
+ founder                     market.                    workflows AI can improve.
+
+ Professional / side-business   Has limited time and       Show me opportunities that   Personalised Opportunity
+ seeker                          specific skills/capital.              fit my constraints.           Feed
+
+ Existing founder           Has customers and wants     Find expansion, product      Adjacent Opportunities
+                              adjacent growth.           and automation
+                                                               opportunities.
+
+ Buyer / operator           Wants speed over ideation.   Give me a developed         Ready-to-Launch Businesses
+                                                           business I can launch.
+
+
+3.1 Personalisation inputs
+
+ Goals: full-time venture, side business, portfolio business, agency/service, SaaS, local business,
+   acquisition.
+ Skills and experience: industry, sales, operations, technical, design, marketing, finance, domain
+   expertise.
+ Market preferences: country/region, B2B/B2C/B2B2C, local vs global, regulated vs unregulated.
+ Resources: available capital range, weekly time, team size, existing audience, distribution access.
+ Business preferences: recurring revenue, service, marketplace, software, ecommerce,
+   information product, licensing.
+ Risk/complexity preferences: speed to first revenue, regulatory burden, technical complexity,
+   sales cycle.
+ Interests: industries, customer groups, technologies and problems.
+
+3.2 User jobs
+
+ When I...                                   I want Phoxta to...                So I can...
+
+ do not know what to build              surface opportunities matched to my     start from evidence instead of random
+                                             profile                                  ideation
+
+ notice a problem                      turn it into a structured opportunity     see whether it deserves investigation
+                                            thesis
+
+ have an idea                           challenge its assumptions and          avoid premature building
+                                       research alternatives
+
+ find an opportunity                show me what must be true            design validation experiments
+
+ gain confidence                       help me shape the offer and business   make the opportunity coherent
+                                  model
+
+ decide to proceed                      generate a build and launch         move into execution
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 9 ---
+                                   workspace
+
+ want speed                      show me businesses already           launch without assembling everything
+                                     developed                            myself
+
+
+4. Product Architecture and Naming System
+
+
+4.1 Master product architecture
+
+ Product area                     Role                           Core objects
+
+ Phoxta Discover                      Opportunity discovery and               Signals, Opportunities, Collections
+                                        personalised feed
+
+ Phoxta Intelligence                    Market/customer/competitive           Evidence, Sources, Insights, Market
+                                     understanding                    Maps
+
+ Phoxta Validate                     Assumption testing and learning        Assumptions, Experiments,
+                                                                                  Interviews, Evidence
+
+ Phoxta Shape                         Business design                          ICP, Value Proposition, Offer, Business
+                                                                          Model, Positioning
+
+ Phoxta Build                          Execution planning and asset creation  MVP, Brand, Website, Workflows, AI
+                                                                                Agents, Tasks
+
+ Phoxta Launch                        Go-to-market preparation              Channels, Campaigns, Sales, Metrics,
+                                                                   Launch Plan
+
+ Phoxta School                         Contextual education                   Courses, Lessons, Exercises, Playbooks
+
+ Phoxta Businesses                    Ready-to-Launch catalogue             Business Packages, Demos,
+                                                                                 Acquisition/License Terms
+
+
+4.2 Core terminology
+
+ Avoid / de-emphasise             Use instead                     Reason
+
+ Idea Generator                       Opportunity Explorer                 Focuses on value, not volume.
+
+ Idea Score                           Opportunity Assessment               Avoids false precision.
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 10 ---
+ Validate Your Idea                       Investigate & Validate                   Signals evidence gathering.
+
+ Business Idea                         Opportunity                      Makes the object more rigorous.
+
+ AI Ideas                             Opportunity Intelligence                 Positions AI as analysis, not novelty.
+
+ Pre-built Agentic Business             Ready-to-Launch Business              Customer-facing benefit is clearer.
+
+ 7 Steps                              Venture Loop / Journey                Allows iteration.
+
+ Final Verdict                           Decision Review                      Supports proceed, pivot, pause or
+                                                                                         stop.
+
+
+4.3 The venture loop
+
+ VENTURE LOOP
+
+ DISCOVER → INVESTIGATE → VALIDATE → SHAPE → BUILD → LAUNCH → LEARN ↺
+
+
+The interface should show progress without implying that stages are locked. A validation result
+may send the user back to investigate a different customer; a build constraint may force a new
+business model; launch feedback may reveal a new opportunity.
+
+5. Opportunity Engine: Detailed UX and Data Model
+
+
+The Opportunity Engine should be Phoxta's signature experience. It is not
+a chat box that produces ideas; it is a structured discovery system that
+combines user context, market signals, evidence and explicit reasoning.
+
+5.1 Entry modes
+
+ Entry mode                    Prompt                         Output
+
+ Explore for me                            Tell us your goals, skills, resources      Personalised opportunity feed
+                                 and interests.
+
+ Explore an industry                Which industry or customer group      Industry opportunity map
+                                            interests you?
+
+ Start from a problem               What recurring problem have you      Problem-to-opportunity analysis
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 11 ---
+                                        noticed?
+
+
+ Investigate my idea                    Describe the idea in one paragraph.     Opportunity thesis + assumption map
+
+ Start from a trend                 What change are you curious about?    Trend-enabled opportunity map
+
+ Start from a technology             Which capability interests you?        Workflow and business-model
+                                                                                opportunities
+
+ Browse                        No setup required.                    Curated public opportunity library
+
+
+5.2 Discovery onboarding
+
+23. Intent: What are you trying to achieve?
+24. Fit: What do you know or do well?
+25. Constraints: How much time and capital can you commit?
+26. Market: Where and for whom do you want to build?
+27. Model preferences: What types of businesses appeal to you?
+28. Complexity tolerance: What are you willing to deal with?
+29. Optional unfair advantages: audience, distribution, relationships, data, certifications,
+   proprietary assets.
+
+5.3 Opportunity feed card
+
+ CARD ANATOMY
+
+ Opportunity title • one-sentence thesis • customer • problem • why now • business-model
+  hint • evidence strength • key uncertainty • fit tags • estimated path to first validation •
+ Save / Investigate / Not for me.
+
+
+5.4 Ranking logic
+
+Ranking should be explainable and should not pretend to predict success. A useful model:
+
+ Dimension                       Question                          Display
+
+ Problem evidence                           Is there credible evidence that the     Weak / Emerging / Strong
+                                   problem exists and matters?
+
+ Customer clarity                   Can a reachable customer segment be  Low / Medium / High clarity
+                                       described precisely?
+
+ Timing                      Why might this opportunity exist        Drivers + freshness
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 12 ---
+                                now?
+
+
+ Alternative gap                 How are customers solving it today     Gap narrative
+                                 and what remains unsatisfactory?
+
+ Economic plausibility                       Is there a plausible way to create and    Hypothesis, not forecast
+                                       capture value?
+
+ Distribution access                 Can the target customer plausibly be    Channel hypotheses
+                                     reached?
+
+ Founder fit                   How well does it match the user's       Personalised fit explanation
+                                          constraints and strengths?
+
+ Validation cost                 How cheaply/quickly can the riskiest   Low / Medium / High effort
+                                    assumption be tested?
+
+
+Do not collapse these into a single '87/100 success score'. If an overall summary is needed, use a
+descriptive status such as 'Promising but unproven' with the exact reasons visible.
+
+5.5 Signal taxonomy
+
+ Pain signals: complaints, manual work, delays, errors, high service costs, repeated workarounds.
+ Demand signals: active search, procurement, job roles, budget allocation, growing category
+   spend.
+ Technology signals: newly feasible automation, falling inference costs, multimodal capabilities,
+   APIs and infrastructure.
+ Regulatory signals: new obligations, reporting requirements, compliance burdens or
+   deregulation.
+ Behaviour signals: changing habits, new channels, new expectations, demographic or workforce
+    shifts.
+ Supply signals: fragmented vendors, poor service, low digitisation, weak customer experience.
+ Business-model signals: new pricing models, unbundling/rebundling, verticalisation, embedded
+   services.
+ Distribution signals: new communities, platforms, marketplaces, ecosystems or partnerships.
+
+5.6 Opportunity lifecycle states
+
+ State                          Meaning                        Allowed next moves
+
+ Discovered                              Interesting signal converted into a       Save, investigate, dismiss
+                                         hypothesis.
+
+ Investigating                         Research is being assembled.         Add evidence, define customer, map
+                                                                                    alternatives
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 13 ---
+ Unproven                              Thesis exists but critical assumptions    Create experiments
+                                         lack evidence.
+
+ Testing                                 Validation experiments are active.      Record results, revise assumptions
+
+ Promising                       Some critical assumptions have        Shape offer/business model
+                                       supporting evidence.
+
+ Shaping                              Business design is being defined.       Model economics, positioning, MVP
+
+ Building                             Execution has started.                  Create product/service and operations
+
+ Launching                            Go-to-market is active.                 Acquire users, measure outcomes
+
+ Learning                             Real-world evidence is feeding         Expand, pivot, return to discovery
+                                              iteration.
+
+ Paused / Rejected                     Evidence or priorities do not justify     Archive, revisit later
+                                      continued work now.
+
+
+6. Opportunity Brief and Opportunity Assessment
+Framework
+
+
+6.1 Opportunity Brief structure
+
+ Section                                         Purpose
+
+ Executive thesis                                  What the opportunity is, for whom, and why it may matter
+                                                   now.
+
+ Problem                                                       Specific job, pain, friction, cost or unmet outcome.
+
+ Target customer                                      Primary ICP plus secondary segments.
+
+ Context                                          When/where the problem occurs and what triggers it.
+
+ Current alternatives                                        Products, services, internal processes, spreadsheets,
+                                                 manual work, doing nothing.
+
+ Why now                                                   Technological, regulatory, behavioural, economic or
+                                                               distribution changes.
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 14 ---
+ Evidence                                            Observed signals with source, date, geography and
+                                                             confidence.
+
+ Market structure                                       Value chain, buyer/user distinction, stakeholders, category
+                                                          boundaries.
+
+ Competitive landscape                                         Direct, indirect, substitute and status-quo alternatives.
+
+ Business-model hypotheses                      Who pays, what for, how often, and plausible pricing logic.
+
+ Distribution hypotheses                        How the customer could be reached and why that channel
+                                           may work.
+
+ Critical assumptions                                     Statements that must be true for the opportunity to
+                                                 become a viable business.
+
+ Risks                                            Demand, adoption, technical, regulatory, operational,
+                                                               distribution and economic risks.
+
+ Validation plan                                         Cheapest credible experiments for the highest-risk
+                                                          assumptions.
+
+ Decision review                                           Proceed, revise, pause or stop - with evidence and
+                                                        unresolved questions.
+
+
+6.2 Evidence model
+
+ Evidence type                   Examples                          Relative role
+
+ Direct customer evidence               Interviews, observed workflows, paid   Highest relevance to the specific thesis
+                                                 pilots, pre-orders
+
+ Behavioural evidence                  Usage, conversion, signups, repeat      Stronger than stated preference
+                                     behaviour
+
+ Commercial evidence                   Budgets, procurement, competitor       Tests willingness/ability to pay
+                                            pricing, transaction data
+
+ Market evidence                        Reports, public data, filings, category    Useful context, not proof of user
+                                   growth                         demand
+
+ Anecdotal evidence                  Forums, reviews, social posts           Useful for discovery and language;
+                                                                               requires corroboration
+
+ AI inference                          Model-generated synthesis or          Never presented as evidence by itself
+                                       hypothesis
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 15 ---
+6.3 Assumption map
+
+ Assumption class                              Example
+
+ Problem                                           The customer experiences this problem frequently enough
+                                                                 to care.
+
+ Customer                                          The chosen segment has the problem more acutely than
+                                                           adjacent segments.
+
+ Value                                             The proposed outcome is meaningfully better than current
+                                                                  alternatives.
+
+ Behaviour                                         The customer is willing to change workflow or provider.
+
+ Payment                                    A buyer has budget and willingness to pay.
+
+ Distribution                                        The customer can be reached economically.
+
+ Solution                                           The product/service can deliver the promised outcome.
+
+ Operations                                         The business can deliver consistently at acceptable cost.
+
+ Regulatory                                         The model can operate within relevant rules.
+
+
+6.4 Decision review
+
+Phoxta should avoid declaring ideas 'good' or 'bad'. The decision review should show:
+
+ What has been learned.
+ Which assumptions now have evidence.
+ Which assumptions remain uncertain.
+ What changed from the original thesis.
+ What the next cheapest learning action is.
+ Four user-controlled decisions: Proceed, Revise, Pause, Stop.
+
+7. Validation, Shaping, Building and Launch Workflows
+
+
+7.1 Validate
+
+ Assumption prioritisation matrix: importance × uncertainty.
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 16 ---
+ Experiment builder: interview, landing page, concierge test, prototype test, waitlist, paid pilot,
+   pre-order, outreach, smoke test.
+ Interview guide generator with non-leading questions.
+ Evidence log linking each observation to the assumption it supports or contradicts.
+ Learning summaries after each experiment.
+ Decision review that updates the Opportunity Brief.
+
+7.2 Shape
+
+ Ideal customer profile and buyer/user map.
+ Job-to-be-done and desired outcome.
+ Value proposition and differentiated promise.
+ Offer architecture: core outcome, deliverables, onboarding, support, guarantees/constraints
+  where appropriate.
+ Business model: payer, pricing mechanism, revenue frequency, cost drivers, delivery model.
+ Positioning: category, alternatives, differentiation, reasons to believe.
+ MVP boundary: what must exist to test the value proposition and what can remain manual.
+
+7.3 Build
+
+ MVP/product requirements and backlog.
+ Brand foundation and naming workspace.
+ Website/landing-page copy and structure.
+ Operational workflows and SOPs.
+ AI agent/workflow design where useful.
+ CRM, pipeline and customer-support setup.
+ Analytics events and feedback collection.
+ Task plan with dependencies, owners and milestones.
+
+7.4 Launch
+
+ Launch objective and target cohort.
+ Channel plan: founder-led sales, partnerships, communities, content, outbound, paid acquisition
+  where appropriate.
+ Messaging and campaign assets.
+ Sales scripts and objection handling.
+ Onboarding and activation checklist.
+ Measurement dashboard: acquisition, activation, conversion, retention, revenue and learning.
+ Post-launch learning loop back into Opportunity Brief.
+
+8. Ready-to-Launch Businesses Offer
+
+
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 17 ---
+Ready-to-Launch Businesses should be the premium expression of the
+same Phoxta philosophy: Phoxta identifies an opportunity, performs
+structured investigation, designs the business and packages the
+infrastructure required for an operator to launch.
+
+8.1 Customer-facing proposition
+
+ OFFER
+
+  Skip the blank page. Start with a business already designed around a researched
+  opportunity.
+
+
+Supporting copy: Explore businesses with the product, brand, workflows, automation, AI systems
+and launch assets already assembled. Review the opportunity thesis and decide whether the
+business fits you before you commit.
+
+8.2 What every listing must include
+
+ Area                                             Included
+
+ Opportunity                                            Opportunity Brief, target customer, problem, why now,
+                                                        evidence summary, key assumptions and risks
+
+ Business model                                                 Offer, pricing logic, revenue model, cost drivers, operating
+                                                  model
+
+ Brand                                            Name/brand system where transferable, messaging, visual
+                                                                  direction, core copy
+
+ Digital product                                        Website/app/demo as applicable, domain transfer/licence
+                                                                       details, source-code terms
+
+ AI & automation                                           Agents, prompts, workflows, integrations, model/provider
+                                                          requirements, operating costs
+
+ Operations                                               SOPs, support workflows, fulfilment, CRM/pipeline
+                                                             structure
+
+ Go-to-market                                                  ICP, channel hypotheses, launch plan, campaign assets,
+                                                        outreach scripts
+
+ Measurement                                               Analytics setup and KPI definitions
+
+ Handover                                             Documentation, onboarding, training and implementation
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 18 ---
+                                                                 checklist
+
+ Disclosures                                     What is proven vs hypothesised; ongoing costs;
+                                                         dependencies; licences; limitations
+
+
+8.3 Offer tiers
+
+ Tier                        What customer buys               Best for
+
+ Launch Kit                            Business blueprint + brand +           Operators comfortable configuring
+                                        website/landing assets + workflows +    tools
+                                     launch plan
+
+ Launch System                       Everything in Launch Kit plus          Customers wanting a functioning
+                                       configured automations/agents, CRM    operating stack
+                                 and integrations
+
+ Launch + Handover                   Configured system plus guided         Customers who want assisted
+                                      implementation, training and launch   deployment
+                                      support
+
+ Exclusive Acquisition               Where applicable: exclusive           Buyers seeking exclusivity
+                                           transfer/licence of a developed
+                                       business package
+
+
+8.4 Important trust rule
+
+ DO NOT SELL CERTAINTY
+
+ A Ready-to-Launch Business is developed infrastructure around an opportunity thesis, not a
+ guaranteed income stream. Every listing should distinguish researched evidence, tested
+ evidence and untested assumptions.
+
+
+9. Phoxta Startup School Repositioning
+
+
+9.1 New role
+
+ POSITIONING
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 19 ---
+ Phoxta Startup School teaches you how to recognise, investigate and build business
+  opportunities - while you work on a real opportunity inside Phoxta.
+
+
+9.2 Curriculum architecture
+
+ Module                       Outcome                          In-product artifact
+
+ 1. Opportunity Thinking              Understand the difference between an  Opportunity thesis
+                                            idea, problem, trend and opportunity.
+
+ 2. Finding Problems Worth            Observe jobs, pain, friction and        Problem evidence log
+ Investigating                        workarounds.
+
+ 3. Customers & Context                 Define who experiences the problem    ICP + context map
+                                 and when.
+
+ 4. Market & Alternatives              Understand how value is currently      Alternative/competitor map
+                                          delivered.
+
+ 5. Why Now?                            Identify enabling changes and timing.  Why-now thesis
+
+ 6. Critical Assumptions                   State what must be true.              Assumption map
+
+ 7. Validation                         Design evidence-generating tests.       Experiment plan
+
+ 8. Value Proposition                    Translate learning into a compelling    Value proposition
+                                     outcome.
+
+ 9. Business Model                      Define who pays and how value is       Business model
+                                        captured.
+
+ 10. MVP & Delivery                    Design the smallest credible delivery   MVP scope
+                                        system.
+
+ 11. Go-to-Market                     Choose channels and sales motion.     Launch plan
+
+ 12. Decision & Iteration                 Proceed, revise, pause or stop based     Decision review
+                                 on evidence.
+
+
+9.3 Learning design principles
+
+ Short lessons followed immediately by an action inside the user's live opportunity workspace.
+ No lesson completion for its own sake; completion means an artifact or decision has been
+   produced.
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 20 ---
+ AI coach explains concepts but should ask the user to provide observations/evidence rather than
+   fabricate certainty.
+ Users can enter modules non-linearly based on the state of their opportunity.
+ Examples should span SaaS, services, ecommerce, local businesses and AI-enabled businesses.
+
+9.4 Startup School homepage copy
+
+ HERO
+
+ Learn how to discover and build business opportunities.
+
+
+Subtext: Learn how to identify real customer problems, understand markets, test assumptions,
+design a business model and launch with evidence - not guesswork.
+
+CTA: Start learning
+
+10. Homepage, Website Information Architecture and
+Complete Copy
+
+
+10.1 Public website navigation
+
+ Nav item                                       Purpose
+
+ Discover                                           Browse public opportunity library and explain the
+                                                        Opportunity Engine
+
+ How It Works                                            Explain the venture loop
+
+ Businesses                                             Ready-to-Launch catalogue
+
+ Startup School                                          Education product
+
+ Resources                                                  Reports, opportunity maps, guides and editorial content
+
+ Pricing                                                   Plans and package comparison
+
+ Sign In                                                 Returning users
+
+ Start Discovering                                      Primary CTA
+
+
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 21 ---
+10.2 Homepage copy - full draft
+
+ HERO EYEBROW
+
+ PHOXTA • OPPORTUNITY DISCOVERY & VENTURE CREATION
+
+
+
+ H1
+
+ Discover Business Opportunities
+
+
+Subheadline: Find opportunities worth investigating. Understand the customer, market and
+evidence. Validate what must be true. Then build and launch with Phoxta.
+
+Primary CTA: Discover Opportunities  Secondary CTA: Explore Ready-to-Launch Businesses
+
+Trust microcopy: Start free. No business idea required.
+
+Section: You don't need the perfect idea
+Headline: You need an opportunity worth pursuing.
+
+Body: Start with your skills, an industry, a problem you've noticed, a technology, a trend - or simply
+the ambition to build. Phoxta helps you turn signals into structured opportunities and shows you
+what to investigate next.
+
+Section: Discovery modes
+
+ Card                                         Copy
+
+ For Me                                                           Tell Phoxta what you know, what you want and what
+                                                              constraints you have. Get opportunities matched to your
+                                                                      profile.
+
+ By Industry                                             Explore unmet needs, broken workflows and changing
+                                                      economics inside a market you understand.
+
+ From a Problem                                     Turn a recurring frustration or inefficient workflow into
+                                                  an opportunity thesis.
+
+ From My Idea                                          Already have an idea? Investigate the customer,
+                                                                  alternatives, assumptions and evidence behind it.
+
+
+Section: How Phoxta works
+Headline: From curiosity to a business you can launch.
+
+ Stage                                     Homepage copy
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 22 ---
+ Discover                                               Find opportunities from problems, market shifts,
+                                                         technology and unmet demand.
+
+ Investigate                                           Understand customers, alternatives, market structure and
+                                            why the opportunity may exist now.
+
+ Validate                                                      Identify what must be true and run tests that produce
+                                                            evidence.
+
+ Shape                                                   Define the offer, positioning, business model and MVP.
+
+ Build                                                     Create the product, brand, workflows and operating
+                                                           system.
+
+ Launch                                                Prepare your go-to-market motion, acquire customers and
+                                                           learn from the market.
+
+
+Section: Opportunity Brief
+Headline: Every opportunity becomes something you can reason about.
+
+Body: Phoxta turns discovery into a living Opportunity Brief: the problem, customer, why now,
+alternatives, evidence, business-model hypotheses, risks, assumptions and next validation actions -
+all in one place.
+
+CTA: See how Opportunity Briefs work
+
+Section: Evidence
+Headline: Don't confuse an interesting idea with a proven opportunity.
+
+Body: Phoxta separates facts, external evidence, customer evidence, assumptions and AI-generated
+hypotheses so you always know what you know - and what still needs testing.
+
+Section: Two ways to build
+
+ Path                          Copy                       CTA
+
+ Build Your Own                       Discover an opportunity and use         Start Discovering
+                                     Phoxta to investigate, validate, shape,
+                                         build and launch it.
+
+ Ready-to-Launch                    Choose a business Phoxta has already   Explore Businesses
+                                      designed with the brand, systems,
+                                     automation and launch assets
+                                      assembled.
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 23 ---
+Section: Startup School
+Headline: Learn by building something real.
+
+Body: Phoxta Startup School teaches opportunity discovery, validation, business design and go-to-
+market through practical lessons connected to your live workspace.
+
+CTA: Start Learning
+
+Final CTA
+Headline: Your next business may start with a problem, a shift or a question.
+
+Subtext: Discover what is changing, what customers still struggle with and what may be worth
+building next.
+
+CTA: Discover Opportunities
+
+11. Navigation and Logged-In Application Architecture
+
+
+
+ Primary nav                                  Key screens
+
+ Home                                                   Personal dashboard, active opportunities, experiments,
+                                                                    tasks, recommendations
+
+ Discover                                              For You, Browse, Industries, Problems, Trends, AI &
+                                                        Automation, Saved
+
+ Opportunities                                                          All, Investigating, Testing, Shaping, Building, Launching,
+                                                       Archived
+
+ School                                                Learning path, courses, progress, contextual lessons
+
+ Businesses                                             Ready-to-Launch catalogue, saved listings,
+                                                           enquiries/purchases
+
+ Workspace                                             Brand, plan, product, workflows, CRM, campaigns, tasks,
+                                                                             files
+
+
+11.1 Opportunity workspace tabs
+
+ Tab                                              Contents
+
+ Overview                                                     Thesis, stage, key uncertainties, recent learning, next
+                                                             action
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 24 ---
+ Brief                                                           Full Opportunity Brief
+
+ Evidence                                                   Sources, customer evidence, notes, confidence and
+                                                     provenance
+
+ Assumptions                                         Assumption map and risk prioritisation
+
+ Experiments                                                     Tests, status, results and learning
+
+ Market                                                 Customers, alternatives, competitors, value chain, market
+                                                            context
+
+ Business                                                        Offer, pricing, model, positioning, unit economics
+                                                        hypotheses
+
+ Build                                            MVP, brand, product requirements, workflows, agents,
+                                                              integrations
+
+ Launch                                                  Channels, campaigns, sales, onboarding, analytics
+
+ Decisions                                               Version history, proceed/revise/pause/stop reviews
+
+
+11.2 Dashboard
+
+ Continue where you left off.
+ One recommended next learning action per active opportunity.
+ New opportunity signals matched to profile.
+ Experiments awaiting results.
+ Assumptions with weak evidence.
+ Upcoming launch/build milestones.
+ Contextual Startup School lesson linked to the user's current bottleneck.
+
+12. Content Strategy and Editorial Pillars
+
+
+Phoxta's content should itself deliver opportunity discovery. The goal is for
+people to follow Phoxta because it consistently helps them notice
+problems, shifts and markets differently.
+
+ Pillar                       What it contains                    Strategic job
+
+ Opportunity of the Week            One deeply explained opportunity      Discovery
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 25 ---
+                                               thesis.
+
+ Problems Worth Solving           A recurring workflow, frustration or    Problem literacy
+                                            costly workaround.
+
+ Why Now?                    A technology, regulation, behaviour or  Timing
+                                           cost shift creating new possibilities.
+
+ Industry Opportunity Maps         A sector broken into customer groups,  Depth
+                                      workflows, pain points and openings.
+
+ AI Opportunity Watch             New AI capabilities translated into      Applied AI
+                                       business workflows rather than model
+                                     news.
+
+ Business Model Breakdown         How a category captures value, where  Commercial literacy
+                                        margins/constraints live, and where
+                                           alternatives exist.
+
+ Opportunity Autopsy              A concept that looked attractive but     Judgment
+                                             failed key assumptions; focus on
+                                           learning.
+
+ Customer Language                    Real phrases, complaints and desired   Messaging
+                                   outcomes found during research.
+
+ Build Log                            Transparent progress from             Trust
+                                       opportunity thesis to validation/build.
+
+ Ready-to-Launch Spotlight             Explain the opportunity thesis behind   Commercial conversion
+                                    a Phoxta-built business.
+
+
+12.1 Editorial standard
+
+ Lead with the customer/problem, not with 'AI'.
+ State the geography and customer segment whenever relevant.
+ Separate observed evidence from interpretation.
+ Use 'may', 'could', 'hypothesis' and 'worth investigating' when evidence is incomplete.
+ End discovery content with a question or investigation path, not a promise of easy money.
+ Make the next action useful: save the opportunity, open the brief, investigate the customer, or
+   learn the method.
+
+12.2 Content funnel
+
+ Stage                            Content                     CTA
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 26 ---
+ Awareness                         Problem signals, opportunity hooks,     Follow / Save
+                                        industry observations
+
+ Interest                              Opportunity breakdowns, maps,        Explore Opportunity
+                                           carousels, short reports
+
+ Consideration                           Interactive brief previews, case         Create Free Workspace
+                                             studies, school lessons
+
+ Activation                             Personalised discovery and first         Investigate
+                                      Opportunity Brief
+
+ Conversion                        Advanced intelligence, validation      Upgrade
+                                                tools, build features
+
+ Premium                            Ready-to-Launch spotlights and demos  Request Details / Explore Business
+
+
+13. Social-Media Copy System and Repeatable
+Formats
+
+
+13.1 Voice
+
+ Trait                       Do                             Avoid
+
+ Curious                           Ask what changed, who struggles and   Pretending every signal is a goldmine.
+                                   why.
+
+ Analytical                       Show reasoning and assumptions.     Empty motivational language.
+
+ Clear                              Use plain business language.            Startup jargon for its own sake.
+
+ Practical                             Give a next investigation action.        Generic 'just start' advice.
+
+ Grounded                          Use evidence and caveats.             Guaranteed outcomes or income
+                                                                                    claims.
+
+
+13.2 Core hook formulas
+
+ There may be a business hiding inside [broken workflow].
+ [Customer] still spend [time/money/effort] doing [task] manually. That's worth investigating.
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 27 ---
+ A new business opportunity appears when [change] makes [old constraint] disappear.
+ Don't start with an idea. Start with a problem people already spend money trying to solve.
+ The opportunity isn't '[product]'. The opportunity is [customer + problem + why now].
+ Before you build [idea], answer these three questions.
+ [Industry] has a workflow problem nobody talks about enough.
+ This looks like an AI opportunity. The real question is whether anyone will pay to change their
+   workflow.
+
+13.3 Carousel systems
+
+ Carousel                                              Slide sequence
+
+ Opportunity Breakdown                                1 Hook • 2 Customer • 3 Problem • 4 Current workaround •
+                                                      5 Why now • 6 Possible model • 7 Biggest uncertainty • 8
+                                              What to test • 9 CTA
+
+ Problem Worth Solving                                 1 Problem • 2 Who feels it • 3 Cost/friction • 4 Why current
+                                                               solutions fail • 5 Opportunity directions • 6 Evidence to find
+                                                                                   • 7 CTA
+
+ Industry Map                                         1 Industry • 2 Value chain • 3 Customer groups • 4 Broken
+                                                      workflows • 5 Opportunity 1 • 6 Opportunity 2 • 7
+                                                        Opportunity 3 • 8 What changed • 9 CTA
+
+ Idea vs Opportunity                                    1 Provocation • 2 Idea statement • 3 Missing customer • 4
+                                                         Missing evidence • 5 Missing why-now • 6 Opportunity
+                                                           rewrite • 7 CTA
+
+
+13.4 Short-form video system
+
+ 0-3s: concrete tension - 'Small property managers still coordinate repairs across calls, WhatsApp
+  and spreadsheets.'
+ 3-10s: show the customer and workflow.
+ 10-20s: explain what changed or why the gap matters.
+ 20-30s: present the opportunity thesis and the biggest unknown.
+ Final: 'Discover opportunities worth investigating at Phoxta.'
+
+13.5 Caption template
+
+ CAPTION FORMULA
+
+ Observation → customer/problem → why it matters → opportunity hypothesis → uncertainty
+ → next question → Phoxta CTA.
+
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 28 ---
+13.6 CTA library
+
+ Discover opportunities
+ Explore the opportunity
+ Open the Opportunity Brief
+ Investigate this market
+ Save this opportunity
+ Test the assumption
+ Build your opportunity
+ Start learning
+ Explore Ready-to-Launch Businesses
+
+14. Monetisation, Packaging and Pricing Architecture
+
+
+Phoxta should monetise increasing depth, workflow value and execution
+speed - not basic curiosity. Discovery should be generous enough to create
+habit; deeper intelligence, collaboration, validation/build tools and ready-
+made infrastructure create willingness to pay.
+
+14.1 Revenue streams
+
+ Stream                      What is sold                      Role
+
+ Subscription                       Advanced discovery, intelligence,       Recurring core revenue
+                                          validation and build workflows
+
+ Startup School                         Structured learning,                   Education + activation
+                                             cohorts/certificates or premium
+                                   pathways
+
+ Ready-to-Launch                      Business packages, licences or           High-ticket revenue
+                                          acquisitions
+
+ Implementation                       Optional setup, integrations,            Services revenue
+                                       customisation and launch support
+
+ Teams / Organisations                Shared workspaces, governance,       B2B expansion
+                                            portfolios and reporting
+
+ Marketplace / Partners                 Optional vetted specialist services or    Future ecosystem revenue
+                                          integrations
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 29 ---
+14.2 Suggested subscription architecture
+
+ Plan                           Purpose                              Illustrative inclusions
+
+ Free                                  Create discovery habit                  Public library; limited personalised
+                                                                                     discoveries; 1 active Opportunity
+                                                                                           Brief; basic School lessons; limited AI
+                                                                                  actions
+
+ Explorer                               Serious opportunity research         More active opportunities; deeper
+                                                                                         intelligence; saved evidence; industry
+                                                                      maps; advanced discovery filters;
+                                                                              exports
+
+ Builder                           Turn opportunity into business         Everything in Explorer + validation
+                                                                             experiments, business modelling,
+                                                                                build workspace, brand/launch tools,
+                                                                             automations, analytics
+
+ Studio / Team                    Run multiple ventures collaboratively   Multiple members, portfolio
+                                                                          dashboard, permissions, shared
+                                                                                 research, templates, higher limits,
+                                                                   team reporting
+
+
+Pricing should be validated with real users rather than chosen from a generic SaaS benchmark.
+Test packaging and willingness to pay before locking exact prices.
+
+14.3 Value metric
+
+Prefer value metrics users understand:
+
+ Number of active opportunity workspaces.
+ Depth of intelligence/research actions.
+ Advanced build/automation capabilities.
+ Team seats and portfolio size.
+ Avoid opaque token systems as the primary customer-facing model; if compute limits are
+   necessary, translate them into understandable usage.
+
+14.4 Ready-to-Launch commercial models
+
+ Model                             Description                 When to use
+
+ One-time package                   Customer buys a defined launch        Standardised non-exclusive assets
+                                       package.
+
+ Licence + setup                       Upfront implementation plus ongoing   AI/automation systems with recurring
+                                        platform/technology licence.            operating value
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 30 ---
+ Exclusive transfer                 One buyer receives agreed exclusive    Scarce or bespoke developed ventures
+                                              rights/assets.
+
+ Managed launch                     Package plus implementation and       Higher-touch buyers
+                                          limited launch support.
+
+
+14.5 Upgrade moments
+
+ User wants to investigate more than the free active-opportunity limit.
+ User wants deeper evidence/competitive intelligence.
+ User creates a validation experiment.
+ User moves an opportunity into Shape or Build.
+ User needs export/share/collaboration.
+ User wants advanced automation, agents or integrations.
+ User wants portfolio management.
+
+15. Trust, Evidence, AI Transparency and Quality
+Controls
+
+
+
+ Every externally sourced fact should retain source, date and geography.
+ AI-generated statements should be labelled as hypotheses or synthesis, not evidence.
+ Opportunity pages should show 'What we know / What we infer / What we still need to test'.
+ Market-size estimates should expose assumptions and methodology.
+ Generated competitors must be verified before being presented as factual entities.
+ Ready-to-Launch listings must disclose dependencies, ongoing software/API costs and what has
+   or has not been market-tested.
+ Avoid success probabilities and guaranteed-income language.
+ Maintain version history so users can see how an opportunity thesis changed as evidence
+   arrived.
+ Allow users to challenge or correct AI outputs and attach their own evidence.
+
+15.1 Confidence vocabulary
+
+ Label                                        Meaning
+
+ Hypothesis                                            Reasonable proposition with insufficient direct evidence.
+
+ Emerging evidence                                        Multiple relevant signals but important uncertainty
+                                                         remains.
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 31 ---
+ Supported                                             Meaningful evidence supports the statement in the defined
+                                                                context.
+
+ Contradicted                                           Evidence materially conflicts with the current assumption.
+
+ Unknown                                             Phoxta does not have enough information to make a
+                                                            responsible claim.
+
+
+16. Lifecycle, CRM, Retention and Growth Loops
+
+
+16.1 Activation event
+
+ ACTIVATION
+
+ A new user should reach value when they save or create an opportunity, understand why it
+ may exist, and identify one concrete next investigation action.
+
+
+16.2 Lifecycle
+
+ Moment                                       Message / product action
+
+ Signup                                              Choose discovery path; no long setup wall.
+
+ First session                                           Generate or save first opportunity and create brief.
+
+ 24 hours                                              Return to one unresolved question, not a generic
+                                                        reminder.
+
+ Research                                                 Surface new evidence or related opportunity signals.
+
+ Validation                                         Prompt experiment completion and learning capture.
+
+ Stalled                                        Show smallest next action or allow pause/archive.
+
+ Build                                                             Shift messaging from research to milestones and
+                                                          dependencies.
+
+ Launch                                               Focus on customers, activation and learning.
+
+ Post-launch                                              Surface adjacent opportunities from real customer
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 32 ---
+                                                            evidence.
+
+
+16.3 Growth loops
+
+ Public Opportunity Brief previews → sharing → new discovery users.
+ Industry Opportunity Maps → SEO/social discovery → personalised exploration.
+ School lessons → artifact creation → product activation.
+ User evidence → better personal recommendations → retention.
+ Ready-to-Launch showcases → demonstrate depth of Phoxta method → premium leads.
+ Founder build logs → proof of process → audience growth.
+
+17. Metrics and Analytics Framework
+
+
+
+ Layer                                          Core metrics
+
+ Acquisition                                                 Qualified visits, source mix, content-to-signup conversion
+
+ Activation                                                        First opportunity saved/created, first brief opened, first
+                                                         next action selected
+
+ Discovery quality                                      Save rate, investigate rate, dismiss rate, reasons for
+                                                                dismissal, repeat discovery sessions
+
+ Research                                              Evidence added, sources reviewed, brief completion,
+                                                        unresolved assumptions
+
+ Validation                                            Experiments created/completed, learning captured,
+                                                      assumption state changes
+
+ Progression                                              Discover → Investigate →Validate →Shape →Build →Launch
+                                                                transition rates
+
+ Retention                                          Weekly active opportunity users, return to active
+                                                            opportunity, multi-week learning activity
+
+ Revenue                                               Free →paid conversion, plan mix, expansion, churn, Ready-
+                                                        to-Launch leads/sales
+
+ Education                                                     Lesson-to-artifact completion, contextual lesson usage,
+                                                            course-to-product activation
+
+ Trust                                                  AI corrections, source opens, disputed claims, evidence-
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 33 ---
+                                                               quality feedback
+
+
+17.1 North-star candidate
+
+ NORTH-STAR METRIC
+
+ Weekly Active Opportunities with Meaningful Progress - opportunities where a user added
+  evidence, completed an experiment, revised a key assumption, shaped a business element,
+ or completed a build/launch milestone.
+
+
+This is better than raw logins because it measures whether Phoxta is helping users move from
+curiosity to informed action.
+
+18. Visual and Verbal Brand Direction
+
+
+18.1 Visual idea
+
+The design should make opportunity discovery feel intelligent, modern and editorial - not like a
+crypto dashboard or generic AI neon interface.
+
+ Use Phoxta's orange as an accent and signal colour, not as a wall of saturation.
+ Large editorial headlines, disciplined whitespace and strong typographic hierarchy.
+ Cards should prioritise one thesis and one uncertainty, not ten metrics.
+ Use maps, evidence chips, workflow diagrams and simple data visualisations where they add
+   meaning.
+ Photography/illustration should depict real industries, customers, workflows and environments
+   rather than abstract robots.
+ Use subtle status language and restrained confidence indicators rather than gamified scores.
+
+18.2 Verbal rules
+
+ Prefer                                         Avoid
+
+ Worth investigating                                   Guaranteed winner
+
+ Opportunity thesis                                            Million-dollar idea
+
+ Evidence suggests                                       AI knows
+
+ What must be true?                                        This will work
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 34 ---
+ Why now?                                           Hot trend
+
+ Ready-to-Launch Business                                Passive-income business in a box
+
+ Proceed / Revise / Pause / Stop                         Winner / Loser
+
+
+19. Launch and Migration Roadmap
+
+
+19.1 Phase 1 - Reframe
+
+ Adopt category, positioning and terminology.
+ Rewrite homepage and public navigation.
+ Rename Idea objects to Opportunities at the UX layer where technically feasible.
+ Reframe Startup School around opportunity discovery.
+ Launch new content pillars.
+
+19.2 Phase 2 - Discovery MVP
+
+ Build discovery onboarding and opportunity feed.
+ Create Opportunity Brief schema.
+ Support save, investigate, dismiss and archive.
+ Add source/evidence objects and assumption map.
+ Create public shareable opportunity preview pages.
+
+19.3 Phase 3 - Validation system
+
+ Experiment builder.
+ Evidence-to-assumption linking.
+ Decision review.
+ Contextual Startup School lessons.
+ Progress dashboard.
+
+19.4 Phase 4 - Venture creation
+
+ Shape workspace: offer, model, positioning, MVP.
+ Build workspace: brand, product, workflows, AI/automation.
+ Launch workspace: channels, campaigns, CRM and analytics.
+
+19.5 Phase 5 - Ready-to-Launch
+
+ Standardise listing structure and disclosure framework.
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 35 ---
+ Publish 3-5 flagship businesses rather than a large shallow catalogue.
+ Add demos, package comparison, enquiry/purchase flow and handover process.
+ Instrument lead-to-sale funnel and post-purchase onboarding.
+
+20. 90-Day Implementation Plan
+
+
+
+ Weeks                          Focus                             Deliverables
+
+ 1-2                               Brand system                            Positioning, messaging, terminology,
+                                                                            website IA, design direction
+
+ 3-4                                 Website + content               New homepage, Discover landing
+                                                                                page, School rewrite, first 12 content
+                                                                                 pieces
+
+ 5-6                                  Opportunity data model                Opportunity, evidence, assumptions,
+                                                                                  sources, states, brief schema
+
+ 7-8                                   Discovery MVP                       Onboarding, feed, filters, opportunity
+                                                                                    cards, save/investigate flows
+
+ 9-10                                     Investigation MVP                         Brief, evidence, market/alternative
+                                                                                        sections, AI research assistance
+
+ 11                                     Validation MVP                     Assumption prioritisation, experiment
+                                                                                 templates, learning capture
+
+ 12                               Launch beta                             Analytics, onboarding, feedback loops,
+                                                                             beta cohort and iteration plan
+
+
+20.1 First 30 days: exact priority order
+
+30. Freeze Phoxta 2.0 terminology and messaging.
+31. Redesign public homepage around Discover Business Opportunities.
+32. Create Discover landing page and public opportunity card system.
+33. Rewrite Startup School module names and hero copy.
+34. Define database schema for Opportunity, Evidence, Assumption, Experiment and Decision.
+35. Create 10 manually curated flagship Opportunity Briefs to establish the quality bar.
+36. Publish recurring social series: Opportunity of the Week, Problems Worth Solving and Why
+   Now.
+37. Recruit a small beta group and observe how they interpret 'opportunity' versus 'idea'.
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 36 ---
+21. Copy Bank, CTA Library and Terminology Rules
+
+
+21.1 Hero alternatives
+
+ Use case                         Headline                         Subtext
+
+ Master                               Discover Business Opportunities        Find opportunities worth
+                                                                                       investigating, understand the
+                                                                           evidence and build the ones worth
+                                                                               pursuing.
+
+ Outcome-led                          Discover What's Worth Building       Turn problems, market shifts and
+                                                                      emerging needs into opportunities
+                                                                   you can investigate and act on.
+
+ Founder-led                       You Don't Need the Perfect Idea          Start with what you know. Phoxta
+                                                                              helps you discover where opportunity
+                                                          may exist and what to test next.
+
+ Intelligence-led                       See Where Opportunity Is Emerging     Explore changing markets, broken
+                                                                       workflows and new capabilities - then
+                                                                            turn the strongest signals into
+                                                                                  businesses.
+
+
+21.2 Product microcopy
+
+ Moment                                   Recommended copy
+
+ Empty state                                    No active opportunities yet. Start with an industry, a
+                                                        problem, your own idea, or let Phoxta explore for you.
+
+ Save                                                 Save opportunity
+
+ Deep dive                                                    Investigate
+
+ Dismiss                                              Not for me
+
+ Assumption                                     What must be true?
+
+ Evidence gap                                    What would change your mind?
+
+ Experiment                                            Design a test
+
+ Decision                                            Review what you've learned
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 37 ---
+ Build transition                                      Shape this into a business
+
+ Launch transition                                       Prepare to launch
+
+
+21.3 Social sign-off options
+
+ Discover what's worth building.
+ Find the opportunity. Test what must be true.
+ Ideas are easy. Evidence changes what you build.
+ Start with the problem. Follow the evidence.
+ Discover business opportunities with Phoxta.
+
+22. Final Operating Principles and Decision Filters
+
+
+
+ Principle                                        Product implication
+
+ Opportunity before solution                         Do not let product features pull the user into building
+                                                          before the problem/customer is clear.
+
+ Evidence before confidence                               Confidence should rise because evidence improves, not
+                                                       because an AI score looks impressive.
+
+ Hypotheses are first-class objects                         Phoxta should make uncertainty visible and manageable.
+
+ Iteration over rigid stages                                 Users can move backward and sideways as learning
+                                                      changes the thesis.
+
+ Learning must create artifacts                             School and product should reinforce each other.
+
+ AI assists judgment; it does not replace it                 The user remains the decision-maker.
+
+ Discovery must be useful for free                          Free users should experience genuine value before being
+                                                       asked to pay.
+
+ Premium value comes from depth and speed              Charge for richer intelligence, execution capability,
+                                                             collaboration and pre-built infrastructure.
+
+ Ready-to-Launch must be transparent                    Never blur a developed system with a proven market
+                                                       outcome.
+
+ Content is part of the product                               Public content should demonstrate the same opportunity-
+
+                                       Phoxta 2.0 Brand & Product Architecture
+
+--- PAGE 38 ---
+                                                           thinking method users experience inside Phoxta.
+
+
+The one-sentence test
+
+ DECISION FILTER
+
+  If a new feature, page, course, campaign or offer does not help a user discover, understand,
+  test, shape, build or launch a business opportunity more clearly, it should not be central to
+ Phoxta 2.0.
+
+
+Recommended final brand stack
+
+ Layer                                       Recommendation
+
+ Company                                             Phoxta
+
+ Category                                               Opportunity Discovery & Venture Creation Platform
+
+ Primary line                                             Discover Business Opportunities
+
+ Brand promise                                           Discover what's worth building.
+
+ Method                                                  Discover → Investigate → Validate → Shape → Build →
+                                                  Launch → Learn
+
+ Core object                                             Opportunity
+
+ Core artifact                                            Opportunity Brief
+
+ Education                                             Phoxta Startup School
+
+ Premium offer                                          Ready-to-Launch Businesses
+
+ Signature product                                      Phoxta Opportunity Engine
+
+
+                 PHOXTA 2.0
+
+              Discover business opportunities. Build the ones worth pursuing.
+
+
+
+
+                                       Phoxta 2.0 Brand & Product Architecture

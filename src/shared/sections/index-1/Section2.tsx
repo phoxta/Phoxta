@@ -17,8 +17,8 @@ export default function Section2() {
                         <div className="col-xxl-2 col-lg-3 col-md-7 mb-md-5">
                             <div className="at-about-subtitle-wrap mb-30">
                                 <span className="at-about-subtitle">
-                                    <br className="d-block" /> Loved by 
-                                    <span className="fw-900">entrepreneurs</span> in <span className="fw-900">Canada, UK, USA, UAE and Africa</span>
+                                    <br className="d-block" /> Built for
+                                    <span className="fw-900"> people</span> who want a practical route from <span className="fw-900">discovery to launch</span>
                                 </span>
                             </div>
                             <div className="d-flex align-items-center">
@@ -63,9 +63,15 @@ export default function Section2() {
                                                 </div>
                                             </div>
                                             <div className="at-about-content">
-                                                                                                <h4 className="at-about-title mb-10">Agentic workflow orchestration</h4>
+                                                                                                <h4 className="at-about-title mb-10">Build and Launch a business Opportunity</h4>
                                                 <p className="at-about-dec at_fade_anim">
-                                                    Deploy a production-grade ecosystem of autonomous agents engineered to manage your entire lifecycle. From lead acquisition to omnichannel support, operate at scale with zero downtime.
+                                                    Discover something worth pursuing and use Phoxta to investigate, validate, shape, build and launch it.
+
+→ Opportunity discovery
+→ Market intelligence
+→ Validation experiments
+→ Business model & positioning
+→ MVP and launch planning
                                                 </p>
                                             </div>
                                         </div>
@@ -73,9 +79,15 @@ export default function Section2() {
                                     <div className="col-lg-6 col-md-6">
                                         <div className="at-about-item mb-40 d-flex flex-column gap-4">
                                             <div className="at-about-content order-2 order-md-1">
-                                                <h4 className="at-about-title mb-10">Vertical-specific AI infrastructure</h4>
+                                                <h4 className="at-about-title mb-10">Ready-to-Launch Businesses</h4>
                                                 <p className="at-about-dec at_fade_anim">
-                                                    Integrate deep industry domain knowledge with modern automation. Each blueprint features a specialized UI and an embedded model fine-tuned for its vertical, enabling competitive advantage from day one.
+                                                    Start with a business Phoxta has already developed around a researched opportunity.
+
+→ Opportunity thesis
+→ Brand + product
+→ AI agents & automation
+→ CRM + operating workflows
+→ Go-to-market assets
                                                 </p>
                                             </div>
                                             <div className="anim-zoomin-wrap order-1 order-md-2">

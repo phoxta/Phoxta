@@ -121,6 +121,16 @@ Deno.serve(async (req) => {
     const u = await requireUser(req);
     if ("error" in u) return u.error;
     const admin = adminClient();
+    const scopedUser = userClient((req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, ""));
+    if (op === "advise") {
+      const { data: paid, error: accessError } = await scopedUser.rpc("cs_has_access", { p_org: orgId, p_min_plan: "self_study" });
+      if (accessError || paid !== true) return json({ error: "Active learner admission is required for the adviser." }, 403);
+    } else {
+      const { data: booking } = await admin.from("cs_bookings").select("mentor_id,user_id").eq("organization_id", orgId).eq("id", String(body.bookingId ?? "")).maybeSingle();
+      if (!booking) return json({ error: "This mentoring session is not available." }, 403);
+      const { data: allowed } = await scopedUser.rpc("cs_mentor_access", { p_org: orgId, p_mentor: booking.mentor_id, p_learner: booking.user_id });
+      if (allowed !== true) return json({ error: "An active assignment to this founder is required." }, 403);
+    }
 
     // Enrolled at this school? The same proof the classroom uses.
     const { data: profile } = await admin
@@ -136,12 +146,21 @@ Deno.serve(async (req) => {
       const question = clean(body.question, MAX_QUESTION);
       if (question.length < 8) return json({ error: "Ask a fuller question." }, 400);
 
-      const { data: venture } = await admin
-        .from("cs_ventures")
-        .select("name, one_liner, stage, country, doc")
-        .eq("organization_id", orgId)
-        .eq("user_id", u.userId)
-        .maybeSingle();
+      const [{ data: venture }, { data: experiments }] = await Promise.all([
+        admin
+          .from("cs_ventures")
+          .select("name, one_liner, stage, country, doc")
+          .eq("organization_id", orgId)
+          .eq("user_id", u.userId)
+          .maybeSingle(),
+        admin
+          .from("cs_experiments")
+          .select("title, hypothesis, threshold, status, evidence, result, decision, next_step, updated_at")
+          .eq("organization_id", orgId)
+          .eq("user_id", u.userId)
+          .order("updated_at", { ascending: false })
+          .limit(12),
+      ]);
 
       const allowance = await assertWithinCap(admin, orgId);
       if (!allowance.ok) return json({ error: CAP_REACHED_MESSAGE }, 429);
@@ -159,7 +178,9 @@ Deno.serve(async (req) => {
         "   especially the country, which changes legal form, funding sources and payment rails.",
         "4. Where the 2018 handbook and the 2026 layer disagree, present both and say which is which.",
         "5. Never give legal, tax or investment advice. Point at counsel, an accountant or an appraiser.",
-        "6. Plain British English. No encouragement padding, no 'great question'.",
+        "6. A Phoxta turnkey system is a starting point, not validation. When the venture record says",
+        "   path=phoxta_turnkey or hybrid, focus on local customer proof, operation, quality and unit economics.",
+        "7. Plain British English. No encouragement padding, no 'great question'.",
         "",
         "FRAMEWORK INDEX:",
         FRAMEWORKS,
@@ -175,6 +196,9 @@ Deno.serve(async (req) => {
           ? `The founder's venture: ${v.name || "unnamed"} — ${v.one_liner || "no one-liner yet"}. Stage: ${v.stage}. Country: ${v.country || "NOT SET — ask"}.`
           : "The founder has not filled in a venture record yet. Say so if the answer depends on it.",
         v?.doc ? `Venture record: ${JSON.stringify(v.doc).slice(0, 6000)}` : "",
+        (experiments ?? []).length
+          ? `Recent proof loop: ${JSON.stringify(experiments).slice(0, 6000)}`
+          : "No field experiments have been captured yet. Help the founder design the smallest credible one.",
         "",
         `Question: ${question}`,
       ].filter(Boolean).join("\n");
@@ -246,6 +270,16 @@ Deno.serve(async (req) => {
         return json({ error: "Could not gather the session context." }, 500);
       }
 
+      // The mentor is authorised for this booking above. Give the model a
+      // bounded proof trail, not broad access to the founder's private data.
+      const { data: proof } = await admin
+        .from("cs_experiments")
+        .select("title, status, threshold, evidence, result, decision, next_step, updated_at")
+        .eq("organization_id", orgId)
+        .eq("user_id", b.user_id)
+        .order("updated_at", { ascending: false })
+        .limit(10);
+
       const allowance = await assertWithinCap(admin, orgId);
       if (!allowance.ok) return json({ error: CAP_REACHED_MESSAGE }, 429);
 
@@ -269,7 +303,7 @@ Deno.serve(async (req) => {
       const r = await callJson<Brief>({
         model: modelFor("balanced"),
         system,
-        user: `CONTEXT:\n${JSON.stringify(ctx).slice(0, 14_000)}`,
+        user: `CONTEXT:\n${JSON.stringify({ session: ctx, proof: proof ?? [] }).slice(0, 14_000)}`,
         maxTokens: 800,
       });
       await meter(admin, {

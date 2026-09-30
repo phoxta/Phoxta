@@ -1,19 +1,8 @@
 import { useState } from "react";
 import RevealText from "@/shared/effects/RevealText";
-import { leadFormSubmit, STAGES, STARTUP_SCHOOL } from "@/lib/db/platformLead";
+import { leadFormSubmit, STAGES } from "@/lib/db/platformLead";
 
-{/* Home 7 Section 11 — Startup School signup */}
-
-// This was a generic "send us a message" contact form with a REQUIRED message
-// box, sitting under a page that spends nine sections selling a programme.
-// Asking someone who has decided to enrol to compose a paragraph first is the
-// single most expensive field on the page. It is a signup now: the questions
-// are the ones needed to place someone in a cohort, and only three are
-// mandatory.
-//
-// The price is stated on the form itself rather than only in the copy above.
-// Someone who scrolled past the offer section and landed here should not have
-// to scroll back to find out what they are agreeing to.
+{/* Home 7 Section 11 — Startup School support request */}
 
 const EYEBROW_ARROW_SVG = (
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="13" viewBox="0 0 14 13" fill="none" aria-hidden="true">
@@ -34,11 +23,11 @@ const SUBMIT_ARROW_SVG = (
 
 export default function Section11() {
     const [lead, setLead] = useState<{ status: "idle" | "sending" | "sent" | "error"; error?: string }>({ status: "idle" });
-    // Stage and the cohort question are folded into the message as labelled
-    // lines, so they reach the Leads tab without a migration per question.
+    // The additional context is folded into the message so the team can give a
+    // useful recommendation without expanding the lead schema.
     const onLeadSubmit = leadFormSubmit("startup-school", setLead, [
         ["stage", "Stage"],
-        ["goal", "What they want to build"],
+        ["goal", "What they are working on"],
     ]);
 
     return (
@@ -47,40 +36,30 @@ export default function Section11() {
                 <div className="row align-items-start g-4 g-xl-5">
                     <div className="col-xl-5 col-lg-6 col-12">
                         <div className="sec-11-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-4 text-uppercase">
-                            <span className="text-scramble" data-scramble-text="Enroll">Enroll</span>
+                            <span className="text-scramble" data-scramble-text="Need a hand?">Need a hand?</span>
                             {EYEBROW_ARROW_SVG}
                         </div>
-                        <h2 className="sec-11-home-7__title mb-4"><RevealText>Join Startup School</RevealText></h2>
+                        <h2 className="sec-11-home-7__title mb-4"><RevealText>Get help choosing a useful starting point</RevealText></h2>
 
-                        {/* The offer, restated where the decision is made. */}
                         <div className="ss-offer">
-                            <p className="ss-offer__price mb-1">
-                                {STARTUP_SCHOOL.price}
-                                <span className="ss-offer__per"> for {STARTUP_SCHOOL.duration}</span>
-                            </p>
+                            <p className="ss-offer__price mb-1">A practical recommendation</p>
                             <ul className="ss-offer__list list-unstyled mb-0">
-                                <li>Live sessions with mentors who have built and sold companies</li>
-                                <li>Strategy, finance, marketing and the AI tools that matter now</li>
-                                <li>You leave with a real business running, not a certificate</li>
+                                <li>Identify the business question that is worth working on first</li>
+                                <li>Choose the course, toolkit or Phoxta path that best fits your situation</li>
+                                <li>Leave with a clear first action rather than a generic sales conversation</li>
                             </ul>
                         </div>
                     </div>
 
                     <div className="col-xl-6 col-lg-6 ms-lg-auto">
                         {lead.status === "sent" ? (
-                            /* The form is REPLACED rather than left on screen with a
-                               banner above it. A completed form still sitting there
-                               invites a second submission, and the person genuinely
-                               cannot tell whether the first one worked. */
                             <div className="ss-done" role="status">
-                                <h3 className="ss-done__h">Your place is reserved</h3>
+                                <h3 className="ss-done__h">Your request is with the Phoxta team</h3>
                                 <p className="ss-done__p">
-                                    We&apos;ve sent a confirmation to your inbox with everything you need — the dates,
-                                    what to bring, and how to pay the {STARTUP_SCHOOL.price}.
+                                    We&apos;ll use the context you shared to recommend the most useful next step for your business question.
                                 </p>
                                 <p className="ss-done__p mb-0">
-                                    Nothing is charged yet. If it isn&apos;t in your inbox in a few minutes, check spam
-                                    or reply to <a className="sec-4-about-form__link" href="mailto:hello@phoxta.com">hello@phoxta.com</a>.
+                                    This request does not create a purchase. For anything else, contact <a className="sec-4-about-form__link" href="mailto:hello@phoxta.com">hello@phoxta.com</a>.
                                 </p>
                             </div>
                         ) : (
@@ -110,24 +89,22 @@ export default function Section11() {
                                     </select>
                                 </div>
                                 <div className="sec-4-about-form__field at_fade_anim">
-                                    {/* Optional on purpose. Someone who has decided to
-                                        enrol should not be made to write an essay first. */}
                                     <textarea className="sec-4-about-form__input sec-4-about-form__textarea" name="goal" rows={4}
-                                              placeholder="What do you want to build? (optional)" aria-label="What do you want to build"></textarea>
+                                              placeholder="What are you working on? (optional)" aria-label="What you are working on"></textarea>
                                 </div>
 
                                 <div className="sec-4-about-form__actions at_fade_anim">
                                     <button type="submit" className="sec-4-about-form__btn at-btn at_fade_anim" disabled={lead.status === "sending"}>
                                         <span>
-                                            <span className="text-1 text-capitalize">{lead.status === "sending" ? "Reserving…" : "Reserve my place"}</span>
-                                            <span className="text-2 text-capitalize">{lead.status === "sending" ? "Reserving…" : "Reserve my place"}</span>
+                                            <span className="text-1 text-capitalize">{lead.status === "sending" ? "Sending…" : "Ask for a starting point"}</span>
+                                            <span className="text-2 text-capitalize">{lead.status === "sending" ? "Sending…" : "Ask for a starting point"}</span>
                                         </span>
                                         <i>{SUBMIT_ARROW_SVG}</i>
                                     </button>
                                 </div>
 
                                 <p className="sec-4-about-form__disclaimer at_fade_anim" data-delay="0.1">
-                                    No payment now — we&apos;ll confirm your place and send payment details.
+                                    This is a request for a recommendation, not a purchase. We&apos;ll confirm any applicable access or pricing before you commit.
                                     By submitting, you agree to our <a href="/terms" className="sec-4-about-form__link">Terms</a> and{" "}
                                     <a href="/privacy" className="sec-4-about-form__link">Privacy Policy</a>.
                                 </p>

@@ -77,8 +77,8 @@ const SERVICES = [
         type: "card-1",
         background: "/assets/imgs/pages/img-76.webp",
         icon: ICON_STRATEGY,
-        title: "Agentic AI development",
-        description: "Custom AI agents that reason over multiple steps, call your tools, and complete real work — not just chat.",
+        title: "Workflow diagnosis",
+        description: "Find the repeatable customer or team workflow worth improving before choosing an AI capability.",
         textWhite: true,
     },
     {
@@ -86,8 +86,8 @@ const SERVICES = [
         img: "/assets/imgs/pages/img-77.webp",
         imgPosition: "bottom",
         icon: ICON_DESIGN,
-        title: "LLM & RAG systems",
-        description: "Knowledge assistants and retrieval pipelines grounded in your own data, documents and APIs.",
+        title: "Knowledge and decision support",
+        description: "Turn approved documents, policies and product knowledge into useful support with clear source boundaries.",
         textWhite: false,
     },
     {
@@ -95,9 +95,9 @@ const SERVICES = [
         imgTop: "/assets/imgs/pages/img-78.webp",
         imgBottom: "/assets/imgs/pages/img-79.webp",
         icon: ICON_NETWORK,
-        title: "AI automation engineering",
+        title: "Automation with approvals",
         description:
-            "We connect your stack and automate end-to-end workflows across the tools your team already uses.",
+            "Connect routine steps in your existing tools while keeping consequential decisions with accountable people.",
         textWhite: true,
     },
     {
@@ -106,9 +106,9 @@ const SERVICES = [
         imgPosition: "bottom",
         contentPosition: "top-50",
         icon: ICON_BUILD,
-        title: "MLOps & AgentOps",
+        title: "Evaluation and operating guardrails",
         description:
-            "Deployment, monitoring, evaluation and guardrails so your AI stays reliable, observable and under control.",
+            "Define test cases, hand-off rules and review routines before a workflow is relied on in day-to-day work.",
         textWhite: false,
     },
 ];
@@ -122,8 +122,8 @@ export default function Section2() {
                         <div className="col-lg-2 col-md-3">
                             <span className="at-btn common-black bg-transparent mb-10 rounded-0 p-0">
                                 <span className="text-uppercase">
-                                    <span className="text-1">what we offer</span>
-                                    <span className="text-2">what we offer</span>
+                                    <span className="text-1">for existing teams</span>
+                                    <span className="text-2">for existing teams</span>
                                 </span>
                                 <i>
                                     {ARROW_SVG}
@@ -143,7 +143,7 @@ export default function Section2() {
                         <div className="col-lg-6 col-md-9">
                             <h3 className="reveal-text lh-1">
                                 <RevealText>
-                                    We design, build and ship production-grade AI systems for your business.
+                                    Start with the workflow worth improving, then build AI around it.
                                 </RevealText>
                             </h3>
                         </div>
@@ -165,7 +165,7 @@ export default function Section2() {
                             <div className="d-flex gap-3 pt-30">
                                 <div>{QUOTE_SVG}</div>
                                 <span className="neutral-900">
-                                    We design intelligent systems that help businesses think, decide, and scale faster.
+                                    A useful AI project has a named owner, a defined decision boundary and a way to judge the work.
                                 </span>
                             </div>
                         </div>

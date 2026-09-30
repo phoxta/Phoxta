@@ -1,0 +1,61 @@
+import { useState, type KeyboardEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowDown, ArrowRight, ArrowUpRight, BookOpen, Check, Compass, FileText, GitBranch, Layers, Search } from 'lucide-react';
+import { BRAND_COPY as copy } from '@/lib/opportunities/brandCopy';
+import { SCHOOL_MODULES } from '@/lib/opportunities/school';
+import { MarketingButton } from './MarketingElements';
+
+const MODE_ICONS = [Compass, Layers, Search, GitBranch];
+
+function navigateTabs(event: KeyboardEvent<HTMLDivElement>) {
+    const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const index = tabs.indexOf(event.target as HTMLButtonElement);
+    if (index < 0 || !['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    tabs[next].focus(); tabs[next].click();
+}
+
+export function DiscoveryHero() {
+    return <section className="pd-hero"><div className="container"><p className="pd-eyebrow">{copy.hero.eyebrow}</p><div className="pd-hero-grid"><div className="pd-hero-copy"><h1>Discover<br />Business<br /><span>Opportunities</span></h1><p className="pd-lead">{copy.hero.body}</p><div className="pd-hero-actions"><MarketingButton to="/discover">{copy.hero.primary}</MarketingButton><Link className="pd-text-link" to="/businesses">{copy.hero.secondary}<ArrowUpRight size={16} aria-hidden="true" /></Link></div><p className="pd-trust"><span aria-hidden="true" />{copy.hero.trust}</p></div><OpportunityMap /></div><div className="pd-hero-foot"><span>Discover what’s worth building.</span><a href="#discovery-paths" className="pd-text-link">Start with what you know <ArrowDown size={16} aria-hidden="true" /></a></div></div></section>;
+}
+
+function OpportunityMap() {
+    return <figure className="pd-opportunity-map" aria-label="Problems, market shifts, technology and unmet demand become an opportunity thesis, evidence and a next investigation action"><div className="pd-map-caption"><span className="pd-eyebrow">The Opportunity Engine</span><span className="pd-map-dots" aria-hidden="true">•••</span></div><div className="pd-signals"><Link to="/app/discover/problems"><Search size={14} aria-hidden="true" />Problems</Link><Link to="/app/discover/trends"><GitBranch size={14} aria-hidden="true" />Market shifts</Link><Link to="/app/discover/technology"><Layers size={14} aria-hidden="true" />Technology</Link><Link to="/app/discover/industries"><Compass size={14} aria-hidden="true" />Unmet demand</Link></div><div className="pd-map-connector" aria-hidden="true"><span /><i /><span /></div><div className="pd-map-brief"><div className="pd-map-title"><FileText size={18} aria-hidden="true" /><span>Opportunity Brief</span><span className="pd-chip">Hypothesis</span></div><div className="pd-map-thesis"><span className="pd-caption">Opportunity thesis</span><p>What the opportunity is, for whom, and why it may matter now.</p></div><div className="pd-map-questions"><span>Problem</span><span>Target customer</span><span>Why now?</span></div><div className="pd-map-uncertainty"><span className="pd-status-dot" aria-hidden="true" /><div><strong>What must be true?</strong><p>Critical assumptions</p></div><ArrowUpRight size={17} aria-hidden="true" /></div><div className="pd-map-evidence"><span>Evidence</span><div><span>Source</span><span>Date</span><span>Geography</span></div></div></div><div className="pd-map-arrow" aria-hidden="true"><ArrowDown size={18} /></div><Link to="/how-it-works#evidence" className="pd-map-next"><span className="pd-map-next-icon"><Search size={18} aria-hidden="true" /></span><span><small>Next validation action</small><strong>Design a test</strong></span><ArrowUpRight size={18} aria-hidden="true" /></Link></figure>;
+}
+
+export function DiscoveryEntrances() {
+    return <section className="pd-section pd-entrances" id="discovery-paths"><div className="container"><div className="pd-split"><div className="pd-section-intro"><p className="pd-eyebrow">[ {copy.discovery.eyebrow} ]</p><h2>{copy.discovery.title}</h2><p className="pd-body">{copy.discovery.body}</p></div><div className="pd-mode-list">{copy.modes.map((mode, i) => { const Icon = MODE_ICONS[i]; return <Link className="pd-mode" to={mode.href} key={mode.id}><span className="pd-mode-icon"><Icon size={22} strokeWidth={1.5} aria-hidden="true" /></span><div><span className="pd-caption">0{i + 1}</span><h3>{mode.title}</h3><p>{mode.body}</p></div><ArrowUpRight className="pd-mode-arrow" size={22} aria-hidden="true" /></Link>; })}</div></div></div></section>;
+}
+
+export function VentureLoop() {
+    const [selected, setSelected] = useState(0);
+    return <section className="pd-section pd-loop-section" id="venture-loop"><div className="container"><div className="pd-loop-surface"><div className="pd-loop-heading"><div><p className="pd-eyebrow">[ How Phoxta works ]</p><h2>{copy.loop.title}</h2></div><p>Evidence before execution;<br />learning through action;<br />iteration over rigid steps.</p></div><div className="pd-loop-stages" role="tablist" onKeyDown={navigateTabs} aria-label="Venture loop">{copy.loop.stages.map((stage, i) => <button type="button" key={stage.title} id={`stage-${i}`} role="tab" aria-selected={selected === i} aria-controls="stage-explanation" className={selected === i ? 'is-active' : ''} onClick={() => setSelected(i)}><span className="pd-stage-number">0{i + 1}</span><span>{stage.title}</span><ArrowRight size={16} aria-hidden="true" /></button>)}</div><div className="pd-loop-detail" id="stage-explanation" role="tabpanel" aria-labelledby={`stage-${selected}`} tabIndex={0}><span className="pd-stage-large" aria-hidden="true">0{selected + 1}</span><div><h3>{copy.loop.stages[selected].title}</h3><p>{copy.loop.stages[selected].body}</p></div><Link className="pd-loop-link" to="/app/discover" aria-label="Start discovering"><ArrowUpRight size={28} /></Link></div><div className="pd-loop-return"><GitBranch size={17} aria-hidden="true" /><span>Learn</span><span className="pd-return-line" aria-hidden="true" /><span>Users can move backward and sideways as learning changes the thesis.</span></div></div></div></section>;
+}
+
+export function LivingBrief() {
+    const [selected, setSelected] = useState(0);
+    const groups = [
+        { title: 'Opportunity thesis', indices: [0, 1, 2, 3, 4, 5] },
+        { title: 'Evidence & market', indices: [6, 7, 8] },
+        { title: 'Assumptions & action', indices: [9, 10, 11, 12, 13, 14] },
+    ];
+    return <section className="pd-section" id="opportunity-brief"><div className="container"><div className="pd-split pd-brief-layout"><div className="pd-section-intro"><p className="pd-eyebrow">[ The Opportunity Brief ]</p><h2>{copy.brief.title}</h2><p className="pd-body">{copy.brief.body}</p><Link className="pd-text-link pd-link-underlined" to="/how-it-works#opportunity-brief">{copy.brief.cta}<ArrowUpRight size={17} aria-hidden="true" /></Link></div><div className="pd-brief-explorer"><div className="pd-brief-top"><span><FileText size={18} aria-hidden="true" />Opportunity Brief</span><span className="pd-caption">Discover → Investigate</span></div><div className="pd-brief-tabs" role="tablist" onKeyDown={navigateTabs} aria-label="Explore the Opportunity Brief">{groups.map((group, i) => <button key={group.title} type="button" role="tab" id={`brief-group-${i}`} aria-selected={selected === i} aria-controls="brief-content" onClick={() => setSelected(i)}>{group.title}</button>)}</div><div className="pd-brief-content" id="brief-content" role="tabpanel" aria-labelledby={`brief-group-${selected}`} tabIndex={0}>{groups[selected].indices.map(index => <div className="pd-brief-row" key={index}><span className="pd-brief-row-num">{String(index + 1).padStart(2, '0')}</span><div><h3>{copy.briefSections[index][0]}</h3><p>{copy.briefSections[index][1]}</p></div></div>)}</div><div className="pd-brief-bottom"><GitBranch size={16} aria-hidden="true" /><span>Proceed / Revise / Pause / Stop</span></div></div></div></div></section>;
+}
+
+export function EvidenceSection() {
+    const [selected, setSelected] = useState(0);
+    return <section className="pd-section pd-evidence-section" id="evidence"><div className="container"><div className="pd-evidence-heading"><p className="pd-eyebrow">[ Evidence before confidence ]</p><h2>{copy.evidence.title}</h2><p className="pd-body">{copy.evidence.body}</p></div><div className="pd-evidence-layers"><div><span className="pd-evidence-index">01</span><h3>What we know</h3><p>Observed signals with source, date, geography and confidence.</p><div className="pd-evidence-chips"><span>Source</span><span>Date</span><span>Geography</span></div></div><div><span className="pd-evidence-index">02</span><h3>What we infer</h3><p>AI-generated statements should be labelled as hypotheses or synthesis, not evidence.</p><div className="pd-evidence-chips"><span>Hypothesis</span><span>AI inference</span></div></div><div><span className="pd-evidence-index">03</span><h3>What we still need to test</h3><p>Cheapest credible experiments for the highest-risk assumptions.</p><div className="pd-evidence-chips"><span>What would change your mind?</span></div></div></div><div className="pd-confidence"><div className="pd-confidence-tabs" role="tablist" onKeyDown={navigateTabs} aria-label="Evidence confidence labels">{copy.confidence.map(([label], i) => <button key={label} role="tab" id={`confidence-${i}`} aria-selected={selected === i} aria-controls="confidence-explanation" onClick={() => setSelected(i)}><span aria-hidden="true" />{label}</button>)}</div><p role="tabpanel" id="confidence-explanation" aria-labelledby={`confidence-${selected}`} tabIndex={0}>{copy.confidence[selected][1]}</p></div></div></section>;
+}
+
+export function BuildPaths() {
+    return <section className="pd-section"><div className="container"><div className="pd-section-heading"><p className="pd-eyebrow">[ Two ways to build ]</p><h2>Discover what’s worth building.</h2></div><div className="pd-build-paths">{copy.paths.map((path, i) => <article key={path.title} className={i === 1 ? 'pd-build-path pd-build-path-dark' : 'pd-build-path'}><div className="pd-path-top"><span className="pd-caption">0{i + 1}</span>{i === 0 ? <Compass size={28} strokeWidth={1.5} aria-hidden="true" /> : <Layers size={28} strokeWidth={1.5} aria-hidden="true" />}</div><h3>{path.title}</h3><p>{path.body}</p><div className="pd-path-flow" aria-hidden="true">{(i === 0 ? ['Discover', 'Investigate', 'Validate'] : ['Brand', 'Systems', 'Launch assets']).map(text => <span key={text}>{text}</span>)}</div><MarketingButton to={path.href}>{path.cta}</MarketingButton></article>)}</div></div></section>;
+}
+
+export function SchoolSection() {
+    return <section className="pd-section pd-school-section"><div className="container"><div className="pd-split"><div className="pd-section-intro"><p className="pd-eyebrow">[ Phoxta Startup School ]</p><h2>{copy.school.title}</h2><p className="pd-body">{copy.school.body}</p><MarketingButton to="/school">{copy.school.cta}</MarketingButton><p className="pd-school-principle"><BookOpen size={18} aria-hidden="true" />Learning must create artifacts.</p></div><div className="pd-school-modules"><div className="pd-school-modules-head"><span>Opportunity discovery & venture creation</span><span className="pd-caption">12 modules</span></div>{SCHOOL_MODULES.map((module, i) => <Link to={`/app/school/${module.id}/practice`} key={module.id}><span>{String(i + 1).padStart(2, '0')}</span><strong>{module.title}</strong><ArrowUpRight size={15} aria-hidden="true" /></Link>)}<div className="pd-school-modules-foot"><Check size={16} aria-hidden="true" />I learn while doing.</div></div></div></div></section>;
+}
+
+export function DiscoveryFinal() {
+    return <section className="pd-section pd-final"><div className="container"><p className="pd-eyebrow">[ Discover what’s worth building ]</p><h2>{copy.final.title}</h2><div className="pd-final-bottom"><p className="pd-body">{copy.final.body}</p><MarketingButton to="/discover">{copy.final.cta}</MarketingButton></div></div></section>;
+}

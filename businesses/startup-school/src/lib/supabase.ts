@@ -3,8 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
 const ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
-/** True when the app has real credentials; otherwise it runs entirely on the
- *  bundled demo dataset so a visitor never sees a blank screen. */
+/** True when the app can reach its configured Supabase project. */
 export const isConfigured = Boolean(URL && ANON);
 
 /**

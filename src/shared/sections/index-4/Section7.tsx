@@ -1,19 +1,8 @@
-import { Fragment } from "react";
-
 const ARROW_SVG = (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path
             d="M0.21967 9.40717C-0.0732232 9.70006 -0.0732232 10.1749 0.21967 10.4678C0.512563 10.7607 0.987437 10.7607 1.28033 10.4678L0.21967 9.40717ZM10.6875 0.75C10.6875 0.335786 10.3517 2.97145e-09 9.9375 1.50485e-07L3.1875 -2.70983e-07C2.77329 -2.70983e-07 2.4375 0.335786 2.4375 0.75C2.4375 1.16421 2.77329 1.5 3.1875 1.5H9.1875V7.5C9.1875 7.91421 9.52329 8.25 9.9375 8.25C10.3517 8.25 10.6875 7.91421 10.6875 7.5L10.6875 0.75ZM0.75 9.9375L1.28033 10.4678L10.4678 1.28033L9.9375 0.75L9.40717 0.21967L0.21967 9.40717L0.75 9.9375Z"
             fill="currentColor"
-        />
-    </svg>
-);
-
-const STAR_SVG = (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="17" viewBox="0 0 18 17" fill="none">
-        <path
-            d="M8.55696 13.6975L12.707 16.2075C13.467 16.6675 14.397 15.9875 14.197 15.1275L13.097 10.4075L16.767 7.2275C17.437 6.6475 17.077 5.5475 16.197 5.4775L11.367 5.0675L9.47696 0.6075C9.13696 -0.2025 7.97696 -0.2025 7.63696 0.6075L5.74696 5.0575L0.916957 5.4675C0.0369575 5.5375 -0.323043 6.6375 0.346957 7.2175L4.01696 10.3975L2.91696 15.1175C2.71696 15.9775 3.64696 16.6575 4.40696 16.1975L8.55696 13.6975Z"
-            fill="#FEFEFE"
         />
     </svg>
 );
@@ -26,7 +15,7 @@ export default function Section7() {
         <section className="home-4-section-7 p-relative bg-neutral-50">
             <div className="container">
                 <div className="row g-2">
-                    {/* testimonial */}
+                    {/* Operating principle */}
                     <div className="col-lg-4">
                         <div
                             className="p-relative rounded-4 overflow-hidden bg-cover bg-linear-opacity p-xxl-5 p-md-5 p-4 h-100"
@@ -35,8 +24,8 @@ export default function Section7() {
                         >
                             <span className="at-btn text-white bg-transparent mb-10 rounded-0 p-0">
                                 <span className="text-uppercase">
-                                    <span className="text-1">TESTIMONIALS</span>
-                                    <span className="text-2">TESTIMONIALS</span>
+                                    <span className="text-1">THE APPROACH</span>
+                                    <span className="text-2">THE APPROACH</span>
                                 </span>
                                 <i>
                                     {ARROW_SVG}
@@ -44,7 +33,7 @@ export default function Section7() {
                                 </i>
                             </span>
                             <h2 className="text-white reveal-text mb-60 pb-60 border-bottom-opacity">
-                                What our clients are saying
+                                Start with proof, not a promise
                             </h2>
                             <div className="d-flex align-items-center gap-4">
                                 <div className="rotate-infinite">
@@ -64,13 +53,8 @@ export default function Section7() {
                                     </svg>
                                 </div>
                                 <div>
-                                    <div className="testimonial-star d-flex align-items-center gap-2">
-                                        {[1, 2, 3, 4, 5].map((i) => (
-                                            <Fragment key={i}>{STAR_SVG}</Fragment>
-                                        ))}
-                                    </div>
-                                    <p className="text-white fz-font-sm mb-0 mt-2">
-                                        Average 4.9 rating <br /> from our clients
+                                    <p className="text-white fz-font-sm mb-0">
+                                        Pick one workflow. Set a useful measure. <br />Learn from real cases before expanding.
                                     </p>
                                 </div>
                             </div>
@@ -99,13 +83,12 @@ export default function Section7() {
                                 </div>
                                 <div className="content">
                                     <p className="text-white fz-font-3xl fw-400 mb-50 lh-base">
-                                        Phoxta's team translated a vague AI ambition into a system that actually
-                                        works in production. Within weeks we saw real gains in speed, accuracy and
-                                        decision-making across the business.
+                                        A good AI engagement turns a vague ambition into a small, testable operating change:
+                                        the work is named, the human hand-off is clear, and the team can judge whether it helps.
                                     </p>
-                                    <h5 className="text-white fw-500">Michael Turner</h5>
+                                    <h5 className="text-white fw-500">How Phoxta works</h5>
                                     <p className="text-white fz-font-md fw-500 opacity-75 mb-0">
-                                        CTO, Nexora Systems
+                                        A practical operating principle
                                     </p>
                                 </div>
                             </div>

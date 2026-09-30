@@ -13,7 +13,8 @@
 /*----------------------------------------*/
 /*  1.1 Default
 /*----------------------------------------*/
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,100..1000&display=swap"');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,100..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
 /* beautify ignore:start */
 .back-to-top-wrapper, a,
 button,
@@ -13435,6 +13436,12 @@ input.footer-15__form-input:focus {
   max-width: 50%;
   margin-top: 0;
 }
+/* The image wrapper is sized by the hero, not by the photograph. Give the
+   animation wrapper that same height so the photograph covers the full left
+   panel instead of ending early and exposing an empty strip below it. */
+.sec-1-home-7__img-wrap > .anim-zoomin {
+  height: 100%;
+}
 @media only screen and (min-width: 768px) and (max-width: 991px), only screen and (min-width: 576px) and (max-width: 767px), (max-width: 574.98px) {
   .sec-1-home-7__img-wrap {
     position: relative;
@@ -13791,11 +13798,6 @@ input.footer-15__form-input:focus {
   .sec-1-home-7__img-wrap {
     max-width: 100%;
   }
-  /* The animation wrapper is a plain div, so `height: 100%` on the image
-     resolves against nothing and the photograph collapses. */
-  .sec-1-home-7__img-wrap > .anim-zoomin {
-    height: 100%;
-  }
   /* Its only job was to reserve the left half of the split, which does not
      exist at this width. */
   .sec-1-home-7__left {
@@ -13827,6 +13829,355 @@ input.footer-15__form-input:focus {
 }
 .sec-1-home-7__price strong {
   font-weight: 700;
+}
+
+/* Startup School visual curriculum cards */
+.ss-learning-cards__eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: var(--at-neutral-500, #535353);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.ss-learning-cards__controls {
+  margin-left: auto;
+}
+.ss-learning-cards__control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  color: #fff;
+  background: var(--at-theme-primary, #c7260a);
+  border: 1px solid var(--at-theme-primary, #c7260a);
+  border-radius: 50%;
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.ss-learning-cards__control:hover,
+.ss-learning-cards__control:focus-visible {
+  color: var(--at-neutral-900, #151515);
+  background: transparent;
+  transform: translateY(-2px);
+}
+.ss-learning-cards__control svg {
+  width: 22px;
+  height: 14px;
+}
+.ss-learning-cards__control--previous svg {
+  transform: rotate(180deg);
+}
+.ss-learning-cards__rail {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 2px 1px 16px;
+  scroll-padding-inline: 1px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: var(--at-theme-primary, #c7260a) transparent;
+}
+.ss-learning-cards__rail::-webkit-scrollbar {
+  height: 6px;
+}
+.ss-learning-cards__rail::-webkit-scrollbar-thumb {
+  background: var(--at-theme-primary, #c7260a);
+  border-radius: 999px;
+}
+.ss-learning-cards__card {
+  position: relative;
+  display: flex;
+  flex: 0 0 clamp(272px, 28vw, 370px);
+  min-height: 470px;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 24px;
+  color: #fff;
+  isolation: isolate;
+  scroll-snap-align: start;
+}
+.ss-learning-cards__card::before,
+.ss-learning-cards__card::after {
+  position: absolute;
+  z-index: -1;
+  width: 110%;
+  height: 52%;
+  content: "";
+  filter: blur(1px);
+}
+.ss-learning-cards__card::before {
+  right: -36%;
+  bottom: -16%;
+  border-radius: 55% 45% 0 0;
+  background: radial-gradient(circle, rgba(255, 214, 72, 0.95) 0%, rgba(255, 64, 19, 0.72) 38%, transparent 70%);
+}
+.ss-learning-cards__card::after {
+  top: -22%;
+  left: -42%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(30, 161, 255, 0.45) 0%, transparent 64%);
+}
+.ss-learning-cards__card--warm {
+  background: #110b09;
+}
+.ss-learning-cards__card--light {
+  color: var(--at-neutral-900, #151515);
+  background: #f8f4ef;
+}
+.ss-learning-cards__card--light::before {
+  right: -48%;
+  bottom: -8%;
+  background: radial-gradient(circle, rgba(255, 70, 31, 0.9) 0%, rgba(255, 183, 55, 0.66) 35%, transparent 71%);
+}
+.ss-learning-cards__card--light::after {
+  top: auto;
+  bottom: -30%;
+  left: -40%;
+  background: radial-gradient(circle, rgba(30, 126, 255, 0.75) 0%, transparent 65%);
+}
+.ss-learning-cards__card--blue {
+  background: #07121f;
+}
+.ss-learning-cards__card--blue::before {
+  right: -42%;
+  bottom: -14%;
+  background: radial-gradient(circle, rgba(0, 224, 190, 0.88) 0%, rgba(0, 89, 255, 0.82) 40%, transparent 71%);
+}
+.ss-learning-cards__card--blue::after {
+  background: radial-gradient(circle, rgba(255, 86, 29, 0.75) 0%, transparent 65%);
+}
+.ss-learning-cards__card--ember {
+  background: #190906;
+}
+.ss-learning-cards__card--ember::before {
+  right: -45%;
+  bottom: -12%;
+  background: radial-gradient(circle, rgba(255, 95, 17, 0.98) 0%, rgba(211, 20, 15, 0.7) 42%, transparent 72%);
+}
+.ss-learning-cards__card--ember::after {
+  background: radial-gradient(circle, rgba(0, 90, 255, 0.52) 0%, transparent 65%);
+}
+.ss-learning-cards__card--sunrise {
+  color: var(--at-neutral-900, #151515);
+  background: #fff8e8;
+}
+.ss-learning-cards__card--sunrise::before {
+  right: -34%;
+  bottom: -15%;
+  background: radial-gradient(circle, rgba(255, 79, 30, 0.94) 0%, rgba(255, 203, 54, 0.7) 42%, transparent 72%);
+}
+.ss-learning-cards__card--sunrise::after {
+  background: radial-gradient(circle, rgba(18, 204, 214, 0.5) 0%, transparent 64%);
+}
+.ss-learning-cards__card--midnight {
+  background: #06080c;
+}
+.ss-learning-cards__card--midnight::before {
+  right: -36%;
+  bottom: -12%;
+  background: radial-gradient(circle, rgba(16, 176, 255, 0.88) 0%, rgba(42, 44, 230, 0.78) 43%, transparent 72%);
+}
+.ss-learning-cards__card--midnight::after {
+  background: radial-gradient(circle, rgba(0, 222, 150, 0.65) 0%, transparent 64%);
+}
+.ss-learning-cards__card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+.ss-learning-cards__card-top span:last-child {
+  text-align: right;
+}
+.ss-learning-cards__card-copy {
+  max-width: 310px;
+  margin-block: auto;
+  align-self: center;
+  padding-top: 52px;
+  text-align: center;
+}
+.ss-learning-cards__card-copy h3 {
+  margin-bottom: 24px;
+  color: currentColor;
+  font-size: clamp(29px, 2.7vw, 42px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.026em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.ss-learning-cards__card-copy p {
+  max-width: 280px;
+  margin: 0 auto;
+  color: currentColor;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.42;
+  letter-spacing: 0;
+}
+.ss-learning-cards__card-bottom svg {
+  width: 56px;
+  height: 28px;
+}
+.ss-learning-cards__card-bottom {
+  text-align: center;
+}
+
+/* Public curriculum: editorial image cards that keep the course copy live,
+   legible and responsive rather than baking it into a graphic. */
+.ss-curriculum__controls {
+  margin-left: auto;
+}
+.ss-curriculum__control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  color: #fff;
+  background: var(--at-theme-primary, #c7260a);
+  border: 1px solid var(--at-theme-primary, #c7260a);
+  border-radius: 50%;
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.ss-curriculum__control:hover,
+.ss-curriculum__control:focus-visible {
+  color: var(--at-neutral-900, #151515);
+  background: transparent;
+  transform: translateY(-2px);
+}
+.ss-curriculum__control svg {
+  width: 22px;
+  height: 14px;
+}
+.ss-curriculum__control--previous svg {
+  transform: rotate(180deg);
+}
+.ss-curriculum__rail {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 2px 1px 16px;
+  scroll-padding-inline: 1px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: var(--at-theme-primary, #c7260a) transparent;
+}
+.ss-curriculum__rail::-webkit-scrollbar {
+  height: 6px;
+}
+.ss-curriculum__rail::-webkit-scrollbar-thumb {
+  background: var(--at-theme-primary, #c7260a);
+  border-radius: 999px;
+}
+.ss-curriculum__card {
+  position: relative;
+  display: flex;
+  flex: 0 0 clamp(282px, 28vw, 375px);
+  min-height: 490px;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 24px;
+  color: #fff;
+  background: #20100c;
+  isolation: isolate;
+  scroll-snap-align: start;
+}
+.ss-curriculum__image,
+.ss-curriculum__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+}
+.ss-curriculum__image {
+  object-fit: cover;
+  filter: saturate(0.84) contrast(1.05);
+  transform: scale(1.015);
+}
+.ss-curriculum__scrim {
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(18, 10, 7, 0.66) 0%, rgba(24, 9, 5, 0.15) 26%, rgba(20, 8, 5, 0.78) 72%, rgba(20, 8, 5, 0.96) 100%);
+}
+.ss-curriculum__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+.ss-curriculum__top span:last-child {
+  text-align: right;
+}
+.ss-curriculum__copy {
+  max-width: 320px;
+  margin-block: auto;
+  align-self: center;
+  padding-top: 48px;
+  text-align: center;
+}
+.ss-curriculum__copy h3 {
+  margin-bottom: 24px;
+  color: #fff;
+  font-size: clamp(29px, 2.7vw, 42px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.026em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.ss-curriculum__copy p {
+  max-width: 290px;
+  margin: 0 auto;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.42;
+  letter-spacing: 0;
+}
+.ss-curriculum__arrow {
+  text-align: center;
+}
+.ss-curriculum__arrow svg {
+  width: 56px;
+  height: 28px;
+}
+@media (max-width: 767.98px) {
+  .ss-learning-cards__controls {
+    display: none !important;
+  }
+  .ss-learning-cards__rail {
+    gap: 14px;
+    margin-right: -12px;
+    padding-right: 12px;
+  }
+  .ss-learning-cards__card {
+    flex-basis: min(82vw, 350px);
+    min-height: 430px;
+    padding: 20px;
+  }
+  .ss-curriculum__controls {
+    display: none !important;
+  }
+  .ss-curriculum__rail {
+    gap: 14px;
+    margin-right: -12px;
+    padding-right: 12px;
+  }
+  .ss-curriculum__card {
+    flex-basis: min(82vw, 350px);
+    min-height: 450px;
+    padding: 20px;
+  }
 }
 @media (max-width: 574.98px) {
   .sec-1-home-7__price { font-size: 15px; }
@@ -17061,10 +17412,67 @@ input.footer-15__form-input:focus {
   gap: var(--sec4-gap);
   grid-template-columns: 1fr;
 }
+.sec-4-home-9__grid--catalogue {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 @media (min-width: 992px) {
   .sec-4-home-9__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
+  }
+  .sec-4-home-9__grid--catalogue {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.sec-4-home-9__grid--catalogue .sec-4-home-9__bar {
+  min-height: 70px;
+  padding: 12px clamp(14px, 1.25vw, 24px);
+}
+.sec-4-home-9__grid--catalogue .sec-4-home-9__overlay {
+  min-height: 42%;
+  padding: clamp(14px, 1.35vw, 22px);
+  gap: 9px;
+}
+.sec-4-home-9__grid--catalogue .sec-4-home-9__metric {
+  font-size: clamp(21px, 1.65vw, 30px);
+  line-height: 1.04;
+}
+.sec-4-home-9__grid--catalogue .sec-4-home-9__excerpt {
+  display: none;
+}
+.sec-4-home-9__grid--catalogue .sec-4-home-9__project {
+  font-size: clamp(17px, 1.35vw, 24px);
+}
+.sec-4-home-9__grid--catalogue .sec-4-home-9__case {
+  font-size: 12px;
+}
+@media (max-width: 575.98px) {
+  .sec-4-home-9__grid--catalogue {
+    --sec4-gap: 12px;
+  }
+  .sec-4-home-9__grid--catalogue .sec-4-home-9__overlay {
+    min-height: 62%;
+    padding: 14px;
+    gap: 8px;
+  }
+  .sec-4-home-9__grid--catalogue .sec-4-home-9__tag {
+    padding: 7px 9px;
+    font-size: 9px;
+  }
+  .sec-4-home-9__grid--catalogue .sec-4-home-9__metric {
+    font-size: 19px;
+  }
+  .sec-4-home-9__grid--catalogue .sec-4-home-9__excerpt,
+  .sec-4-home-9__grid--catalogue .sec-4-home-9__case {
+    display: none;
+  }
+  .sec-4-home-9__grid--catalogue .sec-4-home-9__bar {
+    min-height: 52px;
+    padding: 8px 10px;
+  }
+  .sec-4-home-9__grid--catalogue .sec-4-home-9__project {
+    font-size: 15px;
+    line-height: 1.1;
   }
 }
 .sec-4-home-9__col {
@@ -37471,4 +37879,250 @@ body.at-magic-cursor #magic-cursor {
 .at-btn-border-dark:hover {
   color: #0F0F0F;
   background: rgba(15, 15, 15, 0.06);
+}
+
+/* Startup School public hero -------------------------------------------------
+   A focused visual doorway into learn.phoxta.com. It deliberately uses an
+   isolated class namespace so the learning workspace and the main site keep
+   their own responsive systems. */
+.phoxta-school-hero {
+  padding: 82px 20px 76px;
+  background:
+    radial-gradient(circle at 81% 20%, rgba(255, 163, 71, .20), transparent 27rem),
+    radial-gradient(circle at 19% 76%, rgba(232, 101, 43, .13), transparent 30rem),
+    #efeeea;
+  color: #101010;
+}
+.phoxta-school-hero__frame {
+  max-width: 1328px;
+  margin: 0 auto;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255,255,255,.68);
+  box-shadow: 0 26px 80px rgba(36, 29, 22, .14);
+}
+.phoxta-school-hero__surface {
+  overflow: hidden;
+  padding: clamp(26px, 4vw, 46px);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 82% 31%, rgba(255, 113, 40, .78), transparent 22rem),
+    radial-gradient(circle at 16% 92%, rgba(255, 191, 106, .56), transparent 20rem),
+    linear-gradient(112deg, #fffefa 2%, #f8f2e9 56%, #ffd3a1 100%);
+}
+.phoxta-school-hero__bar,
+.phoxta-school-hero__footer,
+.phoxta-school-hero__bar nav,
+.phoxta-school-hero__footer a {
+  display: flex;
+  align-items: center;
+}
+.phoxta-school-hero__bar {
+  justify-content: space-between;
+  gap: 24px;
+}
+.phoxta-school-hero__brand {
+  display: inline-flex;
+  flex-direction: column;
+  color: inherit;
+  line-height: .86;
+  text-decoration: none;
+}
+.phoxta-school-hero__brand > span {
+  font-family: var(--at-ff-heading, Arial, sans-serif);
+  font-size: clamp(36px, 4.2vw, 57px);
+  font-weight: 800;
+  letter-spacing: -.09em;
+}
+.phoxta-school-hero__brand small,
+.phoxta-school-hero__bar nav,
+.phoxta-school-hero__footer > span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .32em;
+  text-transform: uppercase;
+}
+.phoxta-school-hero__brand small { margin: 12px 0 0 4px; }
+.phoxta-school-hero__bar nav { gap: clamp(16px, 2.4vw, 30px); }
+.phoxta-school-hero__bar nav a {
+  color: inherit;
+  text-decoration: none;
+}
+.phoxta-school-hero__bar nav a:hover { color: #c73f16; }
+.phoxta-school-hero__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, .72fr);
+  align-items: end;
+  gap: clamp(30px, 7vw, 105px);
+  padding: clamp(52px, 7vw, 103px) clamp(0px, 2vw, 30px) 42px;
+}
+.phoxta-school-hero__intro h1,
+.phoxta-school-hero__path h2 {
+  margin: 0;
+  font-family: var(--at-ff-heading, Arial, sans-serif);
+  font-weight: 700;
+  letter-spacing: -.075em;
+}
+.phoxta-school-hero__intro h1 { font-size: clamp(54px, 7.1vw, 106px); line-height: .88; }
+.phoxta-school-hero__intro em,
+.phoxta-school-hero__path em {
+  display: block;
+  font-family: "DM Serif Display", Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -.06em;
+}
+.phoxta-school-hero__intro em {
+  color: #d64c20;
+  font-size: .87em;
+  font-style: italic;
+}
+.phoxta-school-hero__intro p {
+  max-width: 380px;
+  margin: 0 0 7px;
+  padding-left: clamp(22px, 3vw, 43px);
+  border-left: 1px solid rgba(16,16,16,.3);
+  font-size: clamp(17px, 1.55vw, 22px);
+  line-height: 1.35;
+}
+.phoxta-school-hero__paths {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: clamp(14px, 2vw, 24px);
+}
+.phoxta-school-hero__path {
+  position: relative;
+  min-width: 0;
+  padding: 24px 24px 8px;
+  border: 1px solid rgba(255,255,255,.83);
+  border-radius: 16px;
+  background: rgba(255,255,255,.84);
+  box-shadow: 0 10px 26px rgba(83,46,17,.08);
+  color: inherit;
+  text-decoration: none;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.phoxta-school-hero__path:hover {
+  color: inherit;
+  transform: translateY(-5px);
+  box-shadow: 0 18px 34px rgba(83,46,17,.16);
+}
+.phoxta-school-hero__number { display: block; margin-bottom: 18px; font-size: 12px; font-weight: 700; }
+.phoxta-school-hero__icon {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+.phoxta-school-hero__icon svg { width: 100%; height: 100%; }
+.phoxta-school-hero__path h2 { font-size: clamp(31px, 3.3vw, 49px); line-height: .84; }
+.phoxta-school-hero__path em { font-size: .71em; font-style: italic; }
+.phoxta-school-hero__path p { min-height: 66px; margin: 19px 0 22px; font-size: 16px; line-height: 1.35; }
+.phoxta-school-hero__image { position: relative; display: block; height: 214px; overflow: hidden; border-radius: 11px; background: #e2d2c3; }
+.phoxta-school-hero__image img { width: 100%; height: 100%; object-fit: cover; }
+.phoxta-school-hero__image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(145deg, transparent 55%, rgba(238, 82, 24, .26)); }
+.phoxta-school-hero__image i {
+  position: absolute;
+  z-index: 1;
+  right: 14px;
+  bottom: 14px;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  color: #171717;
+}
+.phoxta-school-hero__image i svg,
+.phoxta-school-hero__footer a svg { width: 21px; height: 21px; }
+.phoxta-school-hero__footer { justify-content: space-between; gap: 20px; padding-top: 31px; }
+.phoxta-school-hero__footer a { gap: 10px; color: inherit; font-size: 13px; font-weight: 700; text-decoration: none; }
+.phoxta-school-hero__footer a:hover { color: #c73f16; }
+@media (max-width: 991.98px) {
+  .phoxta-school-hero { padding: 44px 15px; }
+  .phoxta-school-hero__intro { grid-template-columns: 1fr; gap: 26px; padding-top: 60px; }
+  .phoxta-school-hero__intro p { padding-left: 20px; }
+  .phoxta-school-hero__paths { grid-template-columns: 1fr; }
+  .phoxta-school-hero__path { display: grid; grid-template-columns: 1fr minmax(180px, .65fr); column-gap: 22px; padding-bottom: 18px; }
+  .phoxta-school-hero__number, .phoxta-school-hero__path h2 { grid-column: 1; }
+  .phoxta-school-hero__path p { grid-column: 1; min-height: auto; margin-bottom: 0; }
+  .phoxta-school-hero__image { grid-column: 2; grid-row: 1 / span 3; height: 100%; min-height: 172px; }
+}
+@media (max-width: 575.98px) {
+  .phoxta-school-hero { padding: 24px 12px 42px; }
+  .phoxta-school-hero__frame { padding: 8px; border-radius: 14px; }
+  .phoxta-school-hero__surface { padding: 21px 17px; border-radius: 9px; }
+  .phoxta-school-hero__bar { align-items: flex-start; flex-direction: column; gap: 17px; }
+  .phoxta-school-hero__bar nav { width: 100%; justify-content: space-between; gap: 8px; }
+  .phoxta-school-hero__bar nav, .phoxta-school-hero__brand small, .phoxta-school-hero__footer > span { font-size: 9px; letter-spacing: .18em; }
+  .phoxta-school-hero__brand > span { font-size: 42px; }
+  .phoxta-school-hero__intro { gap: 20px; padding: 42px 0 28px; }
+  .phoxta-school-hero__intro h1 { font-size: clamp(43px, 14vw, 59px); }
+  .phoxta-school-hero__intro p { font-size: 17px; }
+  .phoxta-school-hero__paths { gap: 13px; }
+  .phoxta-school-hero__path { display: block; padding: 21px 16px 12px; }
+  .phoxta-school-hero__path p { font-size: 15px; margin: 15px 0 19px; }
+  .phoxta-school-hero__image { height: auto; min-height: 0; aspect-ratio: 1.5 / 1; }
+  .phoxta-school-hero__footer { align-items: flex-start; flex-direction: column; padding-top: 24px; }
+  .phoxta-school-hero__footer > span:last-child { display: none; }
+
+  /* One visual rhythm on a phone: cards never overflow a row, and these
+     sections no longer inherit the desktop's large vertical whitespace. */
+  .ss-learning-cards { padding-top: 64px !important; padding-bottom: 64px !important; }
+  .ss-learning-cards .mb-50 { margin-bottom: 28px !important; }
+  .ss-learning-cards__card { min-height: 390px; }
+  .ss-learning-cards__card-copy { padding-top: 28px; }
+  .ss-learning-cards__card-copy h3 { margin-bottom: 16px; font-size: 27px; }
+  .ss-learning-cards__card-copy p { font-size: 15px; }
+  .sec-7-home-7 .py-120 { padding-top: 64px !important; padding-bottom: 64px !important; }
+  .sec-7-home-7__media { max-width: 100%; aspect-ratio: 1.22 / 1; }
+  .sec-7-home-7__star { width: 66px; height: 66px; right: 18px; bottom: 18px; }
+  .sec-11-home-7, .sec-7-about { padding-top: 64px !important; padding-bottom: 64px !important; }
+  .sec-11-home-7 .pt-120, .sec-11-home-7 .pb-120 { padding-top: 0 !important; padding-bottom: 0 !important; }
+  .sec-7-about .pt-80 { padding-top: 34px !important; }
+}
+
+/* Startup School mobile flow: keep every section on one consistent viewport
+   grid and present one complete curriculum card per swipe. */
+@media (max-width: 767.98px) {
+  .phoxta-startup-school {
+    width: 100%;
+    overflow-x: clip;
+  }
+
+  .phoxta-startup-school > .pt-80,
+  .phoxta-startup-school > .pt-120 {
+    padding-top: 64px !important;
+  }
+
+  .phoxta-startup-school > .pb-120 {
+    padding-bottom: 64px !important;
+  }
+
+  .phoxta-startup-school .ss-learning-cards__rail {
+    width: 100%;
+    margin-right: 0;
+    padding-right: 0;
+    scroll-padding-inline: 1px;
+  }
+
+  .phoxta-startup-school .ss-learning-cards__card {
+    flex: 0 0 calc(100% - 2px);
+    width: calc(100% - 2px);
+    max-width: none;
+    scroll-snap-stop: always;
+  }
+
+  .phoxta-startup-school .sec-7-home-7,
+  .phoxta-startup-school .sec-7-about,
+  .phoxta-startup-school .sec-11-home-7 {
+    width: 100%;
+  }
+
+  .phoxta-startup-school .sec-7-home-7__content,
+  .phoxta-startup-school .sec-11-home-7__form {
+    min-width: 0;
+  }
 }

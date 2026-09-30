@@ -20,7 +20,7 @@ export default function FaqsPage() {
     <>
       <PageMeta
         title="FAQs — Phoxta"
-        description="Answers to common questions about Phoxta: how owning a business works, what's included, pricing, AI features, ownership and support."
+        description="Answers about choosing a Phoxta business system, activation, AI support, pricing and responsible operation."
         path="/faqs"
         jsonLd={FAQ_JSONLD}
       />

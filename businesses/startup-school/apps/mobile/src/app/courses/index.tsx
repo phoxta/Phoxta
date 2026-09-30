@@ -10,12 +10,11 @@ import { Chip, EmptyState, SearchBox } from "@/components/ui/primitives";
 import { CATEGORY_LABEL } from "@/components/ui/icons";
 import { Header, PageTitle, Screen } from "@/components/shell/Screen";
 
-type Sort = "featured" | "newest" | "rating" | "shortest";
+type Sort = "featured" | "newest" | "shortest";
 const LEVELS: Level[] = ["Beginner", "Intermediate", "Advanced"];
 const SORTS: { id: Sort; label: string }[] = [
-    { id: "featured", label: "Most popular" },
+    { id: "featured", label: "Course sequence" },
     { id: "newest", label: "Newest" },
-    { id: "rating", label: "Top rated" },
     { id: "shortest", label: "Shortest" },
 ];
 
@@ -35,9 +34,8 @@ export default function CoursesScreen() {
         const minutes = (id: string) => catalogue.lessons.filter((l) => l.courseId === id).reduce((n, l) => n + l.durationSec, 0);
         const list = searchCourses(catalogue, q).filter((x) => (!cat || x.categoryId === cat) && (!level || x.level === level) && (!saved || user.bookmarks.includes(x.id)) && (!mine || user.enrollments.some((e) => e.courseId === x.id)));
         const by: Record<Sort, (a: (typeof list)[number], b: (typeof list)[number]) => number> = {
-            featured: (a, b) => b.learners - a.learners,
+            featured: (a, b) => a.title.localeCompare(b.title),
             newest: (a, b) => b.publishedAt.localeCompare(a.publishedAt),
-            rating: (a, b) => b.rating - a.rating,
             shortest: (a, b) => minutes(a.id) - minutes(b.id),
         };
         return [...list].sort(by[sort]);

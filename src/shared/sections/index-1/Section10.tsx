@@ -10,22 +10,18 @@ const TICKER_SVG = (
 );
 
 const TICKER_ITEMS = [
-    "E-commerce & DTC",
-    "Local Services",
-    "Content & Creator",
-    "SaaS & Digital Products",
-    "Marketplaces",
-    "Education & Courses",
-    "Restaurant & Hospitality",
-    "B2B & Wholesale",
-    "Membership & Community",
-    "AI Assistants",
-    "Automations",
+    "Discover",
+    "Investigate",
+    "Validate",
+    "Shape",
+    "Build",
+    "Launch",
+    "Learn",
 ];
 
 export default function Section10() {
     return (
-        <section className="at-brand-area border-top-0">
+        <section className="at-brand-area border-0">
             <div className="carouselTicker carouselTicker-left">
                 <Marquee
                     speed={40}

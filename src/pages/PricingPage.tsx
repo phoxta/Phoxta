@@ -1,14 +1,12 @@
 import PageMeta from "@/seo/PageMeta";
 import Section1 from "@/shared/sections/index-2/Section12";
-import Section2 from "@/shared/sections/services-details/Section4";
-import Section3 from "@/shared/sections/about-3/Section7";
 
 export default function PricingPage() {
   return (
     <>
       <PageMeta
         title="Pricing — Phoxta"
-        description="Operating Console Pricing."
+        description="Operating Console pricing and plans."
         path="/pricing"
       />
       {/* Top padding clears the transparent, absolutely-positioned header so the

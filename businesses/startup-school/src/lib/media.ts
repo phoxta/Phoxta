@@ -5,8 +5,8 @@ import type { LocalMedia, MediaDeviceOption } from "@startup-school/core";
  *
  * Core has no DOM, so it can't call `getUserMedia` itself — this is the web's
  * half of that contract. Two callers: the pre-join lobby, which needs a preview
- * and a level meter before any room exists, and the demo room, whose local tile
- * is the visitor's own camera.
+ * and a level meter before any room exists, and the live room, whose local
+ * tile is the learner's own camera.
  *
  * One instance per room, disposed with `stopAll()` — a camera light left on
  * after a class has ended is the thing people notice.

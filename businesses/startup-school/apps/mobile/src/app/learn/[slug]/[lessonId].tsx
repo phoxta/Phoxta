@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AppState, Pressable, View } from "react-native";
+import { AppState, Pressable, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { Check, ChevronLeft, ChevronRight, FileText, HelpCircle, Play } from "lucide-react-native";
-import { courseBySlug, courseProgress, duration, isDone, isEnrolled, lessonsOf, youtubeId, youtubeThumb } from "@startup-school/core";
+import { courseBySlug, courseProgress, duration, isDone, isEnrolled, lessonsOf, youtubeId, youtubeThumb, type CategoryId, type LessonBlock, type VentureSection, type VentureSectionId } from "@startup-school/core";
 import { useTheme } from "@/lib/theme";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
@@ -14,6 +14,41 @@ import { Button, Card, EmptyState, ProgressBar, Tag } from "@/components/ui/prim
 import { Txt } from "@/components/ui/text";
 import { CATEGORY_LABEL } from "@/components/ui/icons";
 import { Header, Screen } from "@/components/shell/Screen";
+
+const SECTION_FOR_CATEGORY: Record<CategoryId, VentureSectionId> = { start: "opportunity", fund: "money", grow: "traction" };
+
+function ActivityCapture({ block, courseId, lessonTitle, categoryId }: { block: LessonBlock; courseId: string; lessonTitle: string; categoryId: CategoryId }) {
+    const { user, mutate } = useData();
+    const { toast } = useToast();
+    const { c } = useTheme();
+    const router = useRouter();
+    const [answer, setAnswer] = useState("");
+    const [saving, setSaving] = useState<"venture" | "task" | null>(null);
+    const sectionId = SECTION_FOR_CATEGORY[categoryId];
+    const saveVenture = async () => {
+        if (!answer.trim()) return toast("Write your answer first.", "danger");
+        setSaving("venture");
+        const existing = user.venture.sections[sectionId];
+        const nextSection: VentureSection = { body: existing?.body ?? "", claims: [...(existing?.claims ?? []), { id: `lesson-${block.id}-${Date.now()}`, text: `${lessonTitle}: ${answer.trim()}`, confidence: "guess", test: "" }], updatedAt: new Date().toISOString() };
+        const sections: Partial<Record<VentureSectionId, VentureSection>> = { [sectionId]: nextSection };
+        try { await mutate((repo) => repo.saveVenture({ sections })); toast("Saved as a venture decision", "success"); } finally { setSaving(null); }
+    };
+    const addTask = async () => {
+        if (!answer.trim()) return toast("Write your answer first.", "danger");
+        setSaving("task"); const due = new Date(); due.setDate(due.getDate() + 3); due.setHours(18, 0, 0, 0);
+        try { await mutate((repo) => repo.addTask({ title: `${lessonTitle}: ${answer.trim()}`, courseId, dueAt: due.toISOString() })); toast("Added to next actions", "success"); } finally { setSaving(null); }
+    };
+    return <Card style={{ marginTop: 16, backgroundColor: c.peachSoft, borderColor: c.peach, gap: 12 }}><Txt role="overline" color={c.peach}>APPLY IT NOW</Txt><Txt weight="semibold" size={17} lineHeight={22}>{block.title}</Txt><Txt size={15} lineHeight={23}>{block.content}</Txt><TextInput accessibilityLabel="Your answer" value={answer} onChangeText={setAnswer} multiline placeholder="Write the decision, evidence, or next experiment…" placeholderTextColor={c.muted} style={{ minHeight: 96, borderRadius: 12, borderWidth: 1, borderColor: c.lineStrong, backgroundColor: c.card, color: c.ink, padding: 12, fontSize: 14, lineHeight: 21 }} /><View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}><Button size="md" loading={saving === "venture"} onPress={() => void saveVenture()}>Save to venture</Button><Button size="md" variant="outline" loading={saving === "task"} onPress={() => void addTask()}>Make this a task</Button><Button size="md" variant="ghost" onPress={() => router.push("/experiments")}>Field test</Button></View></Card>;
+}
+
+function LessonFlow({ blocks, courseId, lessonTitle, categoryId }: { blocks: LessonBlock[]; courseId: string; lessonTitle: string; categoryId: CategoryId }) {
+    const { c } = useTheme();
+    const objective = blocks.find((block) => block.type === "objective");
+    const explanations = blocks.filter((block) => block.type === "learn" || block.type === "example");
+    const activity = blocks.find((block) => block.type === "activity");
+    const support = blocks.filter((block) => !["objective", "learn", "example", "activity"].includes(block.type));
+    return <View style={{ marginTop: 16, gap: 12 }}>{objective ? <Card style={{ backgroundColor: c.brandSoft, borderColor: c.brand }}><Txt role="overline" color={c.brandInk}>BY THE END OF THIS LESSON</Txt><Txt size={15} lineHeight={23} style={{ marginTop: 6 }}>{objective.content}</Txt></Card> : null}{explanations.map((block) => <Card key={block.id} style={{ gap: 6 }}><Txt role="overline">{block.type === "example" ? "WORKED EXAMPLE" : "LEARN"}</Txt><Txt size={15} lineHeight={23}>{block.content}</Txt></Card>)}{activity ? <ActivityCapture block={activity} courseId={courseId} lessonTitle={lessonTitle} categoryId={categoryId} /> : null}{support.map((block) => <Card key={block.id} style={{ gap: 6, backgroundColor: block.type === "ai_activity" ? c.brandSoft : c.card }}><Txt role="overline">{block.title}</Txt><Txt size={14} lineHeight={21}>{block.content}</Txt></Card>)}</View>;
+}
 
 /**
  * The lesson screen: player (video, article or quiz), then the curriculum and
@@ -95,7 +130,7 @@ export default function LessonScreen() {
 
     if (!course || !lesson) {
         return (
-            <Screen header={<Header />}>
+            <Screen header={<Header />} keyboardAware>
                 <EmptyState title="Lesson not found" action={<Button size="md" variant="outline" onPress={() => router.replace("/courses")}>Back to courses</Button>} />
             </Screen>
         );
@@ -112,15 +147,22 @@ export default function LessonScreen() {
     const saved = user.progress.find((p) => p.lessonId === lesson.id);
     const notes = user.notes.filter((n) => n.lessonId === lesson.id);
     const questions = catalogue.quiz.filter((q) => q.lessonId === lesson.id);
+    const blocks = catalogue.lessonBlocks.filter((block) => block.lessonId === lesson.id).sort((a, b) => a.sort - b.sort);
     const lastAttempt = user.attempts.find((a) => a.lessonId === lesson.id);
     const startAt = saved?.completedAt ? 0 : (saved?.positionSec ?? 0);
     const yt = lesson.videoUrl ? youtubeId(lesson.videoUrl) : null;
+    const isCourseOnePilot = course.slug === "from-idea-to-opportunity" && lesson.id === "c-opportunity-l-1";
 
     return (
-        <Screen header={<Header title={course.title} sub={`${progress.done}/${progress.total} lessons · ${progress.pct}%`} />}>
+        <Screen header={<Header title={course.title} sub={`${progress.done}/${progress.total} lessons · ${progress.pct}%`} />} keyboardAware>
             {lesson.kind === "video" && yt ? (
-                <YouTubePlayer key={lesson.id} videoId={yt} title={lesson.title} source={lesson.source} startAt={startAt} onProgress={saveProgress} onEnded={onVideoEnded} onPlayingSecond={onTick} />
+                <>
+                    <YouTubePlayer key={lesson.id} videoId={yt} title={lesson.title} source={lesson.source} startAt={startAt} onProgress={saveProgress} onEnded={onVideoEnded} onPlayingSecond={onTick} />
+                    {blocks.length > 0 ? <LessonFlow blocks={blocks} courseId={course.id} lessonTitle={lesson.title} categoryId={course.categoryId} /> : null}
+                </>
             ) : lesson.kind === "article" ? (
+                <>
+                {isCourseOnePilot ? <Card style={{ marginBottom: 14, flexDirection: "row", alignItems: "flex-start", gap: 10, backgroundColor: c.brandSoft, borderColor: c.brand }}><View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: c.card, alignItems: "center", justifyContent: "center" }}><Play size={14} color={c.brand} fill={c.brand} /></View><View style={{ flex: 1 }}><Txt weight="semibold" size={14} lineHeight={19}>Animated video pilot is in production</Txt><Txt role="caption" style={{ marginTop: 3 }}>This lesson is available as a reading while the narrated Course 01 pilot and captions are being produced. Your progress will carry over when it is published.</Txt></View></Card> : null}
                 <Card>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
                         <FileText size={14} color={c.caption} />
@@ -132,6 +174,8 @@ export default function LessonScreen() {
                         </Txt>
                     ))}
                 </Card>
+                {blocks.length > 0 ? <LessonFlow blocks={blocks} courseId={course.id} lessonTitle={lesson.title} categoryId={course.categoryId} /> : null}
+                </>
             ) : (
                 <View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
@@ -139,6 +183,7 @@ export default function LessonScreen() {
                         <Txt role="caption">Module check · {questions.length} questions</Txt>
                     </View>
                     <Quiz key={lesson.id} questions={questions} lastScore={lastAttempt} onSubmit={(score, total) => mutate((r) => r.submitQuiz(lesson.id, score, total))} />
+                    {blocks.length > 0 ? <LessonFlow blocks={blocks} courseId={course.id} lessonTitle={lesson.title} categoryId={course.categoryId} /> : null}
                 </View>
             )}
 

@@ -89,6 +89,10 @@ const FOUNDER_ROUTES = [
 
 const ROUTES = [
     "/",
+    "/discover",
+    "/how-it-works",
+    "/businesses",
+    "/school",
     ...FOUNDER_ROUTES,
     "/portfolio",
     "/portfolio/work/coir-six",

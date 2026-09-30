@@ -10,18 +10,19 @@
         "typecheck": "tsc --noEmit",
         "lint": "eslint src",
         "typecheck:core": "tsc --noEmit -p packages/core",
-        "gen:migration": "node scripts/gen-migration.mjs > ../../supabase/migrations/0155_startup_school_seed.sql",
+        "gen:migration": "node scripts/gen-opportunity-migration.mjs --write",
         "mobile": "npm --workspace apps/mobile run start"
     },
     "dependencies": {
-        "@startup-school/core": "*",
         "@mediapipe/tasks-vision": "^1.0.1",
+        "@startup-school/core": "*",
         "@supabase/supabase-js": "^2.108.2",
         "livekit-client": "^2.22.3",
         "lucide-react": "^0.546.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-        "react-router-dom": "^6.30.1"
+        "react-router-dom": "^6.30.1",
+        "tus-js-client": "^4.3.1"
     },
     "devDependencies": {
         "@eslint/js": "^9.27.0",

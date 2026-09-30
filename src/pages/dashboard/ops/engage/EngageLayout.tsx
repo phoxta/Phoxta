@@ -16,14 +16,11 @@ import { NavLink, Outlet, useOutletContext } from "react-router-dom";
 
 const AREAS: { seg: string; label: string; hint: string; end?: boolean }[] = [
   { seg: "inbox", label: "Inbox", hint: "Live conversations" },
-  { seg: "calls", label: "Calls", hint: "Voice, live & recorded" },
   { seg: "audience", label: "Audience", hint: "Contacts & segments" },
-  { seg: "flows", label: "Flows", hint: "Chat automation" },
-  { seg: "journeys", label: "Journeys", hint: "Lifecycle automation" },
-  { seg: "broadcasts", label: "Broadcasts", hint: "One-off sends" },
-  { seg: "channels", label: "Channels", hint: "Where you're reachable" },
-  { seg: "agent", label: "Agent", hint: "The AI brain" },
-  { seg: "insights", label: "Insights", hint: "What it all earned" },
+  { seg: "flows", label: "Automations", hint: "Reviewable follow-up" },
+  { seg: "broadcasts", label: "Campaigns", hint: "One-off sends" },
+  { seg: "agent", label: "AI assistant", hint: "Job and boundaries" },
+  { seg: "insights", label: "Insights", hint: "What to improve" },
 ];
 
 const CSS = `

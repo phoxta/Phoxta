@@ -11,7 +11,7 @@ import { Link } from "react-router-dom";
 // as self-serve tools, and it is the honest answer for someone who is not ready
 // to pay for a cohort.
 
-const SCHOOL_URL = "https://startup-school.phoxta.com";
+const SCHOOL_URL = "https://learn.phoxta.com";
 
 const ARROW = (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -26,9 +26,9 @@ const ARROW = (
 );
 
 const FACTS = [
-    { n: "14", label: "courses, from founder fit to the day you sell" },
-    { n: "64", label: "lessons across three tracks: start, fund, grow" },
-    { n: "Weekly", label: "live classroom, with mentors attached to each track" },
+    { n: "Choose", label: "whether you will build, use a Phoxta turnkey business or combine both paths" },
+    { n: "Test", label: "a customer, offer or operating assumption with a focused proof loop" },
+    { n: "Improve", label: "your venture record with the evidence from work that actually happened" },
 ];
 
 export default function EnterSchool() {
@@ -44,8 +44,7 @@ export default function EnterSchool() {
                             The school is open
                         </h2>
                         <p className="fz-body neutral-500 mb-30 at_fade_anim" data-delay=".2">
-                            Your courses, the live classroom, your cohort and your mentor all live in the school itself.
-                            Sign in there to pick up where you left off.
+                            Your courses, proof loop, live classroom and mentor support live in the school itself. Sign in to pick up the next decision that moves your venture forward.
                         </p>
 
                         <div className="d-flex flex-wrap gap-3 at_fade_anim" data-delay=".3">
@@ -71,7 +70,7 @@ export default function EnterSchool() {
                         </div>
 
                         <p className="fz-font-label neutral-500 mt-20 at_fade_anim" data-delay=".4">
-                            Not enrolled yet? The toolkit is free, needs no account, and covers the same ground on your own.
+                            Not enrolled yet? The toolkit is free, needs no account, and helps you test whether a venture or a Phoxta package fits your market.
                         </p>
                     </div>
 

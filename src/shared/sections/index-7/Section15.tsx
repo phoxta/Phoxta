@@ -14,43 +14,43 @@ const FAQ_ITEMS = [
     {
         id: "ssFaqOne",
         num: "1",
-        question: "Do I need business experience to start?",
-        answer: "No. The program builds your business fundamentals from the ground up — and you apply them to a real business as you go.",
+        question: "Is Startup School right for me?",
+        answer: "It is for people who want to work on a real business question: an idea, an existing operation or a Phoxta turnkey business. You do not need a polished plan before you begin.",
         open: true,
     },
     {
         id: "ssFaqTwo",
         num: "2",
-        question: "Is it cohort-based or self-paced?",
-        answer: "Both. You join a cohort for accountability, live classes and community, while an AI guide paces each lesson around your schedule — the structure of a cohort with the flexibility of self-paced.",
+        question: "What will I create in each module?",
+        answer: "Each of the twelve modules connects a short lesson, example, exercise and reusable template to an artifact: an opportunity thesis, evidence log, customer map, assumption, experiment or launch plan.",
         open: false,
     },
     {
         id: "ssFaqThree",
         num: "3",
-        question: "How much time does it take?",
-        answer: "Plan for a few hours a week over a 12-week cohort. An AI guide adapts to your pace, so you stay on track without it taking over your life.",
+        question: "Can I learn at my own pace?",
+        answer: "Yes. Learning is nonlinear: choose the module that helps with the question you are investigating. Completion requires its linked workspace artifact, so watching or reading alone does not mark practical work complete.",
         open: false,
     },
     {
         id: "ssFaqFour",
         num: "4",
-        question: "Is it really free to start?",
-        answer: "Yes. You can join for free and access the core curriculum and community. Optional live cohorts and 1:1 mentor sessions are available as you progress.",
+        question: "Can this help me run a Phoxta business?",
+        answer: "Yes. Use the same customer, offer and operating work to adapt a Phoxta turnkey business to your market, launch it locally and keep improving it from evidence.",
         open: false,
     },
     {
         id: "ssFaqFive",
         num: "5",
-        question: "Is this an alternative to an MBA?",
-        answer: "It's a practical alternative — the business skills that matter, applied to a real business and built for the AI era, without the cost or the years.",
+        question: "How is AI used in the school?",
+        answer: "AI helps with research, first drafts, structured analysis and routine work. The courses also show where human judgement, approval and responsibility must remain with you.",
         open: false,
     },
     {
         id: "ssFaqSix",
         num: "6",
-        question: "What do I get at the end?",
-        answer: "Real business skills, a running business you own, a certificate of completion, and a global network of founders and operators.",
+        question: "How do access and pricing work?",
+        answer: "Open the school to see the current curriculum and access options. Any paid access or live session makes its scope and price clear before you pay.",
         open: false,
     },
 ];
@@ -77,7 +77,7 @@ export default function Section15() {
                             </RevealText>
                         </h3>
                         <h6 className="fz-font-lg fw-500">
-                            Everything you need to know <br className="d-none d-xxl-block" />before you enroll.
+                            Everything you need to know <br className="d-none d-xxl-block" />before you begin.
                         </h6>
                     </div>
                     <div className="col-lg-7 ms-lg-auto">

@@ -50,6 +50,15 @@ Deno.serve(async (req) => {
     const returnUrl = cleanReturnUrl(body?.returnUrl, `${SITE}/dashboard/payment/callback`);
     const success = `${returnUrl}${returnUrl.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`;
 
+    if (kind === "subscription" || kind === "change_plan") {
+      const auth = await authorize(req, body?.orgId);
+      if (auth.error) return auth.error;
+      const { data: included } = await admin.from("subscriptions").select("school_included_until").eq("organization_id", auth.ok.org.id).maybeSingle();
+      if (included?.school_included_until && Date.parse(included.school_included_until) > Date.now()) {
+        return json({ error: `Your Launch admission includes Operating Console access until ${new Date(included.school_included_until).toLocaleDateString("en-GB")}. No console payment is needed during this period.` }, 409);
+      }
+    }
+
     // ── verify ──────────────────────────────────────────────────────────────
     if (kind === "verify") {
       const who = await requireUser(req);

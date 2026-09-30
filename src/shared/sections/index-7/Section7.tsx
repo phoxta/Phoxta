@@ -1,21 +1,19 @@
-import { onAnchorClick } from "@/shared/effects/scrollToId";
-// The "Join the school" buttons went to /contact -- a generic enquiry form on
-// another page, reached after nine sections of selling. They go to the signup
-// on this page now. (index-7 is only ever this page: /index-7 redirects here.)
 import RevealText from "@/shared/effects/RevealText";
 
 {/* Home 7 Section 7 (CTA — Ready to Build the Future?) */}
 
 const FEATURES = [
-    { text: "Real business fundamentals", delay: "0.1" },
-    { text: "AI & frontier tools", delay: "0.2" },
-    { text: "Expert-led classes & mentors", delay: "0.3" },
-    { text: "Run a real business", delay: "0.4" },
+    { text: "Clear lessons in straightforward business language", delay: "0.1" },
+    { text: "Exercises that connect the concept to your business", delay: "0.2" },
+    { text: "A venture record for your decisions, evidence and next steps", delay: "0.3" },
+    { text: "AI support for routine work, with people in control", delay: "0.4" },
 ];
+
+const SCHOOL_URL = "https://learn.phoxta.com";
 
 export default function Section7() {
     return (
-        <div className="sec-7-home-7 overflow-hidden py-4">
+        <div id="launch" className="sec-7-home-7 overflow-hidden py-4">
             <div className="container-2200 px-lg-5 px-3 py-120">
                 <div className="row align-items-center g-4 g-xxl-5">
                     {/* Left: Image block */}
@@ -37,7 +35,7 @@ export default function Section7() {
                     <div className="col-xxl-7 col-xl-6 col-12">
                         <div className="sec-7-home-7__content ms-xxl-4">
                             <div className="sec-7-home-7__eyebrow d-inline-flex align-items-center gap-2 mb-3 text-uppercase">
-                                <span className="text-scramble" data-scramble-text="Ready to Build the Future ?">Ready to Build the Future ?</span>
+                                <span className="text-scramble" data-scramble-text="Put learning to work">Put learning to work</span>
                                 <img
                                     className="sec-7-home-7__eyebrow-icon"
                                     src="/assets/imgs/pages/home-7/sec-7-eyebrow-arrow.svg"
@@ -48,7 +46,7 @@ export default function Section7() {
 
                             <p className="sec-7-home-7__headline mb-4 mb-lg-40 reveal-text">
                                 <RevealText>
-                                    Stop putting it off. Build the business skills — and the business — to thrive in the AI era.
+                                    Turn what you learn into a clearer next step for your business.
                                 </RevealText>
                             </p>
 
@@ -67,13 +65,13 @@ export default function Section7() {
                             </ul>
 
                             <div className="sec-7-home-7__cta d-inline-flex align-items-stretch at_fade_anim">
-                                <a href="#enroll" onClick={onAnchorClick("enroll", 80)} className="at-btn sec-7-home-7__cta-btn">
+                                <a href={SCHOOL_URL} target="_blank" rel="noopener noreferrer" className="at-btn sec-7-home-7__cta-btn">
                                     <span>
-                                        <span className="text-1">Reserve my place</span>
-                                        <span className="text-2">Reserve my place</span>
+                                        <span className="text-1">Open Startup School</span>
+                                        <span className="text-2">Open Startup School</span>
                                     </span>
                                 </a>
-                                <a href="#enroll" onClick={onAnchorClick("enroll", 80)} className="sec-7-home-7__cta-circle" aria-label="Reserve my place">
+                                <a href={SCHOOL_URL} target="_blank" rel="noopener noreferrer" className="sec-7-home-7__cta-circle" aria-label="Open Startup School">
                                     <img
                                         src="/assets/imgs/pages/home-7/sec-7-btn-arrow.svg"
                                         alt=""

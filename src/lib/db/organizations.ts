@@ -25,6 +25,7 @@ export type Organization = {
    *  Settings. The Playbook prefills its location question from it rather than
    *  asking for something this console already knows. */
   profile?: { address?: string; phone?: string; email?: string; mapQuery?: string } | null;
+  metadata?: { opportunity_only?: boolean } | null;
 };
 
 export type Member = { user_id: string; role: "owner" | "admin" | "staff" | "viewer"; created_at: string };
@@ -142,7 +143,7 @@ export async function listMyOrganizations(): Promise<{
 
   const { data, error } = await supabase
     .from("organization_memberships")
-    .select("role, organizations(id, name, slug, stage, vertical, blueprint_id, app_path, site_url, primary_region, created_at)")
+    .select("role, organizations(id, name, slug, stage, vertical, blueprint_id, app_path, site_url, primary_region, created_at, metadata)")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
@@ -151,7 +152,7 @@ export async function listMyOrganizations(): Promise<{
   const rows = (data as unknown as OrganizationMembership[]) ?? [];
   const seen = new Set<string>();
   const mapped = rows
-    .filter((r) => r.organizations)
+    .filter((r) => r.organizations && !r.organizations.metadata?.opportunity_only)
     .map((r) => ({ role: r.role, organization: r.organizations as Organization }))
     // Belt and braces: never emit the same organization twice.
     .filter((r) => (seen.has(r.organization.id) ? false : (seen.add(r.organization.id), true)));

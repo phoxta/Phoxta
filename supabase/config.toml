@@ -294,6 +294,12 @@ verify_jwt = true
 [functions.stripe-checkout]
 verify_jwt = true
 
+# Startup School's paid-access checkout. The function verifies the learner and
+# creates a hosted Stripe Session; access itself is granted only by the signed
+# stripe-webhook event.
+[functions.startup-school-checkout]
+verify_jwt = true
+
 # Connect a business's own Stripe account so it can take customer payments.
 # Owner/admin only, so it must see the caller's JWT.
 [functions.stripe-connect]
@@ -433,3 +439,12 @@ verify_jwt = true
 # and the function re-proves enrolment against cs_profiles before it reads.
 [functions.startup-school-ai]
 verify_jwt = true
+
+[functions.startup-school-staff]
+verify_jwt = false
+
+[functions.opportunity-billing]
+verify_jwt = true
+
+[functions.opportunity-stripe-webhook]
+verify_jwt = false

@@ -19,7 +19,8 @@ const bundled = await build({
     platform: "neutral",
 });
 const mod = await import("data:text/javascript;base64," + Buffer.from(bundled.outputFiles[0].text).toString("base64"));
-const { CATEGORIES, MENTORS, COURSES, MODULES, LESSONS, QUIZ, LIVE_LESSONS, GROUPS, AVAILABILITY } = mod;
+const { CATEGORIES, MENTORS, COURSES, MODULES, LESSONS, LESSON_BLOCKS, QUIZ, LIVE_LESSONS, GROUPS, AVAILABILITY, LEGACY_TEMP_COURSES } = mod;
+const LEGACY_COURSE_IDS = LEGACY_TEMP_COURSES.map((course) => course.id);
 
 /** SQL string literal, single quotes doubled. NULL for null/undefined. */
 const q = (v) => (v === null || v === undefined ? "NULL" : `'${String(v).replace(/'/g, "''")}'`);
@@ -35,29 +36,24 @@ const out = [];
 const w = (s = "") => out.push(s);
 
 w("-- ---------------------------------------------------------------------------");
-w("-- Phoxta Startup School — starter curriculum");
+w("-- Phoxta Startup School - final founder curriculum");
 w("--");
 w("-- The school reuses the Coir Six `cs_*` tables under its own organisation:");
-w("-- every one of them is org-scoped, `cs_courses.category_id` is plain text with");
-w("-- no check constraint, and `cs_categories` is per-org — so a second school");
-w("-- needs content, not schema.");
+w("-- every one is org-scoped, so a second school needs its own content, not a");
+w("-- second schema.");
 w("--");
-w("-- Three tracks replace the three design subjects:");
-w("--   start  founder fit, opportunity, model, legal form, plan and pitch");
-w("--   fund   opening capital, growth capital, angels and venture");
-w("--   grow   selling, operating, measuring, scaling, harvest");
+w("-- Ten outcome-led courses guide founders through one sequence:");
+w("-- IDEA -> PROBLEM -> MARKET -> CUSTOMER -> BUSINESS MODEL -> BRAND -> MVP ->");
+w("-- MARKETING -> LAUNCH -> GROWTH.");
+w("-- Each topic carries an objective, explanation, example, practical activity,");
+w("-- AI reflection prompt and template; every course ends with a business asset.");
 w("--");
-w("-- Curriculum distilled from HBR's Entrepreneur's Handbook (fourteen chapters,");
-w("-- four appendices) plus the thirteen researched 2026 supplements in");
-w("-- .claude/skills/entrepreneur-handbook.");
+w("-- GENERATED from businesses/startup-school/packages/core/src/curriculum.ts");
+w("-- through seed.ts by scripts/gen-migration.mjs. Edit TypeScript and regenerate;");
+w("-- do not hand-edit the SQL or the bundled demo and live school will drift.");
 w("--");
-w("-- GENERATED from businesses/startup-school/packages/core/src/seed.ts by");
-w("-- _gen_migration.mjs. Edit the TypeScript and regenerate; do not hand-edit,");
-w("-- or the bundled demo and the live school will drift apart.");
-w("--");
-w("-- Idempotent: safe to re-run to refresh starter content without touching");
-w("-- learner rows. Called by provisioning for the startup-school blueprint,");
-w("-- the way cs_seed_org is called for coir-six.");
+w("-- Idempotent: safe to re-run to refresh curriculum without touching");
+w("-- learner rows. Called by provisioning for the startup-school blueprint.");
 w("-- ---------------------------------------------------------------------------");
 w("");
 // Columns this seed writes that the base schema (0147) does not have. Emitted
@@ -67,9 +63,38 @@ w("-- Where a lesson's 2018 source has been overtaken. A separate column, not an
 w("-- edit to the body: the learner has to be able to tell the two claims apart.");
 w("alter table public.cs_lessons add column if not exists revision text not null default '';");
 w("");
+w("alter table public.cs_courses add column if not exists final_project_title text not null default '';");
+w("alter table public.cs_courses add column if not exists final_project_description text not null default '';");
+w("");
+w("create table if not exists public.cs_lesson_blocks (");
+w("  organization_id uuid not null references public.organizations(id) on delete cascade,");
+w("  id text not null,");
+w("  lesson_id text not null,");
+w("  type text not null,");
+w("  title text not null,");
+w("  content text not null,");
+w("  action_href text not null default '',");
+w("  action_label text not null default '',");
+w("  sort integer not null default 0,");
+w("  primary key (organization_id, id),");
+w("  foreign key (organization_id, lesson_id) references public.cs_lessons(organization_id, id) on delete cascade");
+w(");");
+w("create index if not exists idx_cs_lesson_blocks_lesson on public.cs_lesson_blocks(organization_id, lesson_id, sort);");
+w("alter table public.cs_lesson_blocks enable row level security;");
+w("grant select on public.cs_lesson_blocks to anon, authenticated;");
+w("drop policy if exists cs_lesson_blocks_read on public.cs_lesson_blocks;");
+w("create policy cs_lesson_blocks_read on public.cs_lesson_blocks for select to anon, authenticated using (true);");
+w("");
 w("create or replace function public.ss_seed_org(p_org uuid) returns void");
 w("language plpgsql security definer set search_path = public as $seed$");
 w("begin");
+w("");
+w("  -- The retired prototype used c-opportunity too. Remove its l-opp/mod-opp");
+w("  -- rows before seeding so they cannot be interleaved with this curriculum.");
+w("  delete from cs_lessons where organization_id = p_org and id like 'l-opp-%';");
+w("  delete from cs_modules where organization_id = p_org and id like 'mod-opp-%';");
+w("");
+w(`  update cs_courses set published = false where organization_id = p_org and id = any(${tarr(LEGACY_COURSE_IDS)});`);
 w("");
 
 // -- categories
@@ -94,18 +119,19 @@ w("    buffer_min = excluded.buffer_min, min_notice_min = excluded.min_notice_mi
 w("");
 
 // -- courses
-w("  insert into cs_courses (organization_id, id, slug, title, blurb, description, category_id, mentor_id, level, theme, cover_url, rating, learners, outcomes, published_at)");
+w("  insert into cs_courses (organization_id, id, slug, title, blurb, description, category_id, mentor_id, level, theme, cover_url, rating, learners, outcomes, final_project_title, final_project_description, published_at, published)");
 w("  select p_org, v.* from (values");
 w(rows(COURSES, (c) => [
     q(c.id), q(c.slug), q(c.title), q(c.blurb), q(c.description), q(c.categoryId), q(c.mentorId),
-    q(c.level), q(c.theme), q(c.coverUrl), n(c.rating), n(c.learners), jarr(c.outcomes), q(c.publishedAt) + "::timestamptz",
+    q(c.level), q(c.theme), q(c.coverUrl), n(c.rating), n(c.learners), jarr(c.outcomes), q(c.finalProjectTitle ?? ""), q(c.finalProjectDescription ?? ""), q(c.publishedAt) + "::timestamptz", "true",
 ].join(", ")));
-w("  ) as v(id, slug, title, blurb, description, category_id, mentor_id, level, theme, cover_url, rating, learners, outcomes, published_at)");
+w("  ) as v(id, slug, title, blurb, description, category_id, mentor_id, level, theme, cover_url, rating, learners, outcomes, final_project_title, final_project_description, published_at, published)");
 w("  on conflict (organization_id, id) do update set");
 w("    slug = excluded.slug, title = excluded.title, blurb = excluded.blurb, description = excluded.description,");
 w("    category_id = excluded.category_id, mentor_id = excluded.mentor_id, level = excluded.level, theme = excluded.theme,");
 w("    cover_url = excluded.cover_url, rating = excluded.rating, learners = excluded.learners,");
-w("    outcomes = excluded.outcomes, published_at = excluded.published_at;");
+w("    outcomes = excluded.outcomes, final_project_title = excluded.final_project_title,");
+w("    final_project_description = excluded.final_project_description, published_at = excluded.published_at, published = excluded.published;");
 w("");
 
 // -- modules
@@ -132,6 +158,18 @@ w("  on conflict (organization_id, id) do update set");
 w("    course_id = excluded.course_id, module_id = excluded.module_id, title = excluded.title, kind = excluded.kind,");
 w("    duration_sec = excluded.duration_sec, video_url = excluded.video_url, captions_url = excluded.captions_url,");
 w("    source = excluded.source, body = excluded.body, revision = excluded.revision, sort = excluded.sort;");
+w("");
+
+// -- applied learning blocks
+w("  insert into cs_lesson_blocks (organization_id, id, lesson_id, type, title, content, action_href, action_label, sort)");
+w("  select p_org, v.* from (values");
+w(rows(LESSON_BLOCKS, (b) => [
+    q(b.id), q(b.lessonId), q(b.type), q(b.title), q(b.content), q(b.actionHref ?? ""), q(b.actionLabel ?? ""), n(b.sort),
+].join(", ")));
+w("  ) as v(id, lesson_id, type, title, content, action_href, action_label, sort)");
+w("  on conflict (organization_id, id) do update set");
+w("    lesson_id = excluded.lesson_id, type = excluded.type, title = excluded.title, content = excluded.content,");
+w("    action_href = excluded.action_href, action_label = excluded.action_label, sort = excluded.sort;");
 w("");
 
 // -- quiz

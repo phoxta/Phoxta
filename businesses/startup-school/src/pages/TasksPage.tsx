@@ -54,7 +54,7 @@ export default function TasksPage() {
 
     return (
         <>
-            <PageTitle title="Tasks" sub={counts.open ? `${counts.open} open${counts.overdue ? ` · ${counts.overdue} overdue` : ""}` : "All clear."} />
+            <PageTitle title="Next actions" sub={counts.open ? `${counts.open} open${counts.overdue ? ` · ${counts.overdue} overdue` : ""}` : "All clear. Add the next piece of founder work when you need it."} />
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
                 <div>
                     <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Filter tasks">

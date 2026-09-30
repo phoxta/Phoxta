@@ -5,6 +5,7 @@ import type {
     Catalogue,
     Category,
     Course,
+    Experiment,
     Friend,
     Group,
     Lesson,
@@ -18,6 +19,7 @@ import type {
     VentureConfidence,
     VentureSection,
 } from "./types";
+import { FINAL_CATEGORIES, FINAL_COURSES, FINAL_LESSON_BLOCKS, FINAL_LESSONS, FINAL_MODULES, FINAL_QUIZ } from "./curriculum";
 
 /**
  * The bundled catalogue and a demo founder.
@@ -44,13 +46,14 @@ import type {
 
 const IMG = "/images/";
 
-export const CATEGORIES: Category[] = [
+export const LEGACY_TEMP_CATEGORIES: Category[] = [
     { id: "start", name: "Start", blurb: "Founder fit, the opportunity, the model, the legal form and a plan a stranger can back" },
     { id: "fund", name: "Fund", blurb: "What it costs to open, where growth money comes from, and what each source costs you" },
     { id: "grow", name: "Grow", blurb: "Selling, operating, measuring, scaling past yourself and the eventual harvest" },
 ];
 
 export const MENTORS: Mentor[] = [
+    { id: "m-phoxta-curriculum", handle: "phoxta", followers: 0, name: "Phoxta Curriculum", role: "Opportunity discovery and venture creation", bio: "Practical lessons connected to your opportunity workspace.", hue: "mint", expertise: ["start", "fund", "grow"], bookable: false },
     { id: "m-leonardo", name: "Leonardo Samsul", role: "Founder · Operator in residence", bio: "Started two companies, sold one and closed the other. Teaches the founder-fit and opportunity work he wishes someone had made him do before the second one.", hue: "mint", photoUrl: IMG + "mentor-leonardo.jpg", handle: "leonardo", followers: 14200, expertise: ["start"], bookable: true, timezone: "Europe/London", sessionMin: 45, bufferMin: 15, minNoticeMin: 240, horizonDays: 28 },
     { id: "m-amara", name: "Amara Osei", role: "Angel investor · Mentor", bio: "Writes cheques into about six companies a year and sits on four boards. Reads plans for a living, so she can tell you in ninety seconds why yours is not being read.", hue: "lilac", photoUrl: IMG + "mentor-amara.jpg", handle: "amara", followers: 18700, expertise: ["fund", "start"], bookable: true, timezone: "Africa/Lagos", sessionMin: 30, bufferMin: 10, minNoticeMin: 720, horizonDays: 21 },
     { id: "m-padhang", name: "Padhang Satrio", role: "Fractional CFO · Mentor", bio: "Builds the three statements for companies that had been running on a bank balance and a feeling. Believes a thirteen-week cash forecast has saved more businesses than any pitch deck.", hue: "sky", photoUrl: IMG + "mentor-padhang.jpg", handle: "padhang", followers: 9100, expertise: ["fund", "grow"], bookable: true, timezone: "Asia/Jakarta", sessionMin: 30, bufferMin: 10, minNoticeMin: 240, horizonDays: 28 },
@@ -59,7 +62,7 @@ export const MENTORS: Mentor[] = [
     { id: "m-bayu", name: "Bayu Salto", role: "Chair · Scale and exit", bio: "Has been the founder who would not let go and the chair who had to say so. Teaches the handover from managing the work to managing the context, and what a sale actually feels like.", hue: "rose", photoUrl: IMG + "mentor-bayu.jpg", handle: "bayu", followers: 7600, expertise: ["grow"], bookable: true, timezone: "Europe/London", sessionMin: 60, bufferMin: 15, minNoticeMin: 1440, horizonDays: 42 },
 ];
 
-export const COURSES: Course[] = [
+export const LEGACY_TEMP_COURSES: Course[] = [
     // ---- START -----------------------------------------------------------
     {
         id: "c-fit", slug: "founder-fit",
@@ -191,7 +194,7 @@ export const COURSES: Course[] = [
     },
 ];
 
-export const MODULES: Module[] = [
+export const LEGACY_TEMP_MODULES: Module[] = [
     { id: "mod-fit-1", courseId: "c-fit", title: "The honest inventory", sort: 0 },
     { id: "mod-fit-2", courseId: "c-fit", title: "Closing the gaps", sort: 1 },
     { id: "mod-opp-1", courseId: "c-opportunity", title: "Interrogate the market", sort: 0 },
@@ -288,9 +291,9 @@ const RAW_LESSONS: Lesson[] = [
 
     // ---- Opportunity -----------------------------------------------------
     article("l-opp-1", "c-opportunity", "mod-opp-1", "Define the problem before the solution", 520,
-        "Almost every failed startup can describe its product in one sentence and needs five minutes for the problem. That is the wrong way round, and it is diagnostic.\n\nWrite the problem in the customer's language, not yours. 'Small clinics lose about two hours a week reconciling appointments across three systems' is a problem. 'There is no unified scheduling platform for healthcare SMEs' is a solution wearing a problem's coat — it presupposes that the absence of your product is the pain.\n\nThen ask the question that separates an opportunity from an irritation: what does the customer do today instead? There is always something. If the answer is 'nothing, they live with it', you are not looking at a market, you are looking at a preference. The existing workaround — the spreadsheet, the intern, the WhatsApp group — is your real competitor, and it is usually free and already installed.\n\nA problem worth building on is one where the workaround visibly costs something the customer can name. If they cannot name the cost, they will not pay to remove it.", 0),
+        "Almost every failed startup can describe its product in one sentence and needs five minutes for the problem. That is the wrong way round, and it is diagnostic.\n\nWrite the problem in the customer's language, not yours. 'Busy households lose an hour a week chasing a complete grocery basket across nearby shops' is a problem. 'There is no unified local-shopping platform' is a solution wearing a problem's coat — it presupposes that the absence of your product is the pain.\n\nThen ask the question that separates an opportunity from an irritation: what does the customer do today instead? There is always something. If the answer is 'nothing, they live with it', you are not looking at a market, you are looking at a preference. The existing workaround — the rushed store run, the WhatsApp group, the neighbour's errand — is your real competitor, and it is usually free and already installed.\n\nA problem worth building on is one where the workaround visibly costs something the customer can name. If they cannot name the cost, they will not pay to remove it.", 0),
     article("l-opp-2", "c-opportunity", "mod-opp-1", "Ten questions, a confidence, and a test", 600,
-        "The evaluation grid is the most useful single page in the handbook, and it works because of the third column.\n\nFor each of the ten customer and market questions — who exactly buys, how many of them there are, what they pay now, how they decide, how you reach them, and so on — you write three things: your answer, how confident you are, and **the test that would settle it**.\n\nThe confidence rating stops you presenting a guess as a fact. The test column stops the exercise being theatre.\n\nA good test is cheap, fast and capable of proving you wrong. 'Interview twelve clinic managers and ask what they spent on scheduling last year' is a test. 'Do more research' is not. If a question's test would take three months and cost real money, that itself is a finding: you have identified the expensive unknown, and it should be the first thing you attack rather than the last.\n\nRun the grid before you build. Then run it again three months later and note which confidences moved. The direction of movement tells you more than any single answer.", 1),
+        "The evaluation grid is the most useful single page in the handbook, and it works because of the third column.\n\nFor each of the ten customer and market questions — who exactly buys, how many of them there are, what they pay now, how they decide, how you reach them, and so on — you write three things: your answer, how confident you are, and **the test that would settle it**.\n\nThe confidence rating stops you presenting a guess as a fact. The test column stops the exercise being theatre.\n\nA good test is cheap, fast and capable of proving you wrong. 'Interview twelve busy households and ask what an incomplete grocery run cost them last month' is a test. 'Do more research' is not. If a question's test would take three months and cost real money, that itself is a finding: you have identified the expensive unknown, and it should be the first thing you attack rather than the last.\n\nRun the grid before you build. Then run it again three months later and note which confidences moved. The direction of movement tells you more than any single answer.", 1),
     article("l-opp-3", "c-opportunity", "mod-opp-2", "The five characteristics, and the risk-return line", 560,
         "An opportunity has five characteristics, and a business that scores well on four is usually a business with a fatal flaw in the fifth.\n\n**It creates value** for someone identifiable. **It is profitable** at a realistic price and cost. **It fits** you — your access, your skills, your appetite. **It is durable**: the value does not evaporate in eighteen months. **It is financeable**: someone, somewhere, would fund it on terms you would accept.\n\nScore each one and refuse to average them.\n\nThen place it against the risk-return line. The principle is simple and widely ignored: the return has to compensate for the risk, measured against the risk-free alternative of doing nothing at all. A venture with a plausible twelve per cent return and a serious chance of total loss sits below the line. Being excited about it does not move it.\n\nThe comparison that founders skip is against doing nothing — keeping the job, keeping the savings. Run it explicitly. It is not an argument for timidity; it is the only way to know what the venture actually has to clear.", 2),
     article("l-opp-4", "c-opportunity", "mod-opp-2", "Breakeven, before optimism sets in", 480,
@@ -303,7 +306,7 @@ const RAW_LESSONS: Lesson[] = [
     article("l-mod-1", "c-model", "mod-mod-1", "The five questions a model answers", 520,
         "A business model is not a revenue figure and it is not a canvas full of sticky notes. It is the answer to five questions, and the discipline is answering all five rather than the three you find interesting.\n\n**What value do you create, and for whom?** Specifically — not 'we help businesses grow'.\n\n**How do you capture a share of it?** The pricing model, not just the price. A per-seat subscription and a percentage of transactions describe very different businesses even at identical revenue.\n\n**Why does a customer pick you over the alternative?** Including the alternative of continuing to do nothing.\n\n**Why do you keep them?** What makes leaving cost something — data, habit, contract, integration, or genuinely just being better.\n\n**How does anyone find out you exist?** This is the question founders defer, and deferring it is how a good product ends up with no customers. Discovery belongs inside the model, not in a marketing plan written afterwards.\n\nOne page, five answers. If any answer needs a paragraph of throat-clearing, it is not yet an answer.", 0),
     article("l-mod-2", "c-model", "mod-mod-1", "The narrative test and the numbers test", 460,
-        "Magretta's two tests are the fastest way to find out whether a model is real.\n\n**The narrative test.** Tell the story of the business as a sequence of events involving an actual person. A clinic manager notices X, searches for Y, finds you because Z, tries it, and switches because W. If the story requires a step where someone behaves in a way people do not actually behave — 'and then they read our white paper' — the model has a hole at exactly that step.\n\n**The numbers test.** Do the economics work at the volumes the story produces? Not at the volumes you hope for. The narrative usually implies a conversion rate and a sales cycle; put those numbers in and see whether the result pays for the cost base.\n\nMost broken models fail one test cleanly. A model that passes the narrative test and fails the numbers test is usually a pricing problem. A model that passes the numbers test and fails the narrative test is usually a distribution problem, and distribution problems are the more expensive of the two.", 1),
+        "Magretta's two tests are the fastest way to find out whether a model is real.\n\n**The narrative test.** Tell the story of the business as a sequence of events involving an actual person. A busy parent notices an empty cupboard, searches for a reliable nearby shop, finds CornerCart because a neighbour shared it, tries one basket, and reorders because it arrives complete. If the story requires a step where someone behaves in a way people do not actually behave — 'and then they read our white paper' — the model has a hole at exactly that step.\n\n**The numbers test.** Do the economics work at the volumes the story produces? Not at the volumes you hope for. The narrative usually implies a conversion rate and a sales cycle; put those numbers in and see whether the result pays for the cost base.\n\nMost broken models fail one test cleanly. A model that passes the narrative test and fails the numbers test is usually a pricing problem. A model that passes the numbers test and fails the narrative test is usually a distribution problem, and distribution problems are the more expensive of the two.", 1),
     article("l-mod-3", "c-model", "mod-mod-2", "A model is not a strategy", 500,
         "The distinction is worth being pedantic about, because conflating them produces companies that work on paper and lose anyway.\n\nA **model** describes how the business creates and captures value. A **strategy** describes how it does that better than the alternatives, in a way that lasts.\n\nTwo companies can share a model exactly — same pricing, same customers, same cost structure — and have opposite strategies. One competes on being the cheapest and organises everything around cost. The other competes on being the most specialised and organises everything around depth in one vertical. Both are coherent. A company that has not chosen is neither.\n\nThe test of a strategy is what it rules out. If your positioning statement does not imply a set of customers you will decline and features you will not build, it is a description rather than a strategy.\n\nWrite the sentence that says what you are deliberately not. Founders find it uncomfortable, which is the sign it is doing work.", 2),
     article("l-mod-4", "c-model", "mod-mod-2", "Do not scale early", 460,
@@ -419,9 +422,9 @@ const RAW_LESSONS: Lesson[] = [
     quiz("l-ext-4", "c-exit", "mod-ext-2", "Module check: harvest", 3),
 ];
 
-export const LESSONS: Lesson[] = withRevisions(RAW_LESSONS);
+export const LEGACY_TEMP_LESSONS: Lesson[] = withRevisions(RAW_LESSONS);
 
-export const QUIZ: QuizQuestion[] = [
+export const LEGACY_TEMP_QUIZ: QuizQuestion[] = [
     { id: "q-fit-1", lessonId: "l-fit-4", prompt: "The three must-haves for a founder are…", options: ["Passion, funding and a network", "A plan, the ability to execute it, and lasting motivation", "Experience, credentials and capital", "An idea, a co-founder and a deadline"], answer: 1, explanation: "Passion is an input, not a qualification. An investor tests plan, execution and durable motivation." },
     { id: "q-fit-2", lessonId: "l-fit-4", prompt: "You score badly on a capability the business fundamentally runs on. The usual right answer is…", options: ["Learn it — you have time", "Ignore it and play to strengths", "Find a co-founder who already has it", "Hire a junior into the role"], answer: 2, explanation: "Central and permanent gaps are co-founder-shaped. Choosing 'learn it' because it feels cheaper costs years." },
     { id: "q-fit-3", lessonId: "l-fit-4", prompt: "Why does the handbook treat customer complaints as valuable?", options: ["They show engagement", "They are the cheapest market research available", "They improve retention when answered", "They are required for compliance"], answer: 1, explanation: "Complaints are free, specific and unsolicited — and most founders manage them as an attack rather than mining them." },
@@ -543,16 +546,18 @@ export const AVAILABILITY: AvailabilityRule[] = [
 ];
 
 export const CATALOGUE: Catalogue = {
-    categories: CATEGORIES,
+    categories: FINAL_CATEGORIES,
     mentors: MENTORS,
-    courses: COURSES,
-    modules: MODULES,
-    lessons: LESSONS,
-    quiz: QUIZ,
+    courses: FINAL_COURSES,
+    modules: FINAL_MODULES,
+    lessons: FINAL_LESSONS,
+    lessonBlocks: FINAL_LESSON_BLOCKS,
+    quiz: FINAL_QUIZ,
     liveLessons: LIVE_LESSONS,
     groups: GROUPS,
     availability: AVAILABILITY,
 };
+export { FINAL_CATEGORIES as CATEGORIES, FINAL_COURSES as COURSES, FINAL_MODULES as MODULES, FINAL_LESSONS as LESSONS, FINAL_LESSON_BLOCKS as LESSON_BLOCKS, FINAL_QUIZ as QUIZ };
 
 // ---------------------------------------------------------------------------
 // The demo founder. Tobi is six weeks in: an idea she has stopped being certain
@@ -607,7 +612,7 @@ function demoBookings(): Booking[] {
             id: "bk-next", mentorId: "m-mei",
             startsAt: next.toISOString(), endsAt: new Date(next.getTime() + 45 * 60000).toISOString(),
             bookedTz: "Africa/Lagos", status: "confirmed",
-            agenda: "The Lagos clinic group — four sites, and I keep wanting to say a small number.",
+            agenda: "The neighbourhood essentials pilot — five shops, and I keep wanting to say a small number.",
             sharedNotes: "", cancelReason: "", createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
         },
     ];
@@ -618,7 +623,7 @@ export function demoBookingActions(bookingId: string): BookingAction[] {
     if (bookingId !== "bk-past") return [];
     const ago = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
     return [
-        { id: "ba-1", bookingId, body: "Interview three clinic managers — ask what they spent last year", doneAt: null, createdAt: ago(5) },
+        { id: "ba-1", bookingId, body: "Interview three busy households — ask what a failed grocery run cost them last month", doneAt: null, createdAt: ago(5) },
         { id: "ba-2", bookingId, body: "Re-run breakeven at three prices", doneAt: ago(2), createdAt: ago(5) },
         { id: "ba-3", bookingId, body: "Write down which of the ten answers I would bet the year on", doneAt: null, createdAt: ago(5) },
     ];
@@ -627,8 +632,8 @@ export function demoBookingActions(bookingId: string): BookingAction[] {
 /**
  * Tobi's venture record.
  *
- * Written to agree with everything else in the demo — the clinic managers in
- * his tasks, the paper-diary note, the four-site Lagos deal he is afraid to
+ * Written to agree with everything else in the demo — the CornerCart households in
+ * his tasks, the WhatsApp-order note, the five-shop pilot he is afraid to
  * price. A venture record that contradicted the rest of the seed would be worse
  * than none, because every AI surface in the app reads this one object.
  *
@@ -643,44 +648,45 @@ function demoVenture(): Venture {
         ({ id, text, confidence, test });
 
     return {
-        name: "Ojúlówó",
-        oneLiner: "Appointment scheduling for multi-site private clinics in Nigeria, built for the way they actually run.",
+        name: "CornerCart",
+        oneLiner: "A trusted way for busy Nigerian households to order everyday essentials from nearby shops for pickup or delivery.",
         stage: "model",
+        path: "build",
         country: "Nigeria",
         updatedAt: daysAgo(1),
         sections: {
             founder: sec(
-                "Six years building the booking system inside a hospital group, so I know what breaks at the fourth site — which is where the paper falls over. I have never sold anything. That is the gap.",
+                "Six years helping my family's neighbourhood shop buy stock and manage WhatsApp orders, so I know where a simple shopping list falls apart. I have never sold a service to households. That is the gap.",
                 [
-                    c("vc-1", "I can sell this myself for the first year", "guess",
-                      "Close two paying clinics without an introduction from someone I already know."),
-                    c("vc-2", "I can build the whole thing without hiring", "proven",
-                      "Already true — the pilot has been running at two sites for four months."),
+                    c("vc-1", "I can win the first fifty households myself", "guess",
+                      "Get ten households to place a second paid basket without an introduction from someone I already know."),
+                    c("vc-2", "I can run the first pilot without hiring a full team", "proven",
+                      "Already true — five households have completed assisted orders over the last month."),
                 ],
                 12,
             ),
             opportunity: sec(
-                "Multi-site private clinics in Lagos, Abuja and Port Harcourt. Today it is a paper diary per site plus two WhatsApp groups. It works until sites need to see each other's book, which is exactly when a double-booking costs them a slot.",
+                "Busy households in Lagos who buy weekly essentials from nearby shops. Today it is a rushed store run or several WhatsApp messages, then a phone call when an item is missing. It works until a long list, traffic or a substitution turns a simple basket into an hour-long task.",
                 [
-                    c("vc-3", "Double-booking costs them about two hours a week per site plus a lost appointment a fortnight", "evidence",
-                      "Six managers said a version of this. Get three to check a month of their own diary."),
-                    c("vc-4", "They will pay for software rather than hire another receptionist", "guess",
-                      "Ask the next five what they spent on admin staff last year, and what that decision was weighed against."),
+                    c("vc-3", "An incomplete or delayed grocery run costs a household at least an hour each week", "evidence",
+                      "Six households described a version of this. Ask three to log their next shopping trip."),
+                    c("vc-4", "They will pay a clear convenience fee for a reliable complete basket", "guess",
+                      "Offer the next five a paid basket with the fee shown before they confirm."),
                 ],
                 6,
             ),
             model: sec(
-                "Per site, per month, with the cross-site view as the reason to take more than one. We are deliberately not doing billing or records — every competitor that added those stopped being installable in an afternoon.",
+                "A clear fee on each completed basket, with delivery passed through where needed. We are deliberately not becoming a giant catalogue — the trusted nearby shop and a reliably complete list are the reason to use us.",
                 [
-                    c("vc-5", "Per-site pricing beats per-practitioner here", "guess",
-                      "Quote both to the four-site group and see which one they argue with."),
-                    c("vc-6", "Staying out of billing is a moat, not a gap", "evidence",
-                      "Two of the three incumbents lost deals on a six-week integration. Confirm with a third."),
+                    c("vc-5", "A fixed service fee is clearer than a merchant commission here", "guess",
+                      "Show both options to the five pilot shops and compare the objections."),
+                    c("vc-6", "Staying focused on repeat essentials is a strength, not a gap", "evidence",
+                      "Five households reordered the same staples before asking for wider catalogue options."),
                 ],
                 1,
             ),
             asks: sec(
-                "Pricing the four-site Lagos deal. I keep wanting to say a small number and I cannot tell whether that is discipline or nerves.",
+                "Pricing the five-shop neighbourhood pilot. I keep wanting to say a small number and I cannot tell whether that is discipline or nerves.",
                 [],
                 0,
             ),
@@ -693,19 +699,19 @@ export function demoUserState(): UserState {
         lessonId, positionSec: 0, completedAt: daysAgo(days), updatedAt: daysAgo(days),
     });
     const sessions = [
-        { id: "s1", lessonId: "l-opp-2", minutes: 32, occurredAt: daysAgo(0, 8) },
-        { id: "s2", lessonId: "l-sel-1", minutes: 24, occurredAt: daysAgo(1) },
-        { id: "s3", lessonId: "l-opp-1", minutes: 28, occurredAt: daysAgo(2) },
-        { id: "s4", lessonId: "l-ops-2", minutes: 19, occurredAt: daysAgo(3) },
-        { id: "s5", lessonId: "l-fit-2", minutes: 14, occurredAt: daysAgo(4) },
-        { id: "s6", lessonId: "l-fit-1", minutes: 45, occurredAt: daysAgo(7) },
-        { id: "s7", lessonId: "l-fit-3", minutes: 30, occurredAt: daysAgo(9) },
-        { id: "s8", lessonId: "l-opp-3", minutes: 26, occurredAt: daysAgo(11) },
-        { id: "s9", lessonId: "l-ops-1", minutes: 50, occurredAt: daysAgo(13) },
-        { id: "s10", lessonId: "l-sel-2", minutes: 41, occurredAt: daysAgo(16) },
-        { id: "s11", lessonId: "l-opp-4", minutes: 22, occurredAt: daysAgo(20) },
-        { id: "s12", lessonId: "l-mod-1", minutes: 35, occurredAt: daysAgo(24) },
-        { id: "s13", lessonId: "l-fit-1", minutes: 18, occurredAt: daysAgo(27) },
+        { id: "s1", lessonId: "c-market-l-2", minutes: 32, occurredAt: daysAgo(0, 8) },
+        { id: "s2", lessonId: "c-sales-l-1", minutes: 24, occurredAt: daysAgo(1) },
+        { id: "s3", lessonId: "c-market-l-1", minutes: 28, occurredAt: daysAgo(2) },
+        { id: "s4", lessonId: "c-finance-l-2", minutes: 19, occurredAt: daysAgo(3) },
+        { id: "s5", lessonId: "c-opportunity-l-2", minutes: 14, occurredAt: daysAgo(4) },
+        { id: "s6", lessonId: "c-opportunity-l-1", minutes: 45, occurredAt: daysAgo(7) },
+        { id: "s7", lessonId: "c-opportunity-l-3", minutes: 30, occurredAt: daysAgo(9) },
+        { id: "s8", lessonId: "c-market-l-3", minutes: 26, occurredAt: daysAgo(11) },
+        { id: "s9", lessonId: "c-finance-l-1", minutes: 50, occurredAt: daysAgo(13) },
+        { id: "s10", lessonId: "c-sales-l-2", minutes: 41, occurredAt: daysAgo(16) },
+        { id: "s11", lessonId: "c-market-l-4", minutes: 22, occurredAt: daysAgo(20) },
+        { id: "s12", lessonId: "c-business-model-l-1", minutes: 35, occurredAt: daysAgo(24) },
+        { id: "s13", lessonId: "c-opportunity-l-1", minutes: 18, occurredAt: daysAgo(27) },
     ];
     return {
         profile: {
@@ -715,7 +721,7 @@ export function demoUserState(): UserState {
             handle: "tobi",
             hue: "lilac",
             photoUrl: IMG + "learner-tobi.jpg",
-            headline: "Six weeks in · scheduling software for small clinics",
+            headline: "Six weeks in · local essentials ordering",
             weeklyGoalMin: 300,
             interests: ["start", "fund", "grow"],
             onboarded: true,
@@ -723,38 +729,40 @@ export function demoUserState(): UserState {
         },
         friends: DEMO_FRIENDS,
         enrollments: [
-            { courseId: "c-fit", enrolledAt: daysAgo(30), completedAt: daysAgo(9), lastLessonId: "l-fit-4" },
-            { courseId: "c-opportunity", enrolledAt: daysAgo(26), completedAt: null, lastLessonId: "l-opp-5" },
-            { courseId: "c-sell", enrolledAt: daysAgo(18), completedAt: null, lastLessonId: "l-sel-2" },
-            { courseId: "c-operate", enrolledAt: daysAgo(14), completedAt: null, lastLessonId: "l-ops-2" },
-            { courseId: "c-model", enrolledAt: daysAgo(24), completedAt: null, lastLessonId: "l-mod-1" },
-            { courseId: "c-legal", enrolledAt: daysAgo(10), completedAt: null, lastLessonId: null },
-            { courseId: "c-startup-money", enrolledAt: daysAgo(8), completedAt: null, lastLessonId: null },
-            { courseId: "c-metrics", enrolledAt: daysAgo(5), completedAt: null, lastLessonId: null },
+            { courseId: "c-opportunity", enrolledAt: daysAgo(30), completedAt: daysAgo(9), lastLessonId: "c-opportunity-final" },
+            { courseId: "c-market", enrolledAt: daysAgo(26), completedAt: null, lastLessonId: "c-market-l-5" },
+            { courseId: "c-sales", enrolledAt: daysAgo(18), completedAt: null, lastLessonId: "c-sales-l-2" },
+            { courseId: "c-finance", enrolledAt: daysAgo(14), completedAt: null, lastLessonId: "c-finance-l-2" },
+            { courseId: "c-business-model", enrolledAt: daysAgo(24), completedAt: null, lastLessonId: "c-business-model-l-1" },
+            { courseId: "c-brand", enrolledAt: daysAgo(10), completedAt: null, lastLessonId: null },
+            { courseId: "c-mvp", enrolledAt: daysAgo(8), completedAt: null, lastLessonId: null },
+            { courseId: "c-marketing", enrolledAt: daysAgo(5), completedAt: null, lastLessonId: null },
         ],
         progress: [
-            done("l-fit-1", 27), done("l-fit-2", 20), done("l-fit-3", 13), done("l-fit-4", 9),
-            done("l-opp-1", 24), done("l-opp-2", 19), done("l-opp-3", 11), done("l-opp-4", 6),
-            { lessonId: "l-opp-5", positionSec: 0, completedAt: null, updatedAt: daysAgo(0, 8) },
-            done("l-sel-1", 16),
-            { lessonId: "l-sel-2", positionSec: 0, completedAt: null, updatedAt: daysAgo(1) },
-            done("l-ops-1", 13),
-            { lessonId: "l-ops-2", positionSec: 0, completedAt: null, updatedAt: daysAgo(3) },
-            { lessonId: "l-mod-1", positionSec: 0, completedAt: null, updatedAt: daysAgo(24) },
+            done("c-opportunity-l-1", 27), done("c-opportunity-l-2", 20), done("c-opportunity-l-3", 13), done("c-opportunity-l-4", 9),
+            done("c-opportunity-l-5", 8), done("c-opportunity-l-6", 8), done("c-opportunity-l-7", 8), done("c-opportunity-l-8", 8),
+            done("c-opportunity-final", 9),
+            done("c-market-l-1", 24), done("c-market-l-2", 19), done("c-market-l-3", 11), done("c-market-l-4", 6),
+            { lessonId: "c-market-l-5", positionSec: 0, completedAt: null, updatedAt: daysAgo(0, 8) },
+            done("c-sales-l-1", 16),
+            { lessonId: "c-sales-l-2", positionSec: 0, completedAt: null, updatedAt: daysAgo(1) },
+            done("c-finance-l-1", 13),
+            { lessonId: "c-finance-l-2", positionSec: 0, completedAt: null, updatedAt: daysAgo(3) },
+            { lessonId: "c-business-model-l-1", positionSec: 0, completedAt: null, updatedAt: daysAgo(24) },
         ],
         sessions,
-        bookmarks: ["c-vc", "c-metrics"],
+        bookmarks: ["c-growth", "c-marketing"],
         follows: ["m-amara"],
         tasks: [
-            { id: "t1", title: "Interview three clinic managers — ask what they spent last year", courseId: "c-opportunity", dueAt: daysAgo(-1, 18), doneAt: null, createdAt: daysAgo(3) },
-            { id: "t2", title: "Re-run breakeven at three prices", courseId: "c-opportunity", dueAt: daysAgo(0, 20), doneAt: null, createdAt: daysAgo(2) },
-            { id: "t3", title: "Write the sentence saying what we are deliberately not", courseId: "c-model", dueAt: daysAgo(-3, 18), doneAt: null, createdAt: daysAgo(4) },
-            { id: "t4", title: "Build the first thirteen-week forecast", courseId: "c-operate", dueAt: daysAgo(2, 18), doneAt: daysAgo(2, 21), createdAt: daysAgo(6) },
-            { id: "t5", title: "Bring the Lagos deal to Mei's pricing office hours", courseId: null, dueAt: daysAgo(-5, 12), doneAt: null, createdAt: daysAgo(1) },
+            { id: "t1", title: "Interview three busy households — ask what a failed grocery run cost them", courseId: "c-market", dueAt: daysAgo(-1, 18), doneAt: null, createdAt: daysAgo(3) },
+            { id: "t2", title: "Re-run breakeven at three prices", courseId: "c-finance", dueAt: daysAgo(0, 20), doneAt: null, createdAt: daysAgo(2) },
+            { id: "t3", title: "Write the sentence saying what we are deliberately not", courseId: "c-business-model", dueAt: daysAgo(-3, 18), doneAt: null, createdAt: daysAgo(4) },
+            { id: "t4", title: "Build the first thirteen-week forecast", courseId: "c-finance", dueAt: daysAgo(2, 18), doneAt: daysAgo(2, 21), createdAt: daysAgo(6) },
+            { id: "t5", title: "Bring the neighbourhood pilot to Mei's pricing office hours", courseId: null, dueAt: daysAgo(-5, 12), doneAt: null, createdAt: daysAgo(1) },
         ],
         notes: [
-            { id: "n1", lessonId: "l-opp-1", atSec: null, body: "Their workaround is a paper diary plus two WhatsApp groups. Free, installed, and they are not unhappy about it. That is the thing to beat.", createdAt: daysAgo(24) },
-            { id: "n2", lessonId: "l-sel-1", atSec: null, body: "Stop asking whether they would use it. Ask what happened the last time a double-booking cost them a slot.", createdAt: daysAgo(16) },
+            { id: "n1", lessonId: "c-market-l-1", atSec: null, body: "Their workaround is a rushed store run plus WhatsApp messages. Free, installed, and they are not unhappy about it. That is the thing to beat.", createdAt: daysAgo(24) },
+            { id: "n2", lessonId: "c-sales-l-1", atSec: null, body: "Stop asking whether they would use it. Ask what happened the last time a grocery list came back incomplete or late.", createdAt: daysAgo(16) },
         ],
         groupIds: ["g-cohort", "g-idea"],
         conversations: [
@@ -771,14 +779,33 @@ export function demoUserState(): UserState {
             { id: "nt-5", kind: "certificate", title: "Founder fit — complete", body: "Your certificate is ready.", href: "/progress", readAt: daysAgo(1), createdAt: daysAgo(9, 15) },
         ],
         attempts: [
-            { id: "qa-1", lessonId: "l-fit-4", score: 3, total: 3, createdAt: daysAgo(9) },
-            { id: "qa-2", lessonId: "l-opp-6", score: 2, total: 3, createdAt: daysAgo(6) },
+            { id: "qa-1", lessonId: "c-opportunity-final", score: 5, total: 5, createdAt: daysAgo(9) },
+            { id: "qa-2", lessonId: "c-market-final", score: 3, total: 5, createdAt: daysAgo(6) },
         ],
-        certificates: [{ id: "cert-1", courseId: "c-fit", code: "SS-FIT-2026-0412", issuedAt: daysAgo(9) }],
+        certificates: [{ id: "cert-1", courseId: "c-opportunity", code: "SS-OPPORTUNITY-2026-0412", issuedAt: daysAgo(9) }],
         rsvps: ["live-2", "live-5"],
         attendance: [],
         bookings: demoBookings(),
         venture: demoVenture(),
+        experiments: [
+            {
+                id: "exp-1", claimId: "vc-4", sectionId: "opportunity", title: "Show the convenience fee before checkout",
+                hypothesis: "Busy households will pay a visible convenience fee for a reliable complete basket.",
+                method: "Offer five households a paid basket with the fee displayed before they confirm.",
+                threshold: "At least 3 of 5 households complete a paid order without a personal discount.",
+                status: "running", evidenceType: "payment", evidence: "Two households accepted the fee after seeing a complete basket promise.",
+                sourceUrl: "", result: "", decision: "", nextStep: "Run the remaining three offers by Friday.",
+                dueAt: daysAgo(-2, 18), createdAt: daysAgo(3), updatedAt: daysAgo(0),
+            },
+            {
+                id: "exp-2", claimId: "vc-5", sectionId: "model", title: "Compare a fixed fee with merchant commission",
+                hypothesis: "A fixed service fee will create less friction than a merchant commission.",
+                method: "Show both commercial options to five nearby shops and record the objection verbatim.",
+                threshold: "Three shop owners can explain and accept the fixed-fee option without negotiation.",
+                status: "planned", evidenceType: null, evidence: "", sourceUrl: "", result: "", decision: "", nextStep: "",
+                dueAt: daysAgo(-4, 18), createdAt: daysAgo(1), updatedAt: daysAgo(1),
+            },
+        ] satisfies Experiment[],
     };
 }
 
@@ -788,9 +815,9 @@ export function demoMessages(conversationId: string): { fromMe: boolean; body: s
     switch (conversationId) {
         case "cv-1":
             return [
-                M(true, "Mei — I have a clinic group in Lagos who want it for four sites. I have no idea what to charge and I keep wanting to say a small number.", 1, 21),
-                M(false, "What does the double-booking cost them now? Start there, not from your costs.", 1, 21),
-                M(true, "They said about two hours a week per site reconciling, plus maybe one lost appointment a fortnight.", 0, 8),
+                M(true, "Mei — I have five nearby shops ready for a CornerCart pilot. I have no idea what to charge and I keep wanting to say a small number.", 1, 21),
+                M(false, "What does an incomplete or delayed grocery run cost households now? Start there, not from your costs.", 1, 21),
+                M(true, "They said a long shopping run easily takes an hour, and missing essentials mean a second trip or another delivery fee.", 0, 8),
                 M(false, "Bring it tomorrow and say the number out loud once before you say it to them. That is the whole trick.", 0, 9),
             ];
         case "cv-2":

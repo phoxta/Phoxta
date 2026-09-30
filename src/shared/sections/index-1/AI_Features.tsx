@@ -21,43 +21,43 @@ const EXTERNAL_LINK_ICON = (
 
 const FEATURES = [
     {
-        href: "/dashboard",
+        href: "/app",
         imgSm: "/assets/imgs/pages/img-89-sm.webp",
-        title: "Unified Agentic Inbox",
-        org: "Omnichannel intelligence across Email, SMS, and Voice touchpoints",
-        date: "Communications",
+        title: "Start with an opportunity",
+        org: "Explore problems, market shifts, technology and unmet demand.",
+        date: "Discover",
         url: "✔",
     },
     {
-        href: "/dashboard",
+        href: "/app",
         imgSm: "/assets/imgs/pages/img-90-sm.webp",
-        title: "Autonomous Context Retrieval",
-        org: "Dynamic RAG engine with per-customer long-term memory banks",
-        date: "Intelligence",
+        title: "Research with visible sources",
+        org: "Trace evidence to its source and keep AI-generated hypotheses labelled.",
+        date: "Investigate",
         url: "✔",
     },
     {
-        href: "/dashboard",
+        href: "/app",
         imgSm: "/assets/imgs/pages/img-91-sm.webp",
-        title: "Goal-Oriented Orchestration",
-        org: "Autonomous lifecycle flows for journeys and proactive outreach",
-        date: "Automation",
+        title: "Test what must be true",
+        org: "Link critical assumptions to experiments, observations and learning.",
+        date: "Validate",
         url: "✔",
     },
     {
-        href: "/dashboard",
+        href: "/app",
         imgSm: "/assets/imgs/pages/img-92-sm.webp",
-        title: "Enterprise AI Governance",
-        org: "Production-grade guardrails with Human-in-the-Loop (HITL) control",
-        date: "Governance",
+        title: "Shape the smallest useful offer",
+        org: "Connect the customer, value proposition, business model and MVP.",
+        date: "Shape",
         url: "✔",
     },
     {
-        href: "/dashboard",
+        href: "/app",
         imgSm: "/assets/imgs/pages/img-93-sm.webp",
-        title: "Full-Stack Customer Ops",
-        org: "Unified commerce, payments, and CRM integrated into the AI loop",
-        date: "Operations",
+        title: "Build, launch and keep learning",
+        org: "Prepare your operating assets and next customer test. You make the decisions.",
+        date: "Launch",
         url: "✔",
         isLast: true,
     },
@@ -74,7 +74,7 @@ export default function Section5() {
                     <div className="container">
                         <div className="row g-4 align-items-end">
                             <div className="col-lg-8 col-md-8">
-                                <h2 className="text-white mb-2 lh-1">Phoxta AI Console</h2>
+                                <h2 className="text-white mb-2 lh-1">Your opportunity, in one workspace</h2>
                             </div>
                             <div className="col-lg-3 col-md-4 ms-auto d-flex justify-content-lg-end">
                                 <div
@@ -83,13 +83,13 @@ export default function Section5() {
                                     data-fade-from="bottom"
                                     data-ease="bounce"
                                 >
-                                    <Link className="at-btn-circle" to="/auth">
+                                    <Link className="at-btn-circle" to="/app">
                                         {ARROW_RIGHT}
                                     </Link>
-                                    <Link className="at-btn z-index-1" to="/auth">
-                                        Get Started
+                                    <Link className="at-btn z-index-1" to="/app">
+                                        Explore Phoxta
                                     </Link>
-                                    <Link className="at-btn-circle" to="/auth">
+                                    <Link className="at-btn-circle" to="/app">
                                         {ARROW_RIGHT}
                                     </Link>
                                 </div>

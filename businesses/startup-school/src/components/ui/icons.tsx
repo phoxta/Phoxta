@@ -9,4 +9,5 @@ export function CategoryIcon({ id, size = 13, className }: { id: CategoryId; siz
     return <TrendingUp {...props} />;
 }
 
-export const CATEGORY_LABEL: Record<CategoryId, string> = { start: "Start", fund: "Fund", grow: "Grow" };
+/** Keep every tag aligned with the published curriculum, not its retired tracks. */
+export const CATEGORY_LABEL: Record<CategoryId, string> = { start: "Validate", fund: "Build", grow: "Launch & Grow" };

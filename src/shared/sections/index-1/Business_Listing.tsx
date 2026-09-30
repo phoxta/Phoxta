@@ -1,254 +1,295 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Check, Search, SlidersHorizontal, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import PortfolioCard2 from "@/shared/cards/PortfolioCard2";
-import RevealText from "@/shared/effects/RevealText";
-import { PROMO, promoPriceDollars } from "@/lib/promo";
-import { listBlueprints } from "@/lib/db/marketplace";
 import { blueprintCover } from "@/lib/blueprintCover";
+import { listBlueprints, formatPrice, type Blueprint } from "@/lib/db/marketplace";
+import { PROMO, promoPriceCents } from "@/lib/promo";
+import { HOMEPAGE_BLUEPRINTS } from "./homeBlueprints";
+import "@/styles/phoxta-landing.css";
 
-// The DB (blueprints table) is the price/demo source of truth — the same data
-// /marketplace renders — so homepage cards can never drift from it again. The
-// static CASE_STUDIES below are the instant-paint fallback (and stay if the
-// fetch fails). Cover images come from @/lib/blueprintCover, which every
-// marketplace surface now shares; they used to live here alone, which is how
-// the same business ended up with a screenshot on this page and stock art in
-// the dashboard.
+type SortMode = "new" | "rating";
 
-// Home 1 Business Listing - Available businesses for sale
+const HOMEPAGE_BUSINESS_COVERS: Record<string, string> = {
+  "niche-apparel": "/assets/imgs/pages/business-covers/niche-apparel.webp",
+  "restaurant-orders": "/assets/imgs/pages/business-covers/restaurant-orders.webp",
+  gearo: "/assets/imgs/pages/business-covers/gearo.webp",
+  "coir-six": "/assets/imgs/pages/business-covers/coir-six.webp",
+  ferne: "/assets/imgs/pages/business-covers/ferne.webp",
+  wamwam: "/assets/imgs/pages/business-covers/wamwam.webp",
+};
 
-const ARROW_SVG = (
-    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path
-            d="M0.21967 9.40717C-0.0732232 9.70006 -0.0732232 10.1749 0.21967 10.4678C0.512563 10.7607 0.987437 10.7607 1.28033 10.4678L0.21967 9.40717ZM10.6875 0.75C10.6875 0.335786 10.3517 2.97145e-09 9.9375 1.50485e-07L3.1875 -2.70983e-07C2.77329 -2.70983e-07 2.4375 0.335786 2.4375 0.75C2.4375 1.16421 2.77329 1.5 3.1875 1.5H9.1875V7.5C9.1875 7.91421 9.52329 8.25 9.9375 8.25C10.3517 8.25 10.6875 7.91421 10.6875 7.5L10.6875 0.75ZM0.75 9.9375L1.28033 10.4678L10.4678 1.28033L9.9375 0.75L9.40717 0.21967L0.21967 9.40717L0.75 9.9375Z"
-            fill="currentColor"
-        />
-    </svg>
-);
+function displayPrice(blueprint: Blueprint) {
+  const cents = PROMO.active ? promoPriceCents(blueprint.price_cents) : blueprint.price_cents;
+  return formatPrice(cents, blueprint.currency);
+}
 
-const ARROW_CIRCLE = (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 16 15" fill="none">
-        <path
-            d="M0.0001297 8.99993L0 3.00407e-05L2 0L2.0001 6.99993L12.1719 7.00003L8.22224 3.05027L9.63644 1.63606L16.0003 8.00003L9.63644 14.364L8.22224 12.9497L12.1719 9.00003L0.0001297 8.99993Z"
-            fill="currentColor"
-        />
-    </svg>
-);
-
-// Mirrors the `blueprints` table (live rows, cheapest first) so the instant
-// paint matches what the fetch below replaces it with — no reshuffle, no price
-// that jumps. It HAD drifted: WamWam was still listed as the retired "Travel &
-// Tourism" at £4,000, Ferne was missing entirely, and three others were
-// hundreds out. Re-sync this whenever a blueprint's price or name changes.
-const CASE_STUDIES = [
-    {
-        classList: "col-lg-6",
-        link: "https://aurelia-demo.aurelia.phoxta.com/",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS.webp",
-        category: "E-commerce",
-        headline: "Fashion Store",
-        description:
-            "A modern fashion store with product archive, online ordering, cart/checkout and an AI stylist",
-        price: 2500,
-        featured: false,
-    },
-    {
-        classList: "col-lg-6",
-        link: "https://saveur-demo.dine.phoxta.com/",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS3.webp",
-        category: "Restaurant",
-        headline: "Restaurant + Orders",
-        description:
-            "A digital-first kitchen: online ordering, order tracking, catering requests and an AI concierge",
-        price: 2500,
-        featured: false,
-    },
-    {
-        classList: "col-lg-6",
-        link: "https://gearo-demo.gearo.phoxta.com/",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS4.webp",
-        category: "Furniture / eCommerce",
-        headline: "Furniture Store",
-        description:
-            "A modern furniture & workspace eCommerce store with cart, checkout and an AI shopping assistant",
-        price: 2500,
-        featured: false,
-    },
-    {
-        classList: "col-lg-6",
-        link: "https://demo.coir-six.phoxta.com/",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS8.webp",
-        category: "Education",
-        headline: "Coir Six Learning",
-        description:
-            "An online-course platform — video lessons, quizzes, live sessions, groups, certificates and a learner dashboard",
-        price: 2500,
-        featured: false,
-    },
-    {
-        classList: "col-lg-6",
-        link: "https://demo.ferne.phoxta.com/",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS7.webp",
-        category: "E-commerce",
-        headline: "Ferne Botanical Skincare",
-        description:
-            "A direct-to-consumer skincare storefront — editorial home, faceted shop, refills and a skin advisor",
-        price: 3000,
-        featured: false,
-    },
-    {
-        classList: "col-lg-6",
-        link: "https://demo.wamwam.phoxta.com/",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS6.webp",
-        category: "Experiences",
-        headline: "WamWam Experiences",
-        description:
-            "A bookable experiences storefront — tours, workshops and days out — with an AI concierge",
-        price: 3600,
-        featured: false,
-    },
-    {
-        classList: "col-lg-6",
-        link: "https://carento-demo.carento.phoxta.com/",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS1.webp",
-        category: "Automotive",
-        headline: "Car Marketplace",
-        description:
-            "A full car buying & selling marketplace with listings, financing tools and an AI assistant",
-        price: 5000,
-        featured: true,
-    },
-    {
-        classList: "col-lg-6",
-        // No cotton blueprint exists yet — this one is aspirational, so it links
-        // to the marketplace rather than a dead subdomain, and it drops off as
-        // soon as the live rows load.
-        link: "/marketplace",
-        linkCase: "/auth?mode=signup",
-        img: "/assets/imgs/pages/FS5.webp",
-        category: "Import/Export",
-        headline: "Cotton and Textiles",
-        description:
-            "A global import and export platform with streamlined processes and AI-driven insights",
-        price: 15000,
-        featured: false,
-    },
-];
-
-const TAGS = [
-    "[ Omnichannel ]",
-    "[ AI-optimized ]",
-    "[ Always-on ]",
-    "[ Conversion-focused ]",
-    "[ GEO-ready ]",
-];
+function homepageCover(blueprint: Blueprint) {
+  return HOMEPAGE_BUSINESS_COVERS[blueprint.slug] || blueprintCover(blueprint.slug, blueprint.cover_url);
+}
 
 export default function BusinessListing() {
-    const [cards, setCards] = useState(CASE_STUDIES);
-    useEffect(() => {
-        let on = true;
-        listBlueprints().then(({ data }) => {
-            if (!on || !data?.length) return;
-            setCards(data.map((b) => ({
-                classList: "col-lg-6",
-                link: b.demo_url || "/marketplace",
-                linkCase: "/auth?mode=signup",
-                img: blueprintCover(b.slug, b.cover_url),
-                category: b.vertical || "Business",
-                headline: b.name,
-                description: b.tagline || "",
-                price: Math.round(b.price_cents / 100),
-                featured: b.slug === "carento",
-            })));
-        });
-        return () => { on = false; };
-    }, []);
-    return (
-        <div className="sec-6-home-3 portfolio-area bg-neutral-50 pt-120">
-            <div className="container">
-                <div className="row g-4 align-items-end mb-40">
-                    <div className="col-lg-8">
-                        <span className="at-btn common-black text-uppercase bg-transparent mb-10 rounded-0 p-0">
-                            <span className="text-uppercase">
-                                <span className="text-1">Marketplace</span>
-                                <span className="text-2">Marketplace</span>
-                            </span>
-                            <i>
-                                {ARROW_SVG}
-                                {ARROW_SVG}
-                            </i>
-                        </span>
-                                                <h3 className="reveal-text mb-0">
-                            <RevealText>Acquire High-Margin, Agentic Businesses.</RevealText>
-                        </h3>
-                    </div>
-                    <div className="col-xxl-3 col-lg-4 ms-auto d-flex justify-content-lg-end">
-                        <div
-                            className="at-btn-group at_fade_anim"
-                            data-delay=".4"
-                            data-fade-from="bottom"
-                            data-ease="bounce"
-                        >
-                            <Link className="at-btn-circle" to="/marketplace">
-                                {ARROW_CIRCLE}
-                            </Link>
-                            <Link className="at-btn z-index-1" to="/marketplace">
-                                Browse Marketplace
-                            </Link>
-                            <Link className="at-btn-circle" to="/contact">
-                                {ARROW_CIRCLE}
-                            </Link>
-                        </div>
-                    </div>
-                </div>
+  const [blueprints, setBlueprints] = useState<Blueprint[]>(HOMEPAGE_BLUEPRINTS);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortMode>("new");
+  const [industries, setIndustries] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const absoluteMin = 250000;
+  const absoluteMax = useMemo(() => Math.max(...blueprints.map((item) => item.price_cents), 1000000), [blueprints]);
+  const [minPrice, setMinPrice] = useState(absoluteMin);
+  const [maxPrice, setMaxPrice] = useState(absoluteMax);
 
-                <div className="row">
-                    {cards.map((item, index) => (
-                        <PortfolioCard2
-                            key={index}
-                            classList={item.classList}
-                            category={item.category}
-                            link={item.link}
-                            img={item.img}
-                            title={PROMO.active ? promoPriceDollars(item.price) : `£${item.price.toLocaleString()}`}
-                            compareAt={PROMO.active ? `£${item.price.toLocaleString()}` : undefined}
-                            dealLabel={PROMO.active ? PROMO.label : undefined}
-                            headline={item.headline}
-                            description={item.description}
-                            linkCase={item.linkCase}
-                            featuredHtml={
-                                item.featured ? (
-                                    <span className="alt-portfolio-tag bg-theme-primary px-3 py-2 rounded-pill p-absolute top-0 end-0 m-4 fz-10 fw-600 text-white">
-                                        POPULAR
-                                    </span>
-                                ) : undefined
-                            }
-                        />
-                    ))}
-                </div>
+  useEffect(() => {
+    let active = true;
+    void listBlueprints().then(({ data }) => {
+      if (active && data.length) setBlueprints(data);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-                <div className="row">
-                    <div className="col-12 order-5">
-                        <div
-                            className="d-flex flex-wrap align-items-center justify-content-lg-between justify-content-center pb-60 pt-40 gap-md-4 gap-2 at_fade_anim"
-                            data-fade-from="bottom"
-                            data-duration="2"
-                        >
-                            {TAGS.map((tag, i) => (
-                                <p key={i} className="neutral-900 mb-0">
-                                    {tag}
-                                </p>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
+  useEffect(() => {
+    if (!filtersOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFiltersOpen(false);
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [filtersOpen]);
+
+  const industryOptions = useMemo(
+    () => [...new Set(blueprints.map((item) => item.vertical || "Business"))].sort(),
+    [blueprints],
+  );
+  const effectiveMax = Math.min(maxPrice, absoluteMax);
+  const effectiveMin = Math.min(minPrice, effectiveMax);
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const filtered = blueprints.filter((item) => {
+      const matchesQuery = !needle || `${item.name} ${item.tagline} ${item.description} ${item.vertical}`.toLowerCase().includes(needle);
+      const matchesIndustry = industries.length === 0 || industries.includes(item.vertical || "Business");
+      return matchesQuery && matchesIndustry && item.price_cents >= effectiveMin && item.price_cents <= effectiveMax;
+    });
+    if (sort === "rating") return [...filtered].sort((a, b) => Number(b.verified) - Number(a.verified));
+    return filtered;
+  }, [blueprints, effectiveMax, effectiveMin, industries, query, sort]);
+
+  function toggleIndustry(industry: string) {
+    setIndustries((current) => current.includes(industry) ? current.filter((item) => item !== industry) : [...current, industry]);
+  }
+
+  const priceFilterActive = effectiveMin !== absoluteMin || effectiveMax !== absoluteMax;
+  const activeFilterCount = industries.length + Number(priceFilterActive);
+
+  function clearFilters() {
+    setIndustries([]);
+    setMinPrice(absoluteMin);
+    setMaxPrice(absoluteMax);
+  }
+
+  return (
+    <>
+    <section className="phoxta-businesses" aria-labelledby="phoxta-businesses-heading">
+      <div className="phoxta-businesses__inner">
+        <div className="phoxta-businesses__heading">
+          <h2 id="phoxta-businesses-heading"><strong>Ready-to-launch</strong><br />businesses.</h2>
+          <p>
+            Explore businesses with the product, brand, workflows, automation, AI systems, and launch assets already developed. Review the opportunities, choose the business that best fits you, and launch right away.
+          </p>
         </div>
-    );
+        <div className="phoxta-businesses__catalogue">
+          <div className="phoxta-businesses__filter-column">
+            <aside className="phoxta-businesses__filters phoxta-businesses__filters--desktop" aria-label="Filter businesses">
+              <div className="phoxta-businesses__filter-header">
+                <div>
+                  <strong>Filters</strong>
+                  <span>{visible.length} businesses</span>
+                </div>
+                <button type="button" aria-label="Close filters" onClick={() => setFiltersOpen(false)}>
+                  <X size={20} aria-hidden="true" />
+                </button>
+              </div>
+              <div className="phoxta-businesses__price">
+                <div>
+                  <span>Price</span>
+                  <output>{formatPrice(effectiveMin, "GBP")}–{formatPrice(effectiveMax, "GBP")}</output>
+                </div>
+                <div className="phoxta-businesses__range">
+                  <input
+                    type="range"
+                    min={absoluteMin}
+                    max={absoluteMax}
+                    step={50000}
+                    value={effectiveMin}
+                    onChange={(event) => setMinPrice(Math.min(Number(event.target.value), effectiveMax))}
+                    aria-label="Minimum business price"
+                  />
+                  <input
+                    type="range"
+                    min={absoluteMin}
+                    max={absoluteMax}
+                    step={50000}
+                    value={effectiveMax}
+                    onChange={(event) => setMaxPrice(Math.max(Number(event.target.value), effectiveMin))}
+                    aria-label="Maximum business price"
+                  />
+                </div>
+              </div>
+
+              <fieldset>
+                <legend>Industry</legend>
+                {industryOptions.map((industry) => (
+                  <label key={industry}>
+                    <input type="checkbox" checked={industries.includes(industry)} onChange={() => toggleIndustry(industry)} />
+                    <span>{industry}</span>
+                  </label>
+                ))}
+              </fieldset>
+
+              <div className="phoxta-businesses__filter-actions">
+                <button type="button" onClick={clearFilters} disabled={!activeFilterCount}>Reset</button>
+                <button type="button" onClick={() => setFiltersOpen(false)}>Show {visible.length}</button>
+              </div>
+            </aside>
+            <Link to="/marketplace" className="phoxta-businesses__view-all phoxta-businesses__view-all--desktop">
+              View all <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+
+          <div className="phoxta-businesses__results">
+            <div className="phoxta-businesses__toolbar">
+              <label className="phoxta-businesses__search">
+                <span className="visually-hidden">Search businesses</span>
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search" />
+                <Search size={16} aria-hidden="true" />
+              </label>
+              <button
+                type="button"
+                className="phoxta-businesses__filter-toggle"
+                aria-controls="phoxta-business-filters-mobile"
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen(true)}
+              >
+                <SlidersHorizontal size={17} aria-hidden="true" />
+                <span>Filters</span>
+                {activeFilterCount > 0 && <strong>{activeFilterCount}</strong>}
+              </button>
+              <div className="phoxta-businesses__sort" aria-label="Sort businesses">
+                <button type="button" data-active={sort === "new"} onClick={() => setSort("new")}>
+                  {sort === "new" && <Check size={14} aria-hidden="true" />} New
+                </button>
+                <button type="button" data-active={sort === "rating"} onClick={() => setSort("rating")}>Rating</button>
+              </div>
+            </div>
+
+            {visible.length ? (
+              <div className="phoxta-businesses__grid">
+                {visible.slice(0, 6).map((item) => (
+                  <article className="phoxta-businesses__card" key={item.id}>
+                    <Link to={`/auth?mode=signup&business=${encodeURIComponent(item.slug)}&redirect=${encodeURIComponent(`/onboarding?business=${encodeURIComponent(item.slug)}`)}`}>
+                      <img src={homepageCover(item)} alt="" width={526} height={494} loading="lazy" />
+                      <div className="phoxta-businesses__card-copy">
+                        <p>{item.name}</p>
+                        <strong>{displayPrice(item)}</strong>
+                        <span>{item.vertical}{item.ai_included ? " · AI included" : ""}</span>
+                      </div>
+                    </Link>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="phoxta-businesses__empty" role="status">
+                <p>No businesses match those filters.</p>
+                <button type="button" onClick={() => { setQuery(""); clearFilters(); }}>Clear filters</button>
+              </div>
+            )}
+            <Link to="/marketplace" className="phoxta-businesses__view-all phoxta-businesses__view-all--mobile">
+              View all businesses <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+    {filtersOpen && createPortal(
+      <div className="phoxta-businesses__filter-modal" role="presentation">
+        <button
+          type="button"
+          className="phoxta-businesses__filter-backdrop"
+          aria-label="Close business filters"
+          onClick={() => setFiltersOpen(false)}
+        />
+        <aside
+          id="phoxta-business-filters-mobile"
+          className="phoxta-businesses__filters phoxta-businesses__filters--mobile"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Filter businesses"
+        >
+          <div className="phoxta-businesses__filter-header">
+            <div>
+              <strong>Filters</strong>
+              <span>{visible.length} businesses</span>
+            </div>
+            <button type="button" aria-label="Close filters" onClick={() => setFiltersOpen(false)}>
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="phoxta-businesses__price">
+            <div>
+              <span>Price</span>
+              <output>{formatPrice(effectiveMin, "GBP")}–{formatPrice(effectiveMax, "GBP")}</output>
+            </div>
+            <div className="phoxta-businesses__range">
+              <input
+                type="range"
+                min={absoluteMin}
+                max={absoluteMax}
+                step={50000}
+                value={effectiveMin}
+                onChange={(event) => setMinPrice(Math.min(Number(event.target.value), effectiveMax))}
+                aria-label="Minimum business price"
+              />
+              <input
+                type="range"
+                min={absoluteMin}
+                max={absoluteMax}
+                step={50000}
+                value={effectiveMax}
+                onChange={(event) => setMaxPrice(Math.max(Number(event.target.value), effectiveMin))}
+                aria-label="Maximum business price"
+              />
+            </div>
+          </div>
+
+          <fieldset>
+            <legend>Industry</legend>
+            {industryOptions.map((industry) => (
+              <label key={industry}>
+                <input type="checkbox" checked={industries.includes(industry)} onChange={() => toggleIndustry(industry)} />
+                <span>{industry}</span>
+              </label>
+            ))}
+          </fieldset>
+
+          <div className="phoxta-businesses__filter-actions">
+            <button type="button" onClick={clearFilters} disabled={!activeFilterCount}>Reset</button>
+            <button type="button" onClick={() => setFiltersOpen(false)}>Show {visible.length}</button>
+          </div>
+        </aside>
+      </div>,
+      document.body,
+    )}
+    </>
+  );
 }

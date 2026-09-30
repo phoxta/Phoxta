@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import RevealText from "@/shared/effects/RevealText";
+import { leadFormSubmit } from "@/lib/db/platformLead";
 
 const ARROW_SVG = (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -18,69 +20,128 @@ const FAQ_ITEMS = [
         id: "collapseOne",
         num: "1",
         question: "What exactly do I receive upon acquisition?",
-        answer: "You receive a production-grade, agentic business. This includes an autonomous storefront customized to your vertical, a unified commerce operating console, and a specialized AI Operator pre-integrated with Email, Voice, SMS, and WhatsApp.",
+        answer: "You receive the business package described on its listing: a configurable storefront, relevant operating workflows, AI support for approved routine work, and a guided activation plan. Your purchase agreement confirms the exact handover and ongoing-service terms.",
         open: true,
     },
     {
         id: "collapseTwo",
         num: "2",
-        question: "How autonomous are these businesses, really?",
-        answer: "They are engineered for autonomous lifecycle management. Your AI Operator handles lead acquisition, appointment orchestration, order fulfillment, and support using proprietary RAG and per-customer memory. You maintain strategic oversight via human-in-the-loop governance.",
+        question: "What does the AI do—and what remains mine?",
+        answer: "The AI can answer routine approved questions, organise context, draft follow-up and route work. You set the offer, pricing, policies and quality standard; you also handle exceptions, sensitive decisions and the customer insight that improves the business.",
         open: false,
     },
     {
         id: "collapseThree",
         num: "3",
-        question: "Can I customize the infrastructure and intelligence?",
-        answer: "Yes, 100%. You have full ownership of your data and brand. You can reconfigure the autonomous logic, fine-tune the AI's knowledge base, and scale your operations across multiple custom domains from a single console.",
+        question: "What can I tailor before launch?",
+        answer: "You tailor the market, brand, offer, content, approved knowledge, customer channels and operating boundaries. Phoxta helps with setup, but the first local customer proof and operating choices are part of the owner’s work.",
         open: false,
     },
     {
         id: "collapseFour",
         num: "4",
-        question: "Is this platform optimized for AI search?",
-        answer: "Yes. Our vertical-specific infrastructure is built for 'AI Search Optimization' (ASO), ensuring your business content is correctly indexed and recommended by AI-driven search engines and autonomous answer bots.",
+        question: "How do I know whether the business is working?",
+        answer: "Use evidence rather than assumptions: customer conversations, conversion actions, quality checks, repeat behaviour and payments. The Console and Startup School help turn those signals into a focused next test.",
         open: false,
     },
 ];
 
 export default function Section11({ classList = "" }: { classList?: string }) {
+    const useHomepageGrid = classList.split(/\s+/).includes("phoxta-home-faq");
+    const [lead, setLead] = useState<{ status: "idle" | "sending" | "sent" | "error"; error?: string }>({ status: "idle" });
+    const onLeadSubmit = leadFormSubmit("contact", setLead, [["marketing_consent", "Marketing email consent"]]);
+
     return (
         <div className={`alt-faq-area pt-145 pb-80 ${classList || ""}`}>
-            <div className="container">
+            <div className={`container${useHomepageGrid ? " phoxta-home-shell" : ""}`}>
                 <div className="row">
                     <div className="col-lg-5">
                         <div className="alt-faq-title-wrap mb-40">
-                            <div className="rounded-4 overflow-hidden anim-zoomin">
-                                {/* Cropped above the subject's hands: the source photo
-                                    (img-125) has malformed fingers, a generation artifact
-                                    that is very visible at this size. */}
+                            {useHomepageGrid ? <div className="phoxta-home-faq__contact">
                                 <img
                                     src="/assets/imgs/pages/img-125-faq.webp"
                                     width={553}
                                     height={425}
-                                    className="w-100"
-                                    alt="A member of the Phoxta team at their desk, ready to answer questions"
+                                    className="phoxta-home-faq__contact-image"
+                                    alt=""
                                     loading="lazy" />
-                            </div>
-                            <h6 className="mb-15 pt-50">Still have questions? We&apos;re here to help.</h6>
-                            <p className="at-faq-dec mb-35">femi@phoxta.com, +447350172153.</p>
-                            <div
-                                className="at-btn-group at_fade_anim"
-                                data-delay=".4"
-                                data-fade-from="bottom"
-                                data-ease="bounce"
-                            >
-                                <Link className="at-btn-circle" to="/faqs">
-                                    {BTN_CIRCLE_ARROW_SVG}
-                                </Link>
-                                <Link className="at-btn z-index-1" to="/faqs">
-                                    Support Center
-                                </Link>
-                                <Link className="at-btn-circle" to="/faqs">
-                                    {BTN_CIRCLE_ARROW_SVG}
-                                </Link>
-                            </div>
+                                <div className="phoxta-home-faq__contact-scrim" aria-hidden="true" />
+                                <div className="phoxta-home-faq__contact-card">
+                                    {lead.status === "sent" ? (
+                                        <div className="phoxta-home-faq__success" role="status">
+                                            <span>Message received</span>
+                                            <h3>Thank you for contacting Phoxta.</h3>
+                                            <p>We&apos;ll review your message and reply to the email address you provided.</p>
+                                            <button type="button" onClick={() => setLead({ status: "idle" })}>Send another message</button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="phoxta-home-faq__contact-heading">
+                                                <span>Contact Phoxta</span>
+                                                <h3>Still have questions?</h3>
+                                                <p>Tell us what you need help with and we&apos;ll get back to you.</p>
+                                            </div>
+                                            <form className="phoxta-home-faq__form" onSubmit={onLeadSubmit}>
+                                                <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="phoxta-home-faq__honeypot" />
+                                                <label>
+                                                    <span>Name</span>
+                                                    <input type="text" name="name" required autoComplete="name" placeholder="Your name" />
+                                                </label>
+                                                <label>
+                                                    <span>Email</span>
+                                                    <input type="email" name="email" required autoComplete="email" placeholder="you@example.com" />
+                                                </label>
+                                                <label>
+                                                    <span>Message</span>
+                                                    <textarea name="message" required rows={4} placeholder="How can we help?" />
+                                                </label>
+                                                <label className="phoxta-home-faq__consent">
+                                                    <input type="checkbox" name="marketing_consent" value="Agreed" />
+                                                    <span>You agree to receive Phoxta marketing emails.</span>
+                                                </label>
+                                                {lead.status === "error" && (
+                                                    <p className="phoxta-home-faq__form-error" role="alert">{lead.error}</p>
+                                                )}
+                                                <button type="submit" className="phoxta-home-faq__submit" disabled={lead.status === "sending"}>
+                                                    {lead.status === "sending" ? "Sending..." : "Send message"}
+                                                    <span aria-hidden="true">→</span>
+                                                </button>
+                                            </form>
+                                            <p className="phoxta-home-faq__contact-footer">
+                                                Prefer self-service? <Link to="/faqs">Visit the Support Center</Link>
+                                            </p>
+                                        </>
+                                    )}
+                                </div>
+                            </div> : <>
+                                <div className="rounded-4 overflow-hidden anim-zoomin">
+                                    <img
+                                        src="/assets/imgs/pages/img-125-faq.webp"
+                                        width={553}
+                                        height={425}
+                                        className="w-100"
+                                        alt="A member of the Phoxta team at their desk, ready to answer questions"
+                                        loading="lazy" />
+                                </div>
+                                <h6 className="mb-15 pt-50">Still have questions? We&apos;re here to help.</h6>
+                                <p className="at-faq-dec mb-35">femi@phoxta.com, +447350172153.</p>
+                                <div
+                                    className="at-btn-group at_fade_anim"
+                                    data-delay=".4"
+                                    data-fade-from="bottom"
+                                    data-ease="bounce"
+                                >
+                                    <Link className="at-btn-circle" to="/faqs">
+                                        {BTN_CIRCLE_ARROW_SVG}
+                                    </Link>
+                                    <Link className="at-btn z-index-1" to="/faqs">
+                                        Support Center
+                                    </Link>
+                                    <Link className="at-btn-circle" to="/faqs">
+                                        {BTN_CIRCLE_ARROW_SVG}
+                                    </Link>
+                                </div>
+                            </>}
                         </div>
                     </div>
                     <div className="col-lg-7">

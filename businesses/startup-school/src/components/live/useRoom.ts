@@ -29,9 +29,6 @@ export interface LiveSession {
     media: ReturnType<typeof browserMedia>;
     join(opts: JoinOptions): Promise<void>;
     leave(): Promise<void>;
-    /** Demo only: look at the same class the way the mentor running it does. */
-    setAsHost(on: boolean): void;
-    asHost: boolean;
 }
 
 /**
@@ -47,7 +44,6 @@ export function useLiveRoom(lesson: LiveLesson | null): LiveSession {
     const [room, setRoom] = useState<LiveRoom | null>(null);
     const [phase, setPhase] = useState<Phase>("lobby");
     const [error, setError] = useState<string | null>(null);
-    const [asHost, setAsHost] = useState(false);
     const snap = useRoomSnapshot(room);
 
     const joinedAt = useRef<number | null>(null);
@@ -81,7 +77,7 @@ export function useLiveRoom(lesson: LiveLesson | null): LiveSession {
                     lesson,
                     mentor,
                     media,
-                    asHost,
+                    asHost: false,
                     // Both are the browser's half of a seam core cannot cross:
                     // one needs a WebSocket and a short-lived key, the other a
                     // canvas. The room only ever sees the interface.
@@ -100,7 +96,7 @@ export function useLiveRoom(lesson: LiveLesson | null): LiveSession {
                 setError(e instanceof Error ? e.message : "We couldn't get you into the class.");
             }
         },
-        [asHost, catalogue.mentors, lesson, media, repo],
+        [catalogue.mentors, lesson, media, repo],
     );
 
     // The host ended it, or we were removed: the room closes itself.
@@ -117,7 +113,7 @@ export function useLiveRoom(lesson: LiveLesson | null): LiveSession {
         };
     }, [leave]);
 
-    return { room, snap, phase, error, media, join, leave, asHost, setAsHost };
+    return { room, snap, phase, error, media, join, leave };
 }
 
 /** Elapsed class time, ticking once a second — the header clock. */

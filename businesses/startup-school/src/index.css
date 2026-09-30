@@ -30,21 +30,21 @@
     --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 
     /* brand — the hero's split field */
-    --color-brand: #c7260a;
-    --color-brand-hover: #a01f08;
-    --color-brand-soft: #fdeae5;
+    --color-brand: #a93d1b;
+    --color-brand-hover: #843015;
+    --color-brand-soft: #fce8dc;
     /* The hero's CTA orange. Decoration only: 3.76:1 on white. */
-    --color-brand-glow: #f0460e;
+    --color-brand-glow: #f2783f;
     /* AA-passing ink for brand text on the soft tint (6.8:1) */
-    --color-brand-ink: #9e1e06;
+    --color-brand-ink: #813015;
 
     /* the three tracks: vermilion → maroon → gold */
-    --color-start: #c7260a;
-    --color-start-soft: #fdeae5;
-    --color-start-ink: #9e1e06;
-    --color-fund: #800b01;
-    --color-fund-soft: #e9cac1;
-    --color-fund-ink: #800b01;
+    --color-start: #a93d1b;
+    --color-start-soft: #fce8dc;
+    --color-start-ink: #813015;
+    --color-fund: #692d20;
+    --color-fund-soft: #eed9d0;
+    --color-fund-ink: #692d20;
     --color-grow: #8f5e00;
     --color-grow-soft: #fbf1da;
     --color-grow-ink: #6d4700;
@@ -65,13 +65,13 @@
     --color-plum-soft: #e6eef1;
 
     /* surfaces — the hero page's warm greys, not Coir Six's lilac-cast ones */
-    --color-page: #f8f5f3;
+    --color-page: #f7f4ee;
     --color-card: #ffffff;
-    --color-subtle: #f1edeb;
-    --color-line: #e9e4e1;
-    --color-line-strong: #dbd4d0;
-    --color-track: #e6dfdb;
-    --color-backdrop: #ddd7d3;
+    --color-subtle: #f0ece4;
+    --color-line: #e8e0d7;
+    --color-line-strong: #d9cfc4;
+    --color-track: #e5ddd2;
+    --color-backdrop: #ddd5ca;
 
     /* text — #1D1D1D and #585959 are the marketing page's own */
     --color-ink: #1d1d1d;

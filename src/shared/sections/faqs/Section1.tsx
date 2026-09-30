@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 // FAQs Section 1 - Hero (title + search input)
 
 const ARROW_SVG = (
@@ -28,15 +29,16 @@ export type FaqHeroProps = {
     subtitle?: string;
     searchPlaceholder?: string;
     buttonLabel?: string;
+    sideContent?: ReactNode;
 };
 
 export const FAQ_HERO_DEFAULTS = {
     eyebrow: "Frequently Asked Questions",
-    heading: "Answers to your questions about owning a Phoxta business",
-    subtitle: "Everything about buying, branding, launching and running your business.",
+    heading: "Clear answers before you choose a business system",
+    subtitle: "Understand the package, activation steps, AI support and the work that remains yours.",
     searchPlaceholder: "Your question...",
     buttonLabel: "Find the answer",
-} satisfies Required<FaqHeroProps>;
+} satisfies Required<Omit<FaqHeroProps, 'sideContent'>>;
 
 export default function Section1({
     eyebrow = FAQ_HERO_DEFAULTS.eyebrow,
@@ -44,6 +46,7 @@ export default function Section1({
     subtitle = FAQ_HERO_DEFAULTS.subtitle,
     searchPlaceholder = FAQ_HERO_DEFAULTS.searchPlaceholder,
     buttonLabel = FAQ_HERO_DEFAULTS.buttonLabel,
+    sideContent,
 }: FaqHeroProps = {}) {
     return (
         <section className="sec-1-faqs overflow-hidden pt-150 pb-120 bg-neutral-50">
@@ -60,15 +63,15 @@ export default function Section1({
                                 {ARROW_SVG}
                             </i>
                         </span>
-                        <h4 className="section-title d-flex fw-600">
+                        <h1 className="section-title d-flex fw-600">
                             {heading}
-                        </h4>
+                        </h1>
                         <p className="neutral-600 fz-font-xl">
                             {subtitle}
                         </p>
                     </div>
                     <div className="col-xxl-5 col-lg-6 ms-auto">
-                        <div className="input-subscribe p-relative changeless">
+                        {sideContent ?? <div className="input-subscribe p-relative changeless">
                             <input placeholder={searchPlaceholder} type="text" className="bg-neutral-0" />
                             <button type="button" className="at-btn p-absolute end-0 top-50 bg-neutral-900 rounded-3 translate-middle-y me-4">
                                 <i className="icon-arrow-right">
@@ -80,7 +83,7 @@ export default function Section1({
                                     <span className="text-2">{buttonLabel}</span>
                                 </span>
                             </button>
-                        </div>
+                        </div>}
                     </div>
                 </div>
             </div>

@@ -18,7 +18,7 @@
 // its monthly allowance must be refused here, not discovered on the invoice.
 import { json, preflight } from "../_shared/cors.ts";
 import { requireUser } from "../_shared/auth.ts";
-import { adminClient } from "../_shared/supabaseAdmin.ts";
+import { adminClient, userClient } from "../_shared/supabaseAdmin.ts";
 import { modelFor } from "../_shared/models.ts";
 import { callJson } from "../_shared/anthropic.ts";
 import { assertWithinCap, CAP_REACHED_MESSAGE, meter } from "../_shared/meter.ts";
@@ -55,6 +55,9 @@ Deno.serve(async (req) => {
     const u = await requireUser(req);
     if ("error" in u) return u.error;
     const admin = adminClient();
+    const scoped = userClient((req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, ""));
+    const { data: allowed } = await scoped.rpc("cs_live_access", { p_org: orgId, p_lesson: lessonId });
+    if (allowed !== true) return json({ error: "This class is not included in your active access." }, 403);
 
     // Enrolled at this school? Same proof as coir-live: a cs_profiles row.
     const { data: profile } = await admin
@@ -80,6 +83,7 @@ Deno.serve(async (req) => {
     if (row.recap && !(body.force && isHost)) {
       return json({ recap: row.recap, cached: true });
     }
+    if (!isHost) return json({error:"Your lecturer has not published a recap yet."},403);
 
     const [{ data: lines }, { data: chat }] = await Promise.all([
       admin.from("cs_live_transcript").select("speaker_name, text, said_at")
@@ -152,14 +156,12 @@ Deno.serve(async (req) => {
     if (!recap.summary) return json({ error: "The recap came back empty. Try again." }, 502);
 
     const { error: saveErr } = await admin
-      .from("cs_live_lessons")
-      .update({ recap })
-      .eq("organization_id", orgId)
-      .eq("id", lessonId);
+      .from("cs_recap_drafts")
+      .upsert({organization_id:orgId,live_lesson_id:lessonId,recap,generated_at:new Date().toISOString()});
     // A recap that could not be cached is still a recap; hand it over.
     if (saveErr) console.warn("coir-live-recap: not cached:", saveErr.message);
 
-    return json({ recap, cached: false });
+    return json({ recap, cached: false, requiresReview: true });
   } catch (err) {
     console.error("coir-live-recap error", err);
     return json({ error: "The recap could not be written. Please try again." }, 500);

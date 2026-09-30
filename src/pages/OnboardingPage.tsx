@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PageMeta from "@/seo/PageMeta";
 import { useAuth } from "@/auth/AuthProvider";
 import { completeOnboarding, PRIMARY_GOALS } from "@/lib/db/profile";
@@ -14,6 +14,11 @@ const ROLES = [
 export default function OnboardingPage() {
   const { user, signOut, markOnboarded } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const selectedBusiness = params.get("business");
+  const selectedLabel = selectedBusiness
+    ? selectedBusiness.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : null;
   const [fullName, setFullName] = useState("");
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("buyer");
@@ -36,7 +41,7 @@ export default function OnboardingPage() {
     if (error) setError(error);
     else {
       markOnboarded(); // release the ProtectedRoute gate before navigating
-      navigate(role === "buyer" || role === "founder" ? "/dashboard/marketplace" : "/dashboard", { replace: true });
+      navigate(selectedBusiness ? `/dashboard/marketplace/${encodeURIComponent(selectedBusiness)}` : role === "buyer" || role === "founder" ? "/dashboard/marketplace" : "/dashboard", { replace: true });
     }
   }
 
@@ -52,6 +57,11 @@ export default function OnboardingPage() {
 
         <form onSubmit={onSubmit} className="bg-neutral-0 rounded-4 p-4 p-md-5 border-100">
           {error && <div className="alert alert-danger py-2 px-3 fz-font-md">{error}</div>}
+          {selectedLabel && (
+            <div className="rounded-3 border-100 bg-neutral-50 px-3 py-3 mb-3 fz-font-md">
+              <strong>Selected business:</strong> {selectedLabel}. After setup, you&apos;ll review the package, launch plan and purchase options.
+            </div>
+          )}
 
           <div className="mb-3">
             <label className="form-label fz-font-md fw-500">Your name</label>

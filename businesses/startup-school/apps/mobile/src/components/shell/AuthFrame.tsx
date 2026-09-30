@@ -35,10 +35,10 @@ export function AuthFrame({ title, sub, children, back }: { title: string; sub: 
                         </Txt>
                     </View>
                     <Txt role="overline" color="rgba(255,255,255,0.8)" style={{ marginTop: 28, letterSpacing: 1.6 }}>
-                        Online course
+                        Founder programme
                     </Txt>
                     <Txt weight="semibold" size={26} lineHeight={32} color={c.white} style={{ marginTop: 8, maxWidth: 320 }}>
-                        Sharpen Your Skills with Professional Online Courses
+                        Validate, build, launch and grow your startup
                     </Txt>
                 </View>
                 <View style={{ paddingHorizontal: GUTTER, paddingTop: 28, paddingBottom: insets.bottom + 32, gap: 6 }}>

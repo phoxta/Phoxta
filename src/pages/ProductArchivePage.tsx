@@ -5,8 +5,8 @@ export default function ProductArchivePage() {
   return (
     <>
       <PageMeta
-        title="Marketplace — Browse AI-powered businesses for sale | Phoxta"
-        description="Browse Phoxta's marketplace of validated, AI-powered businesses for sale across e-commerce, local services, content, SaaS and more. Find one and make it yours."
+        title="Marketplace — choose a business system | Phoxta"
+        description="Preview ready-to-launch business systems, compare what is included and choose one to tailor for your market."
         path="/marketplace"
       />
       {/* Hero removed — top padding clears the transparent header. */}

@@ -82,7 +82,7 @@ export default function Section12({ className = "", showNoise = true }: Section1
                                 titleSlot={
                                     <h3 className="reveal-text fw-700 mb-0">
                                         <RevealText>
-                                            AI Operating Console Pricing
+                                            The ongoing plan for running your business
                                         </RevealText>
                                     </h3>
                                 }
@@ -94,9 +94,7 @@ export default function Section12({ className = "", showNoise = true }: Section1
                                                 <div>
                                                     <h6 className="fw-600">Need Enterprise?</h6>
                                                     <p className="fz-font-lg neutral-700">
-                                                        Running at scale or have bespoke needs? We&apos;ll
-                                                        tailor an Enterprise plan with unlimited businesses,
-                                                        unlimited AI, SSO and dedicated support.
+                                                        Running multiple businesses or working through a more complex operating setup? We&apos;ll help you choose the support, access and usage plan that fits.
                                                     </p>
                                                 </div>
                                             </div>

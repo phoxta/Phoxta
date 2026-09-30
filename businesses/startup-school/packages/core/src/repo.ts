@@ -6,11 +6,13 @@ import type {
     CohortSignal,
     Certificate,
     Conversation,
+    Experiment,
     GroupPost,
     LiveLesson,
     Mentor,
     MentorBooking,
     Message,
+    NewExperiment,
     NewTask,
     Note,
     PeerKind,
@@ -140,6 +142,10 @@ export interface Repo {
 
     /** Save part of the venture record. Sections are replaced whole. */
     saveVenture(patch: Partial<Venture>): Promise<Venture>;
+    /** Capture a field test and the evidence that should change a decision. */
+    addExperiment(input: NewExperiment): Promise<Experiment>;
+    updateExperiment(id: string, patch: Partial<Experiment>): Promise<Experiment>;
+    deleteExperiment(id: string): Promise<void>;
     /**
      * A grounded answer from the adviser.
      *

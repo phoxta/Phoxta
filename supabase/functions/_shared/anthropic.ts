@@ -389,9 +389,13 @@ function visionContent(p: Provider, text: string, images: VisionImage[]): Json {
 }
 
 // --- JSON-structured completion -------------------------------------------
-export async function callJson<T = Json>(opts: { model: string; system: string; user: string; maxTokens?: number; images?: VisionImage[] }): Promise<{ data: T; inTok: number; outTok: number; cacheWriteTok: number; cacheReadTok: number; model: string }> {
+export type JsonAttempt = { provider: Provider; model: string; inputBytes: number; maxOutputTokens: number; hasImages: boolean };
+export async function callJson<T = Json>(opts: { model: string; system: string; user: string; maxTokens?: number; images?: VisionImage[]; beforeAttempt?: (attempt: JsonAttempt) => Promise<void> }): Promise<{ data: T; inTok: number; outTok: number; cacheWriteTok: number; cacheReadTok: number; model: string }> {
   const system = opts.system + "\n\nRespond with ONLY valid JSON — no prose, no markdown fences.";
   const r = await withFallback(opts.model, async (p) => {
+    // Durable research reserves spend before each provider attempt, including
+    // fallbacks. Existing callers have no hook and retain their behaviour.
+    await opts.beforeAttempt?.({ provider: p, model: modelOn(p, opts.model), inputBytes: new TextEncoder().encode(system + opts.user).byteLength, maxOutputTokens: maxTokensFor(p, modelOn(p, opts.model), opts.maxTokens ?? 1024), hasImages: Boolean(opts.images?.length) });
     if (openAiLike(p)) {
       const model = modelOn(p, opts.model);
       const res = await fetch(`${apiBase(p)}/chat/completions`, {

@@ -12,11 +12,11 @@ export const SITE_URL = (
 export const SITE_NAME = "Phoxta";
 export const TWITTER_HANDLE = "@phoxta";
 
-export const DEFAULT_TITLE = "Phoxta — Acquire & Scale AI-Powered Agentic Businesses";
-export const TITLE_SUFFIX = " | Phoxta AI Business Marketplace";
+export const DEFAULT_TITLE = "Phoxta — Discover what’s worth building.";
+export const TITLE_SUFFIX = " | Phoxta";
 
 export const DEFAULT_DESCRIPTION =
-    "Acquire high-margin, AI-powered businesses with validated product-market fit. Deploy autonomous agentic infrastructure, scale with unified commerce operations, and launch to revenue in minutes.";
+    "Discover business opportunities, understand the evidence, test what must be true, and build the ones worth pursuing.";
 
 /**
  * Default social share image — a purpose-built 1200×630 card.
@@ -59,7 +59,7 @@ export const WEBSITE_JSONLD = {
         "@type": "SearchAction",
         target: {
             "@type": "EntryPoint",
-            urlTemplate: `${SITE_URL}/marketplace?q={search_term_string}`,
+            urlTemplate: `${SITE_URL}/discover?q={search_term_string}`,
         },
         "query-input": "required name=search_term_string",
     },
@@ -68,7 +68,10 @@ export const WEBSITE_JSONLD = {
 /** Public, indexable marketing routes — the source of truth for the sitemap. */
 export const SITEMAP_ROUTES: { path: string; priority: number; changefreq: string }[] = [
     { path: "/", priority: 1.0, changefreq: "weekly" },
-    { path: "/marketplace", priority: 0.9, changefreq: "weekly" },
+    { path: "/discover", priority: 0.9, changefreq: "weekly" },
+    { path: "/businesses", priority: 0.9, changefreq: "weekly" },
+    { path: "/how-it-works", priority: 0.8, changefreq: "monthly" },
+    { path: "/resources", priority: 0.7, changefreq: "weekly" },
     // The free toolkit is the main way a first-time founder meets Phoxta, so it
     // ranks alongside the marketplace rather than with the footer pages.
     { path: "/founder", priority: 0.9, changefreq: "monthly" },

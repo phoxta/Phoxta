@@ -490,3 +490,224 @@
 /* A tab bar handed to PageHeader sits right-aligned on the title line and
    scrolls horizontally rather than wrapping into a second row. */
 .hrx-header .hrx-tabbar { max-width: 100%; min-width: 0; }
+
+/* ===== Phoxta operating app shell =========================================
+   The authenticated app uses a contained, calm workspace: a compact dark
+   identity rail, a persistent action bar and a soft, layered canvas. This is
+   deliberately scoped to DashboardLayout, so public Phoxta pages retain their
+   existing visual system. */
+.hrx.hrx-workspace {
+  --hrx-bg: #f3f4ff;
+  --hrx-card: #ffffff;
+  --hrx-soft: #eef0ff;
+  --hrx-border: #dce0f2;
+  --hrx-border-soft: #e8eaf6;
+  --hrx-muted: #6a6d7e;
+  background: #eef0ff;
+}
+
+.hrx-sidebar { min-width: 0; }
+
+@media (min-width: 992px) {
+  .hrx.hrx-workspace {
+    display: grid;
+    grid-template-columns: 224px minmax(0, 1fr);
+    grid-template-rows: 60px minmax(0, 1fr);
+    gap: 14px;
+    width: auto;
+    height: calc(100dvh - 48px);
+    margin: 24px;
+    padding: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    border-radius: 30px;
+    background:
+      radial-gradient(circle at 50% 17%, rgba(255, 255, 255, 0.9), rgba(240, 242, 255, 0.74) 36%, rgba(215, 220, 247, 0.95) 100%);
+    box-shadow: 0 28px 64px rgba(53, 59, 112, 0.22);
+  }
+
+  .hrx-workspace .hrx-sidebar {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    min-height: 0;
+    flex-direction: column;
+    padding: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.86);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: 0 12px 32px rgba(76, 82, 137, 0.08), inset 0 1px rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+  }
+
+  .hrx-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 8px 12px;
+    border-radius: 13px;
+    background: #292a30;
+    color: #fff;
+    text-decoration: none;
+    box-shadow: 0 8px 18px rgba(35, 36, 43, 0.18);
+  }
+  .hrx-sidebar-brand:hover { color: #fff; }
+  .hrx-sidebar-logo {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.14);
+  }
+  .hrx-sidebar-logo img { width: 19px; height: 19px; filter: brightness(0) invert(1); }
+  .hrx-sidebar-brand b { display: block; font-size: 14px; font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+  .hrx-sidebar-brand small { display: block; margin-top: 2px; font-size: 8px; font-weight: 600; letter-spacing: 0.15em; color: rgba(255,255,255,.58); }
+  .hrx-sidebar-label { margin: 28px 12px 8px; font-size: 10px; font-weight: 700; letter-spacing: .11em; color: #7a7e91; }
+
+  .hrx-workspace .hrx-sidebar .hrx-tabs {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    overflow: auto;
+  }
+  .hrx-workspace .hrx-sidebar .hrx-tab {
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #363842;
+    font-size: 14px;
+    letter-spacing: -0.015em;
+  }
+  .hrx-workspace .hrx-sidebar .hrx-tab:hover { background: rgba(255, 255, 255, 0.82); }
+  .hrx-workspace .hrx-sidebar .hrx-tab.active {
+    background: #e9eaff;
+    box-shadow: 0 3px 10px rgba(83, 87, 142, 0.07);
+    color: #292a30;
+  }
+  .hrx-nav-icon { display: inline-grid; width: 19px; height: 19px; flex: 0 0 auto; place-items: center; color: currentColor; }
+  .hrx-sidebar-grow { margin-top: auto; padding: 12px 0 0; }
+  .hrx-sidebar-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 42px;
+    border-radius: 12px;
+    background: #292a30;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 6px 14px rgba(35, 36, 43, 0.15);
+  }
+  .hrx-sidebar-action:hover { background: #101115; color: #fff; }
+  .hrx-sidebar-action span { font-size: 17px; font-weight: 400; line-height: 1; }
+  .hrx-sidebar-bottom { margin-top: 14px; padding: 12px 8px 2px; border-top: 1px solid rgba(210, 214, 234, 0.72); }
+  .hrx-sidebar-site { display: flex; align-items: center; justify-content: space-between; color: #6a6d7e; font-size: 12px; text-decoration: none; }
+  .hrx-sidebar-site:hover { color: #292a30; }
+
+  .hrx-workspace .hrx-nav {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    padding: 8px 12px 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.84);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.52);
+    box-shadow: inset 0 1px rgba(255,255,255,.78);
+    backdrop-filter: blur(18px);
+  }
+  .hrx-workspace .hrx-nav-right { width: 100%; gap: 10px; }
+  .hrx-workspace .hrx-search {
+    width: min(420px, 42vw);
+    height: 42px;
+    border-color: rgba(255,255,255,.88);
+    background: rgba(255,255,255,.82);
+    box-shadow: 0 4px 16px rgba(78, 84, 139, 0.07);
+  }
+  .hrx-top-action {
+    align-items: center;
+    gap: 7px;
+    height: 42px;
+    padding: 0 15px;
+    border-radius: 999px;
+    background: #292a30;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: 0 5px 12px rgba(35, 36, 43, 0.16);
+  }
+  .hrx-top-action:hover { color: #fff; background: #101115; }
+  .hrx-top-action span { font-size: 17px; font-weight: 400; line-height: 1; }
+  .hrx-workspace .hrx-notif { width: 42px; height: 42px; padding: 0; justify-content: center; background: rgba(255,255,255,.8); border-color: rgba(255,255,255,.88); }
+  .hrx-workspace .hrx-notif-date { display: none !important; }
+  .hrx-workspace .hrx-bell { width: 32px; height: 32px; background: transparent; }
+  .hrx-workspace .hrx-gear, .hrx-workspace .hrx-avatar { width: 42px; height: 42px; }
+
+  .hrx-workspace .hrx-scroll {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.27);
+    box-shadow: inset 0 1px rgba(255,255,255,.66);
+  }
+  .hrx-workspace .hrx-main { padding: 8px 10px 24px; }
+  .hrx-workspace .hrx-header,
+  .hrx-workspace .hrx-card,
+  .hrx-workspace .hrx-stat {
+    border-color: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 10px 26px rgba(76, 82, 137, 0.055);
+  }
+  .hrx-workspace .hrx-header { background: rgba(255, 255, 255, 0.62); border-radius: 20px; }
+  .hrx-workspace .hrx-pop { border-color: rgba(220,224,242,.95); box-shadow: 0 18px 42px rgba(57,63,116,.16); }
+  .hrx-workspace .hrx-home .hrx-header {
+    position: relative;
+    min-height: 176px;
+    justify-content: center;
+    overflow: hidden;
+    text-align: center;
+    background: radial-gradient(circle at 50% -40%, #d0d5ff, rgba(255,255,255,.72) 56%, rgba(248,244,255,.78));
+  }
+  .hrx-workspace .hrx-home .hrx-header::before {
+    content: "✦";
+    position: absolute;
+    top: 17px;
+    left: 50%;
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 14px;
+    background: #e2e5ff;
+    color: #555d91;
+    font-size: 24px;
+    transform: translateX(-50%);
+    box-shadow: 0 8px 20px rgba(82,89,144,.14);
+  }
+  .hrx-workspace .hrx-home .hrx-header > div:first-child { padding-top: 48px; }
+  .hrx-workspace .hrx-home .hrx-crumb { font-size: 10px; font-weight: 700; letter-spacing: .14em; color: #70758d; }
+  .hrx-workspace .hrx-home .hrx-greet { margin-top: 7px; font-size: clamp(27px, 2.4vw, 35px); }
+  .hrx-workspace .hrx-home .hrx-header-right { flex: 0 0 auto; align-self: flex-end; }
+  .hrx-workspace .hrx-home .hrx-actions { justify-content: center; }
+  .hrx-workspace .hrx-home .hrx-actions .hrx-pill { background: rgba(255,255,255,.82); box-shadow: 0 4px 12px rgba(83,87,142,.07); }
+}
+
+@media (max-width: 991.98px) {
+  .hrx.hrx-workspace { background: linear-gradient(145deg, #f9f9ff, #e8eaff); }
+  .hrx-workspace .hrx-nav { background: rgba(255,255,255,.8); box-shadow: 0 3px 16px rgba(76,82,137,.06); backdrop-filter: blur(16px); }
+  .hrx-workspace .hrx-scroll { background: transparent; }
+}

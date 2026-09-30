@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
-import type { CategoryId } from "@startup-school/core";
+import type { CategoryId, VenturePath, VentureStage } from "@startup-school/core";
 import { useTheme } from "@/lib/theme";
 import { useData } from "@/state/data";
 import { useToast } from "@/state/toast";
-import { Button, Chip } from "@/components/ui/primitives";
+import { Button, Chip, Field } from "@/components/ui/primitives";
 import { Txt } from "@/components/ui/text";
 import { CATEGORY_LABEL } from "@/components/ui/icons";
 import { AuthFrame } from "@/components/shell/AuthFrame";
@@ -18,11 +18,17 @@ export default function OnboardingScreen() {
     const router = useRouter();
     const [interests, setInterests] = useState<CategoryId[]>(user.profile.interests);
     const [goal, setGoal] = useState(user.profile.weeklyGoalMin || 180);
+    const [stage, setStage] = useState<VentureStage>(user.venture.stage || "opportunity");
+    const [path, setPath] = useState<VenturePath>(user.venture.path || "build");
+    const [idea, setIdea] = useState(user.venture.oneLiner);
     const [busy, setBusy] = useState(false);
     const finish = async () => {
         setBusy(true);
         try {
-            await mutate((r) => r.updateProfile({ interests, weeklyGoalMin: goal, onboarded: true }));
+            await mutate(async (repo) => {
+                await repo.saveVenture({ stage, oneLiner: idea.trim(), path });
+                await repo.updateProfile({ interests, weeklyGoalMin: goal, onboarded: true });
+            });
             router.replace("/");
         } catch (e) {
             toast(e instanceof Error ? e.message : "Couldn't save", "danger");
@@ -30,7 +36,7 @@ export default function OnboardingScreen() {
         }
     };
     return (
-        <AuthFrame title={`Hi ${user.profile.name.split(" ")[0]} — what are you here for?`} sub="Two questions. Both can change later in Settings.">
+        <AuthFrame title={`Hi ${user.profile.name.split(" ")[0]} — where are you starting?`} sub="Four short choices. You can change all of them later.">
             <View style={{ gap: 24 }}>
                 <View style={{ gap: 8 }}>
                     <Txt role="overline" color={c.muted}>
@@ -59,8 +65,26 @@ export default function OnboardingScreen() {
                         ))}
                     </View>
                 </View>
+                <View style={{ gap: 8 }}>
+                    <Txt role="overline" color={c.muted}>My startup is currently at</Txt>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                        {([{ id: "opportunity", label: "An idea to validate" }, { id: "model", label: "A model to test" }, { id: "launch", label: "Preparing to launch" }, { id: "growth", label: "Ready to grow" }] as { id: VentureStage; label: string }[]).map((option) => <Chip key={option.id} on={stage === option.id} tone="brand" onPress={() => setStage(option.id)}>{option.label}</Chip>)}
+                    </View>
+                </View>
+                <View style={{ gap: 8 }}>
+                    <Txt role="overline" color={c.muted}>I am starting by</Txt>
+                    <View style={{ gap: 8 }}>
+                        {([
+                            { id: "build", label: "Building a new venture" },
+                            { id: "phoxta_turnkey", label: "Launching a Phoxta AI business" },
+                            { id: "hybrid", label: "Adapting a Phoxta AI business" },
+                        ] as { id: VenturePath; label: string }[]).map((option) => <Chip key={option.id} on={path === option.id} tone="brand" onPress={() => setPath(option.id)}>{option.label}</Chip>)}
+                    </View>
+                    <Txt role="caption">A turnkey system gives you a starting point; your proof loop validates the local customer, offer and operation.</Txt>
+                </View>
+                <Field label="What are you building?" value={idea} onChangeText={setIdea} placeholder="One sentence is enough for now" />
                 <Button block loading={busy} onPress={() => void finish()}>
-                    Take me to my dashboard
+                    Build my path
                 </Button>
             </View>
         </AuthFrame>

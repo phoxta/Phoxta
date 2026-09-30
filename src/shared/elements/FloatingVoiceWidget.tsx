@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { SITE_VOICE_EVENT } from "@/lib/siteChat";
 
 // Floating "talk to the agent" launcher for the public site. Renders a fixed mic
 // button (bottom-left, clear of BackToTop on the right); clicking opens a small
@@ -11,6 +12,12 @@ const PUBLIC_KEY = (import.meta.env.VITE_AGENT_PUBLIC_KEY as string | undefined)
 
 export default function FloatingVoiceWidget() {
     const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        const onOpen = () => setOpen(true);
+        window.addEventListener(SITE_VOICE_EVENT, onOpen);
+        return () => window.removeEventListener(SITE_VOICE_EVENT, onOpen);
+    }, []);
 
     if (!SERVER_URL || !PUBLIC_KEY) return null;
 

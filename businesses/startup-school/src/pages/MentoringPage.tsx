@@ -400,16 +400,6 @@ export default function MentoringPage() {
                 sub={`${mentor.name} · ${mentor.sessionMin ?? 30}-minute sessions`}
             />
 
-            {repo.kind === "demo" && (
-                <Card className="mb-6">
-                    <p className="text-[14px] leading-6">
-                        <strong className="font-semibold">In the demo</strong> you are looking at the mentor&rsquo;s side of
-                        your own two sessions, so you can see both halves. In a real school this page only exists for an
-                        account linked to a mentor, and the cohort numbers below come from the whole cohort rather than one person.
-                    </p>
-                </Card>
-            )}
-
             {upcoming.length > 0 && (
                 <>
                     <h2 className="mb-3 text-[18px] font-semibold">Coming up</h2>

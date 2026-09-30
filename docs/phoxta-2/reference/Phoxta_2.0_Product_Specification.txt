@@ -1,0 +1,1530 @@
+--- PAGE 1 ---
+                           PHOXTA 2.0
+   Product Specification
+               Opportunity Discovery & Venture Creation Platform
+
+BUILD BRIEF
+A production-oriented specification for the existing Next.js + TypeScript + Supabase platform: pages, screens,
+user flows, Opportunity Engine, data model, AI-agent architecture, research pipeline, integrations,
+permissions, subscription limits, analytics, security and implementation sequencing.
+
+
+                                       Version 1.0 • September 2026
+
+
+
+
+
+                                              Phoxta 2.0 Product Specification
+
+--- PAGE 2 ---
+Executive Product Definition
+
+
+Phoxta 2.0 is a multi-tenant opportunity discovery and venture creation application. Its core
+object is an Opportunity. Users discover or create opportunities, investigate them with sourced
+research, define assumptions, run validation experiments, shape a business model, build
+operating assets and prepare a launch. A separate Ready-to-Launch catalogue packages selected
+opportunities into developed businesses.
+
+ PRIMARY PRODUCT PROMISE
+ Discover business opportunities. Understand what must be true. Build the ones worth pursuing.
+
+
+Product outcomes
+
+ Outcome                                                     Definition of success
+
+ Discovery                                      A user can find or create an opportunity relevant to their goals
+                                                     and constraints.
+
+ Understanding                                          The user can distinguish evidence, inference and unknowns.
+
+ Validation                                                              Critical assumptions are explicit and linked to experiments and
+                                                                 evidence.
+
+ Decision                                               The user can proceed, revise, pause or stop with a traceable
+                                                                      rationale.
+
+ Execution                                      A promising opportunity can become an offer, MVP, operating
+                                                        workflow and launch plan.
+
+ Learning                                      New market/customer evidence updates the opportunity rather
+                                                           than living in disconnected notes.
+
+
+Non-goals for initial release
+ Predicting business success or generating success probabilities.
+ Automating legal, financial or regulatory decisions without human review.
+ Building every possible business type end-to-end in v1.
+ Replacing specialist market-data providers; Phoxta should orchestrate sources and preserve provenance.
+ Allowing autonomous agents to publish, purchase, message customers or alter production systems without
+    explicit permissions.
+
+
+
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 3 ---
+1. System Scope and Product Modules
+
+
+
+ Module                    Route family                Purpose               MVP
+
+ Auth & onboarding               /auth, /onboarding                Identity, profile, goals,          Yes
+                                                               discovery preferences
+
+ Dashboard                     /app                      Resume work and show next    Yes
+                                                                   actions
+
+ Discover                        /app/discover                   Personalised and browseable    Yes
+                                                              opportunity discovery
+
+ Opportunity workspace          /app/opportunities/[id]          Research, assumptions,         Yes
+                                                           experiments and decisions
+
+ School                          /app/school                    Contextual education linked to  Yes
+                                                                          artifacts
+
+ Shape                           /app/opportunities/[id]/shape     Offer, ICP, positioning,         Phase 2
+                                                               business model
+
+ Build                             /app/opportunities/[id]/build    MVP, brand, workflows, agents  Phase 2
+                                                     and tasks
+
+ Launch                          /app/opportunities/[id]/launch  GTM, CRM, campaigns and      Phase 3
+                                                               metrics
+
+ Businesses                       /businesses, /app/businesses     Ready-to-Launch catalogue     Phase 2
+                                                     and buyer flow
+
+ Admin                       /admin                            Editorial, source, opportunity   Yes
+                                                     and catalogue operations
+
+ Billing                             /app/settings/billing              Plans, limits and entitlements   Yes
+
+
+2. Global Information Architecture
+
+
+2.1 Public routes
+
+ Route                                Screen                              Primary action
+
+  /                                 Homepage                                   Start discovering
+
+ /discover                                 Discover landing / public opportunity      Browse opportunities
+                                              library
+
+ /discover/[slug]                            Public Opportunity Preview               Create workspace / investigate
+
+ /how-it-works                        Method                                       Start free
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 4 ---
+ /businesses                             Ready-to-Launch catalogue              View business
+
+ /businesses/[slug]                         Business detail                          Request details / purchase path
+
+ /school                                   Startup School landing                       Start learning
+
+ /resources                                   Editorial hub                         Read / explore
+
+ /pricing                                    Pricing                                Choose plan
+
+ /login                                  Login                                    Authenticate
+
+ /signup                                Signup                                   Create account
+
+
+2.2 Authenticated navigation
+
+ Nav                                                       Sub-navigation
+
+ Home                                                  Overview
+
+ Discover                                                   For You; Browse; Industries; Problems; Trends; AI &
+                                                            Automation; Saved
+
+ Opportunities                                                               All; Investigating; Testing; Shaping; Building; Launching;
+                                                             Paused; Archived
+
+ School                                                           Path; Courses; Saved; Progress
+
+ Businesses                                                      Catalogue; Saved; Enquiries/Purchases
+
+ Workspace                                                      Tasks; Brand; Files; CRM; Campaigns - progressively enabled
+
+ Settings                                                                 Profile; Discovery Preferences; Team; Integrations; Billing; Data
+                                           & Privacy
+
+
+3. Screen-by-Screen Specification
+
+
+
+
+ ID / Screen             Route                 Purpose & components  Primary action         Data                  Edge cases
+
+
+ S01 Signup                /signup                  Email/password, Google   Create account; redirect   Email, password or        Duplicate email; expired
+                                            OAuth when configured,   to onboarding.          OAuth identity; consent    link; OAuth failure.
+                                                 terms consent,                                    timestamps.
+                                                 marketing opt-in
+                                                        separately.
+
+
+ S02 Login                   /login                   Email/password and      Enter app at last safe       Credentials.               Invalid credentials;
+                                                    configured OAuth.         route.                                                 locked/rate-limited
+                                                                                                                                   account.
+
+
+ S03 Onboarding - Intent   /onboarding/intent         Select goal: start a          Persist onboarding state   goal_type, optional free    Skip allowed; default
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 5 ---
+                                                      business, side business,   and continue.                text.                     discovery profile.
+                                                  explore industries,
+                                                       investigate my idea,
+                                           grow existing business,
+                                           buy ready-to-launch.
+
+
+S04 Onboarding - Fit       /onboarding/fit           Capture skills,            Create preference            skills[], industries[],       User can choose Prefer
+                                                         industries, roles,           vector/tags.                advantages[].             not to say.
+                                                     audience/distribution
+                                                   advantages.
+
+
+S05 Onboarding -          /onboarding/constraints   Time, capital band,        Personalise ranking.      hours_per_week,           All optional; explain
+Constraints                                       geography, business                                  capital_band, markets[],  why asked.
+                                            model preferences,                                   models[].
+                                                 complexity tolerance.
+
+
+S06 Onboarding - Start     /onboarding/start        Choose Explore for me /   Open matching           entry_mode.            Can change later.
+Mode                                              Industry / Problem / My   discovery flow.
+                                                    idea / Browse.
+
+
+S07 Dashboard           /app                      Active opportunities,     Resume highest-value     Aggregated workspace    Empty state starts
+                                             one recommended next    task.                       data.                      discovery.
+                                                         action, recent evidence,
+                                                experiments awaiting
+                                                            results, new matched
+                                                           signals, school
+                                              recommendation.
+
+
+S08 Discover For You      /app/discover           Ranked opportunity       Save, Investigate, Not      profile + candidate      No matches -> broaden
+                                                   feed with filters and       for me.                    opportunities.                filters transparently.
+                                                     explanation.
+
+
+S09 Discover Browse      /app/discover/browse      Search/filter           Open opportunity.        query, industry, model,    Zero results suggestions.
+                                                  opportunity library.                               market, signal, stage.
+
+
+S10 Industry Explorer     /app/discover/industries   Choose sector and        Generate/map industry.    industry, geography.      Research job queued if
+                                                      inspect customer                                            map absent.
+                                                    groups, workflows,
+                                                        signals and opportunity
+                                                            clusters.
+
+
+S11 Problem Explorer     /app/discover/problems    Describe recurring        Create draft              problem_text + optional   Ask clarifying questions
+                                                problem/workflow. AI     opportunity.              evidence.                         if too vague.
+                                                      structures actor,
+                                                       context, frequency,
+                                              workaround, cost.
+
+
+S12 Trend Explorer        /app/discover/trends      Browse                  Generate related          trend_id or custom      Show freshness and
+                                                     technology/regulation/b    opportunities.             trend.                   source dates.
+                                                ehaviour/economic
+                                                           signals.
+
+
+S13 Investigate My Idea    /app/discover/my-idea     Free-form idea intake;     Create opportunity         idea_text, target market   Label inferred fields as
+                                                 transform into           workspace.                optional.                 hypotheses.
+                                                  opportunity thesis
+                                                 without pretending it is
+                                                        validated.
+
+
+S14 Saved Opportunities   /app/discover/saved      Saved but not yet active    Investigate / remove.      saved_opportunity        Plan limit may constrain
+                                                      opportunities.                                        records.                    activation, not saving.
+
+
+S15 Opportunities List     /app/opportunities        Table/cards by lifecycle   Open, filter, archive.      workspace              Bulk archive for teams.
+                                                               state, owner, last                                      opportunities.
+                                                           activity and next action.
+
+
+S16 Opportunity           /app/opportunities/[id]     Thesis, stage, evidence    Continue recommended   opportunity aggregate.     Stale research warning.
+Overview                                              health, key                  task.
+                                                        uncertainties, next
+
+                                               Phoxta 2.0 Product Specification
+
+--- PAGE 6 ---
+                                                         action, recent learning.
+
+
+S17 Opportunity Brief       .../[id]/brief               Living structured brief     Edit, regenerate section,   brief sections.            AI edits require
+                                                with editable sections      export/share.                                            diff/accept for critical
+                                           and provenance.                                                                     sections.
+
+
+S18 Evidence                .../[id]/evidence           Evidence inbox/table      Add/link evidence.        evidence_items, sources.   Duplicates and
+                                                with source, claim, type,                                                            conflicting evidence
+                                                        date, geography,                                                                    flagged.
+                                                  confidence and linked
+                                                  assumptions.
+
+
+S19 Assumptions           .../[id]/assumptions       Kanban/matrix by class    Prioritise and test.        assumptions.          No artificial overall
+                                           and status; importance ×                                                       success score.
+                                                      uncertainty.
+
+
+S20 Experiments           .../[id]/experiments       Experiment list,           Create/run/close          experiments,            Overdue/abandoned
+                                                     templates, status and      experiment.               observations.                states.
+                                                            results.
+
+
+S21 Market                  .../[id]/market             Customers, alternatives,   Research section.         research artifacts.          All external claims
+                                                     competitors, value                                                               source-linked.
+                                                      chain, market context.
+
+
+S22 Decisions                .../[id]/decisions           Chronological decision    Proceed/revise/pause/     decision_reviews.        Immutable history after
+                                                 reviews with snapshot     stop.                                                      finalisation; add new
+                                                       of evidence.                                                                  review.
+
+
+S23 Shape Overview        .../[id]/shape               Checklist for ICP, value    Complete shaping        shape entities.           Only enabled by
+                                                      proposition, offer,           artifacts.                                             plan/stage policy.
+                                                        positioning, model,
+                                          MVP.
+
+
+S24 Business Model        .../[id]/shape/model        Payer, pricing            Save model versions.      business_model_version  Mark estimates as
+                                             mechanism, revenue                                              s.                        assumptions.
+                                                   frequency, costs,
+                                                        delivery, unit-economics
+                                                   hypotheses.
+
+
+S25 Build Overview          .../[id]/build          MVP backlog, brand,      Create build plan.         build artifacts.            Feature gated by plan.
+                                                 workflows, agents,
+                                                        integrations, tasks.
+
+
+S26 Agent/Workflow       .../[id]/build/automations   Define workflow trigger,   Draft and test workflow.   agent_workflows.       No production
+Designer                                               inputs, model/tool steps,                                                          activation without
+                                      human approvals,                                                                     explicit permission.
+                                                      outputs, logs.
+
+
+S27 Launch Overview      .../[id]/launch           Launch objective, ICP,     Create launch plan.       launch_plan.            Launch actions initially
+                                                    channels, campaign,                                                           planning-only.
+                                                             sales, onboarding,
+                                                          analytics.
+
+
+S28 School Home          /app/school               Contextual lesson         Continue lesson.          progress + opportunity    School works without
+                                            recommendation +                                      stage.                      active opportunity too.
+                                                   curriculum.
+
+
+S29 Lesson                 /app/school/[course]/      Short lesson, example,    Complete artifact.         lesson progress.        Do not mark complete
+                            [lesson]                    exercise, link to                                                                      until required action if
+                                                    create/update artifact.                                                                 practical.
+
+
+S30 Businesses            /businesses                  Filter Ready-to-Launch   Open listing.               catalogue.                  Availability state visible.
+Catalogue                                          businesses by
+                                                   sector/model/complexity
+                                                                                                        .
+
+
+S31 Business Detail        /businesses/[slug]         Opportunity thesis,       Request details / begin     business_listing.        No guaranteed-income
+
+                                               Phoxta 2.0 Product Specification
+
+--- PAGE 7 ---
+                                                   included assets, demo,     checkout.                                             claims.
+                                                   dependencies, costs,
+                                                  evidence vs
+                                                   assumptions, terms.
+
+
+ S32 Billing                  /app/settings/billing        Plan, usage, limits,        Upgrade/downgrade.      entitlements + billing     Grace period and failed-
+                                                     invoices/checkout                                  provider IDs.           payment states.
+                                                            portal.
+
+
+ S33 Team & Permissions   /app/settings/team       Members, roles,          Invite/remove/change     memberships.          Owner transfer requires
+                                                   opportunity access.         role.                                                confirmation.
+
+
+ S34 Integrations            /app/settings/            Connected                Connect/revoke.          encrypted credential     Never expose raw
+                            integrations               data/research/build                                        refs.                       secrets client-side.
+                                                           services.
+
+
+ S35 Admin                /admin/opportunities      Editorial review,          Curate library.            global opportunities.      Audit every publish
+ Opportunities                                       publish/unpublish,                                                                  action.
+                                                        quality flags, source
+                                                        freshness.
+
+
+ S36 Admin Research      /admin/research          Job queue, failures, cost,   Inspect/retry/cancel.       research_jobs.             Rate/cost controls.
+ Jobs                                              source coverage, retries.
+
+
+ S37 Admin Businesses     /admin/businesses        Create listing, attach       Publish listing.            business listings.          Four-eyes review
+                                                             assets, disclosures,                                                recommended for
+                                                            pricing/availability.                                                               claims.
+
+
+4. Opportunity Engine - End-to-End User Flows
+
+
+4.1 Flow A: User has no idea
+ 1. Complete lightweight onboarding.
+ 2. Select Explore for me.
+ 3. System retrieves/generates candidate opportunities from curated library + fresh signals + profile constraints.
+ 4. Ranking service scores fit dimensions separately and creates explanation text.
+ 5. User sees cards with thesis, customer, why-now, evidence strength and biggest uncertainty.
+ 6. Save keeps it in Saved; Investigate clones/links it into a private workspace.
+ 7. Workspace creates initial Opportunity Brief and top assumptions.
+ 8. System recommends one next action: review evidence, clarify customer or create first experiment.
+
+4.2 Flow B: User has an idea
+ 1. User describes idea in natural language.
+ 2. Intake agent extracts proposed customer, problem, solution, geography and model; missing fields remain
+   unknown.
+ 3. Research planner creates questions rather than immediately endorsing the idea.
+ 4. Research pipeline gathers external evidence and alternatives.
+ 5. Synthesis agent rewrites the input as an Opportunity Thesis.
+ 6. Assumption agent generates critical assumptions.
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 8 ---
+ 7. User reviews/edits and accepts the workspace.
+ 8. System recommends validation based on highest importance/uncertainty assumptions.
+
+4.3 Flow C: Start from problem
+ 1. Capture who has the problem, context, frequency, current workaround and consequences.
+ 2. Search for corroborating evidence and existing alternatives.
+ 3. Generate multiple solution-independent opportunity directions.
+ 4. User selects one direction or keeps the problem as an exploration.
+ 5. Create Opportunity Brief with problem evidence separated from proposed solution.
+
+4.4 Flow D: Industry map
+ 1. Select industry + geography.
+ 2. Research planner decomposes value chain, customer groups, workflows and constraints.
+ 3. Signal extractor identifies recurring pain, regulatory changes, technology shifts and underserved segments.
+ 4. Clustering service groups related signals into opportunity territories.
+ 5. User drills into a territory, then a specific opportunity.
+ 6. Investigate creates workspace.
+
+4.5 Flow E: Decision review
+ 1. User opens Decisions.
+ 2. System summarises evidence added since previous review.
+ 3. Assumptions grouped as supported, contradicted, unknown or changed.
+ 4. System highlights unresolved critical risks and next cheapest tests.
+ 5. User chooses Proceed, Revise, Pause or Stop and writes/accepts rationale.
+ 6. Snapshot is stored immutably; current opportunity state updates.
+
+5. Dashboard Specification
+
+
+ DASHBOARD RULE
+ The dashboard should answer three questions in under 10 seconds: What am I working on? What changed?
+ What should I do next?
+
+
+ Zone                             Component                            Logic
+
+ Header                                  Greeting + global Discover CTA          No motivational clutter.
+
+ Primary                                Continue card                              Highest-priority next action across active
+                                                                                         opportunities.
+
+ Active                                  Opportunity cards                           Stage, key uncertainty, last progress, next
+                                                                                              action. Max 3-5 before View all.
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 9 ---
+ Learning                                Evidence/experiment alerts           New source, experiment due, assumption
+                                                                                         contradicted, stale research.
+
+ Discovery                       New for you                                3-5 newly matched opportunities with
+                                                                               reason for match.
+
+ School                            Recommended lesson                 Mapped to current bottleneck or next
+                                                                                                       artifact.
+
+ Portfolio                                 Progress summary                       For paid/team plans: active by stage,
+                                                                              meaningful progress this week.
+
+
+Next-action engine
+ Priority 1: blocking validation experiment awaiting user input.
+ Priority 2: critical assumption with no evidence.
+ Priority 3: stale or conflicting evidence requiring review.
+ Priority 4: incomplete stage artifact that blocks progression.
+ Priority 5: contextual School lesson.
+ Never surface more than one primary recommended action per opportunity.
+
+6. Opportunity Brief UI Specification
+
+
+
+ Region                               UI                                  Behaviour
+
+ Sticky header                                     Title, stage, owner, share/export, decision   Stage editable only through valid
+                                  CTA                                          transition/decision.
+
+ Thesis                                      2-4 sentence summary                      Inline edit; AI rewrite shown as diff.
+
+ Evidence banner                   Known / inferred / unknown counts         Click filters evidence.
+
+ Problem                                Problem, context, frequency,             Each claim can link to evidence.
+                                       consequences
+
+ Customer                                    ICP, buyer, user, triggers                 Support multiple segments but one
+                                                                                  primary.
+
+ Why now                                 Drivers with dates                       Freshness indicator.
+
+ Alternatives                                  Direct, indirect, status quo                Competitor facts source-linked.
+
+ Business model                            Payer, value capture, pricing hypotheses    Explicit assumption badges.
+
+ Distribution                               Reachability/channel hypotheses          Link to tests.
+
+ Assumptions                         Top 5 critical assumptions                  Status + evidence coverage.
+
+ Risks                               Demand, adoption, technical, regulatory,   Owner + mitigation/test.
+                                           operational
+
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 10 ---
+ Validation                             Next tests                                Create experiment directly.
+
+ Decision                                    Latest review + unresolved questions      Open decision review.
+
+
+Evidence affordances
+ Claim-level citation drawer.
+ Source metadata: publisher, URL/reference, publication date, retrieval date, geography, source type.
+ Badge: External source / Customer evidence / User note / AI hypothesis.
+ Conflict indicator when evidence supports opposing interpretations.
+ Staleness warning based on source class and age; threshold configurable.
+
+7. Data Model and Supabase Schema
+
+
+Use PostgreSQL in Supabase with strict Row Level Security. Keep global editorial opportunity
+records separate from tenant/user workspaces so public library content can be curated without
+exposing private research.
+
+ Table                                     Key fields                                    Purpose
+
+
+ profiles                                                id uuid PK/FK auth.users; display_name; avatar_url;   1:1 user profile
+                                                             locale; timezone; onboarding_completed_at
+
+
+ discovery_profiles                                           id; user_id; goals jsonb; skills text[]; industries         Personalisation inputs
+                                                                  text[]; markets text[]; capital_band; hours_weekly;
+                                               models text[]; complexity jsonb
+
+
+ organizations                                                id; name; slug; owner_user_id; plan_key; created_at  Team tenant
+
+
+ organization_members                                org_id; user_id; role; status; invited_by; joined_at     Membership
+
+
+ global_opportunities                                        id; slug; title; thesis; status; visibility;                 Curated/public opportunity
+                                                    primary_industry; geography; created_by;
+                                                     published_at
+
+
+ opportunity_signals                                         id; opportunity_id nullable; signal_type; title;         Discovery signal
+                                            summary; observed_at; geography; source_id;
+                                                metadata jsonb
+
+
+ opportunity_workspaces                                   id; org_id nullable; owner_user_id;                    Private active opportunity
+                                                     global_opportunity_id nullable; title; thesis;
+                                                              lifecycle_state; visibility; created_at; updated_at
+
+
+ workspace_members                              workspace_id; user_id; role                          Fine-grained sharing
+
+
+ brief_sections                                                id; workspace_id; section_key; content jsonb;         Structured Opportunity Brief
+                                                       version; updated_by; updated_at
+
+
+ sources                                                       id; canonical_url; title; publisher; source_type;        Source registry
+                                                      published_at; retrieved_at; geography; metadata
+                                                        jsonb; content_hash
+
+
+ evidence_items                                              id; workspace_id; source_id nullable;               Atomic evidence
+                                                     evidence_type; claim; excerpt_short; interpretation;
+                                                  geography; observed_at; confidence_label;
+                                                   created_by
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 11 ---
+evidence_links                                       evidence_id; entity_type; entity_id; relation           Links evidence to assumptions/brief claims
+                                                   support|contradict|context
+
+
+assumptions                                                  id; workspace_id; class; statement; importance;        Critical assumptions
+                                                     uncertainty; status; owner_user_id; created_at
+
+
+experiments                                                  id; workspace_id; assumption_id nullable; type;       Validation tests
+                                                     hypothesis; method; success_criteria jsonb; status;
+                                                             starts_at; ends_at; owner_user_id
+
+
+experiment_observations                                  id; experiment_id; observation; evidence_id         Experiment data/notes
+                                                        nullable; created_at
+
+
+decision_reviews                                            id; workspace_id; decision; rationale; snapshot       Immutable decisions
+                                                       jsonb; decided_by; created_at
+
+
+customer_segments                                         id; workspace_id; name; is_primary; attributes       ICP segments
+                                                       jsonb; jobs jsonb
+
+
+alternatives                                                  id; workspace_id; name; alternative_type;             Competitors/status quo
+                                                       description; source_id nullable
+
+
+business_model_versions                                   id; workspace_id; version; payer; pricing jsonb;       Business model history
+                                                revenue_model; costs jsonb; delivery_model;
+                                                assumptions jsonb
+
+
+shape_artifacts                                               id; workspace_id; artifact_type; content jsonb;        Value prop, positioning, offer, MVP
+                                                   version
+
+
+build_items                                                   id; workspace_id; item_type; title; spec jsonb; status;  MVP/brand/workflow tasks
+                                                owner_user_id
+
+
+agent_workflows                                            id; workspace_id; name; trigger jsonb; graph jsonb;   AI/automation designs
+                                                   approval_policy jsonb; status; version
+
+
+research_jobs                                                id; workspace_id nullable; global_opportunity_id     Async research orchestration
+                                                        nullable; job_type; query_plan jsonb; status;
+                                                       cost_estimate; started_at; finished_at; error jsonb
+
+
+research_artifacts                                           id; research_job_id; artifact_type; content jsonb;       Intermediate/final AI artifacts
+                                              model_metadata jsonb; created_at
+
+
+saved_opportunities                                   user_id; global_opportunity_id; created_at          Bookmarks
+
+
+opportunity_feedback                                 user_id; global_opportunity_id; action; reason_code;  Ranking feedback
+                                                   notes
+
+
+courses                                                       id; slug; title; status                                School
+
+
+lessons                                                        id; course_id; slug; title; content jsonb; artifact_type   Lessons
+                                                        nullable; order_index
+
+
+lesson_progress                                       user_id; lesson_id; status; completed_at;              Progress
+                                                workspace_id nullable
+
+
+business_listings                                             id; slug; title; status; opportunity_id nullable;         Ready-to-Launch listing
+                                                   package_type; price_display; terms jsonb;
+                                                      disclosures jsonb; published_at
+
+
+business_assets                                              id; listing_id; asset_type; storage_path; metadata       Listing assets
+                                                  jsonb
+
+
+entitlements                                          subject_type; subject_id; feature_key; limit_value;     Resolved plan entitlements
+                                                  period
+
+
+                                               Phoxta 2.0 Product Specification
+
+--- PAGE 12 ---
+ usage_counters                                       subject_type; subject_id; feature_key; period_start;    Usage
+                                                     quantity
+
+
+ audit_logs                                                    id; actor_user_id; org_id; action; entity_type;           Security/audit
+                                                            entity_id; metadata jsonb; created_at
+
+
+ notifications                                                  id; user_id; type; payload jsonb; read_at; created_at   In-app notifications
+
+
+7.1 Recommended enums
+
+ Enum                                                   Values
+
+ lifecycle_state                                                   discovered, investigating, unproven, testing, promising, shaping,
+                                                                    building, launching, learning, paused, rejected, archived
+
+ assumption_status                                      unknown, testing, supported, contradicted, revised
+
+ evidence_type                                                     external, customer_interview, behavioural, commercial,
+                                                                  user_note, experiment, ai_hypothesis
+
+ member_role                                              owner, admin, editor, researcher, viewer
+
+ research_job_status                                         queued, planning, fetching, extracting, synthesizing,
+                                                               review_required, completed, failed, cancelled
+
+
+7.2 Indexing
+ GIN indexes on text[] and selected jsonb filter fields.
+ btree on workspace_id + lifecycle_state, user_id + created_at, source canonical_url hash.
+ pgvector extension optional for embeddings: opportunity_embedding, source_chunk_embedding,
+   profile_embedding.
+ Unique canonical source hash to reduce duplicate ingestion.
+ Partial indexes for published global opportunities and active research jobs.
+
+8. Row Level Security and Permissions
+
+
+
+ Resource            Owner/Admin          Editor/Researcher      Viewer                 Public
+
+ Private opportunity     CRUD                   Read/write except       Read               No
+                                                     destructive admin
+                                                     actions
+
+ Evidence/assumptions   CRUD                     Create/edit             Read               No
+
+ Decision review           Create/finalise            Draft/create if policy     Read               No
+                                                   allows
+
+ Team membership      Manage             No                 No                 No
+
+ Global opportunities     Admin console only       Admin/editorial roles     Authenticated read if     Published read
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 13 ---
+                                                 only                    published
+
+ Ready-to-Launch listing  Admin manage           Internal editor           Authenticated read       Published read
+
+ Billing                Owner/admin         No                 No                 No
+
+
+RLS rules
+ Every tenant-owned table includes org_id directly or is reachable through a workspace whose membership
+    is checked in policy.
+ Never rely on client-supplied org_id without membership verification.
+ Service-role key only in server-side jobs/functions.
+ Storage buckets separated by public editorial assets and private workspace assets; private paths include
+   tenant/workspace IDs and signed URLs.
+ Audit log inserts from trusted server path; users can read only logs allowed by role.
+
+9. AI-Agent Architecture
+
+
+Use a constrained multi-agent orchestration model. Agents are specialised roles with explicit
+inputs/outputs and tool permissions, not free-running personas. All factual research must
+preserve provenance.
+
+ Agent                              Responsibility                    Tool scope                      Output
+
+ Orchestrator                      Chooses workflow, maintains state,  No direct web/data write beyond     Structured task graph
+                                     enforces budget/permissions         job control
+
+ Intake Agent                        Parses user intent/idea/problem     User input only                    Opportunity draft + clarifying
+                                        into known vs inferred fields                                            questions
+
+ Research Planner                    Creates research questions, source   No synthesis claims                Research plan JSON
+                                       plan, geography/time constraints
+
+ Source Retriever                   Queries approved search/data       Read-only external tools            Candidate sources
+                                    providers
+
+ Extractor                            Extracts claims, dates, entities,       Fetched source content             Evidence candidates
+                                     metrics and context
+
+ Evidence Critic                    Checks relevance, duplication,       Evidence set                         Accepted/rejected evidence +
+                                       contradiction, source quality                                           reasons
+
+ Opportunity Synthesizer             Creates thesis, why-now,            Accepted evidence + user context     Brief draft with evidence refs
+                                        alternatives and gaps
+
+ Assumption Mapper                Generates must-be-true statements   Brief + evidence                  Assumption list
+                               and prioritises uncertainty
+
+ Experiment Designer                Suggests cheapest credible tests      Assumptions + constraints          Experiment drafts
+
+ Business Designer                   Creates offer/model/positioning      Validated learning                Shape artifacts
+                                   hypotheses
+
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 14 ---
+ Build Planner                      Converts business design into       Shape artifacts                      Build backlog/specs
+                                   MVP/workflows/tasks
+
+ Learning Coach                     Explains concepts and maps         School content + workspace state     Contextual coaching
+                                      lessons to current work
+
+ Quality Gate                      Checks unsupported claims,           All generated artifact                Pass/review_required + issues
+                                    missing citations, stale sources and
+                                   unsafe automation
+
+
+9.1 Agent execution contract
+ Every agent receives a typed JSON input schema and must return typed JSON.
+ Every factual claim emitted from research carries evidence_ids; unsupported synthesis is marked
+   hypothesis.
+ Tool permissions are allowlisted per agent.
+ Cost/time budgets are set per job and plan.
+ Long jobs run asynchronously via queue/worker; UI shows progress states.
+ Human approval is mandatory before publishing public content, finalising a decision review on behalf of a
+    user, or activating external-action workflows.
+
+10. Discovery and Research Pipeline
+
+
+ 1. Trigger: user request, editorial research request, scheduled signal refresh, or stale-data refresh.
+ 2. Plan: convert intent into research questions, geography, time window, source classes and stop conditions.
+ 3. Retrieve: query approved search/news/public-data/provider APIs.
+ 4. Canonicalise: normalise URLs/entities; deduplicate by canonical URL/content hash.
+ 5. Extract: chunk content; capture claims, dates, metrics, entities and short supporting excerpts.
+ 6. Evaluate: source relevance, recency, geographic fit, primary/secondary status and contradictions.
+ 7. Store: source metadata + atomic evidence; do not store more copyrighted text than operationally necessary.
+ 8. Synthesize: generate opportunity/market artifact using evidence IDs.
+ 9. Quality gate: detect unsupported claims, stale evidence, conflicting metrics and missing geography/time
+   period.
+ 10. Human/user review: present what is known/inferred/unknown.
+ 11. Refresh: schedule or trigger re-research when evidence becomes stale or the user changes market/customer
+   assumptions.
+
+10.1 Discovery candidate generation
+
+ Input                               Technique                           Output
+
+ Curated library                              Editorial tags + embeddings                High-quality baseline candidates
+
+ User profile                           Tag filters + embedding similarity            Fit candidates
+
+ Fresh signals                                 Entity/signal extraction + clustering       Emerging candidates
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 15 ---
+ Problem text                           Semantic retrieval against                 Problem-adjacent candidates
+                                            signals/evidence
+
+ Industry request                     Taxonomy + workflow decomposition      Opportunity territories
+
+ Feedback                          Downrank dismissed themes; learn         Personalisation refinement
+                                                 explicit reasons
+
+
+10.2 Ranking - recommended formula
+
+ RANKING
+ Use a weighted retrieval/ranking function for ordering only, never as a displayed success probability.
+ Candidate rank = profile fit + evidence coverage + freshness + customer clarity + novelty/diversity - mismatch
+ penalties. Display the component explanations, not the raw score.
+
+11. APIs and Data Sources
+
+
+Keep providers behind adapters so the product is not coupled to a single vendor. Start with
+web/search plus authoritative public datasets; add paid market-data providers only when user
+demand justifies the cost.
+
+ Category                   Adapter / source examples    Use                         Notes
+
+ Web search                   Search API provider adapter    General discovery and source   Cache metadata; respect
+                                                                      retrieval                       provider terms.
+
+ News                        News/search provider          Fresh                           Store publication date and
+                                                               market/regulatory/technology   publisher.
+                                                                     signals
+
+ Public statistics               ONS, World Bank, OECD,       Market context and macro       Prefer primary datasets.
+                            government open-data portals   evidence
+
+ Company data               Companies House (UK), SEC     Company/market context         Jurisdiction-specific adapters.
+                        EDGAR (US), company
+                                websites
+
+ Patents/research                 Crossref, OpenAlex, public      Technology/research signals     Useful for emerging capability
+                                patent search APIs                                               research.
+
+ Trends                       Search trend providers where   Demand-direction signal        Treat as directional, not
+                                  licensed                                           demand proof.
+
+ Communities/reviews           Licensed/allowed APIs or       Pain language and anecdotal     Clearly label anecdotal
+                                 public web retrieval             signals                         evidence.
+
+ Maps/local                    Maps/places provider if local-    Local supply/competition        Cost and terms can be
+                                business opportunities are      context                            significant.
+                              supported
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 16 ---
+ Email/CRM                     Optional user-connected       Customer interviews, outreach   Explicit consent and scoped
+                                  integrations                   evidence                       permissions.
+
+ Payments                        Stripe or equivalent            Phoxta subscriptions / Ready-    Server-side webhooks +
+                                                            to-Launch checkout            idempotency.
+
+ Email delivery                  Resend/Postmark/etc.           Transactional product email     Provider abstraction.
+
+ Analytics                     PostHog or equivalent +        Product analytics/experiments  Avoid sending sensitive
+                                  internal events                                               research content by default.
+
+ Error/observability            Sentry/OpenTelemetry           Errors/traces/jobs              Redact secrets and PII.
+                               compatible stack
+
+
+API adapter interface
+
+ PATTERN
+ Each provider implements search(), fetch(), normalize(), healthCheck() and costEstimate() where applicable.
+ Provider-specific response shapes never leak into domain entities; only normalized Source and Evidence
+ objects enter the core database.
+
+12. Feature Requirements and Acceptance Criteria
+
+
+
+ ID                                      Requirement                              Acceptance criterion
+
+ FR-001                                       User can create an opportunity from free text     Given an authenticated user, when they submit
+                                                                                 an idea/problem, a workspace is created with
+                                                                                           known/inferred fields clearly distinguished.
+
+ FR-002                                         Personalised discovery feed                   Feed returns candidates matched to stored
+                                                                                               preferences and shows at least one human-
+                                                                                             readable reason for each recommendation.
+
+ FR-003                                       Evidence provenance                         Every factual research claim in a generated
+                                                                                                        Brief can be traced to one or more source
+                                                                                                      records.
+
+ FR-004                                     Assumption mapping                          User can create/edit/prioritise assumptions and
+                                                                                                          link evidence/experiments.
+
+ FR-005                                     Experiment workflow                         User can draft, start, complete and record
+                                                                                                 learning from an experiment.
+
+ FR-006                                         Decision history                                  Finalised decision reviews are immutable
+                                                                                                  snapshots; later changes create new reviews.
+
+ FR-007                                        Plan enforcement                              Feature access is enforced server-side from
+                                                                                                      entitlements, not only hidden in UI.
+
+ FR-008                                   RLS isolation                          A user outside a workspace/org cannot read its
+                                                                                                    private records through client API.
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 17 ---
+ FR-009                                     Async research                               Research jobs survive page navigation and
+                                                                                         expose status/retry/error states.
+
+ FR-010                                          Public opportunity preview                    Only published global opportunities are
+                                                                                                       accessible anonymously.
+
+ FR-011                                       Ready-to-Launch disclosures                       Listing visibly distinguishes included assets,
+                                                                                              dependencies, ongoing costs, tested evidence
+                                                                                 and untested assumptions.
+
+ FR-012                                       Export                                        Paid users can export an Opportunity Brief
+                                                                                            without leaking internal-only metadata.
+
+ FR-013                                        School linkage                         A lesson can deep-link to the exact artifact it
+                                                                                                teaches the user to create.
+
+ FR-014                                        Audit                                 Admin publish/unpublish, membership changes
+                                                                                 and billing-sensitive actions create audit events.
+
+ FR-015                                          Deletion                                     User can request deletion of their
+                                                                                            account/workspaces subject to legal/billing
+                                                                                                    retention rules.
+
+
+13. Subscription Limits and Entitlements
+
+
+These are product-design defaults for implementation and testing, not final commercial pricing.
+Store limits as data-driven entitlements so they can change without code deployments.
+
+ Feature               Free                  Explorer               Builder                Studio / Team
+
+ Saved public            50                      Unlimited               Unlimited               Unlimited
+ opportunities
+
+ Active private           1                      5                      15                     50 pooled
+ opportunities
+
+ Personalised discovery   10                     100                    300                    1000 pooled
+ refreshes / month
+
+ Deep research jobs /      2                      30                     100                    500 pooled
+ month
+
+ Evidence items /         50                     500                      2,000                     5,000
+ opportunity
+
+ Experiments            3 total                 50/mo                   Unlimited fair use        Unlimited fair use
+
+ Shape tools             Preview                 Limited                    Full                        Full
+
+ Build tools           No                    Preview                   Full                        Full
+
+ AI workflow designer    No                 No                      Included with usage cap  Higher pooled cap
+
+ Exports               Watermarked summary  PDF/DOCX                 Full                        Full + team branding
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 18 ---
+ Team seats             1                      1                      1                      5 included; add-ons
+
+ School                 Core modules             Full                        Full                        Full
+
+ Priority research queue  No                     Standard               Higher                  Highest
+
+ Ready-to-Launch access  Browse               Browse               Browse + buyer         Browse + buyer
+                                                                    workspace             workspace
+
+
+Limit enforcement
+ Resolve entitlements on server from plan + overrides + promotional grants.
+ Increment usage atomically to prevent concurrent overuse.
+ Warn at 70%, 90% and 100%.
+ Do not destroy existing data on downgrade; freeze creation beyond new limit and keep read access.
+ Use fair-use and abuse controls for expensive AI/research features even on nominally unlimited plans.
+
+14. Technical Architecture - Next.js + Supabase
+
+
+ REFERENCE STACK
+ Next.js 16 App Router + React 19 + TypeScript + Tailwind/shadcn UI; Supabase
+ Postgres/Auth/Storage/Realtime; server-side route handlers/actions; background worker/queue for research
+ and agent jobs; provider adapters for AI/search/billing/email.
+
+
+ Layer                                             Recommendation
+
+ Web app                                                            Next.js App Router. Server Components by default; Client
+                                                      Components only for interactive editors/filters.
+
+ API boundary                                              Route Handlers or server actions call domain services; never let
+                                                            UI components contain provider logic.
+
+ Domain services                                                  /lib/domain/* for opportunities, evidence, assumptions,
+                                                              experiments, entitlements, billing.
+
+ Data access                                             Typed Supabase clients split browser/server/service-role.
+                                                           Generated DB types committed.
+
+ Background jobs                                             Dedicated worker service (Railway/Render/Fly/etc.) or queue-
+                                                             compatible serverless workers. Research should not depend on
+                                                               request lifetime.
+
+ Queue                                              Managed queue/Redis-based queue or Postgres job table
+                                                                                 initially; support retries, idempotency and dead-letter state.
+
+ AI gateway                                                       Single internal interface for model providers, structured output,
+                                                                 budgets, retries and logging.
+
+ Search gateway                                               Provider adapters returning normalized results.
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 19 ---
+ Storage                                                  Supabase Storage: public editorial bucket; private workspace
+                                                                 bucket; signed URLs.
+
+ Realtime                                                 Use selectively for research-job progress and collaboration;
+                                                             avoid making core consistency depend on realtime.
+
+ Billing                                                       Provider checkout + customer portal + signed webhooks; map
+                                                              provider price IDs to plan keys.
+
+ Observability                                                  Structured logs with request_id/job_id/user_id hashed or
+                                                                   internal ID; error tracing; cost metrics.
+
+
+14.1 Suggested repository structure
+
+ TREE
+ app/
+   (marketing)/...
+  (auth)/login signup
+   app/discover/...
+   app/opportunities/[id]/...
+   app/school/...
+   app/settings/...
+   admin/...
+  api/webhooks/...
+ components/
+  opportunity/ evidence/ assumptions/ experiments/ ui/
+  lib/
+  auth/ db/ domain/ entitlements/ ai/ research/ providers/ analytics/ security/
+ workers/
+  research/ signals/ refresh/
+ supabase/
+  migrations/ seed/ functions/ tests/
+ types/
+
+
+14.2 Server/client rules
+ All service-role operations stay server-side.
+ Use Server Components for read-heavy pages; use mutations through server actions/route handlers with
+   authorization re-check.
+ Validate all external/user inputs with Zod or equivalent schemas.
+ Do not trust hidden fields, route params or client plan state.
+ Use optimistic UI only for reversible low-risk actions such as save/dismiss; not billing, decisions or
+   publishing.
+
+15. Security, Privacy and Compliance Engineering
+
+
+ RLS enabled on every exposed tenant table before production data is loaded.
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 20 ---
+ Secrets stored only in server environment/secret manager; integration tokens encrypted at rest or stored via
+   provider vault where available.
+ CSRF-safe mutation patterns and origin checks for sensitive routes.
+ Rate limits by user/IP for auth, discovery generation, research jobs and public APIs.
+ Webhook signature verification and idempotency keys.
+ Prompt-injection defence: retrieved web content is untrusted data; agents must not follow instructions
+   embedded in sources.
+ PII minimisation: customer interview notes may contain personal data; give users deletion/redaction
+    controls.
+ Data export and account deletion workflow.
+ Admin actions separated by role and audited.
+ Content security policy, secure headers and dependency scanning.
+ Backups and point-in-time recovery configured for production database.
+ Research/source retention policy documented, especially for copyrighted material and user-connected data.
+
+16. Analytics and Event Taxonomy
+
+
+
+ Event                                                      Properties
+
+ onboarding_completed                                              goal, entry_mode, optional profile completeness
+
+ opportunity_impression                                         opportunity_id, source, rank_position, reason_codes
+
+ opportunity_saved                                               opportunity_id, source
+
+ opportunity_dismissed                                           opportunity_id, reason_code
+
+ workspace_created                                                  origin: global|idea|problem|industry|trend
+
+ brief_section_viewed                                           section_key
+
+ evidence_added                                                    type, linked_assumption_count
+
+ assumption_created                                                 class
+
+ experiment_created                                                type, assumption_class
+
+ experiment_completed                                             result classification
+
+ decision_finalized                                                  decision, unresolved_critical_count
+
+ stage_changed                                                 from,to
+
+ lesson_completed                                                   lesson_id, artifact_created
+
+ research_job_started                                              job_type, plan
+
+ research_job_completed                                         duration, source_count, cost_band
+
+ upgrade_started                                                from_plan,to_plan, trigger_feature
+
+ business_listing_viewed                                               listing_id
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 21 ---
+ business_enquiry_started                                             listing_id
+
+
+Analytics guardrails
+ Do not send raw opportunity text, customer interview notes or source excerpts to third-party analytics by
+    default.
+ Use IDs and categorical properties.
+ Maintain internal warehouse/reporting tables for sensitive product metrics if necessary.
+
+17. Notifications and Lifecycle Messaging
+
+
+
+ Trigger                      In-app                     Email                       Rule
+
+ Research completed            Yes                            Optional                     Only when user initiated or
+                                                                                                              explicitly subscribed.
+
+ Experiment due               Yes                            Optional                       Respect timezone.
+
+ Critical evidence contradiction  Yes                            Optional                       Explain exact assumption
+                                                                                                           affected.
+
+ Opportunity stale              Yes                             Digest                         Suggest refresh, not alarm.
+
+ Plan limit 70/90/100%          Yes                           At 90/100                      Include reset date and upgrade
+                                                                                                    path.
+
+ Team invite                   Yes                           Yes                               Security-sensitive
+                                                                                                       transactional.
+
+ Ready-to-Launch enquiry       Yes                           Yes                             Transactional.
+ update
+
+
+18. Admin and Editorial Operations
+
+
+ Editorial opportunity creation with draft/review/published/retired states.
+ Source quality flags and stale-source queue.
+ Research job cost dashboard and failure retry.
+ Opportunity merge/deduplication.
+ Industry taxonomy management.
+ Signal moderation and clustering review.
+ Ready-to-Launch listing disclosure checklist.
+ Feature flags and entitlement overrides.
+ User support lookup with privacy-safe impersonation alternative; avoid unrestricted impersonation.
+ Audit log explorer.
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 22 ---
+19. Performance and Reliability Requirements
+
+
+
+ Area                                                     Target / design rule
+
+ Dashboard                                                                 Initial server-rendered content should not wait for fresh AI
+                                                                 generation.
+
+ Discovery feed                                               Serve cached/ranked candidates quickly; refresh
+                                                              asynchronously.
+
+ Research                                                Always async for multi-source work; progress events.
+
+ Idempotency                                               Research jobs, billing webhooks and publish actions safe to
+                                                                         retry.
+
+ Caching                                                 Cache public opportunity pages and stable source metadata;
+                                                                   invalidate on publish/update.
+
+ Pagination                                                  Cursor pagination for feeds/evidence lists.
+
+ Search                                                         Postgres full-text for initial MVP; dedicated search service only
+                                                when scale requires.
+
+ Availability                                                   Graceful degradation: existing workspaces remain usable when
+                                                                 AI/search provider is unavailable.
+
+ Cost controls                                                     Per-job max sources, max tokens/model budget, timeout and
+                                                                    retry ceiling.
+
+
+20. Testing Strategy
+
+
+
+ Layer                                                       Tests
+
+ Unit                                                     Ranking components, entitlement resolver, state transitions,
+                                                      schema validators.
+
+ Database                                             RLS policy tests for every role; migration tests; constraints.
+
+ Integration                                                 Research pipeline with mocked providers; billing webhooks;
+                                                                 storage signed URLs.
+
+ E2E                                                       Signup→discover →investigate →assumption →experiment →decisi
+                                                                on; upgrade; team permissions.
+
+ AI evals                                                            Citation completeness, unsupported-claim rate, extraction
+                                                                accuracy, assumption usefulness, source relevance.
+
+ Security                                                        Cross-tenant access attempts, injection, rate limit, webhook
+                                                                    forgery, secret exposure.
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 23 ---
+ Performance                                             Feed queries, evidence pagination, concurrent research jobs.
+
+
+AI evaluation set
+ Maintain a fixed benchmark of 30-50 opportunities across SaaS, services, ecommerce, local and regulated
+    industries.
+ Human-review expected customer/problem/unknown fields and acceptable sources.
+ Track unsupported claim rate and citation coverage release-over-release.
+  Regression-test prompt/model changes before deployment.
+
+21. Implementation Plan and Milestones
+
+
+
+ Phase                                         Indicative duration                           Deliverables
+
+ Phase 0 - Foundation                              1-2 weeks                                    Route skeleton; DB migration framework; RLS
+                                                                                                      helpers; typed clients; feature flags; entitlement
+                                                                                                         resolver; analytics wrapper.
+
+ Phase 1 - Discovery Core                           2-3 weeks                                    Onboarding; discovery profile; global
+                                                                                                      opportunities; feed; browse/search;
+                                                                                                      save/dismiss; admin curation.
+
+ Phase 2 - Opportunity Workspace               3 weeks                                    Workspace; Brief; evidence; sources;
+                                                                                              assumptions; lifecycle states; dashboard.
+
+ Phase 3 - Research Engine                         3-4 weeks                                  Async jobs; provider adapters;
+                                                                                                       planner/retriever/extractor/synthesizer; quality
+                                                                                                            gate; progress UI.
+
+ Phase 4 - Validation                               2-3 weeks                                     Experiments; observations; evidence linking;
+                                                                                                   decision reviews; contextual next actions.
+
+ Phase 5 - School Integration                    2 weeks                                     Curriculum CMS/data; progress; artifact deep
+                                                                                                                 links; contextual recommendations.
+
+ Phase 6 - Shape & Build                            3-4 weeks                                           ICP, offer, positioning, business model, MVP
+                                                                                                    backlog, workflow designer.
+
+ Phase 7 - Billing & Teams                          2-3 weeks                                        Checkout/portal, entitlements, usage counters,
+                                                                                  team membership/roles, upgrade UX.
+
+ Phase 8 - Ready-to-Launch                         2-3 weeks                                        Catalogue, listing detail, assets/disclosures,
+                                                                                             enquiry/purchase workflow.
+
+ Phase 9 - Hardening                          2 weeks                                          Security review, AI evals, performance,
+                                                                                                         observability, backup/restore drill, beta fixes.
+
+
+21.1 MVP release cut
+
+ MVP
+ Ship through Phase 4 plus minimum Billing. That gives Phoxta a coherent product: users can discover,
+ investigate, gather evidence, map assumptions, run experiments and make a decision. Do not wait for full
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 24 ---
+ Build/Launch automation before testing the core value proposition.
+
+
+21.2 First 20 engineering tickets
+ 1. Create base migration: profiles, discovery_profiles, global_opportunities, workspaces, memberships.
+ 2. Implement RLS helper SQL functions and policy test harness.
+ 3. Build typed Supabase server/browser clients.
+ 4. Build onboarding state machine and persistence.
+ 5. Create admin CRUD for global opportunities.
+ 6. Build discovery feed query + filters.
+ 7. Implement save/dismiss feedback.
+ 8. Create opportunity workspace shell and lifecycle state machine.
+ 9. Implement Brief section schema/editor.
+ 10. Create sources/evidence tables and evidence UI.
+ 11. Create assumptions CRUD + prioritisation matrix.
+ 12. Implement dashboard next-action service.
+ 13. Create research_jobs table + worker polling/queue abstraction.
+ 14. Implement search provider adapter interface.
+ 15. Implement research planner structured output.
+ 16. Implement retrieval + source canonicalisation.
+ 17. Implement extraction + evidence candidate storage.
+ 18. Implement synthesis with evidence IDs.
+ 19. Implement quality gate and review_required state.
+ 20. Add experiments + decision reviews and E2E happy-path test.
+
+22. Migration from Existing Phoxta
+
+
+ Preserve existing users/auth IDs.
+ Map existing idea records to opportunity_workspaces with origin=legacy_idea.
+ Keep old day-based fields in a legacy JSON column or migration table until verified.
+ Translate existing Day 1-7 outputs into Brief/Assumption/Shape artifacts where mappings are reliable.
+ Do not silently convert AI-generated legacy content into evidence; mark it as legacy_ai_hypothesis.
+ Redirect old /app/idea/[id]/[day] routes to the closest new workspace tab after migration.
+ Run migration in preview mode and generate a per-record report before production.
+ Keep reversible backup and migration version.
+
+23. Definition of Done for Phoxta 2.0 Core
+
+
+ 1. A new user can sign up and reach a relevant opportunity without already having an idea.
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 25 ---
+ 2. A user with an idea can create a workspace without the system falsely presenting assumptions as facts.
+ 3. Every research-backed factual statement in the Brief can be traced to source metadata.
+ 4. A user can see the most important unknowns and create a validation experiment.
+ 5. Evidence can support or contradict an assumption.
+ 6. A user can finalise a decision review and preserve history.
+ 7. RLS tests prove cross-user/cross-org isolation.
+ 8. Plan limits are enforced server-side and downgrade does not delete work.
+ 9. Research jobs are asynchronous, observable, retryable and cost-bounded.
+ 10. The application remains usable for existing saved work if external AI/search providers fail.
+ 11. Admin can curate public opportunities and audit publication.
+ 12. Core funnel events are measured without sending sensitive workspace content to third-party analytics.
+
+24. Recommended Build Order by Product Risk
+
+
+
+ Risk                                    Validate before investing heavily        Prototype
+
+ Do users value opportunity discovery?      Save/investigate rate and repeat discovery  Curated feed + lightweight
+                                        use                                        personalisation
+
+ Do users trust AI research?                  Citation opens, corrections, source quality   Brief with evidence drawer
+                                        feedback
+
+ Does structured uncertainty help?         Assumption edits and experiment         Assumption map
+                                            creation
+
+ Will users return to progress an          Weekly meaningful progress             Dashboard next-action engine
+ opportunity?
+
+ Will users pay for depth?                Upgrade intent at research/validation       Entitlement gates
+                                                limits
+
+ Do Ready-to-Launch businesses convert?    Qualified enquiries and buyer questions    3-5 flagship listings before full
+                                                                               marketplace
+
+
+25. Product Decisions to Lock Before Coding Deeply
+
+
+ 1. Choose whether individual workspaces always belong to a personal organization or allow org_id nullable.
+   Recommendation: create a personal organization for every user to simplify tenancy.
+ 2. Choose first research/search provider and a fallback provider. Keep both behind adapter interfaces.
+ 3. Choose background-job infrastructure. Recommendation: start with a durable Postgres-backed queue or
+   managed queue; do not run long research in request handlers.
+ 4. Choose billing provider and exact plan keys; keep entitlements independent of provider price IDs.
+ 5. Define the first industry taxonomy and geography model.
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 26 ---
+ 6. Define source retention/copyright policy for fetched content.
+ 7. Define Ready-to-Launch legal/commercial terms separately from the software subscription terms.
+ 8. Define which AI workflow actions are planning-only versus executable in v1.
+
+Appendix A - Core State Machines
+
+
+Opportunity lifecycle
+
+ STATE
+ discovered → investigating → unproven/testing → promising → shaping → building → launching → learning;
+ any active state may move to paused; rejected/archived are terminal-like but restorable by explicit action.
+
+
+Research job
+
+ STATE
+ queued → planning → fetching → extracting → synthesizing → review_required/completed; failures may retry
+ to the prior safe stage; cancelled stops future work.
+
+
+Experiment
+
+ STATE
+ draft → ready → running → completed | inconclusive | cancelled.
+
+Appendix B - Example Opportunity JSON Contract
+
+
+ STRUCTURED OUTPUT
+ {
+   "title": "AI Maintenance Coordinator for Property Managers",
+   "thesis": "...",
+  "customer": {"primary_segment": "...", "buyer": "...", "user": "..."},
+  "problem": {"statement": "...", "context": "..."},
+  "why_now": [{"driver": "...", "evidence_ids": ["..."]}],
+   "alternatives": [{"name": "...", "type": "status_quo", "evidence_ids": ["..."]}],
+  "assumptions": [{"class": "problem", "statement": "...", "importance": 5, "uncertainty": 4}],
+  "unknowns": ["..."],
+  "next_actions": [{"type": "research|experiment", "title": "..."}]
+ }
+
+
+
+
+
+                                                Phoxta 2.0 Product Specification
+
+--- PAGE 27 ---
+Appendix C - Final Product Principle
+
+
+ ONE RULE
+ Phoxta should never make uncertainty disappear cosmetically. Its job is to make uncertainty visible,
+ structured and actionable - then help the user learn faster.
+
+                   PHOXTA 2.0
+                      Discover business opportunities. Build the ones worth pursuing.
+
+
+
+
+
+                                                Phoxta 2.0 Product Specification

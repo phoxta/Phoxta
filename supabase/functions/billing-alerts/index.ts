@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
   const { data: due, error } = await admin
     .from("subscriptions")
-    .select("id, plan, status, amount_cents, current_period_end, renewal_alert_sent_at, organizations(id, name, owner_user_id)")
+    .select("id, plan, status, amount_cents, current_period_end, school_included_until, renewal_alert_sent_at, organizations(id, name, owner_user_id)")
     .in("status", ["active", "trialing"])
     .gte("current_period_end", from)
     .lte("current_period_end", to);
@@ -81,8 +81,10 @@ Deno.serve(async (req) => {
     const dateStr = new Date(sub.current_period_end).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
     const amount = chargeDisplay(sub.amount_cents);
     const label = planLabel(sub.plan);
-    const message =
-      sub.status === "trialing"
+    const included = Boolean(sub.school_included_until && sub.amount_cents === 0);
+    const message = included
+      ? `Phoxta: your three included months of Operating Console access for "${org.name}" end on ${dateStr}. You will not be charged automatically. Choose a paid plan if you want to continue: ${BILLING_URL}`
+      : sub.status === "trialing"
         ? `Phoxta: your free month of ${label} for "${org.name}" ends on ${dateStr}. ${label} (${amount}/mo) begins then automatically. Manage: ${BILLING_URL}`
         : `Phoxta: your ${label} plan for "${org.name}" renews on ${dateStr} (${amount}). Manage: ${BILLING_URL}`;
 
@@ -99,7 +101,7 @@ Deno.serve(async (req) => {
     }
     let emailStatus = "no-email";
     if (email) {
-      const subject = sub.status === "trialing" ? `Your free month of ${label} ends ${dateStr}` : `Your ${label} plan renews ${dateStr}`;
+      const subject = included ? `Your included Operating Console access ends ${dateStr}` : sub.status === "trialing" ? `Your free month of ${label} ends ${dateStr}` : `Your ${label} plan renews ${dateStr}`;
       const r = await sendEmail({
         to: [email],
         subject,

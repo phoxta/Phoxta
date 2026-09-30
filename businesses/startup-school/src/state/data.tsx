@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CATALOGUE, LocalRepo, SupabaseRepo, demoUserState, type Catalogue, type Repo, type UserState } from "@startup-school/core";
-import { webStore } from "@/data/webStore";
+import { emptyVenture, SupabaseRepo, type Catalogue, type Repo, type UserState } from "@startup-school/core";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/state/auth";
 import { useTenant } from "@/state/tenant";
@@ -8,13 +7,9 @@ import { useTenant } from "@/state/tenant";
 /**
  * The app's data, in one place.
  *
- * Picks the repo from the auth state (demo → this browser, session → this
- * tenant's rows on Supabase), loads the catalogue and the learner once, and
- * re-reads the learner after every write. Re-reading is deliberate: it keeps
- * the derived numbers on every screen — streak, ring, watched counts —
- * provably consistent with what was stored, at a cost of one round trip that
- * is invisible in the demo and cheap in the live app. The repos themselves
- * live in @startup-school/core and are shared with the mobile app.
+ * This provider exists only inside the paid-app route tree. It uses the
+ * Supabase repository exclusively: course data and learner work are never
+ * replaced with a browser-only fallback.
  */
 
 type DataCtx = {
@@ -30,16 +25,22 @@ type DataCtx = {
 
 const Ctx = createContext<DataCtx | null>(null);
 
+const EMPTY_CATALOGUE: Catalogue = { categories: [], mentors: [], courses: [], modules: [], lessons: [], quiz: [], liveLessons: [], lessonBlocks: [], groups: [], availability: [] };
+const EMPTY_USER: UserState = {
+    profile: { id: "", email: "", name: "", handle: "", hue: "lilac", headline: "", weeklyGoalMin: 180, interests: [], onboarded: false, createdAt: new Date(0).toISOString() },
+    friends: [], enrollments: [], progress: [], sessions: [], bookmarks: [], follows: [], tasks: [], notes: [], groupIds: [], conversations: [], notifications: [], attempts: [], certificates: [], rsvps: [], attendance: [], bookings: [], venture: emptyVenture(), experiments: [],
+};
+
 export function DataProvider({ children }: { children: ReactNode }) {
     const { session } = useAuth();
     const { tenant } = useTenant();
     const repo = useMemo<Repo>(() => {
-        if (session?.user && tenant) return new SupabaseRepo(supabase, session.user.id, session.user.email ?? "", tenant.id);
-        return new LocalRepo(webStore);
-    }, [session, tenant]);
+        if (!session?.user || !tenant) throw new Error("Startup School data requires an authenticated, enrolled learner.");
+        return new SupabaseRepo(supabase, session.user.id, session.user.email ?? "", tenant.id);
+    }, [session?.user?.id, session?.user?.email, tenant?.id]);
 
-    const [catalogue, setCatalogue] = useState<Catalogue>(CATALOGUE);
-    const [user, setUser] = useState<UserState>(() => demoUserState());
+    const [catalogue, setCatalogue] = useState<Catalogue>(EMPTY_CATALOGUE);
+    const [user, setUser] = useState<UserState>(EMPTY_USER);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const gen = useRef(0);

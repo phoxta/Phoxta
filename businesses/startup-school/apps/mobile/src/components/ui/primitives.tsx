@@ -113,20 +113,22 @@ export interface FieldProps extends TextInputProps {
     containerStyle?: StyleProp<ViewStyle>;
 }
 
-export function Field({ label, hint, error, leading, trailing, containerStyle, style, ...rest }: FieldProps) {
+export function Field({ label, hint, error, leading, trailing, containerStyle, style, multiline, ...rest }: FieldProps) {
     const { c, r } = useTheme();
     const [focus, setFocus] = useState(false);
     return (
         <View style={[{ gap: 6 }, containerStyle]}>
             {label && <Txt role="overline" color={c.muted}>{label}</Txt>}
-            <View style={[styles.field, { borderRadius: r.md, backgroundColor: c.card, borderColor: error ? c.danger : focus ? c.brand : c.lineStrong }]}>
+            <View style={[styles.field, { height: multiline ? undefined : 46, minHeight: multiline ? 92 : 46, alignItems: multiline ? "flex-start" : "center", borderRadius: r.md, backgroundColor: c.card, borderColor: error ? c.danger : focus ? c.brand : c.lineStrong }]}>
                 {leading}
                 <TextInput
                     accessibilityLabel={label}
                     placeholderTextColor={c.caption}
                     onFocus={() => setFocus(true)}
                     onBlur={() => setFocus(false)}
-                    style={[{ flex: 1, fontFamily: font.regular, fontSize: 14, color: c.ink, paddingVertical: 0 }, style]}
+                    multiline={multiline}
+                    textAlignVertical={multiline ? "top" : "center"}
+                    style={[{ flex: 1, fontFamily: font.regular, fontSize: 14, color: c.ink, paddingVertical: multiline ? 10 : 0 }, style]}
                     {...rest}
                 />
                 {trailing}

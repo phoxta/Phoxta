@@ -5,6 +5,7 @@
 // because a plan that costs one thing on the marketing site and another at
 // checkout is the worst kind of bug: nobody notices until a customer does.
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import { ensureCataloguePrice } from './stripeCatalogue.ts';
 
 export const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
@@ -24,8 +25,19 @@ export const PLANS: Record<PlanKey, { name: string; monthlyPence: number }> = {
   scale: { name: "Phoxta Scale", monthlyPence: 1500_00 },
 };
 
+/** One-off admissions for Phoxta Startup School. These are deliberately not
+ * Stripe subscriptions: the stated prices are programme access fees, not a
+ * recurring monthly commitment. */
+export type StartupSchoolPlanKey = "self_study" | "cohort" | "launch";
+export const STARTUP_SCHOOL_PLANS: Record<StartupSchoolPlanKey, { name: string; amountPence: number }> = {
+  self_study: { name: "Phoxta Startup School — Self-study", amountPence: 250_00 },
+  cohort: { name: "Phoxta Startup School — Cohort", amountPence: 1200_00 },
+  launch: { name: "Phoxta Startup School — Launch", amountPence: 5000_00 },
+};
+
 /** Stable handle for a plan's recurring Price, so it is found not duplicated. */
 const lookupKey = (plan: PlanKey) => `phoxta_${plan}_${CURRENCY}_monthly`;
+const startupSchoolLookupKey = (plan: StartupSchoolPlanKey) => `phoxta_startup_school_${plan}_${CURRENCY}_once`;
 
 /**
  * The recurring Price for a plan, created on first use.
@@ -37,27 +49,20 @@ const lookupKey = (plan: PlanKey) => `phoxta_${plan}_${CURRENCY}_monthly`;
  * rather than creating a parallel one at the same amount.
  */
 export async function ensurePrice(plan: PlanKey): Promise<{ id?: string; error?: string }> {
-  const key = lookupKey(plan);
   try {
-    const found = await stripe.prices.list({ lookup_keys: [key], active: true, limit: 1 });
-    if (found.data[0]) {
-      // A price whose amount has drifted from the catalogue would silently keep
-      // charging the old figure, so retire it and make the current one.
-      if (found.data[0].unit_amount === PLANS[plan].monthlyPence) return { id: found.data[0].id };
-      await stripe.prices.update(found.data[0].id, { active: false, lookup_key: null });
-    }
-
-    const price = await stripe.prices.create({
-      currency: CURRENCY,
-      unit_amount: PLANS[plan].monthlyPence,
-      recurring: { interval: "month" },
-      lookup_key: key,
-      transfer_lookup_key: true,
-      product_data: { name: PLANS[plan].name },
-    });
-    return { id: price.id };
+    return { id: await ensureCataloguePrice(stripe, { lookupKey: lookupKey(plan), currency: CURRENCY, amount: PLANS[plan].monthlyPence, name: PLANS[plan].name, recurring: 'month' }) };
   } catch (e) {
     return { error: (e as Error).message };
+  }
+}
+
+/** Finds or creates an immutable one-time Stripe Price for a school admission.
+ * Lookup keys keep retries and deploys from creating near-identical products. */
+export async function ensureStartupSchoolPrice(plan: StartupSchoolPlanKey): Promise<{ id?: string; error?: string }> {
+  try {
+    return { id: await ensureCataloguePrice(stripe, { lookupKey: startupSchoolLookupKey(plan), currency: CURRENCY, amount: STARTUP_SCHOOL_PLANS[plan].amountPence, name: STARTUP_SCHOOL_PLANS[plan].name }) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
   }
 }
 

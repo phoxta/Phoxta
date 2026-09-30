@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Banknote, ChevronRight, Lightbulb, MoreVertical, Plus, TrendingUp } from "lucide-react-native";
-import { categoryWatched, continueWatching, goalPct, recommended, streak, tenDayBuckets, upcomingLive } from "@startup-school/core";
+import { categoryWatched, continueWatching, goalPct, nextLesson, recommended, streak, tenDayBuckets, upcomingLive } from "@startup-school/core";
 import { categoryColors, useTheme } from "@/lib/theme";
 import { useData } from "@/state/data";
 import { CourseCard, LiveRow, MentorRow, StatCard } from "@/components/cards";
@@ -23,6 +23,8 @@ export default function HomeScreen() {
     const [q, setQ] = useState("");
     const watching = continueWatching(catalogue, user);
     const shelf = watching.length ? watching : recommended(catalogue, user, 3);
+    const focusCourse = watching[0] ?? shelf[0];
+    const focusLesson = focusCourse ? nextLesson(catalogue, user, focusCourse.id) : null;
     const watched = categoryWatched(catalogue, user);
     const live = upcomingLive(catalogue).slice(0, 3);
     const pct = goalPct(user);
@@ -45,14 +47,14 @@ export default function HomeScreen() {
                 <Sparkle size={130} style={{ position: "absolute", right: -52, top: -56, opacity: 0.5 }} />
                 <Sparkle size={44} style={{ position: "absolute", right: 26, bottom: 22, opacity: 0.35 }} />
                 <Txt weight="semibold" size={12} lineHeight={15} color={c.white} style={{ letterSpacing: 1.7 }}>
-                    ONLINE COURSE
+                    YOUR NEXT MOVE
                 </Txt>
                 <Txt weight="semibold" size={24} lineHeight={31} color={c.white} style={{ marginTop: 14, marginBottom: 20 }}>
-                    Sharpen Your Skills with Professional Online Courses
+                    {focusLesson ? focusLesson.title : "Turn your idea into an evidence-backed startup"}
                 </Txt>
-                <Pressable accessibilityRole="button" onPress={() => router.push("/courses")} style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: c.ink, borderRadius: 999, paddingVertical: 8, paddingLeft: 22, paddingRight: 8 }}>
+                <Pressable accessibilityRole="button" onPress={() => router.push(focusCourse && focusLesson ? `/learn/${focusCourse.slug}/${focusLesson.id}` : "/learn")} style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: c.ink, borderRadius: 999, paddingVertical: 8, paddingLeft: 22, paddingRight: 8 }}>
                     <Txt weight="semibold" size={14} lineHeight={18} color={c.white}>
-                        Join Now
+                        {focusLesson ? "Resume lesson" : "Choose your path"}
                     </Txt>
                     <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: c.white, alignItems: "center", justifyContent: "center" }}>
                         <ChevronRight size={12} color={c.ink} strokeWidth={2.4} />
@@ -62,12 +64,12 @@ export default function HomeScreen() {
 
             {/* Watched per category — a rail, edge to edge */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -GUTTER, marginVertical: 20 }} contentContainerStyle={{ paddingHorizontal: GUTTER, gap: 14 }}>
-                <StatCard tone="fund" icon={<Banknote size={20} color={categoryColors(c, "fund").strong} strokeWidth={1.8} />} top={`${watched.fund.done}/${watched.fund.total} watched`} title="Fund" onPress={() => router.push("/courses?cat=fund")} />
-                <StatCard tone="grow" icon={<TrendingUp size={20} color={categoryColors(c, "grow").strong} strokeWidth={1.8} />} top={`${watched.grow.done}/${watched.grow.total} watched`} title="Grow" onPress={() => router.push("/courses?cat=grow")} />
-                <StatCard tone="start" icon={<Lightbulb size={20} color={categoryColors(c, "start").strong} strokeWidth={1.8} />} top={`${watched.start.done}/${watched.start.total} watched`} title="Start" onPress={() => router.push("/courses?cat=start")} />
+                <StatCard tone="start" icon={<Lightbulb size={20} color={categoryColors(c, "start").strong} strokeWidth={1.8} />} top={`${watched.start.done}/${watched.start.total} complete`} title="Validate" onPress={() => router.push("/courses?cat=start")} />
+                <StatCard tone="fund" icon={<Banknote size={20} color={categoryColors(c, "fund").strong} strokeWidth={1.8} />} top={`${watched.fund.done}/${watched.fund.total} complete`} title="Build" onPress={() => router.push("/courses?cat=fund")} />
+                <StatCard tone="grow" icon={<TrendingUp size={20} color={categoryColors(c, "grow").strong} strokeWidth={1.8} />} top={`${watched.grow.done}/${watched.grow.total} complete`} title="Launch & Grow" onPress={() => router.push("/courses?cat=grow")} />
             </ScrollView>
 
-            <SectionHead title={watching.length ? "Continue Watching" : "Start something"} action={<SeeAll onPress={() => router.push("/courses")} />} />
+            <SectionHead title={watching.length ? "Continue learning" : "Recommended for you"} action={<SeeAll onPress={() => router.push("/courses")} />} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -GUTTER }} contentContainerStyle={{ paddingHorizontal: GUTTER, gap: 14 }}>
                 {shelf.map((x) => (
                     <CourseCard key={x.id} course={x} />
@@ -75,7 +77,7 @@ export default function HomeScreen() {
             </ScrollView>
 
             {/* Statistic */}
-            <SectionHead title="Statistic" style={{ marginTop: 28 }} action={<Pressable accessibilityRole="button" accessibilityLabel="Open progress" onPress={() => router.push("/progress")}><MoreVertical size={18} color={c.muted} /></Pressable>} />
+            <SectionHead title="This week" style={{ marginTop: 28 }} action={<Pressable accessibilityRole="button" accessibilityLabel="Open progress" onPress={() => router.push("/progress")}><MoreVertical size={18} color={c.muted} /></Pressable>} />
             <Card style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 18 }}>
                 <Ring pct={pct} size={96} label={`${pct}% of your weekly goal`}>
                     <Avatar name={user.profile.name} hue={user.profile.hue} src={user.profile.photoUrl} px={82} />
@@ -93,19 +95,19 @@ export default function HomeScreen() {
             <BarChart style={{ marginTop: 14, backgroundColor: c.card }} data={buckets.map((b) => ({ label: b.label.split(" – ")[0], value: b.minutes, hi: b.current || b.minutes === maxMin }))} />
 
             {/* Your Lesson */}
-            <SectionHead title="Your Lesson" style={{ marginTop: 28, marginBottom: 10 }} action={<SeeAll onPress={() => router.push("/lessons")} />} />
+            <SectionHead title="Upcoming live classes" style={{ marginTop: 28, marginBottom: 10 }} action={<SeeAll onPress={() => router.push("/lessons")} />} />
             <Card padded={false} style={{ borderRadius: 18 }}>
                 {live.length ? (
                     live.map((l, i) => <LiveRow key={l.id} live={l} last={i === live.length - 1} />)
                 ) : (
                     <Txt role="small" style={{ padding: 16 }}>
-                        No live lessons scheduled.
+                        No live classes scheduled.
                     </Txt>
                 )}
             </Card>
 
             {/* Your mentor */}
-            <SectionHead title="Your mentor" style={{ marginTop: 28 }} action={<Pressable accessibilityRole="button" accessibilityLabel="All mentors" onPress={() => router.push("/mentors")} style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: c.lineStrong, backgroundColor: c.card, alignItems: "center", justifyContent: "center" }}><Plus size={12} color={c.ink} strokeWidth={2} /></Pressable>} />
+            <SectionHead title="Mentor support" style={{ marginTop: 28 }} action={<Pressable accessibilityRole="button" accessibilityLabel="All mentors" onPress={() => router.push("/mentors")} style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: c.lineStrong, backgroundColor: c.card, alignItems: "center", justifyContent: "center" }}><Plus size={12} color={c.ink} strokeWidth={2} /></Pressable>} />
             <Card style={{ paddingTop: 2 }}>
                 {mentors.map((m, i) => (
                     <MentorRow key={m.id} mentor={m} last={i === mentors.length - 1} />

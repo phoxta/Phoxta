@@ -1,5 +1,4 @@
 import { emptyVenture } from "./frameworks";
-import { CATALOGUE, DEMO_FRIENDS } from "./seed";
 import type { LiveContext, LiveRecap, LiveRoom, TranscriptLine } from "./live/room";
 import type { OpenRoomInput, Repo } from "./repo";
 import type {
@@ -11,12 +10,17 @@ import type {
     Certificate,
     Conversation,
     Course,
+    Experiment,
+    ExperimentStatus,
+    EvidenceType,
     GroupPost,
     Lesson,
+    LessonBlock,
     LiveLesson,
     Mentor,
     MentorBooking,
     Message,
+    NewExperiment,
     NewTask,
     Note,
     PeerKind,
@@ -30,6 +34,7 @@ import type {
     UserState,
     Venture,
     VentureConfidence,
+    VenturePath,
     VentureSection,
     VentureSectionId,
     VentureStage,
@@ -64,11 +69,16 @@ const mapCourse = (r: Row): Course => ({
     id: s(r.id), slug: s(r.slug), title: s(r.title), blurb: s(r.blurb), description: s(r.description),
     categoryId: s(r.category_id) as Course["categoryId"], mentorId: s(r.mentor_id), level: s(r.level, "Beginner") as Course["level"],
     theme: s(r.theme, "fund") as Course["theme"], coverUrl: s(r.cover_url) || undefined, rating: n(r.rating, 4.8), learners: n(r.learners), outcomes: Array.isArray(r.outcomes) ? (r.outcomes as string[]) : [],
+    finalProjectTitle: s(r.final_project_title) || undefined, finalProjectDescription: s(r.final_project_description) || undefined,
     publishedAt: iso(r.published_at),
 });
 const mapLesson = (r: Row): Lesson => ({
     id: s(r.id), courseId: s(r.course_id), moduleId: s(r.module_id), title: s(r.title), kind: s(r.kind, "video") as Lesson["kind"],
     durationSec: n(r.duration_sec), videoUrl: s(r.video_url) || undefined, captionsUrl: s(r.captions_url) || undefined, source: s(r.source) || undefined, body: s(r.body), revision: s(r.revision) || undefined, sort: n(r.sort),
+});
+const mapLessonBlock = (r: Row): LessonBlock => ({
+    id: s(r.id), lessonId: s(r.lesson_id), type: s(r.type, "learn") as LessonBlock["type"], title: s(r.title), content: s(r.content),
+    actionHref: s(r.action_href) || undefined, actionLabel: s(r.action_label) || undefined, sort: n(r.sort),
 });
 const mapMentor = (r: Row): Mentor => ({
     id: s(r.id), name: s(r.name), role: s(r.role), bio: s(r.bio), hue: (s(r.hue) || hueFor(s(r.name))) as Hue, photoUrl: s(r.photo_url) || undefined, handle: s(r.handle),
@@ -94,6 +104,9 @@ const mapBooking = (r: Row): Booking => ({
 });
 
 const CONFIDENCES: VentureConfidence[] = ["guess", "evidence", "proven"];
+const VENTURE_PATHS: VenturePath[] = ["build", "phoxta_turnkey", "hybrid"];
+const EXPERIMENT_STATUSES: ExperimentStatus[] = ["planned", "running", "validated", "invalidated", "inconclusive"];
+const EVIDENCE_TYPES: EvidenceType[] = ["conversation", "payment", "metric", "prototype", "observation", "research"];
 
 /**
  * The venture record comes back as one jsonb column, so it is the one place in
@@ -129,11 +142,32 @@ const mapVenture = (r: Row | undefined): Venture => {
         name: s(r.name),
         oneLiner: s(r.one_liner),
         stage: (s(r.stage) || "fit") as VentureStage,
+        path: VENTURE_PATHS.includes(s(doc.path) as VenturePath) ? s(doc.path) as VenturePath : "build",
         country: s(r.country),
         sections,
         updatedAt: iso(r.updated_at),
     };
 };
+
+const mapExperiment = (r: Row): Experiment => ({
+    id: s(r.id),
+    claimId: s(r.claim_id) || null,
+    sectionId: s(r.section_id) as VentureSectionId || null,
+    title: s(r.title),
+    hypothesis: s(r.hypothesis),
+    method: s(r.method),
+    threshold: s(r.threshold),
+    status: (EXPERIMENT_STATUSES.includes(s(r.status) as ExperimentStatus) ? s(r.status) : "planned") as ExperimentStatus,
+    evidenceType: EVIDENCE_TYPES.includes(s(r.evidence_type) as EvidenceType) ? s(r.evidence_type) as EvidenceType : null,
+    evidence: s(r.evidence),
+    sourceUrl: s(r.source_url),
+    result: s(r.result),
+    decision: s(r.decision),
+    nextStep: s(r.next_step),
+    dueAt: r.due_at ? iso(r.due_at) : null,
+    createdAt: iso(r.created_at),
+    updatedAt: iso(r.updated_at),
+});
 
 export class SupabaseRepo implements Repo {
     readonly kind = "live" as const;
@@ -159,29 +193,51 @@ export class SupabaseRepo implements Repo {
 
     async loadCatalogue(): Promise<Catalogue> {
         const o = this.org;
-        const [cats, mentors, courses, modules, lessons, quiz, live, groups, avail] = await Promise.all([
+        const [cats, mentors, courses, modules, lessons, blocks, quiz, live, groups, avail] = await Promise.all([
             this.t("cs_categories").order("sort"),
             this.t("cs_mentors").order("name"),
             this.t("cs_courses").eq("published", true).order("published_at"),
             this.t("cs_modules").order("sort"),
             this.t("cs_lessons").order("sort"),
+            this.t("cs_lesson_blocks").order("lesson_id").order("sort"),
             this.t("cs_quiz_questions").order("sort"),
             this.t("cs_live_lessons").order("starts_at"),
             this.client.from("cs_groups").select("*").eq("organization_id", o).order("members", { ascending: false }),
             this.t("cs_availability").order("start_time"),
         ]);
-        // A school with an empty catalogue (or a read that failed) still shows
-        // the bundled one rather than an empty shop.
+        // Paid course material is fetched from this school. Never substitute a
+        // bundled catalogue here: an entitlement or policy failure must stay a
+        // failure rather than leaking local lesson content to an unpaid account.
         const rows = (courses.data as Row[] | null) ?? [];
-        if (courses.error || !rows.length) return CATALOGUE;
+        fail("course catalogue", courses.error);
+        fail("course categories", cats.error);
+        fail("course mentors", mentors.error);
+        fail("course modules", modules.error);
+        fail("course lessons", lessons.error);
+        fail("course blocks", blocks.error);
+        fail("course quiz", quiz.error);
+        fail("live lessons", live.error);
+        fail("course groups", groups.error);
+        fail("mentor availability", avail.error);
+        const privateUrl = async (value: unknown): Promise<string | undefined> => {
+            const url = s(value);
+            const marker = url.startsWith("school-media:") ? "school-media:" : url.startsWith("school-recording:") ? "school-recording:" : null;
+            if (!marker) return url || undefined;
+            const bucket = marker === "school-media:" ? "cs-school-media" : "cs-recordings";
+            const result = await this.client.storage.from(bucket).createSignedUrl(url.slice(marker.length), 3600);
+            return result.data?.signedUrl;
+        };
+        const resolvedLessons = await Promise.all(((lessons.data as Row[] | null) ?? []).map(async row => ({ ...mapLesson(row), videoUrl: await privateUrl(row.video_url), captionsUrl: await privateUrl(row.captions_url) })));
+        const resolvedLive = await Promise.all(((live.data as Row[] | null) ?? []).map(async row => ({ ...mapLive(row), recordingUrl: await privateUrl(row.recording_url) })));
         const cat: Catalogue = {
             categories: ((cats.data as Row[] | null) ?? []).map((r) => ({ id: s(r.id) as Catalogue["categories"][number]["id"], name: s(r.name), blurb: s(r.blurb) })),
             mentors: ((mentors.data as Row[] | null) ?? []).map(mapMentor),
             courses: rows.map(mapCourse),
             modules: ((modules.data as Row[] | null) ?? []).map((r) => ({ id: s(r.id), courseId: s(r.course_id), title: s(r.title), sort: n(r.sort) })),
-            lessons: ((lessons.data as Row[] | null) ?? []).map(mapLesson),
+            lessons: resolvedLessons,
             quiz: ((quiz.data as Row[] | null) ?? []).map(mapQuiz),
-            liveLessons: ((live.data as Row[] | null) ?? []).map(mapLive),
+            liveLessons: resolvedLive,
+            lessonBlocks: ((blocks.data as Row[] | null) ?? []).map(mapLessonBlock),
             groups: ((groups.data as Row[] | null) ?? []).map((r) => ({ id: s(r.id), name: s(r.name), categoryId: s(r.category_id) as Catalogue["groups"][number]["categoryId"], blurb: s(r.blurb), members: n(r.members), imageUrl: s(r.image_url) || undefined })),
             availability: ((avail.data as Row[] | null) ?? []).map((r) => ({
                 id: s(r.id), mentorId: s(r.mentor_id),
@@ -218,7 +274,7 @@ export class SupabaseRepo implements Repo {
         const profile = await this.ensureProfile();
         const u = this.userId;
         const mine = (table: string, cols = "*") => this.client.from(table).select(cols).eq("organization_id", this.org).eq("user_id", u);
-        const [enr, prog, sess, bm, fol, tasks, notes, gm, convs, notifs, attempts, certs, rsvps, attended, books, vent] = await Promise.all([
+        const [enr, prog, sess, bm, fol, tasks, notes, gm, convs, notifs, attempts, certs, rsvps, attended, books, vent, experiments] = await Promise.all([
             mine("cs_enrollments"),
             mine("cs_lesson_progress"),
             mine("cs_study_sessions").order("occurred_at", { ascending: false }).limit(400),
@@ -235,13 +291,12 @@ export class SupabaseRepo implements Repo {
             mine("cs_live_participants", "live_lesson_id, joined_at, seconds"),
             mine("cs_bookings").order("starts_at", { ascending: false }),
             mine("cs_ventures"),
+            mine("cs_experiments").order("updated_at", { ascending: false }),
         ]);
         const rows = (q: { data: unknown }): Row[] => (q.data as Row[] | null) ?? [];
         return {
             profile,
-            // Friends are a demo-only social graph today; a live learner sees the
-            // same three people as a "who to study with" suggestion.
-            friends: DEMO_FRIENDS,
+            friends: [],
             enrollments: rows(enr).map((r) => ({ courseId: s(r.course_id), enrolledAt: iso(r.enrolled_at), completedAt: r.completed_at ? iso(r.completed_at) : null, lastLessonId: s(r.last_lesson_id) || null })),
             progress: rows(prog).map((r) => ({ lessonId: s(r.lesson_id), positionSec: n(r.position_sec), completedAt: r.completed_at ? iso(r.completed_at) : null, updatedAt: iso(r.updated_at) })),
             sessions: rows(sess).map((r) => ({ id: s(r.id), lessonId: s(r.lesson_id) || null, minutes: n(r.minutes), occurredAt: iso(r.occurred_at) })),
@@ -258,6 +313,7 @@ export class SupabaseRepo implements Repo {
             attendance: rows(attended).map((r) => ({ liveLessonId: s(r.live_lesson_id), joinedAt: iso(r.joined_at), seconds: n(r.seconds) })),
             bookings: rows(books).map(mapBooking),
             venture: mapVenture(rows(vent)[0]),
+            experiments: rows(experiments).map(mapExperiment),
         };
     }
 
@@ -268,6 +324,7 @@ export class SupabaseRepo implements Repo {
             .channel(`cs-user-${this.org}-${this.userId}`)
             .on("postgres_changes", { event: "*", schema: "public", table: "cs_messages", filter: `user_id=eq.${this.userId}` }, onChange)
             .on("postgres_changes", { event: "*", schema: "public", table: "cs_notifications", filter: `user_id=eq.${this.userId}` }, onChange)
+            .on("postgres_changes", { event: "*", schema: "public", table: "cs_experiments", filter: `user_id=eq.${this.userId}` }, onChange)
             .subscribe();
         return () => {
             void this.client.removeChannel(ch);
@@ -494,7 +551,7 @@ export class SupabaseRepo implements Repo {
         const bucket = this.client.storage.from("cs-recordings");
         const { error } = await bucket.upload(path, data, { contentType: mimeType, cacheControl: "31536000", upsert: false });
         fail("recording", error);
-        const url = bucket.getPublicUrl(path).data.publicUrl;
+        const url = `school-recording:${path}`;
         await this.liveOp("recording", liveLessonId, { url });
         return url;
     }
@@ -547,13 +604,12 @@ export class SupabaseRepo implements Repo {
         const { data: existing } = await this.client.from("cs_conversations").select("*").eq("organization_id", this.org).eq("user_id", this.userId).eq("peer_kind", peerKind).eq("peer_id", peerId).maybeSingle();
         const cat = this.catalogueCache ?? (await this.loadCatalogue());
         const mentor = peerKind === "mentor" ? cat.mentors.find((m) => m.id === peerId) : null;
-        const friend = peerKind === "friend" ? DEMO_FRIENDS.find((f) => f.id === peerId) : null;
-        const name = mentor?.name ?? friend?.name ?? "Someone";
+        const name = mentor?.name ?? "Someone";
         const map = (r: Row): Conversation => ({ id: s(r.id), peerKind, peerId, peerName: s(r.peer_name), peerRole: s(r.peer_role), peerHue: (s(r.peer_hue) || "lilac") as Hue, lastBody: s(r.last_body), updatedAt: iso(r.updated_at), unread: n(r.unread) });
         if (existing) return map(existing as Row);
         const { data, error } = await this.client
             .from("cs_conversations")
-            .insert({ organization_id: this.org, user_id: this.userId, peer_kind: peerKind, peer_id: peerId, peer_name: name, peer_role: mentor ? "Mentor" : (friend?.label ?? "Friend"), peer_hue: mentor?.hue ?? friend?.hue ?? hueFor(name) })
+            .insert({ organization_id: this.org, user_id: this.userId, peer_kind: peerKind, peer_id: peerId, peer_name: name, peer_role: mentor ? "Mentor" : "Founder", peer_hue: mentor?.hue ?? hueFor(name) })
             .select("*")
             .single();
         fail("conversation", error);
@@ -723,11 +779,62 @@ export class SupabaseRepo implements Repo {
             one_liner: next.oneLiner,
             stage: next.stage,
             country: next.country,
-            doc: { sections: next.sections },
+            doc: { sections: next.sections, path: next.path },
             updated_at: next.updatedAt,
         }, { onConflict: "organization_id,user_id" });
         fail("save the venture record", error);
         return next;
+    }
+
+    async addExperiment(input: NewExperiment): Promise<Experiment> {
+        const { data, error } = await this.client.from("cs_experiments").insert({
+            organization_id: this.org,
+            user_id: this.userId,
+            claim_id: input.claimId ?? null,
+            section_id: input.sectionId ?? null,
+            title: input.title.trim(),
+            hypothesis: input.hypothesis.trim(),
+            method: input.method.trim(),
+            threshold: input.threshold.trim(),
+            status: input.status ?? "planned",
+            evidence_type: input.evidenceType ?? null,
+            evidence: input.evidence?.trim() ?? "",
+            source_url: input.sourceUrl?.trim() ?? "",
+            result: input.result?.trim() ?? "",
+            decision: input.decision?.trim() ?? "",
+            next_step: input.nextStep?.trim() ?? "",
+            due_at: input.dueAt ?? null,
+        }).select("*").single();
+        fail("create the experiment", error);
+        return mapExperiment(data as Row);
+    }
+
+    async updateExperiment(id: string, patch: Partial<Experiment>): Promise<Experiment> {
+        const row: Row = { updated_at: new Date().toISOString() };
+        if (patch.claimId !== undefined) row.claim_id = patch.claimId;
+        if (patch.sectionId !== undefined) row.section_id = patch.sectionId;
+        if (patch.title !== undefined) row.title = patch.title.trim();
+        if (patch.hypothesis !== undefined) row.hypothesis = patch.hypothesis.trim();
+        if (patch.method !== undefined) row.method = patch.method.trim();
+        if (patch.threshold !== undefined) row.threshold = patch.threshold.trim();
+        if (patch.status !== undefined) row.status = patch.status;
+        if (patch.evidenceType !== undefined) row.evidence_type = patch.evidenceType;
+        if (patch.evidence !== undefined) row.evidence = patch.evidence.trim();
+        if (patch.sourceUrl !== undefined) row.source_url = patch.sourceUrl.trim();
+        if (patch.result !== undefined) row.result = patch.result.trim();
+        if (patch.decision !== undefined) row.decision = patch.decision.trim();
+        if (patch.nextStep !== undefined) row.next_step = patch.nextStep.trim();
+        if (patch.dueAt !== undefined) row.due_at = patch.dueAt;
+        const { data, error } = await this.client.from("cs_experiments")
+            .update(row).eq("organization_id", this.org).eq("user_id", this.userId).eq("id", id).select("*").single();
+        fail("save the experiment", error);
+        return mapExperiment(data as Row);
+    }
+
+    async deleteExperiment(id: string): Promise<void> {
+        const { error } = await this.client.from("cs_experiments")
+            .delete().eq("organization_id", this.org).eq("user_id", this.userId).eq("id", id);
+        fail("delete the experiment", error);
     }
 
     async advise(question: string): Promise<Advice> {

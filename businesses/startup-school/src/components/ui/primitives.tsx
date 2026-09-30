@@ -303,12 +303,27 @@ const COVER: Record<Theme, string> = {
 };
 /** A photo under the theme gradient at low opacity keeps the category colour
  *  readable across every card; the gradient alone when there is no photo. */
-export function Cover({ theme, src, className, children }: { theme: Theme; src?: string; className?: string; children?: ReactNode }) {
+export function Cover({ theme, src, className, children, title, overline, footer }: { theme: Theme; src?: string; className?: string; children?: ReactNode; title?: string; overline?: string; footer?: string }) {
     return (
         <div className={cn("relative overflow-hidden rounded-md bg-gradient-to-br", COVER[theme], className)} aria-hidden="true">
             {src && <img src={src} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" />}
             {src && <span className={cn("absolute inset-0 bg-gradient-to-br opacity-55 mix-blend-multiply", COVER[theme])} />}
             <Sparkle className="absolute -right-6 -top-8 w-24 opacity-30" />
+            {title && (
+                <div className="absolute inset-0 flex flex-col justify-between p-4 text-white">
+                    <div className="flex items-start justify-between gap-3 text-[9px] font-bold tracking-[0.08em]">
+                        <span>{overline ?? "STARTUP SCHOOL"}</span>
+                        <span className="text-right">PHOXTA</span>
+                    </div>
+                    <div className="max-w-[92%]">
+                        <strong className="block text-[22px] font-bold leading-[1.08] tracking-[-0.026em] text-balance">{title}</strong>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-[10px] font-bold tracking-[0.07em]">
+                        <span>{footer}</span>
+                        <span className="text-[19px] leading-none">→</span>
+                    </div>
+                </div>
+            )}
             {children}
         </div>
     );

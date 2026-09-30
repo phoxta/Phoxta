@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Copy, MessageSquare, Users } from "lucide-react";
 import { filmstripOf, peopleLabel, stageOf } from "@startup-school/core";
 import { cn } from "@/lib/cn";
@@ -33,7 +33,8 @@ import { Avatar, Button, Spinner } from "@/components/ui/primitives";
 export default function ClassroomPage() {
     const { id = "" } = useParams();
     const nav = useNavigate();
-    const { catalogue, repo } = useData();
+    const backTo = useLocation().pathname.startsWith("/staff/") ? "/staff/teaching" : "/lessons";
+    const { catalogue } = useData();
     const { toast } = useToast();
 
     const lesson = useMemo(() => catalogue.liveLessons.find((l) => l.id === id) ?? null, [catalogue.liveLessons, id]);
@@ -43,7 +44,7 @@ export default function ClassroomPage() {
     );
 
     const session = useLiveRoom(lesson);
-    const { room, snap, phase, error, media, join, leave, asHost, setAsHost } = session;
+    const { room, snap, phase, error, media, join, leave } = session;
     const canHost = snap.me?.role === "host";
     const recorder = useRecorder(lesson, room, canHost);
 
@@ -53,8 +54,8 @@ export default function ClassroomPage() {
 
     // Leaving for any reason returns you to where the class was listed.
     useEffect(() => {
-        if (phase === "left") nav("/lessons", { replace: true });
-    }, [nav, phase]);
+        if (phase === "left") nav(backTo, { replace: true });
+    }, [nav, phase, backTo]);
 
     if (!lesson) {
         return (
@@ -62,7 +63,7 @@ export default function ClassroomPage() {
                 <div>
                     <h1 className="text-[22px] font-semibold">That class isn't here</h1>
                     <p className="mt-2 text-[14px] text-muted">It may have finished, or the link is out of date.</p>
-                    <Link to="/lessons" className="mt-5 inline-flex h-11 items-center rounded-full bg-ink px-5 text-[14px] font-semibold text-white">
+                    <Link to={backTo} className="mt-5 inline-flex h-11 items-center rounded-full bg-ink px-5 text-[14px] font-semibold text-white">
                         Back to lessons
                     </Link>
                 </div>
@@ -80,9 +81,6 @@ export default function ClassroomPage() {
                     joining={phase === "joining"}
                     error={error}
                     onJoin={(o) => void join(o)}
-                    demo={repo.kind === "demo"}
-                    asHost={asHost}
-                    onAsHost={setAsHost}
                 />
             </main>
         );

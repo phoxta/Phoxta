@@ -15,12 +15,11 @@ import { PageHeader, Card, Chip, Empty } from "@/components/dash/Ui";
 const GROWTH_PRICE = PLATFORM_PLANS.find((p) => p.key === "growth")?.priceMonthly ?? 250;
 
 const INCLUDED = [
-  "A live storefront and mobile-ready experience",
-  "Pre-configured AI assistants and automations",
-  "Your own brand, domain and payment account",
-  "A 30-day hands-on onboarding to your first sale",
-  "Your first month of the Growth plan — free",
-  "The Phoxta Launch Guarantee (below)",
+  "A configurable storefront and customer journey for this business model",
+  "The relevant customer, sales and service workflows",
+  "AI support for approved routine work, with human escalation points",
+  "A guided 14-day activation plan to help you test the first local offer",
+  "Your first month of the Growth plan included",
 ];
 
 // Page-local styles only — everything else comes from the .hrx kit.
@@ -106,7 +105,7 @@ export default function MarketplaceDetailPage() {
       <PageHeader
         crumb="Marketplace"
         title={bp.name}
-        note={bp.tagline}
+        note="Review the starting system, the work that remains yours and the ongoing plan before you purchase."
         actions={
           <Link to="/dashboard/marketplace" className="hrx-pill">
             ← Marketplace
@@ -147,7 +146,15 @@ export default function MarketplaceDetailPage() {
               {bp.verified && <Chip tone="ok">Verified</Chip>}
               {bp.ai_included && <Chip tone="blue">AI inside</Chip>}
             </div>
-            <p className="mpx-desc">{bp.description || bp.tagline}</p>
+            <p className="mpx-desc">{bp.description || bp.tagline} This is a starting system, not a promise of local demand. You adapt the offer, build trust with real customers and use the Console to learn what to improve.</p>
+          </Card>
+
+          <Card title="What you own—and what the system supports">
+            <div className="mpx-facts">
+              <span><b>You decide:</b> offer, price, policy, quality and exceptions</span>
+              <span><b>AI supports:</b> approved answers, routine follow-up and work routing</span>
+              <span><b>You validate:</b> local customer need, conversion and unit economics</span>
+            </div>
           </Card>
 
           {scorecard && (scorecard.orders_90d > 0 || scorecard.reservations_90d > 0 || scorecard.conversations_90d > 0) && (
@@ -177,6 +184,10 @@ export default function MarketplaceDetailPage() {
               ))}
             </ul>
           </Card>
+
+          <Card title="Your first 14 days">
+            <p className="mpx-desc">Days 1–2: make the offer and market yours. Days 3–5: set approved knowledge and human boundaries. Days 6–9: connect the essentials. Days 10–14: run a small customer test, review quality and decide the next improvement.</p>
+          </Card>
         </div>
 
         <div className="col-lg-5">
@@ -194,7 +205,7 @@ export default function MarketplaceDetailPage() {
               <div className="mpx-tier text-capitalize mb-3">{bp.tier} business · one-time</div>
               <div className="d-flex flex-column gap-2">
                 <button type="button" className="hrx-pill primary mpx-buy mpx-full" disabled={buying} onClick={onBuy}>
-                  {buying ? "Setting up…" : "Make it yours"}
+                  {buying ? "Opening checkout…" : "Continue to secure checkout"}
                 </button>
                 {bp.demo_url && (
                   <a className="hrx-pill mpx-full" href={bp.demo_url} target="_blank" rel="noreferrer">
@@ -203,28 +214,22 @@ export default function MarketplaceDetailPage() {
                 )}
               </div>
               <p className="mpx-note">
-                One-time business price — your first month of the Growth plan is included free.
-                After that it&apos;s ${GROWTH_PRICE}/mo (change or cancel anytime in Billing).
+                One-time business package. Your first month of the Growth plan is included; after that it&apos;s £{GROWTH_PRICE}/month. You can change or cancel the platform plan in Billing.
               </p>
             </Card>
           </div>
         </div>
       </div>
 
-      {/* The named outcome guarantee no acquisition marketplace offers. */}
-      <Card title="The Phoxta Launch Guarantee">
+      <Card title="Before you buy">
         <p className="mpx-desc" style={{ maxWidth: 640 }}>
-          Your business is live on its own address with every channel connected — web chat, SMS,
-          WhatsApp, email and phone — and your AI agent handling real customer conversations within
-          30 days of purchase, or we refund the purchase price in full.
+          The package gives you a configurable operating starting point. Your purchase agreement confirms the handover scope, included implementation work, ongoing service terms and the responsibilities that remain with you as the owner.
         </p>
       </Card>
 
-      {/* Monthly plan after purchase — the ongoing platform subscription. */}
-      <Card title="Your first month of Growth is on us">
+      <Card title="Understand the ongoing platform plan">
         <p className="mpx-note mt-0 mb-3" style={{ maxWidth: 620, fontSize: 14 }}>
-          The price above is a one-time fee to make this business yours — and it includes a free
-          month of the Growth plan. After that, Growth (${GROWTH_PRICE}/mo) continues automatically;
+          The price above is a one-time business package and includes a free month of the Growth plan. After that, Growth (£{GROWTH_PRICE}/month) continues automatically;
           switch plans or cancel anytime in <Link to="/dashboard/billing" className="text-decoration-underline">Billing</Link>.
         </p>
         {/* Same plan cards + Monthly/Annual toggle as the Pricing page. */}

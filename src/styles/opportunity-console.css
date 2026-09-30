@@ -1,0 +1,44 @@
+/* Phoxta 2.0 operating surfaces. Intentionally scoped to the signed-in console;
+   public marketing and the separate Startup School retain their own systems. */
+.hrx.p2-console {
+  --hrx-ink:#252a24; --hrx-blue:#426447; --hrx-blue-deep:#29422d;
+  --hrx-orange:#c84c21; --hrx-orange-2:#e79060; --hrx-yellow:#e8c677;
+  --hrx-bg:#f5f4f0; --hrx-card:#fff; --hrx-soft:#f2f3ed;
+  --hrx-border:#d9ded1; --hrx-border-soft:#e2e4dc; --hrx-muted:#697064;
+  background:var(--hrx-bg);font-family:'DM Sans',sans-serif;
+}
+.p2-console :is(h1,h2,h3,h4,h5,h6,p,a,button,input,select,textarea,label,li,td,th,dt,dd) { font-family:'DM Sans',sans-serif; }
+.p2-console :focus-visible { outline:3px solid #d46136;outline-offset:3px; }
+.p2-console.hrx-workspace .hrx-sidebar { background:#fafbf7;border:0;border-right:1px solid var(--hrx-border-soft);border-radius:0;box-shadow:none;padding:30px 20px 24px; }
+.p2-console .hrx-sidebar-brand { color:var(--hrx-ink);font-size:25px;letter-spacing:-1px; }
+.p2-console .hrx-sidebar-logo { background:transparent;box-shadow:none; }
+.p2-console .hrx-sidebar-label { color:var(--hrx-muted);font-size:11px;letter-spacing:1.5px; }
+.p2-console.hrx-workspace .hrx-tab { background:transparent;border:0;border-radius:8px;color:#5c6358;box-shadow:none;font-size:14px;font-weight:550;min-height:43px; }
+.p2-console.hrx-workspace .hrx-tab.active { background:#e9ede2;color:#253b2a;font-weight:700; }
+.p2-console.hrx-workspace .hrx-tab:hover { background:#eff0e9;color:var(--hrx-ink); }
+.p2-console .hrx-sidebar-action,.p2-console .hrx-top-action { border-radius:7px;background:var(--hrx-ink);color:#fff;box-shadow:none; }
+.p2-console .hrx-sidebar-site { color:var(--hrx-muted); }
+.p2-console.hrx-workspace .hrx-nav { min-height:78px;border:0;border-bottom:1px solid var(--hrx-border-soft);border-radius:0;background:#fafbf7;box-shadow:none;backdrop-filter:none;padding:16px 30px; }
+.p2-console.hrx-workspace .hrx-search { background:var(--hrx-card);border:1px solid var(--hrx-border);box-shadow:none;border-radius:7px; }
+.p2-console.hrx-workspace :is(.hrx-notif,.hrx-gear,.hrx-avatar) { border-radius:9px;background:#eff1e8;color:#426447;border:1px solid var(--hrx-border-soft); }
+.p2-console.hrx-workspace .hrx-scroll { border:0;border-radius:0;box-shadow:none;background:var(--hrx-bg); }
+.p2-console.hrx-workspace .hrx-main { padding:30px; }
+.p2-console.hrx-workspace :is(.hrx-card,.hrx-stat,.hrx-header) { border:1px solid var(--hrx-border-soft);border-radius:12px;background:var(--hrx-card);box-shadow:none; }
+.p2-console.hrx-workspace .hrx-home .hrx-header { min-height:0;background:transparent;text-align:left;justify-content:space-between;border:0; }
+.p2-console.hrx-workspace .hrx-home .hrx-header::before { display:none; }
+.p2-console.hrx-workspace .hrx-home .hrx-header > div:first-child { padding-top:0; }
+.p2-console.hrx-workspace .hrx-home .hrx-greet { font-weight:550;letter-spacing:-1.5px;font-size:clamp(30px,3.2vw,44px); }
+.p2-console.hrx-workspace .hrx-home .hrx-actions { justify-content:flex-start; }
+.p2-console.hrx-workspace .hrx-home .hrx-actions .hrx-pill { box-shadow:none;background:var(--hrx-card); }
+.p2-console :is(.hrx-pill,.hrx-btn) { border-radius:7px; }
+.p2-console :is(.ocx-title,.hrx-crumb) { color:var(--hrx-ink); }
+.p2-console .hrx-pop { background:#fff;border:1px solid var(--hrx-border-soft);border-radius:12px;box-shadow:0 12px 35px #252a241a; }
+@media (min-width:992px) {
+  .hrx.hrx-workspace.p2-console { display:grid;grid-template-columns:248px minmax(0,1fr);grid-template-rows:78px minmax(0,1fr);gap:0;padding:0; }
+  .p2-console .hrx-sidebar { overflow-y:auto; }
+}
+@media (max-width:991.98px) {
+  .p2-console.hrx-workspace .hrx-main { padding:20px 16px; }
+  .p2-console.hrx-workspace .hrx-nav { padding:12px 16px; }
+  .p2-console .hrx-menu-panel { background:#fafbf7; }
+}

@@ -56,7 +56,14 @@ export function applyBranding(brand: Branding | null | undefined): void {
 /** Resolve the tenant for this deployment once per load; applies its brand. */
 export async function resolveTenant(): Promise<Tenant | null> {
     if (!isConfigured) return null;
-    const t = await resolve(supabase, { orgId: BAKED_ORG, host: typeof location !== "undefined" ? location.host : "" });
+    const host = typeof location !== "undefined" ? location.host : "";
+    let t = await resolve(supabase, { orgId: BAKED_ORG, host });
+    // The new learner address can go live before its database domain row is
+    // installed. Resolve against the existing school host during that small
+    // cut-over window; the checkout bootstrap persists the new row afterwards.
+    if (!t && !BAKED_ORG && host.split(":")[0].toLowerCase() === "learn.phoxta.com") {
+        t = await resolve(supabase, { host: "startup-school.phoxta.com" });
+    }
     if (t) applyBranding(t.branding);
     return t;
 }

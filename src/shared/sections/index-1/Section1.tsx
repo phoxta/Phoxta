@@ -1,241 +1,258 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useRef, useState, type PointerEvent } from "react";
 import { Link } from "react-router-dom";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, EffectFade, Pagination } from "swiper/modules";
 import HeaderNav from "@/shared/header/HeaderNav";
-// Homepage hero. The shared site nav (HeaderNav) overlays the dark hero in its
-// light variant — the same menu section used on every page. The global layout
-// header is suppressed for the homepage via MainLayout's `noHeader` prop.
+import HeroChat from "./HeroChat";
+import "@/styles/phoxta-landing.css";
 
-const ARROW_SVG = (
-    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path
-            d="M0.21967 9.40717C-0.0732232 9.70006 -0.0732232 10.1749 0.21967 10.4678C0.512563 10.7607 0.987437 10.7607 1.28033 10.4678L0.21967 9.40717ZM10.6875 0.75C10.6875 0.335786 10.3517 2.97145e-09 9.9375 1.50485e-07L3.1875 -2.70983e-07C2.77329 -2.70983e-07 2.4375 0.335786 2.4375 0.75C2.4375 1.16421 2.77329 1.5 3.1875 1.5H9.1875V7.5C9.1875 7.91421 9.52329 8.25 9.9375 8.25C10.3517 8.25 10.6875 7.91421 10.6875 7.5L10.6875 0.75ZM0.75 9.9375L1.28033 10.4678L10.4678 1.28033L9.9375 0.75L9.40717 0.21967L0.21967 9.40717L0.75 9.9375Z"
-            fill="currentColor"
-        />
-    </svg>
-);
-
-const TAG_ARROW_SVG = (
-    <svg xmlns="http://www.w3.org/2000/svg" width="9" height="10" viewBox="0 0 9 10" fill="none">
-        <path
-            d="M5.62494 9.99994L0.562517 10L0.5625 8.75003L4.49994 8.74996L4.5 2.39273L2.27828 4.86124L1.48278 3.97739L5.0625 0L8.64225 3.97739L7.84676 4.86124L5.625 2.3927L5.62494 9.99994Z"
-            fill="currentColor"
-        />
-    </svg>
-);
-
-const CARDS_IMGS = [
-    "/assets/imgs/template/wb1.webp",
-    "/assets/imgs/template/wb2.webp",
-    "/assets/imgs/template/wb3.webp",
-];
-
-const TAGS = ["E-commerce", "Local services", "Content & creator", "SaaS", "Marketplaces"];
-
-// Hero headline variants — auto-rotated by the fade slider below. Each slide
-// keeps the exact classes of the original static heading/subtext so typography
-// and spacing are unchanged.
-const HERO_SLIDES = [
-    {
-        title: "Own a business that already works.",
-        sub: "Acquire a high-margin, AI-powered business with validated product-market fit. Deploy autonomous infrastructure and go live in minutes.",
-    },
-    {
-        title: "Scale faster with Agentic Operations.",
-        sub: "Autonomous agents manage growth, fulfillment, and 24/7 support—letting you focus on high-level strategy and market expansion.",
-    },
-];
+const HERO_ASSETS = "/assets/imgs/pages/home-hero/figma";
 
 export default function Section1() {
-    const [videoOpen, setVideoOpen] = useState(false);
-    // External pagination target — a real flex sibling BESIDE the slider, so
-    // Swiper's absolute-positioned default pagination never overlaps the text.
-    const dotsRef = useRef<HTMLDivElement | null>(null);
+  const [heroVideoPlaying, setHeroVideoPlaying] = useState<boolean>(false);
 
-    // Close the video popup on Escape.
-    useEffect(() => {
-        if (!videoOpen) return;
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === "Escape") setVideoOpen(false);
-        };
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [videoOpen]);
+  const portraitRef = useRef<HTMLDivElement>(null);
 
-    return (
-        <div className="bg-neutral-50">
-            {/* Portal to <body> so the overlay isn't trapped inside the GSAP
-                ScrollSmoother transform (which would break position: fixed). */}
-            {videoOpen &&
-                createPortal(
-                    <div
-                        className="sec-1-home-4__video-modal position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
-                        style={{ background: "rgba(0,0,0,.82)", zIndex: 1080 }}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Phoxta video"
-                        onClick={() => setVideoOpen(false)}
-                    >
-                        <div className="p-relative" style={{ maxWidth: 960, width: "100%" }} onClick={(e) => e.stopPropagation()}>
-                            <button
-                                type="button"
-                                className="btn-close btn-close-white position-absolute top-0 end-0 m-2"
-                                style={{ zIndex: 1 }}
-                                aria-label="Close video"
-                                onClick={() => setVideoOpen(false)}
-                            />
-                            <video
-                                className="w-100 d-block rounded-3"
-                                style={{ maxHeight: "80vh", background: "#000" }}
-                                controls
-                                autoPlay
-                                playsInline
-                                preload="metadata"
-                            >
-                                <source src="/assets/imgs/video/video-2.mp4" type="video/mp4" />
-                            </video>
-                        </div>
-                    </div>,
-                    document.body,
-                )}
-            <div className="container-2200 sec-1-home-4-wrap p-relative z-0" style={{ paddingTop: 20 }}>
-                <div
-                    className="sec-1-home-4 bg-linear-opacity p-relative bg-cover mt-20 rounded-5 mx-lg-3 mx-2"
-                    data-background="/assets/imgs/pages/bg-img-4.webp"
-                >
-                    <HeaderNav light />
-                    <div className="container p-relative z-index-1">
-                        <div className="row align-items-start">
-                            <div className="col-xxl-6 col-lg-6 mb-5 mb-lg-0 pe-xxl-5">
-                                {/* Dot nav is a flex SIBLING to the left of the slider — never
-                                    absolutely positioned, so it can't overlap the text. The
-                                    !important overrides neutralise swiper-bundle.css rules that
-                                    target external pagination elements (bottom/left/width). */}
-                                <style>{`
-                                    .hero-headline-dots {
-                                        position: static !important;
-                                        bottom: auto !important;
-                                        left: auto !important;
-                                        width: auto !important;
-                                        display: flex;
-                                        flex-direction: column;
-                                        gap: 12px;
-                                        flex-shrink: 0;
-                                        opacity: 0.5;
-                                        transition: opacity 0.2s ease;
-                                    }
-                                    .hero-headline-dots:hover { opacity: 1; }
-                                    .hero-headline-dots .swiper-pagination-bullet {
-                                        display: block;
-                                        width: 11px;
-                                        height: 11px;
-                                        margin: 0;
-                                        border-radius: 50%;
-                                        background: transparent;
-                                        border: 2px solid rgba(254, 254, 254, 0.55);
-                                        opacity: 1;
-                                        cursor: pointer;
-                                        transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
-                                    }
-                                    .hero-headline-dots .swiper-pagination-bullet:hover {
-                                        border-color: #fefefe;
-                                        transform: scale(1.2);
-                                    }
-                                    .hero-headline-dots .swiper-pagination-bullet-active {
-                                        background: #fefefe;
-                                        border-color: #fefefe;
-                                    }
-                                `}</style>
-                                <div className="d-flex align-items-center gap-3 mb-4 mb-md-5">
-                                    <div ref={dotsRef} className="hero-headline-dots" aria-label="Hero slides" />
-                                    <Swiper
-                                        modules={[Autoplay, EffectFade, Pagination]}
-                                        effect="fade"
-                                        fadeEffect={{ crossFade: true }}
-                                        autoplay={{ delay: 8000, disableOnInteraction: false }}
-                                        pagination={{ el: null, clickable: true }}
-                                        onBeforeInit={(swiper) => {
-                                            if (typeof swiper.params.pagination === "object") {
-                                                swiper.params.pagination.el = dotsRef.current;
-                                            }
-                                        }}
-                                        loop
-                                        speed={900}
-                                        slidesPerView={1}
-                                        allowTouchMove={false}
-                                        className="hero-headline-swiper flex-grow-1 mx-0"
-                                    >
-                                        {HERO_SLIDES.map((slide) => (
-                                            <SwiperSlide key={slide.title}>
-                                                <h2 className="at-section-title fw-600 text-white mb-3 mb-md-4 lh-1">
-                                                    {slide.title}
-                                                </h2>
-                                                <p className="text-white fz-font-lg mb-0" style={{ opacity: 0.85, maxWidth: 540 }}>
-                                                    {slide.sub}
-                                                </p>
-                                            </SwiperSlide>
-                                        ))}
-                                    </Swiper>
-                                </div>
+  const resetPortraitPosition = () => {
+    portraitRef.current?.style.removeProperty("--phoxta-portrait-x");
+    portraitRef.current?.style.removeProperty("--phoxta-portrait-y");
+  };
 
-                                {/* "How we work" block carried over from the original homepage hero */}
-                                <div className="at-hero-video mt-40" style={{ maxWidth: 220 }}>
-                                    <div className="rounded-3 overflow-hidden">
-                                        <video
-                                            className="img-cover"
-                                            autoPlay
-                                            muted
-                                            loop
-                                            playsInline
-                                            poster="/assets/imgs/pages/img-2.webp"
-                                        >
-                                            <source src="/assets/imgs/video/video-2.mp4" type="video/mp4" />
-                                        </video>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="at-btn text-white rounded-0 bg-transparent px-0 pt-2 pb-3 border-0"
-                                        onClick={() => setVideoOpen(true)}
-                                    >
-                                        <span>
-                                            <span className="text-1">Phoxta</span>
-                                            <span className="text-2">Phoxta</span>
-                                        </span>
-                                        <i>
-                                            {ARROW_SVG}
-                                            {ARROW_SVG}
-                                        </i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="col-xxl-4 col-lg-6 col-md-10 ms-lg-auto mt-lg-0 mt-4">
-                                <div className="sec-1-home-4__cards d-flex gap-3 mb-4">
-                                    {CARDS_IMGS.map((src, i) => (
-                                        <div key={i} className="sec-1-home-4__card rounded-3 overflow-hidden">
-                                            <img
-                                                src={src}
-                                                alt="phoxta"
-                                                width={280}
-                                                height={200}
-                                                className="img-cover w-100 h-100" loading="lazy" />
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="sec-1-home-4__tags d-flex flex-wrap gap-3 mt-40">
-                                    {TAGS.map((tag, i) => (
-                                        <Link key={i} to="/marketplace" className="sec-1-home-4__tag">
-                                            {tag}
-                                            {TAG_ARROW_SVG}
-                                        </Link>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  const handleHeroPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (
+      (event.pointerType && event.pointerType !== "mouse") ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      (event.target instanceof Element &&
+        event.target.closest(".phoxta-hero-chat"))
+    ) {
+      return;
+    }
+
+    const portrait = portraitRef.current;
+
+    if (!portrait) {
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+
+    const horizontal =
+      (event.clientX - bounds.left) / bounds.width - 0.5;
+
+    const vertical =
+      (event.clientY - bounds.top) / bounds.height - 0.5;
+
+    portrait.style.setProperty(
+      "--phoxta-portrait-x",
+      `${horizontal * 10}px`,
     );
+
+    portrait.style.setProperty(
+      "--phoxta-portrait-y",
+      `${vertical * 8}px`,
+    );
+  };
+
+  return (
+    <>
+      <HeaderNav placement="inline" />
+
+      <section
+        className="phoxta-home-hero"
+        aria-labelledby="phoxta-home-heading"
+      >
+        <div
+          className="phoxta-home-hero__surface"
+          onPointerMove={handleHeroPointerMove}
+          onPointerLeave={resetPortraitPosition}
+        >
+          {/* =====================================================
+              RESPONSIVE HERO BACKGROUND
+              AVIF first, WebP fallback
+              ===================================================== */}
+          <div
+            className="phoxta-home-hero__artwork"
+            aria-hidden="true"
+          >
+            <picture>
+              {/* Mobile AVIF */}
+              <source
+                media="(max-width: 767px)"
+                srcSet={`${HERO_ASSETS}/hero-background-mobile.avif`}
+                type="image/avif"
+              />
+
+              {/* Mobile WebP fallback */}
+              <source
+                media="(max-width: 767px)"
+                srcSet={`${HERO_ASSETS}/hero-background-mobile.webp`}
+                type="image/webp"
+              />
+
+              {/* Desktop AVIF */}
+              <source
+                srcSet={`${HERO_ASSETS}/hero-background.avif`}
+                type="image/avif"
+              />
+
+              {/* Desktop WebP fallback */}
+              <source
+                srcSet={`${HERO_ASSETS}/hero-background.webp`}
+                type="image/webp"
+              />
+
+              {/* Final fallback */}
+              <img
+                className="phoxta-home-hero__image"
+                src={`${HERO_ASSETS}/hero-background.webp`}
+                alt=""
+                width={1920}
+                height={928}
+                fetchPriority="high"
+                decoding="async"
+              />
+            </picture>
+          </div>
+
+          {/* =====================================================
+              MAIN HERO LAYOUT
+              ===================================================== */}
+          <div className="phoxta-home-hero__layout">
+            {/* ===================================================
+                LEFT COLUMN
+                =================================================== */}
+            <div className="phoxta-home-hero__left">
+              <div className="phoxta-home-hero__copy">
+                <h1 id="phoxta-home-heading">
+                  Discover business
+                  <strong>opportunities</strong>
+                </h1>
+
+                <p className="phoxta-home-hero__description">
+                  Find opportunities backed by real market signals.
+                  Understand the customer, market and evidence.
+                </p>
+
+                {/* ===============================================
+                    MOBILE ACTIONS
+                    =============================================== */}
+                <div className="phoxta-home-hero__mobile-actions">
+                  <Link
+                    to="/businesses"
+                    className="phoxta-home-hero__button phoxta-home-hero__button--secondary"
+                  >
+                    <span>Ready-to-launch Businesses</span>
+
+                    <img
+                      src={`${HERO_ASSETS}/play-v2.svg`}
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  </Link>
+
+                  <Link
+                    to="/startup-school"
+                    className="phoxta-home-hero__button phoxta-home-hero__button--mobile-school"
+                  >
+                    <span>Startup School</span>
+
+                    <img
+                      src={`${HERO_ASSETS}/arrow-right-v2.svg`}
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  </Link>
+                </div>
+
+                {/* ===============================================
+                    DESKTOP / TABLET BUSINESS CTA
+                    =============================================== */}
+                <Link
+                  to="/businesses"
+                  className="phoxta-home-hero__button phoxta-home-hero__button--secondary phoxta-home-hero__button--desktop-business"
+                >
+                  <span>Ready-to-launch Businesses</span>
+
+                  <img
+                    src={`${HERO_ASSETS}/play-v2.svg`}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                </Link>
+              </div>
+            </div>
+
+            {/* ===================================================
+                CENTER COLUMN
+                =================================================== */}
+            <div className="phoxta-home-hero__center">
+              <div
+                className="phoxta-home-hero__portrait"
+                ref={portraitRef}
+              >
+                <div className="phoxta-home-hero__portrait-window">
+                  <video
+                    className="phoxta-home-hero__portrait-video"
+                    poster={`${HERO_ASSETS}/professional-contemplation.png`}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    aria-hidden="true"
+                    onPlaying={() => setHeroVideoPlaying(true)}
+                    onError={() => setHeroVideoPlaying(false)}
+                  >
+                    <source
+                      src="/assets/imgs/video/video-2.mp4"
+                      type="video/mp4"
+                    />
+                  </video>
+
+                  <img
+                    className="phoxta-home-hero__portrait-image phoxta-home-hero__portrait-poster"
+                    src={`${HERO_ASSETS}/professional-contemplation.png`}
+                    alt="A business founder considering her next opportunity"
+                    width={896}
+                    height={1201}
+                    data-hidden={heroVideoPlaying}
+                    decoding="async"
+                  />
+                </div>
+
+                <div className="phoxta-home-hero__chat">
+                  <HeroChat />
+                </div>
+              </div>
+            </div>
+
+            {/* ===================================================
+                RIGHT COLUMN
+                Hidden on mobile by CSS
+                =================================================== */}
+            <div className="phoxta-home-hero__right">
+              <div className="phoxta-home-hero__school">
+                <p className="phoxta-home-hero__school-description">
+                  Learn how to identify real customer problems, understand
+                  markets, test assumptions, design a business model and
+                  launch with evidence — not guesswork.
+                </p>
+
+                <Link
+                  to="/startup-school"
+                  className="phoxta-home-hero__button phoxta-home-hero__button--outline"
+                >
+                  <span>Startup School</span>
+
+                  <img
+                    src={`${HERO_ASSETS}/arrow-right-v2.svg`}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
+  );
 }

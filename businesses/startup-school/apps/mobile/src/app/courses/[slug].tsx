@@ -107,8 +107,8 @@ export default function CourseScreen() {
                 )}
                 <View style={{ gap: 8, marginTop: 4 }}>
                     <Meta icon={<Clock size={14} color={c.muted} />} text={`${duration(courseMinutes(catalogue, course.id) * 60)} of content`} />
-                    <Meta icon={<Users size={14} color={c.muted} />} text={`${course.learners.toLocaleString()} learners`} />
-                    <Meta icon={<Star size={14} color={c.muted} />} text={`${course.rating.toFixed(1)} rating · ${course.level}`} />
+                    <Meta icon={<Users size={14} color={c.muted} />} text={`${Math.max(0, lessonsOf(catalogue, course.id).length - 1)} applied lessons`} />
+                    <Meta icon={<Star size={14} color={c.muted} />} text={`${course.level} level`} />
                 </View>
             </Card>
 

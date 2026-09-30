@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { Link } from "react-router-dom";
-import { Banknote, ChevronLeft, ChevronRight, Lightbulb, MoreVertical, Plus, TrendingUp } from "lucide-react";
+import { Banknote, ChevronLeft, ChevronRight, FlaskConical, Lightbulb, MoreVertical, Plus, TrendingUp } from "lucide-react";
 import { greeting } from "@startup-school/core";
-import { categoryWatched, continueWatching, goalPct, recommended, streak, tenDayBuckets, upcomingLive } from "@startup-school/core";
+import { categoryWatched, continueWatching, goalPct, nextLesson, recommended, streak, tenDayBuckets, upcomingLive } from "@startup-school/core";
 import { useData } from "@/state/data";
 import { CourseCard, LiveRow, MentorRow, StatCard } from "@/components/cards";
 import { LiveNowBanner } from "@/components/live/LiveNowBanner";
@@ -21,6 +21,8 @@ export default function DashboardPage() {
     const rail = useRef<HTMLDivElement>(null);
     const watching = continueWatching(catalogue, user);
     const shelf = watching.length ? watching : recommended(catalogue, user, 3);
+    const focusCourse = watching[0] ?? shelf[0];
+    const focusLesson = focusCourse ? nextLesson(catalogue, user, focusCourse.id) : null;
     const watched = categoryWatched(catalogue, user);
     const live = upcomingLive(catalogue).slice(0, 3);
     const pct = goalPct(user);
@@ -28,6 +30,8 @@ export default function DashboardPage() {
     const buckets = tenDayBuckets(user);
     const first = user.profile.name.split(" ")[0];
     const mentors = [...catalogue.mentors].sort((a, b) => Number(user.follows.includes(b.id)) - Number(user.follows.includes(a.id)) || b.followers - a.followers).slice(0, 3);
+    const activeExperiments = user.experiments.filter((experiment) => experiment.status === "running" || experiment.status === "planned");
+    const priorityExperiment = activeExperiments.sort((a, b) => (a.dueAt ?? "9999").localeCompare(b.dueAt ?? "9999"))[0];
     const scroll = (dir: -1 | 1) => rail.current?.scrollBy({ left: dir * 276, behavior: "smooth" });
 
     return (
@@ -36,7 +40,7 @@ export default function DashboardPage() {
                 <section className="flex h-full flex-col rounded-xl bg-card p-4 pb-[18px] max-md:bg-transparent max-md:p-0" aria-labelledby="stat-h">
                     <div className="mb-5 flex items-center justify-between">
                         <h2 id="stat-h" className="text-[20px] font-semibold max-md:text-[18px]">
-                            Statistic
+                            This week
                         </h2>
                         <Link to="/progress" className="text-muted" aria-label="Open progress">
                             <MoreVertical size={18} />
@@ -59,7 +63,7 @@ export default function DashboardPage() {
                     </div>
                     <BarChart className="mt-5 max-md:mt-3.5 max-md:bg-card" data={buckets.map((b) => ({ label: b.label.split(" – ")[0], value: b.minutes, hi: b.current || b.minutes === Math.max(...buckets.map((x) => x.minutes)) }))} />
                     <div className="mb-3.5 mt-6 flex items-center justify-between">
-                        <h2 className="text-[20px] font-semibold max-md:text-[18px]">Your mentor</h2>
+                        <h2 className="text-[20px] font-semibold max-md:text-[18px]">Mentor support</h2>
                         <Link to="/mentors" className="grid size-7 place-items-center rounded-full border border-line-strong bg-card" aria-label="All mentors">
                             <Plus size={12} strokeWidth={2} />
                         </Link>
@@ -83,26 +87,37 @@ export default function DashboardPage() {
                 <Sparkle className="pointer-events-none absolute -top-[46px] right-10 w-[220px] opacity-80 max-md:-right-[52px] max-md:-top-14 max-md:w-[130px] max-md:opacity-50" />
                 <Sparkle className="pointer-events-none absolute right-[290px] top-[112px] w-[70px] opacity-45 max-md:hidden" />
                 <Sparkle className="pointer-events-none absolute right-[30px] top-[60px] w-[50px] opacity-35 max-md:bottom-[22px] max-md:right-[26px] max-md:top-auto max-md:w-11" />
-                <div className="text-[12px] font-semibold tracking-[0.14em]">THIS COHORT</div>
+                <div className="text-[12px] font-semibold tracking-[0.14em]">YOUR NEXT MOVE</div>
                 <h1 id="hero-h" className="mb-[26px] mt-[22px] max-w-[460px] text-[30px] font-semibold leading-[38px] max-md:mb-5 max-md:mt-3.5 max-md:max-w-full max-md:text-[24px] max-md:leading-[31px]">
-                    Thirteen courses, from founder fit to the day you sell
+                    {focusLesson ? focusLesson.title : "Turn your idea into an evidence-backed startup"}
                 </h1>
-                <Link to="/courses" className="inline-flex items-center gap-2.5 rounded-full bg-ink py-2 pl-[22px] pr-2 text-[14px] font-semibold text-white">
-                    Browse the tracks
+                <Link to={focusCourse && focusLesson ? `/learn/${focusCourse.slug}/${focusLesson.id}` : "/learn"} className="inline-flex items-center gap-2.5 rounded-full bg-ink py-2 pl-[22px] pr-2 text-[14px] font-semibold text-white">
+                    {focusLesson ? "Resume lesson" : "Choose your path"}
                     <span className="grid size-[26px] place-items-center rounded-full bg-white text-ink">
                         <ChevronRight size={12} strokeWidth={2.4} />
                     </span>
                 </Link>
             </section>
 
+            <section className="mt-5 rounded-xl border border-brand-soft bg-brand-soft/35 p-5 max-md:p-4" aria-labelledby="proof-h">
+                <div className="flex flex-wrap items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-brand"><FlaskConical size={18} /></span><div className="min-w-0 flex-1"><div className="text-[12px] font-semibold uppercase tracking-[0.06em] text-brand-ink">This week’s proof</div><h2 id="proof-h" className="mt-1 text-[18px] font-semibold leading-6">{priorityExperiment ? priorityExperiment.title : "Choose the assumption that could change your next decision"}</h2><p className="mt-1 text-[13px] leading-5 text-muted">{priorityExperiment ? `${priorityExperiment.method} Success means: ${priorityExperiment.threshold}` : "Do not start with more reading. Start with the smallest credible field test."}</p></div><Link to="/experiments" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-ink px-4 text-[13px] font-semibold text-white hover:bg-brand">{priorityExperiment ? "Capture evidence" : "Plan a test"}<ChevronRight size={14} /></Link></div>
+            </section>
+
             <div className="my-[26px] grid grid-cols-3 gap-6 max-md:rail max-md:my-5 max-md:grid-cols-none">
-                <StatCard tone="fund" icon={<Banknote size={20} strokeWidth={1.8} />} top={`${watched.fund.done}/${watched.fund.total} watched`} title="Fund" to="/courses?cat=fund" />
-                <StatCard tone="grow" icon={<TrendingUp size={20} strokeWidth={1.8} />} top={`${watched.grow.done}/${watched.grow.total} watched`} title="Grow" to="/courses?cat=grow" />
-                <StatCard tone="start" icon={<Lightbulb size={20} strokeWidth={1.8} />} top={`${watched.start.done}/${watched.start.total} watched`} title="Start" to="/courses?cat=start" />
+                {catalogue.categories.map((category) => (
+                    <StatCard
+                        key={category.id}
+                        tone={category.id}
+                        icon={category.id === "start" ? <Lightbulb size={20} strokeWidth={1.8} /> : category.id === "fund" ? <Banknote size={20} strokeWidth={1.8} /> : <TrendingUp size={20} strokeWidth={1.8} />}
+                        top={`${watched[category.id].done}/${watched[category.id].total} complete`}
+                        title={category.name}
+                        to={`/courses?cat=${category.id}`}
+                    />
+                ))}
             </div>
 
             <SectionHead
-                title={watching.length ? "Continue Watching" : "Start something"}
+                title={watching.length ? "Continue learning" : "Recommended for you"}
                 action={
                     <div className="flex gap-2 max-md:hidden">
                         <IconButton label="Scroll back" size="md" onClick={() => scroll(-1)}>
@@ -129,7 +144,7 @@ export default function DashboardPage() {
             </div>
 
             <section className="mt-[26px] max-md:mt-7" aria-labelledby="lesson-h">
-                <SectionHead title={<span id="lesson-h">Your Lesson</span>} action={<SeeAll to="/lessons" />} className="mb-2.5" />
+                <SectionHead title={<span id="lesson-h">Upcoming live classes</span>} action={<SeeAll to="/lessons" />} className="mb-2.5" />
                 <div className="overflow-hidden rounded-t-xl bg-card max-md:rounded-[18px]">
                     <div className="grid h-[34px] grid-cols-[56px_180px_180px_1fr_44px] items-center border-b border-line px-4 text-[11px] font-medium tracking-[0.06em] text-caption max-md:hidden">
                         <span />
@@ -141,11 +156,11 @@ export default function DashboardPage() {
                     {live.length ? (
                         live.map((l) => <LiveRow key={l.id} live={l} />)
                     ) : (
-                        <p className="px-4 py-6 text-[14px] text-muted">No live lessons scheduled.</p>
+                        <p className="px-4 py-6 text-[14px] text-muted">No live classes scheduled.</p>
                     )}
                 </div>
                 <Link to="/lessons" className="mt-3 block rounded-sm bg-subtle py-3 text-center text-[14px] font-medium text-brand-ink md:hidden">
-                    See all lessons
+                    See all live classes
                 </Link>
             </section>
         </WithRail>

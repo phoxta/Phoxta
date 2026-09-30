@@ -99,7 +99,7 @@ export default function SettingsScreen() {
     };
 
     return (
-        <Screen header={<Header title="Settings" />}>
+        <Screen header={<Header title="Settings" />} keyboardAware>
             <PageTitle title="Settings" sub="Who you are here, and what you're aiming for." />
             <Card style={{ gap: 16 }}>
                 <Txt role="h3" size={16} lineHeight={21}>
@@ -227,7 +227,7 @@ export default function SettingsScreen() {
                 <Txt role="h3" size={16} lineHeight={21}>
                     Your data
                 </Txt>
-                <Txt role="small">{demo ? "Nothing leaves this device in demo mode." : "Your progress, notes and messages are stored under your account and readable only by you — the same account as the web app."}</Txt>
+                <Txt role="small">{demo ? "Nothing leaves this device in demo mode." : "Your progress, notes, messages, venture canvas and proof loop are stored under your account. The adviser receives your venture and proof context; a mentor receives relevant context only for a 1:1 you book. Session notes remain a mentor-reviewed draft before sharing."}</Txt>
             </Card>
         </Screen>
     );

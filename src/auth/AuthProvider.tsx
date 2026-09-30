@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import type { Provider, Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { friendlyError } from "@/lib/friendlyError";
 import { getMyProfile } from "@/lib/db/profile";
@@ -17,7 +17,8 @@ type AuthContextValue = {
   /** Mark onboarding done locally (after completeOnboarding) so the gate releases. */
   markOnboarded: () => void;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
+  signInOAuth: (provider: Provider, redirect: string, preferences?: { marketing: boolean; termsVersion: string }) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, preferences?: { marketing: boolean; termsVersion: string; redirect: string }) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (password: string) => Promise<{ error: string | null }>;
@@ -92,11 +93,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         return { error: friendlyError(error?.message) };
       },
-      async signUp(email, password) {
+      async signInOAuth(provider, redirect, preferences) {
+        const query = new URLSearchParams({ redirect });
+        if (preferences) {
+          query.set("oauth_terms", preferences.termsVersion);
+          query.set("oauth_marketing", String(preferences.marketing));
+        }
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: { redirectTo: `${window.location.origin}/auth?${query}` },
+        });
+        return { error: friendlyError(error?.message) };
+      },
+      async signUp(email, password, preferences) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth` },
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth${preferences ? `?redirect=${encodeURIComponent(preferences.redirect)}` : ''}`,
+            ...(preferences ? { data: { terms_version: preferences.termsVersion, terms_accepted_at: new Date().toISOString(), marketing_consent: preferences.marketing } } : {}),
+          },
         });
         const needsConfirmation = !error && !data.session;
         return { error: friendlyError(error?.message), needsConfirmation };

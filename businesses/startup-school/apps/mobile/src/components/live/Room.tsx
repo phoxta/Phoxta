@@ -131,7 +131,7 @@ export function Tile({
 export function People({ snap, room, canHost }: { snap: RoomSnapshot; room: LiveRoom; canHost: boolean }) {
     const { c } = useTheme();
     return (
-        <View>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 4 }} keyboardShouldPersistTaps="handled">
             {snap.participants.map((p) => (
                 <View key={p.identity} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 }}>
                     <Avatar name={p.name} hue={p.hue} src={p.photoUrl} size="md" />
@@ -170,7 +170,7 @@ export function People({ snap, room, canHost }: { snap: RoomSnapshot; room: Live
                     </View>
                 </View>
             ))}
-        </View>
+        </ScrollView>
     );
 }
 
@@ -192,7 +192,7 @@ export function Chat({ snap, room }: { snap: RoomSnapshot; room: LiveRoom }) {
     };
 
     return (
-        <View style={{ flex: 1, minHeight: 240 }}>
+        <View style={{ flex: 1, minHeight: 0 }}>
             <ScrollView ref={feed} style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
                 {groups.length === 0 ? (
                     <EmptyState title="No messages yet" body="Say hello — the class can see it." />

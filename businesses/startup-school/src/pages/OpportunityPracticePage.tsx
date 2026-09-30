@@ -1,0 +1,16 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { SCHOOL_MODULES } from '../../../../packages/opportunity-core/school';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/state/auth';
+import { Button, Card } from '@/components/ui/primitives';
+
+export default function OpportunityPracticePage() {
+    const { moduleId } = useParams(); const module = SCHOOL_MODULES.find(m => m.id === moduleId); const { session } = useAuth();
+    const [items, setItems] = useState<{ id: string; title: string }[]>([]); const [selected, setSelected] = useState(''); const [error, setError] = useState(''); const [complete, setComplete] = useState(false); const [busy, setBusy] = useState(false);
+    useEffect(() => { let active = true; if (session) void supabase.from('opportunity_workspaces').select('id,title').order('updated_at', { ascending: false }).then(result => { if (active) { if (result.error) setError(result.error.message); else setItems(result.data ?? []); } }); return () => { active = false; }; }, [session]);
+    if (!module) return <p>Lesson not found. <Link to="/courses">Back to courses</Link></p>;
+    const workspace = selected || items[0]?.id || '';
+    const appOrigin = import.meta.env.VITE_PHOXTA_APP_ORIGIN || 'https://www.phoxta.com';
+    return <div className="mx-auto max-w-3xl space-y-6"><Link to={`/courses/${module.id}`} className="text-sm font-semibold text-brand">← {module.title}</Link><header><h1 className="text-3xl font-semibold">Create your {module.artifact}</h1><p className="mt-3 text-sm leading-7 text-muted">{module.exercise}</p></header><Card className="space-y-5 p-6"><h2 className="text-xl font-semibold">Apply this to a live opportunity</h2>{error && <p role="alert" className="text-sm text-danger">{error}</p>}{items.length ? <><label className="block text-sm font-semibold">Your opportunity<select className="mt-2 w-full rounded-lg border border-line bg-card p-3" value={workspace} onChange={e => setSelected(e.target.value)}>{items.map(w => <option key={w.id} value={w.id}>{w.title}</option>)}</select></label><a className="inline-flex min-h-11 items-center font-semibold text-brand" href={`${appOrigin}/app/opportunities/${workspace}/${module.target}?lesson=${module.id}`} target="_blank" rel="noopener noreferrer">Open the exact workspace artifact ↗</a><Button disabled={busy || complete} onClick={() => { setBusy(true); setError(''); void supabase.rpc('opportunity_complete_lesson', { p_module: module.id, p_workspace: workspace }).then(result => { if (result.error) setError(result.error.message); else setComplete(true); setBusy(false); }); }}>{complete ? 'Artifact verified — lesson complete' : busy ? 'Checking artifact…' : 'Check artifact and complete'}</Button></> : <><p className="text-sm leading-7 text-muted">Create an opportunity in Phoxta first. Use the same account so your learning follows your work.</p><a className="font-semibold text-brand" href={`${appOrigin}/app/discover`}>Create your opportunity ↗</a></>}<p className="text-xs leading-6 text-muted">Reading progress is retained. Practical completion requires the artifact or decision this module teaches.</p></Card></div>;
+}

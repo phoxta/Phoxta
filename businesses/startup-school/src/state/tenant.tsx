@@ -4,7 +4,7 @@ import { resolveTenant, type Tenant } from "@/lib/tenant";
 /**
  * The school this deployment is serving, resolved once at boot from the host.
  * `name` is what the wordmark shows; the blueprint's own name is the fallback
- * for the demo and for a tenant that hasn't named itself yet.
+ * for a tenant that has not named itself yet.
  */
 
 /** Sidebar chrome, where the wordmark truncates. The certificate and the page

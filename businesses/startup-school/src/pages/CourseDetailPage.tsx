@@ -51,8 +51,7 @@ export default function CourseDetailPage() {
     return (
         <WithRail
             rail={
-                <div className="flex flex-col gap-4">
-                    <Card className="xl:sticky xl:top-(--cs-rail-top)">
+                <Card className="border border-line xl:sticky xl:top-(--cs-rail-top)">
                         {enrolled ? (
                             <>
                                 <div className="mb-2 flex items-baseline justify-between">
@@ -65,7 +64,7 @@ export default function CourseDetailPage() {
                                 </p>
                             </>
                         ) : (
-                            <p className="text-[14px] text-muted">Free to enrol. Your progress, notes and place are saved.</p>
+                            <p className="text-[14px] text-muted">Included with your programme access. Your progress, notes and place are saved.</p>
                         )}
                         {finished ? (
                             <Button block className="mt-4" onClick={() => (cert ? navigate(`/certificates/${cert.id}`) : void claim())}>
@@ -73,18 +72,17 @@ export default function CourseDetailPage() {
                             </Button>
                         ) : (
                             <Button block className="mt-4" onClick={() => void start()}>
-                                {enrolled ? (progress.done ? "Continue" : "Start learning") : "Enrol — it's free"}
+                                {enrolled ? (progress.done ? "Continue" : "Start learning") : "Add to my learning"}
                             </Button>
                         )}
                         {enrolled && next && !finished && <p className="mt-2 truncate text-center text-[12px] text-caption">Next: {next.title}</p>}
                         <ul className="mt-5 flex flex-col gap-2 text-[13px] text-muted">
                             <li className="flex items-center gap-2"><Clock size={14} /> {duration(courseMinutes(catalogue, course.id) * 60)} of content</li>
-                            <li className="flex items-center gap-2"><Users size={14} /> {course.learners.toLocaleString()} learners</li>
-                            <li className="flex items-center gap-2"><Star size={14} /> {course.rating.toFixed(1)} rating · {course.level}</li>
+                            <li className="flex items-center gap-2"><Users size={14} /> {Math.max(0, lessonsOf(catalogue, course.id).length - 1)} applied lessons</li>
+                            <li className="flex items-center gap-2"><Star size={14} /> {course.level} level</li>
                         </ul>
-                    </Card>
                     {mentor && (
-                        <Card>
+                        <section className="mt-5 border-t border-line pt-5">
                             <div className="flex items-center gap-3">
                                 <Avatar name={mentor.name} hue={mentor.hue} src={mentor.photoUrl} size="lg" />
                                 <div className="min-w-0">
@@ -98,9 +96,9 @@ export default function CourseDetailPage() {
                             <Link to={`/mentors/${mentor.id}`} className="mt-3 inline-block text-[13px] font-semibold text-brand underline underline-offset-4">
                                 View profile
                             </Link>
-                        </Card>
+                        </section>
                     )}
-                </div>
+                </Card>
             }
         >
             <Cover theme={course.theme} src={course.coverUrl} className="mb-5 h-56 rounded-xl max-md:h-40">
@@ -123,6 +121,14 @@ export default function CourseDetailPage() {
                     ))}
                 </ul>
             </section>
+
+            {course.finalProjectTitle && (
+                <section className="mt-7 rounded-xl border border-brand/20 bg-brand/5 p-5" aria-labelledby="project-h">
+                    <p className="text-[12px] font-semibold uppercase tracking-wide text-brand">Build as you learn</p>
+                    <h2 id="project-h" className="mt-1 text-[18px] font-semibold">Final project: {course.finalProjectTitle}</h2>
+                    {course.finalProjectDescription && <p className="mt-2 max-w-2xl text-[14px] leading-6 text-muted">{course.finalProjectDescription}</p>}
+                </section>
+            )}
 
             <section className="mt-7" aria-labelledby="about-h">
                 <h2 id="about-h" className="mb-3 text-[18px] font-semibold">About this course</h2>

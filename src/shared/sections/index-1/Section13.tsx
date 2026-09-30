@@ -20,14 +20,14 @@ export default function Section13() {
     const articles = useLiveArticles();
     const HOMEPAGE_POSTS = articles.slice(0, 4);
     return (
-        <div className="at-sec13-thumb fix w-100 scale-up-img p-relative pt-120 pb-120">
-            <div className="container">
+        <section className="at-sec13-thumb phoxta-home-articles fix w-100 scale-up-img p-relative">
+            <div className="container phoxta-home-shell">
                 <div className="row align-items-end mb-50">
                     <div className="col-lg-8 col-xxl-6">
                         <span className="at-btn common-black bg-transparent mb-10 rounded-0 p-0">
                             <span className="text-uppercase">
-                                <span className="text-1">FROM THE BLOG</span>
-                                <span className="text-2">FROM THE BLOG</span>
+                                <span className="text-1">ARTICLES</span>
+                                <span className="text-2">ARTICLES</span>
                             </span>
                             <i>
                                 {ARROW_SVG}
@@ -36,7 +36,7 @@ export default function Section13() {
                         </span>
                                                 <h3 className="reveal-text mb-0">
                                 <RevealText>
-                                    Insights & Strategic Intelligence.
+                                    Practical insights for building and running a business.
                                 </RevealText>
                             </h3>
                         </div>
@@ -44,8 +44,8 @@ export default function Section13() {
                             <div className="at-service-btn pt-30">
                                 <Link className="at-btn" to="/blog">
                                     <span>
-                                        <span className="text-1">READ MORE</span>
-                                        <span className="text-2">READ MORE</span>
+                                        <span className="text-1">Explore more</span>
+                                        <span className="text-2">Explore more</span>
                                     </span>
                                     <i>
                                         {ARROW_SVG}
@@ -71,6 +71,6 @@ export default function Section13() {
                     ))}
                 </div>
             </div>
-        </div>
+        </section>
     );
 }

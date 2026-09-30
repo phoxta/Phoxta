@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { RichText, ProductCards, MediaRow, type ChatCard, type ChatMedia } from "@shared-chat/chatRich";
+import { SITE_CHAT_EVENT } from "@/lib/siteChat";
 
 /**
  * Text chat for phoxta.com.
@@ -27,8 +28,13 @@ const AGENT_KEY = (import.meta.env.VITE_AGENT_PUBLIC_KEY as string | undefined) 
 const ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
 const GREETING =
-  "Hi — I can explain how Phoxta works, walk you through the businesses you can buy, and answer anything about running one. What are you looking to do?";
-const CHIPS = ["What can I buy?", "How does it work?", "What does it cost?", "Can I use my own domain?"];
+  "Hi — I’m Phoxta’s business launch assistant. I can find evidence-backed opportunities, compare ready-to-launch businesses, explain what each business includes, and guide you through Startup School and your next launch step. What would you like to build?";
+const CHIPS = [
+  "Find an opportunity for me",
+  "Compare ready-to-launch businesses",
+  "What does a business include?",
+  "Help me plan my launch",
+];
 
 type Msg = { role: "bot" | "user"; text: string; cards?: ChatCard[]; media?: ChatMedia[]; team?: boolean; note?: boolean };
 
@@ -95,6 +101,30 @@ export default function FloatingChatWidget() {
   const humanNoticed = useRef(false);
   const lastActivity = useRef(Date.now());
   const bodyRef = useRef<HTMLDivElement>(null);
+  const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
+  const busyRef = useRef(false);
+
+  // The homepage composer starts the same conversation as the floating widget.
+  // Keep a second question as a draft if an answer is already in flight.
+  useEffect(() => {
+    sendRef.current = send;
+    busyRef.current = busy;
+  });
+
+  useEffect(() => {
+    const onQuestion = (event: Event) => {
+      const text = (event as CustomEvent<unknown>).detail;
+      if (typeof text !== "string" || !text.trim()) return;
+      setOpen(true);
+      if (busyRef.current) setDraft(text);
+      else {
+        busyRef.current = true;
+        void sendRef.current(text);
+      }
+    };
+    window.addEventListener(SITE_CHAT_EVENT, onQuestion);
+    return () => window.removeEventListener(SITE_CHAT_EVENT, onQuestion);
+  }, []);
 
   // Resume a thread a hard reload would otherwise orphan — including one a
   // teammate is in the middle of answering.
@@ -306,7 +336,7 @@ export default function FloatingChatWidget() {
         >
           <div className="p-3" style={{ background: "var(--neutral-900, #111)", color: "#fff" }}>
             <div className="fw-600">Ask Phoxta</div>
-            <div style={{ fontSize: 12, opacity: 0.65 }}>Businesses, pricing and how it all works</div>
+            <div style={{ fontSize: 12, opacity: 0.65 }}>Find, compare and launch with Phoxta</div>
           </div>
 
           <div className="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-2" ref={bodyRef} role="log" aria-busy={busy}>
@@ -372,7 +402,7 @@ export default function FloatingChatWidget() {
               id="phoxta-chat-input"
               className="form-control rounded-3"
               value={draft}
-              placeholder="Ask anything…"
+              placeholder="Ask Phoxta about your next business…"
               onChange={(e) => setDraft(e.target.value)}
             />
             <button className="btn btn-dark px-3 rounded-3" aria-label="Send" disabled={busy || !draft.trim()}>→</button>

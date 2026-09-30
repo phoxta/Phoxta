@@ -10,7 +10,7 @@ import { useToast } from "@/state/toast";
 import { Avatar, Button, EmptyState, IconButton } from "@/components/ui/primitives";
 import { Txt } from "@/components/ui/text";
 import { GUTTER, Header } from "@/components/shell/Screen";
-import { peerPhoto } from "@/app/(tabs)/inbox";
+import { peerPhoto } from "@/app/inbox";
 
 /** One thread: loads on open, marks itself read, and hears replies as they arrive. */
 export default function ThreadScreen() {
@@ -79,7 +79,7 @@ export default function ThreadScreen() {
                     </View>
                 }
             />
-            <ScrollView ref={scroller} onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })} contentContainerStyle={{ paddingHorizontal: GUTTER, paddingVertical: 16, gap: 8 }} keyboardShouldPersistTaps="handled">
+            <ScrollView ref={scroller} style={{ flex: 1 }} onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })} contentContainerStyle={{ paddingHorizontal: GUTTER, paddingVertical: 16, gap: 8 }} keyboardShouldPersistTaps="handled">
                 {messages === null ? (
                     <Txt role="caption" align="center">
                         Loading…
