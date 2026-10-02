@@ -4718,7 +4718,7 @@ body.has-promo-banner #root > .phoxta-navigation--overlay {
   display: grid;
   width: min(100%, 1296px);
   min-height: 0;
-  aspect-ratio: 2 / 1;
+  aspect-ratio: 1600 / 724;
   margin: 168px auto 0;
   overflow: hidden;
   border: 8px solid #fff;
