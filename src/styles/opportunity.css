@@ -118,3 +118,214 @@
 .p2-notification-popover { position:absolute;top:calc(100% + 12px);right:0;z-index:35;width:min(370px,calc(100vw - 36px));max-height:70vh;overflow:auto;background:#fff;border:1px solid var(--p2-line);border-radius:12px;padding:20px;box-shadow:0 12px 45px #18231d20; }
 .p2-notification-popover h2 { font-size:18px; }.p2-notification-popover article { margin-top:16px;padding-top:16px;border-top:1px solid var(--p2-line); }.p2-notification-popover p { font-size:12px;margin-top:5px; }
 @media(max-width:760px) { .p2-notifications { position:static; }.p2-notification-popover { position:fixed;top:76px;right:18px; }.p2-topbar .p2-actions { gap:8px; }.p2-topbar .p2-button { padding:9px 11px;font-size:12px; } }
+
+/* Figma Auth Signup / Phoxta AI-Ops app shell */
+.p2-figma-shell {
+  --p2-ink:#101726;
+  --p2-muted:#64748b;
+  --p2-line:#d7dde6;
+  --p2-paper:rgba(255,255,255,.92);
+  position:relative;
+  display:grid;
+  grid-template-columns:203px 516px 234px;
+  grid-template-rows:150px minmax(0,1fr) 132px;
+  justify-content:space-between;
+  width:100%;
+  height:100vh;
+  height:100dvh;
+  min-height:700px;
+  padding:0 32px 22px 65px;
+  overflow:hidden;
+  background:
+    radial-gradient(ellipse 50% 48% at 0% 100%,rgba(124,196,236,.34),transparent 75%),
+    radial-gradient(ellipse 52% 54% at 100% 100%,rgba(244,139,113,.33),transparent 74%),
+    linear-gradient(180deg,#fff 0%,#fff 38%,#fbfdff 64%,#f7f9ff 100%);
+  color:var(--p2-ink);
+}
+
+.p2-app-header { grid-column:1/-1;grid-row:1;position:relative;z-index:32; }
+.p2-app-header .p2-logo { position:absolute;top:24px;left:0; }
+.p2-logo { display:inline-flex;align-items:baseline;gap:5px;color:#111;text-decoration:none;font-size:24px;line-height:1;letter-spacing:-.6px; }
+.p2-logo strong { font-weight:750; }
+.p2-logo span { font-weight:400; }
+.p2-autopilot { position:absolute;top:85px;left:50%;display:flex;align-items:center;gap:9px;font-size:14px;color:#111;transform:translateX(-50%);cursor:pointer; }
+.p2-autopilot input { position:absolute;width:1px;height:1px;opacity:0; }
+.p2-autopilot>span { position:relative;width:44px;height:24px;border-radius:999px;background:#111827;box-shadow:inset 0 0 0 1px rgba(15,23,42,.18);transition:background .18s ease; }
+.p2-autopilot>span::after { content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #0003;transition:transform .18s ease; }
+.p2-autopilot input:checked+span { background:#1f63db; }
+.p2-autopilot input:checked+span::after { transform:translateX(20px); }
+.p2-account { position:absolute;z-index:36;top:26px;right:0; }
+.p2-avatar { position:relative;display:block;width:50px;height:50px;border-radius:50%;overflow:hidden;background:#f2d3ba;border:1px solid #d7dde6;box-shadow:0 4px 12px #17203314; }
+.p2-avatar img { width:100%;height:100%;object-fit:cover;display:block; }
+.p2-avatar span { display:none; }
+.p2-account-menu { position:absolute;top:38px;right:-2px;display:none;width:224px;overflow:hidden;border:1px solid #d9dee7;border-radius:5px;background:#fff;box-shadow:0 3px 8px rgba(15,23,42,.18);color:#334155; }
+.p2-account:hover .p2-account-menu,.p2-account:focus-within .p2-account-menu { display:block; }
+.p2-account-menu>strong { display:block;padding:11px 12px;border-bottom:1px solid #e5e9ef;font-size:14px; }
+.p2-account-menu a,.p2-account-menu button,.p2-account-menu>span { display:flex;align-items:center;gap:9px;width:100%;min-height:36px;padding:8px 12px;border:0;background:#fff;color:#334155;text-align:left;font-size:14px;text-decoration:none; }
+.p2-account-menu a:hover,.p2-account-menu button:hover { background:#f5f7fa;color:#111827; }
+.p2-account-menu a>span { margin-left:auto;font-size:20px;line-height:1; }
+.p2-account-menu .is-disabled { color:#9aa3b1; }
+.p2-account-menu hr { margin:0;border:0;border-top:1px solid #e5e9ef;opacity:1; }
+
+.p2-figma-shell .p2-sidebar {
+  grid-column:1;
+  grid-row:2;
+  position:relative;
+  top:auto;
+  width:203px;
+  height:auto;
+  height:274px;
+  min-height:274px;
+  padding:0 0 12px;
+  gap:0;
+  align-self:start;
+  overflow:hidden;
+  border:1px solid var(--p2-line);
+  border-radius:5px;
+  background:rgba(255,255,255,.72);
+  box-shadow:0 1px 3px rgba(15,23,42,.03);
+  backdrop-filter:blur(16px);
+  transition:width .2s ease,height .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+.p2-figma-shell .p2-sidebar:hover,.p2-figma-shell .p2-sidebar:focus-within { z-index:34;width:321px;box-shadow:0 3px 8px rgba(15,23,42,.14); }
+.p2-sidebar-mobile-head { display:none; }
+.p2-console-select { min-height:54px;margin:2px;padding:11px 14px;border-radius:5px;background:#ddd;display:flex;flex-direction:column;justify-content:center; }
+.p2-console-select strong { font-size:16px;line-height:1.2; }
+.p2-console-select>label { position:relative;display:flex;align-items:center;gap:2px;max-width:145px;margin-top:3px;color:#555;font-size:10px;line-height:1; }
+.p2-console-select select { width:100%;padding:0 13px 0 0;overflow:hidden;border:0;outline:0;background:transparent;color:#555;font-size:10px;line-height:1;text-overflow:ellipsis;white-space:nowrap;appearance:none;cursor:pointer; }
+.p2-console-select>label>svg { position:absolute;right:0;pointer-events:none; }
+.p2-figma-shell .p2-sidebar:hover .p2-console-select,.p2-figma-shell .p2-sidebar:focus-within .p2-console-select { flex-direction:row;align-items:center;justify-content:space-between; }
+.p2-figma-shell .p2-sidebar:hover .p2-console-select>label,.p2-figma-shell .p2-sidebar:focus-within .p2-console-select>label { margin:0; }
+.p2-figma-shell .p2-console-nav { display:grid;gap:0;padding:14px 16px 8px!important; }
+.p2-console-row { display:grid;grid-template-columns:84px 60px;align-items:center;justify-content:space-between;column-gap:11px;width:169px;height:45px;padding:0;color:#5a5a5a;font-size:14px;font-weight:400; }
+.p2-console-label { display:flex!important;align-items:center!important;width:84px;min-width:84px;min-height:0!important;padding:0!important;background:transparent!important;color:inherit!important;text-decoration:none;white-space:nowrap; }
+.p2-console-label:hover { color:#111!important; }
+.p2-nav-compact-actions { display:flex;align-items:center;justify-content:space-around;width:60px;height:36px;border:1px solid #cad2df;border-radius:6px;background:#fff;color:#111827; }
+.p2-nav-compact-actions>a { display:flex!important;align-items:center!important;justify-content:center!important;width:50%;height:100%;min-height:0!important;padding:0!important;border:0!important;background:transparent!important;color:#111827!important; }
+.p2-console-row:first-child .p2-nav-compact-actions { border-color:#5b35e8; }
+.p2-role-switch { display:none;align-items:center;width:188px;height:38px;overflow:hidden;border:1px solid #cbd5e1;border-radius:6px;background:#fff; }
+.p2-role-switch>a { display:flex!important;align-items:center!important;justify-content:center!important;width:50%;height:100%;min-height:0!important;padding:0!important;border:0!important;background:transparent;color:#94a3b8;font-size:14px;font-weight:400;text-decoration:none; }
+.p2-role-switch>a:first-child { color:#1e293b; }
+.p2-role-switch>a:hover { background:#f7f8fa;color:#111827; }
+.p2-role-switch.is-empty { background:#fff; }
+.p2-figma-shell .p2-sidebar:hover .p2-role-switch,.p2-figma-shell .p2-sidebar:focus-within .p2-role-switch { display:flex; }
+.p2-figma-shell .p2-sidebar:hover .p2-nav-compact-actions,.p2-figma-shell .p2-sidebar:focus-within .p2-nav-compact-actions { display:none; }
+.p2-figma-shell .p2-sidebar:hover .p2-console-row,.p2-figma-shell .p2-sidebar:focus-within .p2-console-row { grid-template-columns:84px 188px;width:289px;column-gap:17px; }
+.p2-figma-shell .p2-sidebar:hover .p2-console-row:first-child .p2-role-switch,.p2-figma-shell .p2-sidebar:focus-within .p2-console-row:first-child .p2-role-switch { border-color:transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(90deg,#5637ef,#ec4960) border-box; }
+.p2-mobile-nav { display:none!important; }
+.p2-signout { display:none; }
+
+.p2-stage { grid-column:2;grid-row:2;position:relative;width:516px;min-width:0;align-self:start; }
+.p2-stage-tabs { display:flex;align-items:center;gap:0;height:36px;margin-bottom:8px; }
+.p2-stage-tabs a { display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 16px;border-radius:6px;color:#111827;font-size:14px;white-space:nowrap; }
+.p2-stage-tabs a.active { background:#f0f0f0; }
+.p2-stage-tabs a:hover { background:#f5f5f5; }
+.p2-menu-trigger { display:none; }
+.p2-stage-panel {
+  position:relative;
+  width:516px;
+  height:min(394px,calc(100dvh - 326px));
+  min-height:350px;
+  overflow:hidden;
+  border:1px solid var(--p2-line);
+  border-radius:5px;
+  background:rgba(255,255,255,.91);
+  box-shadow:0 2px 5px rgba(15,23,42,.13);
+}
+.p2-figma-shell .p2-main {
+  position:relative;
+  width:100%;
+  height:calc(100% - 80px);
+  min-height:0;
+  margin:0;
+  padding:24px;
+  overflow:auto;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  scrollbar-width:thin;
+  scrollbar-color:#cbd2dc transparent;
+}
+.p2-figma-shell .p2-heading { align-items:flex-start;margin-bottom:22px; }
+.p2-figma-shell .p2-heading h1 { margin:5px 0 8px;font-size:25px;line-height:1.12;letter-spacing:-1px; }
+.p2-figma-shell .p2-heading p { font-size:13px;line-height:1.55; }
+.p2-figma-shell .p2-eyebrow { font-size:9px;letter-spacing:1.1px; }
+.p2-figma-shell .p2-grid,.p2-figma-shell .p2-grid.two { grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+.p2-figma-shell .p2-card,.p2-figma-shell .p2-panel { gap:10px;padding:15px;border-color:#e1e5eb;border-radius:7px;background:#fff; }
+.p2-figma-shell .p2-card h2,.p2-figma-shell .p2-card h3 { font-size:15px;letter-spacing:-.3px; }
+.p2-figma-shell .p2-card p { font-size:12px; }
+.p2-figma-shell .p2-button { min-height:36px;padding:8px 12px;border-radius:6px;font-size:11px; }
+.p2-figma-shell .p2-continue { padding:18px;border-radius:7px;background:linear-gradient(135deg,#f4f6ff,#fff4ed); }
+.p2-figma-shell .p2-continue h2 { margin:6px 0;font-size:18px; }
+.p2-figma-shell .p2-continue p { font-size:12px; }
+.p2-figma-shell .p2-section-title { margin:22px 0 12px; }
+.p2-figma-shell .p2-section-title h2,.p2-figma-shell .p2-panel>h2 { font-size:16px; }
+.p2-figma-shell .p2-empty { padding:30px 20px;border-radius:7px;background:#fafbfc; }
+.p2-figma-shell .p2-empty h2 { font-size:20px; }
+
+.p2-command-dock { position:absolute;z-index:5;left:26px;right:26px;bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;height:52px;padding:0 14px 0 16px;border-radius:999px;background:#f0f0f0;color:#111;text-decoration:none;box-shadow:0 1px rgba(255,255,255,.8) inset; }
+.p2-command-dock:hover { color:#111;background:#e9e9e9; }
+.p2-command-prompt,.p2-command-tools { display:flex;align-items:center;gap:7px; }
+.p2-command-prompt { min-width:0;font-size:16px; }
+.p2-command-tools { color:#555;font-size:12px;white-space:nowrap; }
+
+.p2-notification-rail { grid-column:3;grid-row:2/span 2;width:234px;height:min(549px,calc(100dvh - 216px));margin-top:8px;overflow:hidden;border:1px solid #cfd5dd;border-radius:4px;background:rgba(255,255,255,.34);backdrop-filter:blur(8px); }
+.p2-notification-rail .p2-notifications,.p2-notification-rail .p2-notification-popover { width:100%;height:100%; }
+.p2-notification-rail .p2-notification-popover { position:static;max-height:none;padding:14px 12px;overflow:auto;border:0;border-radius:0;background:transparent;box-shadow:none; }
+.p2-notification-rail .p2-notification-popover h2 { font-size:11px;font-weight:650; }
+.p2-notification-rail .p2-notification-popover article { margin-top:10px;padding-top:10px;font-size:11px; }
+.p2-notification-rail .p2-notification-popover p { font-size:9px; }
+.p2-notification-rail .p2-loading { padding:24px 8px;font-size:11px; }
+
+.p2-workspace-radio { position:absolute;left:61px;bottom:84px;margin:0;padding:0;border:0;color:#242424; }
+.p2-workspace-radio legend { margin-bottom:7px;color:#94a3b8;font-size:14px; }
+.p2-workspace-radio label { display:flex;align-items:center;gap:8px;height:24px;font-size:14px; }
+.p2-workspace-radio input { width:14px;height:14px;margin:0;accent-color:#111827; }
+.p2-daily-quote { position:absolute;left:50%;bottom:39px;width:516px;margin:0;text-align:center;transform:translateX(-50%); }
+.p2-daily-quote blockquote { margin:0;color:#101726;font-size:24px;font-weight:400;line-height:1.35;letter-spacing:-.55px; }
+.p2-daily-quote figcaption { margin-top:8px;color:#64748b;font-size:12px; }
+
+@media(max-width:1100px) {
+  .p2-figma-shell { grid-template-columns:203px minmax(0,650px);grid-template-rows:150px minmax(0,1fr) 112px;gap:0 42px;justify-content:center;padding-inline:28px; }
+  .p2-app-header { grid-column:1/-1; }
+  .p2-stage { width:100%; }
+  .p2-stage-panel { width:100%;height:min(470px,calc(100dvh - 282px)); }
+  .p2-figma-shell .p2-main { width:100%;height:calc(100% - 80px); }
+  .p2-command-dock { top:auto;bottom:20px; }
+  .p2-notification-rail { display:none; }
+  .p2-daily-quote blockquote { font-size:19px; }
+}
+
+@media(max-width:760px) {
+  .p2-figma-shell { display:block;height:100dvh;min-height:0;padding:0;overflow:hidden;background:radial-gradient(circle at 0 100%,#dceffd,transparent 58%),radial-gradient(circle at 100% 100%,#fde4dc,transparent 58%),#fff; }
+  .p2-app-header { height:72px;border-bottom:1px solid rgba(215,221,230,.7); }
+  .p2-app-header .p2-logo { top:24px;left:54px;font-size:20px; }
+  .p2-autopilot { display:none; }
+  .p2-account { top:15px;right:16px; }
+  .p2-avatar { width:42px;height:42px; }
+  .p2-account-menu { top:36px;right:0;width:224px; }
+  .p2-figma-shell .p2-sidebar { display:none;position:fixed;z-index:45;inset:0 auto 0 0;width:min(318px,88vw);height:100dvh;max-height:none;padding:16px;background:rgba(255,255,255,.96);border:0;border-radius:0;box-shadow:26px 0 80px #1720332e; }
+  .p2-figma-shell .p2-sidebar.is-open { display:flex;flex-direction:column; }
+  .p2-figma-shell .p2-sidebar:hover,.p2-figma-shell .p2-sidebar:focus-within { width:min(318px,88vw);height:100dvh;min-height:0;transform:none; }
+  .p2-sidebar-mobile-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:24px; }
+  .p2-sidebar-mobile-head .p2-logo { font-size:21px; }
+  .p2-console-select { margin:0 0 8px; }
+  .p2-console-nav { display:none!important; }
+  .p2-mobile-nav { display:grid!important; }
+  .p2-figma-shell .p2-sidebar nav { padding:8px 0; }
+  .p2-signout { display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;margin-top:auto;border:1px solid #d7dde6;border-radius:7px;background:#fff;color:#111; }
+  .p2-stage { width:100%;height:calc(100dvh - 72px);padding:0 14px 14px; }
+  .p2-stage-tabs { height:54px;margin:0;padding-left:36px;overflow-x:auto; }
+  .p2-stage-tabs a { height:34px;padding:0 11px;font-size:12px; }
+  .p2-menu-trigger { position:absolute;z-index:3;top:10px;left:0;display:inline-flex;border:0;background:transparent;padding:8px; }
+  .p2-stage-panel { width:100%;height:calc(100dvh - 140px);min-height:0;border-radius:10px; }
+  .p2-figma-shell .p2-main { width:100%;height:calc(100% - 76px);min-height:0;padding:20px 16px;border-radius:0; }
+  .p2-command-dock { position:absolute;left:28px;right:28px;top:auto;bottom:28px;height:48px;padding-inline:12px; }
+  .p2-command-prompt { font-size:13px; }
+  .p2-command-tools>span { display:none; }
+  .p2-workspace-radio,.p2-daily-quote { display:none; }
+  .p2-figma-shell .p2-grid,.p2-figma-shell .p2-grid.two,.p2-figma-shell .p2-form-grid { grid-template-columns:1fr; }
+  .p2-figma-shell .p2-heading { flex-direction:column;gap:12px; }
+  .p2-figma-shell .p2-heading h1 { font-size:24px; }
+}

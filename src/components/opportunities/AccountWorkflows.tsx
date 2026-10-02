@@ -22,7 +22,7 @@ import {
   useLoad,
 } from "./UI";
 
-export function Notifications() {
+export function Notifications({ variant = "button" }: { variant?: "button" | "panel" }) {
   const [open, setOpen] = useState(false);
   const state = useLoad(async () => {
     const result = await supabase
@@ -34,9 +34,10 @@ export function Notifications() {
     return result.data;
   }, String(open));
   const unread = state.data?.filter((n) => !n.read_at).length ?? 0;
+  const expanded = variant === "panel" || open;
   return (
-    <div className="p2-notifications">
-      <button
+    <div className={`p2-notifications${variant === "panel" ? " is-panel" : ""}`}>
+      {variant === "button" && <button
         className="p2-button secondary"
         aria-label={`Notifications, ${unread} unread`}
         aria-expanded={open}
@@ -44,17 +45,17 @@ export function Notifications() {
       >
         <Bell size={17} />
         {unread > 0 && <span>{unread}</span>}
-      </button>
-      {open && (
+      </button>}
+      {expanded && (
         <section className="p2-notification-popover" aria-label="Notifications">
           <div className="p2-card-top">
             <h2>Notifications</h2>
-            <button
+            {variant === "button" && <button
               className="p2-button secondary"
               onClick={() => setOpen(false)}
             >
               Close
-            </button>
+            </button>}
           </div>
           {state.loading && <Loading />}
           {state.error && <Notice danger>Notifications could not load.</Notice>}

@@ -92,15 +92,8 @@ const AgentKnowledgePage = lazy(() => import("@/pages/dashboard/ops/agent/Knowle
 const GoogleWorkspacePage = lazy(() => import("@/pages/dashboard/ops/google/GoogleWorkspacePage"));
 const OwnerHubPage = lazy(() => import("@/pages/dashboard/ops/OwnerHubPage"));
 
+const PhoxtaApp = lazy(() => import("@/phoxta-app/PhoxtaApp"));
 const OpportunityLayout = lazy(() => import("@/layouts/OpportunityLayout"));
-const DiscoveryPage = lazy(() => import("@/pages/opportunities/DiscoveryPage"));
-const OpportunityHome = lazy(() => import("@/pages/opportunities/HomePage"));
-const Opportunities = lazy(() => import("@/pages/opportunities/WorkspacePage").then(m => ({ default: m.OpportunitiesPage })));
-const OpportunityWorkspace = lazy(() => import("@/pages/opportunities/WorkspacePage"));
-const OpportunitySchool = lazy(() => import("@/pages/opportunities/SchoolPage"));
-const OpportunitySettings = lazy(() => import("@/pages/opportunities/SupportingPages").then(m => ({ default: m.OpportunitySettingsPage })));
-const OpportunityBusinesses = lazy(() => import("@/pages/opportunities/SupportingPages").then(m => ({ default: m.BusinessesCataloguePage })));
-const VentureWorkspaceHub = lazy(() => import("@/pages/opportunities/SupportingPages").then(m => ({ default: m.VentureWorkspaceHub })));
 const OpportunityAdmin = lazy(() => import("@/pages/opportunities/AdminPage"));
 function AuthAlias({ mode }: { mode: string }) {
   const { search } = useLocation();
@@ -174,18 +167,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/onboarding/:step" element={<OnboardingPage />} />
+        <Route path="/app/*" element={<PhoxtaApp />} />
         <Route element={<OpportunityLayout />}>
-          <Route path="/app" element={<OpportunityHome />} />
-          <Route path="/app/discover/*" element={<DiscoveryPage />} />
-          <Route path="/app/opportunities" element={<Opportunities />} />
-          <Route path="/app/opportunities/:id" element={<OpportunityWorkspace />} />
-          <Route path="/app/opportunities/:id/:tab/*" element={<OpportunityWorkspace />} />
-          <Route path="/app/school" element={<OpportunitySchool />} />
-          <Route path="/app/school/:course/:lesson" element={<OpportunitySchool />} />
-          <Route path="/app/settings/*" element={<OpportunitySettings />} />
-          <Route path="/app/businesses" element={<OpportunityBusinesses />} />
-          <Route path="/app/businesses/:slug" element={<OpportunityBusinesses />} />
-          <Route path="/app/workspace" element={<VentureWorkspaceHub />} />
           <Route path="/admin/*" element={<OpportunityAdmin />} />
         </Route>
         {/* Studio editor + preview run full-screen (no dashboard chrome / zoom). */}

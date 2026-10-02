@@ -1,0 +1,58 @@
+import { useState } from "react";
+import { ArrowUpRight, Check, ChevronRight, Circle, Mail, Pause, Play, Search, Sparkles, TrendingUp } from "lucide-react";
+import { ACTIVITY, CAMPAIGNS, INITIAL_CUSTOMERS, INITIAL_WORKFLOWS, INSIGHTS, PRIORITIES } from "./data";
+import { useWorkspace } from "./WorkspaceContext";
+
+function PanelHeading({ eyebrow, title, children }: { eyebrow: string; title: string; children: React.ReactNode }) {
+  return <header className="pxc-panel-heading"><span>{eyebrow}</span><h1>{title}</h1><p>{children}</p></header>;
+}
+
+function ActivityRows({ area }: { area?: string }) {
+  const items = area ? ACTIVITY.filter((item) => item.area === area) : ACTIVITY;
+  return <div className="pxc-customer-list">{items.map((item) => <button key={item.id}><span className="pxc-initials"><Check size={13} /></span><span><strong>{item.title}</strong><small>{item.area} · {item.time}</small></span><ChevronRight size={15} /></button>)}</div>;
+}
+
+export function OmnichannelPanel({ view }: { view: "overview" | "priorities" | "activity" }) {
+  const { business } = useWorkspace();
+  if (view === "priorities") return <div className="pxc-compact-page"><PanelHeading eyebrow="Today" title="Priorities"><>The decisions that need your attention now.</></PanelHeading><div className="pxc-customer-list">{PRIORITIES.map((item) => <button key={item.id}><span className="pxc-initials">{item.id}</span><span><strong>{item.title}</strong><small>{item.meta}</small></span><ChevronRight size={15} /></button>)}</div></div>;
+  if (view === "activity") return <div className="pxc-compact-page"><PanelHeading eyebrow="Today" title="Recent activity"><>Completed work and changes across {business.name}.</></PanelHeading><ActivityRows /></div>;
+  return <div className="pxc-overview-panel"><article className="pxc-brand-card"><span className="pxc-brand-orb" /><div><strong>Phoxta AI-Ops</strong><p>The intelligent control centre for {business.name}.</p></div></article><div className="pxc-intro-copy"><div><strong>One place to run the business</strong><p>Customers, work and growth stay connected in a single operating view.</p></div><div><strong>Work moves with clear approval</strong><p>Phoxta prepares the next action and keeps important decisions with you.</p></div><div><strong>Built around your business</strong><p>Every response uses {business.name}&apos;s goals, customers and current work.</p></div></div></div>;
+}
+
+export function CustomersPanel({ view }: { view: "overview" | "conversations" | "directory" }) {
+  const [query, setQuery] = useState("");
+  const customers = INITIAL_CUSTOMERS.filter((customer) => `${customer.name} ${customer.company}`.toLowerCase().includes(query.toLowerCase())).slice(0, 4);
+  const title = view === "conversations" ? "Conversations" : view === "directory" ? "Customer directory" : "Customers";
+  return <div className="pxc-compact-page"><PanelHeading eyebrow="Customer experience" title={title}><>{view === "conversations" ? "Messages that need a useful response." : view === "directory" ? "Every customer and lead in one searchable place." : "People who need a response, decision or next step."}</></PanelHeading>{view === "overview" && <div className="pxc-mini-metrics"><div><strong>184</strong><span>Customers</span></div><div><strong>26</strong><span>Open leads</span></div><div><strong>4</strong><span>Need attention</span></div></div>}{view !== "overview" && <label className="pxc-search"><Search size={14} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "conversations" ? "Search conversations" : "Search customers"} /></label>}<div className="pxc-customer-list">{customers.map((customer) => <button key={customer.id}><span className="pxc-initials">{customer.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}</span><span><strong>{customer.name}</strong><small>{view === "conversations" ? `Asked about their next booking · ${customer.lastContact}` : `${customer.company} · ${customer.lastContact}`}</small></span><em className={`is-${customer.stage.toLowerCase().replace(" ", "-")}`}>{view === "conversations" && customer.id < 3 ? "New" : customer.stage}</em><ChevronRight size={15} /></button>)}</div></div>;
+}
+
+export function OperationsPanel({ view }: { view: "workflows" | "approvals" | "activity" }) {
+  const [workflows, setWorkflows] = useState(INITIAL_WORKFLOWS);
+  if (view === "approvals") return <div className="pxc-compact-page"><PanelHeading eyebrow="Operations" title="Approvals"><>Prepared work waiting for your decision.</></PanelHeading><div className="pxc-signal-list"><article className="is-coral"><span><Mail size={14} /></span><div><small>Campaign</small><strong>October launch email</strong><p>Audience 1,840 · Prepared 48 minutes ago</p></div><button><ChevronRight size={14} /></button></article><article><span><Sparkles size={14} /></span><div><small>Customer experience</small><strong>Three enquiry responses</strong><p>Personal drafts prepared for high-intent leads.</p></div><button><ChevronRight size={14} /></button></article></div></div>;
+  if (view === "activity") return <div className="pxc-compact-page"><PanelHeading eyebrow="Operations" title="Activity"><>What the operating system completed recently.</></PanelHeading><ActivityRows /></div>;
+  return <div className="pxc-compact-page"><PanelHeading eyebrow="Operations" title="Work in motion"><>What Phoxta is running and what needs you.</></PanelHeading><div className="pxc-mini-metrics"><div><strong>3</strong><span>Running</span></div><div><strong>47</strong><span>Done this week</span></div><div><strong>1</strong><span>Needs approval</span></div></div><div className="pxc-work-list">{workflows.map((workflow) => <article key={workflow.id}><button className={workflow.enabled ? "is-on" : ""} onClick={() => setWorkflows((items) => items.map((item) => item.id === workflow.id ? { ...item, enabled: !item.enabled } : item))}>{workflow.enabled ? <Pause size={10} /> : <Play size={10} />}</button><div><strong>{workflow.name}</strong><small>{workflow.area} · {workflow.completed}/{workflow.total} complete</small></div><span>{workflow.status}</span></article>)}</div></div>;
+}
+
+export function GrowthPanel({ view }: { view: "campaigns" | "pipeline" | "calendar" }) {
+  if (view === "pipeline") return <div className="pxc-compact-page"><PanelHeading eyebrow="Sales & marketing" title="Pipeline"><>Where demand is moving toward revenue.</></PanelHeading><div className="pxc-growth-number"><div><span>Revenue pipeline</span><strong>£72,400</strong></div><small><TrendingUp size={13} /> 16% this month</small></div><div className="pxc-mini-metrics"><div><strong>31</strong><span>Open</span></div><div><strong>12</strong><span>Qualified</span></div><div><strong>6</strong><span>Ready to close</span></div></div></div>;
+  if (view === "calendar") return <div className="pxc-compact-page"><PanelHeading eyebrow="Sales & marketing" title="Calendar"><>Upcoming launches and customer touchpoints.</></PanelHeading><div className="pxc-campaigns">{CAMPAIGNS.map((campaign, index) => <article key={campaign.id}><span>{index + 14}</span><div><strong>{campaign.name}</strong><small>{index === 0 ? "Today" : index === 1 ? "Friday" : "Next Tuesday"} · {campaign.channel}</small></div><em>{campaign.status}</em></article>)}</div></div>;
+  return <div className="pxc-compact-page"><PanelHeading eyebrow="Sales & marketing" title="Growth"><>Campaigns and opportunities creating demand.</></PanelHeading><div className="pxc-growth-number"><div><span>Revenue pipeline</span><strong>£72,400</strong></div><small><TrendingUp size={13} /> 16% this month</small></div><div className="pxc-campaigns">{CAMPAIGNS.map((campaign) => <article key={campaign.id}><span><Mail size={15} /></span><div><strong>{campaign.name}</strong><small>{campaign.channel} · {campaign.result}</small></div><em>{campaign.status}</em></article>)}</div></div>;
+}
+
+export function IntelligencePanel({ view }: { view: "signals" | "opportunities" | "research" }) {
+  if (view === "research") return <div className="pxc-compact-page"><PanelHeading eyebrow="Research & development" title="Research"><>Questions Phoxta is investigating for the business.</></PanelHeading><div className="pxc-work-list"><article><button className="is-on"><Pause size={10} /></button><div><strong>Corporate team experience demand</strong><small>Reviewing 18 sources</small></div><span>Researching</span></article><article><button><Play size={10} /></button><div><strong>Competitor pricing changes</strong><small>Scheduled for tomorrow</small></div><span>Queued</span></article></div></div>;
+  const items = view === "opportunities" ? INSIGHTS.filter((item) => item.label === "Opportunity") : INSIGHTS;
+  return <div className="pxc-compact-page"><PanelHeading eyebrow="Research & development" title={view === "opportunities" ? "Opportunities" : "Intelligence"}><>{view === "opportunities" ? "Evidence-backed moves worth testing next." : "The signals that should shape your next decision."}</></PanelHeading><div className="pxc-signal-list">{items.map((insight) => <article className={`is-${insight.accent}`} key={insight.id}><span><Sparkles size={14} /></span><div><small>{insight.label}</small><strong>{insight.title}</strong><p>{insight.body}</p></div><button aria-label={`Open ${insight.title}`}><ArrowUpRight size={14} /></button></article>)}</div></div>;
+}
+
+export function SettingsPanel({ view }: { view: "profile" | "preferences" | "team" }) {
+  const { business } = useWorkspace();
+  const [saved, setSaved] = useState(false);
+  if (view === "preferences") return <div className="pxc-compact-page"><PanelHeading eyebrow="My account" title="Preferences"><>Choose how Phoxta communicates and asks for approval.</></PanelHeading><form className="pxc-settings"><label>Approval level<select defaultValue="external"><option value="external">External actions only</option><option value="all">Every action</option></select></label><label>Daily summary<select><option>8:00 AM</option><option>5:00 PM</option></select></label></form></div>;
+  if (view === "team") return <div className="pxc-compact-page"><PanelHeading eyebrow="My account" title="Team"><>People who can work inside this business.</></PanelHeading><div className="pxc-customer-list"><button><span className="pxc-initials">FA</span><span><strong>Femi Akindele</strong><small>Workspace owner</small></span><em>Owner</em></button><button><span className="pxc-initials">+</span><span><strong>Invite a person</strong><small>Add a team member to this workspace</small></span><ChevronRight size={15} /></button></div></div>;
+  return <div className="pxc-compact-page"><PanelHeading eyebrow="My account" title="Settings"><>Keep the workspace relevant to your business.</></PanelHeading><form className="pxc-settings" onSubmit={(event) => { event.preventDefault(); setSaved(true); window.setTimeout(() => setSaved(false), 1500); }}><label>Business name<input defaultValue={business.name} /></label><label>Primary market<input defaultValue="United Kingdom" /></label><label>Approval email<input defaultValue="founder@phoxta.com" /></label><button>{saved ? <><Check size={14} /> Saved</> : "Save changes"}</button></form></div>;
+}
+
+export function AssistantConversation({ messages }: { messages: { id: number; role: "user" | "phoxta"; text: string }[] }) {
+  return <div className="pxc-chat-view"><header><span><Sparkles size={15} /></span><div><strong>Phoxta</strong><small>Business context active</small></div></header><div>{messages.map((message) => <article className={`is-${message.role}`} key={message.id}>{message.role === "phoxta" && <Circle size={7} fill="currentColor" />}<p>{message.text}</p></article>)}</div></div>;
+}

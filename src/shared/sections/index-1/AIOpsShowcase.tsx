@@ -107,8 +107,8 @@ export default function AIOpsShowcase() {
         <img
           src="/assets/imgs/pages/home-ai-ops/dashboard.webp"
           alt="Phoxta operating dashboard with workspace navigation, AI Operator, revenue and business setup panels"
-          width={2160}
-          height={1080}
+          width={1440}
+          height={852}
           loading="lazy"
         />
       </div>
