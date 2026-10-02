@@ -8,6 +8,7 @@ import { listObjectives, listObjectiveRuns, updateObjective, type Objective, typ
 import { WorkspaceProvider, useWorkspace } from "./WorkspaceContext";
 import { CustomerWorkspace, LiveAppRoutes, LiveNotificationsRail } from "./LiveWorkspace";
 import { emitAgentActivity, emitDataChanged, type AgentActivity } from "./agentActivity";
+import { getBehaviorContext, recordUserAction, saveLearningSession, saveUserAction, USER_ACTION_EVENT, type UserActionDetail } from "./behaviorLearning";
 import "./phoxta-app.css";
 
 const CONSOLE_ITEMS = [
@@ -40,7 +41,7 @@ const TAB_SETS = {
     { label: "Graphics", to: "/app/growth/calendar" },
   ],
   intelligence: [
-    { label: "Insights", to: "/app/intelligence", end: true },
+    { label: "Performance", to: "/app/intelligence", end: true },
     { label: "Playbook", to: "/app/intelligence/opportunities" },
     { label: "Research", to: "/app/intelligence/research" },
   ],
@@ -122,7 +123,7 @@ function activityLabel(tool: string) {
   return WRITE_TOOL_LABELS[tool] ?? tool.replaceAll("_", " ").replace(/^./, (character) => character.toUpperCase());
 }
 
-function ContextualAssistant({ businessId, businessName, pathname }: { businessId: string; businessName: string; pathname: string }) {
+function ContextualAssistant({ businessId, businessName, pathname, userId }: { businessId: string; businessName: string; pathname: string; userId?: string | null }) {
   const [anchor, setAnchor] = useState<ContextAnchor | null>(null);
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -202,7 +203,8 @@ function ContextualAssistant({ businessId, businessName, pathname }: { businessI
     setPrompt("");
     setBusy(true);
     setToolStatus("Understanding this area…");
-    const context = [`Business: ${businessName}`, `Current area: ${anchor.label}`, `Area context: ${anchor.detail}`, `Current route: ${pathname}`, attachments.length ? `Attached files: ${attachments.join(", ")}` : ""].filter(Boolean).join("\n");
+    const learnedBehavior = await getBehaviorContext(businessId, userId);
+    const context = [`Business: ${businessName}`, `Current area: ${anchor.label}`, `Area context: ${anchor.detail}`, `Current route: ${pathname}`, `Recent working pattern:\n${learnedBehavior}`, attachments.length ? `Attached files: ${attachments.join(", ")}` : ""].filter(Boolean).join("\n");
     const history: OperatorMsg[] = prior.map((message) => ({ role: message.role === "user" ? "user" : "assistant", content: message.text }));
     const activeTools = new Map<string, string[]>();
     const result = await runOperatorStream(businessId, `${context}\n\nUser instruction: ${text}\nAct in the current area when requested. Use Phoxta's governed tools for real work, respect human approvals, and report the exact result.`, history, {
@@ -226,6 +228,7 @@ function ContextualAssistant({ businessId, businessName, pathname }: { businessI
       },
     });
     const reply = result.reply || result.error || "Phoxta could not complete that request. Please try again.";
+    recordUserAction({ action: "ai_instruction", area: anchor.label, outcome: result.error ? "failed" : "success", detail: { instruction_sample: text.slice(0, 600), tool_calls: result.toolCalls, error: result.error } });
     setMessages((current) => current.map((message) => message.id === now + 1 ? { ...message, text: reply } : message));
     setToolStatus("");
     setBusy(false);
@@ -247,7 +250,102 @@ function ContextualAssistant({ businessId, businessName, pathname }: { businessI
   if (!anchor) return null;
   const popupLeft = Math.max(12, Math.min(window.innerWidth - 372, anchor.x > window.innerWidth - 390 ? anchor.x - 340 : anchor.x));
   const popupTop = Math.max(12, Math.min(window.innerHeight - 390, anchor.y + 44));
-  return <div className="pxc-context-ai"><button ref={triggerRef} className={`pxc-context-ai-trigger${open ? " is-open" : ""}`} style={{ left: anchor.x, top: anchor.y }} onClick={() => { setAnchor((current) => current ? { ...current, ...positionRef.current } : current); setOpen((value) => !value); window.setTimeout(() => inputRef.current?.focus(), 0); }} aria-label={`Ask Phoxta AI about ${anchor.label}`} title={`Ask AI about ${anchor.label}`}><Sparkles size={18} /></button>{open && <section className="pxc-context-ai-popup" style={{ left: popupLeft, top: popupTop }} role="dialog" aria-label={`Phoxta AI for ${anchor.label}`}><header><span><Sparkles size={14} /><b>{anchor.label}</b></span><button onClick={() => setOpen(false)} aria-label="Close AI assistant"><X size={16} /></button></header>{messages.length > 0 && <div className="pxc-context-ai-thread">{messages.map((message) => <article className={message.role === "user" ? "is-user" : "is-ai"} key={message.id}><strong>{message.role === "user" ? "You" : "Phoxta AI"}</strong><p>{message.text || (busy ? toolStatus : "")}</p></article>)}</div>}<form onSubmit={(event) => { event.preventDefault(); void submit(); }}><button type="button" onClick={() => uploadRef.current?.click()} aria-label="Attach context"><Plus size={18} /></button><input ref={inputRef} value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={busy ? toolStatus || "Phoxta is working…" : "Ask for changes or an action"} disabled={busy} /><button type="button" title="Attached context" aria-label="Add image or file context" onClick={() => uploadRef.current?.click()}><ImagePlus size={15} /></button><button type="button" className={listening ? "is-listening" : ""} onClick={startVoice} aria-label="Use microphone"><Mic size={17} /></button><button className="pxc-context-ai-send" disabled={busy || !prompt.trim()} aria-label="Send instruction"><Send size={14} /></button><input ref={uploadRef} type="file" multiple hidden onChange={(event) => setAttachments(Array.from(event.target.files ?? []).map((file) => file.name))} /></form>{attachments.length > 0 && <small className="pxc-context-ai-files">{attachments.length} file{attachments.length === 1 ? "" : "s"} added as context</small>}<div className="pxc-context-ai-suggestions">{anchor.suggestions.map((suggestion, index) => <button key={suggestion} onClick={() => void submit(suggestion)}>{index === 0 ? <Maximize2 size={14} /> : index === 1 ? <Sparkles size={14} /> : <Workflow size={14} />}<span>{suggestion}</span></button>)}</div></section>}</div>;
+  return <div className="pxc-context-ai"><button ref={triggerRef} className={`pxc-context-ai-trigger${open ? " is-open" : ""}`} style={{ left: anchor.x, top: anchor.y }} onClick={() => { setAnchor((current) => current ? { ...current, ...positionRef.current } : current); setOpen((value) => !value); window.setTimeout(() => inputRef.current?.focus(), 0); }} aria-label={`Ask Phoxta AI about ${anchor.label}`} title={`Ask AI about ${anchor.label}`}><Sparkles size={18} /></button>{open && <section className="pxc-context-ai-popup" style={{ left: popupLeft, top: popupTop }} role="dialog" aria-label={`Phoxta AI for ${anchor.label}`}><header><span><Sparkles size={14} /><b>{anchor.label}</b></span><button onClick={() => setOpen(false)} aria-label="Close AI assistant"><X size={16} /></button></header>{messages.length > 0 && <div className="pxc-context-ai-thread">{messages.map((message) => <article className={message.role === "user" ? "is-user" : "is-ai"} key={message.id}><strong>{message.role === "user" ? "You" : "Phoxta AI"}</strong><p>{message.text || (busy ? toolStatus : "")}</p></article>)}</div>}<form onSubmit={(event) => { event.preventDefault(); void submit(); }}><button type="button" onClick={() => uploadRef.current?.click()} aria-label="Attach context"><Plus size={18} /></button><input ref={inputRef} data-learning-content="true" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={busy ? toolStatus || "Phoxta is working…" : "Ask for changes or an action"} disabled={busy} /><button type="button" title="Attached context" aria-label="Add image or file context" onClick={() => uploadRef.current?.click()}><ImagePlus size={15} /></button><button type="button" className={listening ? "is-listening" : ""} onClick={startVoice} aria-label="Use microphone"><Mic size={17} /></button><button className="pxc-context-ai-send" disabled={busy || !prompt.trim()} aria-label="Send instruction"><Send size={14} /></button><input ref={uploadRef} type="file" multiple hidden onChange={(event) => setAttachments(Array.from(event.target.files ?? []).map((file) => file.name))} /></form>{attachments.length > 0 && <small className="pxc-context-ai-files">{attachments.length} file{attachments.length === 1 ? "" : "s"} added as context</small>}<div className="pxc-context-ai-suggestions">{anchor.suggestions.map((suggestion, index) => <button key={suggestion} onClick={() => void submit(suggestion)}>{index === 0 ? <Maximize2 size={14} /> : index === 1 ? <Sparkles size={14} /> : <Workflow size={14} />}<span>{suggestion}</span></button>)}</div></section>}</div>;
+}
+
+type LearningSession = {
+  startedAt: number;
+  lastActiveAt: number;
+  activeMs: number;
+  pointerMoves: number;
+  pointerDistance: number;
+  lastPointer: { x: number; y: number } | null;
+  clicks: number;
+  keys: number;
+  fieldEdits: number;
+  scrollDistance: number;
+  areas: Record<string, number>;
+  targets: Record<string, number>;
+  typedFields: Record<string, { edits: number; length: number }>;
+  contentSamples: Record<string, string>;
+};
+
+function newLearningSession(): LearningSession {
+  const now = Date.now();
+  return { startedAt: now, lastActiveAt: now, activeMs: 0, pointerMoves: 0, pointerDistance: 0, lastPointer: null, clicks: 0, keys: 0, fieldEdits: 0, scrollDistance: 0, areas: {}, targets: {}, typedFields: {}, contentSamples: {} };
+}
+
+function BehaviorLearner({ businessId, userId, pathname }: { businessId: string; userId?: string | null; pathname: string }) {
+  const session = useRef<LearningSession>(newLearningSession());
+
+  useEffect(() => {
+    session.current = newLearningSession();
+    let lastPointerSample = 0;
+    let lastScrollY = window.scrollY;
+    const touch = () => {
+      const now = Date.now();
+      session.current.activeMs += Math.min(30_000, Math.max(0, now - session.current.lastActiveAt));
+      session.current.lastActiveAt = now;
+    };
+    const areaName = (element: Element) => compactText(element.closest<HTMLElement>("[data-ai-context]")?.dataset.aiContext || pathContext(pathname), 80);
+    const targetName = (element: Element) => {
+      const named = element.closest<HTMLElement>("button,a,input,textarea,select,[role='button']");
+      return compactText(named?.getAttribute("aria-label") || named?.getAttribute("placeholder") || named?.textContent || named?.tagName || "workspace", 90);
+    };
+    const pointer = (event: PointerEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest(".pxc-shell")) return;
+      const now = performance.now();
+      if (now - lastPointerSample < 60) return;
+      lastPointerSample = now;
+      touch();
+      const previous = session.current.lastPointer;
+      if (previous) session.current.pointerDistance += Math.hypot(event.clientX - previous.x, event.clientY - previous.y);
+      session.current.lastPointer = { x: event.clientX, y: event.clientY };
+      session.current.pointerMoves += 1;
+    };
+    const click = (event: MouseEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest(".pxc-shell")) return;
+      touch();
+      const area = areaName(event.target); const target = targetName(event.target);
+      session.current.clicks += 1;
+      session.current.areas[area] = (session.current.areas[area] ?? 0) + 1;
+      session.current.targets[target] = (session.current.targets[target] ?? 0) + 1;
+    };
+    const input = (event: Event) => {
+      if (!(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) || !event.target.closest(".pxc-shell")) return;
+      const element = event.target;
+      if (element instanceof HTMLInputElement && (element.type === "password" || /cc-|password|token|secret/i.test(`${element.name} ${element.autocomplete}`))) return;
+      touch();
+      const field = compactText(element.getAttribute("aria-label") || element.getAttribute("placeholder") || element.name || "field", 60);
+      const value = element.value ?? "";
+      const current = session.current.typedFields[field] ?? { edits: 0, length: 0 };
+      session.current.typedFields[field] = { edits: current.edits + 1, length: value.length };
+      session.current.fieldEdits += 1;
+      if (element.dataset.learningContent === "true") session.current.contentSamples[field] = value.slice(0, 600);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest(".pxc-shell")) return;
+      touch(); session.current.keys += 1;
+    };
+    const scroll = () => { touch(); session.current.scrollDistance += Math.abs(window.scrollY - lastScrollY); lastScrollY = window.scrollY; };
+    const action = (event: Event) => { const detail = (event as CustomEvent<UserActionDetail>).detail; if (detail) void saveUserAction(businessId, userId, detail); };
+    const flush = () => {
+      const current = session.current;
+      const props = { route: pathname, started_at: new Date(current.startedAt).toISOString(), active_ms: current.activeMs, pointer_moves: current.pointerMoves, pointer_distance: Math.round(current.pointerDistance), clicks: current.clicks, keys: current.keys, field_edits: current.fieldEdits, scroll_distance: Math.round(current.scrollDistance), areas: current.areas, targets: current.targets, typed_fields: current.typedFields, content_samples: current.contentSamples };
+      session.current = newLearningSession();
+      void saveLearningSession(businessId, userId, props);
+    };
+    document.addEventListener("pointermove", pointer, { passive: true });
+    document.addEventListener("click", click, true);
+    document.addEventListener("input", input, true);
+    document.addEventListener("keydown", key, true);
+    window.addEventListener("scroll", scroll, { passive: true });
+    window.addEventListener(USER_ACTION_EVENT, action);
+    const timer = window.setInterval(flush, 15_000);
+    return () => { flush(); window.clearInterval(timer); document.removeEventListener("pointermove", pointer); document.removeEventListener("click", click, true); document.removeEventListener("input", input, true); document.removeEventListener("keydown", key, true); window.removeEventListener("scroll", scroll); window.removeEventListener(USER_ACTION_EVENT, action); };
+  }, [businessId, pathname, userId]);
+
+  return null;
 }
 
 function activityTarget(tool = "") {
@@ -438,6 +536,7 @@ function AppShell() {
   }
 
   return <div className="pxc-shell">
+    <BehaviorLearner businessId={business.id} userId={user?.id} pathname={location.pathname} />
     <header className="pxc-header">
       <button className="pxc-mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu size={20} /></button>
       <label className={`pxc-autopilot${autopilotBusy ? " is-busy" : ""}`} title={autopilotNotice || "Run active objectives autonomously"}><input type="checkbox" checked={autopilot} disabled={autopilotBusy} onChange={(event) => void toggleAutopilot(event.target.checked)} /><span /><b>Autopilot mode</b>{autopilotNotice && <em>{autopilotNotice}</em>}</label>
@@ -467,7 +566,7 @@ function AppShell() {
     </div>
 
     <fieldset className="pxc-models"><legend>Workspace</legend><label><input type="radio" name="model" defaultChecked />Phoxta AI-Ops</label><label><input type="radio" name="model" />Opportunities</label><label><input type="radio" name="model" />Startup School</label></fieldset>
-    <ContextualAssistant businessId={business.id} businessName={business.name} pathname={location.pathname} />
+    <ContextualAssistant businessId={business.id} businessName={business.name} pathname={location.pathname} userId={user?.id} />
     <AutopilotPresence businessId={business.id} enabled={autopilot} objectiveCount={objectives.filter((objective) => objective.status === "active").length} />
     <figure className="pxc-quote"><blockquote>â€œ{quote}â€</blockquote><figcaption>â–£ &nbsp; {business.name} Â· Quote of the day</figcaption></figure>
     {accountPopup && <AccountDialog view={accountPopup} expanded={accountExpanded} avatar={avatarPreview} identity={identity} business={business.name} onClose={() => setAccountPopup(null)} onExpand={() => setAccountExpanded((value) => !value)} onUpload={() => avatarInputRef.current?.click()} onSignOut={() => void signOut()} />}
