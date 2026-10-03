@@ -11,7 +11,7 @@ import { Link } from "react-router-dom";
 // as self-serve tools, and it is the honest answer for someone who is not ready
 // to pay for a cohort.
 
-const SCHOOL_URL = "https://learn.phoxta.com";
+const SCHOOL_URL = "/app/school";
 
 const ARROW = (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">

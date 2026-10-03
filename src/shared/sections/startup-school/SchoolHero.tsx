@@ -1,5 +1,5 @@
 import { BRAND_COPY } from "@/lib/opportunities/brandCopy";
-const LEARN_URL = "https://learn.phoxta.com";
+const LEARN_URL = "/app/school";
 
 const PATHS = [
     {

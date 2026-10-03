@@ -1,6 +1,6 @@
 {/* Home 7 Section 1 (Hero - Advancing Startup Innovation) */}
 
-const SCHOOL_URL = "https://learn.phoxta.com";
+const SCHOOL_URL = "/app/school";
 
 const BRACKET_ITEMS = [
     { text: "[ START ]", delay: "0.1" },
@@ -105,10 +105,10 @@ export default function Section1() {
                             </p>
 
                             <div className="sec-1-home-7__cta d-flex align-items-center flex-wrap gap-2 mb-10">
-                                <a href={SCHOOL_URL} target="_blank" rel="noopener noreferrer" className="sec-1-home-7__cta-btn at_fade_anim" data-start="100%" data-delay="0.3">
+                                <a href={SCHOOL_URL} className="sec-1-home-7__cta-btn at_fade_anim" data-start="100%" data-delay="0.3">
                                     <span>Start in Startup School</span>
                                 </a>
-                                <a href={SCHOOL_URL} target="_blank" rel="noopener noreferrer" className="sec-1-home-7__cta-arrow" aria-label="Start in Startup School">
+                                <a href={SCHOOL_URL} className="sec-1-home-7__cta-arrow" aria-label="Start in Startup School">
                                     {CTA_ARROW_SVG}
                                 </a>
                             </div>

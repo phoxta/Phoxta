@@ -9,7 +9,7 @@ const FEATURES = [
     { text: "AI support for routine work, with people in control", delay: "0.4" },
 ];
 
-const SCHOOL_URL = "https://learn.phoxta.com";
+const SCHOOL_URL = "/app/school";
 
 export default function Section7() {
     return (
@@ -65,13 +65,13 @@ export default function Section7() {
                             </ul>
 
                             <div className="sec-7-home-7__cta d-inline-flex align-items-stretch at_fade_anim">
-                                <a href={SCHOOL_URL} target="_blank" rel="noopener noreferrer" className="at-btn sec-7-home-7__cta-btn">
+                                <a href={SCHOOL_URL} className="at-btn sec-7-home-7__cta-btn">
                                     <span>
                                         <span className="text-1">Open Startup School</span>
                                         <span className="text-2">Open Startup School</span>
                                     </span>
                                 </a>
-                                <a href={SCHOOL_URL} target="_blank" rel="noopener noreferrer" className="sec-7-home-7__cta-circle" aria-label="Open Startup School">
+                                <a href={SCHOOL_URL} className="sec-7-home-7__cta-circle" aria-label="Open Startup School">
                                     <img
                                         src="/assets/imgs/pages/home-7/sec-7-btn-arrow.svg"
                                         alt=""
