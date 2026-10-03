@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import { workspaces } from '@/lib/opportunities/repository';
@@ -7,7 +7,7 @@ import { SCHOOL_MODULES } from '@/lib/opportunities/school';
 import { ActionButton, Badge, ButtonLink, Loading, Notice, PageHeading, useLoad } from '@/components/opportunities/UI';
 
 export default function OpportunitySchoolPage() {
-    const { course } = useParams(); const { user } = useAuth(); const [workspace, setWorkspace] = useState('');
+    const path = useLocation().pathname; const course = path.match(/^\/app\/school\/([^/]+)/)?.[1]; const { user } = useAuth(); const [workspace, setWorkspace] = useState('');
     const state = useLoad(async () => { const [all, progress] = await Promise.all([workspaces(), supabase.from('opportunity_school_progress').select('module_id,workspace_id,completed_at')]); if (progress.error) throw new Error(progress.error.message); return { all, progress: progress.data }; }, user?.id ?? '');
     const module = SCHOOL_MODULES.find(m => m.id === course);
     const selected = workspace || state.data?.all[0]?.id || '';
