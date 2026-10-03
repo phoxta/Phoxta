@@ -101,6 +101,11 @@ function initials(value: string) {
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "PX";
 }
 
+function WorkspaceSwitcher({ mode }: { mode: WorkspaceMode }) {
+  const navigate = useNavigate();
+  return <fieldset className="pxc-models"><legend>Workspace</legend><label><input type="radio" name="model" checked={mode === "ai-ops"} onChange={() => navigate("/app")} />Phoxta AI-Ops</label><label><input type="radio" name="model" checked={mode === "opportunities"} onChange={() => navigate("/app/businesses")} />Opportunities</label><label><input type="radio" name="model" checked={mode === "school"} onChange={() => navigate("/app/school")} />Startup School</label></fieldset>;
+}
+
 type ContextAnchor = { label: string; detail: string; suggestions: string[]; x: number; y: number };
 type ContextMessage = { id: number; role: "user" | "phoxta"; text: string };
 type SpeechResultEvent = { results: ArrayLike<{ 0: { transcript: string } }> };
@@ -632,7 +637,7 @@ function BusinessAppShell() {
       <LiveNotificationsRail open={notificationOpen} autopilot={autopilot} onOpen={() => setNotificationOpen(true)} onClose={() => setNotificationOpen(false)} />
     </div>
 
-    <fieldset className="pxc-models"><legend>Workspace</legend><label><input type="radio" name="model" checked={workspaceMode === "ai-ops"} onChange={() => navigate("/app")} />Phoxta AI-Ops</label><label><input type="radio" name="model" checked={workspaceMode === "opportunities"} onChange={() => navigate("/app/opportunity")} />Opportunities</label><label><input type="radio" name="model" checked={workspaceMode === "school"} onChange={() => navigate("/app/school")} />Startup School</label></fieldset>
+    <WorkspaceSwitcher mode={workspaceMode} />
     <ContextualAssistant businessId={business.id} businessName={business.name} pathname={location.pathname} userId={user?.id} />
     <AutopilotPresence businessId={business.id} enabled={autopilot} objectiveCount={objectives.filter((objective) => objective.status === "active").length} />
     <figure className="pxc-quote"><blockquote>“{quote}”</blockquote><figcaption>▣ &nbsp; {business.name} · Quote of the day</figcaption></figure>
@@ -640,11 +645,24 @@ function BusinessAppShell() {
   </div>;
 }
 
+function IndependentWorkspaceShell({ mode }: { mode: Exclude<WorkspaceMode, "ai-ops"> }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const identity = user?.email ?? "Phoxta owner";
+  const avatarUrl = typeof user?.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : "";
+  return <div className={`pxc-independent-workspace is-${mode}`}>
+    <header><button onClick={() => navigate(mode === "school" ? "/app/school" : "/app/businesses")}><strong>Phoxta</strong><span>{mode === "school" ? "Startup School" : "Opportunities"}</span></button><button className="pxc-avatar" aria-label="My account">{avatarUrl ? <img src={avatarUrl} alt="" /> : initials(identity)}</button></header>
+    <main id="main-content"><LiveAppRoutes /></main>
+    <WorkspaceSwitcher mode={mode} />
+  </div>;
+}
+
 function AppShell() {
   const { business } = useWorkspaceState();
   const location = useLocation();
+  const mode = workspaceModeFromPath(location.pathname);
+  if (mode !== "ai-ops") return <IndependentWorkspaceShell mode={mode} />;
   if (business) return <BusinessAppShell />;
-  if (location.pathname.startsWith("/app/businesses")) return <div className="pxc-empty-business-shell"><header><strong>Phoxta</strong><span>Ready-to-Launch businesses</span></header><main><LiveAppRoutes /></main></div>;
   return <div className="pxc-workspace-state"><strong>No operating business yet</strong><span>Choose a ready-to-launch business or build one from an opportunity.</span><div><NavLink to="/app/businesses">Browse businesses</NavLink><NavLink to="/app/opportunity">Build an opportunity</NavLink></div></div>;
 }
 
