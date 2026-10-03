@@ -1,14 +1,16 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Bell, Bot, Camera, ChartNoAxesCombined, ChevronDown, ChevronRight, CreditCard, Headphones, House, ImagePlus, LifeBuoy, Lightbulb, LogOut, Maximize2, Menu, Mic, Minimize2, Plus, Send, Settings, Sparkles, UserRound, Users, Workflow, X } from "lucide-react";
+import { Bell, Bot, ChartNoAxesCombined, ChevronDown, ChevronRight, CreditCard, Headphones, House, ImagePlus, LifeBuoy, Lightbulb, LogOut, Maximize2, Menu, Mic, Plus, Send, Settings, Sparkles, UserRound, Users, Workflow, X } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
-import { listActions, listAudit, runOperatorStream, WRITE_TOOL_LABELS, type AgentAction, type AuditEntry, type OperatorMsg } from "@/lib/db/ops/operator";
+import { listActions, listAudit, listToolPolicies, runOperatorStream, setToolPolicy, uploadOperatorFile, WRITE_TOOL_GROUPS, WRITE_TOOL_LABELS, type AgentAction, type AuditEntry, type OperatorAttachment, type OperatorMsg } from "@/lib/db/ops/operator";
 import { listObjectives, listObjectiveRuns, updateObjective, type Objective, type ObjectiveRun } from "@/lib/db/ops/autopilot";
 import { WorkspaceProvider, useWorkspace } from "./WorkspaceContext";
 import { CustomerWorkspace, LiveAppRoutes, LiveNotificationsRail } from "./LiveWorkspace";
 import { emitAgentActivity, emitDataChanged, type AgentActivity } from "./agentActivity";
 import { getBehaviorContext, recordUserAction, saveLearningSession, saveUserAction, USER_ACTION_EVENT, type UserActionDetail } from "./behaviorLearning";
+import { getLearningSettings } from "@/lib/db/productWorkspace";
+import AccountPanel, { type AccountView } from "./AccountPanel";
 import "./phoxta-app.css";
 
 const CONSOLE_ITEMS = [
@@ -18,6 +20,18 @@ const CONSOLE_ITEMS = [
   { label: "Growth", to: "/app/growth", icon: ChartNoAxesCombined },
   { label: "Intelligence", to: "/app/intelligence", icon: Lightbulb },
 ];
+
+const AREA_POLICY_GROUPS: Record<string, string[]> = {
+  Customers: ["CRM", "Inbox", "Helpdesk", "Reaching customers", "Call center"],
+  Operations: ["Commerce", "Invoicing", "Bookings & reservations"],
+  Growth: ["Content", "Marketing", "Google Workspace"],
+  Intelligence: [],
+};
+
+function areaTools(label: string) {
+  const groups = new Set(AREA_POLICY_GROUPS[label] ?? []);
+  return WRITE_TOOL_GROUPS.filter((group) => groups.has(group.label)).flatMap((group) => group.tools);
+}
 
 const TAB_SETS = {
   today: [
@@ -33,7 +47,10 @@ const TAB_SETS = {
   operations: [
     { label: "Run", to: "/app/operations", end: true },
     { label: "Approvals", to: "/app/operations/approvals" },
+    { label: "Commerce", to: "/app/operations/commerce" },
+    { label: "Invoices", to: "/app/operations/invoicing" },
     { label: "Bookings", to: "/app/operations/activity" },
+    { label: "Reservations", to: "/app/operations/reservations" },
   ],
   growth: [
     { label: "Grow", to: "/app/growth", end: true },
@@ -44,6 +61,8 @@ const TAB_SETS = {
     { label: "Performance", to: "/app/intelligence", end: true },
     { label: "Playbook", to: "/app/intelligence/opportunities" },
     { label: "Research", to: "/app/intelligence/research" },
+    { label: "Knowledge", to: "/app/intelligence/knowledge" },
+    { label: "Capabilities", to: "/app/intelligence/capabilities" },
   ],
   settings: [
     { label: "Profile", to: "/app/settings", end: true },
@@ -63,6 +82,14 @@ function sectionFromPath(pathname: string): SectionKey {
   return "today";
 }
 
+type WorkspaceMode = "ai-ops" | "opportunities" | "school";
+
+function workspaceModeFromPath(pathname: string): WorkspaceMode {
+  if (pathname.startsWith("/app/school")) return "school";
+  if (/^\/app\/(opportunity|opportunities|discover|businesses|workspace)(\/|$)/.test(pathname)) return "opportunities";
+  return "ai-ops";
+}
+
 const QUOTES = [
   "Build what customers return for, not what they merely applaud.",
   "A useful business improves through evidence, one decision at a time.",
@@ -73,8 +100,6 @@ function initials(value: string) {
   const parts = value.split(/[@\s._-]+/).filter(Boolean);
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "PX";
 }
-
-type AccountView = "profile" | "billing" | "settings" | "team" | "invite" | "support" | "logout";
 
 type ContextAnchor = { label: string; detail: string; suggestions: string[]; x: number; y: number };
 type ContextMessage = { id: number; role: "user" | "phoxta"; text: string };
@@ -131,7 +156,7 @@ function ContextualAssistant({ businessId, businessName, pathname, userId }: { b
   const [busy, setBusy] = useState(false);
   const [toolStatus, setToolStatus] = useState("");
   const [listening, setListening] = useState(false);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<OperatorAttachment[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -204,7 +229,7 @@ function ContextualAssistant({ businessId, businessName, pathname, userId }: { b
     setBusy(true);
     setToolStatus("Understanding this area…");
     const learnedBehavior = await getBehaviorContext(businessId, userId);
-    const context = [`Business: ${businessName}`, `Current area: ${anchor.label}`, `Area context: ${anchor.detail}`, `Current route: ${pathname}`, `Recent working pattern:\n${learnedBehavior}`, attachments.length ? `Attached files: ${attachments.join(", ")}` : ""].filter(Boolean).join("\n");
+    const context = [`Business: ${businessName}`, `Current area: ${anchor.label}`, `Area context: ${anchor.detail}`, `Current route: ${pathname}`, `Recent working pattern:\n${learnedBehavior}`, attachments.length ? `Attached files: ${attachments.map((item) => item.name).join(", ")}` : ""].filter(Boolean).join("\n");
     const history: OperatorMsg[] = prior.map((message) => ({ role: message.role === "user" ? "user" : "assistant", content: message.text }));
     const activeTools = new Map<string, string[]>();
     const result = await runOperatorStream(businessId, `${context}\n\nUser instruction: ${text}\nAct in the current area when requested. Use Phoxta's governed tools for real work, respect human approvals, and report the exact result.`, history, {
@@ -226,9 +251,9 @@ function ContextualAssistant({ businessId, businessName, pathname, userId }: { b
         emitAgentActivity({ id, title, body: ok ? `Completed in ${anchor.label}.` : `Could not complete this action in ${anchor.label}.`, status: ok ? "completed" : "failed", createdAt: new Date().toISOString(), tool, source: "operator" });
         emitDataChanged();
       },
-    });
+    }, attachments);
     const reply = result.reply || result.error || "Phoxta could not complete that request. Please try again.";
-    recordUserAction({ action: "ai_instruction", area: anchor.label, outcome: result.error ? "failed" : "success", detail: { instruction_sample: text.slice(0, 600), tool_calls: result.toolCalls, error: result.error } });
+    recordUserAction({ action: "ai_instruction", area: anchor.label, outcome: result.error ? "failed" : "success", detail: { instruction_length: text.length, tool_calls: result.toolCalls, error_code: result.error ? "operator_failed" : null } });
     setMessages((current) => current.map((message) => message.id === now + 1 ? { ...message, text: reply } : message));
     setToolStatus("");
     setBusy(false);
@@ -247,10 +272,19 @@ function ContextualAssistant({ businessId, businessName, pathname, userId }: { b
     recognition.start();
   }
 
+  async function addAttachments(files: FileList | null) {
+    if (!files?.length) return;
+    setToolStatus("Uploading context…");
+    const uploaded = await Promise.all(Array.from(files).slice(0, 5).map((file) => uploadOperatorFile(businessId, file)));
+    const added = uploaded.flatMap((result) => result.attachment ? [result.attachment] : []);
+    setAttachments((current) => [...current, ...added].slice(0, 5));
+    setToolStatus(uploaded.find((result) => result.error)?.error ?? "");
+  }
+
   if (!anchor) return null;
   const popupLeft = Math.max(12, Math.min(window.innerWidth - 372, anchor.x > window.innerWidth - 390 ? anchor.x - 340 : anchor.x));
   const popupTop = Math.max(12, Math.min(window.innerHeight - 390, anchor.y + 44));
-  return <div className="pxc-context-ai"><button ref={triggerRef} className={`pxc-context-ai-trigger${open ? " is-open" : ""}`} style={{ left: anchor.x, top: anchor.y }} onClick={() => { setAnchor((current) => current ? { ...current, ...positionRef.current } : current); setOpen((value) => !value); window.setTimeout(() => inputRef.current?.focus(), 0); }} aria-label={`Ask Phoxta AI about ${anchor.label}`} title={`Ask AI about ${anchor.label}`}><Sparkles size={18} /></button>{open && <section className="pxc-context-ai-popup" style={{ left: popupLeft, top: popupTop }} role="dialog" aria-label={`Phoxta AI for ${anchor.label}`}><header><span><Sparkles size={14} /><b>{anchor.label}</b></span><button onClick={() => setOpen(false)} aria-label="Close AI assistant"><X size={16} /></button></header>{messages.length > 0 && <div className="pxc-context-ai-thread">{messages.map((message) => <article className={message.role === "user" ? "is-user" : "is-ai"} key={message.id}><strong>{message.role === "user" ? "You" : "Phoxta AI"}</strong><p>{message.text || (busy ? toolStatus : "")}</p></article>)}</div>}<form onSubmit={(event) => { event.preventDefault(); void submit(); }}><button type="button" onClick={() => uploadRef.current?.click()} aria-label="Attach context"><Plus size={18} /></button><input ref={inputRef} data-learning-content="true" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={busy ? toolStatus || "Phoxta is working…" : "Ask for changes or an action"} disabled={busy} /><button type="button" title="Attached context" aria-label="Add image or file context" onClick={() => uploadRef.current?.click()}><ImagePlus size={15} /></button><button type="button" className={listening ? "is-listening" : ""} onClick={startVoice} aria-label="Use microphone"><Mic size={17} /></button><button className="pxc-context-ai-send" disabled={busy || !prompt.trim()} aria-label="Send instruction"><Send size={14} /></button><input ref={uploadRef} type="file" multiple hidden onChange={(event) => setAttachments(Array.from(event.target.files ?? []).map((file) => file.name))} /></form>{attachments.length > 0 && <small className="pxc-context-ai-files">{attachments.length} file{attachments.length === 1 ? "" : "s"} added as context</small>}<div className="pxc-context-ai-suggestions">{anchor.suggestions.map((suggestion, index) => <button key={suggestion} onClick={() => void submit(suggestion)}>{index === 0 ? <Maximize2 size={14} /> : index === 1 ? <Sparkles size={14} /> : <Workflow size={14} />}<span>{suggestion}</span></button>)}</div></section>}</div>;
+  return <div className="pxc-context-ai"><button ref={triggerRef} className={`pxc-context-ai-trigger${open ? " is-open" : ""}`} style={{ left: anchor.x, top: anchor.y }} onClick={() => { setAnchor((current) => current ? { ...current, ...positionRef.current } : current); setOpen((value) => !value); window.setTimeout(() => inputRef.current?.focus(), 0); }} aria-label={`Ask Phoxta AI about ${anchor.label}`} title={`Ask AI about ${anchor.label}`}><Sparkles size={18} /></button>{open && <section className="pxc-context-ai-popup" style={{ left: popupLeft, top: popupTop }} role="dialog" aria-label={`Phoxta AI for ${anchor.label}`}><header><span><Sparkles size={14} /><b>{anchor.label}</b></span><button onClick={() => setOpen(false)} aria-label="Close AI assistant"><X size={16} /></button></header>{messages.length > 0 && <div className="pxc-context-ai-thread">{messages.map((message) => <article className={message.role === "user" ? "is-user" : "is-ai"} key={message.id}><strong>{message.role === "user" ? "You" : "Phoxta AI"}</strong><p>{message.text || (busy ? toolStatus : "")}</p></article>)}</div>}<form onSubmit={(event) => { event.preventDefault(); void submit(); }}><button type="button" onClick={() => uploadRef.current?.click()} aria-label="Attach context"><Plus size={18} /></button><input ref={inputRef} data-learning-content="true" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={busy ? toolStatus || "Phoxta is working…" : "Ask for changes or an action"} disabled={busy} /><button type="button" title="Attached context" aria-label="Add image or file context" onClick={() => uploadRef.current?.click()}><ImagePlus size={15} /></button><button type="button" className={listening ? "is-listening" : ""} onClick={startVoice} aria-label="Use microphone"><Mic size={17} /></button><button className="pxc-context-ai-send" disabled={busy || !prompt.trim()} aria-label="Send instruction"><Send size={14} /></button><input ref={uploadRef} type="file" multiple hidden onChange={(event) => void addAttachments(event.target.files)} /></form>{attachments.length > 0 && <small className="pxc-context-ai-files">{attachments.map((item) => item.name).join(", ")}</small>}<div className="pxc-context-ai-suggestions">{anchor.suggestions.map((suggestion, index) => <button key={suggestion} onClick={() => void submit(suggestion)}>{index === 0 ? <Maximize2 size={14} /> : index === 1 ? <Sparkles size={14} /> : <Workflow size={14} />}<span>{suggestion}</span></button>)}</div></section>}</div>;
 }
 
 type LearningSession = {
@@ -267,18 +301,32 @@ type LearningSession = {
   areas: Record<string, number>;
   targets: Record<string, number>;
   typedFields: Record<string, { edits: number; length: number }>;
-  contentSamples: Record<string, string>;
 };
 
 function newLearningSession(): LearningSession {
   const now = Date.now();
-  return { startedAt: now, lastActiveAt: now, activeMs: 0, pointerMoves: 0, pointerDistance: 0, lastPointer: null, clicks: 0, keys: 0, fieldEdits: 0, scrollDistance: 0, areas: {}, targets: {}, typedFields: {}, contentSamples: {} };
+  return { startedAt: now, lastActiveAt: now, activeMs: 0, pointerMoves: 0, pointerDistance: 0, lastPointer: null, clicks: 0, keys: 0, fieldEdits: 0, scrollDistance: 0, areas: {}, targets: {}, typedFields: {} };
 }
 
 function BehaviorLearner({ businessId, userId, pathname }: { businessId: string; userId?: string | null; pathname: string }) {
   const session = useRef<LearningSession>(newLearningSession());
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
+    let active = true;
+    if (!userId) { setEnabled(false); return; }
+    const refresh = () => void getLearningSettings(businessId, userId).then((result) => { if (active) setEnabled(result.data.enabled); });
+    const changed = (event: Event) => {
+      const detail = (event as CustomEvent<{ businessId?: string; userId?: string; enabled?: boolean }>).detail;
+      if (detail?.businessId === businessId && detail?.userId === userId) setEnabled(Boolean(detail.enabled));
+    };
+    refresh();
+    window.addEventListener("phoxta:learning-settings-changed", changed);
+    return () => { active = false; window.removeEventListener("phoxta:learning-settings-changed", changed); };
+  }, [businessId, userId]);
+
+  useEffect(() => {
+    if (!enabled) return;
     session.current = newLearningSession();
     let lastPointerSample = 0;
     let lastScrollY = window.scrollY;
@@ -321,7 +369,6 @@ function BehaviorLearner({ businessId, userId, pathname }: { businessId: string;
       const current = session.current.typedFields[field] ?? { edits: 0, length: 0 };
       session.current.typedFields[field] = { edits: current.edits + 1, length: value.length };
       session.current.fieldEdits += 1;
-      if (element.dataset.learningContent === "true") session.current.contentSamples[field] = value.slice(0, 600);
     };
     const key = (event: KeyboardEvent) => {
       if (!(event.target instanceof Element) || !event.target.closest(".pxc-shell")) return;
@@ -331,7 +378,7 @@ function BehaviorLearner({ businessId, userId, pathname }: { businessId: string;
     const action = (event: Event) => { const detail = (event as CustomEvent<UserActionDetail>).detail; if (detail) void saveUserAction(businessId, userId, detail); };
     const flush = () => {
       const current = session.current;
-      const props = { route: pathname, started_at: new Date(current.startedAt).toISOString(), active_ms: current.activeMs, pointer_moves: current.pointerMoves, pointer_distance: Math.round(current.pointerDistance), clicks: current.clicks, keys: current.keys, field_edits: current.fieldEdits, scroll_distance: Math.round(current.scrollDistance), areas: current.areas, targets: current.targets, typed_fields: current.typedFields, content_samples: current.contentSamples };
+      const props = { route: pathname, started_at: new Date(current.startedAt).toISOString(), active_ms: current.activeMs, pointer_moves: current.pointerMoves, pointer_distance: Math.round(current.pointerDistance), clicks: current.clicks, keys: current.keys, field_edits: current.fieldEdits, scroll_distance: Math.round(current.scrollDistance), areas: current.areas, targets: current.targets, typed_fields: current.typedFields };
       session.current = newLearningSession();
       void saveLearningSession(businessId, userId, props);
     };
@@ -343,7 +390,7 @@ function BehaviorLearner({ businessId, userId, pathname }: { businessId: string;
     window.addEventListener(USER_ACTION_EVENT, action);
     const timer = window.setInterval(flush, 15_000);
     return () => { flush(); window.clearInterval(timer); document.removeEventListener("pointermove", pointer); document.removeEventListener("click", click, true); document.removeEventListener("input", input, true); document.removeEventListener("keydown", key, true); window.removeEventListener("scroll", scroll); window.removeEventListener(USER_ACTION_EVENT, action); };
-  }, [businessId, pathname, userId]);
+  }, [businessId, enabled, pathname, userId]);
 
   return null;
 }
@@ -428,25 +475,13 @@ function AutopilotPresence({ businessId, enabled, objectiveCount }: { businessId
   return <div className={`pxc-autopilot-presence is-${activity.status}`} style={{ transform: `translate3d(${position.x}px,${position.y}px,0)` }} aria-live="polite"><span className="pxc-autopilot-cursor"><Sparkles size={15} /></span><div><strong>{activity.title}</strong><small>{activity.body}</small></div></div>;
 }
 
-function AccountDialog({ view, expanded, avatar, identity, business, onClose, onExpand, onUpload, onSignOut }: { view: AccountView; expanded: boolean; avatar: string; identity: string; business: string; onClose: () => void; onExpand: () => void; onUpload: () => void; onSignOut: () => void }) {
-  const titles: Record<AccountView, string> = { profile: "Profile", billing: "Billing", settings: "Settings", team: "Team", invite: "Invite users", support: "Support", logout: "Log out" };
-  return <><button className="pxc-account-scrim" aria-label="Close account popup" onClick={onClose} /><section className={`pxc-account-popup${expanded ? " is-expanded" : ""}`} role="dialog" aria-modal="true" aria-label={titles[view]}><header><div><span className="pxc-popup-icon">{view === "billing" ? <CreditCard size={17} /> : view === "team" || view === "invite" ? <Users size={17} /> : view === "support" ? <Headphones size={17} /> : view === "logout" ? <LogOut size={17} /> : <UserRound size={17} />}</span><div><strong>{titles[view]}</strong><small>{business}</small></div></div><div><button onClick={onExpand} aria-label={expanded ? "Reduce popup" : "Expand popup"}>{expanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button><button onClick={onClose} aria-label="Close popup"><X size={18} /></button></div></header><div className="pxc-account-popup-body">
-    {view === "profile" && <><div className="pxc-profile-photo"><span>{avatar ? <img src={avatar} alt="Current profile" /> : initials(identity)}</span><div><strong>Profile image</strong><small>JPG, PNG or WebP</small><button onClick={onUpload}><Camera size={14} /> Upload image</button></div></div><div className="pxc-popup-form"><label>Email<input defaultValue={identity} /></label><label>Display name<input defaultValue="Femi Akindele" /></label><button>Save profile</button></div></>}
-    {view === "billing" && <><div className="pxc-popup-summary"><span>Current plan</span><strong>Phoxta AI-Ops</strong><small>Active workspace for {business}</small></div><div className="pxc-popup-list"><div><span>Billing cycle</span><strong>Monthly</strong></div><div><span>Next invoice</span><strong>1 November</strong></div><div><span>Payment method</span><strong>â€¢â€¢â€¢â€¢ 4242</strong></div></div><button className="pxc-popup-primary">Manage billing</button></>}
-    {view === "settings" && <><div className="pxc-popup-form"><label>Default operating mode<select defaultValue="approve"><option value="assist">Assist</option><option value="approve">Human approval</option><option value="autopilot">Autopilot</option></select></label><label>Daily summary<select><option>8:00 AM</option><option>5:00 PM</option></select></label><button>Save settings</button></div></>}
-    {view === "team" && <><div className="pxc-popup-person"><span>FA</span><div><strong>Femi Akindele</strong><small>Owner Â· {identity}</small></div><em>Owner</em></div><button className="pxc-popup-primary">Manage team</button></>}
-    {view === "invite" && <div className="pxc-popup-form"><label>Email address<input type="email" placeholder="name@company.com" /></label><label>Role<select><option>Member</option><option>Manager</option><option>Viewer</option></select></label><button>Send invitation</button></div>}
-    {view === "support" && <div className="pxc-popup-form"><label>How can we help?<textarea placeholder="Describe what you need help with" /></label><button>Send to support</button></div>}
-    {view === "logout" && <div className="pxc-logout-confirm"><p>Sign out of Phoxta on this device?</p><div><button onClick={onClose}>Cancel</button><button onClick={onSignOut}>Log out</button></div></div>}
-  </div></section></>;
-}
-
 function AppShell() {
   const { user, signOut } = useAuth();
   const { business, businesses, selectBusiness } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
   const section = sectionFromPath(location.pathname);
+  const workspaceMode = workspaceModeFromPath(location.pathname);
   const tabs = TAB_SETS[section];
   const [autopilot, setAutopilot] = useState(false);
   const [autopilotBusy, setAutopilotBusy] = useState(false);
@@ -464,6 +499,7 @@ function AppShell() {
   const [avatarPreview, setAvatarPreview] = useState(remoteAvatarUrl);
   const quote = QUOTES[business.id.length % QUOTES.length];
   const isCustomerWorkspace = location.pathname.startsWith("/app/customers");
+  const isVentureWorkspace = workspaceMode !== "ai-ops";
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -480,6 +516,19 @@ function AppShell() {
       setObjectives(result.data);
       setAutopilot(result.data.some((objective) => objective.status === "active"));
       setAutopilotNotice(result.error ?? "");
+    });
+    return () => { active = false; };
+  }, [business.id]);
+
+  useEffect(() => {
+    let active = true;
+    void listToolPolicies(business.id).then((result) => {
+      if (!active || result.error) return;
+      const modes = new Map(result.data.map((policy) => [policy.tool, policy.mode]));
+      setFeatureModes((current) => Object.fromEntries(Object.keys(current).map((label) => {
+        const tools = areaTools(label);
+        return [label, tools.length && tools.every((tool) => modes.get(tool) === "auto") ? "ai" : "human"];
+      })));
     });
     return () => { active = false; };
   }, [business.id]);
@@ -508,8 +557,17 @@ function AppShell() {
     setAutopilotBusy(false);
   }
 
+  async function persistAreaMode(label: string, mode: "ai" | "human") {
+    const tools = areaTools(label);
+    if (!tools.length) return;
+    const results = await Promise.all(tools.map((tool) => setToolPolicy(business.id, tool, mode === "ai" ? "auto" : "approve")));
+    const error = results.find((result) => result.error)?.error;
+    if (error) setAutopilotNotice(error);
+  }
+
   function chooseAi(label: string, to: string) {
     setFeatureModes((current) => ({ ...current, [label]: "ai" }));
+    void persistAreaMode(label, "ai");
     setHumanPopup(null);
     navigate(to);
   }
@@ -528,11 +586,18 @@ function AppShell() {
     setAccountPopup(view);
   }
 
-  function chooseAvatar(file: File | undefined) {
+  async function chooseAvatar(file: File | undefined) {
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => { if (typeof reader.result === "string") setAvatarPreview(reader.result); };
-    reader.readAsDataURL(file);
+    if (!user?.id) return;
+    const extension = (file.name.split(".").pop() || "webp").replace(/[^a-z0-9]/gi, "").toLowerCase();
+    const path = `${user.id}/avatar.${extension}`;
+    const uploaded = await supabase.storage.from("phoxta-avatars").upload(path, file, { upsert: true, contentType: file.type });
+    if (uploaded.error) { setAutopilotNotice(uploaded.error.message); return; }
+    const { data } = supabase.storage.from("phoxta-avatars").getPublicUrl(path);
+    const avatarUrl = `${data.publicUrl}?v=${Date.now()}`;
+    const updated = await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } });
+    if (updated.error) { setAutopilotNotice(updated.error.message); return; }
+    setAvatarPreview(avatarUrl);
   }
 
   return <div className="pxc-shell">
@@ -544,7 +609,7 @@ function AppShell() {
       <button className="pxc-mobile-alerts" onClick={() => setNotificationOpen((value) => !value)} aria-label="Open notifications"><Bell size={17} /></button>
       <div className="pxc-account">
         <button className="pxc-avatar" aria-label="Open my account">{avatarPreview ? <img src={avatarPreview} alt="" /> : initials(identity)}</button>
-        <input ref={avatarInputRef} className="pxc-avatar-input" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => chooseAvatar(event.target.files?.[0])} />
+        <input ref={avatarInputRef} className="pxc-avatar-input" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void chooseAvatar(event.target.files?.[0])} />
         <div className="pxc-account-menu"><strong>My Account</strong><button onClick={() => openAccount("profile")}><UserRound size={15} />Profile<ChevronRight size={15} /></button><button onClick={() => openAccount("billing")}><CreditCard size={15} />Billing<ChevronRight size={15} /></button><button onClick={() => openAccount("settings")}><Settings size={15} />Settings<ChevronRight size={15} /></button><hr /><button onClick={() => openAccount("team")}><Users size={15} />Team<ChevronRight size={15} /></button><button onClick={() => openAccount("invite")}><LifeBuoy size={15} />Invite users<ChevronRight size={15} /></button><button onClick={() => openAccount("support")}><Headphones size={15} />Support<ChevronRight size={15} /></button><hr /><button onClick={() => openAccount("logout")}><LogOut size={15} />Log out<ChevronRight size={15} /></button></div>
       </div>
     </header>
@@ -557,19 +622,19 @@ function AppShell() {
         <nav>{CONSOLE_ITEMS.map((item) => { const itemSection = sectionFromPath(item.to); const itemMode = featureModes[item.label] ?? "ai"; return <div className={`pxc-console-row${item.to === "/app" ? " is-today" : ""}`} key={item.label}><NavLink className={`pxc-console-label${section === itemSection ? " active" : ""}`} end={item.to === "/app"} to={item.to} onClick={() => { setMobileNav(false); setHumanPopup(null); }}><item.icon size={15} /><span>{item.label}</span></NavLink>{item.to !== "/app" && <><div className="pxc-compact-actions"><button className={itemMode === "ai" ? "is-selected" : ""} onClick={() => chooseAi(item.label, item.to)} aria-label={`Use AI for ${item.label}`} title="AI mode"><Bot size={14} /></button><button className={itemMode === "human" ? "is-selected" : ""} onClick={(event) => openHumanLoop(item.label, item.to, event.currentTarget)} aria-label={`Configure human loop for ${item.label}`} title="Human loop"><UserRound size={14} /></button></div><div className="pxc-expanded-actions"><button className={itemMode === "ai" ? "is-selected" : ""} onClick={() => chooseAi(item.label, item.to)}>AI Bot</button><button className={itemMode === "human" ? "is-selected" : ""} onClick={(event) => openHumanLoop(item.label, item.to, event.currentTarget)}>Human loop</button></div></>}</div>; })}</nav>
       </aside>
 
-      {humanPopup && <section className="pxc-human-popup" role="dialog" aria-label={`${humanPopup.label} human loop`} style={{ top: humanPopup.top, left: humanPopup.left }}><header><div><span><UserRound size={15} /></span><div><strong>{humanPopup.label}</strong><small>Human loop</small></div></div><button onClick={() => setHumanPopup(null)} aria-label="Close human loop settings"><X size={16} /></button></header><label className="pxc-human-toggle"><span><strong>Require human approval</strong><small>Phoxta pauses at important decisions.</small></span><input type="checkbox" checked={featureModes[humanPopup.label] === "human"} onChange={(event) => setFeatureModes((current) => ({ ...current, [humanPopup.label]: event.target.checked ? "human" : "ai" }))} /><i /></label><p>Approval is required before external messages, publishing, customer commitments, pricing or payments.</p><button className="pxc-human-done" onClick={() => setHumanPopup(null)}>Done</button></section>}
+      {humanPopup && <section className="pxc-human-popup" role="dialog" aria-label={`${humanPopup.label} human loop`} style={{ top: humanPopup.top, left: humanPopup.left }}><header><div><span><UserRound size={15} /></span><div><strong>{humanPopup.label}</strong><small>Human loop</small></div></div><button onClick={() => setHumanPopup(null)} aria-label="Close human loop settings"><X size={16} /></button></header><label className="pxc-human-toggle"><span><strong>Require human approval</strong><small>Phoxta pauses at important decisions.</small></span><input type="checkbox" checked={featureModes[humanPopup.label] === "human"} onChange={(event) => { const mode = event.target.checked ? "human" : "ai"; setFeatureModes((current) => ({ ...current, [humanPopup.label]: mode })); void persistAreaMode(humanPopup.label, mode); }} /><i /></label><p>Approval is required before external messages, publishing, customer commitments, pricing or payments. This setting is saved for every governed tool in this area.</p><button className="pxc-human-done" onClick={() => setHumanPopup(null)}>Done</button></section>}
 
-      <section className={`pxc-stage${isCustomerWorkspace ? " is-today" : ""}`} data-ai-context={`${section} workspace`} data-ai-detail={`Current route: ${location.pathname}. Business: ${business.name}.`}>
-        {isCustomerWorkspace ? <CustomerWorkspace /> : <><nav className="pxc-tabs" aria-label={`${section} views`}>{tabs.map((tab) => <NavLink className={({ isActive }) => isActive ? "active" : undefined} key={tab.to} end={"end" in tab && tab.end} to={tab.to}>{tab.label} <ChevronDown size={12} /></NavLink>)}</nav><div className="pxc-main-card"><main className="pxc-card-scroll pxc-live-app" id="main-content"><LiveAppRoutes /></main></div></>}
+      <section className={`pxc-stage${isCustomerWorkspace ? " is-today" : ""}${isVentureWorkspace ? " is-venture" : ""}`} data-ai-context={`${workspaceMode} workspace`} data-ai-detail={`Current route: ${location.pathname}. Business: ${business.name}.`}>
+        {isCustomerWorkspace ? <CustomerWorkspace /> : <>{isVentureWorkspace ? <nav className="pxc-tabs" aria-label={`${workspaceMode} views`}>{workspaceMode === "school" ? <><NavLink to="/app/school" end>Modules</NavLink><a href="https://learn.phoxta.com">Cohort &amp; mentoring</a></> : <><NavLink to="/app/opportunity" end>Overview</NavLink><NavLink to="/app/discover">Discover</NavLink><NavLink to="/app/opportunities">Workspaces</NavLink><NavLink to="/app/businesses">Ready-to-Launch</NavLink></>}</nav> : <nav className="pxc-tabs" aria-label={`${section} views`}>{tabs.map((tab) => <NavLink className={({ isActive }) => isActive ? "active" : undefined} key={tab.to} end={"end" in tab && tab.end} to={tab.to}>{tab.label} <ChevronDown size={12} /></NavLink>)}</nav>}<div className="pxc-main-card"><main className="pxc-card-scroll pxc-live-app" id="main-content"><LiveAppRoutes /></main></div></>}
       </section>
       <LiveNotificationsRail open={notificationOpen} autopilot={autopilot} onOpen={() => setNotificationOpen(true)} onClose={() => setNotificationOpen(false)} />
     </div>
 
-    <fieldset className="pxc-models"><legend>Workspace</legend><label><input type="radio" name="model" defaultChecked />Phoxta AI-Ops</label><label><input type="radio" name="model" />Opportunities</label><label><input type="radio" name="model" />Startup School</label></fieldset>
+    <fieldset className="pxc-models"><legend>Workspace</legend><label><input type="radio" name="model" checked={workspaceMode === "ai-ops"} onChange={() => navigate("/app")} />Phoxta AI-Ops</label><label><input type="radio" name="model" checked={workspaceMode === "opportunities"} onChange={() => navigate("/app/opportunity")} />Opportunities</label><label><input type="radio" name="model" checked={workspaceMode === "school"} onChange={() => navigate("/app/school")} />Startup School</label></fieldset>
     <ContextualAssistant businessId={business.id} businessName={business.name} pathname={location.pathname} userId={user?.id} />
     <AutopilotPresence businessId={business.id} enabled={autopilot} objectiveCount={objectives.filter((objective) => objective.status === "active").length} />
-    <figure className="pxc-quote"><blockquote>â€œ{quote}â€</blockquote><figcaption>â–£ &nbsp; {business.name} Â· Quote of the day</figcaption></figure>
-    {accountPopup && <AccountDialog view={accountPopup} expanded={accountExpanded} avatar={avatarPreview} identity={identity} business={business.name} onClose={() => setAccountPopup(null)} onExpand={() => setAccountExpanded((value) => !value)} onUpload={() => avatarInputRef.current?.click()} onSignOut={() => void signOut()} />}
+    <figure className="pxc-quote"><blockquote>“{quote}”</blockquote><figcaption>▣ &nbsp; {business.name} · Quote of the day</figcaption></figure>
+    {accountPopup && <AccountPanel view={accountPopup} expanded={accountExpanded} avatar={avatarPreview} identity={identity} business={business.name} businessId={business.id} userId={user?.id ?? ""} onClose={() => setAccountPopup(null)} onExpand={() => setAccountExpanded((value) => !value)} onUpload={() => avatarInputRef.current?.click()} onSignOut={() => void signOut()} />}
   </div>;
 }
 

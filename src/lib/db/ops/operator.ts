@@ -174,6 +174,7 @@ export async function runOperatorStream(
   message: string,
   history: OperatorMsg[],
   on: OperatorStreamHandlers = {},
+  attachments: OperatorAttachment[] = [],
 ): Promise<OperatorResult> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
@@ -196,6 +197,7 @@ export async function runOperatorStream(
         // Role + content only. The function strips the rest as well, but a
         // row's attachments and timestamps have no business on the wire.
         history: history.map((m) => ({ role: m.role, content: m.content })),
+        attachments,
         stream: true,
       }),
     });

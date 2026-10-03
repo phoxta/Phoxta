@@ -385,7 +385,7 @@ export function OpportunitySettingsPage() {
             Connect business email, channels and operational tools in the
             operating workspace for the business that owns them.
           </p>
-          <ButtonLink to="/dashboard/console" secondary>
+          <ButtonLink to="/app" secondary>
             Open business integrations
           </ButtonLink>
         </section>
@@ -467,7 +467,7 @@ export function VentureWorkspaceHub() {
           Continue managing your existing businesses, CRM, campaigns, websites
           and customer support.
         </p>
-        <ButtonLink to="/dashboard/console">Open operating console</ButtonLink>
+        <ButtonLink to="/app">Open operating console</ButtonLink>
       </section>
     </>
   );

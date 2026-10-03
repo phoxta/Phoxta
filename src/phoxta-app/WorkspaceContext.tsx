@@ -54,7 +54,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   if (loading) return <div className="pxc-workspace-state" role="status">Loading your businesses…</div>;
   if (error) return <div className="pxc-workspace-state is-error"><strong>Couldn’t load your businesses</strong><span>{error}</span></div>;
-  if (!value) return <div className="pxc-workspace-state"><strong>No business workspace yet</strong><a href="/dashboard/businesses">Create or open a business</a></div>;
+  if (!value) return <div className="pxc-workspace-state"><strong>No operating business yet</strong><a href="/app/opportunity">Build or choose a business</a></div>;
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

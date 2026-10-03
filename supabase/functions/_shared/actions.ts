@@ -958,6 +958,13 @@ async function policyMode(admin: SupabaseClient, orgId: string, tool: string): P
   return ((data as { mode?: string } | null)?.mode as "off" | "approve" | "auto") ?? "approve"; // safe default
 }
 
+async function governedActionKey(orgId: string, tool: string, args: Json): Promise<string> {
+  const window = Math.floor(Date.now() / 300_000);
+  const bytes = new TextEncoder().encode(`${orgId}|${tool}|${JSON.stringify(args)}|${window}`);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
 /**
  * One audit row. Exported so agent-approve writes the same shape as the
  * operator's own path rather than its own hand-rolled insert.
@@ -1000,6 +1007,11 @@ export async function recordAudit(
  *  walked round a cap that send_message over email could not. */
 const OUTBOUND_TOOLS = ["send_message", "place_call", "reply_conversation", "google_send_email"];
 
+async function recordDelivery(admin: SupabaseClient, orgId: string, tool: string, state: "sent" | "failed", summary: string): Promise<void> {
+  if (!OUTBOUND_TOOLS.includes(tool)) return;
+  await admin.from("delivery_receipts").insert({ organization_id: orgId, capability_key: tool, provider: tool === "google_send_email" ? "google" : tool === "place_call" ? "voice" : "messaging", state, summary: state === "sent" ? summary : "", error: state === "failed" ? summary : null, evidence: { tool }, verified_at: new Date().toISOString() });
+}
+
 export type ExecuteOptions = {
   /** Which leg is asking. Defaults to the operator; the cron legs say who they are. */
   source?: AuditSource;
@@ -1041,12 +1053,14 @@ export async function decideQueuedAction(
   const args = (act as Json).args;
   try {
     const summary = await runWrite(admin, orgId, tool, args, actorId);
-    await admin.from("agent_actions").update({ status: "executed", result: summary }).eq("id", actionId);
+    await recordDelivery(admin, orgId, tool, "sent", summary);
+    await admin.from("agent_actions").update({ status: "executed", result: summary, verified_at: new Date().toISOString(), evidence: { execution: "provider_or_database_confirmed", summary } }).eq("id", actionId);
     await recordAudit(admin, orgId, { tool, args, status: "ok", summary, actor: "owner", actorId, source: "approval" });
     return { status: "executed", summary, title };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    await admin.from("agent_actions").update({ status: "failed", error: msg }).eq("id", actionId);
+    await recordDelivery(admin, orgId, tool, "failed", msg);
+    await admin.from("agent_actions").update({ status: "failed", error: msg, verified_at: new Date().toISOString(), evidence: { execution: "failed", error: msg } }).eq("id", actionId);
     await recordAudit(admin, orgId, { tool, args, status: "error", summary: msg, actor: "owner", actorId, source: "approval" });
     return { status: "failed", error: msg, title };
   }
@@ -1137,7 +1151,8 @@ export async function executeAction(
     const title = actionTitle(tool, args);
     const before = await captureBefore(admin, orgId, tool, queuedArgs);
     if (before) queuedArgs = { ...queuedArgs, __before: before };
-    await admin.from("agent_actions").insert({ organization_id: orgId, tool, args: queuedArgs, title, requested_by: userId, status: "pending" });
+    const idempotencyKey = await governedActionKey(orgId, tool, queuedArgs);
+    await admin.from("agent_actions").upsert({ organization_id: orgId, tool, args: queuedArgs, title, requested_by: userId, status: "pending", idempotency_key: idempotencyKey, plan: { steps: [tool], target: queuedArgs?.__target ?? null }, policy_snapshot: { mode, source, is_admin: isAdmin }, budget_cost: { actions: 1, outbound: OUTBOUND_TOOLS.includes(tool) ? 1 : 0 } }, { onConflict: "organization_id,idempotency_key", ignoreDuplicates: true });
     await audit("pending", title, queuedArgs);
     // Tell org owners/admins there's something to approve — previously the
     // queue filled silently and nothing surfaced it outside the Operator tab.
@@ -1154,17 +1169,35 @@ export async function executeAction(
           title: `Approval needed — ${orgRow?.name ?? "your business"}`,
           body: title,
           kind: "ai",
-          link: `/dashboard/businesses/${orgId}/ops/agent/operator`,
+          link: "/app/operations/approvals",
         })));
       }
     } catch { /* best-effort */ }
-    return `Queued for the owner's approval: ${title}. They can approve it in Agent → Operator.`;
+    return `Queued for the owner's approval: ${title}. They can approve it in Operations > Approvals.`;
+  }
+  const title = actionTitle(tool, args);
+  const idempotencyKey = await governedActionKey(orgId, tool, queuedArgs);
+  const pendingAction = { organization_id: orgId, tool, args: queuedArgs, title, requested_by: userId, status: "executing", idempotency_key: idempotencyKey, plan: { steps: [tool], target: queuedArgs?.__target ?? null }, policy_snapshot: { mode, source, is_admin: isAdmin }, budget_cost: { actions: 1, outbound: OUTBOUND_TOOLS.includes(tool) ? 1 : 0 } };
+  const { data: inserted } = await admin.from("agent_actions")
+    .upsert(pendingAction, { onConflict: "organization_id,idempotency_key", ignoreDuplicates: true })
+    .select("id,status,result,error").maybeSingle();
+  const { data: existing } = inserted ? { data: null } : await admin.from("agent_actions")
+    .select("id,status,result,error").eq("organization_id", orgId).eq("idempotency_key", idempotencyKey).maybeSingle();
+  const actionRow = inserted ?? existing;
+  if (!inserted && actionRow) {
+    if (actionRow.status === "executed" && actionRow.result) return String(actionRow.result);
+    if (actionRow.status === "failed") return `Couldn't do that: ${String(actionRow.error ?? "the previous attempt failed")}`;
+    return `That action is already ${actionRow.status === "pending" ? "waiting for approval" : "in progress"}.`;
   }
   try {
     const summary = await runWrite(admin, orgId, tool, queuedArgs, userId);
+    await recordDelivery(admin, orgId, tool, "sent", summary);
+    if (actionRow?.id) await admin.from("agent_actions").update({ status: "executed", result: summary, verified_at: new Date().toISOString(), evidence: { execution: "provider_or_database_confirmed", summary } }).eq("id", actionRow.id);
     await audit("ok", summary, queuedArgs);
     return summary;
   } catch (e) {
+    await recordDelivery(admin, orgId, tool, "failed", String((e as Error)?.message || e));
+    if (actionRow?.id) await admin.from("agent_actions").update({ status: "failed", error: String((e as Error)?.message || e), verified_at: new Date().toISOString(), evidence: { execution: "failed", error: String((e as Error)?.message || e) } }).eq("id", actionRow.id);
     await audit("error", String((e as Error)?.message || e), queuedArgs);
     return `Couldn't do that: ${(e as Error)?.message || e}`;
   }

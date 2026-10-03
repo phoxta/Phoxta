@@ -1,6 +1,7 @@
 import { listRecentEvents, logEvent, type AnalyticsEvent } from "@/lib/db/ops/analytics";
 import { listActions, listAudit } from "@/lib/db/ops/operator";
 import { SCHOOL_MODULES } from "@/lib/opportunities/school";
+import { getLearningSettings } from "@/lib/db/productWorkspace";
 
 export const USER_ACTION_EVENT = "phoxta:user-action";
 
@@ -43,6 +44,9 @@ function moduleRecommendation(id: string, reason: string): PerformanceRecommenda
 }
 
 export async function getBehaviorContext(orgId: string, userId?: string | null) {
+  if (!userId) return "Behaviour learning is unavailable without a signed-in user.";
+  const settings = await getLearningSettings(orgId, userId);
+  if (!settings.data.enabled) return "Behaviour learning is paused by the user. Use only the current screen context.";
   const result = await listRecentEvents(orgId, 120);
   const events = result.data.filter((event) => !userId || event.props.user_id === userId);
   const sessions = events.filter((event) => event.name === "workspace_learning_session");

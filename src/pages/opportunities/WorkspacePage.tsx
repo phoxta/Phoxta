@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
+import { supabase } from "@/lib/supabaseClient";
 import {
   ActionButton,
   ActionForm,
@@ -1512,6 +1513,16 @@ function ArtifactsPanel({
             ))}
           </section>
         </>
+      )}
+      {area === "launch" && (
+        <section className="p2-panel">
+          <h2>Create the operating business</h2>
+          <p className="p2-readable">When the launch plan is ready and you have recorded a Proceed decision, Phoxta will turn this opportunity into the operating workspace. Your artifacts become durable tasks and the evidence remains linked to the business.</p>
+          <Notice>Creating the operating workspace does not publish, spend money or contact customers. Those actions remain governed by the AI and human approval policies in Phoxta AI-Ops.</Notice>
+          <div className="p2-actions" style={{ marginTop: 20 }}>
+            <ActionButton secondary={false} action={async () => { const { data, error } = await supabase.rpc("opportunity_launch_workspace", { p_workspace: d.workspace.id }); if (error) throw new Error(error.message); if (!data) throw new Error("The operating workspace could not be created."); window.location.assign("/app"); }}>Create operating workspace</ActionButton>
+          </div>
+        </section>
       )}
     </div>
   );
