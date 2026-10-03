@@ -47,8 +47,9 @@ Deno.serve(async (req) => {
     const body = (await req.json().catch(() => ({}))) as Json;
     const kind = String(body?.kind ?? "");
     const admin = adminClient();
-    const returnUrl = cleanReturnUrl(body?.returnUrl, `${SITE}/dashboard/payment/callback`);
+    const returnUrl = cleanReturnUrl(body?.returnUrl, `${SITE}/app/businesses/payment/callback`);
     const success = `${returnUrl}${returnUrl.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`;
+    const cancel = `${returnUrl}${returnUrl.includes("?") ? "&" : "?"}cancelled=1`;
 
     if (kind === "subscription" || kind === "change_plan") {
       const auth = await authorize(req, body?.orgId);
@@ -73,14 +74,25 @@ Deno.serve(async (req) => {
       // "Paid" and "done" are different questions. Fulfilment is the webhook's
       // job, so the callback page waits on the row, not on Stripe.
       let fulfilled = false;
+      let organizationId: string | null = null;
+      let purchaseId: string | null = null;
+      let blueprintId: string | null = null;
       if (meta.kind === "blueprint" && meta.purchase_id) {
-        const { data: p } = await admin.from("purchases").select("status").eq("id", meta.purchase_id).maybeSingle();
-        fulfilled = (p as Json)?.status === "paid";
+        if (String(meta.user_id ?? "") !== who.userId) return json({ error: "This checkout does not belong to your account." }, 403);
+        const { data: p } = await admin.from("purchases").select("id,status,organization_id,blueprint_id,buyer_user_id").eq("id", meta.purchase_id).eq("buyer_user_id", who.userId).maybeSingle();
+        if (!p) return json({ error: "Purchase not found." }, 404);
+        purchaseId = (p as Json).id;
+        blueprintId = (p as Json).blueprint_id;
+        organizationId = (p as Json).organization_id;
+        fulfilled = (p as Json).status === "paid" && Boolean(organizationId);
       } else if (meta.kind === "subscription" && meta.org_id) {
+        const auth = await authorize(req, meta.org_id);
+        if (auth.error) return auth.error;
         const { data: s } = await admin.from("subscriptions").select("status").eq("organization_id", meta.org_id).maybeSingle();
         fulfilled = ["active", "trialing"].includes(String((s as Json)?.status ?? ""));
+        organizationId = meta.org_id;
       }
-      return json({ status: paid ? "success" : String(session.status ?? "pending"), kind: meta.kind ?? null, fulfilled });
+      return json({ status: paid ? (fulfilled ? "success" : "provisioning") : String(session.status ?? "pending"), kind: meta.kind ?? null, fulfilled, organizationId, purchaseId, blueprintId });
     }
 
     // ── test: prove a payment can actually be taken ─────────────────────────
@@ -123,7 +135,7 @@ Deno.serve(async (req) => {
         }],
         metadata: { kind: "test", test_id: (row as Json).id },
         success_url: success,
-        cancel_url: returnUrl,
+        cancel_url: cancel,
       });
 
       await admin.from("payment_tests").update({ stripe_session_id: session.id }).eq("id", (row as Json).id);
@@ -173,7 +185,7 @@ Deno.serve(async (req) => {
           business_name: String(body?.name ?? ""),
         },
         success_url: success,
-        cancel_url: returnUrl,
+        cancel_url: cancel,
       });
 
       await admin.from("purchases").update({ stripe_session_id: session.id }).eq("id", (purchase as Json).id);
@@ -202,7 +214,7 @@ Deno.serve(async (req) => {
         metadata: { kind: "subscription", org_id: auth.ok.org.id, plan },
         subscription_data: { metadata: { kind: "subscription", org_id: auth.ok.org.id, plan } },
         success_url: success,
-        cancel_url: returnUrl,
+        cancel_url: cancel,
       });
       return json({ url: session.url });
     }
@@ -248,7 +260,7 @@ Deno.serve(async (req) => {
         metadata: { kind: "subscription", org_id: auth.ok.org.id, plan },
         subscription_data: { metadata: { kind: "subscription", org_id: auth.ok.org.id, plan } },
         success_url: success,
-        cancel_url: returnUrl,
+        cancel_url: cancel,
       });
       return json({ url: session.url });
     }

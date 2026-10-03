@@ -181,7 +181,16 @@ Deno.serve(async (req) => {
         .select("id")
         .maybeSingle();
 
-      if (claimed) {
+      // A previous delivery can have recorded the charge before provisioning
+      // failed. Re-read the purchase and retry only while no organization has
+      // been attached. The provisioning RPC is itself idempotent.
+      const { data: paidPurchase } = await admin
+        .from("purchases")
+        .select("status,organization_id")
+        .eq("id", m.purchase_id)
+        .maybeSingle();
+
+      if ((claimed || (paidPurchase as { status?: string } | null)?.status === "paid") && !(paidPurchase as { organization_id?: string | null } | null)?.organization_id) {
         const { data: newOrgId, error } = await admin.rpc("app_provision_business_paid", {
           p_user: m.user_id,
           p_blueprint: m.blueprint_id,
@@ -221,7 +230,7 @@ Deno.serve(async (req) => {
                   items: [{ price: price.id }],
                   trial_end: freeUntil,
                   metadata: { kind: "subscription", org_id: newOrgId, plan: "growth" },
-                });
+                }, { idempotencyKey: `blueprint-growth-${m.purchase_id}` });
                 subId = created.id;
               }
             } catch (e) {

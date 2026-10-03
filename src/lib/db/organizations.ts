@@ -26,6 +26,7 @@ export type Organization = {
    *  asking for something this console already knows. */
   profile?: { address?: string; phone?: string; email?: string; mapQuery?: string } | null;
   metadata?: { opportunity_only?: boolean } | null;
+  modules?: Record<string, unknown> | null;
 };
 
 export type Member = { user_id: string; role: "owner" | "admin" | "staff" | "viewer"; created_at: string };
@@ -36,7 +37,7 @@ export type Member = { user_id: string; role: "owner" | "admin" | "staff" | "vie
 // id is what resolves which dossier a business reads, and the profile is what
 // stops it asking for an address the owner already gave Settings.
 const ORG_SELECT =
-  "id, name, slug, stage, vertical, blueprint_id, primary_region, created_at, lifecycle_stage, app_path, site_url, provisioned_at, currency, profile";
+  "id, name, slug, stage, vertical, blueprint_id, primary_region, created_at, lifecycle_stage, app_path, site_url, provisioned_at, currency, profile, modules, metadata";
 
 /** A single business the user can access (RLS scopes to members). */
 export async function getBusiness(id: string): Promise<{ data: Organization | null; error: string | null }> {
@@ -143,7 +144,7 @@ export async function listMyOrganizations(): Promise<{
 
   const { data, error } = await supabase
     .from("organization_memberships")
-    .select("role, organizations(id, name, slug, stage, vertical, blueprint_id, app_path, site_url, primary_region, created_at, metadata)")
+    .select("role, organizations(id, name, slug, stage, vertical, blueprint_id, app_path, site_url, primary_region, created_at, lifecycle_stage, provisioned_at, currency, profile, modules, metadata)")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 

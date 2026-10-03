@@ -14,7 +14,7 @@ type Phase = "checking" | "success" | "pending" | "failed";
 export default function PaymentCallbackPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const reference = params.get("reference") || params.get("trxref") || "";
+  const reference = params.get("session_id") || params.get("reference") || params.get("trxref") || "";
   const [phase, setPhase] = useState<Phase>(reference ? "checking" : "failed");
   const [kind, setKind] = useState<"blueprint" | "subscription" | null>(null);
   const [error, setError] = useState<string | null>(reference ? null : "No payment reference found.");
@@ -42,7 +42,7 @@ export default function PaymentCallbackPage() {
         // New business / plan exists now — drop stale dashboard caches.
         clearCachedData();
         setPhase("success");
-        const dest = data.kind === "blueprint" ? "/dashboard/businesses" : "/dashboard/billing";
+        const dest = data.kind === "blueprint" && data.organizationId ? `/app/businesses/activate/${data.organizationId}?purchase=success` : "/app";
         setTimeout(() => navigate(dest, { replace: true }), 1600);
         return;
       }
@@ -87,7 +87,7 @@ export default function PaymentCallbackPage() {
             <p className="neutral-500 mb-3 fz-font-md">
               Setup is finishing in the background — it will appear in your dashboard shortly.
             </p>
-            <Link to={kind === "subscription" ? "/dashboard/billing" : "/dashboard/businesses"} className="hrx-pill primary d-inline-flex">
+            <Link to="/app" className="hrx-pill primary d-inline-flex">
               Go to dashboard
             </Link>
           </>
@@ -97,7 +97,7 @@ export default function PaymentCallbackPage() {
             <div className="fz-40 mb-2">⚠️</div>
             <h5 className="fw-600 mb-1">Payment not completed</h5>
             <p className="neutral-500 mb-3 fz-font-md">{error}</p>
-            <Link to="/dashboard/marketplace" className="hrx-pill primary d-inline-flex">
+            <Link to="/app/businesses" className="hrx-pill primary d-inline-flex">
               Back to marketplace
             </Link>
           </>

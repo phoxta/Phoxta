@@ -7,7 +7,7 @@ import { trackEvent } from "@/lib/analytics";
 // that can tell the server "I paid" is a client that can provision itself a
 // free business.
 
-const CALLBACK_PATH = "/dashboard/payment/callback";
+const CALLBACK_PATH = "/app/businesses/payment/callback";
 
 function callbackUrl(): string {
   return `${window.location.origin}${CALLBACK_PATH}`;
@@ -88,6 +88,9 @@ export type PaymentVerification = {
   kind: "blueprint" | "subscription" | null;
   /** True once the webhook has finished fulfilment (business provisioned / plan active). */
   fulfilled: boolean;
+  organizationId?: string | null;
+  purchaseId?: string | null;
+  blueprintId?: string | null;
 };
 
 /** Callback-page check: confirms the transaction server-side. */

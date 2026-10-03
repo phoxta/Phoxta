@@ -17,21 +17,26 @@ export type Blueprint = {
   verified: boolean;
   ai_included: boolean;
   metrics: Record<string, unknown>;
+  app_path?: string | null;
+  preset?: Record<string, unknown>;
+  license?: string | null;
+  exclusivity?: string | null;
 };
 
 const SELECT =
-  "id, slug, name, tagline, description, vertical, tier, price_cents, currency, cover_url, demo_url, verified, ai_included, metrics";
+  "id, slug, name, tagline, description, vertical, tier, price_cents, currency, cover_url, demo_url, verified, ai_included, metrics, app_path, preset, license, exclusivity";
 
 export async function listBlueprints(): Promise<{ data: Blueprint[]; error: string | null }> {
   const { data, error } = await supabase
     .from("blueprints")
     .select(SELECT)
+    .eq("status", "live")
     .order("price_cents", { ascending: true });
   return { data: (data as Blueprint[] | null) ?? [], error: friendlyError(error?.message) };
 }
 
 export async function getBlueprint(slug: string): Promise<{ data: Blueprint | null; error: string | null }> {
-  const { data, error } = await supabase.from("blueprints").select(SELECT).eq("slug", slug).maybeSingle();
+  const { data, error } = await supabase.from("blueprints").select(SELECT).eq("slug", slug).eq("status", "live").maybeSingle();
   return { data: (data as Blueprint | null) ?? null, error: friendlyError(error?.message) };
 }
 

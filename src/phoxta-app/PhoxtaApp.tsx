@@ -5,7 +5,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
 import { listActions, listAudit, listToolPolicies, runOperatorStream, setToolPolicy, uploadOperatorFile, WRITE_TOOL_GROUPS, WRITE_TOOL_LABELS, type AgentAction, type AuditEntry, type OperatorAttachment, type OperatorMsg } from "@/lib/db/ops/operator";
 import { listObjectives, listObjectiveRuns, updateObjective, type Objective, type ObjectiveRun } from "@/lib/db/ops/autopilot";
-import { WorkspaceProvider, useWorkspace } from "./WorkspaceContext";
+import { WorkspaceProvider, useWorkspace, useWorkspaceState } from "./WorkspaceContext";
 import { CustomerWorkspace, LiveAppRoutes, LiveNotificationsRail } from "./LiveWorkspace";
 import { emitAgentActivity, emitDataChanged, type AgentActivity } from "./agentActivity";
 import { getBehaviorContext, recordUserAction, saveLearningSession, saveUserAction, USER_ACTION_EVENT, type UserActionDetail } from "./behaviorLearning";
@@ -475,9 +475,11 @@ function AutopilotPresence({ businessId, enabled, objectiveCount }: { businessId
   return <div className={`pxc-autopilot-presence is-${activity.status}`} style={{ transform: `translate3d(${position.x}px,${position.y}px,0)` }} aria-live="polite"><span className="pxc-autopilot-cursor"><Sparkles size={15} /></span><div><strong>{activity.title}</strong><small>{activity.body}</small></div></div>;
 }
 
-function AppShell() {
+function BusinessAppShell() {
   const { user, signOut } = useAuth();
-  const { business, businesses, selectBusiness } = useWorkspace();
+  const workspace = useWorkspace();
+  const business = workspace.business!;
+  const { businesses, selectBusiness } = workspace;
   const navigate = useNavigate();
   const location = useLocation();
   const section = sectionFromPath(location.pathname);
@@ -636,6 +638,14 @@ function AppShell() {
     <figure className="pxc-quote"><blockquote>“{quote}”</blockquote><figcaption>▣ &nbsp; {business.name} · Quote of the day</figcaption></figure>
     {accountPopup && <AccountPanel view={accountPopup} expanded={accountExpanded} avatar={avatarPreview} identity={identity} business={business.name} businessId={business.id} userId={user?.id ?? ""} onClose={() => setAccountPopup(null)} onExpand={() => setAccountExpanded((value) => !value)} onUpload={() => avatarInputRef.current?.click()} onSignOut={() => void signOut()} />}
   </div>;
+}
+
+function AppShell() {
+  const { business } = useWorkspaceState();
+  const location = useLocation();
+  if (business) return <BusinessAppShell />;
+  if (location.pathname.startsWith("/app/businesses")) return <div className="pxc-empty-business-shell"><header><strong>Phoxta</strong><span>Ready-to-Launch businesses</span></header><main><LiveAppRoutes /></main></div>;
+  return <div className="pxc-workspace-state"><strong>No operating business yet</strong><span>Choose a ready-to-launch business or build one from an opportunity.</span><div><NavLink to="/app/businesses">Browse businesses</NavLink><NavLink to="/app/opportunity">Build an opportunity</NavLink></div></div>;
 }
 
 export default function PhoxtaApp() {

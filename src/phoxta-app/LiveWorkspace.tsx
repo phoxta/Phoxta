@@ -31,13 +31,13 @@ import { getPerformanceAudit, recordUserAction, type PerformanceAudit } from "./
 import { useAuth } from "@/auth/AuthProvider";
 import { createWorkspaceTask, listWorkspaceTasks, updateWorkspaceTask, type WorkspaceTask } from "@/lib/db/productWorkspace";
 import ProductView, { PRODUCT_ROUTES } from "./ProductViews";
+import { ReadyToLaunchRoutes } from "./ReadyToLaunchApp";
 import "@/styles/opportunity.css";
 
 const OpportunityHomePage = lazy(() => import("@/pages/opportunities/HomePage"));
 const DiscoveryPage = lazy(() => import("@/pages/opportunities/DiscoveryPage"));
 const OpportunityWorkspacePage = lazy(() => import("@/pages/opportunities/WorkspacePage"));
 const OpportunitySchoolPage = lazy(() => import("@/pages/opportunities/SchoolPage"));
-const BusinessesCataloguePage = lazy(() => import("@/pages/opportunities/SupportingPages").then((module) => ({ default: module.BusinessesCataloguePage })));
 const OpportunitiesPage = lazy(() => import("@/pages/opportunities/WorkspacePage").then((module) => ({ default: module.OpportunitiesPage })));
 
 function WhatsAppIcon({ size = 16 }: { size?: number }) {
@@ -340,12 +340,13 @@ function DashboardView({ kind }: { kind: "today" | "operations" | "growth" | "in
 
 export function LiveAppRoutes() {
   const path = useLocation().pathname;
+  if (path.startsWith("/app/businesses")) return <ReadyToLaunchRoutes path={path} />;
   const opportunityView = path === "/app/opportunity" ? <OpportunityHomePage />
     : path.startsWith("/app/discover") ? <DiscoveryPage />
       : path === "/app/opportunities" ? <OpportunitiesPage />
         : path.startsWith("/app/opportunities/") ? <OpportunityWorkspacePage />
           : path.startsWith("/app/school") ? <OpportunitySchoolPage />
-            : path === "/app/businesses" ? <BusinessesCataloguePage /> : null;
+            : null;
   if (opportunityView) return <Suspense fallback={<div className="pxc-live-empty">Loading workspace…</div>}><div className="p2-root pxc-opportunity-mode">{opportunityView}</div></Suspense>;
   if (PRODUCT_ROUTES.has(path)) return <ProductView path={path} />;
   if (path === "/app/priorities") return <AssistantView />;

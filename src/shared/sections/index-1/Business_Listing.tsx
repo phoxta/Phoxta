@@ -28,7 +28,7 @@ function homepageCover(blueprint: Blueprint) {
   return HOMEPAGE_BUSINESS_COVERS[blueprint.slug] || blueprintCover(blueprint.slug, blueprint.cover_url);
 }
 
-export default function BusinessListing() {
+export default function BusinessListing({ context = "home" }: { context?: "home" | "app" }) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>(HOMEPAGE_BLUEPRINTS);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortMode>("new");
@@ -99,7 +99,7 @@ export default function BusinessListing() {
 
   return (
     <>
-    <section className="phoxta-businesses" aria-labelledby="phoxta-businesses-heading">
+    <section className={`phoxta-businesses${context === "app" ? " phoxta-businesses--app" : ""}`} aria-labelledby="phoxta-businesses-heading">
       <div className="phoxta-businesses__inner">
         <div className="phoxta-businesses__heading">
           <h2 id="phoxta-businesses-heading"><strong>Ready-to-launch</strong><br />businesses.</h2>
@@ -161,9 +161,9 @@ export default function BusinessListing() {
                 <button type="button" onClick={() => setFiltersOpen(false)}>Show {visible.length}</button>
               </div>
             </aside>
-            <Link to="/marketplace" className="phoxta-businesses__view-all phoxta-businesses__view-all--desktop">
+            {context === "home" && <Link to="/marketplace" className="phoxta-businesses__view-all phoxta-businesses__view-all--desktop">
               View all <span aria-hidden="true">→</span>
-            </Link>
+            </Link>}
           </div>
 
           <div className="phoxta-businesses__results">
@@ -194,9 +194,9 @@ export default function BusinessListing() {
 
             {visible.length ? (
               <div className="phoxta-businesses__grid">
-                {visible.slice(0, 6).map((item) => (
+                {(context === "home" ? visible.slice(0, 6) : visible).map((item) => (
                   <article className="phoxta-businesses__card" key={item.id}>
-                    <Link to={`/auth?mode=signup&business=${encodeURIComponent(item.slug)}&redirect=${encodeURIComponent(`/onboarding?business=${encodeURIComponent(item.slug)}`)}`}>
+                    <Link to={context === "app" ? `/app/businesses/${encodeURIComponent(item.slug)}` : `/auth?mode=signup&business=${encodeURIComponent(item.slug)}&redirect=${encodeURIComponent(`/onboarding?business=${encodeURIComponent(item.slug)}`)}`}>
                       <img src={homepageCover(item)} alt="" width={526} height={494} loading="lazy" />
                       <div className="phoxta-businesses__card-copy">
                         <p>{item.name}</p>
@@ -213,9 +213,9 @@ export default function BusinessListing() {
                 <button type="button" onClick={() => { setQuery(""); clearFilters(); }}>Clear filters</button>
               </div>
             )}
-            <Link to="/marketplace" className="phoxta-businesses__view-all phoxta-businesses__view-all--mobile">
+            {context === "home" && <Link to="/marketplace" className="phoxta-businesses__view-all phoxta-businesses__view-all--mobile">
               View all businesses <span aria-hidden="true">→</span>
-            </Link>
+            </Link>}
           </div>
         </div>
       </div>
