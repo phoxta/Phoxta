@@ -99,7 +99,7 @@ const ROUTES = [
     "/portfolio/work/ferne",
     "/portfolio/work/phoxta",
     "/portfolio/work/saveur",
-    "/portfolio/work/wander",
+    "/portfolio/work/wamwam",
     "/portfolio/work/aurelia",
     "/portfolio/work/technest",
     "/about",

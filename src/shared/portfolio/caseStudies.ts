@@ -149,7 +149,7 @@ export const CASE_STUDIES: CaseStudy[] = [
         kicker: "AI business platform · Product Design",
         tagline: "An AI-native, multi-tenant platform that turns starting a business into choosing one.",
         summary:
-            "Phoxta builds complete, ready-to-run businesses — storefronts, bookings, content sites — on one shared backend, packages each as a cloneable blueprint and sells it through a marketplace. Every buyer receives a working, AI-operated company on day one. The product-design remit covers the entire surface area: the marketing site, the marketplace, the owner dashboard and the multi-tenant operating console, delivered as a Figma-to-React design system and shipped in production code.",
+            "Phoxta combines a marketplace of business blueprints with an operating console for customer communication, tasks, commerce and AI-assisted work. I own the product direction, information architecture, interaction design and shared design system, and contribute to the production front end. The central challenge is making a broad set of capabilities understandable while giving business owners clear control over AI actions.",
         hero: "/assets/imgs/portfolio/phoxta-project.webp",
         heroAlt: "Phoxta — marketing site homepage",
         accent: "#F0460E",

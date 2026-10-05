@@ -92,6 +92,7 @@ export default function PortfolioHeader() {
                     </nav>
 
                     <div className="d-flex align-items-center gap-2">
+                        <a href="/assets/docs/femi-adeyemi-resume.pdf" className="pf2-resume-link d-none d-lg-inline-flex" download>Résumé ↓</a>
                         <a href={`mailto:${PROFILE.email}`} className="pf-cta d-none d-sm-inline-flex">
                             Let's talk
                         </a>

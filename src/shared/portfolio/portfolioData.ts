@@ -6,7 +6,7 @@ export const PROFILE = {
     name: "Oluwafemi Adeyemi",
     shortName: "Femi Adeyemi",
     monogram: "OA",
-    role: "Product Designer",
+    role: "Senior Product Designer",
     disciplines: "UX Research · Design Systems · Prototyping · Front-end",
     location: "United Kingdom",
     availability: "Open to select product design work",
@@ -32,16 +32,16 @@ export const SOCIALS: { label: string; href: string }[] = [
 
 export const STATS = [
     { value: "7+", label: "Years in product design" },
-    { value: "6", label: "Industries shipped in" },
-    { value: "15k", label: "Staff served by an HR tool I designed & built" },
-    { value: "5", label: "Live storefronts designed & shipped" },
+    { value: "0 → 1", label: "Product strategy through production" },
+    { value: "15k", label: "Organisation size for an enterprise HR engagement" },
+    { value: "Design + code", label: "UX craft with hands-on front-end delivery" },
 ] as const;
 
 // Header + section anchors. Order is the on-page order.
 export const NAV = [
     { id: "work", label: "Work" },
+    { id: "approach", label: "Approach" },
     { id: "about", label: "About" },
-    { id: "capabilities", label: "Capabilities" },
     { id: "experience", label: "Experience" },
     { id: "contact", label: "Contact" },
 ] as const;

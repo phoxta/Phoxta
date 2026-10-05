@@ -1,106 +1,142 @@
 import { Link } from "react-router-dom";
-import RevealText from "@/shared/effects/RevealText";
 import { PROJECTS, responsiveSrcSet } from "@/shared/portfolio/portfolioData";
 import { workPath } from "@/shared/portfolio/nav";
-import { findCaseStudy } from "@/shared/portfolio/caseStudies";
 
-// Selected work in the "What we do" format from phoxta.com/marketing
-// (sec-4-home-3): a compact pinned numbered nav on the left and a scroll-driven
-// stack of screenshot-led cards on the right — one big shot, one line of copy,
-// one CTA. Every card links to /work/:slug (a full case study when one exists,
-// otherwise a project brief built from the same data).
-
-const ARROW_SVG = (
-    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0.21967 9.40717C-0.0732232 9.70006 -0.0732232 10.1749 0.21967 10.4678C0.512563 10.7607 0.987437 10.7607 1.28033 10.4678L0.21967 9.40717ZM10.6875 0.75C10.6875 0.335786 10.3517 2.97145e-09 9.9375 1.50485e-07L3.1875 -2.70983e-07C2.77329 -2.70983e-07 2.4375 0.335786 2.4375 0.75C2.4375 1.16421 2.77329 1.5 3.1875 1.5H9.1875V7.5C9.1875 7.91421 9.52329 8.25 9.9375 8.25C10.3517 8.25 10.6875 7.91421 10.6875 7.5L10.6875 0.75ZM0.75 9.9375L1.28033 10.4678L10.4678 1.28033L9.9375 0.75L9.40717 0.21967L0.21967 9.40717L0.75 9.9375Z" fill="currentColor" />
+const ARROW = (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 8h9M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
 );
-const NAV_ARROW = (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M12.1716 8.77806L8.55964e-06 8.77806L1.47897e-06 6.77807L12.1716 6.77807L6.80761 1.41412L8.22183 -9.53337e-05L16 7.77806L8.22181 15.5562L6.80759 14.142L12.1716 8.77806Z" fill="currentColor" />
-    </svg>
-);
+
+const featured = [
+    {
+        slug: "phoxta",
+        index: "01",
+        label: "AI SaaS · Live product",
+        title: "Designing one operating system for launching and running a business.",
+        summary: "I set the product direction and designed the marketplace, multi-tenant operations console, CRM and agent workflows as one coherent system, then helped ship the front end.",
+        role: "Founder & Lead Product Designer",
+        scope: "Strategy, research, IA, interaction design, design system, front end",
+        evidence: "A production platform with seven launchable business blueprints on a shared operating model.",
+        projectSlug: "phoxta",
+    },
+    {
+        slug: "northern-light",
+        index: "02",
+        label: "Enterprise operations · Client engagement",
+        title: "Northern Light: making employee and manager approvals clearer.",
+        summary: "I mapped employee and manager journeys, designed role-based dashboards for timesheets, expenses and approvals, and built the secure responsive application from prototype to production.",
+        role: "Product Designer & Software Engineer",
+        scope: "Journey mapping, workflow design, prototyping, UI, accessibility, delivery",
+        evidence: "Designed for an organisation of about 15,000 staff, with Microsoft Entra ID and row-level permissions shaping the experience.",
+        projectSlug: null,
+    },
+    {
+        slug: "coir-six",
+        index: "03",
+        label: "Learning product · Product design",
+        title: "Helping self-paced learners understand what to do next at a glance.",
+        summary: "I turned progress, lessons, mentors and schedules into one calm learner home, then defined the responsive behaviour and reusable visual system behind it.",
+        role: "Product Designer",
+        scope: "Product framing, information hierarchy, interaction design, responsive system",
+        evidence: "A complete desktop-to-mobile learning system with documented component and data-visualisation patterns.",
+        projectSlug: "coir-six",
+    },
+] as const;
+
+const secondarySlugs = ["ferne", "saveur", "wamwam", "technest"];
+
+function ConfidentialVisual() {
+    return (
+        <div className="pf2-confidential" aria-label="Abstract representation of a role-based approval workflow">
+            <span className="pf2-confidential__tag">Northern Light · Workflow illustration</span>
+            <div className="pf2-flow">
+                <div><span>Employee</span><strong>Submit expense</strong></div>
+                <i aria-hidden="true">→</i>
+                <div><span>Manager</span><strong>Review context</strong></div>
+                <i aria-hidden="true">→</i>
+                <div><span>Finance</span><strong>Approve & audit</strong></div>
+            </div>
+            <p>Role-based information · Clear status · Secure by design</p>
+        </div>
+    );
+}
 
 export default function Work() {
+    const additional = secondarySlugs
+        .map((slug) => PROJECTS.find((project) => project.slug === slug))
+        .filter((project): project is NonNullable<typeof project> => Boolean(project));
+
     return (
-        <section id="work" className="pf-work sec-4-home-3 bg-neutral-0 pt-120 pb-60 overflow-hidden">
+        <section id="work" className="pf2-work">
             <div className="container-2200 px-3 px-lg-4">
-                <div className="row g-4 align-items-end">
-                    <div className="col-xxl-10 col-12">
-                        <span className="at-btn common-black text-uppercase bg-transparent mb-10 rounded-0 p-0">
-                            <span className="text-uppercase">
-                                <span className="text-1">Selected work</span>
-                                <span className="text-2">Selected work</span>
-                            </span>
-                            <i>{ARROW_SVG}{ARROW_SVG}</i>
-                        </span>
-                        <h3 className="reveal-text mb-0">
-                            <RevealText>The products I've designed.</RevealText>
-                        </h3>
+                <div className="pf2-section-head">
+                    <div>
+                        <p className="pf2-kicker pf2-kicker--dark"><span aria-hidden="true" /> Selected work</p>
+                        <h2>Product thinking, decisions and delivery.</h2>
                     </div>
+                    <p>Three projects that show how I work across ambiguity, complex systems and the final mile to production.</p>
                 </div>
-            </div>
-            <div className="container-2200 px-3 px-lg-4 section-fix pt-60">
-                <div className="row g-4">
-                    <div className="col-xxl-2 col-lg-3 h-100">
-                        <ul className="list-unstyled navigation-sec4home3 navigation-active-item section-title-pin pf-work__nav h-100">
-                            {PROJECTS.map((p, idx) => (
-                                <li key={p.slug}>
-                                    <div className="item">
-                                        <div className="content d-flex align-items-center">
-                                            <span className="neutral-500">[{String(idx + 1).padStart(2, "0")}]</span>
-                                            <h6 className="mb-0">{p.name}</h6>
-                                            {NAV_ARROW}
-                                        </div>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                    <div className="col-lg-9 offset-xxl-1 p-relative">
-                        <div className="scroll-section vertical-section section">
-                            <div className="wrapper">
-                                <div role="list" className="list">
-                                    {PROJECTS.map((p) => {
-                                        const href = workPath(p.slug);
-                                        const label = findCaseStudy(p.slug) ? "View case study" : "View project";
-                                        return (
-                                            <div key={p.slug} className="item" role="listitem">
-                                                <div className="container bg-neutral-50 rounded-4 pf-work__card">
-                                                    <Link to={href} className="pf-work__shot" aria-label={`${label}: ${p.name}`}>
-                                                        <img
-                                                            src={p.image}
-                                                            srcSet={responsiveSrcSet(p.image)}
-                                                            sizes="(max-width: 991px) 100vw, 66vw"
-                                                            alt={`${p.name} — ${p.kicker}`}
-                                                            width={1600}
-                                                            height={1000}
-                                                            loading="lazy"
-                                                        />
-                                                        <span className="pf-work__peek" aria-hidden="true">{label} {NAV_ARROW}</span>
-                                                    </Link>
-                                                    <div className="pf-work__foot">
-                                                        <div className="pf-work__copy">
-                                                            <span className="pf-work__kicker d-flex align-items-center flex-wrap gap-2">
-                                                                <span className="pf-badge">{p.badge}</span>
-                                                                <span>{p.kicker} · {p.period}</span>
-                                                            </span>
-                                                            <h4 className="pf-work__name text-scale-anim">
-                                                                <Link to={href} className="pf-work__name-link">{p.name}</Link>
-                                                            </h4>
-                                                            <p className="pf-work__blurb">{p.blurb}</p>
-                                                        </div>
-                                                        <Link to={href} className="pf-work__cta d-inline-flex align-items-center gap-2 fw-600 text-decoration-none">
-                                                            {label} {NAV_ARROW}
-                                                        </Link>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+
+                <div className="pf2-featured-list">
+                    {featured.map((item, position) => {
+                        const project = item.projectSlug ? PROJECTS.find((entry) => entry.slug === item.projectSlug) : null;
+                        const visual = project ? (
+                            <Link to={workPath(project.slug)} className="pf2-featured__visual" aria-label={`View ${project.name} case study`}>
+                                <img
+                                    src={project.image}
+                                    srcSet={responsiveSrcSet(project.image)}
+                                    sizes="(max-width: 991px) 100vw, 52vw"
+                                    alt={`${project.name} product interface`}
+                                    width={1600}
+                                    height={1000}
+                                    loading={position === 0 ? "eager" : "lazy"}
+                                />
+                            </Link>
+                        ) : <ConfidentialVisual />;
+
+                        return (
+                            <article key={item.slug} className={`pf2-featured${position % 2 ? " pf2-featured--reverse" : ""}`}>
+                                <div className="pf2-featured__content">
+                                    <div className="pf2-featured__topline"><span>{item.index}</span><span>{item.label}</span></div>
+                                    <h3>{item.title}</h3>
+                                    <p className="pf2-featured__summary">{item.summary}</p>
+                                    <dl className="pf2-featured__facts">
+                                        <div><dt>My role</dt><dd>{item.role}</dd></div>
+                                        <div><dt>Scope</dt><dd>{item.scope}</dd></div>
+                                        <div><dt>Evidence</dt><dd>{item.evidence}</dd></div>
+                                    </dl>
+                                    {item.projectSlug ? (
+                                        <Link to={workPath(item.projectSlug)} className="pf2-text-link">Read the case study {ARROW}</Link>
+                                    ) : (
+                                        <a href="mailto:adeyemioluwafemi2018@gmail.com?subject=Northern%20Light%20case%20study" className="pf2-text-link">Request a private walkthrough {ARROW}</a>
+                                    )}
                                 </div>
-                            </div>
-                        </div>
+                                {visual}
+                            </article>
+                        );
+                    })}
+                </div>
+
+                <div className="pf2-more">
+                    <div className="pf2-more__head">
+                        <h3>Additional work</h3>
+                        <p>Explore complete commerce journeys, booking experiences and visual systems.</p>
+                    </div>
+                    <div className="pf2-more__grid">
+                        {additional.map((project) => (
+                            <Link key={project.slug} to={workPath(project.slug)} className="pf2-more-card">
+                                <div className="pf2-more-card__image">
+                                    <img src={project.image} srcSet={responsiveSrcSet(project.image)} sizes="(max-width: 767px) 100vw, 50vw" alt="" width={960} height={600} loading="lazy" />
+                                </div>
+                                <div className="pf2-more-card__copy">
+                                    <span>{project.kicker}</span>
+                                    <h4>{project.name}</h4>
+                                    <p>{project.blurb}</p>
+                                    <strong>View project {ARROW}</strong>
+                                </div>
+                            </Link>
+                        ))}
                     </div>
                 </div>
             </div>

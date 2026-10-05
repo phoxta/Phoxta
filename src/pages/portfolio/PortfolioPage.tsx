@@ -1,12 +1,9 @@
 import PageMeta from "@/seo/PageMeta";
 import Hero from "@/shared/sections/portfolio-femi/Hero";
-import Clients from "@/shared/sections/portfolio-femi/Clients";
 import About from "@/shared/sections/portfolio-femi/About";
 import Work from "@/shared/sections/portfolio-femi/Work";
-import Capabilities from "@/shared/sections/portfolio-femi/Capabilities";
+import Approach from "@/shared/sections/portfolio-femi/Approach";
 import Experience from "@/shared/sections/portfolio-femi/Experience";
-import Skills from "@/shared/sections/portfolio-femi/Skills";
-import Credentials from "@/shared/sections/portfolio-femi/Credentials";
 import Contact from "@/shared/sections/portfolio-femi/Contact";
 import { PROFILE, PORTFOLIO_URL } from "@/shared/portfolio/portfolioData";
 
@@ -15,7 +12,7 @@ const PERSON_JSONLD = {
     "@type": "Person",
     name: PROFILE.name,
     alternateName: PROFILE.shortName,
-    jobTitle: "Product Designer",
+    jobTitle: "Senior Product Designer",
     description: PROFILE.lede,
     url: PORTFOLIO_URL,
     email: `mailto:${PROFILE.email}`,
@@ -39,8 +36,8 @@ export default function PortfolioPage() {
     return (
         <>
             <PageMeta
-                title="Femi Adeyemi — Product Designer"
-                description="Oluwafemi Adeyemi is a product designer with 7+ years taking software from research and systems to shipped, production-ready interfaces — with hands-on front-end in React, Next.js and TypeScript."
+                title="Femi Adeyemi — Senior Product Designer"
+                description="Femi Adeyemi is a senior product designer working across AI SaaS, enterprise workflows and consumer products, from problem framing to shipped experiences."
                 canonicalUrl={PORTFOLIO_URL}
                 image={`${PORTFOLIO_URL}assets/imgs/portfolio/og-card.png`}
                 siteName={PROFILE.shortName}
@@ -49,12 +46,9 @@ export default function PortfolioPage() {
             />
             <Hero />
             <Work />
+            <Approach />
             <About />
-            <Clients />
-            <Capabilities />
-            <Skills />
             <Experience />
-            <Credentials />
             <Contact />
         </>
     );

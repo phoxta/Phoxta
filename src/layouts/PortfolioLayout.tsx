@@ -1,11 +1,11 @@
-import { Outlet } from "react-router-dom";
-import SmoothScrollEffect from "@/shared/effects/SmoothScrollEffect";
-import GlobalEffects from "@/shared/effects/GlobalEffects";
+import { useEffect } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import ThemeRouteSync from "@/shared/effects/ThemeRouteSync";
 import BackToTop from "@/shared/elements/BackToTop";
 import PortfolioHeader from "@/shared/portfolio/PortfolioHeader";
 import PortfolioFooter from "@/shared/portfolio/PortfolioFooter";
 import { useHashScroll } from "@/shared/portfolio/nav";
+import "./portfolio-redesign.css";
 
 /**
  * Standalone chrome for femi.phoxta.com — the personal portfolio.
@@ -576,13 +576,15 @@ const PORTFOLIO_CSS = `
 export default function PortfolioLayout() {
     // A menu item chosen from a project page navigates to /#section; finish the jump on arrival.
     useHashScroll();
+    const { pathname, hash } = useLocation();
+    useEffect(() => {
+        if (!hash) window.scrollTo({ top: 0, behavior: "instant" });
+    }, [pathname, hash]);
 
     return (
         <div className="fx-portfolio">
             <a href="#main" className="pf-skip">Skip to content</a>
             <style>{PORTFOLIO_CSS}</style>
-            <SmoothScrollEffect />
-            <GlobalEffects lean />
             <ThemeRouteSync />
             <PortfolioHeader />
             <div id="smooth-wrapper">

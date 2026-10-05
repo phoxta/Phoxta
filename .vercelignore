@@ -14,5 +14,6 @@ supabase/
 # that reason.
 *.tmp
 *.tmp.json
+scratchpad/
 .env
 .env.*

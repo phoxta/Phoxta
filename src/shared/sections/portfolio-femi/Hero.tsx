@@ -1,67 +1,72 @@
 import { onAnchorClick } from "@/shared/effects/scrollToId";
-import RevealText from "@/shared/effects/RevealText";
-import { PROFILE } from "@/shared/portfolio/portfolioData";
+import { PROFILE, STATS } from "@/shared/portfolio/portfolioData";
 
-// Hero built on the phoxta.com/marketing section that follows "Our Solutions"
-// (index-3 Section8): a dark two-column block — heading, lede and a button group
-// on the left, a framed portrait on the right.
-
-const ARROW_CIRCLE = (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 16 15" fill="none">
-        <path d="M0.0001297 8.99993L0 3.00407e-05L2 0L2.0001 6.99993L12.1719 7.00003L8.22224 3.05027L9.63644 1.63606L16.0003 8.00003L9.63644 14.364L8.22224 12.9497L12.1719 9.00003L0.0001297 8.99993Z" fill="currentColor" />
+const ARROW = (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 8h9M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
 );
 
 export default function Hero() {
     return (
-        <section
-            id="top"
-            className="home-3-section-8 pf-hero pf-hero--dark bg-cover bg-neutral-900 overflow-hidden pt-150 pb-120"
-            data-background="/assets/imgs/portfolio/hero-bg.webp"
-            style={{ backgroundImage: "url(/assets/imgs/portfolio/hero-bg.webp)", backgroundSize: "cover" }}
-        >
-            {/* The portrait is the LCP element: ask for it before the bundle finishes parsing. */}
-            <link rel="preload" as="image" href="/assets/imgs/portfolio/femi-adeyemi-400.webp" imageSrcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi-720.webp 720w, /assets/imgs/portfolio/femi-adeyemi.webp 900w" imageSizes="(max-width: 991px) 86vw, 340px" fetchPriority="high" />
+        <section id="top" className="pf2-hero">
+            <link
+                rel="preload"
+                as="image"
+                href="/assets/imgs/portfolio/femi-adeyemi-400.webp"
+                imageSrcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi-720.webp 720w, /assets/imgs/portfolio/femi-adeyemi.webp 900w"
+                imageSizes="(max-width: 991px) 88vw, 400px"
+                fetchPriority="high"
+            />
             <div className="container-2200 px-3 px-lg-4">
-                <div className="row g-4 g-lg-5 align-items-center">
-                    <div className="col-lg-7 me-auto">
-                        <span className="pf-hero__eyebrow d-inline-flex align-items-center gap-2 mb-20">
-                            <span className="pf-hero__dot" aria-hidden="true" />
-                            {PROFILE.role} · {PROFILE.location}
-                        </span>
-                        <h1 className="reveal-text mb-0 text-white pe-lg-4">
-                            <RevealText>I design digital products and ship them.</RevealText>
-                        </h1>
-                        <p className="text-white fz-xl py-4" style={{ opacity: 0.85, maxWidth: 560 }}>
-                            Product designer with 7+ years taking software from research and wireframes to polished,
-                            production-ready interfaces with hands-on front-end development.
+                <div className="pf2-hero__grid">
+                    <div className="pf2-hero__copy">
+                        <p className="pf2-kicker">
+                            <span aria-hidden="true" /> Senior product designer · United Kingdom
                         </p>
-                        <div className="at-btn-group at-btn-group-transparent at_fade_anim" data-delay=".4" data-fade-from="bottom" data-ease="bounce">
-                            <a href="#work" onClick={onAnchorClick("work", 88)} className="at-btn-circle" aria-label="Jump to my work">{ARROW_CIRCLE}</a>
-                            <a href="#work" onClick={onAnchorClick("work", 88)} className="at-btn z-index-1">View my work</a>
-                            <a href={`mailto:${PROFILE.email}`} className="at-btn-circle" aria-label={`Email ${PROFILE.shortName}`}>{ARROW_CIRCLE}</a>
+                        <h1>I turn complex product systems into clear, shipped experiences.</h1>
+                        <p className="pf2-hero__lede">
+                            I lead work from problem framing and research through interaction design, design systems and production UI—across AI SaaS, enterprise operations and consumer products.
+                        </p>
+                        <div className="pf2-actions">
+                            <a href="#work" onClick={onAnchorClick("work", 84)} className="pf2-button pf2-button--light">
+                                View selected work {ARROW}
+                            </a>
+                            <a href={`mailto:${PROFILE.email}`} className="pf2-button pf2-button--ghost-light">
+                                Start a conversation
+                            </a>
                         </div>
+                        <p className="pf2-hero__availability">
+                            <span aria-hidden="true" /> {PROFILE.availability}
+                        </p>
                     </div>
-                    <div className="col-lg-4">
-                        <div className="pf-hero__photo p-relative rounded-4 overflow-hidden">
-                            <img
-                                src="/assets/imgs/portfolio/femi-adeyemi-400.webp"
-                                srcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi-720.webp 720w, /assets/imgs/portfolio/femi-adeyemi.webp 900w"
-                                sizes="(max-width: 991px) 86vw, 340px"
-                                alt={PROFILE.name}
-                                width={360}
-                                height={432}
-                                className="img-cover w-100 h-100"
-                                loading="eager"
-                                fetchPriority="high"
-                            />
-                            <span className="pf-hero__badge">
-                                <span className="pf-hero__badge-dot" aria-hidden="true" />
-                                {PROFILE.name}
-                            </span>
+
+                    <div className="pf2-hero__portrait">
+                        <img
+                            src="/assets/imgs/portfolio/femi-adeyemi-400.webp"
+                            srcSet="/assets/imgs/portfolio/femi-adeyemi-400.webp 400w, /assets/imgs/portfolio/femi-adeyemi-720.webp 720w, /assets/imgs/portfolio/femi-adeyemi.webp 900w"
+                            sizes="(max-width: 991px) 88vw, 400px"
+                            alt="Oluwafemi Adeyemi, senior product designer"
+                            width={720}
+                            height={864}
+                            loading="eager"
+                            fetchPriority="high"
+                        />
+                        <div className="pf2-hero__portrait-caption">
+                            <span>{PROFILE.name}</span>
+                            <span>Design strategy · UX · UI · Delivery</span>
                         </div>
                     </div>
                 </div>
+
+                <dl className="pf2-proof" aria-label="Experience highlights">
+                    {STATS.map((stat) => (
+                        <div key={stat.label} className="pf2-proof__item">
+                            <dt>{stat.value}</dt>
+                            <dd>{stat.label}</dd>
+                        </div>
+                    ))}
+                </dl>
             </div>
         </section>
     );
